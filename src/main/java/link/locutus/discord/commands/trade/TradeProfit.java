@@ -7,6 +7,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTrade;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -144,7 +145,7 @@ public class TradeProfit extends Command {
         }
 
         if (flags.contains('s')) {
-            SpreadSheet sheet = SpreadSheet.create(Locutus.imp().getGuildDB(guild), GuildDB.Key.NATION_SHEET);
+            SpreadSheet sheet = SpreadSheet.create(Locutus.imp().getGuildDB(guild), SheetKeys.NATION_SHEET);
         }
 
         StringBuilder response = new StringBuilder();

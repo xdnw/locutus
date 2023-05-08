@@ -1,10 +1,10 @@
 package link.locutus.discord.web.commands.binding;
 
+import com.google.gson.reflect.TypeToken;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
-import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.FunctionProviderParser;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -15,8 +15,6 @@ import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.NationDepositLimit;
 import link.locutus.discord.commands.manager.v2.binding.annotation.RegisteredRole;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Operation;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
@@ -31,6 +29,8 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholder
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.guild.GuildSetting;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.NationList;
@@ -39,7 +39,6 @@ import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.scheduler.QuadConsumer;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -48,22 +47,14 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.HtmlInput;
-import com.google.gson.JsonArray;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Category;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.GuildChannel;
-import net.dv8tion.jda.api.entities.ICategorizableChannel;
-import net.dv8tion.jda.api.entities.IPositionableChannel;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
-import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 
 import java.awt.Color;
@@ -73,7 +64,6 @@ import java.lang.reflect.Type;
 import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import static link.locutus.discord.web.WebUtil.createInput;
 import static link.locutus.discord.web.WebUtil.generateSearchableDropdown;
@@ -328,274 +318,230 @@ public class WebPWBindings extends WebBindingHelper {
 
     }
 
-    public final Set<SpyCount.Operation> SPYCOUNT_OPERATIONS_KEY = null;
-    public final Set<AllianceMetric> ALLIANCE_METRIC_KEY = null;
-
-    public final Set<Project> PROJECTS_KEY = null;
-    public final Set<NationAttributeDouble> NATION_METRIC_KEY = null;
-    public final Set<DBNation> NATIONS_KEY = null;
-    public final Set<NationOrAlliance> NATIONS_OR_ALLIANCE_KEY = null;
-    public final Set<NationOrAllianceOrGuild> NATIONS_OR_ALLIANCE_OR_GUILD_KEY = null;
-    public final Set<NationOrAllianceOrGuildOrTaxid> NATIONS_OR_ALLIANCE_OR_GUILD_OR_TAXID_KEY = null;
-    public final Set<Role> ROLES_KEY = null;
-    public final Set<Member> MEMBERS_KEY = null;
-    public final Set<DBAlliance> ALLIANCES_KEY = null;
-    public final List<ResourceType> RESOURCE_LIST_KEY = null;
-    public final Set<WarStatus> WARSTATUSES_KEY = null;
-
-    public final Set<WarType> WARTYPES_KEY = null;
-
-    public final Set<AttackType> ATTACKTYPES_KEY = null;
-
-    public final Set<IACheckup.AuditType> AUDIT_TYPES_KEY = null;
-
-    public final Set<Continent> CONTINENT_TYPES_KEY = null;
-    public final Map<ResourceType, Double> RESOURCE_MAP_KEY = null;
-    public final Map<MilitaryUnit, Long> UNIT_MAP_KEY = null;
-
-
-
     public WebPWBindings() {
 
-        try {
-            {
-                Type type = getClass().getDeclaredField("MEMBERS_KEY").getGenericType();
-                Key key = Key.of(type, HtmlInput.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
-                        Guild guild = (Guild) valueStore.getProvided(Key.of(Guild.class, Me.class));
-                        ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
-                        List<Member> options = new ArrayList<>(guild.getMembers());
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, Member.class).getType(), HtmlInput.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                    Guild guild = (Guild) valueStore.getProvided(Key.of(Guild.class, Me.class));
+                    ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
+                    List<Member> options = new ArrayList<>(guild.getMembers());
 
-                        return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.getEffectiveName(), t.getAsMention()), true);
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("NATIONS_KEY").getGenericType();
-                Key key = Key.of(type, HtmlInput.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
-                        ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
-                        return nations(valueStore, param);
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("NATIONS_OR_ALLIANCE_KEY").getGenericType();
-                Key key = Key.of(type, HtmlInput.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
-                        ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
-                        return nationOrAlliance(param);
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("NATIONS_OR_ALLIANCE_OR_GUILD_KEY").getGenericType();
-                Key key = Key.of(type, HtmlInput.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
-                        ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
-                        User user = (User) valueStore.getProvided(Key.of(User.class, Me.class));
-                        return nationOrAllianceOrGuild(user, param);
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("NATIONS_OR_ALLIANCE_OR_GUILD_KEY").getGenericType();
-                Key key = Key.of(type, HtmlInput.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
-                        ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
-                        User user = (User) valueStore.getProvided(Key.of(User.class, Me.class));
-                        GuildDB db = (GuildDB) valueStore.getProvided(Key.of(GuildDB.class, Me.class));
-                        return nationOrAllianceOrGuildOrTaxid(user, db, param, true);
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("WARSTATUSES_KEY").getGenericType();
-                Key key = Key.of(type, HtmlInput.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
-                        ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
-                        List<WarStatus> options = Arrays.asList(WarStatus.values());
-                        return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.name(), t.name()), true);
-                    }));
-                });
-            }
-            {
-                Key key = Key.of(getClass().getDeclaredField("WARTYPES_KEY").getGenericType(), HtmlInput.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
-                        return multipleSelectEmum(WarType.class, valueStore);
-                    }));
-                });
-            }
-            {
-                Key key = Key.of(getClass().getDeclaredField("ATTACKTYPES_KEY").getGenericType(), HtmlInput.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
-                        return multipleSelectEmum(AttackType.class, valueStore);
-                    }));
-                });
-            }
-            {
-                Key key = Key.of(getClass().getDeclaredField("AUDIT_TYPES_KEY").getGenericType(), HtmlInput.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
-                        return multipleSelectEmum(IACheckup.AuditType.class, valueStore);
-                    }));
-                });
-            }
-            {
-                Key key = Key.of(getClass().getDeclaredField("CONTINENT_TYPES_KEY").getGenericType(), HtmlInput.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
-                        return multipleSelectEmum(Continent.class, valueStore);
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("ROLES_KEY").getGenericType();
-                Key key = Key.of(type, HtmlInput.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
-                        ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
-                        Guild guild = (Guild) valueStore.getProvided(Key.of(Guild.class, Me.class));
-                        List<Role> options = guild.getRoles();
-                        return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
-                            String name = "@" + obj.getName();
-                            names.add(name);
+                    return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.getEffectiveName(), t.getAsMention()), true);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, DBNation.class).getType(), HtmlInput.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                    ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
+                    return nations(valueStore, param);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, NationOrAlliance.class).getType(), HtmlInput.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                    ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
+                    return nationOrAlliance(param);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, NationOrAllianceOrGuild.class).getType(), HtmlInput.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                    ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
+                    User user = (User) valueStore.getProvided(Key.of(User.class, Me.class));
+                    return nationOrAllianceOrGuild(user, param);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, NationOrAllianceOrGuildOrTaxid.class).getType(), HtmlInput.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                    ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
+                    User user = (User) valueStore.getProvided(Key.of(User.class, Me.class));
+                    GuildDB db = (GuildDB) valueStore.getProvided(Key.of(GuildDB.class, Me.class));
+                    return nationOrAllianceOrGuildOrTaxid(user, db, param, true);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, WarStatus.class).getType(), HtmlInput.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                    ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
+                    List<WarStatus> options = Arrays.asList(WarStatus.values());
+                    return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.name(), t.name()), true);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, WarType.class).getType(), HtmlInput.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                    return multipleSelectEmum(WarType.class, valueStore);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, AttackType.class).getType(), HtmlInput.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                    return multipleSelectEmum(AttackType.class, valueStore);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, IACheckup.AuditType.class).getType(), HtmlInput.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                    return multipleSelectEmum(IACheckup.AuditType.class, valueStore);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, Continent.class).getType(), HtmlInput.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                    return multipleSelectEmum(Continent.class, valueStore);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, Role.class).getType(), HtmlInput.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                    ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
+                    Guild guild = (Guild) valueStore.getProvided(Key.of(Guild.class, Me.class));
+                    List<Role> options = guild.getRoles();
+                    return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
+                        String name = "@" + obj.getName();
+                        names.add(name);
 
-                            String sub = "";
-                            if (obj.getColorRaw() != Role.DEFAULT_COLOR_RAW) {
-                                Color color = obj.getColor();
-                                String hex = String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
-                                sub += hex + " - ";
-                            }
-                            int members = guild.getMembersWithRoles(obj).size();
-                            sub += members + " members";
-                            subtext.add(sub);
-                            values.add(obj.getAsMention());
-                        }, true);
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("ALLIANCE_METRIC_KEY").getGenericType();
-                Key key = Key.of(type, HtmlInput.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
-                        ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
-                        List<AllianceMetric> options = Arrays.asList(AllianceMetric.values());
+                        String sub = "";
+                        if (obj.getColorRaw() != Role.DEFAULT_COLOR_RAW) {
+                            Color color = obj.getColor();
+                            String hex = String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
+                            sub += hex + " - ";
+                        }
+                        int members = guild.getMembersWithRoles(obj).size();
+                        sub += members + " members";
+                        subtext.add(sub);
+                        values.add(obj.getAsMention());
+                    }, true);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, AllianceMetric.class).getType(), HtmlInput.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                    ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
+                    List<AllianceMetric> options = Arrays.asList(AllianceMetric.values());
 
-                        return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.name(), t.name()), true);
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("PROJECTS_KEY").getGenericType();
-                Key key = Key.of(type, HtmlInput.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
-                        ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
-                        List<Project> options = Arrays.asList(Projects.values);
+                    return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.name(), t.name()), true);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, Project.class).getType(), HtmlInput.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                    ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
+                    List<Project> options = Arrays.asList(Projects.values);
 
-                        return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.name(), t.name()), true);
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("NATION_METRIC_KEY").getGenericType();
-                Key key = Key.of(type, HtmlInput.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
-                        ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
+                    return multipleSelect(param, options, t -> new AbstractMap.SimpleEntry<>(t.name(), t.name()), true);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, NationAttributeDouble.class).getType(), HtmlInput.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                    ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
 
-                        NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-                        List<NationAttributeDouble> options = placeholders.getMetricsDouble(valueStore);
+                    NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
+                    List<NationAttributeDouble> options = placeholders.getMetricsDouble(valueStore);
 
-                        return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
-                            names.add(obj.getName());
-                            String desc = obj.getDesc();
-                            subtext.add(desc);
-                        }, true);
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("ALLIANCES_KEY").getGenericType();
-                Key key = Key.of(type, HtmlInput.class);
-                addBinding(store -> {
-                    store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
-                        ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
+                    return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
+                        names.add(obj.getName());
+                        String desc = obj.getDesc();
+                        subtext.add(desc);
+                    }, true);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, DBAlliance.class).getType(), HtmlInput.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) valueStore -> {
+                    ParameterData param = (ParameterData) valueStore.getProvided(ParameterData.class);
 
-                        return alliance(param, true);
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("RESOURCE_LIST_KEY").getGenericType();
-                Key key = Key.of(type, HtmlInput.class);
-                addBinding(rootStore -> {
-                    rootStore.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) store -> {
-                        ParameterData param = (ParameterData) store.getProvided(ParameterData.class);
-                        List<ResourceType> options = Arrays.asList(ResourceType.values());
+                    return alliance(param, true);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(List.class, ResourceType.class).getType(), HtmlInput.class);
+            addBinding(rootStore -> {
+                rootStore.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) store -> {
+                    ParameterData param = (ParameterData) store.getProvided(ParameterData.class);
+                    List<ResourceType> options = Arrays.asList(ResourceType.values());
 
-                        return multipleSelect(param, options, rss -> new AbstractMap.SimpleEntry<>(rss.getName(), rss.getName()), true);
-                    }));
-                });
-            }
-            {
-                Type type = getClass().getDeclaredField("SPYCOUNT_OPERATIONS_KEY").getGenericType();
-                Key key = Key.of(type, HtmlInput.class);
-                addBinding(rootStore -> {
-                    rootStore.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) store -> {
-                        ParameterData param = (ParameterData) store.getProvided(ParameterData.class);
-                        List<SpyCount.Operation> options = Arrays.asList(SpyCount.Operation.values());
+                    return multipleSelect(param, options, rss -> new AbstractMap.SimpleEntry<>(rss.getName(), rss.getName()), true);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, SpyCount.Operation.class).getType(), HtmlInput.class);
+            addBinding(rootStore -> {
+                rootStore.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) store -> {
+                    ParameterData param = (ParameterData) store.getProvided(ParameterData.class);
+                    List<SpyCount.Operation> options = Arrays.asList(SpyCount.Operation.values());
 
-                        return multipleSelect(param, options, op -> new AbstractMap.SimpleEntry<>(op.name(), op.name()), true);
-                    }));
-                });
-            }
+                    return multipleSelect(param, options, op -> new AbstractMap.SimpleEntry<>(op.name(), op.name()), true);
+                }));
+            });
+        }
+        {
+            Type type = TypeToken.getParameterized(Map.class, ResourceType.class, Double.class).getType();
             {
-                Type type = getClass().getDeclaredField("RESOURCE_MAP_KEY").getGenericType();
                 {
-                    {
-                        Key key = Key.of(type, HtmlInput.class);
-                        addBinding(rootStore -> {
-                            rootStore.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) store -> getBankInput(store)));
-                        });
-                        Key key2 = Key.of(type, NationDepositLimit.class, HtmlInput.class);
-                        addBinding(rootStore -> {
-                            rootStore.addParser(key2, new FunctionProviderParser<>(key2, (Function<ValueStore, String>) store -> getBankInput(store)));
-                        });
-                        Key key3 = Key.of(type, AllianceDepositLimit.class, HtmlInput.class);
-                        addBinding(rootStore -> {
-                            rootStore.addParser(key3, new FunctionProviderParser<>(key3, (Function<ValueStore, String>) store -> getBankInput(store)));
-                        });
-                    }
+                    Key key = Key.of(type, HtmlInput.class);
+                    addBinding(rootStore -> {
+                        rootStore.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) store -> getBankInput(store)));
+                    });
+                    Key key2 = Key.of(type, NationDepositLimit.class, HtmlInput.class);
+                    addBinding(rootStore -> {
+                        rootStore.addParser(key2, new FunctionProviderParser<>(key2, (Function<ValueStore, String>) store -> getBankInput(store)));
+                    });
+                    Key key3 = Key.of(type, AllianceDepositLimit.class, HtmlInput.class);
+                    addBinding(rootStore -> {
+                        rootStore.addParser(key3, new FunctionProviderParser<>(key3, (Function<ValueStore, String>) store -> getBankInput(store)));
+                    });
                 }
             }
+        }
 
+        {
+            Type type = TypeToken.getParameterized(Map.class, MilitaryUnit.class, Long.class).getType();
             {
-                Type type = getClass().getDeclaredField("UNIT_MAP_KEY").getGenericType();
                 {
-                    {
-                        Key key = Key.of(type, HtmlInput.class);
-                        ArrayList<MilitaryUnit> types = new ArrayList<>(Arrays.asList(MilitaryUnit.values()));
-                        types.removeIf(f -> f.getName() == null);
+                    Key key = Key.of(type, HtmlInput.class);
+                    ArrayList<MilitaryUnit> types = new ArrayList<>(Arrays.asList(MilitaryUnit.values()));
+                    types.removeIf(f -> f.getName() == null);
 
-                        addBinding(rootStore -> {
-                            rootStore.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) store -> getMapInput(store, types)));
-                        });
-                    }
+                    addBinding(rootStore -> {
+                        rootStore.addParser(key, new FunctionProviderParser<>(key, (Function<ValueStore, String>) store -> getMapInput(store, types)));
+                    });
                 }
             }
-        } catch (NoSuchFieldException e) {
-            throw new RuntimeException(e);
         }
     }
 
@@ -758,11 +704,10 @@ public class WebPWBindings extends WebBindingHelper {
     }
 
     @HtmlInput
-    @Binding(types= GuildDB.Key.class)
-    public String GuildDBKey(@Me GuildDB db, @Me Guild guild, @Me User author, ParameterData param) {
-        ArrayList<GuildDB.Key> options = new ArrayList<>(Arrays.asList(GuildDB.Key.values()));
+    @Binding(types= GuildSetting.class)
+    public String GuildSetting(@Me GuildDB db, @Me Guild guild, @Me User author, ParameterData param) {
+        ArrayList<GuildSetting> options = new ArrayList<>(Arrays.asList(GuildKey.values()));
         options.removeIf(key -> {
-            if (key.requires != null && db.getOrNull(key.requires) == null) return true;
             if (!key.allowed(db)) return true;
             if (!key.hasPermission(db, author, null)) return true;
             return false;
@@ -860,7 +805,7 @@ public class WebPWBindings extends WebBindingHelper {
             options.removeIf(f -> f.toRole(guild) == null);
         }
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
-            GuildDB.Key key = obj.getKey();
+            GuildSetting key = obj.getKey();
             if (key != null && db.getOrNull(key) == null) {
                 return;
 //                if (!sub.isEmpty()) sub += "  - ";

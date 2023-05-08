@@ -7,9 +7,11 @@ import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
+import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.web.commands.HtmlInput;
 import org.json.JSONObject;
 
@@ -20,6 +22,7 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,7 +40,7 @@ public class ParametricCallable implements ICommand {
     private final CommandCallable parent;
     private final Annotation[] annotations;
     private final Type returnType;
-    private String desc;
+    private Supplier<String> descMethod;
 
     public ParametricCallable(CommandCallable parent, ParametricCallable clone, List<String> aliases) {
         this.object = clone.object;
@@ -47,7 +50,7 @@ public class ParametricCallable implements ICommand {
         this.provideFlags = clone.provideFlags;
         this.userParameters = clone.userParameters;
         this.paramaterMap = clone.paramaterMap;
-        this.desc = clone.desc;
+        this.descMethod = clone.descMethod;
         this.help = clone.help;
         this.aliases = new ArrayList<>(aliases);
         this.parent = parent;
@@ -151,14 +154,30 @@ public class ParametricCallable implements ICommand {
         this.help = definition.help();
 
         //        desc.append(ICommand.formatDescription(definition));
-        this.desc = definition.desc();
+        this.descMethod = () -> definition.desc();
         if (!definition.descMethod().isBlank()) {
             try {
-                this.desc = object.getClass().getMethod(definition.descMethod()).invoke(object).toString();
-            } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                Method method2 = object.getClass().getMethod(definition.descMethod());
+                method2.setAccessible(true);
+                descMethod = (() -> {
+                    try {
+                        return method2.invoke(object).toString();
+                    } catch (IllegalAccessException | InvocationTargetException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+            } catch (NoSuchMethodException e) {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    public String getSlashMention() {
+        return SlashCommandManager.getSlashMention(this);
+    }
+
+    public String getSlashCommand(Map<String, String> arguments) {
+        return SlashCommandManager.getSlashCommand(this, arguments, true);
     }
 
     public static List<ParametricCallable> generateFromClass(CommandCallable parent, Object object, ValueStore store) {
@@ -193,6 +212,7 @@ public class ParametricCallable implements ICommand {
 
     @Override
     public String simpleDesc() {
+        String desc = descMethod.get();
         if (desc != null && desc.indexOf('{') > 0) {
             desc = desc.replace("{legacy_prefix}", Settings.commandPrefix(true) + "");
             desc = desc.replace("{prefix}", Settings.commandPrefix(false) + "");
@@ -578,5 +598,9 @@ public class ParametricCallable implements ICommand {
 
     public Method getMethod() {
         return method;
+    }
+
+    public Object getObject() {
+        return object;
     }
 }

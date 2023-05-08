@@ -5,12 +5,9 @@ import com.politicsandwar.graphql.model.Bankrec;
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
-import it.unimi.dsi.fastutil.ints.Int2ByteArrayMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2ByteArrayMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv1.domains.Alliance;
 import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
@@ -23,6 +20,7 @@ import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.alliance.*;
 import link.locutus.discord.pnw.NationList;
@@ -89,6 +87,16 @@ public class DBAlliance implements NationList, NationOrAlliance {
                 other.dateCreated,
                 other.color,
                 other.metaCache);
+    }
+
+    @Override
+    public String getFilter() {
+        return getTypePrefix() + ":" + allianceId;
+    }
+
+    @Override
+    public boolean test(DBNation dbNation) {
+        return dbNation.getAlliance_id() == allianceId;
     }
 
     public void setLoot(LootEntry lootEntry) {
@@ -340,6 +348,17 @@ public class DBAlliance implements NationList, NationOrAlliance {
             if (!isOutdated) return BRACKETS_CACHED;
         }
         PoliticsAndWarV3 api = getApi(AlliancePermission.TAX_BRACKETS);
+        if (api == null) {
+            Map<Integer, TaxBracket> result = new HashMap<>();
+            for (DBNation nation : getNations()) {
+                if (nation.getTax_id() == 0 || result.containsKey(nation.getTax_id())) continue;
+                TaxBracket bracket = nation.getTaxBracket();
+                if (bracket == null) continue;
+                result.put(nation.getTax_id(), bracket);
+            }
+            return result;
+        }
+
         Map<Integer, com.politicsandwar.graphql.model.TaxBracket> bracketsV3 = api.fetchTaxBrackets(allianceId);
         BRACKETS_CACHED = new ConcurrentHashMap<>();
         BRACKETS_TURN_UPDATED = TimeUtil.getTurn();
@@ -742,10 +761,10 @@ public class DBAlliance implements NationList, NationOrAlliance {
     public ApiKeyPool getApiKeys(AlliancePermission... permissions) {
         GuildDB db = getGuildDB();
         if (db != null) {
-            String[] apiKeys = db.getOrNull(GuildDB.Key.API_KEY);
+            List<String> apiKeys = db.getOrNull(GuildKey.API_KEY);
 
-            if (apiKeys != null) {
-                List<String> newKeys = new ArrayList<>(Arrays.asList(apiKeys));
+            if (apiKeys != null && !apiKeys.isEmpty()) {
+                List<String> newKeys = new ArrayList<>(apiKeys);
                 for (String key : apiKeys) {
                     try {
                         Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
@@ -757,9 +776,9 @@ public class DBAlliance implements NationList, NationOrAlliance {
                     } catch (HttpClientErrorException.Unauthorized e) {
                         newKeys.remove(key);
                         if (newKeys.isEmpty()) {
-                            db.deleteInfo(GuildDB.Key.API_KEY);
+                            db.deleteInfo(GuildKey.API_KEY);
                         } else {
-                            db.setInfo(GuildDB.Key.API_KEY, StringMan.join(newKeys, ","));
+                            GuildKey.API_KEY.set(db, newKeys);
                         }
                     } catch (Throwable e) {
                         throw e;

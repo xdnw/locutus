@@ -15,8 +15,10 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 public class PrimitiveBindings extends BindingHelper {
@@ -36,6 +38,15 @@ public class PrimitiveBindings extends BindingHelper {
             case "false", "no", "off", "f", "n", "0" -> false;
             default -> throw new IllegalArgumentException("Invalid boolean " + argument);
         };
+    }
+
+    @Binding(examples = {"1,2,5"})
+    public static Set<Integer> integerSet(String argument) {
+        Set<Integer> ids = new LinkedHashSet<>();
+        for (String arg : StringMan.split(argument, ',')) {
+            ids.add(Integer(arg));
+        }
+        return ids;
     }
 
     @Binding(examples = "hello", value = "A single line of text")

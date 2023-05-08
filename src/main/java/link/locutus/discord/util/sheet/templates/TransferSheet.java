@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -37,7 +38,7 @@ public class TransferSheet {
     }
 
     public TransferSheet(GuildDB db) throws GeneralSecurityException, IOException {
-        this(SpreadSheet.create(db, GuildDB.Key.TRANSFER_SHEET));
+        this(SpreadSheet.create(db, SheetKeys.TRANSFER_SHEET));
     }
 
     public Map<NationOrAlliance, Map<ResourceType, Double>> getTransfers() {

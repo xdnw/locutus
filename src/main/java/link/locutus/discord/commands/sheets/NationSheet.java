@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -75,7 +76,7 @@ public class NationSheet extends Command implements Noformat {
         if (nations.isEmpty()) return "No nations found for `" + args.get(0) + "`";
 
         if (sheet == null) {
-            sheet = SpreadSheet.create(Locutus.imp().getGuildDB(guild), GuildDB.Key.NATION_SHEET);
+            sheet = SpreadSheet.create(Locutus.imp().getGuildDB(guild), SheetKeys.NATION_SHEET);
         }
 
         sheet.setHeader(header);

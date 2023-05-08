@@ -3,13 +3,14 @@ package link.locutus.discord.commands.sync;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -77,7 +78,7 @@ public class SyncTaxes extends Command {
                 }
                 case "legacy": {
                     Set<Integer> ids = db.getAllianceIds();
-                    if (ids.isEmpty()) return "No alliance registered to this guild. See " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null);
+                    if (ids.isEmpty()) return "No alliance registered to this guild. See " + GuildKey.ALLIANCE_ID.getCommandMention();
                     int aaId;
                     int offset = 0;
                     if (ids.size() > 1) {
@@ -114,14 +115,14 @@ public class SyncTaxes extends Command {
                 }
             }
         }
-        SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.TAX_SHEET);
-        if (db.getOrNull(GuildDB.Key.TAX_SHEET) == null) sheet.set(0, 0);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.TAX_SHEET);
+        if (db.getInfo(SheetKeys.TAX_SHEET, true) == null) sheet.set(0, 0);
         return desc() + "\nEnter tax records here: " + sheet.getURL(false, false);
     }
 
     public String updateTaxesLegacy(GuildDB guildDb, SpreadSheet sheet, int aaId) throws GeneralSecurityException, IOException {
         if (sheet == null) {
-            sheet = SpreadSheet.create(guildDb, GuildDB.Key.TAX_SHEET);
+            sheet = SpreadSheet.create(guildDb, SheetKeys.TAX_SHEET);
         }
         List<List<Object>> rows = sheet.get("A1:Q");
 
@@ -211,7 +212,7 @@ public class SyncTaxes extends Command {
     }
 
     public String updateTurnGraph(GuildDB db, int aaId) throws GeneralSecurityException, IOException {
-        SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.TAX_GRAPH_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.TAX_GRAPH_SHEET);
 
         List<Object> header = new ArrayList<>();
         header.add("date");

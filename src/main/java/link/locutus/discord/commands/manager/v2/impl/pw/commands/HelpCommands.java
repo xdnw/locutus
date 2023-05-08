@@ -1,26 +1,21 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import com.theokanning.openai.OpenAiService;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
-import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
-import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.CommandEmbedding;
 import link.locutus.discord.gpt.EmbeddingType;
 import link.locutus.discord.gpt.PWEmbedding;
 import link.locutus.discord.gpt.PWGPTHandler;
 import link.locutus.discord.gpt.SettingEmbedding;
-import org.json.JSONObject;
 
 import java.util.List;
 import java.util.Map;
@@ -51,18 +46,18 @@ public class HelpCommands {
     public void find_setting(@Me IMessageIO io, ValueStore store, String query, @Range(min = 1, max = 25) @Default("5") int num_results) {
         try {
             IMessageBuilder msg = io.create();
-            msg.append("**See: **" + CM.settings.cmd.toSlashMention());
-            msg.append("\n - More Info: " + CM.settings.cmd.create("YOUR_KEY_HERE", null, null, null).toSlashCommand() + "\n");
-            msg.append(" - To set " + CM.settings.cmd.create("YOUR_KEY_HERE", "Your Value Here", null, null).toSlashCommand() + "\n\n");
+            msg.append("**All settings: **" + CM.info.cmd.create(null, null, "true") + "\n");
+            msg.append(" - More Info: " + CM.settings.info.cmd.create("YOUR_KEY_HERE", null, null) + "\n");
+            msg.append(" - To Delete: " + CM.settings.delete.cmd.create("YOUR_KEY_HERE") + "\n\n");
 
             List<Map.Entry<PWEmbedding, Double>> closest = getGPT().getClosest(store, query, num_results, Set.of(EmbeddingType.Configuration));
             for (int i = 0; i < closest.size(); i++) {
                 Map.Entry<PWEmbedding, Double> entry = closest.get(i);
                 SettingEmbedding embed = (SettingEmbedding) entry.getKey();
-                GuildDB.Key obj = embed.getObj();
+                GuildSetting obj = embed.getObj();
 
                 msg.append("__**" + (i + 1) + ".**__ ");
-                msg.append("**" + obj.name() + "**: \n");
+                msg.append("**" + obj.name() + "**: " + obj.getCommandMention() + "\n");
 
                 String desc = obj.help();
                 int tickIndex = desc.indexOf("```");

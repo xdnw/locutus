@@ -5,6 +5,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.alliance.AllianceCreateEvent;
 import link.locutus.discord.event.game.TurnChangeEvent;
 import link.locutus.discord.util.AlertUtil;
@@ -94,7 +95,7 @@ public class AllianceListener {
 
         body.append(PnwUtil.getUrl(aaId, true));
 
-        AlertUtil.forEachChannel(f -> true, GuildDB.Key.TREATY_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+        AlertUtil.forEachChannel(f -> true, GuildKey.TREATY_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB guildDB) {
                 DiscordUtil.createEmbedCommand(channel, title, body.toString());

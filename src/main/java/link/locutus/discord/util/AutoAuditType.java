@@ -4,7 +4,7 @@ import link.locutus.discord.apiv1.enums.WarType;
 
 import java.util.Map;
 
-public enum AuditType {
+public enum AutoAuditType {
     GRAY("Please go to <https://politicsandwar.com/nation/edit/> and click save (so that you receive color trade bloc revenue)"),
     HIGH_INFRA("As a low tier nation (<c5), the most profitable way to make money is to raid. " +
             "Building past 1700 infra while raiding is generally not cost effective as infra at that level is more expensive to replace when lost from war." +
@@ -27,11 +27,11 @@ public enum AuditType {
 
     public final String message;
 
-    AuditType(String msg) {
+    AutoAuditType(String msg) {
         this.message = msg;
     }
 
-    public Map.Entry<AuditType, String> toPair() {
+    public Map.Entry<AutoAuditType, String> toPair() {
         return Map.entry(this, this.message);
     }
 }

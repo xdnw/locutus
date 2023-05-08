@@ -10,6 +10,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.GuildHandler;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.war.*;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -55,7 +56,7 @@ public class WarUpdateProcessor {
     @Subscribe
     public void onBountyCreate(BountyCreateEvent event) {
         DBBounty bounty = event.bounty;
-        AlertUtil.forEachChannel(SyncBounties.class, GuildDB.Key.BOUNTY_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
+        AlertUtil.forEachChannel(SyncBounties.class, GuildKey.BOUNTY_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB guildDB) {
                 Guild guild = guildDB.getGuild();
@@ -294,8 +295,8 @@ public class WarUpdateProcessor {
         for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
             if (!db.isValidAlliance() && !db.isWhitelisted() && !db.isOwnerActive() || db.isDelegateServer()) continue;
 
-            GuildMessageChannel defChan = db.getOrNull(GuildDB.Key.DEFENSE_WAR_CHANNEL, false);
-            GuildMessageChannel offChan = db.getOrNull(GuildDB.Key.OFFENSIVE_WAR_CHANNEL, false);
+            MessageChannel defChan = db.getOrNull(GuildKey.DEFENSE_WAR_CHANNEL, false);
+            MessageChannel offChan = db.getOrNull(GuildKey.OFFENSIVE_WAR_CHANNEL, false);
 
             GuildHandler handler = db.getHandler();
 
@@ -823,7 +824,7 @@ public class WarUpdateProcessor {
 
             if (lastWarringBuf == null || TimeUtil.getTurn() - lastWarringBuf.getLong() > 24) {
                 if (stat != null && stat.type == CounterType.ESCALATION) {
-                    AlertUtil.forEachChannel(f -> true, GuildDB.Key.ESCALATION_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+                    AlertUtil.forEachChannel(f -> true, GuildKey.ESCALATION_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                         @Override
                         public void accept(MessageChannel channel, GuildDB guildDB) {
                             card.embed(new DiscordChannelIO(channel), false, true);
@@ -844,7 +845,7 @@ public class WarUpdateProcessor {
                         }
                     }
                     if (escalatedWars != null) {
-                        AlertUtil.forEachChannel(f -> true, GuildDB.Key.ESCALATION_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+                        AlertUtil.forEachChannel(f -> true, GuildKey.ESCALATION_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                             @Override
                             public void accept(MessageChannel channel, GuildDB guildDB) {
                                 card.embed(new DiscordChannelIO(channel), false, true);
@@ -863,21 +864,21 @@ public class WarUpdateProcessor {
         if (defender.getActive_m() < 10000) return;
         if (attacker.getWarPolicy() == WarPolicy.PIRATE) return;
 
-        String message = AuditType.WAR_POLICY.message.replace("{war}", current.toUrl());
-        AlertUtil.auditAlert(attacker,AuditType.WAR_POLICY, f -> message);
+        String message = AutoAuditType.WAR_POLICY.message.replace("{war}", current.toUrl());
+        AlertUtil.auditAlert(attacker, AutoAuditType.WAR_POLICY, f -> message);
     }
 
     private static void checkWarType(DBWar current, DBNation attacker, DBNation defender, PNWUser user, GuildDB guildDb, Guild guild, Member member) {
         if (current.warType == WarType.RAID) return;
         if (defender.getAvg_infra() > 1700 && defender.getActive_m() < 10000) return;
 
-        AlertUtil.auditAlert(attacker, AuditType.WAR_TYPE_NOT_RAID, f -> {
+        AlertUtil.auditAlert(attacker, AutoAuditType.WAR_TYPE_NOT_RAID, f -> {
             Set<DBBounty> bounties = Locutus.imp().getWarDb().getBounties(defender.getNation_id());
             for (DBBounty bounty : bounties) {
                 if (bounty.getType() == current.warType) return null;
             }
 
-            String message = AuditType.WAR_TYPE_NOT_RAID.message.replace("{war}",  current.toUrl())
+            String message = AutoAuditType.WAR_TYPE_NOT_RAID.message.replace("{war}",  current.toUrl())
                     .replace("{type}", current.warType + "");
             if (defender.getActive_m() > 10000) message += " as the enemy is inactive";
             else if (defender.getAvg_infra() <= 1000) message += " as the enemy already has reduced infra";
@@ -984,7 +985,7 @@ public class WarUpdateProcessor {
 
             if (body != null && !lastWarring && warring && currentTurn - lastWarTurn > warTurnThresheld) {
                 String title = alliance.getName() + " is being Attacked";
-                AlertUtil.forEachChannel(f -> true, GuildDB.Key.ESCALATION_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+                AlertUtil.forEachChannel(f -> true, GuildKey.ESCALATION_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                     @Override
                     public void accept(MessageChannel channel, GuildDB guildDB) {
                         DiscordUtil.createEmbedCommand(channel, title, body);

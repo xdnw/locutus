@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.discord.binding;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
@@ -9,6 +10,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.impl.discord.HookMessageChannel;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -20,8 +22,12 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class DiscordBindings extends BindingHelper {
@@ -99,6 +105,11 @@ public class DiscordBindings extends BindingHelper {
         return StringMan.parseUpper(OnlineStatus.class, input);
     }
 
+    @Binding(value = "A comma separated list of bot Roles")
+    public Set<Roles> botRoles(String input) {
+        return emumSet(Roles.class, input);
+    }
+
     @Binding(examples = {"@member1,@member2", "`*`"}, value = "A comma separated list of discord user mentions, or if a nation name, id or url if they are registered")
     public Set<Member> members(@Me Guild guild, String input) {
         Set<Member> members = new LinkedHashSet<>();
@@ -156,6 +167,30 @@ public class DiscordBindings extends BindingHelper {
         if (!(channel instanceof TextChannel))
             throw new IllegalArgumentException("Channel " + channel + " is not a " + TextChannel.class.getSimpleName() + " but is instead of type " + channel.getClass().getSimpleName());
         return (TextChannel) channel;
+    }
+
+    @Binding(value = "A map of a discord role to a set of roles (comma separated)",
+            examples = "@Role1=@Role2,@Role3\n" +
+                        "@role4=@role5,@role6"
+    )
+    public Map<Role, Set<Role>> roleSetMap(@Me Guild guild, String input) {
+        Map<Role, Set<Role>> result = new LinkedHashMap<>();
+        for (String line : input.split("[\n|\\n|;]")) {
+            String[] split = line.split("[:=]");
+            String key = split[0].trim();
+            Role roleKey = DiscordUtil.getRole(guild, key);
+            if (roleKey != null) {
+                for (String roleId : split[1].split(",")) {
+                    roleId = roleId.trim();
+                    Role roleValue = DiscordUtil.getRole(guild, roleId);
+
+                    if (roleValue != null) {
+                        result.computeIfAbsent(roleKey, f -> new HashSet<>()).add(roleValue);
+                    }
+                }
+            }
+        }
+        return result;
     }
 
     @Binding(examples = "#channel", value = "A categorized discord guild channel name or mention")

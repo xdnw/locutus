@@ -2,11 +2,11 @@ package link.locutus.discord.util.update;
 
 import com.google.common.eventbus.Subscribe;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.trade.subbank.BankAlerts;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.event.bank.TransactionEvent;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
@@ -28,9 +28,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import static link.locutus.discord.db.GuildDB.Key.BANK_ALERT_CHANNEL;
-import static link.locutus.discord.db.GuildDB.Key.DEPOSIT_ALERT_CHANNEL;
-import static link.locutus.discord.db.GuildDB.Key.WITHDRAW_ALERT_CHANNEL;
+import static link.locutus.discord.db.guild.GuildKey.BANK_ALERT_CHANNEL;
+import static link.locutus.discord.db.guild.GuildKey.DEPOSIT_ALERT_CHANNEL;
+import static link.locutus.discord.db.guild.GuildKey.WITHDRAW_ALERT_CHANNEL;
 
 public class BankUpdateProcessor {
     @Subscribe
@@ -58,7 +58,7 @@ public class BankUpdateProcessor {
         for (int allianceId : trackedAlliances) {
             GuildDB guildDb = Locutus.imp().getGuildDBByAA(allianceId);
             if (guildDb != null) {
-                GuildDB.Key key = transfer.isReceiverAA() ? DEPOSIT_ALERT_CHANNEL : WITHDRAW_ALERT_CHANNEL;
+                GuildSetting<MessageChannel> key = transfer.isReceiverAA() ? DEPOSIT_ALERT_CHANNEL : WITHDRAW_ALERT_CHANNEL;
                 Roles locrole = transfer.isReceiverAA() ? Roles.ECON_DEPOSIT_ALERTS : Roles.ECON_WITHDRAW_ALERTS;
                 MessageChannel channel = guildDb.getOrNull(key);
 
@@ -102,12 +102,12 @@ public class BankUpdateProcessor {
                 Map.Entry<String, String> card = createCard(transfer, nationId);
 
                 for (GuildDB guildDB : Locutus.imp().getGuildDatabases().values()) {
-                    GuildMessageChannel channel = guildDB.getOrNull(BANK_ALERT_CHANNEL, false);
+                    MessageChannel channel = guildDB.getOrNull(BANK_ALERT_CHANNEL, false);
                     if (channel == null) {
                         continue;
                     }
 
-                    Guild guild = channel.getGuild();
+                    Guild guild = ((GuildMessageChannel) channel).getGuild();
                     Set<String> mentions = new HashSet<>();
                     for (long user : receiver) {
                         Member member = guild.getMemberById(user);

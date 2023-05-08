@@ -4,6 +4,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.guild.GuildSetting;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.Permission;
@@ -26,17 +28,17 @@ public enum Roles {
     MEMBER(1, "Members can run commands"),
     ADMIN(2, "Admin has access to alliance / guild management commands"),
 
-    MILCOM(3, "Access to milcom related commands", GuildDB.Key.ALLIANCE_ID) {
+    MILCOM(3, "Access to milcom related commands", GuildKey.ALLIANCE_ID) {
         @Override
         public boolean has(Member member) {
             if (super.has(member)) return true;
             return MILCOM_NO_PINGS.has(member);
         }
     },
-    MILCOM_NO_PINGS(4, "Access to milcom related commands - doesn't receive pings", GuildDB.Key.ALLIANCE_ID, "MILCOM_ADVISOR"),
+    MILCOM_NO_PINGS(4, "Access to milcom related commands - doesn't receive pings", GuildKey.ALLIANCE_ID, "MILCOM_ADVISOR"),
 
     ECON(5, "Has access to econ gov commands", null),
-    ECON_STAFF(6, "Has access to basic econ commands", GuildDB.Key.ALLIANCE_ID, "ECON_LOW_GOV") {
+    ECON_STAFF(6, "Has access to basic econ commands", GuildKey.ALLIANCE_ID, "ECON_LOW_GOV") {
         @Override
         public boolean has(Member member) {
             if (super.has(member)) return true;
@@ -51,14 +53,14 @@ public enum Roles {
         }
     },
 
-    ECON_GRANT_ALERTS(7, "Gets pinged for member grant requests", GuildDB.Key.ALLIANCE_ID),
-    ECON_DEPOSIT_ALERTS(8, "Gets pinged when there is a deposit", GuildDB.Key.ALLIANCE_ID),
-    ECON_WITHDRAW_ALERTS(9, "Gets pinged when there is a withdrawal", GuildDB.Key.ALLIANCE_ID),
-    ECON_WITHDRAW_SELF(10, "Can withdraw own funds", GuildDB.Key.MEMBER_CAN_WITHDRAW),
-    ECON_GRANT_SELF(11, "Role to allow member to grant themselves", GuildDB.Key.MEMBER_CAN_WITHDRAW),
+    ECON_GRANT_ALERTS(7, "Gets pinged for member grant requests", GuildKey.ALLIANCE_ID),
+    ECON_DEPOSIT_ALERTS(8, "Gets pinged when there is a deposit", GuildKey.ALLIANCE_ID),
+    ECON_WITHDRAW_ALERTS(9, "Gets pinged when there is a withdrawal", GuildKey.ALLIANCE_ID),
+    ECON_WITHDRAW_SELF(10, "Can withdraw own funds", GuildKey.MEMBER_CAN_WITHDRAW),
+    ECON_GRANT_SELF(11, "Role to allow member to grant themselves", GuildKey.MEMBER_CAN_WITHDRAW),
 
-    FOREIGN_AFFAIRS(12, "Role required to see other alliance's embassy channel", GuildDB.Key.ALLIANCE_ID),
-    FOREIGN_AFFAIRS_STAFF(13, "Role for some basic FA commands", GuildDB.Key.ALLIANCE_ID) {
+    FOREIGN_AFFAIRS(12, "Role required to see other alliance's embassy channel", GuildKey.ALLIANCE_ID),
+    FOREIGN_AFFAIRS_STAFF(13, "Role for some basic FA commands", GuildKey.ALLIANCE_ID) {
         @Override
         public boolean has(Member member) {
             if (super.has(member)) return true;
@@ -73,8 +75,8 @@ public enum Roles {
         }
     },
 
-    INTERNAL_AFFAIRS(14, "Access to IA related commands", GuildDB.Key.ALLIANCE_ID),
-    INTERNAL_AFFAIRS_STAFF(15, "Role for some basic IA commands", GuildDB.Key.ALLIANCE_ID) {
+    INTERNAL_AFFAIRS(14, "Access to IA related commands", GuildKey.ALLIANCE_ID),
+    INTERNAL_AFFAIRS_STAFF(15, "Role for some basic IA commands", GuildKey.ALLIANCE_ID) {
         @Override
         public boolean has(Member member) {
             if (super.has(member)) return true;
@@ -89,10 +91,10 @@ public enum Roles {
         }
     },
 
-    APPLICANT(16, "Applying to join the alliance (this role doesn't grant any elevated permissions)", GuildDB.Key.INTERVIEW_PENDING_ALERTS),
-    INTERVIEWER(17, "Role to get pinged when a user requests an interview", GuildDB.Key.INTERVIEW_PENDING_ALERTS),
-    MENTOR(18, "Role to get pinged when a user requests mentoring (can be same as interviewer)", GuildDB.Key.INTERVIEW_PENDING_ALERTS),
-    GRADUATED(19, "Members with this role will have their interview channels archived", GuildDB.Key.INTERVIEW_PENDING_ALERTS) {
+    APPLICANT(16, "Applying to join the alliance (this role doesn't grant any elevated permissions)", GuildKey.INTERVIEW_PENDING_ALERTS),
+    INTERVIEWER(17, "Role to get pinged when a user requests an interview", GuildKey.INTERVIEW_PENDING_ALERTS),
+    MENTOR(18, "Role to get pinged when a user requests mentoring (can be same as interviewer)", GuildKey.INTERVIEW_PENDING_ALERTS),
+    GRADUATED(19, "Members with this role will have their interview channels archived", GuildKey.INTERVIEW_PENDING_ALERTS) {
         @Override
         public boolean has(Member member) {
             return super.has(member)
@@ -110,43 +112,43 @@ public enum Roles {
                     ;
         }
     },
-    RECRUITER(20, "Role to get pinged for recruitment messages (if enabled)", GuildDB.Key.RECRUIT_MESSAGE_OUTPUT),
+    RECRUITER(20, "Role to get pinged for recruitment messages (if enabled)", GuildKey.RECRUIT_MESSAGE_OUTPUT),
 
-    TRADE_ALERT(21, "Gets pinged for trade alerts", GuildDB.Key.TRADE_ALERT_CHANNEL),
+    TRADE_ALERT(21, "Gets pinged for trade alerts", GuildKey.TRADE_ALERT_CHANNEL),
 
-    BEIGE_ALERT(22, "Gets pinged when a nation leaves beige (in their score range), and they have a slot free", GuildDB.Key.BEIGE_ALERT_CHANNEL),
-    BEIGE_ALERT_OPT_OUT(23, "Overrides the beige alert role", GuildDB.Key.BEIGE_ALERT_CHANNEL),
+    BEIGE_ALERT(22, "Gets pinged when a nation leaves beige (in their score range), and they have a slot free", GuildKey.BEIGE_ALERT_CHANNEL),
+    BEIGE_ALERT_OPT_OUT(23, "Overrides the beige alert role", GuildKey.BEIGE_ALERT_CHANNEL),
 
     BOUNTY_ALERT(24, "Gets pings when bounties are placed in their score range"),
 //    MAP_FULL_ALERT("Gets pinged when you are on 12 MAPs in an offensive war", GuildDB.Key.MEMBER_AUDIT_ALERTS),
 
 //    WAR_ALERT("Opt out of received war target alerts", GuildDB.Key.ENEMY_ALERT_CHANNEL),
-    WAR_ALERT_OPT_OUT(25, "Opt out of received war target alerts", GuildDB.Key.ENEMY_ALERT_CHANNEL),
-    AUDIT_ALERT_OPT_OUT(26, "Opt out of received audit alerts", GuildDB.Key.MEMBER_AUDIT_ALERTS),
-    BLITZ_PARTICIPANT(27, "Opt in to blitz participation (clear this regularly)", GuildDB.Key.ALLIANCE_ID),
-    BLITZ_PARTICIPANT_OPT_OUT(28, "Opt in to blitz participation (clear this regularly)", GuildDB.Key.ALLIANCE_ID),
+    WAR_ALERT_OPT_OUT(25, "Opt out of received war target alerts", GuildKey.ENEMY_ALERT_CHANNEL),
+    AUDIT_ALERT_OPT_OUT(26, "Opt out of received audit alerts", GuildKey.MEMBER_AUDIT_ALERTS),
+    BLITZ_PARTICIPANT(27, "Opt in to blitz participation (clear this regularly)", GuildKey.ALLIANCE_ID),
+    BLITZ_PARTICIPANT_OPT_OUT(28, "Opt in to blitz participation (clear this regularly)", GuildKey.ALLIANCE_ID),
 
-    TEMP(29, "Role to signify temporary member", GuildDB.Key.ALLIANCE_ID),
+    TEMP(29, "Role to signify temporary member", GuildKey.ALLIANCE_ID),
 //    ACTIVE("Role to signify active member", GuildDB.Key.ALLIANCE_ID)
 
-    MAIL(30, "Can use mail commands", GuildDB.Key.API_KEY),
+    MAIL(30, "Can use mail commands", GuildKey.API_KEY),
 
-    BLOCKADED_ALERT(31, "Gets alerts when you are blockaded", GuildDB.Key.BLOCKADED_ALERTS, "BLOCKADED_ALERTS"),
-    UNBLOCKADED_ALERT(32, "Gets alerts when you are unblockaded", GuildDB.Key.UNBLOCKADED_ALERTS, "UNBLOCKADED_ALERTS"),
+    BLOCKADED_ALERT(31, "Gets alerts when you are blockaded", GuildKey.BLOCKADED_ALERTS, "BLOCKADED_ALERTS"),
+    UNBLOCKADED_ALERT(32, "Gets alerts when you are unblockaded", GuildKey.UNBLOCKADED_ALERTS, "UNBLOCKADED_ALERTS"),
 
-    UNBLOCKADED_GOV_ROLE_ALERT(33, "Gets alerts when any member is fully unblockaded", GuildDB.Key.UNBLOCKADED_ALERTS, "UNBLOCKADED_GOV_ROLE_ALERTS"),
+    UNBLOCKADED_GOV_ROLE_ALERT(33, "Gets alerts when any member is fully unblockaded", GuildKey.UNBLOCKADED_ALERTS, "UNBLOCKADED_GOV_ROLE_ALERTS"),
 
 
-    TREASURE_ALERT(34, "Gets alerts in the TREASURE_ALERT_CHANNEL if a treasure is spawning in their range", GuildDB.Key.TREASURE_ALERT_CHANNEL, "TREASURE_ALERTS"),
-    TREASURE_ALERT_OPT_OUT(35, "Does not receive treasure alerts (even with the treasure alert role)", GuildDB.Key.TREASURE_ALERT_CHANNEL, "TREASURE_ALERTS_OPT_OUT"),
+    TREASURE_ALERT(34, "Gets alerts in the TREASURE_ALERT_CHANNEL if a treasure is spawning in their range", GuildKey.TREASURE_ALERT_CHANNEL, "TREASURE_ALERTS"),
+    TREASURE_ALERT_OPT_OUT(35, "Does not receive treasure alerts (even with the treasure alert role)", GuildKey.TREASURE_ALERT_CHANNEL, "TREASURE_ALERTS_OPT_OUT"),
 
-    ENEMY_BEIGE_ALERT_AUDITOR(36, "Role to receive pings when an enemy gets beiged", GuildDB.Key.ENEMY_BEIGED_ALERT_VIOLATIONS),
+    ENEMY_BEIGE_ALERT_AUDITOR(36, "Role to receive pings when an enemy gets beiged", GuildKey.ENEMY_BEIGED_ALERT_VIOLATIONS),
     ;
 
 
     public static Roles[] values = values();
     private final String desc;
-    private final GuildDB.Key key;
+    private final GuildSetting key;
 
     private final int id;
     private final String legacy_name;
@@ -172,10 +174,10 @@ public enum Roles {
     Roles(int id, String desc) {
         this(id, desc, null);
     }
-    Roles(int id, String desc, GuildDB.Key key) {
+    Roles(int id, String desc, GuildSetting key) {
         this(id, desc, key, null);
     }
-    Roles(int id, String desc, GuildDB.Key key, String legacy_name) {
+    Roles(int id, String desc, GuildSetting key, String legacy_name) {
         this.desc = desc;
         this.key = key;
         this.id = id;
@@ -221,7 +223,7 @@ public enum Roles {
         return "No " + name() + " role set. Use " + CM.role.setAlias.cmd.create(name(), null, null, null);
     }
 
-    public GuildDB.Key getKey() {
+    public GuildSetting getKey() {
         return key;
     }
 

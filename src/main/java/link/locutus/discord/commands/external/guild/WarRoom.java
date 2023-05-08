@@ -6,11 +6,10 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.RateLimitUtil;
@@ -71,7 +70,7 @@ public class WarRoom extends Command {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         WarCategory warCat = db.getWarChannel(true);
         if (warCat == null) {
-            return "War categories are not enabled. See " + CM.settings.cmd.create(GuildDB.Key.ENABLE_WAR_ROOMS.name(), "true", null, null).toSlashMention() + "";
+            return "War categories are not enabled. See " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(true) + "";
         }
         String filterArg = DiscordUtil.parseArg(args, "filter");
 
@@ -153,9 +152,9 @@ public class WarRoom extends Command {
 
         me.setMeta(NationMeta.INTERVIEW_WAR_ROOM, (byte) 1);
 
-        if (!flags.contains('m') && db.getOrNull(GuildDB.Key.API_KEY) != null)
+        if (!flags.contains('m') && db.getOrNull(GuildKey.API_KEY) != null)
             response.append("\n - add `-m` to send standard counter instructions");
-        if (!flags.contains('p') && db.getOrNull(GuildDB.Key.API_KEY) != null)
+        if (!flags.contains('p') && db.getOrNull(GuildKey.API_KEY) != null)
             response.append("\n - add `-p` to ping users in the war channel");
 
         return response.toString();
@@ -213,10 +212,10 @@ public class WarRoom extends Command {
                             String econRoleName = econRole != null ? "`@" + econRole.getName() + "`" : "ECON";
 
                             MessageChannel rssChannel = db.getResourceChannel(attacker.getAlliance_id());
-                            GuildMessageChannel grantChannel = db.getOrNull(GuildDB.Key.GRANT_REQUEST_CHANNEL);
+                            MessageChannel grantChannel = db.getOrNull(GuildKey.GRANT_REQUEST_CHANNEL);
 
                             if (rssChannel != null) {
-                                if (Boolean.TRUE.equals(db.getOrNull(GuildDB.Key.MEMBER_CAN_WITHDRAW))) {
+                                if (Boolean.TRUE.equals(db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW))) {
                                     msg += " Withdraw funds from: " + rssChannel.getAsMention() + "  **BEFORE** you declare.";
                                 } else {
                                     msg += " Ping " + econRoleName + " in " + rssChannel.getAsMention() + " to withdraw funds **BEFORE** you declare.";

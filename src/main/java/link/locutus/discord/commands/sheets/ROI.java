@@ -4,12 +4,13 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -148,13 +149,13 @@ public class ROI extends Command {
 
         GuildDB guildDb = Locutus.imp().getGuildDB(event);
         if (guildDb == null || !guildDb.hasAlliance()) {
-            return "Invalid guild. Please register your alliance id with: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<value>", null, null) + "";
+            return "Invalid guild. Please register your alliance id with: " + GuildKey.ALLIANCE_ID.getCommandMention() + "";
         }
 
         Message message = RateLimitUtil.complete(event.getChannel().sendMessage("Fetching nations: "));
 
         Set<Integer> aaIds = guildDb.getAllianceIds();
-        if (aaIds.isEmpty()) return "Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<alliance-id>", null, null) + "";
+        if (aaIds.isEmpty()) return "Please use " + GuildKey.ALLIANCE_ID.getCommandMention() + "";
 
         List<ROIResult> roiMap = new ArrayList<>();
         boolean useSheet = false;
@@ -229,7 +230,7 @@ public class ROI extends Command {
         }
 
         if (roiMap.size() > 1 && useSheet) {
-            SpreadSheet sheet = SpreadSheet.create(guildDb, GuildDB.Key.ROI_SHEET);
+            SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKeys.ROI_SHEET);
             ArrayList<Object> formulas = new ArrayList<>(Arrays.asList(new Object[19]));
             for (int i = 0; i < 19; i++) formulas.set(i, "");
             formulas.set(15, "TOTALS:");

@@ -3,10 +3,12 @@ package link.locutus.discord.util.task.ia;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.building.ServiceBuilding;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -26,7 +28,6 @@ import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -378,7 +379,7 @@ public class IACheckup {
                 return new AbstractMap.SimpleEntry<>(nation.getMMR(), desc);
             }
             case INCORRECT_MMR:
-                Map<NationFilterString, MMRMatcher> requiredMmrMap = db.getOrNull(GuildDB.Key.REQUIRED_MMR);
+                Map<NationFilter, MMRMatcher> requiredMmrMap = db.getOrNull(GuildKey.REQUIRED_MMR);
                 return requiredMmrMap != null ? checkMMR(nation, cities, requiredMmrMap) : null;
             case BUY_SOLDIERS:
                 return checkSoldierBuy(nation, cities);
@@ -672,7 +673,7 @@ public class IACheckup {
     private Map.Entry<Object, String> checkWarchest(DBNation nation, Map<ResourceType, Double> stockpile, GuildDB db) {
         if (nation.getCities() < 10) return null;
         if (!db.getCoalition("enemies").isEmpty()) return null;
-        Map<ResourceType, Double> perCity = db.getOrNull(GuildDB.Key.WARCHEST_PER_CITY);
+        Map<ResourceType, Double> perCity = db.getOrNull(GuildKey.WARCHEST_PER_CITY);
         if (perCity == null) return null;
         int airCap = nation.getCities() * Buildings.HANGAR.cap(nation::hasProject) * Buildings.HANGAR.max();
         double airPct = (double) nation.getAircraft() / airCap;
@@ -1247,13 +1248,13 @@ public class IACheckup {
 //        return null;
 //    }
 
-    public Map.Entry<Object, String> checkMMR(DBNation nation, Map<Integer, JavaCity> cities, Map<NationFilterString, MMRMatcher> requiredMmrMap) {
+    public Map.Entry<Object, String> checkMMR(DBNation nation, Map<Integer, JavaCity> cities, Map<NationFilter, MMRMatcher> requiredMmrMap) {
 
         Set<String> allowedMMr = new HashSet<>();
 
         String myMMR = null;
-        for (Map.Entry<NationFilterString, MMRMatcher> entry : requiredMmrMap.entrySet()) {
-            NationFilterString nationMatcher = entry.getKey();
+        for (Map.Entry<NationFilter, MMRMatcher> entry : requiredMmrMap.entrySet()) {
+            NationFilter nationMatcher = entry.getKey();
             if (myMMR == null) {
                 myMMR = nation.getMMRBuildingStr();
             }

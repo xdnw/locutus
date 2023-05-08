@@ -9,6 +9,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -67,7 +68,7 @@ public class BankPages {
             nations.removeIf(n -> n.getPosition() <= 1);
         } else {
             Role role = Roles.MEMBER.toRole(guild);
-            if (role == null) throw new IllegalArgumentException("No " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + " set, or " + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "", null, null) + " set");
+            if (role == null) throw new IllegalArgumentException("No " + GuildKey.ALLIANCE_ID.getCommandMention() + " set, or " + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "", null, null) + " set");
             nations = new ArrayList<>();
             for (Member member : guild.getMembersWithRoles(role)) {
                 DBNation nation = DiscordUtil.getNation(member.getUser());

@@ -8,6 +8,8 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
@@ -48,14 +50,14 @@ public class IASheet extends Command {
         GuildDB db = Locutus.imp().getGuildDB(event);
         if (db == null) return "Not in guild";
         Set<Integer> aaIds = db.getAllianceIds();
-        if (aaIds.isEmpty()) return "Please use " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), "<id>", null, null) + "";
+        if (aaIds.isEmpty()) return "Please use " + GuildKey.ALLIANCE_ID.getCommandMention() + "";
 
         if (args.size() != 1) return usage();
         List<DBNation> nations = new ArrayList<>(DiscordUtil.parseNations(guild, args.get(0)));
         for (DBNation nation : nations) {
             if (!db.isAllianceId(nation.getAlliance_id())) {
                 return "Nation `" + nation.getName() + "` is in " + nation.getAlliance().getQualifiedName() + " but this server is registered to: "
-                        + StringMan.getString(db.getAllianceIds()) + "\nSee: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.ALLIANCE_ID.name() + "`";
+                        + StringMan.getString(db.getAllianceIds()) + "\nSee: " + CM.info.cmd.toSlashMention() + " with key `" + GuildKey.ALLIANCE_ID.name() + "`";
             }
         }
         nations.removeIf(f -> f.getPosition() <= 1 || f.getVm_turns() != 0);
@@ -78,7 +80,7 @@ public class IASheet extends Command {
                 individual
         );
 
-        SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.IA_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.IA_SHEET);
 
         IACheckup.AuditType[] audits = IACheckup.AuditType.values();
         int headerLength = audits.length + 5;

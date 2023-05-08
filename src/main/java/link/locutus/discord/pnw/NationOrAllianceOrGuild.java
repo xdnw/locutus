@@ -55,9 +55,9 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
     }
 
     default String getTypePrefix() {
-        if (isNation()) return "Nation";
-        if (isAlliance()) return "AA";
-        if (isGuild()) return "Guild";
+        if (isNation()) return "nation";
+        if (isAlliance()) return "aa";
+        if (isGuild()) return "guild";
         throw new IllegalArgumentException("Invalid state: " + this);
     }
 

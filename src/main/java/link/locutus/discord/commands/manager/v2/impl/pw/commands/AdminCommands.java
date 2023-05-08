@@ -27,6 +27,9 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.guild.GuildSetting;
+import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.db.entities.AllianceMetric;
 import link.locutus.discord.db.entities.Coalition;
@@ -54,14 +57,11 @@ import net.dv8tion.jda.api.entities.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.PrivateChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
-import org.jooq.meta.derby.sys.Sys;
 import org.json.JSONObject;
-import rocker.guild.ia.message;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -82,6 +82,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class AdminCommands {
 
@@ -95,7 +96,7 @@ public class AdminCommands {
     @Command(desc = "Generate a sheet of recorded login times for a set of nations within a time range")
     public String loginTimes(@Me GuildDB db, @Me IMessageIO io, Set<DBNation> nations, @Timestamp long cutoff, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, GuildDB.Key.NATION_SHEET);
+            sheet = SpreadSheet.create(db, SheetKeys.NATION_SHEET);
         }
         // time cutoff < 30d
         if (System.currentTimeMillis() - cutoff > TimeUnit.DAYS.toMillis(30)) {
@@ -165,11 +166,11 @@ public class AdminCommands {
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
     public String deleteAllInaccessibleChannels(@Switch("f") boolean force) {
-        Map<GuildDB, List<GuildDB.Key>> toUnset = new LinkedHashMap<>();
+        Map<GuildDB, List<GuildSetting>> toUnset = new LinkedHashMap<>();
 
         for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
             if (force) {
-                List<GuildDB.Key> keys = db.listInaccessibleChannelKeys();
+                List<GuildSetting> keys = db.listInaccessibleChannelKeys();
                 if (!keys.isEmpty()) {
                     toUnset.put(db, keys);
                 }
@@ -182,9 +183,9 @@ public class AdminCommands {
             return "No keys to unset";
         }
         StringBuilder response = new StringBuilder();
-        for (Map.Entry<GuildDB, List<GuildDB.Key>> entry : toUnset.entrySet()) {
+        for (Map.Entry<GuildDB, List<GuildSetting>> entry : toUnset.entrySet()) {
             response.append(entry.getKey().getGuild().toString() + ":\n");
-            List<GuildDB.Key> keys = entry.getValue();
+            List<String> keys = entry.getValue().stream().map(f -> f.name()).collect(Collectors.toList());
             response.append(" - " + StringMan.join(keys, "\n - "));
             response.append("\n");
         }
@@ -447,7 +448,7 @@ public class AdminCommands {
     @RolePermission(Roles.ADMIN)
     public String editAlliance(@Me GuildDB db, @Me User author, DBAlliance alliance, @Default String attribute, @Default @TextArea String value) throws Exception {
         if (!db.isAllianceId(alliance.getAlliance_id())) {
-            return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.cmd.toSlashMention() + " with key: " + GuildDB.Key.ALLIANCE_ID.name();
+            return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.info.cmd.toSlashMention() + " with key: " + GuildKey.ALLIANCE_ID.name();
         }
 
         Rank rank = attribute != null && attribute.toLowerCase().contains("bank") ? Rank.HEIR : Rank.OFFICER;
@@ -520,7 +521,7 @@ public class AdminCommands {
     @RolePermission(Roles.ADMIN)
     public static String aliasRole(@Me User author, @Me Guild guild, @Me GuildDB db, @Default Roles locutusRole, @Default() Role discordRole, @Arg("If the role mapping is only for a specific alliance (WIP)") @Default() DBAlliance alliance, @Arg("Remove the existing mapping instead of setting it") @Switch("r") boolean removeRole) {
         if (alliance != null && !db.isAllianceId(alliance.getAlliance_id())) {
-            return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.settings.cmd.toSlashMention() + " with key: " + GuildDB.Key.ALLIANCE_ID.name();
+            return "Alliance: " + alliance.getAlliance_id() + " not registered to guild " + db.getGuild() + ". See: " + CM.info.cmd.toSlashMention() + " with key: " + GuildKey.ALLIANCE_ID.name();
         }
         StringBuilder response = new StringBuilder();
         boolean showGlobalMappingInfo = false;
@@ -685,7 +686,8 @@ public class AdminCommands {
     public String importGuildKeys() {
         StringBuilder response = new StringBuilder();
         for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
-            String[] keys = db.getOrNull(GuildDB.Key.API_KEY);
+            List<String> keys = db.getOrNull(GuildKey.API_KEY);
+            if (keys == null) return "No keys found for guild " + db.getGuild().getName() + " (" + db.getGuild().getId() + ")";
             for (String key : keys) {
                 try {
                     ApiKeyDetails stats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();

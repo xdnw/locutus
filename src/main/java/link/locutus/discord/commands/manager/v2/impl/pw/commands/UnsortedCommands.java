@@ -9,20 +9,8 @@ import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
-import link.locutus.discord.commands.alliance.LeftAA;
-import link.locutus.discord.commands.bank.AddBalance;
-import link.locutus.discord.commands.bank.Disperse;
-import link.locutus.discord.commands.bank.Warchest;
-import link.locutus.discord.commands.compliance.CheckCities;
-import link.locutus.discord.commands.external.guild.CopyPasta;
-import link.locutus.discord.commands.external.guild.KeyStore;
-import link.locutus.discord.commands.info.Rebuy;
-import link.locutus.discord.commands.info.Reroll;
-import link.locutus.discord.commands.info.Revenue;
-import link.locutus.discord.commands.info.UnitHistory;
 import link.locutus.discord.commands.info.optimal.OptimalBuild;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -40,21 +28,17 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasKey;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RankPermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.rankings.builder.NumericGroupRankBuilder;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
-import link.locutus.discord.commands.trade.FindProducer;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
@@ -68,10 +52,11 @@ import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
-import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.pnw.SimpleNationList;
@@ -85,7 +70,6 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
-import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.Continent;
@@ -97,10 +81,8 @@ import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
 import net.dv8tion.jda.api.entities.*;
 import org.json.JSONObject;
-import rocker.guild.ia.message;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -138,7 +120,7 @@ public class UnsortedCommands {
             throw new IllegalArgumentException("No nations in alliances " + StringMan.getString(aaList.getIds()) + " matched `nations` (vacation mode or applicants are ignored)");
         }
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, GuildDB.Key.NATION_SHEET);
+            sheet = SpreadSheet.create(db, SheetKeys.NATION_SHEET);
         }
 
         aaList = aaList.subList(aaNations);
@@ -259,7 +241,7 @@ public class UnsortedCommands {
         if (brackets.isEmpty()) {
             throw new IllegalArgumentException("No tax brackets found.");
         }
-        if (sheet == null) sheet = SpreadSheet.create(db, GuildDB.Key.TAX_BRACKET_SHEET);
+        if (sheet == null) sheet = SpreadSheet.create(db, SheetKeys.TAX_BRACKET_SHEET);
 
         List<String> header = new ArrayList<>(Arrays.asList(
                 "ID",
@@ -1183,7 +1165,7 @@ public class UnsortedCommands {
             return "Missing role: " + Roles.INTERNAL_AFFAIRS;
         }
 
-        String value = db.getInfo("copypasta." + key, true);
+        String value = db.getCopyPasta(key, true);
 
         Set<String> missingRoles = null;
         if (value == null) {
@@ -1246,7 +1228,7 @@ public class UnsortedCommands {
         for (DBNation nation : nations) {
             if (!db.isAllianceId(nation.getAlliance_id())) {
                 return "Nation `" + nation.getName() + "` is in " + nation.getAlliance().getQualifiedName() + " but this server is registered to: "
-                        + StringMan.getString(db.getAllianceIds()) + "\nSee: " + CM.settings.cmd.toSlashMention() + " with key `" + GuildDB.Key.ALLIANCE_ID.name() + "`";
+                        + StringMan.getString(db.getAllianceIds()) + "\nSee: " + CM.info.cmd.toSlashMention() + " with key `" + GuildKey.ALLIANCE_ID.name() + "`";
             }
         }
 
@@ -1526,25 +1508,4 @@ public class UnsortedCommands {
 
         return new OptimalBuild().onCommand(io, guild, author, me, cmd, flags);
     }
-
-    @Command(desc = "Configure alliance or guild settings")
-    @RolePermission(any = true, value = {Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS})
-    public String keyStore(@Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
-                           @Arg("The setting to change or view")
-                           @Default GuildDB.Key key,
-                           @Arg("The value to set the setting to")
-                           @Default @TextArea String value,
-                           @Arg("Exclude created spreadsheets from any returned setting lists")
-                           @Switch("s") boolean hideSheetList,
-                           @Arg("Show all settings (or sub settings)")
-                           @Switch("a") boolean showAll) throws Exception {
-        List<String> cmd = new ArrayList<>();
-        if (key != null) cmd.add(key.name() + "");
-        if (value != null) cmd.add(value);
-        Set<Character> flags = new HashSet<>();
-        if (hideSheetList) flags.add('s');
-        if (showAll) flags.add('a');
-        return new KeyStore().onCommand(io, guild, author, me, cmd, flags);
-    }
-
 }

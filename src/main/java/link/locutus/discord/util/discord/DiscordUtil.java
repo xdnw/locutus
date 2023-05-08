@@ -12,6 +12,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -187,8 +188,8 @@ public class DiscordUtil {
                 long channelGuildId = channel.getGuild().getIdLong();
                 if (guild != null) {
                     GuildDB db = Locutus.imp().getGuildDB(guild);
-                    GuildDB faServer = db.getOrNull(GuildDB.Key.FA_SERVER);
-                    Guild maServer = db.getOrNull(GuildDB.Key.WAR_SERVER);
+                    GuildDB faServer = db.getOrNull(GuildKey.FA_SERVER);
+                    Guild maServer = db.getOrNull(GuildKey.WAR_SERVER);
                     if (faServer != null && channelGuildId == faServer.getIdLong()) {
                         return (MessageChannel) channel;
                     }
@@ -198,7 +199,7 @@ public class DiscordUtil {
                 }
                 if (guild != null && channelGuildId != guild.getIdLong()) {
                     GuildDB otherDB = Locutus.imp().getGuildDB(channel.getGuild());
-                    Map.Entry<Integer, Long> delegate = otherDB.getOrNull(GuildDB.Key.DELEGATE_SERVER);
+                    Map.Entry<Integer, Long> delegate = otherDB.getOrNull(GuildKey.DELEGATE_SERVER);
                     if (delegate == null || delegate.getValue() != guild.getIdLong()) {
                         throw new IllegalArgumentException("Channel: " + keyOrLong + " not in " + guild + " (" + guild + ")");
                     }
@@ -1515,6 +1516,30 @@ public class DiscordUtil {
         if (MathMan.isInteger(categoryStr)) {
             Category category = guild.getCategoryById(Long.parseLong(categoryStr));
             if (category != null) return category;
+
+            if (guild != null) {
+                GuildDB db = Locutus.imp().getGuildDB(guild);
+                GuildDB faServer = db.getOrNull(GuildKey.FA_SERVER);
+                Guild maServer = db.getOrNull(GuildKey.WAR_SERVER);
+                Set<Guild> guilds = new HashSet<>();
+                if (faServer != null) {
+                    guilds.add(faServer.getGuild());
+                }
+                if (maServer != null) {
+                    guilds.add(maServer);
+                }
+                for (GuildDB otherDB : Locutus.imp().getGuildDatabases().values()) {
+                    Map.Entry<Integer, Long> delegate = otherDB.getOrNull(GuildKey.DELEGATE_SERVER);
+                    if (delegate != null && delegate.getValue() == guild.getIdLong()) {
+                        guilds.add(otherDB.getGuild());
+                    }
+                }
+                for (Guild other : guilds) {
+                    if (other == guild) continue;
+                    category = other.getCategoryById(Long.parseLong(categoryStr));
+                    if (category != null) return category;
+                }
+            }
         }
         List<Category> categories = guild.getCategoriesByName(categoryStr, true);
         if (categories.size() == 1) {

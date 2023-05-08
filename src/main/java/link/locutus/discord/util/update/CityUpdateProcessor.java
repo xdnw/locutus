@@ -9,16 +9,15 @@ import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.city.CityBuildingChangeEvent;
 import link.locutus.discord.event.city.CityInfraBuyEvent;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.CaughtTask;
 import net.dv8tion.jda.api.entities.MessageChannel;
-import rocker.grant.nation;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -57,11 +55,11 @@ public class CityUpdateProcessor {
         if (city.infra % 50 != 0 && nation != null) {
             System.out.println(":||TODO: Fix infra buy audit: " + event.getPrevious().infra + " -> " + city.infra);
             if (true) return;
-            AlertUtil.auditAlert(nation, AuditType.UNEVEN_INFRA, new Function<GuildDB, String>() {
+            AlertUtil.auditAlert(nation, AutoAuditType.UNEVEN_INFRA, new Function<GuildDB, String>() {
                 @Override
                 public String apply(GuildDB guildDB) {
                     int ideal = (int) (city.infra - city.infra % 50);
-                    String msg = AuditType.UNEVEN_INFRA.message
+                    String msg = AutoAuditType.UNEVEN_INFRA.message
                             .replace("{city}", PnwUtil.getCityUrl(city.id));
                     return "You bought uneven infra in <" + PnwUtil.getCityUrl(city.id) + "> (" + MathMan.format(city.infra) + " infra) but only get a building slot every `50` infra.\n" +
                             "You can enter e.g. `@" + ideal + "` to buy up to that amount";
@@ -167,7 +165,7 @@ public class CityUpdateProcessor {
 
             Set<MessageChannel> channels = new HashSet<>();
             if (isGov) {
-                AlertUtil.forEachChannel(f -> true, GuildDB.Key.ORBIS_OFFICER_MMR_CHANGE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+                AlertUtil.forEachChannel(f -> true, GuildKey.ORBIS_OFFICER_MMR_CHANGE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                     @Override
                     public void accept(MessageChannel channel, GuildDB guildDB) {
                         DiscordUtil.createEmbedCommand(channel, title, body.toString());
@@ -176,7 +174,7 @@ public class CityUpdateProcessor {
             }
 
             if (nation.getAlliance_id() != 0 && nation.getPositionEnum().id > Rank.APPLICANT.id) {
-                AlertUtil.forEachChannel(f -> f.isValidAlliance() && f.isEnemyAlliance(nation.getAlliance_id()), GuildDB.Key.ENEMY_MMR_CHANGE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+                AlertUtil.forEachChannel(f -> f.isValidAlliance() && f.isEnemyAlliance(nation.getAlliance_id()), GuildKey.ENEMY_MMR_CHANGE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                     @Override
                     public void accept(MessageChannel channel, GuildDB guildDB) {
                         DiscordUtil.createEmbedCommand(channel, title, body.toString());

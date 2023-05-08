@@ -10,6 +10,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.trade.*;
 import link.locutus.discord.user.Roles;
@@ -28,8 +29,8 @@ import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
@@ -882,7 +883,7 @@ public class TradeManager {
         if (!offer.isBuy() && offer.getPpu() > getLow(offer.getResource())) return; // bought higher than market
 
         GuildDB db = Locutus.imp().getGuildDBByAA(acceptingNation.getAlliance_id());
-        if (db == null || !db.isWhitelisted() || !Boolean.TRUE.equals(db.getOrNull(GuildDB.Key.RESOURCE_CONVERSION))) return;
+        if (db == null || !db.isWhitelisted() || !Boolean.TRUE.equals(db.getOrNull(GuildKey.RESOURCE_CONVERSION))) return;
 
         User user = acceptingNation.getUser();
         if (user == null) return;
@@ -892,8 +893,8 @@ public class TradeManager {
         Role pingOptOut = Roles.AUDIT_ALERT_OPT_OUT.toRole(db.getGuild());
         if (pingOptOut != null && member.getRoles().contains(pingOptOut)) return;
 
-        GuildMessageChannel rssChannel = db.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
-        GuildMessageChannel auditChannel = db.getOrNull(GuildDB.Key.MEMBER_AUDIT_ALERTS);
+        MessageChannel rssChannel = db.getResourceChannel(0);
+        MessageChannel auditChannel = db.getOrNull(GuildKey.MEMBER_AUDIT_ALERTS);
         if (rssChannel == null || auditChannel == null) return;
 
         Set<Integer> tradePartners = db.getAllies(true);

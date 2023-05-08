@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -37,7 +38,7 @@ public class MMRByScoreSheet extends Command {
         }
 
         GuildDB guildDb = checkNotNull(Locutus.imp().getGuildDB(event));
-        SpreadSheet sheet = SpreadSheet.create(guildDb, GuildDB.Key.CITY_GRAPH_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKeys.CITY_GRAPH_SHEET);
 
         List<String> header = new ArrayList<>();
         header.add("soldiers");

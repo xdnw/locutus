@@ -8,6 +8,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -77,12 +78,12 @@ public class AutoRoleTask implements IAutoRoleTask {
     }
 
     public synchronized void syncDB() {
-        GuildDB.AutoNickOption nickOpt = db.getOrNull(GuildDB.Key.AUTONICK);
+        GuildDB.AutoNickOption nickOpt = db.getOrNull(GuildKey.AUTONICK);
         if (nickOpt != null) {
             setNickname(nickOpt);
         }
 
-        GuildDB.AutoRoleOption roleOpt = db.getOrNull(GuildDB.Key.AUTOROLE);
+        GuildDB.AutoRoleOption roleOpt = db.getOrNull(GuildKey.AUTOROLE);
         if (roleOpt != null) {
             try {
                 setAllianceMask(roleOpt);
@@ -104,12 +105,12 @@ public class AutoRoleTask implements IAutoRoleTask {
 
         fetchTaxRoles(true);
 
-        this.autoRoleAllyGov = Boolean.TRUE == db.getOrNull(GuildDB.Key.AUTOROLE_ALLY_GOV);
+        this.autoRoleAllyGov = Boolean.TRUE == db.getOrNull(GuildKey.AUTOROLE_ALLY_GOV);
 
-        this.autoRoleRank = db.getOrNull(GuildDB.Key.AUTOROLE_ALLIANCE_RANK);
+        this.autoRoleRank = db.getOrNull(GuildKey.AUTOROLE_ALLIANCE_RANK);
         if (this.autoRoleRank == null) this.autoRoleRank = Rank.MEMBER;
         allowedAAs = null;
-        Integer topX = db.getOrNull(GuildDB.Key.AUTOROLE_TOP_X);
+        Integer topX = db.getOrNull(GuildKey.AUTOROLE_TOP_X);
         if (topX != null) {
             Map<Integer, Double> aas = new RankBuilder<>(Locutus.imp().getNationDB().getNations().values()).group(DBNation::getAlliance_id).sumValues(DBNation::getScore).sort().get();
             List<Integer> topAAIds = new ArrayList<>(aas.keySet());
@@ -145,7 +146,7 @@ public class AutoRoleTask implements IAutoRoleTask {
 
             Role memberRole = Roles.MEMBER.toRole(guild);
 
-            Set<Roles> maskRolesSet = db.getOrNull(GuildDB.Key.AUTOROLE_ALLY_ROLES);
+            Set<Roles> maskRolesSet = db.getOrNull(GuildKey.AUTOROLE_ALLY_ROLES);
 
             Roles[] maskRoles = {Roles.MILCOM, Roles.ECON, Roles.FOREIGN_AFFAIRS, Roles.INTERNAL_AFFAIRS};
             if (maskRolesSet != null) {

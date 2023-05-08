@@ -8,6 +8,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
@@ -77,7 +78,7 @@ public class CombatantSheet extends Command {
             Map.Entry<Map<DBNation, DBNation>, Map<DBNation, DBNation>> kdMap = simulateWarsKD(warMap.values());
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.ACTIVE_COMBATANT_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.ACTIVE_COMBATANT_SHEET);
 
         List<Object> header = new ArrayList<>(Arrays.asList(
             "nation",

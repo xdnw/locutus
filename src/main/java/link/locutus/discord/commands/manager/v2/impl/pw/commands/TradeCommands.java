@@ -27,6 +27,7 @@ import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.Transfer;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -828,7 +829,7 @@ public class TradeCommands {
             cumulative.add(offer.getQuantity());
         }
 
-        SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.TRADE_VOLUME_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.TRADE_VOLUME_SHEET);
 
         List<Object> header = new ArrayList<>();
         header.add("PPU (adjusted)");
@@ -963,7 +964,7 @@ public class TradeCommands {
         }
 //
 //        if (createSpreadsheet) {
-//            SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.NATION_SHEET);
+//            SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.NATION_SHEET);
 //        }
 
         StringBuilder response = new StringBuilder();

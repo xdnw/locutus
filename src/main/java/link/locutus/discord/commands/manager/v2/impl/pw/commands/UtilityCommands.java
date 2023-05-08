@@ -28,6 +28,8 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationScoreMap;
 import link.locutus.discord.pnw.PNWUser;
@@ -1226,14 +1228,14 @@ public class UtilityCommands {
             }
         }
 
-        if (db.getOrNull(GuildDB.Key.AUTOROLE) == null) {
-            response.append("\n - AutoRole disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE.name(), null, null, null).toSlashCommand() + "");
+        if (db.getOrNull(GuildKey.AUTOROLE) == null) {
+            response.append("\n - AutoRole disabled. To enable it use: " + GuildKey.AUTOROLE.getCommandMention() + "");
         }
-        else response.append("\n - AutoRole Mode: ").append(db.getOrNull(GuildDB.Key.AUTOROLE) + "");
-        if (db.getOrNull(GuildDB.Key.AUTONICK) == null) {
-            response.append("\n - AutoNick disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTONICK.name(), null, null, null).toSlashCommand() + "");
+        else response.append("\n - AutoRole Mode: ").append(db.getOrNull(GuildKey.AUTOROLE) + "");
+        if (db.getOrNull(GuildKey.AUTONICK) == null) {
+            response.append("\n - AutoNick disabled. To enable it use: " + GuildKey.AUTONICK.getCommandMention() + "");
         }
-        else response.append("\n - AutoNick Mode: ").append(db.getOrNull(GuildDB.Key.AUTONICK) + "");
+        else response.append("\n - AutoNick Mode: ").append(db.getOrNull(GuildKey.AUTONICK) + "");
         if (Roles.REGISTERED.toRole(db) == null) response.append("\n - Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null, null).toSlashCommand() + "");
         return response.toString();
     }
@@ -1250,14 +1252,14 @@ public class UtilityCommands {
 
         StringBuilder response = new StringBuilder("Done!");
 
-        if (db.getOrNull(GuildDB.Key.AUTOROLE) == null) {
-            response.append("\n - AutoRole disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTOROLE.name(), null, null, null).toSlashCommand() + "");
+        if (db.getOrNull(GuildKey.AUTOROLE) == null) {
+            response.append("\n - AutoRole disabled. To enable it use: " + GuildKey.AUTOROLE.getCommandMention() + "");
         }
-        else response.append("\n - AutoRole Mode: ").append((Object) db.getOrNull(GuildDB.Key.AUTOROLE));
-        if (db.getOrNull(GuildDB.Key.AUTONICK) == null) {
-            response.append("\n - AutoNick disabled. To enable it use: " + CM.settings.cmd.create(GuildDB.Key.AUTONICK.name(), null, null, null).toSlashCommand() + "");
+        else response.append("\n - AutoRole Mode: ").append((Object) db.getOrNull(GuildKey.AUTOROLE));
+        if (db.getOrNull(GuildKey.AUTONICK) == null) {
+            response.append("\n - AutoNick disabled. To enable it use: " + GuildKey.AUTONICK.getCommandMention() + "");
         }
-        else response.append("\n - AutoNick Mode: ").append((Object) db.getOrNull(GuildDB.Key.AUTONICK));
+        else response.append("\n - AutoNick Mode: ").append((Object) db.getOrNull(GuildKey.AUTONICK));
         if (Roles.REGISTERED.toRole(db) == null) response.append("\n - Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null, null).toSlashCommand() + "");
         return response.toString();
     }
@@ -1273,7 +1275,7 @@ public class UtilityCommands {
                                 List<String> columns,
                                 @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, IllegalAccessException {
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, GuildDB.Key.ALLIANCES_SHEET);
+            sheet = SpreadSheet.create(db, SheetKeys.ALLIANCES_SHEET);
         }
         List<String> header = new ArrayList<>(columns);
         for (int i = 0; i < header.size(); i++) {
@@ -1347,7 +1349,7 @@ public class UtilityCommands {
                                    List<String> columns,
                               @Switch("e") boolean updateSpies, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, GuildDB.Key.NATION_SHEET);
+            sheet = SpreadSheet.create(db, SheetKeys.NATION_SHEET);
         }
         List<String> header = new ArrayList<>(columns);
         for (int i = 0; i < header.size(); i++) {
@@ -1708,7 +1710,7 @@ public Map<ParametricCallable, String> getEndpoints() {
             transfers.put(nation, toAdd);
         }
 
-        SpreadSheet sheet = SpreadSheet.create(db, GuildDB.Key.TRANSFER_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.TRANSFER_SHEET);
         List<String> header = new ArrayList<>(Arrays.asList("nation", "alliance", "cities"));
         for (ResourceType value : ResourceType.values) {
             if (value != ResourceType.CREDITS) {
@@ -1760,7 +1762,7 @@ public Map<ParametricCallable, String> getEndpoints() {
 
     @Command(aliases = {"dnr", "caniraid"}, desc = "Check if declaring war on a nation is allowed by the guild's Do Not Raid (DNR) settings")
     public String dnr(@Me GuildDB db, DBNation nation) {
-        Integer dnrTopX = db.getOrNull(GuildDB.Key.DO_NOT_RAID_TOP_X);
+        Integer dnrTopX = db.getOrNull(GuildKey.DO_NOT_RAID_TOP_X);
         Set<Integer> enemies = db.getCoalition(Coalition.ENEMIES);
         Set<Integer> canRaid = db.getCoalition(Coalition.CAN_RAID);
         Set<Integer> canRaidInactive = db.getCoalition(Coalition.CAN_RAID_INACTIVE);

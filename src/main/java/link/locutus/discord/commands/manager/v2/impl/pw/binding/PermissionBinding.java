@@ -19,11 +19,11 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildSetting;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -47,7 +47,7 @@ public class PermissionBinding extends BindingHelper {
     @Binding(value = "Must be used in a guild registered to a valid in-game alliance")
     @IsAlliance
     public boolean checkAlliance(@Me GuildDB db, IsAlliance perm) {
-        if (!db.isValidAlliance()) throw new IllegalArgumentException(db.getGuild() + " is not a valid alliance. See: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + "");
+        if (!db.isValidAlliance()) throw new IllegalArgumentException(db.getGuild() + " is not a valid alliance. See: " + GuildKey.ALLIANCE_ID.getCommandMention() + "");
         return true;
     }
 
@@ -62,7 +62,7 @@ public class PermissionBinding extends BindingHelper {
     @Binding(value = "Must be used in a guild with a valid API_KEY configured")
     @HasApi
     public boolean hasApi(@Me GuildDB db, HasApi perm) {
-        if (db.getOrNull(GuildDB.Key.API_KEY) == null) throw new IllegalArgumentException("No api key set: " + CM.settings.cmd.create(GuildDB.Key.API_KEY.name(), null, null, null).toSlashCommand() + "");
+        if (db.getOrNull(GuildKey.API_KEY) == null) throw new IllegalArgumentException("No api key set: " + GuildKey.API_KEY.getCommandMention() + "");
         return true;
     }
 
@@ -77,11 +77,11 @@ public class PermissionBinding extends BindingHelper {
             if (db.isValidAlliance()) {
                 response.append("\nNote: Use this alliance id to use the alliance bank for withdrawals (or to create an offshoring point for other alliances you control)");
             } else if (!db.hasAlliance()) {
-                response.append("\nNote: Set the alliance for this guild using: " + CM.settings.cmd.create(GuildDB.Key.ALLIANCE_ID.name(), null, null, null).toSlashCommand() + "");
+                response.append("\nNote: Set the alliance for this guild using: " + GuildKey.ALLIANCE_ID.getCommandMention() + "");
             }
             Set<String> publicOffshores = new HashSet<>();
             for (GuildDB otherDB : Locutus.imp().getGuildDatabases().values()) {
-                if (otherDB.isValidAlliance() && otherDB.isOffshore() && otherDB.getOrNull(GuildDB.Key.PUBLIC_OFFSHORING) == Boolean.TRUE) {
+                if (otherDB.isValidAlliance() && otherDB.isOffshore() && otherDB.getOrNull(GuildKey.PUBLIC_OFFSHORING) == Boolean.TRUE) {
                     Map.Entry<GuildDB, Integer> offshoreInfo = otherDB.getOffshoreDB();
                     publicOffshores.add(PnwUtil.getMarkdownUrl(offshoreInfo.getValue(), true));
                 }
@@ -127,8 +127,9 @@ public class PermissionBinding extends BindingHelper {
         if (perm.value() == null || perm.value().length == 0) {
             throw new IllegalArgumentException("No key provided");
         }
-        for (GuildDB.Key key : perm.value()) {
-            Object value = db.getOrNull(key);
+        for (String keyName : perm.value()) {
+            GuildSetting key = GuildKey.valueOf(keyName.toUpperCase());
+            Object value = key.getOrNull(db);
             if (value == null) {
                 throw new IllegalArgumentException("Key " + key.name() + " is not set in " + db.getGuild());
             }
