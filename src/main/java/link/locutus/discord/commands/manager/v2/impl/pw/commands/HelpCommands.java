@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
+import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
@@ -16,6 +17,7 @@ import link.locutus.discord.gpt.EmbeddingType;
 import link.locutus.discord.gpt.PWEmbedding;
 import link.locutus.discord.gpt.PWGPTHandler;
 import link.locutus.discord.gpt.SettingEmbedding;
+import org.json.JSONObject;
 
 import java.util.List;
 import java.util.Map;
@@ -42,11 +44,16 @@ public class HelpCommands {
 //
 //    }
 
+//    @Command
+//    public void command(@Me IMessageIO io, ValueStore store, CommandCallable command) {
+//
+//    }
+
     @Command
     public void find_setting(@Me IMessageIO io, ValueStore store, String query, @Range(min = 1, max = 25) @Default("5") int num_results) {
         try {
             IMessageBuilder msg = io.create();
-            msg.append("**All settings: **" + CM.info.cmd.create(null, null, "true") + "\n");
+            msg.append("**All settings: **" + CM.settings.info.cmd.create(null, null, "true") + "\n");
             msg.append(" - More Info: " + CM.settings.info.cmd.create("YOUR_KEY_HERE", null, null) + "\n");
             msg.append(" - To Delete: " + CM.settings.delete.cmd.create("YOUR_KEY_HERE") + "\n\n");
 

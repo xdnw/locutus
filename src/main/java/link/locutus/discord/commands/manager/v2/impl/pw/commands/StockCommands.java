@@ -689,7 +689,7 @@ public class StockCommands {
 //            }
 //
 //            GuildDB guildDb = Locutus.imp().getGuildDB(StockDB.ROOT_GUILD);
-//            Map<Long, MessageChannel> channel = guildDb.getOrThrow(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+//            Map<Long, MessageChannel> channel = guildDb.getOrThrow(GuildKey.RESOURCE_REQUEST_CHANNEL);
 //
 //            Map<ResourceType, Double> transfer = new HashMap<>();
 //            for (Map.Entry<ResourceType, Double> entry : resources.entrySet()) {

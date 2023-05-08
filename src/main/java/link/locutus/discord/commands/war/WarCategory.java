@@ -299,10 +299,10 @@ public class WarCategory {
                 break;
             case VICTORY:
                 room.setPlanning(false);
-                message = name1 + "looted " + PnwUtil.resourcesToString(attack.getLoot()) + " from " + name2;
+                message = name1 + " looted " + PnwUtil.resourcesToString(attack.getLoot()) + " from " + name2;
                 break;
             case A_LOOT:
-                message = name1 + "looted " + PnwUtil.resourcesToString(attack.getLoot()) + " from " + PnwUtil.getName(attack.getLooted(), true);
+                message = name1 + " looted " + PnwUtil.resourcesToString(attack.getLoot()) + " from " + PnwUtil.getName(attack.getLooted(), true);
                 break;
             case PEACE:
                 message = name1 + " agreed to peace with " + name2;
@@ -468,7 +468,7 @@ public class WarCategory {
     public WarCategory.WarRoom createChannel(User author, Consumer<String> errorOutput, boolean ping, boolean addMember, boolean addMessage, DBNation target, Collection<DBNation> attackers) {
         ApiKeyPool mailKey = db.getMailKey();
         if (addMessage && mailKey == null) {
-            errorOutput.accept("No mail key available. See: " + CM.info.cmd.toSlashMention() + " with key `" + GuildKey.API_KEY.name() + "`");
+            errorOutput.accept("No mail key available. See: " + CM.settings.info.cmd.toSlashMention() + " with key `" + GuildKey.API_KEY.name() + "`");
             addMessage = false;
         }
         GuildDB db = Locutus.imp().getGuildDB(guild);

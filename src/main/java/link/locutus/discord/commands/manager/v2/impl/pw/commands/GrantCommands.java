@@ -81,7 +81,7 @@ public class GrantCommands {
 //        }
 //
 //        if (countAsCash) {
-//            if (db.getOrNull(GuildDB.Key.RESOURCE_CONVERSION) == Boolean.TRUE || econStaff) {
+//            if (db.getOrNull(GuildKey.RESOURCE_CONVERSION) == Boolean.TRUE || econStaff) {
 //                grants.entrySet().forEach(f -> f.getValue().addNote("#cash"));
 //            } else {
 //                throw new IllegalArgumentException("RESOURCE_CONVERSION is disabled. Only a staff member can use `#cash`");
@@ -430,7 +430,7 @@ public class GrantCommands {
 //                    case UNIT:
 //                    case RESOURCES: {
 //                        grant.addRequirement(new Grant.Requirement("Amount must be a multiple of 50", econGov, f -> false));
-//                        GuildMessageChannel channel = db.getOrNull(GuildDB.Key.RESOURCE_REQUEST_CHANNEL);
+//                        GuildMessageChannel channel = db.getOrNull(GuildKey.RESOURCE_REQUEST_CHANNEL);
 //                        if (channel != null) {
 //                            throw new IllegalArgumentException("Please use " + CM.transfer.self.cmd.toSlashMention() + " or `" + Settings.commandPrefix(true) + "disburse` in " + channel.getAsMention() + " to request funds from your deposits");
 //                        }

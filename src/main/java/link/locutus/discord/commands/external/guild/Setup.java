@@ -17,7 +17,7 @@
 //import java.util.Map;
 //import java.util.Set;
 //
-//import static link.locutus.discord.db.GuildDB.Key.values;
+//import static link.locutus.discord.db.GuildKey.values;
 //
 //public class Setup extends Command {
 //    public Setup() {
@@ -42,7 +42,7 @@
 //    @Override
 //    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
 //        GuildDB guildDb = Locutus.imp().getGuildDB(event);
-//        for (GuildDB.Key key : values()) {
+//        for (GuildKey key : values()) {
 //            if (!key.requiresSetup) continue;
 //            if (key.requires != null) {
 //                if (guildDb.getOrNull(key.requires) == null) continue;

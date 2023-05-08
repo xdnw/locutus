@@ -272,7 +272,7 @@ public class LeavingBeigeAlert {
         for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
             if (db.isWhitelisted() && db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS)) {
                 Guild guild = db.getGuild();
-//                GuildMessageChannel optOutChannel = db.getOrNull(GuildDB.Key.BEIGE_ALERT_CHANNEL, false);
+//                GuildMessageChannel optOutChannel = db.getOrNull(GuildKey.BEIGE_ALERT_CHANNEL, false);
 //                if (optOutChannel == null) continue;
                 Role beigeAlert = Roles.BEIGE_ALERT.toRole(guild);
                 Role beigeAlertOptOut = Roles.BEIGE_ALERT_OPT_OUT.toRole(guild);

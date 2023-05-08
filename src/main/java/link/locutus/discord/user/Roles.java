@@ -120,16 +120,16 @@ public enum Roles {
     BEIGE_ALERT_OPT_OUT(23, "Overrides the beige alert role", GuildKey.BEIGE_ALERT_CHANNEL),
 
     BOUNTY_ALERT(24, "Gets pings when bounties are placed in their score range"),
-//    MAP_FULL_ALERT("Gets pinged when you are on 12 MAPs in an offensive war", GuildDB.Key.MEMBER_AUDIT_ALERTS),
+//    MAP_FULL_ALERT("Gets pinged when you are on 12 MAPs in an offensive war", GuildKey.MEMBER_AUDIT_ALERTS),
 
-//    WAR_ALERT("Opt out of received war target alerts", GuildDB.Key.ENEMY_ALERT_CHANNEL),
+//    WAR_ALERT("Opt out of received war target alerts", GuildKey.ENEMY_ALERT_CHANNEL),
     WAR_ALERT_OPT_OUT(25, "Opt out of received war target alerts", GuildKey.ENEMY_ALERT_CHANNEL),
     AUDIT_ALERT_OPT_OUT(26, "Opt out of received audit alerts", GuildKey.MEMBER_AUDIT_ALERTS),
     BLITZ_PARTICIPANT(27, "Opt in to blitz participation (clear this regularly)", GuildKey.ALLIANCE_ID),
     BLITZ_PARTICIPANT_OPT_OUT(28, "Opt in to blitz participation (clear this regularly)", GuildKey.ALLIANCE_ID),
 
     TEMP(29, "Role to signify temporary member", GuildKey.ALLIANCE_ID),
-//    ACTIVE("Role to signify active member", GuildDB.Key.ALLIANCE_ID)
+//    ACTIVE("Role to signify active member", GuildKey.ALLIANCE_ID)
 
     MAIL(30, "Can use mail commands", GuildKey.API_KEY),
 

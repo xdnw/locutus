@@ -177,7 +177,7 @@ public class BankCommands {
                 if (Roles.ECON.has(user, db.getGuild())) {
                     TaxRate taxBase = db.getOrNull(GuildKey.TAX_BASE);
                     if (taxBase == null || ((internal.money == -1 && internal.resources == -1))) {
-                        responses.add("`note: set an internal taxrate with `" + CM.nation.set.taxinternal.cmd.toSlashMention() + "` or globally with `" + CM.info.cmd.toSlashMention() + "` and key: " + GuildKey.TAX_BASE.name() + "`");
+                        responses.add("`note: set an internal taxrate with `" + CM.nation.set.taxinternal.cmd.toSlashMention() + "` or globally with `" + CM.settings.info.cmd.toSlashMention() + "` and key: " + GuildKey.TAX_BASE.name() + "`");
                     }
                     responses.add("\nTo view alliance wide bracket tax totals, use: " +
                         CM.deposits.check.cmd.create("tax_id=" + bracket.taxId, null, null, null, null, "true", null, null, null));
@@ -221,7 +221,7 @@ public class BankCommands {
                 msg.append(". You do not have permission to specify an alternative account.");
             }
             if (!memberCanOffshore) {
-                msg.append(". See also: " + CM.info.cmd.toSlashMention() + " with key " + GuildKey.MEMBER_CAN_OFFSHORE.name());
+                msg.append(". See also: " + CM.settings.info.cmd.toSlashMention() + " with key " + GuildKey.MEMBER_CAN_OFFSHORE.name());
             }
             throw new IllegalArgumentException(msg.toString());
         }
@@ -419,7 +419,7 @@ public class BankCommands {
                 throw new IllegalArgumentException("This guild is registered to: " + StringMan.getString(allianceList.getIds()) +
                         " but you are trying to disburse to a nation in " + nation.getAlliance_id() +
                         "\nConsider using a different list of nations or registering the alliance to this guild (" +
-                        CM.info.cmd.toSlashMention() + " with key `" +  GuildKey.ALLIANCE_ID.name() + "`)");
+                        CM.settings.info.cmd.toSlashMention() + " with key `" +  GuildKey.ALLIANCE_ID.name() + "`)");
             }
         }
 

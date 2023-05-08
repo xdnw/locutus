@@ -312,7 +312,7 @@ public class GuildKey {
 
         @Override
         public String help() {
-            return "APi key found on: <https://politicsandwar.com/account/>\n" +
+            return "API key found on: <https://politicsandwar.com/account/>\n" +
                     "Needed for alliance functions and information";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
@@ -329,9 +329,9 @@ public class GuildKey {
             db.getOrThrow(ALLIANCE_ID);
             Set<Integer> aaIds = db.getAllianceIds(true);
             if (aaIds.isEmpty()) {
-                throw new IllegalArgumentException("Guild not registered to an alliance. See: " + CM.info.cmd.toSlashMention() + " with key `" + ALLIANCE_ID.name() + "`");
+                throw new IllegalArgumentException("Guild not registered to an alliance. See: " + CM.settings.info.cmd.toSlashMention() + " with key `" + ALLIANCE_ID.name() + "`");
             }
-            String msg = "Invalid api key set. See " + CM.info.cmd.toSlashMention() + " with key `" + API_KEY.name() + "`";
+            String msg = "Invalid api key set. See " + CM.settings.info.cmd.toSlashMention() + " with key `" + API_KEY.name() + "`";
             for (String key : db.getOrThrow(API_KEY)) {
                 Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
                 if (nationId == null) throw new IllegalArgumentException(msg);
@@ -503,7 +503,7 @@ public class GuildKey {
         public String help() {
             String response = "This setting maps nation filters to internal tax rate for bulk automation.\n" +
                     "To list nations current rates: " + CM.tax.listBracketAuto.cmd.toSlashMention() + "\n" +
-                    "To bulk move nations: " + CM.nation.set.taxinternal.cmd.toSlashMention() + "\n" +
+                    "To bulk move nations: " + CM.nation.set.taxinternalAuto.cmd.toSlashMention() + "\n" +
                     "Tax rate is in the form: `money/rss`\n" +
                     "In the form: \n" +
                     "```\n" +
@@ -544,7 +544,7 @@ public class GuildKey {
         public String help() {
             String response = "This setting maps nation filters to tax bracket for bulk automation.\n" +
                     "To list nations current rates: " + CM.tax.listBracketAuto.cmd.toSlashMention() + "\n" +
-                    "To bulk move nations: " + CM.nation.set.taxbracket.cmd.toSlashMention() + "\n" +
+                    "To bulk move nations: " + CM.nation.set.taxbracketAuto.cmd.toSlashMention() + "\n" +
                     "In the form: \n" +
                     "```\n" +
                     "#cities<10:1\n" +
@@ -584,6 +584,11 @@ public class GuildKey {
         }
 
         @Override
+        public String toReadableString(Map<ResourceType, Double> value) {
+            return PnwUtil.resourcesToString(value);
+        }
+
+        @Override
         public String help() {
             return "Amount of warchest to recommend per city in form `{steel=1234,aluminum=5678,gasoline=69,munitions=420}`";
         }
@@ -614,6 +619,19 @@ public class GuildKey {
         @RolePermission(Roles.ADMIN)
         public String ASSIGNABLE_ROLES(@Me GuildDB db, @Me User user, Map<Role, Set<Role>> value) {
             return ASSIGNABLE_ROLES.setAndValidate(db, user, value);
+        }
+
+        @Override
+        public String toReadableString(Map<Role, Set<Role>> map) {
+            List<String> lines = new ArrayList<>();
+            for (Map.Entry<Role, Set<Role>> entry : map.entrySet()) {
+                String key = entry.getKey().getName();
+                List<String> valueStrings = entry.getValue().stream().map(f -> f.getName()).collect(Collectors.toList());
+                String value = StringMan.join(valueStrings, ",");
+
+                lines.add(key + ":" + value);
+            }
+            return StringMan.join(lines, "\n");
         }
 
         public String toString(Map<Role, Set<Role>> map) {

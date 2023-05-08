@@ -60,7 +60,7 @@ public class SettingCommands {
             return "The key `" + key.name() + "` has not been set on this guild";
         }
         StringBuilder response = new StringBuilder();
-        Object value = key.get(db, false);
+        Object value = key.getOrNull(db, false);
         if (value != null) {
             response.append("Previous value:\n```\n" + key.toReadableString(value) + "\n```\n");
         } else {
@@ -100,12 +100,12 @@ public class SettingCommands {
                 String valueStr = key.getRaw(db, false);
 
                 if (valueStr != null) {
-                    Object valueObj = key.get(db, false);
+                    Object valueObj = key.getOrNull(db, false);
                     if (valueObj == null) {
-                        response.append("**current value**: `" + valueStr + "`\n");
+                        response.append("**current value**: `" + valueStr + "`\n\n");
                         response.append("`A value is set but it is invalid`\n");
                     } else {
-                        response.append("**current value**: `" + key.toReadableString(valueObj) + "`\n");
+                        response.append("**current value**: `" + key.toReadableString(valueObj) + "`\n\n");
                     }
                     response.append("`note: to delete, use: " + CM.settings.delete.cmd.create(key.name()).toSlashCommand(false) + "`\n");
                 } else {
@@ -130,13 +130,13 @@ public class SettingCommands {
                             hide = "~~";
                         }
                         response.append(" - ").append(hide + "`" + currKey.name() + "`" + hide);
-                        response.append(" (" + currKey.getCommandMention() + ")");
+//                        response.append(" (" + currKey.getCommandMention() + ")");
 
                         Object setValue = keyObjectEntry.getValue();
                         if (setValue != null) {
                             String setValueStr = currKey.toReadableString(setValue);
-                            if (setValueStr.length() > 21) {
-                                setValueStr = setValueStr.substring(0, 20) + "..";
+                            if (setValueStr.length() > 25) {
+                                setValueStr = setValueStr.substring(0, 24) + "\u2026";
                             }
                             response.append("=").append(setValueStr);
                         }
@@ -145,7 +145,10 @@ public class SettingCommands {
                 }
 
                 response.append("\n");
-                response.append("For info: " + CM.settings.info.cmd.create("YOUR_KEY_HERE", null, null).toSlashCommand(false) + "\n");
+                if (!listAll) {
+                    response.append("To list all setting: " + CM.settings.info.cmd.create(null, null, "true") + "\n");
+                }
+                response.append("For info/usage: " + CM.settings.info.cmd.create("YOUR_KEY_HERE", null, null).toSlashCommand(false) + "\n");
                 response.append("To delete: " + CM.settings.delete.cmd.toSlashMention() + "\n");
                 response.append("Find a setting: " + CM.help.find_setting.cmd.toSlashMention());
 

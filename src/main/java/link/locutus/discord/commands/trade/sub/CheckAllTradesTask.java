@@ -53,7 +53,7 @@
 //                                url = type.url(alert.getPreviousHigh() != alert.getPreviousHigh(), false);
 //                                AlertUtil.openDesktop(url);
 //                            }
-//                            AlertUtil.forEachChannel(AlertTrades.class, GuildDB.Key.TRADE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
+//                            AlertUtil.forEachChannel(AlertTrades.class, GuildKey.TRADE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
 //                                @Override
 //                                public void accept(MessageChannel channel, GuildDB guildDB) {
 //                                    alert.toCard(title, channel);
@@ -65,7 +65,7 @@
 //                                }
 //                            });
 //                        } else if (!pings.isEmpty()) {
-//                            AlertUtil.forEachChannel(AlertTrades.class, GuildDB.Key.TRADE_ALERT_CHANNEL, pings, new BiConsumer<Map.Entry<Guild, MessageChannel>, Set<Member>>() {
+//                            AlertUtil.forEachChannel(AlertTrades.class, GuildKey.TRADE_ALERT_CHANNEL, pings, new BiConsumer<Map.Entry<Guild, MessageChannel>, Set<Member>>() {
 //                                @Override
 //                                public void accept(Map.Entry<Guild, MessageChannel> entry, Set<Member> members) {
 //                                    if (members.isEmpty()) return;
@@ -128,7 +128,7 @@
 //////                    body.append(MarkupUtil.markdownUrl("Low: $" + MathMan.format(low), url(type, true))).append("\n");
 //////                    body.append(MarkupUtil.markdownUrl("High: $" + MathMan.format(high), url(type, false)));
 //////
-//////                    AlertUtil.forEachChannel(AlertTrades.class, GuildDB.Key.TRADE_ALERT_CHANNEL, mentionIds, new BiConsumer<MessageChannel, Set<Member>>() {
+//////                    AlertUtil.forEachChannel(AlertTrades.class, GuildKey.TRADE_ALERT_CHANNEL, mentionIds, new BiConsumer<MessageChannel, Set<Member>>() {
 //////                        @Override
 //////                        public void accept(MessageChannel channel, Set<Member> members) {
 //////                            StringBuilder mentions = new StringBuilder();
@@ -166,7 +166,7 @@
 //                        creditTurn = currentTurn;
 //                        String title = "BUY CREDITS @ $" + MathMan.format(creditPrice);
 //                        String body = "convert to: " + maxType.name() + " @ $" + MathMan.format(creditPrice);
-//                        AlertUtil.forEachChannel(AlertTrades.class, GuildDB.Key.TRADE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
+//                        AlertUtil.forEachChannel(AlertTrades.class, GuildKey.TRADE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
 //                            @Override
 //                            public void accept(MessageChannel channel, GuildDB guildDB) {
 //                                DiscordUtil.createEmbedCommand(channel, title, body);

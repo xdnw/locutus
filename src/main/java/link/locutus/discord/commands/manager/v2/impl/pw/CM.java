@@ -1413,13 +1413,6 @@ public class CM {
             }
         }
     }
-    @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.SettingCommands.class,method="info")
-    public static class info extends CommandRef {
-        public static final info cmd = new info();
-        public info create(String key, String value, String listAll) {
-            return createArgs("key", key, "value", value, "listAll", listAll);
-        }
-    }
     @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="me")
     public static class me extends CommandRef {
         public static final me cmd = new me();

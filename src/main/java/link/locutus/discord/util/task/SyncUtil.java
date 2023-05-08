@@ -66,8 +66,8 @@
 ////            for (Map.Entry<Long, GuildDB> entry : Locutus.imp().getGuildDatabases().entrySet()) {
 ////                GuildDB db = entry.getValue();
 ////                try {
-////                    Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-////                    if (aaId == null || db.getOrNull(GuildDB.Key.API_KEY) == null) continue;
+////                    Integer aaId = db.getOrNull(GuildKey.ALLIANCE_ID);
+////                    if (aaId == null || db.getOrNull(GuildKey.API_KEY) == null) continue;
 ////                    PoliticsAndWarV2 apy = db.getApi();
 ////                } catch (Throwable ignore) {
 ////                    ignore.printStackTrace();
@@ -132,7 +132,7 @@
 //                    if (!otherDb.isValidAlliance() || otherDb.isDelegateServer() || !otherDb.enabledSpySheet())
 //                        continue;
 //                    try {
-//                        Integer aaId = otherDb.getOrNull(GuildDB.Key.ALLIANCE_ID, false);
+//                        Integer aaId = otherDb.getOrNull(GuildKey.ALLIANCE_ID, false);
 //                        if (aaId != null) {
 //                            PoliticsAndWarV2 api = otherDb.getApi();
 //                            if (api == null) continue;

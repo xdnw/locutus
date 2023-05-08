@@ -554,7 +554,7 @@ public class WarCommands {
             if (milcom != null) response.append(milcom.getAsMention());
         } else {
             response.append("Added blockade request. See also " + CM.war.blockade.cancelRequest.cmd.toSlashMention() + "\n> " + Messages.BLOCKADE_HELP);
-            response.append("\nNote: No blockade request channel set. Add one via " + CM.info.cmd.toSlashMention() + " with key: " + GuildKey.UNBLOCKADE_REQUESTS.name() + "\n");
+            response.append("\nNote: No blockade request channel set. Add one via " + CM.settings.info.cmd.toSlashMention() + " with key: " + GuildKey.UNBLOCKADE_REQUESTS.name() + "\n");
 
         }
         RateLimitUtil.queue(unblockadeChannel.sendMessage(response.toString()));

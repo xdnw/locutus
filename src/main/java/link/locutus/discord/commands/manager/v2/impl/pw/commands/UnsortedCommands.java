@@ -1228,7 +1228,7 @@ public class UnsortedCommands {
         for (DBNation nation : nations) {
             if (!db.isAllianceId(nation.getAlliance_id())) {
                 return "Nation `" + nation.getName() + "` is in " + nation.getAlliance().getQualifiedName() + " but this server is registered to: "
-                        + StringMan.getString(db.getAllianceIds()) + "\nSee: " + CM.info.cmd.toSlashMention() + " with key `" + GuildKey.ALLIANCE_ID.name() + "`";
+                        + StringMan.getString(db.getAllianceIds()) + "\nSee: " + CM.settings.info.cmd.toSlashMention() + " with key `" + GuildKey.ALLIANCE_ID.name() + "`";
             }
         }
 

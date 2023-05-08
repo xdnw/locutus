@@ -6,8 +6,10 @@ import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.HookMessageChannel;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -275,5 +277,13 @@ public class DiscordBindings extends BindingHelper {
     @Me
     public IMessageIO channelIO() {
         throw new IllegalArgumentException("No channel binding found.");
+    }
+
+    public CommandCallable command(String input) {
+        CommandCallable callable = Locutus.imp().getCommandManager().getV2().getCommands().get(input);
+        if (callable == null) {
+            throw new IllegalArgumentException("No command found for " + input);
+        }
+        return callable;
     }
 }

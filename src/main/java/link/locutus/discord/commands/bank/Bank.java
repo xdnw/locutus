@@ -56,7 +56,7 @@ public class Bank extends Command {
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         if (!db.hasAlliance())
-            return "No alliance set for this server. See: " + CM.info.cmd.toSlashMention() + " with key: " + GuildKey.ALLIANCE_ID.name();
+            return "No alliance set for this server. See: " + CM.settings.info.cmd.toSlashMention() + " with key: " + GuildKey.ALLIANCE_ID.name();
 
         Integer alliance;
         DBNation nation = DiscordUtil.parseNation(args.get(0));

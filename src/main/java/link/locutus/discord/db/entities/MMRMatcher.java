@@ -10,6 +10,11 @@ public class MMRMatcher implements Predicate<String> {
         if (!required.matches("[0-9xX\\.]{4}")) throw new IllegalArgumentException("MMR must be 4 numbers or X. Provided value: `" + required + "`");
     }
 
+    @Override
+    public String toString() {
+        return required;
+    }
+
     public String getRequired() {
         return required.replace('.', 'X');
     }

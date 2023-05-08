@@ -1576,7 +1576,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
             } else {
                 if (throwError) {
-                    throw new IllegalArgumentException("MEMBER_CAN_WITHDRAW is disabled. See " + CM.info.cmd.toSlashMention());
+                    throw new IllegalArgumentException("MEMBER_CAN_WITHDRAW is disabled. See " + CM.settings.info.cmd.toSlashMention());
                 }
             }
         } else if (bankerNation == null) {
@@ -1617,7 +1617,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             String msg = "The channel: <#" + messageChannelIdOrNull + ">" +
                     " is configured for the following alliances: " + StringMan.getString(getResourceChannelAccounts(messageChannelIdOrNull)) +
                     " and  the server is registered to the following alliances: " + StringMan.getString(aaIds) +
-                    "\nSee Also: " + CM.info.cmd.toSlashMention() + " with keys: " + GuildKey.ALLIANCE_ID.name() + " and " + GuildKey.RESOURCE_REQUEST_CHANNEL;
+                    "\nSee Also: " + CM.settings.info.cmd.toSlashMention() + " with keys: " + GuildKey.ALLIANCE_ID.name() + " and " + GuildKey.RESOURCE_REQUEST_CHANNEL;
 
             if (defaultChannel != null || channelForAA != null) {
                 msg += "\n";
@@ -1941,7 +1941,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
             MessageChannel receiverChannel = receiverDB.getResourceChannel(receiverAlliance != null ? receiverAlliance.getId() : 0);
 
-//        if (senderChannel == null) throw new IllegalArgumentException("Please have an admin use. " + CM.settings.cmd.create(GuildDB.Key.RESOURCE_REQUEST_CHANNEL.name(), "#someChannel") + " in " + senderDB);
+//        if (senderChannel == null) throw new IllegalArgumentException("Please have an admin use. " + CM.settings.cmd.create(GuildKey.RESOURCE_REQUEST_CHANNEL.name(), "#someChannel") + " in " + senderDB);
             if (receiverChannel == null)
                 throw new IllegalArgumentException("Please have an admin set: " + GuildKey.RESOURCE_REQUEST_CHANNEL.getCommandMention() + " in receiving " + receiverDB.getGuild());
 

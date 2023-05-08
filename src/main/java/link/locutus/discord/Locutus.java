@@ -450,7 +450,7 @@ public final class Locutus extends ListenerAdapter {
             if (guildDatabases.isEmpty()) {
                 for (Guild guild : manager.getGuilds()) {
                     GuildDB db = getGuildDB(guild.getIdLong(), false);
-//                    String key = db.getOrNull(GuildDB.Key.API_KEY);
+//                    String key = db.getOrNull(GuildKey.API_KEY);
 //                    if (key == null) continue;
 //
 //                    ApiRecord record;

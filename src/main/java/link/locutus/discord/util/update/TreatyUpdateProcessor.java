@@ -74,7 +74,7 @@ public class TreatyUpdateProcessor {
             public void accept(MessageChannel channel, GuildDB guildDB) {
                 StringBuilder finalBody = new StringBuilder(body);
 
-//                Integer allianceId = guildDB.getOrNull(GuildDB.Key.ALLIANCE_ID);
+//                Integer allianceId = guildDB.getOrNull(GuildKey.ALLIANCE_ID);
 //                if (allianceId != null)
                 {
                     Set<Integer> tracked = guildDB.getAllies(true);

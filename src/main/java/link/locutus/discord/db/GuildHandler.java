@@ -626,9 +626,9 @@ public class GuildHandler {
         if (keys == null) {
             boolean hasKey = getDb().getOrNull(GuildKey.API_KEY) != null;
             if (!hasKey) {
-                throw new IllegalArgumentException("Please set `API_KEY` with " + CM.info.cmd.toSlashMention());
+                throw new IllegalArgumentException("Please set `API_KEY` with " + CM.settings.info.cmd.toSlashMention());
             }
-            throw new IllegalArgumentException("No valid `API_KEY` was found. Please ensure a valid one is set with " + CM.info.cmd.toSlashMention());
+            throw new IllegalArgumentException("No valid `API_KEY` was found. Please ensure a valid one is set with " + CM.settings.info.cmd.toSlashMention());
         }
 
         if (message.contains("%") || message.contains("{")) {
@@ -1240,8 +1240,8 @@ public class GuildHandler {
 //
 //        boolean includeWarchest = true;
 ////        if (db != null) {
-////            Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
-////            Integer warCostFactor = db.getOrNull(GuildDB.Key.DEPOSITS_INCLUDE_WARCOST);
+////            Integer aaId = db.getOrNull(GuildKey.ALLIANCE_ID);
+////            Integer warCostFactor = db.getOrNull(GuildKey.DEPOSITS_INCLUDE_WARCOST);
 ////            if (aaId != null && warCostFactor != null) {
 ////
 ////            }
@@ -1249,7 +1249,7 @@ public class GuildHandler {
 //
 //        if (allianceId != null && allowedLabels.apply("#tax", null)) {
 //            Set<BankDB.TaxDeposit> taxesPaid = new HashSet<>(Locutus.imp().getBankDB().getTaxesPaid(getNation_id(), allianceId));
-//            int[] taxBase = useTaxBase ? db.getOrNull(GuildDB.Key.TAX_BASE) : null;
+//            int[] taxBase = useTaxBase ? db.getOrNull(GuildKey.TAX_BASE) : null;
 //            if (taxBase == null) taxBase = new int[] {0, 0};
 //            for (BankDB.TaxDeposit deposit : taxesPaid) {
 //                if (deposit.date < cutOff) continue;
@@ -1344,11 +1344,11 @@ public class GuildHandler {
 //            }
 //        }
 //
-//        Integer aaId = db.getOrNull(GuildDB.Key.ALLIANCE_ID);
+//        Integer aaId = db.getOrNull(GuildKey.ALLIANCE_ID);
 //        Set<Integer> tracked = db.getCoalition("offshore");
 //        if (aaId != null) tracked.add(aaId);
 //
-//        int[] taxBase = db.getOrNull(GuildDB.Key.TAX_BASE);
+//        int[] taxBase = db.getOrNull(GuildKey.TAX_BASE);
 //        if (taxBase == null) taxBase = new int[] {0, 0};
 //
 //        // #ignore
@@ -1748,7 +1748,7 @@ public class GuildHandler {
                         }
 
                         if (!dnrViolations.isEmpty()) {
-                            footer.append("To modify the `Do Not Raid` see: " + CM.coalition.list.cmd.toSlashMention() + " / " + CM.info.cmd.toSlashMention() + " with key `" + GuildKey.DO_NOT_RAID_TOP_X.name() + "`\n");
+                            footer.append("To modify the `Do Not Raid` see: " + CM.coalition.list.cmd.toSlashMention() + " / " + CM.settings.info.cmd.toSlashMention() + " with key `" + GuildKey.DO_NOT_RAID_TOP_X.name() + "`\n");
                         }
 
                         RateLimitUtil.queueMessage(new DiscordChannelIO(channel), new Function<IMessageBuilder, Boolean>() {
@@ -1784,7 +1784,7 @@ public class GuildHandler {
                             StringBuilder footer = new StringBuilder();
                             if (dnrViolations.contains(war)) {
                                 footer.append("^ violates the `Do Not Raid` (DNR) list. If you were not asked to attack (e.g. as a counter), please offer peace (Note: This is an automated message)\n");
-                                footer.append("(To modify the DNR: " + CM.coalition.list.cmd.toSlashMention() + " / " + CM.info.cmd.toSlashMention() + " with key `" + GuildKey.DO_NOT_RAID_TOP_X.name() + "`\n");
+                                footer.append("(To modify the DNR: " + CM.coalition.list.cmd.toSlashMention() + " / " + CM.settings.info.cmd.toSlashMention() + " with key `" + GuildKey.DO_NOT_RAID_TOP_X.name() + "`\n");
                             }
                             List<String> tips = new ArrayList<>();
 
@@ -2558,7 +2558,7 @@ public class GuildHandler {
 //
 //    public void procesRewards() {
 //        if (!db.hasAlliance()) return;
-//        Map<NationFilterString, double[]> rewards = getDb().getOrNull(GuildDB.Key.MEMBER_REWARDS);
+//        Map<NationFilterString, double[]> rewards = getDb().getOrNull(GuildKey.MEMBER_REWARDS);
 //        if (rewards == null || rewards.isEmpty()) return;
 //        MessageChannel rssChannel = getDb().getResourceChannel(0);
 //        if (rssChannel == null) return;

@@ -300,7 +300,7 @@ public class SlashCommandManager extends ListenerAdapter {
             // join on " "
             for (Map.Entry<String, String> entry : arguments.entrySet()) {
                 if (entry.getValue() == null) continue;
-                builder.append(" ").append(entry.getKey()).append(": ").append(entry.getValue());
+                builder.append(" ").append(entry.getKey().toLowerCase(Locale.ROOT)).append(": ").append(entry.getValue());
             }
         }
         if (backTicks) return "`" + builder + "`";

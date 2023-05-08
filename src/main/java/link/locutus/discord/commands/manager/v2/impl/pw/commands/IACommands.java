@@ -886,7 +886,7 @@ public class IACommands {
         if (key == null) {
             if ((sendFromGuildAccount || myKey == null)) {
                 if (!Roles.MAIL.has(author, db.getGuild())) {
-                    return "You do not have the role `MAIL` (see " + CM.role.setAlias.cmd.toSlashMention() + " OR use" + CM.info.cmd.toSlashMention() + " with `" + GuildKey.API_KEY.name() + "` to add your own key";
+                    return "You do not have the role `MAIL` (see " + CM.role.setAlias.cmd.toSlashMention() + " OR use" + CM.settings.info.cmd.toSlashMention() + " with `" + GuildKey.API_KEY.name() + "` to add your own key";
                 }
                 key = db.getMailKey();
             } else if (myKey != null) {
@@ -895,7 +895,7 @@ public class IACommands {
         }
         if (key == null){
             if (sendFromGuildAccount) {
-                return "No api key found. Please use" + CM.info.cmd.toSlashMention() + " with `" + GuildKey.API_KEY.name() + "`";
+                return "No api key found. Please use" + CM.settings.info.cmd.toSlashMention() + " with `" + GuildKey.API_KEY.name() + "`";
             } else {
                 return "No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "";
             }
