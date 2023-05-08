@@ -2616,7 +2616,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     public String getInfoRaw(GuildSetting key, boolean allowDelegate) {
         if (key == GuildKey.ALLIANCE_ID) {
             String result = getInfo(key.name(), false);
-            return result;
+            if (result != null || !allowDelegate) return result;
         }
         return getInfo(key.name(), allowDelegate);
     }
