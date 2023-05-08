@@ -36,18 +36,16 @@ public class HelpCommands {
 //        StringBuilder prompt = new StringBuilder();
 //
 //        OpenAiService service = getGPT().getHandler().getService();
-//
-//
 //    }
 //    @Command
 //    public void find_placeholders(@Me IMessageIO io, ValueStore store, String query, @Range(min = 1, max = 25) @Default("3") int num_results) {
 //
 //    }
 
-//    @Command
-//    public void command(@Me IMessageIO io, ValueStore store, CommandCallable command) {
-//
-//    }
+    @Command
+    public String command(@Me IMessageIO io, ValueStore store, CommandCallable command) {
+        return command.desc(store);
+    }
 
     @Command
     public void find_setting(@Me IMessageIO io, ValueStore store, String query, @Range(min = 1, max = 25) @Default("5") int num_results) {
