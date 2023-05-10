@@ -37,6 +37,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
+import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.task.roles.AutoRoleTask;
 import link.locutus.discord.util.task.roles.IAutoRoleTask;
 import com.google.common.eventbus.EventBus;
@@ -45,7 +46,6 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
 import net.dv8tion.jda.api.entities.*;
-import retrofit2.http.HEAD;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -54,6 +54,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -71,6 +72,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -82,7 +84,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     private GuildHandler handler;
     private IACategory iaCat;
 
-
+    private AllianceLoanManager loanManager;
     private volatile boolean cachedRoleAliases = false;
     private final Map<Roles, Map<Long, Long>> roleToAccountToDiscord;
 
@@ -982,6 +984,225 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 //            }
 //        });
     }
+
+    private void createLoanTables() {
+        executeStmt("CREATE TABLE IF NOT EXISTS `OFFSHORE_LOANS` " +
+                "(`id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "`receiver` BIGINT NOT NULL, " +
+                "`banker_nation` INTEGER NOT NULL, " +
+                "`banker_user` BIGINT NOT NULL, " +
+                "`channel_id` BIGINT NOT NULL, " +
+                "`principal` BLOB NOT NULL, " +
+                "`principal_value` BIGINT NOT NULL, " +
+                "`interest_paid` BLOB, " +
+                "`paid_value` BIGINT NOT NULL, " +
+                "`date` BIGINT NOT NULL, " +
+                "`due_date` BIGINT NOT NULL, " +
+                "`last_paid` BIGINT NOT NULL," +
+                "`interest_rate` DOUBLE NOT NULL, " +
+                "`overdue_rate` DOUBLE NOT NULL, " +
+                "`closed_date` BIGINT NOT NULL," +
+                ")");
+        executeStmt("CREATE TABLE IF NOT EXISTS `ALLIANCE_INVESTORS` " +
+                "(`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT" +
+                "`nation_id` INTEGER NOT NULL, " +
+                "`type` INTEGER NOT NULL, " +
+                "`resources` BLOB NOT NULL, " +
+                "`date` BOOLEAN NOT NULL," +
+                "`reserve_ratio` INTEGER NOT NULL)");
+    }
+
+    private final Object loanManagerLock = new Object();
+
+    public AllianceLoanManager getLoanManager() {
+        if (loanManager != null) return loanManager;
+        if (!GuildKey.PUBLIC_OFFSHORING.getOrNull(this) == Boolean.TRUE) return null;
+        Map.Entry<GuildDB, Integer> offshoreDb = getOffshoreDB();
+        if (offshoreDb == null || offshoreDb.getKey() != this) return null;
+        synchronized (loanManagerLock) {
+            if (loanManager == null) {
+                createLoanTables();
+                this.loanManager = new AllianceLoanManager(this);
+            }
+            return loanManager;
+        }
+    }
+
+    public List<AllianceInvestment> getAllianceInvestments() {
+        List<AllianceInvestment> result = new ArrayList<>();
+        try (PreparedStatement stmt = prepareQuery("select * FROM ALLIANCE_INVESTORS")) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    result.add(new AllianceInvestment(rs));
+                }
+            }
+            return result;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
+    public List<AllianceLoan> getAllianceLoans() {
+        List<AllianceLoan> result = new ArrayList<>();
+        try (PreparedStatement stmt = prepareQuery("select * FROM OFFSHORE_LOANS")) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    result.add(new AllianceLoan(rs));
+                }
+            }
+            return result;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void addAllianceLoan(AllianceLoan loan) {
+        String insert = ("INSERT OR REPLACE INTO `OFFSHORE_LOANS`( " +
+                "`receiver`, " +
+                "`banker_nation`, " +
+                "`banker_user`, " +
+                "`channel_id`, " +
+                "`principal`, " +
+                "`principal_value`, " +
+                "`interest_paid`, " +
+                "`paid_value`, " +
+                "`date`, " +
+                "`due_date`, " +
+                "`last_paid`, " +
+                "`interest_rate`, " +
+                "`overdue_rate` " +
+                "`closed_date` " +
+                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        try (PreparedStatement stmt = getConnection().prepareStatement(insert, Statement.RETURN_GENERATED_KEYS)) {
+            stmt.setLong(1, loan.receiver);
+            stmt.setInt(2, loan.bankerNation);
+            stmt.setLong(3, loan.bankerUser);
+            stmt.setLong(4, loan.channelId);
+            stmt.setBytes(5, ArrayUtil.toByteArray(loan.principal));
+            stmt.setLong(6, Math.round(loan.principalValue * 100));
+            stmt.setBytes(7, ArrayUtil.toByteArray(loan.interestPaid));
+            stmt.setLong(8, Math.round(loan.interestPaidValue * 100));
+            stmt.setLong(9, loan.date);
+            stmt.setLong(10, loan.dueDate);
+            stmt.setLong(11, loan.lastPaid);
+            stmt.setDouble(12, loan.interestRate);
+            stmt.setDouble(13, loan.overdueRate);
+            stmt.setDouble(14, loan.dateClosed);
+            stmt.executeUpdate();
+            try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    loan.id = (generatedKeys.getInt(1));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void addAllianceInvestment(AllianceInvestment investment) {
+        String insert = ("INSERT OR REPLACE INTO `ALLIANCE_INVESTORS`( " +
+                "`nation_id`, " +
+                "`type`, " +
+                "`resources`, " +
+                "`date`, " +
+                "`reserve_ratio`" +
+                ") VALUES (?, ?, ?, ?, ?)");
+        try (PreparedStatement stmt = getConnection().prepareStatement(insert, Statement.RETURN_GENERATED_KEYS)) {
+            stmt.setInt(1, investment.nationId);
+            stmt.setInt(2, investment.type.ordinal());
+            stmt.setBytes(3, ArrayUtil.toByteArray(investment.resources));
+            stmt.setLong(4, investment.date);
+            stmt.setLong(5, Math.round(investment.reserveRatio * 100));
+            stmt.executeUpdate();
+            try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    investment.id = (generatedKeys.getInt(1));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void updateAllianceInvestment(AllianceInvestment investment) {
+        if (investment.id <= -1) throw new IllegalArgumentException("investment has no id");
+        //       "(`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT" +
+        //                    "`nation_id` INTEGER NOT NULL, " +
+        //                    "`type` INTEGER NOT NULL, " +
+        //                    "`resources` BLOB NOT NULL, " +
+        //                    "`date` BOOLEAN NOT NULL)";
+        String insert = ("INSERT OR REPLACE INTO `ALLIANCE_INVESTORS`( " +
+                "`id`, " +
+                "`nation_id`, " +
+                "`type`, " +
+                "`resources`, " +
+                "`date`, " +
+                "`reserve_ratio`" +
+                ") VALUES (?, ?, ?, ?, ?, ?)");
+
+        try (PreparedStatement stmt = getConnection().prepareStatement(insert)) {
+            stmt.setInt(1, investment.id);
+            stmt.setInt(2, investment.nationId);
+            stmt.setInt(3, investment.type.ordinal());
+            stmt.setBytes(4, ArrayUtil.toByteArray(investment.resources));
+            stmt.setLong(5, investment.date);
+            stmt.setLong(6, Math.round(investment.reserveRatio * 100));
+            stmt.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void updateAllianceLoan(AllianceLoan loan) {
+        if (loan.id <= -1) throw new IllegalArgumentException("Loan has no id");
+        String insert = ("INSERT OR REPLACE INTO `OFFSHORE_LOANS`( " +
+                        "`id`, " +
+                        "`receiver`, " +
+                        "`banker_nation`, " +
+                        "`banker_user`, " +
+                        "`channel_id`, " +
+                        "`principal`, " +
+                        "`principal_value`, " +
+                        "`interest_paid`, " +
+                        "`paid_value`, " +
+                        "`date`, " +
+                        "`due_date`, " +
+                        "`last_paid`, " +
+                        "`interest_rate`, " +
+                        "`overdue_rate` " +
+                        "`closed_date` " +
+                        ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+        try (PreparedStatement stmt = getConnection().prepareStatement(insert)) {
+            stmt.setInt(1, loan.id);
+            stmt.setLong(2, loan.receiver);
+            stmt.setInt(3, loan.bankerNation);
+            stmt.setLong(4, loan.bankerUser);
+            stmt.setLong(5, loan.channelId);
+            stmt.setBytes(6, ArrayUtil.toByteArray(loan.principal));
+            stmt.setLong(7, Math.round(loan.principalValue * 100));
+            stmt.setBytes(8, ArrayUtil.toByteArray(loan.interestPaid));
+            stmt.setLong(9, Math.round(loan.interestPaidValue * 100));
+            stmt.setLong(10, loan.date);
+            stmt.setLong(11, loan.dueDate);
+            stmt.setLong(12, loan.lastPaid);
+            stmt.setDouble(13, loan.interestRate);
+            stmt.setDouble(14, loan.overdueRate);
+            stmt.setDouble(15, loan.dateClosed);
+            stmt.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+    }
+
 
 //    public void unsubscribeAllBeige(User user) {
 //        update("DELETE FROM `BEIGE_TARGET_ALERTS` WHERE user = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {

@@ -1,10 +1,17 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.AllianceLoan;
+import link.locutus.discord.db.entities.AllianceLoanManager;
 import link.locutus.discord.db.entities.DBLoan;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -18,7 +25,10 @@ import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import rocker.guild.ia.message;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class LoanCommands {
 
@@ -45,4 +55,30 @@ public class LoanCommands {
 //
 //        return null;
 //    }
+
+    @Command(desc = "View information about the loan service")
+    @RolePermission(value= Roles.ECON)
+    @HasOffshore
+    public void info(@Me IMessageIO io) {
+        // TODO replace with CM
+        String title = "**Free Automatic Loans**";
+        String body = """
+                > This is intended as a FREE automated loan service to help new alliances meet their grant, warchest and rebuild needs
+                > Each alliance has an allowance of free loans see: `/offshore_loan allowance`
+                > To help expand shared funds, loans with interest are also available
+                > Anonymous metadata of your loan will be publicly available, including:
+                >   - Loan amount, due date, and status
+                
+                > For a list of donors to the loan fund, use: `/offshore_loan donor_ranking`
+                > To donate to the loan fund, use: `/offshore_loan donate <resources>`
+                > 
+                > Ready? `/offshore_loan create <resources> <time>`""";
+        io.create().embed(title, body).send();
+    }
+
+    @Command(desc = "View information about the loan service")
+    @RolePermission(value= Roles.ECON)
+    @HasOffshore
+    public void listGlobal(@Me IMessageIO io, @Me GuildDB db, @Me AllianceLoanManager manager, @Default List<ResourceType> resources) {
+    }
 }

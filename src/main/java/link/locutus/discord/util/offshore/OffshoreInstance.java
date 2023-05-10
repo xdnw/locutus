@@ -765,7 +765,7 @@ public class OffshoreInstance {
             if (nationAccount != null) {
                 body.append(" - Nation Account: " + nationAccount.getNationUrlMarkup(true) + "\n");
             } else if (depositType.getType() == DepositType.IGNORE) {
-                body.append(" - Will NOT deduct from a nation deposits\n");
+                body.append(" - Will NOT deduct from a nation deposits (no `nationAccount` set)\n");
             } else {
                 body.append(" - Will deduct from receiver's deposits\n");
             }
