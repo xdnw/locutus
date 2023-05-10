@@ -5,6 +5,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
+import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
@@ -190,7 +191,11 @@ public abstract class GuildSetting<T> {
         LocalValueStore locals = new LocalValueStore<>(getStore());
         locals.addProvider(Key.of(GuildDB.class, Me.class), db);
         locals.addProvider(Key.of(Guild.class, Me.class), db.getGuild());
-        return (T) locals.get(type).apply(locals, input);
+        Parser parser = locals.get(type);
+        if (parser == null) {
+            throw new IllegalArgumentException("No parser found for " + type);
+        }
+        return (T) parser.apply(locals, input);
     }
 
     public String toString() {

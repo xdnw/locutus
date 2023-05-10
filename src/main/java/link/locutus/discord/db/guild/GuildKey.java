@@ -59,6 +59,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class GuildKey {
@@ -603,7 +604,26 @@ public class GuildKey {
         public String help() {
             return "The name or id of the CATEGORY you would like embassy channels created in (for " + CM.embassy.cmd.toSlashMention() + ")";
         }
-    }.setupRequirements(f -> f.requires(ALLIANCE_ID));
+    }.setupRequirements(f -> f.requireFunction(new Consumer<GuildDB>() {
+        @Override
+        public void accept(GuildDB db) {
+            if (ALLIANCE_ID.getOrNull(db, true) == null) {
+                for (GuildDB otherDb : Locutus.imp().getGuildDatabases().values()) {
+                    Guild warServer = WAR_SERVER.getOrNull(otherDb, false);
+                    GuildDB faServer = FA_SERVER.getOrNull(otherDb, false);
+                    if (faServer != null && faServer.getIdLong() == db.getIdLong()) {
+                        return;
+                    }
+                    if (warServer != null && warServer.getIdLong() == db.getIdLong()) {
+                        return;
+                    }
+                }
+                throw new IllegalArgumentException("Missing required setting " + ALLIANCE_ID.name() + " " + ALLIANCE_ID.getCommandMention() + "\n" +
+                        "(Or set this server as an " + FA_SERVER.name() + " from another guild)");
+
+            }
+        }
+    }));
     public static GuildSetting<Map<Role, Set<Role>>> ASSIGNABLE_ROLES = new GuildSetting<Map<Role, Set<Role>>>(GuildSettingCategory.ROLE, Map.class, Role.class, TypeToken.getParameterized(Set.class, Role.class).getType()) {
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1150,6 +1170,11 @@ public class GuildKey {
 
         @Override
         public String toString(GuildDB value) {
+            return value.getIdLong() + "";
+        }
+
+        @Override
+        public String toReadableString(GuildDB value) {
             return value.getName();
         }
 
@@ -1354,6 +1379,25 @@ public class GuildKey {
         public String help() {
             return "The mode for the enemy alert channel to determine what alerts are posted and who is pinged\n" +
                     "Options:\n - " + StringMan.join(EnemyAlertChannelMode.values(), "\n - ");
+        }
+    }.setupRequirements(f -> f.requires(ENEMY_ALERT_CHANNEL));
+
+    public static GuildSetting<NationFilter> ENEMY_ALERT_FILTER = new GuildSetting<NationFilter>(GuildSettingCategory.BEIGE_ALERTS, NationFilter.class) {
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String ENEMY_ALERT_FILTER(@Me GuildDB db, @Me User user, NationFilter filter) {
+            return ENEMY_ALERT_FILTER.setAndValidate(db, user, filter);
+        }
+
+        @Override
+        public String toString(NationFilter value) {
+            return value.getFilter();
+        }
+
+        @Override
+        public String help() {
+            return "A filter for enemies to alert on when they leave beige\n" +
+                    "Defaults to `#active_m<7200` (active in the past 5 days)";
         }
     }.setupRequirements(f -> f.requires(ENEMY_ALERT_CHANNEL));
 
@@ -1670,7 +1714,7 @@ public class GuildKey {
                     "Defaults to `100/100` (i.e. no taxes are included in depos).\n" +
                     "Setting is retroactive. See also: " + CM.nation.set.taxinternal.cmd.toSlashMention();
         }
-    }.setupRequirements(f -> f.requires(ALLIANCE_ID).requireValidAlliance());
+    }.setupRequirements(f -> f.requires(ALLIANCE_ID).requires(API_KEY).requireValidAlliance());
     public static GuildSetting<MessageChannel> MEMBER_AUDIT_ALERTS = new GuildChannelSetting(GuildSettingCategory.AUDIT) {
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)

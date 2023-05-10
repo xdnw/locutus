@@ -128,6 +128,9 @@ public class MethodParser<T> implements Parser<T> {
                         } else {
                             Parser parser = store.get(paramKey);
                             if (parser == null) {
+                                if (paramKey.isDefault()) {
+                                    continue;
+                                }
                                 throw new IllegalArgumentException("No parser found for " + paramKey);
                             }
                             arg = parser.apply(store, t);

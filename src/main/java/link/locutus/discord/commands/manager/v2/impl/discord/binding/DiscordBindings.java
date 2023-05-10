@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
@@ -77,7 +78,7 @@ public class DiscordBindings extends BindingHelper {
     }
 
     @Binding(value = "A discord category name or mention", examples = "category-name")
-    public Category category(ParameterData param, Guild guild, String category) {
+    public Category category(@Me Guild guild, String category, @Default ParameterData param) {
         if (guild == null) throw new IllegalArgumentException("Event did not happen inside a guild.");
         if (category.charAt(0) == '<' && category.charAt(category.length() - 1) == '>') {
             category = category.substring(1, category.length() - 1);
@@ -86,7 +87,7 @@ public class DiscordBindings extends BindingHelper {
             category = category.substring(1);
         }
         List<Category> categories = guild.getCategoriesByName(category, true);
-        Filter filter = param.getAnnotation(Filter.class);
+        Filter filter = param == null ? null : param.getAnnotation(Filter.class);
         if (filter != null) {
             categories = new ArrayList<>(categories);
             categories.removeIf(f -> !f.getName().matches(filter.value()));

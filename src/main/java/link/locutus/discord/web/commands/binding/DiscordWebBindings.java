@@ -66,7 +66,7 @@ public class DiscordWebBindings extends WebBindingHelper {
 
     @HtmlInput
     @Binding(types = {Member.class})
-    public String member(@Me User user, @Me Guild guild, ParameterData param) {
+    public String member(@Me User user, @Me Guild guild, @Default ParameterData param) {
         List<Member> options = guild.getMembers();
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             names.add(obj.getEffectiveName());
@@ -82,7 +82,7 @@ public class DiscordWebBindings extends WebBindingHelper {
 
     @HtmlInput
     @Binding(types= Category.class)
-    public String category(@Me Guild guild, ParameterData param) {
+    public String category(@Me Guild guild, @Default ParameterData param) {
         List<Category> options = guild.getCategories();
         Filter filter = param.getAnnotation(Filter.class);
         options = new ArrayList<>(options);
@@ -95,7 +95,7 @@ public class DiscordWebBindings extends WebBindingHelper {
 
     @HtmlInput
     @Binding(types=Guild.class)
-    public String guild(@Me User user, ParameterData param) {
+    public String guild(@Me User user, @Default ParameterData param) {
         List<Guild> options = user.getMutualGuilds();
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             names.add(formatGuildName(obj) + "/" + obj.getIdLong());
@@ -110,24 +110,24 @@ public class DiscordWebBindings extends WebBindingHelper {
 
     @HtmlInput
     @Binding(types= TextChannel.class)
-    public String textChannel(@Me Guild guild, @Me User user, ParameterData param) {
+    public String textChannel(@Me Guild guild, @Me User user, @Default ParameterData param) {
         List<MessageChannel> options = getGuildChannels(guild, user);
         options.removeIf(f -> !(f instanceof TextChannel));
-        return channel(guild, user, param, options);
+        return channel(guild, user, options, param);
     }
 
     @HtmlInput
     @Binding(types= ICategorizableChannel.class)
-    public String categorizableChannel(@Me Guild guild, @Me User user, ParameterData param) {
+    public String categorizableChannel(@Me Guild guild, @Me User user, @Default ParameterData param) {
         List<MessageChannel> options = getGuildChannels(guild, user);
         options.removeIf(f -> !(f instanceof ICategorizableChannel));
-        return channel(guild, user, param, options);
+        return channel(guild, user, options, param);
     }
 
     @HtmlInput
     @Binding(types=MessageChannel.class)
-    public String channel(@Me Guild guild, @Me User user, ParameterData param) {
-        return channel(guild, user, param, getGuildChannels(guild, user));
+    public String channel(@Me Guild guild, @Me User user, @Default ParameterData param) {
+        return channel(guild, user, getGuildChannels(guild, user), param);
     }
 
     public List<MessageChannel> getGuildChannels(Guild guild, User user) {
@@ -144,7 +144,7 @@ public class DiscordWebBindings extends WebBindingHelper {
         return options;
     }
 
-    public String channel(@Me Guild guild, @Me User user, ParameterData param, List<MessageChannel> options) {
+    public String channel(@Me Guild guild, @Me User user, List<MessageChannel> options, @Default ParameterData param) {
         if (options.isEmpty()) throw new IllegalArgumentException("You cannot view any channels");
         Collections.sort(options, (o1, o2) -> {
             GuildMessageChannel tc1 = (GuildMessageChannel) o1;

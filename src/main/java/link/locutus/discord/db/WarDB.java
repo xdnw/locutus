@@ -919,6 +919,17 @@ public class WarDB extends DBMainV2 {
             if (newWar.isActive()) {
                 activeWars.addActiveWar(newWar);
             } else {
+                if (previous != null && previous.isActive() && (newWar.status == WarStatus.DEFENDER_VICTORY || newWar.status == WarStatus.ATTACKER_VICTORY)) {
+                    boolean isAttacker = newWar.status == WarStatus.ATTACKER_VICTORY;
+                    DBNation defender = newWar.getNation(!isAttacker);
+                    if (defender.getColor() != NationColor.BEIGE) {
+                        DBNation copyOriginal = new DBNation(defender);
+                        defender.setColor(NationColor.BEIGE);
+                        defender.setBeigeTimer(TimeUtil.getTurn() + 24);
+                        if (eventConsumer != null)
+                            eventConsumer.accept(new NationChangeColorEvent(copyOriginal, defender));
+                    }
+                }
                 activeWars.makeWarInactive(newWar);
             }
 
@@ -1471,15 +1482,25 @@ public class WarDB extends DBMainV2 {
                         DBWar war = getWar(attack.getWar_id());
                         if (war != null) {
                             war.status = attack.victor == attack.attacker_nation_id ? WarStatus.ATTACKER_VICTORY : WarStatus.DEFENDER_VICTORY;
+
                             activeWars.makeWarInactive(war);
                             warsToSave.add(war);
                         }
 
-                        if (defender != null && attack.infra_destroyed_value == 0) {
-                            double pct = attack.infraPercent_cached / 100d;
+                        if (defender != null) {
+                            if (defender.getColor() != NationColor.BEIGE) {
+                                DBNation copyOriginal = new DBNation(defender);
+                                defender.setColor(NationColor.BEIGE);
+                                defender.setBeigeTimer(TimeUtil.getTurn() + 24);
+                                if (eventConsumer != null)
+                                    eventConsumer.accept(new NationChangeColorEvent(copyOriginal, defender));
+                            }
+                            if (attack.infra_destroyed_value == 0) {
+                                double pct = attack.infraPercent_cached / 100d;
 
-                            if (runAlerts) {
-                                attackInfraPctMembers.put(attack, pct);
+                                if (runAlerts) {
+                                    attackInfraPctMembers.put(attack, pct);
+                                }
                             }
                         }
                     }

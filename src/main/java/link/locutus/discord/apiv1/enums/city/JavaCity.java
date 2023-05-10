@@ -104,6 +104,22 @@ public class JavaCity {
         return buildings;
     }
 
+    public Map.Entry<Integer, Integer> getMissileDamage(Predicate<Project> hasProject) {
+        double density = getPopulation(hasProject) / getLand();
+        double infra = getInfra();
+        double destroyedMin = Math.min(infra, Math.min(1700, infra * 0.8 + 150));
+        double destroyedMax = Math.min(infra, Math.max(Math.max(2000, density * 13.5), infra * 0.8 + 150));
+        return new AbstractMap.SimpleEntry<>((int) Math.round(destroyedMin), (int) Math.round(destroyedMax));
+    }
+
+    public Map.Entry<Integer, Integer> getNukeDamage(Predicate<Project> hasProject) {
+        double density = getPopulation(hasProject) / getLand();
+        double infra = getInfra();
+        double destroyedMin = Math.min(infra, Math.min(300, infra * 0.3 + 100));
+        double destroyedMax = Math.min(infra, Math.max(Math.max(350, density * 3), infra * 0.8 + 150));
+        return new AbstractMap.SimpleEntry<>((int) Math.round(destroyedMin), (int) Math.round(destroyedMax));
+    }
+
     public static class Metrics {
         public Integer population;
         public Double disease;

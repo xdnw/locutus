@@ -6,6 +6,7 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.trade.subbank.BankAlerts;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -436,6 +437,9 @@ public class NationUpdateProcessor {
             public void accept(MessageChannel channel, GuildDB guildDB) {
                 EnemyAlertChannelMode mode = guildDB.getOrNull(GuildKey.ENEMY_ALERT_CHANNEL_MODE);
                 if (mode == null) mode = EnemyAlertChannelMode.PING_USERS_IN_RANGE;
+
+                NationFilter filter = GuildKey.ENEMY_ALERT_FILTER.getOrNull(guildDB);
+                if (filter != null && !filter.test(current)) return;
 
                 double strength = BlitzGenerator.getAirStrength(current, false);
                 Set<Integer> enemies = guildDB.getCoalition(Coalition.ENEMIES);
