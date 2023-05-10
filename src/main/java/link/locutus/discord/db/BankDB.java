@@ -17,6 +17,8 @@ import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.bank.TransactionEvent;
 import link.locutus.discord.pnw.NationOrAlliance;
+import link.locutus.discord.util.AlertUtil;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.MathMan;
@@ -83,6 +85,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -112,6 +115,7 @@ import static org.jooq.impl.DSL.lower;
 import static org.springframework.data.mongodb.core.query.Update.update;
 
 public class BankDB extends DBMainV3 {
+    private final Map<Long, List<Transaction2>> transactionCache = new ConcurrentHashMap<>();
 
     public BankDB(String name) throws SQLException, ClassNotFoundException {
         super(Settings.INSTANCE.DATABASE, name, false);
@@ -757,13 +761,23 @@ public class BankDB extends DBMainV3 {
             queries.add(query);
         }
         invalidateTXCache();
+        int[] result;
         if (queries.size() == 1) {
             System.out.println("Add 1");
-            return new int[]{queries.get(0).execute()};
+            result = new int[]{queries.get(0).execute()};
         } else {
             System.out.println("Add batch");
-            return ctx().batch(queries).execute();
+            result = ctx().batch(queries).execute();
         }
+        synchronized (transactionCache) {
+            if (!transactionCache.isEmpty()) {
+                for (int i = 0; i < transactions.size(); i++) {
+                    if (result[i] <= 0) continue;
+                    cache(transactions.get(i));
+                }
+            }
+        }
+        return result;
     }
 
     public int addTransaction(Transaction2 tx, boolean ignoreInto) {
@@ -1280,10 +1294,95 @@ public class BankDB extends DBMainV3 {
 //        return list;
 //    }
 //
-    public List<Transaction2> getBankTransactions(long senderOrReceiverId, int type) {
-        return getBankTransactions(senderOrReceiverId, type, true, true);
+    private boolean shouldCache(long senderOrReceiverId, int type) {
+        return Math.abs(senderOrReceiverId) < Integer.MAX_VALUE && type == 2 || Math.abs(senderOrReceiverId) > Integer.MAX_VALUE && type == 3;
     }
-    public List<Transaction2> getBankTransactions(long senderOrReceiverId, int type, boolean includeLegacy, boolean includeModern) {
+
+    private boolean shouldCache(Transaction2 tx) {
+        if (shouldCache(tx.sender_id, tx.sender_type) || shouldCache(tx.receiver_id, tx.receiver_type)) {
+            return true;
+        }
+        return false;
+    }
+
+    private void cache(Transaction2 tx) {
+        if (shouldCache(tx.sender_id, tx.sender_type)) {
+            synchronized (transactionCache) {
+                List<Transaction2> existing = transactionCache.get(tx.sender_id);
+                if (existing != null) {
+                    existing.add(tx);
+                }
+            }
+        }
+        if (shouldCache(tx.receiver_id, tx.receiver_type)) {
+            synchronized (transactionCache) {
+                List<Transaction2> existing = transactionCache.get(tx.receiver_id);
+                if (existing != null) {
+                    existing.add(tx);
+                }
+            }
+        }
+        if (tx.note != null) {
+            if (tx.note.contains("#")) {
+                try {
+                    if (StringMan.containsIgnoreCase(tx.note, "#guild")) {
+                        String idStr = PnwUtil.parseTransferHashNotes(tx.note).get("#guild");
+                        if (MathMan.isInteger(idStr)) {
+                            long id = Long.parseLong(idStr);
+                            if (id > Integer.MAX_VALUE) {
+                                synchronized (transactionCache) {
+                                    List<Transaction2> existing = transactionCache.get(id);
+                                    if (existing != null) {
+                                        existing.add(tx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (StringMan.containsIgnoreCase(tx.note, "#alliance")) {
+                        String idStr = PnwUtil.parseTransferHashNotes(tx.note).get("#alliance");
+                        if (MathMan.isInteger(idStr)) {
+                            long id = Long.parseLong(idStr);
+                            if (id < Integer.MAX_VALUE) {
+                                synchronized (transactionCache) {
+                                    List<Transaction2> existing = transactionCache.get(id);
+                                    if (existing != null) {
+                                        existing.add(tx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                    AlertUtil.error("Error parsing transaction note: " + tx.note, e);
+                }
+            }
+        }
+    }
+
+    public List<Transaction2> getBankTransactions(long senderOrReceiverId, int type) {
+        boolean cache = shouldCache(senderOrReceiverId, type);
+        if (cache) {
+            List<Transaction2> cached = transactionCache.get(senderOrReceiverId);
+            if (cached != null) {
+                return new ArrayList<>(cached);
+            }
+        }
+        List<Transaction2> result = getBankTransactions(senderOrReceiverId, type, true, true);
+        if (cache) {
+            synchronized (transactionCache) {
+                if (transactionCache.containsKey(senderOrReceiverId)) {
+                    transactionCache.get(senderOrReceiverId).addAll(result);
+                } else {
+                    transactionCache.put(senderOrReceiverId, result);
+                }
+            }
+        }
+        return new ArrayList<>(result);
+    }
+
+    private List<Transaction2> getBankTransactions(long senderOrReceiverId, int type, boolean includeLegacy, boolean includeModern) {
         if (type == 1) return getTransactionsByNation((int) senderOrReceiverId);
         if (type != 2 && type != 3) throw new IllegalArgumentException("Invalid type: " + type);
 

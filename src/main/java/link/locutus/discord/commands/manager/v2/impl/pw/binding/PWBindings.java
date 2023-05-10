@@ -873,6 +873,14 @@ public class PWBindings extends BindingHelper {
         return Locutus.imp().getGuildDB(guild);
     }
 
+    @Binding(examples = "647252780817448972", value = "A discord guild id. See: <https://en.wikipedia.org/wiki/Template:Discord_server#Getting_Guild_ID>")
+    public GuildDB guild(long guildId) {
+        GuildDB guild = Locutus.imp().getGuildDB(guildId);
+        if (guild == null) throw new IllegalArgumentException("No guild found for: " + guildId);
+        return guild;
+    }
+
+
     @Binding
     @Me
     public GuildHandler handler(@Me GuildDB db) {

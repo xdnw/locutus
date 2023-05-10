@@ -2,6 +2,9 @@ package link.locutus.discord.db.entities;
 
 import com.politicsandwar.graphql.model.War;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -20,6 +23,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 public class DBWar {
     public int warId;
@@ -349,7 +353,7 @@ public class DBWar {
     }
 
     public String toUrl() {
-        return "" + Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war=" + warId;
+        return Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war=" + warId;
     }
 
     @Override
@@ -429,5 +433,69 @@ public class DBWar {
 
     public long possibleEndDate() {
         return TimeUtil.getTimeFromTurn(TimeUtil.getTurn(date) + 60);
+    }
+
+    public int getControl(Predicate<AttackType> attackType, MilitaryUnit... units) {
+        long acDate = 0;
+        int acNation = 0;
+        for (DBAttack attack : getAttacks()) {
+            if (attackType.test(attack.attack_type)) {
+                switch (SuccessType.values[attack.success]) {
+                    case PYRRHIC_VICTORY, MODERATE_SUCCESS -> {
+                        if (acNation != attack.attacker_nation_id) {
+                            acNation = 0;
+                            acDate = 0;
+                        }
+                    }
+                    case IMMENSE_TRIUMPH -> {
+                        acNation = attack.attacker_nation_id;
+                        acDate = attack.epoch;
+                    }
+                }
+            }
+        }
+        if (acNation != 0) {
+            for (DBAttack attack : Locutus.imp().getWarDb().getAttacks(acNation, acDate)) {
+                if (attackType.test(attack.attack_type) &&
+                        SuccessType.values[attack.success] == SuccessType.IMMENSE_TRIUMPH &&
+                        attack.defender_nation_id == acNation &&
+                        attack.epoch > acDate) {
+                    return 0;
+                }
+
+            }
+        }
+        DBNation nation = DBNation.byId(acNation);
+        if (nation != null) {
+            boolean hasUnits = false;
+            for (MilitaryUnit unit : units) {
+                if (nation.getUnits(unit) > 0) {
+                    hasUnits = true;
+                    break;
+                }
+            }
+            if (!hasUnits) return 0;
+        }
+        return acNation;
+    }
+
+    public int getGroundControl() {
+        return getControl(f -> f == AttackType.GROUND, MilitaryUnit.SOLDIER, MilitaryUnit.TANK);
+    }
+
+    public int getBlockader() {
+        return getControl(f -> f == AttackType.NAVAL, MilitaryUnit.SHIP);
+    }
+
+    public int getAirControl() {
+        return getControl(f -> switch (f) {
+            case AIRSTRIKE_INFRA -> true;
+            case AIRSTRIKE_SOLDIER -> true;
+            case AIRSTRIKE_TANK -> true;
+            case AIRSTRIKE_MONEY -> true;
+            case AIRSTRIKE_SHIP -> true;
+            case AIRSTRIKE_AIRCRAFT -> true;
+            default -> false;
+        }, MilitaryUnit.AIRCRAFT);
     }
 }

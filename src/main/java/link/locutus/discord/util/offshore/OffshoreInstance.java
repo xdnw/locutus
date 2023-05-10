@@ -150,6 +150,7 @@ public class OffshoreInstance {
         if (lastFunds2 != null && checkLast) {
             if (Arrays.equals(lastFunds2, stockpile)) {
                 System.out.println("Funds are the same");
+                outOfSync.set(false);
                 return true;
             }
         }
@@ -203,7 +204,7 @@ public class OffshoreInstance {
                 }
             }
         }
-
+        outOfSync.set(false);
         return false;
     }
 

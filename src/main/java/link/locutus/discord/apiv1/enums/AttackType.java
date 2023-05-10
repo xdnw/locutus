@@ -342,12 +342,9 @@ public enum AttackType {
                 double min = 0;
                 double max = 0;
                 for (JavaCity city : defender.getCityMap(false).values()) {
-                    double density = city.getPopulation(defender::hasProject) / city.getLand();
-                    double infra = city.getInfra();
-                    double destroyedMin = Math.min(infra, Math.min(1700, infra * 0.8 + 150));
-                    double destroyedMax = Math.min(infra, Math.max(Math.max(2000, density * 13.5), infra * 0.8 + 150));
-                    min = Math.max(min, destroyedMin);
-                    max = Math.max(max, destroyedMax);
+                    Map.Entry<Integer, Integer> infraDamage = city.getMissileDamage(defender::hasProject);
+                    min = Math.max(min, infraDamage.getKey());
+                    max = Math.max(max, infraDamage.getValue());
                 }
                 defenderCasualties.put(MilitaryUnit.INFRASTRUCTURE, Map.entry((int) Math.round(min * infraFactor), (int) Math.round(max * infraFactor)));
             }
@@ -356,12 +353,9 @@ public enum AttackType {
                 double min = 0;
                 double max = 0;
                 for (JavaCity city : defender.getCityMap(false).values()) {
-                    double density = city.getPopulation(defender::hasProject) / city.getLand();
-                    double infra = city.getInfra();
-                    double destroyedMin = Math.min(infra, Math.min(300, infra * 0.3 + 100));
-                    double destroyedMax = Math.min(infra, Math.max(Math.max(350, density * 3), infra * 0.8 + 150));
-                    min = Math.max(min, destroyedMin);
-                    max = Math.max(max, destroyedMax);
+                    Map.Entry<Integer, Integer> infraDamage = city.getNukeDamage(defender::hasProject);
+                    min = Math.max(min, infraDamage.getKey());
+                    max = Math.max(max, infraDamage.getValue());
                 }
                 defenderCasualties.put(MilitaryUnit.INFRASTRUCTURE, Map.entry((int) Math.round(min * infraFactor), (int) Math.round(max * infraFactor)));
             }

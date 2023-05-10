@@ -50,12 +50,12 @@ public class PrimitiveBindings extends BindingHelper {
     }
 
     @Binding(examples = "hello", value = "A single line of text")
-    public static String String(ParameterData param, String input) {
-        Filter annotation = param.getAnnotation(Filter.class);
+    public static String String(String input, @Default ParameterData param) {
+        Filter annotation = param == null ? null : param.getAnnotation(Filter.class);
         if (annotation != null && !input.matches(annotation.value())) {
             throw new IllegalArgumentException("Input: `" + input + "` does not match: `" + annotation.value() + "`");
         }
-        ArgChoice choice = param.getAnnotation(ArgChoice.class);
+        ArgChoice choice = param == null ? null : param.getAnnotation(ArgChoice.class);
         if (choice != null) {
             String[] choices = choice.value();
             for (String s : choices) {

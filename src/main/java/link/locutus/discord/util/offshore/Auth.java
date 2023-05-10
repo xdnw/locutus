@@ -70,16 +70,21 @@ public class Auth {
         return dom.select("input[name=token]").attr("value");
     }
 
+
     public String readStringFromURL(String urlStr, Map<String, String> arguments) throws IOException {
+        return readStringFromURL(urlStr, arguments, true);
+    }
+
+    public String readStringFromURL(String urlStr, Map<String, String> arguments, boolean post) throws IOException {
         synchronized (this)
         {
             login(false);
-            String result = FileUtil.readStringFromURL(urlStr, arguments, msCookieManager);
+            String result = FileUtil.readStringFromURL(urlStr, arguments, post, msCookieManager, i -> {});
             if (result.contains("<!--Logged Out-->")) {
                 logout();
                 msCookieManager = new CookieManager();
                 login(true);
-                result = FileUtil.readStringFromURL(urlStr, arguments, msCookieManager);
+                result = FileUtil.readStringFromURL(urlStr, arguments, post, msCookieManager, i -> {});
                 if (result.contains("<!--Logged Out-->")) {
                     throw new IllegalArgumentException("Failed to login to PNW");
                 }

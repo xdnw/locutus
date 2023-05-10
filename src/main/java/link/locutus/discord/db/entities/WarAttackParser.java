@@ -13,6 +13,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -94,10 +95,13 @@ public class WarAttackParser {
                 HashSet<Integer> alliances = new HashSet<>();
                 alliances.addAll(aaIdss1);
                 alliances.addAll(aaIdss2);
-                List<DBWar> wars = Locutus.imp().getWarDb().getWars(alliances, start, end);
+                List<DBWar> wars = Locutus.imp().getWarDb().getWars(alliances, start - TimeUnit.DAYS.toMillis(6), end);
+                attacks = Locutus.imp().getWarDb().getAttacksByWars(wars, start, end);
+                Set<Integer> warIdsByAttacks = attacks.stream().map(a -> a.war_id).collect(Collectors.toSet());
+                wars.removeIf(w -> w.date > start && !warIdsByAttacks.contains(w.warId));
+
                 warMap = new HashMap<>();
                 for (DBWar war : wars) warMap.put(war.warId, war);
-                attacks = Locutus.imp().getWarDb().getAttacksByWars(wars, start, end);
                 Map<Integer, DBWar> finalWarMap = warMap;
                 isPrimary = a -> {
                     DBWar war = finalWarMap.get(a.war_id);
