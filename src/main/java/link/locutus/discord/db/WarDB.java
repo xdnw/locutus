@@ -7,6 +7,7 @@ import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.WarAttacksContainer;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractAttack;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.WarType;
@@ -57,8 +58,8 @@ public class WarDB extends DBMainV2 {
     private Map<Integer, DBWar> warsById;
     private Map<Integer, Map<Integer, DBWar>> warsByAllianceId;
     private Map<Integer, Map<Integer, DBWar>> warsByNationId;
+    private final Int2ObjectOpenHashMap<AbstractAttack[]> attacksByWar = new Int2ObjectOpenHashMap<>();
 
-    private final ObjectArrayList<DBAttack> allAttacks2 = new ObjectArrayList<>();
     public WarDB() throws SQLException {
         super(Settings.INSTANCE.DATABASE, "war");
     }

@@ -12,7 +12,16 @@ public abstract class AbstractAttack implements IAttack {
     protected AbstractAttack(int id, long date, boolean isAttackerIdGreater) {
         int dateRelative = (int) (date - TimeUtil.getOrigin());
         // date << shift ? | id << 1 | isAttackerIdGreater
-        this.date_id_isattacker = (long) date << 32 | (long) id << 1 | (isAttackerIdGreater ? 1 : 0);
+        // id = 26 bits
+        // time = 28 bits
+        // 1498388072
+        // 186434271000
+        // 1,704,452
+        // war id = 22 bits
+        // 186434271000
+        // 137438953472
+
+        this.date_id_isattacker = (long) (dateRelative >> 1) << 27 | (long) id << 1 | (isAttackerIdGreater ? 1 : 0);
     }
 
     @Override
@@ -22,7 +31,7 @@ public abstract class AbstractAttack implements IAttack {
 
     @Override
     public long getDate() {
-        return (date_id_isattacker >> 32) + TimeUtil.getOrigin();
+        return (((date_id_isattacker >> 27) & 0x1FFFFFFFFFL) << 1) + TimeUtil.getOrigin();
     }
 
     @Override
@@ -76,8 +85,7 @@ public abstract class AbstractAttack implements IAttack {
                 return NukeAttack.create(war_attack_id, date, isAttackerIdGreater, SuccessType.values[success], improvements_destroyed, city_infra_before, infra_destroyed);
             }
             case AIRSTRIKE_INFRA -> {
-                // most attcas1 = 0, defcas1 = 0, defcas2 = 0, def mun = 0, defgas = 0
-                return null;
+                return AirstrikeInfra.create(war_attack_id, date, isAttackerIdGreater, SuccessType.values[success], attcas1, defcas1, city_infra_before, infra_destroyed, improvements_destroyed, att_gas_used, att_mun_used, def_gas_used, def_mun_used);
             }
             case AIRSTRIKE_SOLDIER -> {
                 return null;
@@ -92,7 +100,7 @@ public abstract class AbstractAttack implements IAttack {
                 return null;
             }
             case AIRSTRIKE_AIRCRAFT -> {
-                return null;
+                return AirstrikeAircraft.create(war_attack_id, date, isAttackerIdGreater, SuccessType.values[success], attcas1, defcas1, city_infra_before, infra_destroyed, improvements_destroyed, att_gas_used, att_mun_used, def_gas_used, def_mun_used);
             }
             case NAVAL -> {
                 return NavalAttack.create(war_attack_id, date, isAttackerIdGreater, SuccessType.values[success], attcas1, att_gas_used, att_mun_used, defcas1, def_gas_used, def_mun_used, city_infra_before, infra_destroyed, improvements_destroyed);

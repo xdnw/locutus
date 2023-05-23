@@ -476,10 +476,13 @@ public class PnwUtil {
         }
         arg = arg.trim();
         String original = arg;
-        arg = arg.replace(", ", ",");
-        if (!arg.contains(":") && !arg.contains("=")) arg = arg.replaceAll("[ ]+", ":");
-        arg = arg.replace(" ", "").replace('=', ':').replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
-        arg = arg.replaceAll(",([0-9.]+):([a-zA-Z]{4,})", ",$2:$1");
+        if (!arg.contains(":") && !arg.contains("=")) {
+            arg = arg.replaceAll("([0-9])[ ]([a-zA-Z])", "$1:$2");
+            arg = arg.replaceAll("([a-zA-Z])[ ]([0-9])", "$1:$2");
+        }
+        arg = arg.replace('=', ':').replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
+        arg = arg.replaceAll("([0-9.]+):([a-zA-Z]{3,})", "$2:$1");
+        arg = arg.replace(" ", "");
         double sign = 1;
         if (arg.charAt(0) == '-') {
             sign = -1;
@@ -493,9 +496,6 @@ public class PnwUtil {
             }
             arg = arg.replace("$",ResourceType.MONEY +":");
         }
-
-        System.out.println("Arg " + arg);
-
 
         arg = arg.replace("GAS:", "GASOLINE:");
         arg = arg.replace("URA:", "URANIUM:");

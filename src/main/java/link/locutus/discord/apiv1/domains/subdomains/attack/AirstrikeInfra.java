@@ -12,7 +12,6 @@ public abstract class AirstrikeInfra extends AbstractAttack{
                                         SuccessType success,
                                         int attcas1,
                                         int defcas1,
-                                        int defcas2,
                                         double city_infra_before,
                                         double infra_destroyed,
                                         int improvements_destroyed,

@@ -2465,8 +2465,9 @@ public class BankCommands {
             String title = "Receiver is not online on discord";
             StringBuilder body = new StringBuilder();
             body.append("**Receiver:** " + receiver.getNationUrlMarkup(true) + " | " + receiver.getAllianceUrlMarkup(true)).append("\n");
-            body.append("**Last active** (in-game): " + TimeUtil.secToTime(TimeUnit.MINUTES, receiver.active_m())).append("\n");
-            body.append("**Discord Status:** " + member.getOnlineStatus()).append("\n");
+            int activeM = receiver.active_m();
+            body.append("**Last active** (in-game): " + (activeM == 0 ? "Now" : TimeUtil.secToTime(TimeUnit.MINUTES, activeM))).append("\n");
+            body.append("**Discord Status:** " + (member == null ? "No Discord" : member.getOnlineStatus())).append("\n");
             body.append("\n> In case there is a game captcha it is recommended to have the receiver online on discord to solve it so your funds can be safely deposited");
             io.create().confirmation(title, body.toString(), command).cancelButton().send();
             return null;
