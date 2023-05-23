@@ -15,7 +15,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
@@ -108,15 +108,15 @@ public class KDRSheet extends Command {
                     boolean enemyAttack = false;
 
                     for (DBAttack attack : warAttacks) {
-                        if (attack.attacker_nation_id == nationId) {
+                        if (attack.getAttacker_nation_id() == nationId) {
                             selfAttack = true;
                         } else {
                             enemyAttack = true;
                         }
                     }
 
-                    Function<DBAttack, Boolean> isPrimary = a -> a.attacker_nation_id == nationId;
-                    Function<DBAttack, Boolean> isSecondary = a -> a.attacker_nation_id != nationId;
+                    Function<DBAttack, Boolean> isPrimary = a -> a.getAttacker_nation_id() == nationId;
+                    Function<DBAttack, Boolean> isSecondary = a -> a.getAttacker_nation_id() != nationId;
 
                     AttackCost cost;
                     if (war.attacker_id == nationId) {

@@ -83,7 +83,7 @@ public class HelpCommand extends Command {
                         if (command.getCategories().containsAll(requiredCategories)) {
                             if (command.desc() == null) throw new IllegalArgumentException("Command: " + command.getAliases().get(0) + " returns null for description");
                             String descShort = command.desc().split("\n")[0];
-                            String helpDesc = "`" + Settings.commandPrefix(true) + "? " + command.getAliases().get(0) + "` - " + descShort;
+                            String helpDesc = "`" + Settings.commandPrefix(true) + "? " + command.getAliases().get(0) + "`- " + descShort;
                             commandsDescShort.add(helpDesc);
                         }
                     } catch (IllegalArgumentException ignore) {
@@ -111,12 +111,12 @@ public class HelpCommand extends Command {
                     if (alias.contains(arg)) commands.add(alias);
                 }
                 if (!commands.isEmpty()) {
-                    return "Did you mean:\n - " + StringMan.join(commands, "\n - ");
+                    return "Did you mean:\n- " + StringMan.join(commands, "\n- ");
                 } else {
                     return "Command not found for `" + args.get(0) + "`" + ". Use `" + Settings.commandPrefix(true) + "?` to get a list of commands";
                 }
             }
-            response.append("\n").append("`").append(cmd.help()).append("`").append(" - ").append(cmd.desc());
+            response.append("\n").append("`").append(cmd.help()).append("`").append("- ").append(cmd.desc());
             DiscordUtil.createEmbedCommand(event.getChannel(), args.get(0), response.toString().trim());
         }
         return null;

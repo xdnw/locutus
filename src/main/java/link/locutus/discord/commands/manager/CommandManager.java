@@ -524,7 +524,7 @@ public class CommandManager {
             System.err.println(Arrays.toString(thread.getStackTrace()));
         }
         System.err.print("\n\nQueue: " + executor.getQueue().size() + " | Active: " + executor.getActiveCount() + " | task count: " + executor.getTaskCount());
-        executor.submit(() -> System.err.println(" - COMMAND EXECUTOR RAN SUCCESSFULLY!!!"));
+        executor.submit(() -> System.err.println("- COMMAND EXECUTOR RAN SUCCESSFULLY!!!"));
     }
 
     public void registerCommands(DiscordDB db) {

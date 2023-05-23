@@ -193,21 +193,21 @@ public class MailTargets extends Command {
                 mail.append("Espionage targets: (costs >$" + MathMan.format(cost) + ")\n");
 
                 if (intelOps == 0) {
-                    mail.append(" - If these targets don't work, reply with the word `more` and i'll send you some more targets (or spy who you are attacking)\n");
+                    mail.append("- If these targets don't work, reply with the word `more` and i'll send you some more targets (or spy who you are attacking)\n");
                 }
                 if (killSpies != 0) {
-                    mail.append(" - If selecting (but not executing) 1 spy on quick (gather intel) yields >50% odds, it means the enemy has no spies left.\n");
-                    mail.append(" - If an enemy has 0 spies, you can use 5|spies|quick (99%) for killing units.\n");
+                    mail.append("- If selecting (but not executing) 1 spy on quick (gather intel) yields >50% odds, it means the enemy has no spies left.\n");
+                    mail.append("- If an enemy has 0 spies, you can use 5|spies|quick (99%) for killing units.\n");
                 }
 
                 if (intelOps != myAttackOps.size()) {
-                    mail.append(" - Results may be outdated when you read it, so check they still have units to spy\n");
+                    mail.append("- Results may be outdated when you read it, so check they still have units to spy\n");
                 }
 
                 mail.append(
-                        " - If the op doesn't require it (and it says >50%), you don't have to use more spies or covert\n" +
-                        " - Reply to this message with any spy reports you do against enemies (even if not these targets)\n" +
-                        " - Remember to buy spies every day\n\n");
+                        "- If the op doesn't require it (and it says >50%), you don't have to use more spies or covert\n" +
+                        "- Reply to this message with any spy reports you do against enemies (even if not these targets)\n" +
+                        "- Remember to buy spies every day\n\n");
 
                 String baseUrl = "https://politicsandwar.com/nation/espionage/eid=";
                 for (int i = 0; i < mySpyOps.size(); i++) {

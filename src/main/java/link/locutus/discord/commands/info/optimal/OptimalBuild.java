@@ -56,9 +56,9 @@ public class OptimalBuild extends Command {
     public String desc() {
         return "Optimize a build for a city e.g.\n" +
                 "For 30 days:" +
-                " - `" + Settings.commandPrefix(true) + "OptimalBuild 30 " + Settings.INSTANCE.PNW_URL() + "/city/id=1234`\n" +
+                "- `" + Settings.commandPrefix(true) + "OptimalBuild 30 " + Settings.INSTANCE.PNW_URL() + "/city/id=1234`\n" +
                 "For an indefinite time span:\n" +
-                " - `" + Settings.commandPrefix(true) + "OptimalBuild " + Settings.INSTANCE.PNW_URL() + "/city/id=1234`\n" +
+                "- `" + Settings.commandPrefix(true) + "OptimalBuild " + Settings.INSTANCE.PNW_URL() + "/city/id=1234`\n" +
                 "To specify an MMR, add e.g. `mmr=5050`\n" +
                 "To specify a continent, add e.g. `continent=australia`\n" +
                 "To specify an age (int days), add e.g. `age=150`\n" +

@@ -18,7 +18,7 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -143,8 +142,8 @@ public class WarCostSheet extends Command {
                 List<DBWar> wars = entry.getValue();
                 Set<Integer> warIds = wars.stream().map(f -> f.warId).collect(Collectors.toSet());
                 List<DBAttack> attacks = new ArrayList<>();
-                for (DBAttack attack : allAttacks) if (warIds.contains(attack.war_id)) attacks.add(attack);
-                Map<Integer, List<DBAttack>> attacksByWar = new RankBuilder<>(attacks).group(f -> f.war_id).get();
+                for (DBAttack attack : allAttacks) if (warIds.contains(attack.getWar_id())) attacks.add(attack);
+                Map<Integer, List<DBAttack>> attacksByWar = new RankBuilder<>(attacks).group(f -> f.getWar_id()).get();
 
                 for (DBWar war : wars) {
                     List<DBAttack> warAttacks = attacksByWar.getOrDefault(war.warId, Collections.emptyList());
@@ -153,15 +152,15 @@ public class WarCostSheet extends Command {
                     boolean enemyAttack = false;
 
                     for (DBAttack attack : warAttacks) {
-                        if (attack.attacker_nation_id == nationId) {
+                        if (attack.getAttacker_nation_id() == nationId) {
                             selfAttack = true;
                         } else {
                             enemyAttack = true;
                         }
                     }
 
-                    Function<DBAttack, Boolean> isPrimary = a -> a.attacker_nation_id == nationId;
-                    Function<DBAttack, Boolean> isSecondary = a -> a.attacker_nation_id != nationId;
+                    Function<DBAttack, Boolean> isPrimary = a -> a.getAttacker_nation_id() == nationId;
+                    Function<DBAttack, Boolean> isSecondary = a -> a.getAttacker_nation_id() != nationId;
 
                     AttackCost cost;
                     if (war.attacker_id == nationId) {

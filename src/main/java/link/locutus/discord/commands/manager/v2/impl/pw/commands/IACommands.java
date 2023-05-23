@@ -241,8 +241,8 @@ public class IACommands {
         StringBuilder response = new StringBuilder();
         for (Map.Entry<Role, Set<Role>> entry : assignable.entrySet()) {
             Role role = entry.getKey();
-            response.append("\n" + role.getName() + ":\n - "
-                    + StringMan.join(entry.getValue().stream().map(Role::getName).collect(Collectors.toList()), "\n - "));
+            response.append("\n" + role.getName() + ":\n- "
+                    + StringMan.join(entry.getValue().stream().map(Role::getName).collect(Collectors.toList()), "\n- "));
         }
 
         return response.toString().trim();
@@ -260,7 +260,7 @@ public class IACommands {
         result.append(GuildKey.ASSIGNABLE_ROLES.set(db, assignable)).append("\n");
 
         result.append(StringMan.getString(requireRole) + " can now add/remove " + StringMan.getString(assignableRoles) + " via " + CM.role.add.cmd.toSlashMention() + " / " + CM.role.remove.cmd.toSlashMention() + "\n" +
-                " - To see a list of current mappings, use " + CM.settings.info.cmd.create(GuildKey.ASSIGNABLE_ROLES.name(), null, null) + "");
+                "- To see a list of current mappings, use " + CM.settings.info.cmd.create(GuildKey.ASSIGNABLE_ROLES.name(), null, null) + "");
         return result.toString();
     }
 
@@ -290,7 +290,7 @@ public class IACommands {
         response.append("\n" + GuildKey.ASSIGNABLE_ROLES.set(db, assignable));
 
         return response.toString() + "\n" +
-                " - To see a list of current mappings, use " + GuildKey.ASSIGNABLE_ROLES.getCommandMention() + "";
+                "- To see a list of current mappings, use " + GuildKey.ASSIGNABLE_ROLES.getCommandMention() + "";
     }
 
     @Command(desc = "Add discord role to a user\n" +
@@ -630,7 +630,7 @@ public class IACommands {
                 IAChannel myChan = iaCat.get(myMentee);
                 IACategory.SortedCategory category = categoryMap.get(myMentee);
                 response.append("`" + myMentee.getNation() + "` <" + myMentee.getNationUrl() + ">\n");
-                response.append(" - " + category + " | ");
+                response.append("- " + category + " | ");
                 if (myChan != null && myChan.getChannel() != null) {
                     GuildMessageChannel tc = myChan.getChannel();
                     response.append(" | " + tc.getAsMention());
@@ -639,13 +639,13 @@ public class IACommands {
                         response.append(" | " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - lastMessageTime));
                     }
                 }
-                response.append("\n - c" + myMentee.getCities() + " mmr[unit]=" + myMentee.getMMR() + " mmr[build]=" + myMentee.getMMRBuildingStr() + " off:" + myMentee.getOff());
+                response.append("\n- c" + myMentee.getCities() + " mmr[unit]=" + myMentee.getMMR() + " mmr[build]=" + myMentee.getMMRBuildingStr() + " off:" + myMentee.getOff());
 
                 if (includeAudit) {
                     Map<IACheckup.AuditType, Map.Entry<Object, String>> checkupResult = checkup.checkup(myMentee, true, true);
                     checkupResult.entrySet().removeIf(f -> f.getValue() == null || f.getValue().getValue() == null);
                     if (!checkupResult.isEmpty()) {
-                        response.append("\n - Failed: [" + StringMan.join(checkupResult.keySet(), ", ") + "]");
+                        response.append("\n- Failed: [" + StringMan.join(checkupResult.keySet(), ", ") + "]");
                     }
                 }
                 response.append("\n\n");
@@ -702,26 +702,26 @@ public class IACommands {
                     }
                     if (!idleMentors.isEmpty()) {
                         List<String> memberNames = idleMentors.stream().map(DBNation::getNation).collect(Collectors.toList());
-                        response.append("\n**Idle mentors**").append("\n - ").append(StringMan.join(memberNames, "\n - "));
+                        response.append("\n**Idle mentors**").append("\n- ").append(StringMan.join(memberNames, "\n- "));
                     }
                 }
 
                 if (!membersUnverified.isEmpty()) {
                     List<String> memberNames = membersUnverified.stream().map(DBNation::getNation).collect(Collectors.toList());
-                    response.append("\n**Unverified members**").append("\n - ").append(StringMan.join(memberNames, "\n - "));
+                    response.append("\n**Unverified members**").append("\n- ").append(StringMan.join(memberNames, "\n- "));
                 }
                 if (!membersNotOnDiscord.isEmpty()) {
                     List<String> memberNames = membersNotOnDiscord.stream().map(DBNation::getNation).collect(Collectors.toList());
-                    response.append("\n**Members left discord**").append("\n - ").append(StringMan.join(memberNames, "\n - "));
+                    response.append("\n**Members left discord**").append("\n- ").append(StringMan.join(memberNames, "\n- "));
                 }
                 if (!nationsNoIAChan.isEmpty()) {
                     List<String> memberNames = nationsNoIAChan.stream().map(DBNation::getNation).collect(Collectors.toList());
-                    response.append("\n**No interview channel**").append("\n - ").append(StringMan.join(memberNames, "\n - "));
+                    response.append("\n**No interview channel**").append("\n- ").append(StringMan.join(memberNames, "\n- "));
                 }
             }
             if (!noMentor.isEmpty()) {
                 List<String> memberNames = noMentor.stream().map(DBNation::getNation).collect(Collectors.toList());
-                response.append("\n**No mentor**").append("\n - ").append(StringMan.join(memberNames, "\n - "));
+                response.append("\n**No mentor**").append("\n- ").append(StringMan.join(memberNames, "\n- "));
             }
         }
 
@@ -943,14 +943,14 @@ public class IACommands {
             }
         }
 
-        return "Done sending mail:\n - " + String.join("\n - ", full);
+        return "Done sending mail:\n- " + String.join("\n- ", full);
     }
 
     @Command(desc = "List or set your tax bracket.\n" +
             "Notes:\n" +
-            " - Internal tax rate affects what portion of taxes are not included in `{prefix}deposits check` (typically used when 100/100 taxes)\n" +
-            " - Set the alliance internal tax rate with: `{prefix}settings key:TAX_BASE` (retroactive)\n" +
-            " - This command is not retroactive and overrides the alliance internal taxrate", aliases = {"SetBracket", "SetTaxes", "SetTaxRate", "SetTaxBracket"})
+            "- Internal tax rate affects what portion of taxes are not included in `{prefix}deposits check` (typically used when 100/100 taxes)\n" +
+            "- Set the alliance internal tax rate with: `{prefix}settings key:TAX_BASE` (retroactive)\n" +
+            "- This command is not retroactive and overrides the alliance internal taxrate", aliases = {"SetBracket", "SetTaxes", "SetTaxRate", "SetTaxBracket"})
     @RolePermission(Roles.MEMBER)
     @IsAlliance
     public String setBracket(@Me GuildDB db, @Me User author, @Me DBNation me, @Filter("{guild_alliance_id}") Set<DBNation> nations, @Default TaxBracket bracket, @Default TaxRate internalTaxRate) throws IOException {
@@ -995,7 +995,7 @@ public class IACommands {
             for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet()) {
                 bracket = entry.getValue();
                 String url = bracket.getUrl();
-                response.append("\n - " + MarkupUtil.markdownUrl("#" + bracket.taxId, url) + ": " + bracket.moneyRate + "/" + bracket.rssRate + " (" + bracket.getNations().size() + " nations) - " + bracket.getName());
+                response.append("\n- " + MarkupUtil.markdownUrl("#" + bracket.taxId, url) + ": " + bracket.moneyRate + "/" + bracket.rssRate + " (" + bracket.getNations().size() + " nations)- " + bracket.getName());
             }
             throw new IllegalArgumentException(response.toString());
         }
@@ -1158,7 +1158,7 @@ public class IACommands {
                 }
 
                 if (!checks.isEmpty()) {
-                    return "The following checks have failed:\n" + StringMan.join(checks, "\n - ");
+                    return "The following checks have failed:\n" + StringMan.join(checks, "\n- ");
                 }
 
                 if (db.getOffshore() != null) {
@@ -1323,7 +1323,7 @@ public class IACommands {
         msg.confirmation(title, embed.toString(), cmd).send();
 
         if (errorMsgs.isEmpty()) return null;
-        return "Errors\n - " + StringMan.join(errorMsgs, "\n - ");
+        return "Errors\n- " + StringMan.join(errorMsgs, "\n- ");
     }
 
     @Command(desc = "Bulk send in-game mail from a google sheet\n" +
@@ -1424,7 +1424,7 @@ public class IACommands {
             }
             response.add(nation.getNationUrl() + " -> " + result);
         }
-        return "Done!\n - " + StringMan.join(response, "\n - ");
+        return "Done!\n- " + StringMan.join(response, "\n- ");
     }
 
     private String channelMemberInfo(Set<Integer> aaIds, Role memberRole, Member member) {
@@ -1798,7 +1798,7 @@ public class IACommands {
 
                                 String timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, diffRounded);
 
-                                response.append(" - [" + timeStr + "] **" + message.getAuthor().getName() + "**: `" + msgTrimmed + "`");
+                                response.append("- [" + timeStr + "] **" + message.getAuthor().getName() + "**: `" + msgTrimmed + "`");
                                 response.append("\n");
                             }
 

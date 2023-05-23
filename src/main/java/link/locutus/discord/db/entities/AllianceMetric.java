@@ -3,17 +3,12 @@ package link.locutus.discord.db.entities;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
-import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.math.ArrayUtil;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
-import rocker.grant.cities;
-import rocker.grant.city;
 
 import java.util.AbstractMap;
 import java.util.Arrays;
@@ -190,7 +185,7 @@ public enum AllianceMetric {
             AttackCost cost = new AttackCost();
             long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
             List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(nationIds, cutoff);
-            cost.addCost(attacks, a -> nationIds.contains(a.attacker_nation_id), b -> !nationIds.contains(b.defender_nation_id));
+            cost.addCost(attacks, a -> nationIds.contains(a.getAttacker_nation_id()), b -> !nationIds.contains(b.getDefender_nation_id()));
             return cost.convertedTotal(true);
         }
     },

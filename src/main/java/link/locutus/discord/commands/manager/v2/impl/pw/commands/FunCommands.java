@@ -52,7 +52,7 @@ public class FunCommands {
 
         int num = 113 + ThreadLocalRandom.current().nextInt(312);
         String msg = "You successfully snuck in the cover of night and replaced every sign in Borg's city, your spies replaced " + num + " signs, your agents were able to operate undetected, the operation cost you $0 and 0 of your spies were captured and executed.";
-        msg += "\nThe city is now yours! (until someone wakes up)" + "\n - <" + url + ">";
+        msg += "\nThe city is now yours! (until someone wakes up)" + "\n- <" + url + ">";
 
         boolean stolenAll = false;
         if (new HashSet<>(stolenCities.values()).size() == 1 && stolenCities.size() == cities.size()) {

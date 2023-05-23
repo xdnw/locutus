@@ -19,12 +19,19 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.Attribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.CIEDE2000;
+import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.text.DateFormat;
+import java.text.DecimalFormat;
+import java.text.FieldPosition;
+import java.text.Format;
+import java.text.ParsePosition;
 import java.util.List;
 import java.util.*;
 import java.util.function.Function;
@@ -303,7 +310,7 @@ public abstract class TimeNumericTable<T> {
         return this;
     }
 
-    public XYPlot getTable() {
+    public XYPlot getTable(boolean dateFormatX) {
         DataSource[] series = new DataSource[amt];
         for (int i = 0; i < amt; i++) {
             DataSource source = new DataSeries(this.labels[i], data, 0, i + 1);
@@ -346,9 +353,15 @@ public abstract class TimeNumericTable<T> {
         AxisRenderer axisRendererX = plot.getAxisRenderer(XYPlot.AXIS_X);
         axisRendererX.setTicksAutoSpaced(true);
         axisRendererX.setMinorTicksCount(4);
+//        if (dateFormatX) {
+//            axisRendererX.setTickLabelFormat(new MathMan.RoundedMetricPrefixFormat());
+//        } else {
+//            axisRendererX.setTickLabelFormat(TimeUtil.DD_MM_YY);
+//        }
         AxisRenderer axisRendererY = plot.getAxisRenderer(XYPlot.AXIS_Y);
         axisRendererY.setTicksAutoSpaced(true);
         axisRendererY.setMinorTicksCount(4);
+        axisRendererY.setTickLabelFormat(new MathMan.RoundedMetricPrefixFormat());
 
         Set<Color> colors = new HashSet<>();
         switch (amt) {
@@ -385,8 +398,8 @@ public abstract class TimeNumericTable<T> {
         return plot;
     }
 
-    public byte[] write() throws IOException {
-        XYPlot plot = getTable();
+    public byte[] write(boolean date) throws IOException {
+        XYPlot plot = getTable(date);
 
         DrawableWriter writer = DrawableWriterFactory.getInstance().get("image/png");
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -394,7 +407,7 @@ public abstract class TimeNumericTable<T> {
         return baos.toByteArray();
     }
 
-    public void write(IMessageIO channel) throws IOException {
-        channel.create().file("img.png", write()).send();
+    public void write(IMessageIO channel, boolean date) throws IOException {
+        channel.create().file("img.png", write(date)).send();
     }
 }

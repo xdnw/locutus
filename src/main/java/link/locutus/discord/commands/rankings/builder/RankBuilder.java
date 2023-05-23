@@ -138,7 +138,7 @@ public class RankBuilder<T> {
         if (cmd != null && !cmd.isBlank()) msg = msg.commandButton(cmd, emoji);
 
         if (upload && values.size() > 25) {
-            msg.file(title, toString());
+            msg.file(title + ".txt", toString());
         }
 
         msg.send();

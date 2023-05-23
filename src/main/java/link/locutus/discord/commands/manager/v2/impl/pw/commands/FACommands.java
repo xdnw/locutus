@@ -74,7 +74,7 @@ public class FACommands {
         }
         if (message == null) message = "";
         Set<Treaty> result = sender.sendTreaty(receiver.getAlliance_id(), type, message, days);
-        return "Sent:\n - " + StringMan.join(result, "\n - ");
+        return "Sent:\n- " + StringMan.join(result, "\n- ");
     }
 
     @Command(desc = "Approve a pending treaty from an alliance")
@@ -87,7 +87,7 @@ public class FACommands {
             return "No treaties to approve";
         }
 
-        return "Approved:\n - " + StringMan.join(changed, "\n - ");
+        return "Approved:\n- " + StringMan.join(changed, "\n- ");
     }
 
     @Command(desc = "Cancel a treaty in-game")
@@ -100,7 +100,7 @@ public class FACommands {
             return "No treaties to cancel";
         }
 
-        return "Cancelled:\n - " + StringMan.join(changed, "\n - ");
+        return "Cancelled:\n- " + StringMan.join(changed, "\n- ");
     }
 
     @Command(desc = "List the bot coalitions")
@@ -275,7 +275,6 @@ public class FACommands {
     }
 
     @Command(desc = "Create an embassy channel in the embassy category")
-    @RolePermission(Roles.REGISTERED)
     public String embassy(@Me GuildDB db, @Me Guild guild, @Me User user, @Me DBNation me, @Arg("The nation to create an embassy for") @Default("%user%") DBNation nation) {
         if (nation == null) nation = me;
         if (!me.equals(nation) && !Roles.FOREIGN_AFFAIRS.has(user, guild)) return "You do not have FOREIGN_AFFAIRS";

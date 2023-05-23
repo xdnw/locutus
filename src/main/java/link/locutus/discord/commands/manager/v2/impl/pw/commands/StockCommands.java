@@ -285,7 +285,7 @@ public class StockCommands {
         all.addAll(matches.stream().map(Map.Entry::getKey).toList());
         all.addAll(desc);
         if (!all.isEmpty()) {
-            return "Matching exchanges:\n - " + StringMan.join(all, "\n - ");
+            return "Matching exchanges:\n- " + StringMan.join(all, "\n- ");
         }
         return "No exchanges found for: `" + filter + "`";
     }

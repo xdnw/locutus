@@ -64,13 +64,13 @@ public class AllianceListener {
 
             if (lastAA != null) {
                 String previousAAName = Locutus.imp().getNationDB().getAllianceName(lastAA.getKey());
-                body.append(" - " + member.getNation() + " previously " + lastAA.getValue() + " in " + previousAAName + "\n");
+                body.append("- " + member.getNation() + " previously " + lastAA.getValue() + " in " + previousAAName + "\n");
 
                 GuildDB db = Locutus.imp().getRootCoalitionServer();
                 if (db != null) {
                     Set<String> coalitions = db.findCoalitions(lastAA.getKey());
                     if (!coalitions.isEmpty()) {
-                        body.append(" - in coalitions: `" + StringMan.join(coalitions, ",") + "`\n");
+                        body.append("- in coalitions: `" + StringMan.join(coalitions, ",") + "`\n");
                     }
                 }
             }
@@ -84,7 +84,7 @@ public class AllianceListener {
 
             if (!wars.isEmpty()) body.append("Wars:\n");
             for (Map.Entry<Integer, Integer> entry : wars.entrySet()) {
-                body.append(" - " + entry.getValue() + " wars vs " + PnwUtil.getMarkdownUrl(entry.getKey(), true) + "\n");
+                body.append("- " + entry.getValue() + " wars vs " + PnwUtil.getMarkdownUrl(entry.getKey(), true) + "\n");
             }
         }
 

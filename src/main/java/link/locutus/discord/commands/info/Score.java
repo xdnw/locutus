@@ -122,8 +122,8 @@ public class Score extends Command {
         if (score == 0) return usage(event);
 
         return "Score: " + MathMan.format(score) + "\n" +
-                "WarRange: " + MathMan.format(score * 0.75) + " - " + MathMan.format(score * 1.75) + "\n" +
-                "Can be Attacked By: " + MathMan.format(score / 1.75) + " - " + MathMan.format(score / 0.75) + "\n" +
-                "Spy range: " + MathMan.format(score * 0.4) + " - " + MathMan.format(score * 1.5);
+                "WarRange: " + MathMan.format(score * 0.75) + "- " + MathMan.format(score * 1.75) + "\n" +
+                "Can be Attacked By: " + MathMan.format(score / 1.75) + "- " + MathMan.format(score / 0.75) + "\n" +
+                "Spy range: " + MathMan.format(score * 0.4) + "- " + MathMan.format(score * 1.5);
     }
 }

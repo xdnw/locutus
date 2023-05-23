@@ -86,7 +86,7 @@ public class RateLimitUtil {
                                 .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
                                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
                         for (Map.Entry<String, Integer> entry2 : exceptionStrings.entrySet()) {
-                            response.append("\n - " + entry2.getValue() + ": " + entry2.getKey());
+                            response.append("\n- " + entry2.getValue() + ": " + entry2.getKey());
                         }
                     }
                 }

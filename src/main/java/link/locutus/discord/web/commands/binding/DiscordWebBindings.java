@@ -57,7 +57,7 @@ public class DiscordWebBindings extends WebBindingHelper {
             values.add(obj.getAsMention());
             DBNation nation = DiscordUtil.getNation(obj);
             if (nation != null) {
-                subtext.add(nation.getNation() + " - " + nation.getAllianceName() + " - " + Rank.byId(nation.getPosition()));
+                subtext.add(nation.getNation() + "- " + nation.getAllianceName() + "- " + Rank.byId(nation.getPosition()));
             } else {
                 subtext.add("");
             }
@@ -73,7 +73,7 @@ public class DiscordWebBindings extends WebBindingHelper {
             values.add(obj.getAsMention());
             DBNation nation = DiscordUtil.getNation(obj.getUser());
             if (nation != null) {
-                subtext.add(nation.getNation() + " - " + nation.getAllianceName() + " - " + Rank.byId(nation.getPosition()));
+                subtext.add(nation.getNation() + "- " + nation.getAllianceName() + "- " + Rank.byId(nation.getPosition()));
             } else {
                 subtext.add("");
             }

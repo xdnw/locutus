@@ -93,7 +93,7 @@ public class SettingCommands {
                     key.allowed(db, true);
                 } catch (IllegalArgumentException e) {
                     String[] msg = e.getMessage().split("\n");
-                    response.append("**missing requirements**:\n - " + StringMan.join(msg, "\n - ") + "\n");
+                    response.append("**missing requirements**:\n- " + StringMan.join(msg, "\n- ") + "\n");
                 }
                 response.append("\n");
 
@@ -129,7 +129,7 @@ public class SettingCommands {
                         if (!currKey.allowed(db, false)) {
                             hide = "~~";
                         }
-                        response.append(" - ").append(hide + "`" + currKey.name() + "`" + hide);
+                        response.append("- ").append(hide + "`" + currKey.name() + "`" + hide);
 //                        response.append(" (" + currKey.getCommandMention() + ")");
 
                         Object setValue = keyObjectEntry.getValue();

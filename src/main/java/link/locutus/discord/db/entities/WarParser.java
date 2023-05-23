@@ -8,7 +8,7 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import net.dv8tion.jda.api.entities.Guild;
 
 import java.util.ArrayList;
@@ -20,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -46,10 +47,10 @@ public class WarParser {
     }
 
     public static WarParser of(Collection<NationOrAlliance> coal1, Collection<NationOrAlliance> coal2, long start, long end) {
-        Collection<Integer> coal1Alliances = coal1.stream().filter(NationOrAlliance::isAlliance).map(NationOrAlliance::getId).collect(Collectors.toSet());
-        Collection<Integer> coal1Nations = coal1.stream().filter(NationOrAlliance::isNation).map(NationOrAlliance::getId).collect(Collectors.toSet());
-        Collection<Integer> coal2Alliances = coal2.stream().filter(NationOrAlliance::isAlliance).map(NationOrAlliance::getId).collect(Collectors.toSet());
-        Collection<Integer> coal2Nations = coal2.stream().filter(NationOrAlliance::isNation).map(NationOrAlliance::getId).collect(Collectors.toSet());
+        Collection<Integer> coal1Alliances = coal1 == null ? null : coal1.stream().filter(NationOrAlliance::isAlliance).map(NationOrAlliance::getId).collect(Collectors.toSet());
+        Collection<Integer> coal1Nations = coal1 == null ? null : coal1.stream().filter(NationOrAlliance::isNation).map(NationOrAlliance::getId).collect(Collectors.toSet());
+        Collection<Integer> coal2Alliances = coal2 == null ? null : coal2.stream().filter(NationOrAlliance::isAlliance).map(NationOrAlliance::getId).collect(Collectors.toSet());
+        Collection<Integer> coal2Nations = coal2 == null ? null : coal2.stream().filter(NationOrAlliance::isNation).map(NationOrAlliance::getId).collect(Collectors.toSet());
         return of(coal1Alliances, coal1Nations, coal2Alliances, coal2Nations,  start, end);
     }
 
@@ -81,6 +82,9 @@ public class WarParser {
     }
 
     private WarParser(Collection<Integer> coal1Alliances, Collection<Integer> coal1Nations, Collection<Integer> coal2Alliances, Collection<Integer> coal2Nations, long start, long end) {
+        if (coal1Alliances == null && coal1Nations == null && coal2Alliances == null && coal2Nations == null) {
+            throw new IllegalArgumentException("At least one coalition must be non-null");
+        }
         if (coal1Alliances == null) coal1Alliances = new HashSet<>();
         if (coal1Nations == null) coal1Nations = new HashSet<>();
         if (coal2Alliances == null) coal2Alliances = new HashSet<>();
@@ -98,8 +102,16 @@ public class WarParser {
         this.nameA = coal1Names.isEmpty() ? "*" : coal1Names.size() > 10 ? "col1" : StringMan.join(coal1Names, ",");
         this.nameB = coal1Names.isEmpty() ? "*" : coal2Names.size() > 10 ? "col1" : StringMan.join(coal2Names, ",");
 
-        this.isPrimary = w -> this.coal1Alliances.contains(w.attacker_aa) || this.coal1Nations.contains(w.attacker_id);
-        this.isSecondary = w -> this.coal2Alliances.contains(w.attacker_aa) || this.coal2Nations.contains(w.attacker_id);
+        if (coal1Alliances.isEmpty() && coal1Nations.isEmpty()) {
+            this.isPrimary = w -> !getIsSecondary().apply(w);
+        } else {
+            this.isPrimary = w -> this.coal1Alliances.contains(w.attacker_aa) || this.coal1Nations.contains(w.attacker_id);
+        }
+        if (coal2Alliances.isEmpty() && coal2Nations.isEmpty()) {
+            this.isSecondary = w -> !getIsPrimary().apply(w);
+        } else {
+            this.isSecondary = w -> this.coal2Alliances.contains(w.attacker_aa) || this.coal2Nations.contains(w.attacker_id);
+        }
         this.start = start;
         this.end = end;
     }
@@ -118,7 +130,7 @@ public class WarParser {
     }
 
     public WarParser allowedWarTypes(Set<WarType> allowedWarTypes) {
-        if (allowedWarTypes != null) getWars().entrySet().removeIf(f -> !allowedWarTypes.contains(f.getValue()));
+        if (allowedWarTypes != null) getWars().entrySet().removeIf(f -> !allowedWarTypes.contains(f.getValue().warType));
         return this;
     }
 
@@ -128,13 +140,13 @@ public class WarParser {
     }
 
     public WarParser allowedAttackTypes(Set<AttackType> attackTypes) {
-        if (attackTypes != null) getAttacks().removeIf(f -> !attackTypes.contains(f));
+        if (attackTypes != null) getAttacks().removeIf(f -> !attackTypes.contains(f.getAttack_type()));
         return this;
     }
 
     public Map<Integer, DBWar> getWars() {
         if (this.wars == null) {
-            this.wars = Locutus.imp().getWarDb().getWars(coal1Alliances, coal1Nations, coal2Alliances, coal2Nations, start, end);
+            this.wars = Locutus.imp().getWarDb().getWars(coal1Alliances, coal1Nations, coal2Alliances, coal2Nations, start - TimeUnit.DAYS.toMillis(5), end);
         }
         return wars;
     }
@@ -157,19 +169,19 @@ public class WarParser {
 
     public Function<DBAttack, Boolean> getAttackPrimary() {
         return attack -> {
-            DBWar war = getWars().get(attack.war_id);
+            DBWar war = getWars().get(attack.getWar_id());
             if (war == null) return false;
             boolean isWarPrimary = isPrimary.apply(war);
-            return (isWarPrimary ? war.attacker_id : war.defender_id) == attack.attacker_nation_id;
+            return (isWarPrimary ? war.attacker_id : war.defender_id) == attack.getAttacker_nation_id();
         };
     }
 
     public Function<DBAttack, Boolean> getAttackSecondary() {
         return attack -> {
-            DBWar war = getWars().get(attack.war_id);
+            DBWar war = getWars().get(attack.getWar_id());
             if (war == null) return false;
             boolean isWarSecondary = isSecondary.apply(war);
-            return (isWarSecondary ? war.attacker_id : war.defender_id) == attack.defender_nation_id;
+            return (isWarSecondary ? war.attacker_id : war.defender_id) == attack.getDefender_nation_id();
         };
     }
 
@@ -214,10 +226,10 @@ public class WarParser {
         Function<DBAttack, Boolean> attSecondary = getAttackSecondary();
         Map<Long, AttackCost> warCostByDay = new LinkedHashMap<>();
         for (DBAttack attack : getAttacks()) {
-            if (attack.epoch > System.currentTimeMillis()) {
-                System.out.println(attack.war_attack_id + " is in future");
+            if (attack.getDate() > System.currentTimeMillis()) {
+                System.out.println(attack.getWar_attack_id() + " is in future");
             }
-            long turn = TimeUtil.getTurn(attack.epoch);
+            long turn = TimeUtil.getTurn(attack.getDate());
             long day = turn / 12;
             AttackCost cost = warCostByDay.computeIfAbsent(day, f -> new AttackCost(nameA, nameB));
             cost.addCost(attack, attPrimary, attSecondary);
@@ -233,12 +245,12 @@ public class WarParser {
             if (!attPrimary.apply(attack) && !attSecondary.apply(attack)) continue;
             {
                 String other = attPrimary.apply(attack) ? nameB : nameA;
-                AttackCost cost = warCostByNation.computeIfAbsent(attack.attacker_nation_id, f -> new AttackCost(PnwUtil.getName(attack.attacker_nation_id, false), other));
+                AttackCost cost = warCostByNation.computeIfAbsent(attack.getAttacker_nation_id(), f -> new AttackCost(PnwUtil.getName(attack.getAttacker_nation_id(), false), other));
                 cost.addCost(attack, true);
             }
             {
                 String other = attSecondary.apply(attack) ? nameA : nameB;
-                AttackCost cost = warCostByNation.computeIfAbsent(attack.defender_nation_id, f -> new AttackCost(PnwUtil.getName(attack.defender_nation_id, false), other));
+                AttackCost cost = warCostByNation.computeIfAbsent(attack.getDefender_nation_id(), f -> new AttackCost(PnwUtil.getName(attack.getDefender_nation_id(), false), other));
                 cost.addCost(attack, false);
             }
         }
@@ -250,7 +262,7 @@ public class WarParser {
         Function<DBAttack, Boolean> attPrimary = getAttackPrimary();
         Function<DBAttack, Boolean> attSecondary = getAttackSecondary();
         for (DBAttack attack : getAttacks()) {
-            DBWar war = getWars().get(attack.war_id);
+            DBWar war = getWars().get(attack.getWar_id());
             {
                 String other = attPrimary.apply(attack) ? nameB : nameA;
                 AttackCost cost = warCostByAA.computeIfAbsent(war.attacker_aa, f -> new AttackCost(PnwUtil.getName(war.attacker_aa, true), other));
@@ -274,12 +286,12 @@ public class WarParser {
             if (!attPrimary.apply(attack) && !attSecondary.apply(attack)) continue;
             {
                 String other = attPrimary.apply(attack) ? nameB : nameA;
-                AttackTypeBreakdown cost = warCostByNation.computeIfAbsent(attack.attacker_nation_id, f -> new AttackTypeBreakdown(PnwUtil.getName(attack.attacker_nation_id, false), other));
+                AttackTypeBreakdown cost = warCostByNation.computeIfAbsent(attack.getAttacker_nation_id(), f -> new AttackTypeBreakdown(PnwUtil.getName(attack.getAttacker_nation_id(), false), other));
                 cost.addAttack(attack, true);
             }
             {
                 String other = attSecondary.apply(attack) ? nameA : nameB;
-                AttackTypeBreakdown cost = warCostByNation.computeIfAbsent(attack.defender_nation_id, f -> new AttackTypeBreakdown(PnwUtil.getName(attack.defender_nation_id, false), other));
+                AttackTypeBreakdown cost = warCostByNation.computeIfAbsent(attack.getDefender_nation_id(), f -> new AttackTypeBreakdown(PnwUtil.getName(attack.getDefender_nation_id(), false), other));
                 cost.addAttack(attack, false);
             }
         }
@@ -291,7 +303,7 @@ public class WarParser {
         Function<DBAttack, Boolean> attPrimary = getAttackPrimary();
         Function<DBAttack, Boolean> attSecondary = getAttackSecondary();
         for (DBAttack attack : getAttacks()) {
-            DBWar war = getWars().get(attack.war_id);
+            DBWar war = getWars().get(attack.getWar_id());
             {
                 String other = attPrimary.apply(attack) ? nameB : nameA;
                 AttackTypeBreakdown cost = warCostByAA.computeIfAbsent(war.attacker_aa, f -> new AttackTypeBreakdown(PnwUtil.getName(war.attacker_aa, true), other));

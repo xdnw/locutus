@@ -61,7 +61,7 @@ public class StockTrade {
         StringBuilder desc = new StringBuilder();
         if (seller != 0) desc.append(PnwUtil.getName(seller, false));
         else desc.append("SELLER WANTED");
-        desc.append(" - ");
+        desc.append("- ");
         if (buyer != 0) desc.append(PnwUtil.getName(buyer, false));
         else desc.append("BUYER WANTED");
         desc.append(": ");

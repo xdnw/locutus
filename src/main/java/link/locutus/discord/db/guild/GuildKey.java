@@ -465,6 +465,16 @@ public class GuildKey {
             return RECRUIT_MESSAGE_DELAY.setAndValidate(db, user, timediff);
         }
 
+        // fix legacy
+        @Override
+        public Long parse(GuildDB db, String input) {
+            // if info contains letters
+            if (input.matches(".*[a-zA-Z]+.*")) {
+                input = "" + (TimeUtil.timeToSec(input) * 1000);
+            }
+            return super.parse(db, input);
+        }
+
         @Override
         public String toReadableString(Long value) {
             return TimeUtil.secToTime(TimeUnit.MILLISECONDS, value);
@@ -474,6 +484,7 @@ public class GuildKey {
         public String help() {
             return "The amount of time to delay recruitment messages by";
         }
+
     }.setupRequirements(f -> f.requireValidAlliance().requires(RECRUIT_MESSAGE_OUTPUT).requires(ALLIANCE_ID));
     public static GuildSetting<Map<NationFilter, TaxRate>> REQUIRED_INTERNAL_TAXRATE = new GuildSetting<Map<NationFilter, TaxRate>>(GuildSettingCategory.TAX, Map.class, NationFilter.class, TaxRate.class) {
         @Command(descMethod = "help")
@@ -953,10 +964,10 @@ public class GuildKey {
         public String help() {
             return "Options: " + StringMan.getString(GuildDB.AutoRoleOption.values()) + "\n" +
                     "See also:\n" +
-                    " - " + CM.coalition.create.cmd.create(null, Coalition.MASKEDALLIANCES.name()) + "\n" +
-                    " - " + CM.role.clearAllianceRoles.cmd.toSlashMention() + "\n" +
-                    " - " + AUTOROLE_ALLIANCE_RANK.getCommandMention() + "\n" +
-                    " - " + AUTOROLE_TOP_X.getCommandMention();
+                    "- " + CM.coalition.create.cmd.create(null, Coalition.MASKEDALLIANCES.name()) + "\n" +
+                    "- " + CM.role.clearAllianceRoles.cmd.toSlashMention() + "\n" +
+                    "- " + AUTOROLE_ALLIANCE_RANK.getCommandMention() + "\n" +
+                    "- " + AUTOROLE_TOP_X.getCommandMention();
         }
     };
     public static GuildSetting<Rank> AUTOROLE_ALLIANCE_RANK = new GuildEnumSetting<Rank>(GuildSettingCategory.ROLE, Rank.class) {
@@ -1310,7 +1321,7 @@ public class GuildKey {
                     "c10+:INACTIVE,VACATION_MODE,APPLICANT\n" +
                     "```\n").append(" Options:\n");
             for (BeigeReason value : BeigeReason.values()) {
-                response.append(" - " + value.name() + ": " + value.getDescription()).append("\n");
+                response.append("- " + value.name() + ": " + value.getDescription()).append("\n");
             }
             response.append("\nAlso set: " + CM.coalition.create.cmd.toSlashMention() + " with " + Coalition.ENEMIES);
             return response.toString();
@@ -1378,7 +1389,7 @@ public class GuildKey {
         @Override
         public String help() {
             return "The mode for the enemy alert channel to determine what alerts are posted and who is pinged\n" +
-                    "Options:\n - " + StringMan.join(EnemyAlertChannelMode.values(), "\n - ");
+                    "Options:\n- " + StringMan.join(EnemyAlertChannelMode.values(), "\n- ");
         }
     }.setupRequirements(f -> f.requires(ENEMY_ALERT_CHANNEL));
 
@@ -1674,7 +1685,7 @@ public class GuildKey {
             return "The daily withdraw limit (from the offshore) of non admins";
         }
     }.setupRequirements(f -> f.requiresOffshore());
-    public static GuildSetting<Long> BANKER_WITHDRAW_LIMIT_INTERVAL = new GuildLongSetting(GuildSettingCategory.BANK_ACCESS, Timediff.class) {
+    public static GuildSetting<Long> BANKER_WITHDRAW_LIMIT_INTERVAL = new GuildLongSetting(GuildSettingCategory.BANK_ACCESS) {
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
         public String BANKER_WITHDRAW_LIMIT_INTERVAL(@Me GuildDB db, @Me User user, @Timediff Long timediff) {
@@ -1686,6 +1697,17 @@ public class GuildKey {
             }
             return BANKER_WITHDRAW_LIMIT_INTERVAL.setAndValidate(db, user, timediff);
         }
+
+        // fix legacy
+        @Override
+        public Long parse(GuildDB db, String input) {
+            // if info contains letters
+            if (input.matches(".*[a-zA-Z]+.*")) {
+                input = "" + (TimeUtil.timeToSec(input) * 1000);
+            }
+            return super.parse(db, input);
+        }
+
         @Override
         public String toReadableString(Long value) {
             return TimeUtil.secToTime(TimeUnit.MILLISECONDS, value);
@@ -1802,7 +1824,7 @@ public class GuildKey {
     public static GuildSetting valueOf(String name) {
         GuildSetting result = BY_NAME.get(name);
         if (result == null) {
-            throw new IllegalArgumentException("No such setting: " + name + ". Options:\n - " + StringMan.join(BY_NAME.keySet(), "\n - "));
+            throw new IllegalArgumentException("No such setting: " + name + ". Options:\n- " + StringMan.join(BY_NAME.keySet(), "\n- "));
         }
         return result;
     }

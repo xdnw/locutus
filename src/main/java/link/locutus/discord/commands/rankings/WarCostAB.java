@@ -24,8 +24,6 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarType;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
-import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
@@ -74,18 +72,18 @@ public class WarCostAB extends Command {
         WarAttackParser parser = new WarAttackParser(guild, args, flags);
         if (attackTypeStr != null) {
             Set<AttackType> options = new HashSet<>(BindingHelper.emumList(AttackType.class, attackTypeStr.toUpperCase(Locale.ROOT)));
-            parser.getAttacks().removeIf(f -> !options.contains(f.attack_type));
+            parser.getAttacks().removeIf(f -> !options.contains(f.getAttack_type()));
         }
         if (attackSuccesStr != null) {
             Set<Integer> options = Arrays.stream(attackSuccesStr.split(",")).mapToInt(Integer::parseInt).boxed().collect(Collectors.toSet());
-            parser.getAttacks().removeIf(f -> !options.contains(f.success));
+            parser.getAttacks().removeIf(f -> !options.contains(f.getSuccess()));
         }
 
         AttackCost cost = parser.toWarCost();
 
         StringBuilder result = new StringBuilder(cost.toString(!flags.contains('u'), !flags.contains('i'), !flags.contains('c'), !flags.contains('l')));
         if (flags.contains('w')) {
-            DiscordUtil.upload(event.getChannel(), cost.getNumWars() + " wars", " - " + StringMan.join(cost.getWarIds(), "\n - "));
+            DiscordUtil.upload(event.getChannel(), cost.getNumWars() + " wars", "- " + StringMan.join(cost.getWarIds(), "\n- "));
         }
         if (flags.contains('t')) {
             List<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());

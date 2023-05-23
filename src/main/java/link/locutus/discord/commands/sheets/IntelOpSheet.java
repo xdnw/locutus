@@ -48,9 +48,9 @@ public class IntelOpSheet extends Command {
     @Override
     public String desc() {
         return "Generate a list of raidable targets to gather intel on\n" +
-                "`<time>` - filters out nations we have loot intel on in that period\n" +
-                "`<attackers>` - The nations to assign to do the ops (i.e. your alliance link)\n" +
-                "`<ignore-topX>` - filter out top X alliances (e.g. due to DNR), in addition to the set `dnr` coalition\n\n" +
+                "`<time>`- filters out nations we have loot intel on in that period\n" +
+                "`<attackers>`- The nations to assign to do the ops (i.e. your alliance link)\n" +
+                "`<ignore-topX>`- filter out top X alliances (e.g. due to DNR), in addition to the set `dnr` coalition\n\n" +
                 "Add `-l` to remove targets with loot history\n" +
                 "Add `-d` to list targets currently on the dnr\n\n" +
                 "e.g. `" + Settings.commandPrefix(true) + "IntelOpSheet 10d 'Error 404' 25`";

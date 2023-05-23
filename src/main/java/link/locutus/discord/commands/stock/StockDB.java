@@ -306,7 +306,7 @@ public class StockDB extends DBMain {
             throw new IllegalArgumentException("Buyer does not have enough money");
         }
 
-        try (PreparedStatement stmt = getConnection().prepareStatement("UPDATE `TRADES` SET amount = amount - ? where amount >= ? and id = ? AND (buyer = 0 or seller = 0)")) {
+        try (PreparedStatement stmt = getConnection().prepareStatement("UPDATE `TRADES` SET amount = amount- ? where amount >= ? and id = ? AND (buyer = 0 or seller = 0)")) {
             stmt.setLong(1, amt);
             stmt.setLong(2, amt);
             stmt.setInt(3, trade.tradeId);

@@ -5,7 +5,7 @@ import com.google.gson.JsonObject;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -321,7 +321,7 @@ public class UnsortedCommands {
         sheet.set(0, 0);
 
         IMessageBuilder msg = io.create();
-        msg.append("Notes:\n - " + StringMan.join(messages, "\n - "));
+        msg.append("Notes:\n- " + StringMan.join(messages, "\n- "));
         sheet.attach(msg).send();
         return null;
     }
@@ -491,7 +491,11 @@ public class UnsortedCommands {
     @Command(desc="Set your api and bot key for the bot\n" +
             "Your API key can be found on the account page: <https://politicsandwar.com/account/>\n" +
             "See: <https://forms.gle/KbszjAfPVVz3DX9A7> and DM <@258298021266063360> to get a bot key")
-    public String addApiKey(@Me JSONObject command, String apiKey, @Default String verifiedBotKey) {
+    public String addApiKey(@Me IMessageIO io, @Me JSONObject command, String apiKey, @Default String verifiedBotKey) {
+        try {
+            IMessageBuilder msg = io.getMessage();
+            if (msg != null) io.delete(msg.getId());
+        } catch (Throwable ignore) {}
         PoliticsAndWarV3 api = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(apiKey, verifiedBotKey).build());
         ApiKeyDetails stats = api.getApiKeyStats();
 
@@ -844,15 +848,15 @@ public class UnsortedCommands {
         if (unit == MilitaryUnit.NUKE || unit == MilitaryUnit.MISSILE) {
             List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(nation.getNation_id(), day);
             AttackType attType = unit == MilitaryUnit.NUKE ? AttackType.NUKE : AttackType.MISSILE;
-            attacks.removeIf(f -> f.attack_type != attType);
+            attacks.removeIf(f -> f.getAttack_type() != attType);
 
             outer:
             for (DBAttack attack : attacks) {
-                AbstractMap.SimpleEntry<Long, Integer> toAdd = new AbstractMap.SimpleEntry<>(attack.epoch, nation.getUnits(unit));
+                AbstractMap.SimpleEntry<Long, Integer> toAdd = new AbstractMap.SimpleEntry<>(attack.getDate(), nation.getUnits(unit));
                 int i = 0;
                 for (; i < history.size(); i++) {
                     Map.Entry<Long, Integer> entry = history.get(i);
-                    long diff = Math.abs(entry.getKey() - attack.epoch);
+                    long diff = Math.abs(entry.getKey() - attack.getDate());
                     if (diff < 5 * 60 * 1000) continue outer;
 
                     toAdd.setValue(entry.getValue());
@@ -1145,7 +1149,7 @@ public class UnsortedCommands {
             }
 
             // link modals
-            return "Options:\n - " + StringMan.join(options, "\n - ");
+            return "Options:\n- " + StringMan.join(options, "\n- ");
 
             // return options
         }
@@ -1440,7 +1444,6 @@ public class UnsortedCommands {
     }
 
     @Command(desc = "Generate an optimal build json for a city")
-    @RolePermission(Roles.MEMBER)
     public String optimalBuild(@Me JSONObject command, @Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
                                @Arg("A city url or build json to optimize")
                                CityBuild build,

@@ -131,7 +131,7 @@ public class WebMessage implements IMessageBuilder {
     @Override
     public IMessageBuilder graph(TimeNumericTable table) {
         try {
-            attachments.put(table.getName() + ".png", table.write());
+            attachments.put(table.getName() + ".png", table.write(true));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

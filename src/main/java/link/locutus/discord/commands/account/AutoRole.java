@@ -86,7 +86,7 @@ public class AutoRole extends Command {
                         if (nation.getActive_m() > 10000) active = "**" + active + "**";
                         response.append(nation.getName()).append(" | <").append(nation.getNationUrl()).append("> | ").append(active).append(" | ").append(Rank.byId(nation.getPosition())).append(" in the alliance:").append(nation.getAllianceName());
                     }
-                    response.append(" - ").append(entry.getValue());
+                    response.append("- ").append(entry.getValue());
                     response.append("\n");
                 }
             }
@@ -111,13 +111,13 @@ public class AutoRole extends Command {
         response.append("Done!");
 
         if (db.getOrNull(GuildKey.AUTOROLE) == null) {
-            response.append("\n - AutoRole disabled. To enable it use: ").append(GuildKey.AUTOROLE.getCommandMention());
-        } else response.append("\n - AutoRole Mode: ").append(db.getOrNull(GuildKey.AUTOROLE) + "");
+            response.append("\n- AutoRole disabled. To enable it use: ").append(GuildKey.AUTOROLE.getCommandMention());
+        } else response.append("\n- AutoRole Mode: ").append(db.getOrNull(GuildKey.AUTOROLE) + "");
         if (db.getOrNull(GuildKey.AUTONICK) == null) {
-            response.append("\n - AutoNick disabled. To enable it use: " + GuildKey.AUTONICK.getCommandMention() + "");
+            response.append("\n- AutoNick disabled. To enable it use: " + GuildKey.AUTONICK.getCommandMention() + "");
         }
-        else response.append("\n - AutoNick Mode: ").append(db.getOrNull(GuildKey.AUTONICK) + "");
-        if (Roles.REGISTERED.toRole(db) == null) response.append("\n - Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null, null).toSlashCommand() + "");
+        else response.append("\n- AutoNick Mode: ").append(db.getOrNull(GuildKey.AUTONICK) + "");
+        if (Roles.REGISTERED.toRole(db) == null) response.append("\n- Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null, null).toSlashCommand() + "");
 
         return response.toString();
     }

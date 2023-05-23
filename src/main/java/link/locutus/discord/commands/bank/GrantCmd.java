@@ -508,9 +508,9 @@ public class GrantCmd extends Command {
         }
 
         StringBuilder response = new StringBuilder();
-        response.append(" - mmr[unit]=" + me.getMMR() + "\n");
-        response.append(" - mmr[build]=" + me.getMMRBuildingStr() + "\n");
-        response.append(" - Cities: " + me.getCities() + "\n\n");
+        response.append("- mmr[unit]=" + me.getMMR() + "\n");
+        response.append("- mmr[build]=" + me.getMMRBuildingStr() + "\n");
+        response.append("- Cities: " + me.getCities() + "\n\n");
         response.append("Buy for mmr=" + mmr.toString() + " for " + numBuys + " full buys\n");
 
         int cities = me.getCities();
@@ -521,7 +521,7 @@ public class GrantCmd extends Command {
             int numUnitsPerRebuy = (int) (Math.floor(building.max() * numBuildings));
             int numUnits = numUnitsPerRebuy * numBuys;
             resources = PnwUtil.addResourcesToA(resources, PnwUtil.resourcesToMap(unit.getCost(numUnits)));
-            response.append(" - " + numUnits + " x " + unit);
+            response.append("- " + numUnits + " x " + unit);
             if (numBuys != 1) {
                 response.append(" (" + numUnitsPerRebuy + " per full buy)");
             }
@@ -538,9 +538,9 @@ public class GrantCmd extends Command {
 
         StringBuilder response = new StringBuilder();
         response.append("**Warchest for " + me.getNation() + "**:\n");
-        response.append(" - mmr[unit]=" + me.getMMR() + "\n");
-        response.append(" - mmr[build]=" + me.getMMRBuildingStr() + "\n");
-        response.append(" - Cities: " + me.getCities() + "\n\n");
+        response.append("- mmr[unit]=" + me.getMMR() + "\n");
+        response.append("- mmr[build]=" + me.getMMRBuildingStr() + "\n");
+        response.append("- Cities: " + me.getCities() + "\n\n");
         response.append("Buy for mmr=" + mmr.toString() + " over " + numBuys + " days\n");
 
         int cities = me.getCities();
@@ -551,7 +551,7 @@ public class GrantCmd extends Command {
             int numUnitsPerDay = (int) (Math.floor(building.perDay() * numBuildings));
             int numUnits = numUnitsPerDay * numBuys;
             resources = PnwUtil.addResourcesToA(resources, PnwUtil.resourcesToMap(unit.getCost(numUnits)));
-            response.append(" - " + numUnits + " x " + unit);
+            response.append("- " + numUnits + " x " + unit);
             if (numBuys != 1) {
                 response.append(" (" + numUnitsPerDay + " per day)");
             }

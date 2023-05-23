@@ -100,7 +100,7 @@ public enum Coalition {
         }
     },
 
-    RAIDPERMS("Root coalition - for allowing access to raid tools") {
+    RAIDPERMS("Root coalition- for allowing access to raid tools") {
         @Override
         public boolean hasPermission(Guild guild, User user) {
             return Roles.ADMIN.hasOnRoot(user);

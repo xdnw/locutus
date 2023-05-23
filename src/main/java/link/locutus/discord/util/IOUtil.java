@@ -1,5 +1,7 @@
 package link.locutus.discord.util;
 
+import org.apache.tomcat.util.buf.ByteBufferUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -24,5 +26,25 @@ public class IOUtil {
         }
         i |= b << offset;
         return i;
+    }
+
+    public static void writeVarLong(OutputStream out, long n) throws IOException {
+        while ((n & 0xFFFF_FFFF_FFFF_FF80L) != 0) {// While we have more than 7 bits (0b0xxxxxxx)
+            byte data = (byte) (n | 0x80);// Discard bit sign and set msb to 1 (VarInt byte prefix).
+            out.write(data);
+            n >>>= 7;
+        }
+        out.write((byte) n);
+    }
+
+    public static long readVarLong(InputStream in) throws IOException {
+        long value = 0L;
+        int i = 0;
+        long b;
+        while (((b = in.read()) & 0x80L) != 0) {
+            value |= (b & 0x7F) << i;
+            i += 7;
+        }
+        return value | (b << i);
     }
 }

@@ -113,7 +113,7 @@ public class ParameterData {
         if (isFlag()) {
             examplePrefix = "-" + getFlag() + " ";
             if (includeName) {
-                expanded.append("`-").append(getFlag()).append("` - ").append(getName());
+                expanded.append("`-").append(getFlag()).append("`- ").append(getName());
                 if (isConsumeFlag()) {
                     expanded.append(" (").append(typeName).append(")");
                 }
@@ -125,13 +125,13 @@ public class ParameterData {
             String paramDesc = getDescription();
             if (paramDesc != null) {
                 if (expanded.length() > 0) {
-                    expanded.append(" - ");
+                    expanded.append("- ");
                 }
                 expanded.append(paramDesc);
             }
         }
         if (getDefaultValue() != null) {
-            if (expanded.length() > 0) expanded.append("\n - ");
+            if (expanded.length() > 0) expanded.append("\n- ");
             expanded.append("default: `").append(StringMan.join(getDefaultValue(), " ")).append("`");
         }
         if (includeExample) {
@@ -140,7 +140,7 @@ public class ParameterData {
             if (keyBinding != null && keyBinding.examples().length != 0) {
                 if (!isFlag() || isConsumeFlag()) {
                     String example = examplePrefix + StringMan.join(keyBinding.examples(), "`, `" + examplePrefix);
-                    expanded.append("\n - e.g. `").append(example).append("`");
+                    expanded.append("\n- e.g. `").append(example).append("`");
                 }
             }
         }

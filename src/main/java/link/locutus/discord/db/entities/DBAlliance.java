@@ -8,7 +8,7 @@ import com.politicsandwar.graphql.model.NationsQueryRequest;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -932,11 +932,11 @@ public class DBAlliance implements NationList, NationOrAlliance {
         for (DBWar war : Locutus.imp().getWarDb().getWarsByAlliance(getAlliance_id())) {
 
             List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWar(war);
-            attacks.removeIf(f -> f.attack_type != AttackType.A_LOOT);
+            attacks.removeIf(f -> f.getAttack_type() != AttackType.A_LOOT);
             if (attacks.size() != 1) continue;
 
             DBAttack attack = attacks.get(0);
-            int attAA = war.isAttacker(attack.attacker_nation_id) ? war.attacker_aa : war.defender_aa;
+            int attAA = war.isAttacker(attack.getAttacker_nation_id()) ? war.attacker_aa : war.defender_aa;
             if (attAA == getAlliance_id()) continue;
             boolean lowMil = false;
             for (DBNation member : members) {

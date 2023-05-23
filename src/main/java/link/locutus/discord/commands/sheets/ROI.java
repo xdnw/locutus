@@ -345,7 +345,7 @@ public class ROI extends Command {
                 output.append("Currently producing without project:");
                 for (Map.Entry<ResourceBuilding, Boolean> entry : manufacturing.entrySet()) {
                     ResourceBuilding building = entry.getKey();
-                    output.append("\n - " + building.resource().name());
+                    output.append("\n- " + building.resource().name());
                 }
             }
 

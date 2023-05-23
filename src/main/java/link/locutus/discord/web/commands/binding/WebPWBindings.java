@@ -154,7 +154,7 @@ public class WebPWBindings extends WebBindingHelper {
             values.add(obj.getId());
             String sub;
             if (obj.getPosition() > 1) {
-                sub = "c" + obj.getCities() + " score:" + MathMan.format(obj.getScore()) + " - " + obj.getAllianceName() + " - " + Rank.byId(obj.getPosition());
+                sub = "c" + obj.getCities() + " score:" + MathMan.format(obj.getScore()) + "- " + obj.getAllianceName() + "- " + Rank.byId(obj.getPosition());
             } else {
                 sub = "c" + obj.getCities() + " score:" + MathMan.format(obj.getScore());
             }
@@ -218,7 +218,7 @@ public class WebPWBindings extends WebBindingHelper {
             } else if (obj.isNation()) {
                 names.add(obj.getName());
                 values.add(obj.getId());
-                subtext.add("nation - " + obj.asNation().getAllianceName());
+                subtext.add("nation- " + obj.asNation().getAllianceName());
             } else if (obj.isGuild()) {
                 names.add(DiscordWebBindings.formatGuildName(obj.asGuild().getGuild()));
                 values.add("guild:" + obj.getIdLong());
@@ -226,7 +226,7 @@ public class WebPWBindings extends WebBindingHelper {
             } else if (obj.isTaxid()) {
                 TaxBracket bracket = obj.asBracket();
                 int aaId = bracket.getAlliance_id();
-                names.add((aaId > 0 ? DBAlliance.getOrCreate(aaId).getName() + " - " : "") + bracket.getName() + ": " + bracket.moneyRate + "/" + bracket.rssRate);
+                names.add((aaId > 0 ? DBAlliance.getOrCreate(aaId).getName() + "- " : "") + bracket.getName() + ": " + bracket.moneyRate + "/" + bracket.rssRate);
                 subtext.add("#" + bracket.taxId + " (" + bracket.getNations().size() + " nations)");
                 values.add("tax_id=" + bracket.taxId);
             }
@@ -309,7 +309,7 @@ public class WebPWBindings extends WebBindingHelper {
             values.add(obj.getId());
             String sub;
             if (obj.getPosition() > 1) {
-                sub = "c" + obj.getCities() + " score:" + MathMan.format(obj.getScore()) + " - " + obj.getAllianceName() + " - " + Rank.byId(obj.getPosition());
+                sub = "c" + obj.getCities() + " score:" + MathMan.format(obj.getScore()) + "- " + obj.getAllianceName() + "- " + Rank.byId(obj.getPosition());
             } else {
                 sub = "c" + obj.getCities() + " score:" + MathMan.format(obj.getScore());
             }
@@ -428,7 +428,7 @@ public class WebPWBindings extends WebBindingHelper {
                         if (obj.getColorRaw() != Role.DEFAULT_COLOR_RAW) {
                             Color color = obj.getColor();
                             String hex = String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
-                            sub += hex + " - ";
+                            sub += hex + "- ";
                         }
                         int members = guild.getMembersWithRoles(obj).size();
                         sub += members + " members";
@@ -787,7 +787,7 @@ public class WebPWBindings extends WebBindingHelper {
             if (obj.getColorRaw() != Role.DEFAULT_COLOR_RAW) {
                 Color color = obj.getColor();
                 String hex = String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
-                sub += hex + " - ";
+                sub += hex + "- ";
             }
             int members = guild.getMembersWithRoles(obj).size();
             sub += members + " members";
@@ -831,7 +831,7 @@ public class WebPWBindings extends WebBindingHelper {
             names.add(obj.name());
             String sub;
             if (obj.getOutput() != null) {
-                sub = obj.getOutput() + " - " + PnwUtil.resourcesToString(obj.cost());
+                sub = obj.getOutput() + "- " + PnwUtil.resourcesToString(obj.cost());
             } else {
                 sub = PnwUtil.resourcesToString(obj.cost());
             }
@@ -846,7 +846,7 @@ public class WebPWBindings extends WebBindingHelper {
         Collection<TaxBracket> options = brackets.values();
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             DBAlliance alliance = obj.getAlliance();
-            names.add(alliance.getName() + " - " + obj.getName() + ": " + obj.moneyRate + "/" + obj.rssRate);
+            names.add(alliance.getName() + "- " + obj.getName() + ": " + obj.moneyRate + "/" + obj.rssRate);
             subtext.add("#" + obj.taxId + " (" + obj.getNations().size() + " nations)");
             values.add("tax_id=" + obj.taxId);
         });

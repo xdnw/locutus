@@ -62,6 +62,8 @@ compileTestJava.options.compilerArgs.add '-parameters'
 dependencies {
     implementation 'com.pusher:pusher-java-client:2.4.4'
 
+    implementation 'de.vandermeer:asciitable:0.3.2'
+
     implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
     implementation group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.25'
 

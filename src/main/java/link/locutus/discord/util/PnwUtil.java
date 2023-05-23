@@ -516,38 +516,38 @@ public class PnwUtil {
             sign *= MathMan.parseDouble(split[1]);
         }
 
-        Map<ResourceType, Double> transfer;
+        Map<ResourceType, Double> result;
         try {
             JSONObject json = new JSONObject(arg);
             json.remove("TRANSACTION_COUNT");
             for (String rssType : json.keySet()) {
                 ResourceType.parse(rssType);
             }
-            transfer = new Gson().fromJson(json.toString(), type);
+            result = new Gson().fromJson(json.toString(), type);
         } catch (Exception e) {
             // [0-9]+[ASMGBILUOCF$]( [0-9]+[ASMGBILUOCF$])*
             if (original.toUpperCase(Locale.ROOT).matches("[0-9]+[ASMGBILUOCF$]([ ][0-9]+[ASMGBILUOCF$])*")) {
                 String[] split = original.split(" ");
-                transfer = new LinkedHashMap<>();
+                result = new LinkedHashMap<>();
                 for (String s : split) {
                     Character typeChar = s.charAt(s.length() - 1);
                     ResourceType type1 = ResourceType.parseChar(typeChar);
                     double amount = MathMan.parseDouble(s.substring(0, s.length() - 1));
-                    transfer.put(type1, amount);
+                    result.put(type1, amount);
                 }
             } else {
                 throw new IllegalArgumentException("Invalid resource json: `" + arg + "` (" + e.getMessage() + ")");
             }
         }
-        if (transfer.containsKey(null)) {
+        if (result.containsKey(null)) {
             throw new IllegalArgumentException("Invalid resource type specified in map: `" + arg + "`");
         }
         if (sign != 1) {
-            for (Map.Entry<ResourceType, Double> entry : transfer.entrySet()) {
+            for (Map.Entry<ResourceType, Double> entry : result.entrySet()) {
                 entry.setValue(entry.getValue() * sign);
             }
         }
-        return transfer;
+        return result;
     }
 
 
@@ -738,7 +738,21 @@ public class PnwUtil {
     }
 
     private static double[] INFRA_COST_CACHE = null;
+    private static double[] INFRA_COST_FAST_CACHE = null;
 
+    public static double calculateInfraFast(double from, double to) {
+        if (to > 10000) throw new IllegalArgumentException("Infra cannot exceed 10,000");
+        if (INFRA_COST_FAST_CACHE == null) {
+            INFRA_COST_FAST_CACHE = new double[10000];
+            double total = 0;
+            for (int i = 1; i < INFRA_COST_FAST_CACHE.length; i++) {
+                double cost = 300d + (Math.pow(Math.max(i - 10d, 20), (2.2d))) / 710d;
+                total += cost;
+                INFRA_COST_FAST_CACHE[i] = total;
+            }
+        }
+        return INFRA_COST_FAST_CACHE[(int) to] - INFRA_COST_FAST_CACHE[(int) from];
+    }
 
     public static double calculateInfra(double from, double to, boolean aec, boolean cfce, boolean urbanization, boolean gsa) {
         double factor = 1;
@@ -1312,12 +1326,31 @@ public class PnwUtil {
     }
 
     public static Map<MilitaryUnit, Long> parseUnits(String arg) {
+        arg = arg.trim();
+        if (!arg.contains(":") && !arg.contains("=")) arg = arg.replaceAll("[ ]+", ":");
         arg = arg.replace(" ", "").replace('=', ':').replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
-
         for (MilitaryUnit unit : MilitaryUnit.values()) {
             String name = unit.getName();
             if (name == null || name.equalsIgnoreCase(unit.name())) continue;
             arg = arg.replace(name.toUpperCase() + ":", unit.name() + ":");
+        }
+
+        double sign = 1;
+        if (arg.charAt(0) == '-') {
+            sign = -1;
+            arg = arg.substring(1);
+        }
+        int preMultiply = arg.indexOf("*{");
+        int postMultiply = arg.indexOf("}*");
+        if (preMultiply != -1) {
+            String[] split = arg.split("\\*\\{", 2);
+            arg = "{" + split[1];
+            sign *= MathMan.parseDouble(split[0]);
+        }
+        if (postMultiply != -1) {
+            String[] split = arg.split("\\}\\*", 2);
+            arg = split[0] + "}";
+            sign *= MathMan.parseDouble(split[1]);
         }
 
         Type type = new TypeToken<Map<MilitaryUnit, Long>>() {}.getType();
@@ -1325,6 +1358,14 @@ public class PnwUtil {
             arg = "{" + arg + "}";
         }
         Map<MilitaryUnit, Long> result = new Gson().fromJson(arg, type);
+        if (result.containsKey(null)) {
+            throw new IllegalArgumentException("Invalid resource type specified in map: `" + arg + "`");
+        }
+        if (sign != 1) {
+            for (Map.Entry<MilitaryUnit, Long> entry : result.entrySet()) {
+                entry.setValue((long) (entry.getValue() * sign));
+            }
+        }
         return result;
     }
 
@@ -1351,5 +1392,19 @@ public class PnwUtil {
 
     public static String getTaxUrl(int taxId) {
         return String.format("" + Settings.INSTANCE.PNW_URL() + "/index.php?id=15&tax_id=%s", taxId);
+    }
+
+    public static double[] max(double[] rss1, double[] rss2) {
+        for (int i = 0; i < rss1.length; i++) {
+            rss1[i] = Math.max(rss1[i], rss2[i]);
+        }
+        return rss1;
+    }
+
+    public static double[] min(double[] rss1, double[] rss2) {
+        for (int i = 0; i < rss1.length; i++) {
+            rss1[i] = Math.min(rss1[i], rss2[i]);
+        }
+        return rss1;
     }
 }

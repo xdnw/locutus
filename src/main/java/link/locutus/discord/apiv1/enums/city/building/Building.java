@@ -47,6 +47,11 @@ public interface Building {
 
     double upkeep(ResourceType type, Predicate<Project> hasProject);
 
+    /**
+     * Max amount of this building that can be built (per city)
+     * @param hasProject
+     * @return
+     */
     int cap(Predicate<Project> hasProject);
 
     int pollution(Predicate<Project> hasProject);

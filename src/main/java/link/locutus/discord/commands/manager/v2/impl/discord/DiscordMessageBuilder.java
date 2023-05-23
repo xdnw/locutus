@@ -254,7 +254,7 @@ public class DiscordMessageBuilder implements IMessageBuilder {
     @Override
     public IMessageBuilder graph(TimeNumericTable table) {
         try {
-            images.put(table.getName(), table.write());
+            images.put(table.getName(), table.write(true));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

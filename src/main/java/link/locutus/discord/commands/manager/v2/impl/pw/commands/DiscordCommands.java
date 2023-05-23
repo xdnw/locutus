@@ -108,7 +108,7 @@ public class DiscordCommands {
 
         StringBuilder response = new StringBuilder("Done.");
         if (listChanges && !changes.isEmpty()) {
-            response.append("\n - ").append(StringMan.join(changes, "\n - "));
+            response.append("\n- ").append(StringMan.join(changes, "\n- "));
         }
         return response.toString();
     }
@@ -118,7 +118,7 @@ public class DiscordCommands {
         msg = DiscordUtil.trimContent(msg);
         msg = msg.replace("@", "@\u200B");
         msg = msg.replace("&", "&\u200B");
-        msg = msg + "\n\n - " + author.getAsMention();
+        msg = msg + "\n\n- " + author.getAsMention();
 
         msg = placeholders.format(store, msg);
         return msg;

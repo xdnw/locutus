@@ -245,7 +245,7 @@ public class WarCommands {
             String diffStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff);
 
             if (diff < TimeUnit.MINUTES.toMillis(6)) {
-                response.append(target.getDeclareUrl() + " leaves beige next turn  (in " + diffStr + " OR " + turns + " turns) - NO REMINDER SET\n");
+                response.append(target.getDeclareUrl() + " leaves beige next turn  (in " + diffStr + " OR " + turns + " turns)- NO REMINDER SET\n");
                 continue;
             }
 
@@ -254,7 +254,7 @@ public class WarCommands {
             try {
                 LeavingBeigeAlert.testBeigeAlert(db, target, me, null, true, false, false, false);
             } catch (IllegalArgumentException e) {
-                response.append(" - " + e.getMessage() + ": <" + target.getNationUrl() + ">)\n");
+                response.append("- " + e.getMessage() + ": <" + target.getNationUrl() + ">)\n");
             }
         }
 
@@ -263,12 +263,12 @@ public class WarCommands {
         }
 
         response.append("\nSee also:\n" +
-                " - " + CM.alerts.beige.beigeReminders.cmd.toSlashMention() + "\n" +
-                " - " + CM.alerts.beige.removeBeigeReminder.cmd.toSlashMention() + "\n" +
-                " - " + CM.alerts.beige.beigeAlertRequiredStatus.cmd.toSlashMention() + "\n" +
-                " - " + CM.alerts.beige.beigeAlertMode.cmd.toSlashMention() + "\n" +
-                " - " + CM.alerts.beige.beigeAlertRequiredLoot.cmd.toSlashMention() + "\n" +
-                " - " + CM.alerts.beige.setBeigeAlertScoreLeeway.cmd.toSlashMention() + "");
+                "- " + CM.alerts.beige.beigeReminders.cmd.toSlashMention() + "\n" +
+                "- " + CM.alerts.beige.removeBeigeReminder.cmd.toSlashMention() + "\n" +
+                "- " + CM.alerts.beige.beigeAlertRequiredStatus.cmd.toSlashMention() + "\n" +
+                "- " + CM.alerts.beige.beigeAlertMode.cmd.toSlashMention() + "\n" +
+                "- " + CM.alerts.beige.beigeAlertRequiredLoot.cmd.toSlashMention() + "\n" +
+                "- " + CM.alerts.beige.setBeigeAlertScoreLeeway.cmd.toSlashMention() + "");
 
         return response.toString();
     }
@@ -338,7 +338,7 @@ public class WarCommands {
                     }
                     body.append("\n");
                     for (BeigeReason reason : permitted) {
-                        body.append(" - " + reason + ": " + reason.getDescription() + "\n");
+                        body.append("- " + reason + ": " + reason.getDescription() + "\n");
                     }
 
                 }
@@ -348,8 +348,8 @@ public class WarCommands {
 
         }
         return "Notes:\n" +
-                " - These results are only valid if you are beiging right now. i.e. Do not consider it valid if another nation beiges the enemy first." +
-                " - Remember to talk in your war rooms, and if sitting on a weakened enemy, to keep a blockade up";
+                "- These results are only valid if you are beiging right now. i.e. Do not consider it valid if another nation beiges the enemy first." +
+                "- Remember to talk in your war rooms, and if sitting on a weakened enemy, to keep a blockade up";
     }
 
     private static Map<Integer, Long> alreadySpied = new ConcurrentHashMap<>();
@@ -535,7 +535,7 @@ public class WarCommands {
                     double otherOdds = PnwUtil.getOdds(maxShips, enemy.getShips(), 3);
 
                     if (otherOdds > 0.15) {
-                        response.append(" - Another attacker has " + MathMan.format(otherOdds * 100) + "% to break blockade\n");
+                        response.append("- Another attacker has " + MathMan.format(otherOdds * 100) + "% to break blockade\n");
                     }
 
                     Set<Integer> blockading = enemy.getBlockading();
@@ -546,7 +546,7 @@ public class WarCommands {
                     });
 
                     if (blockading.size() > 0) {
-                        response.append(" - enemy also blockading: " + StringMan.getString(blockading) + "\n");
+                        response.append("- enemy also blockading: " + StringMan.getString(blockading) + "\n");
                     }
                 }
             }
@@ -722,7 +722,7 @@ public class WarCommands {
             .append(String.format("%1s", ally.getDef())).append(" \uD83D\uDEE1").append("``` ");
             String request = requested.get(ally);
             if (request != null) {
-                response.append(" - Requested Blockade Broken: `" + request + "`\n");
+                response.append("- Requested Blockade Broken: `" + request + "`\n");
             }
             response.append("------\n");
 
@@ -754,9 +754,9 @@ public class WarCommands {
                     double myOdds = PnwUtil.getOdds(myShips, enemy.getShips(), 3);
 
                     if (otherOdds > 0.15) {
-                        response.append(" - Another attacker has " + MathMan.format(otherOdds * 100) + "% to break blockade\n");
+                        response.append("- Another attacker has " + MathMan.format(otherOdds * 100) + "% to break blockade\n");
                     }
-                    response.append(" - You have " + MathMan.format(myOdds * 100) + "% to break blockade\n");
+                    response.append("- You have " + MathMan.format(myOdds * 100) + "% to break blockade\n");
 
                     Set<Integer> blockading = enemy.getBlockading();
                     blockading.remove(ally.getNation_id());
@@ -766,14 +766,14 @@ public class WarCommands {
                     });
 
                     if (blockading.size() > 0) {
-                        response.append(" - enemy also blockading: " + StringMan.getString(blockading) + "\n");
+                        response.append("- enemy also blockading: " + StringMan.getString(blockading) + "\n");
                     }
                 } else {
                     outOfRange.add(enemy.getNation_id());
                 }
             }
             if (!outOfRange.isEmpty()) {
-                response.append(" - " + outOfRange.size() + " blockading not in range " + StringMan.getString(outOfRange) + "\n");
+                response.append("- " + outOfRange.size() + " blockading not in range " + StringMan.getString(outOfRange) + "\n");
             }
 
             response.append("\n\n");
@@ -1158,8 +1158,8 @@ public class WarCommands {
                     message = "No targets found. Try " + CM.war.find.enemy.cmd.toSlashMention() + "";
                 } else {
                     message = "No targets found:\n" +
-                            " - Add `-i` to include inactives\n" +
-                            " - Add `-a` to include applicants";
+                            "- Add `-i` to include inactives\n" +
+                            "- Add `-a` to include applicants";
                 }
                 channel.send(message);
                 return;
@@ -1826,9 +1826,9 @@ public class WarCommands {
     }
 
     @Command(desc = "Generate a list of raidable targets to gather intel on\n" +
-            "`<time>` - filters out nations we have loot intel on in that period\n" +
-            "`<attackers>` - The nations to assign to do the ops (i.e. your alliance link)\n" +
-            "`<ignore-topX>` - filter out top X alliances (e.g. due to DNR), in addition to the set `dnr` coalition\n\n" +
+            "`<time>`- filters out nations we have loot intel on in that period\n" +
+            "`<attackers>`- The nations to assign to do the ops (i.e. your alliance link)\n" +
+            "`<ignore-topX>`- filter out top X alliances (e.g. due to DNR), in addition to the set `dnr` coalition\n\n" +
             "Add `-l` to remove targets with loot history\n" +
             "Add `-d` to list targets currently on the dnr\n\n" +
             "e.g. `{prefix}sheets_milcom intelopsheet time:10d attacker:Rose dnrtopx:25`")
@@ -3015,22 +3015,22 @@ public class WarCommands {
                 mail.append("Espionage targets: (costs >$" + MathMan.format(cost) + ")\n");
 
                 if (intelOps == 0) {
-                    mail.append(" - These are NOT gather intelligence ops. XD\n");
-                    mail.append(" - If these targets don't work, reply with the word `more` and i'll send you some more targets\n");
+                    mail.append("- These are NOT gather intelligence ops. XD\n");
+                    mail.append("- If these targets don't work, reply with the word `more` and i'll send you some more targets\n");
                 }
                 if (killSpies != 0) {
-                    mail.append(" - If selecting (but not executing) 1 spy on quick (gather intel) yields >50% odds, it means the enemy has no spies left.\n");
-                    mail.append(" - If an enemy has 0 spies, you can use 5|spies|quick (99%) for killing units.\n");
+                    mail.append("- If selecting (but not executing) 1 spy on quick (gather intel) yields >50% odds, it means the enemy has no spies left.\n");
+                    mail.append("- If an enemy has 0 spies, you can use 5|spies|quick (99%) for killing units.\n");
                 }
 
                 if (intelOps != myAttackOps.size()) {
-                    mail.append(" - Results may be outdated when you read it, so check they still have units to spy!\n");
+                    mail.append("- Results may be outdated when you read it, so check they still have units to spy!\n");
                 }
 
                 mail.append(
-                        " - If the op doesn't require it (and it says >50%), you don't have to use more spies or covert\n" +
-                                " - Reply to this message with any spy reports you do against enemies (even if not these targets)\n" +
-                                " - Remember to buy spies every day :D\n\n");
+                        "- If the op doesn't require it (and it says >50%), you don't have to use more spies or covert\n" +
+                                "- Reply to this message with any spy reports you do against enemies (even if not these targets)\n" +
+                                "- Remember to buy spies every day :D\n\n");
 
                 String baseUrl = "https://politicsandwar.com/nation/espionage/eid=";
                 for (int i = 0; i < mySpyOps.size(); i++) {
@@ -3118,7 +3118,7 @@ public class WarCommands {
                             .collect(Collectors.joining(","))
             );
             for (Map.Entry<DBNation, String> entry : mailErrors.entrySet()) {
-                errorMsg.append(" - " + entry.getKey().getNation_id() + ": " + entry.getValue() + "\n");
+                errorMsg.append("- " + entry.getKey().getNation_id() + ": " + entry.getValue() + "\n");
             }
         }
 
@@ -3131,7 +3131,7 @@ public class WarCommands {
                             .collect(Collectors.joining(","))
             );
             for (Map.Entry<DBNation, String> entry : dmErrors.entrySet()) {
-                errorMsg.append(" - " + entry.getKey().getNation_id() + ": " + entry.getValue() + "\n");
+                errorMsg.append("- " + entry.getKey().getNation_id() + ": " + entry.getValue() + "\n");
             }
         }
 
@@ -3186,8 +3186,8 @@ public class WarCommands {
     @Command(desc = "Generates a a blitz sheet\n" +
             "A blitz sheet contains a list of defenders (left column) and auto assigns attackers (right columns)\n" +
             "Note: If the blitz sheet generated has a lot of city updeclares or unslotted enemies it is recommended to go through and remove low priority defenders\n" +
-            " - Low priority could be enemies without a recent offensive war, inactive, low military, or poor activity\n" +
-            " - Example defNations: `~enemies,#position>1,#active_m<4880,#dayssincelastoffensive>200,#dayssince3consecutivelogins>120,#aircraftpct<0.8,#tankpct<=0.6`" +
+            "- Low priority could be enemies without a recent offensive war, inactive, low military, or poor activity\n" +
+            "- Example defNations: `~enemies,#position>1,#active_m<4880,#dayssincelastoffensive>200,#dayssince3consecutivelogins>120,#aircraftpct<0.8,#tankpct<=0.6`" +
             "Note: To avoid updeclares enable `onlyEasyTargets`")
     @RolePermission(Roles.MILCOM)
     public String blitzSheet(@Me IMessageIO io, @Me User author, @Me GuildDB db,
@@ -3767,7 +3767,7 @@ public class WarCommands {
 
             double odds = SpyCount.getOdds(recommended, result, safetyOrd, op, nation);
 
-            response.append("\n - ").append(op.name()).append(": ");
+            response.append("\n- ").append(op.name()).append(": ");
 
             String safety = safetyOrd == 3 ? "covert" : safetyOrd == 2 ? "normal" : "quick";
 
@@ -4060,8 +4060,8 @@ public class WarCommands {
 
         me.setMeta(NationMeta.INTERVIEW_WAR_ROOM, (byte) 1);
 
-        if (!sendMail && db.getOrNull(GuildKey.API_KEY) != null) response.append("\n - add `-m` to send standard counter instructions");
-        if (!pingMembers && db.getOrNull(GuildKey.API_KEY) != null) response.append("\n - add `-p` to ping users in the war channel");
+        if (!sendMail && db.getOrNull(GuildKey.API_KEY) != null) response.append("\n- add `-m` to send standard counter instructions");
+        if (!pingMembers && db.getOrNull(GuildKey.API_KEY) != null) response.append("\n- add `-p` to ping users in the war channel");
 
         if (!skipAddMembers) {
             for (DBNation dbNation : attackersSorted) {

@@ -117,14 +117,14 @@ public class Settings extends Config {
 
     public static class ENABLED_COMPONENTS {
         @Comment({"If the discord bot is enabled at all",
-                " - Other components require the discord bot to be enabled"})
+                "- Other components require the discord bot to be enabled"})
         public boolean DISCORD_BOT = true;
         @Comment("If message commands e.g. `!who` is enabled")
         public boolean MESSAGE_COMMANDS = true;
         @Comment("If slash `/` commands are enabled (WIP)")
         public boolean SLASH_COMMANDS = true;
         @Comment({"If the web interface is enabled",
-                " - If enabled, also configure the web section below"
+                "- If enabled, also configure the web section below"
         })
         public boolean WEB = false;
 
@@ -133,11 +133,11 @@ public class Settings extends Config {
         public boolean CREATE_DATABASES_ON_STARTUP = true;
 
         @Comment({"Should any repeating tasks be enabled",
-                " - See the task section to disable/adjust individual tasks"})
+                "- See the task section to disable/adjust individual tasks"})
         public boolean REPEATING_TASKS = true;
 
         @Comment({"Should any subscriptions be enabled",
-                " - See the task section to disable/adjust individual subscriptions"})
+                "- See the task section to disable/adjust individual subscriptions"})
         public boolean SUBSCRIPTIONS = true;
 
         @Comment("If P&W events should be enabled")
@@ -293,8 +293,8 @@ public class Settings extends Config {
 
     @Comment({
             "Proxy settings (Not implemented, work in progress)",
-            " - Locutus commands can perform alliance administration actions",
-            " - A proxy can aid multiple alliances performing actions concurrently"
+            "- Locutus commands can perform alliance administration actions",
+            "- A proxy can aid multiple alliances performing actions concurrently"
     })
     public static class PROXY {
 //        public String USER = "username@example.com";
@@ -462,9 +462,9 @@ public class Settings extends Config {
         @Comment("The url/ip/hostname for the web interface")
         public String REDIRECT = "https://locutus.link";
         @Comment({"File location of the ssl certificate",
-        " - Locutus expects a privkey.pem and a fullchain.pem in the directory",
-        " - You can get a free certificate from e.g. https://zerossl.com/ or https://letsencrypt.org/",
-        " - Set to empty string to not use an ssl certificate",
+        "- Locutus expects a privkey.pem and a fullchain.pem in the directory",
+        "- You can get a free certificate from e.g. https://zerossl.com/ or https://letsencrypt.org/",
+        "- Set to empty string to not use an ssl certificate",
         })
         public String CERT_PATH = "C:/Certbot/live/locutus.link/";
         @Comment({"The password or passphrase for the certificate",

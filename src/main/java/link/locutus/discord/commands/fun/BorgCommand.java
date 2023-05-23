@@ -79,7 +79,7 @@ public class BorgCommand extends Command {
             else output.append('0' + id - 27);
         }
         if (output.length() != 0) {
-            return "`" + output + "`\n\n - " + event.getAuthor().getName();
+            return "`" + output + "`\n\n- " + event.getAuthor().getName();
         }
         int i = 0;
 

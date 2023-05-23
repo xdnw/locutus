@@ -3,6 +3,8 @@ package link.locutus.discord.util.offshore;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -852,7 +854,11 @@ public class Auth {
                 throw new IllegalArgumentException("Turn change");
             }
             DBNation nation = this.getNation();
-            if (nation.getPosition() <= Rank.MEMBER.id) {
+            if (nation.getPosition() <= Rank.APPLICANT.id) {
+                throw new IllegalArgumentException("Receiver is not member");
+            }
+            DBAlliancePosition position = nation.getAlliancePosition();
+            if (nation.getPositionEnum().id < Rank.HEIR.id && (position == null || !position.hasPermission(AlliancePermission.WITHDRAW_BANK) || !position.hasPermission(AlliancePermission.VIEW_BANK))) {
                 throw new IllegalArgumentException("Receiver does not have bank access");
             }
             DBNation senderNation = DBNation.byId(expectedNationId);
@@ -905,7 +911,7 @@ public class Auth {
                     if (PnwUtil.convertedTotal(toDeposit) > 0) {
                         String safekeepResult = Auth.this.safekeep(false, toDeposit, "#ignore");
                         if (!safekeepResult.contains("You successfully made a deposit into the alliance bank.")) {
-                            response.append("\n - " + "Could not safekeep: " + safekeepResult);
+                            response.append("\n- " + "Could not safekeep: " + safekeepResult);
                             return false;
                         }
                     }
@@ -917,7 +923,7 @@ public class Auth {
                             if (toDeposit[i] < 0) toDeposit[i] = 0;
                         }
                         Map.Entry<OffshoreInstance.TransferStatus, String> transferResult = bank.transfer(offshore.getAlliance(), PnwUtil.resourcesToMap(toDeposit), "#ignore");
-                        response.append("\nOffshoring:\n - ").append(transferResult.getKey() + "->" + transferResult.getValue());
+                        response.append("\nOffshoring:\n- ").append(transferResult.getKey() + "->" + transferResult.getValue());
                         if (transferResult.getKey() != OffshoreInstance.TransferStatus.SUCCESS) {
                             return false;
                         }
@@ -932,10 +938,10 @@ public class Auth {
                     response.append("\nAdding deposits:");
 
                     offshore.getGuildDB().addTransfer(tx_datetime, senderId, senderType, offshore.getAlliance(), Auth.this.getNationId(), note, toDeposit);
-                    response.append("\n - Added " + PnwUtil.resourcesToString(toDeposit) + " to " + currentDB.getGuild());
+                    response.append("\n- Added " + PnwUtil.resourcesToString(toDeposit) + " to " + currentDB.getGuild());
                     // add balance to expectedNation
                     currentDB.addTransfer(tx_datetime, senderNation, senderId, senderType, Auth.this.getNationId(), note, toDeposit);
-                    response.append("\n - Added " + PnwUtil.resourcesToString(toDeposit) + " to " + senderNation.getNationUrl());
+                    response.append("\n- Added " + PnwUtil.resourcesToString(toDeposit) + " to " + senderNation.getNationUrl());
 
                     MessageChannel logChannel = offshore.getGuildDB().getResourceChannel(0);
                     if (logChannel != null) {

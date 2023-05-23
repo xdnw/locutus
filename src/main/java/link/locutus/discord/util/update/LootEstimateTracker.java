@@ -4,7 +4,7 @@ import com.google.common.eventbus.Subscribe;
 import com.politicsandwar.graphql.model.BBGame;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -592,8 +592,8 @@ public class LootEstimateTracker {
     public void onAttack(AttackEvent event) {
         DBAttack attack = event.getAttack();
         boolean hasSalvage = false;
-        if (attack.success > 0) {
-            DBNation attacker = nationFactory.apply(attack.attacker_nation_id);
+        if (attack.getSuccess() > 0) {
+            DBNation attacker = nationFactory.apply(attack.getAttacker_nation_id());
             hasSalvage = attacker != null && attacker.hasProject(Projects.MILITARY_SALVAGE);
         }
     }
@@ -604,17 +604,17 @@ public class LootEstimateTracker {
         double[] defLoss = PnwUtil.resourcesToArray(attack.getLosses(false, false, false, true, true));
 
         // Handle airstrike money (since it comes under unit losses, which we are excluding)
-        if (attack.attack_type == AttackType.AIRSTRIKE_MONEY && attack.defcas1 > 0) {
-            defLoss[ResourceType.MONEY.ordinal()] += attack.defcas1;
+        if (attack.getAttack_type() == AttackType.AIRSTRIKE_MONEY && attack.getDefcas1() > 0) {
+            defLoss[ResourceType.MONEY.ordinal()] += attack.getDefcas1();
         }
-        if (attack.success > 0 && hasSalvage) {
+        if (attack.getSuccess() > 0 && hasSalvage) {
             Map<ResourceType, Double> unitLosses = attack.getLosses(true, true, false, false, false);
             attLoss[ResourceType.STEEL.ordinal()] -= unitLosses.getOrDefault(ResourceType.STEEL, 0d) * 0.05;
             attLoss[ResourceType.ALUMINUM.ordinal()] -= unitLosses.getOrDefault(ResourceType.ALUMINUM, 0d) * 0.05;
         }
         // negate this
-        add(attack.attacker_nation_id, attack.epoch, ResourceType.negative(attLoss));
-        add(attack.defender_nation_id, attack.epoch, ResourceType.negative(defLoss));
+        add(attack.getAttacker_nation_id(), attack.getDate(), ResourceType.negative(attLoss));
+        add(attack.getDefender_nation_id(), attack.getDate(), ResourceType.negative(defLoss));
     }
 
     @Subscribe

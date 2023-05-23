@@ -52,8 +52,8 @@ public class HelpCommands {
         try {
             IMessageBuilder msg = io.create();
             msg.append("**All settings: **" + CM.settings.info.cmd.create(null, null, "true") + "\n");
-            msg.append(" - More Info: " + CM.settings.info.cmd.create("YOUR_KEY_HERE", null, null) + "\n");
-            msg.append(" - To Delete: " + CM.settings.delete.cmd.create("YOUR_KEY_HERE") + "\n\n");
+            msg.append("- More Info: " + CM.settings.info.cmd.create("YOUR_KEY_HERE", null, null) + "\n");
+            msg.append("- To Delete: " + CM.settings.delete.cmd.create("YOUR_KEY_HERE") + "\n\n");
 
             List<Map.Entry<PWEmbedding, Double>> closest = getGPT().getClosest(store, query, num_results, Set.of(EmbeddingType.Configuration));
             for (int i = 0; i < closest.size(); i++) {

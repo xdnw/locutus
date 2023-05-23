@@ -41,9 +41,9 @@ public class SetBracket extends Command {
                 "e.g. `" + Settings.commandPrefix(true) + "SetTaxes @user 25/25`\n" +
                 "or to also set internal: `" + Settings.commandPrefix(true) + "SetTaxes @user 100/100 25/25`\n" +
                 "Notes:\n" +
-                " - Internal tax rate affects what portion of taxes are not included in " + CM.deposits.check.cmd.toSlashMention() + " (typically used when 100/100 taxes)\n" +
-                " - Set the alliance internal tax rate with: " + GuildKey.TAX_BASE.getCommandMention() + " (retroactive)\n" +
-                " - This command is not retroactive and overrides the alliance internal taxrate";
+                "- Internal tax rate affects what portion of taxes are not included in " + CM.deposits.check.cmd.toSlashMention() + " (typically used when 100/100 taxes)\n" +
+                "- Set the alliance internal tax rate with: " + GuildKey.TAX_BASE.getCommandMention() + " (retroactive)\n" +
+                "- This command is not retroactive and overrides the alliance internal taxrate";
     }
 
     @Override
@@ -78,7 +78,7 @@ public class SetBracket extends Command {
             for (Map.Entry<Integer, TaxBracket> entry : brackets.entrySet()) {
                 TaxBracket bracket = entry.getValue();
                 String url = bracket.getUrl();
-                response.append("\n - " + MarkupUtil.markdownUrl("#" + bracket.taxId, url) + ": " + bracket.moneyRate + "/" + bracket.rssRate + " (" + bracket.getNations().size() + " nations) - " + bracket.getName());
+                response.append("\n- " + MarkupUtil.markdownUrl("#" + bracket.taxId, url) + ": " + bracket.moneyRate + "/" + bracket.rssRate + " (" + bracket.getNations().size() + " nations)- " + bracket.getName());
             }
             return usage(event, response.toString());
         }

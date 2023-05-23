@@ -30,7 +30,7 @@ public class SriCommand extends Command {
                 "Lucutus only eats brains, so you have nothing to worry about",
                 "You this read wrong.",
                 "Knowledge is power. Absolute knowledge corrupts absolutely.",
-                "You can trust the authenticity of these texts - Albert Einstein",
+                "You can trust the authenticity of these texts- Albert Einstein",
                 "Jesus may be able to walk on water, but I can swim on dry land",
                 "You can get these messages in any language as long as it is English",
                 "This bot is SEO optimized, optimize, optimum, boost, lift, elevator, chute, slide...",

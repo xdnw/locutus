@@ -202,7 +202,7 @@ public class PoliticsAndWarV3 {
                     if (remove) pool.removeKey(pair);
                     continue;
                 }
-                System.out.println("Error " + graphQLRequest.toHttpJsonBody() + "\n - " + e.getMessage());
+                System.out.println("Error " + graphQLRequest.toHttpJsonBody() + "\n- " + e.getMessage());
                 rethrow(e, pair,false);
                 throw e;
             }
@@ -1245,10 +1245,10 @@ public class PoliticsAndWarV3 {
             return false;
         } catch (RuntimeException e) {
             if (e.getMessage().contains("The bot key you provided is not valid.")) {
-                throw new IllegalArgumentException(e.getMessage() + "\n - Please fill out <https://forms.gle/KbszjAfPVVz3DX9A7> and DM <@258298021266063360> to receive a working bot key");
+                throw new IllegalArgumentException(e.getMessage() + "\n- Please fill out <https://forms.gle/KbszjAfPVVz3DX9A7> and DM <@258298021266063360> to receive a working bot key");
             }
             if (e.getMessage().contains("The API key you provided does not allow whitelisted access.")) {
-                throw new IllegalArgumentException(e.getMessage() + "\n - Please go to <https://politicsandwar.com/account/> and at the bottom enable `Whitelisted Access`");
+                throw new IllegalArgumentException(e.getMessage() + "\n- Please go to <https://politicsandwar.com/account/> and at the bottom enable `Whitelisted Access`");
             }
             if (!e.getMessage().contains("You can't deposit no resources.") && !e.getMessage().contains("You can't deposit resources while blockaded.")) {
                 throw e;

@@ -24,6 +24,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public interface NationList extends NationFilter {
+    default AllianceList toAllianceList() {
+        return new AllianceList(getAllianceIds());
+    }
     @Override
     default String getFilter() {
         return null;

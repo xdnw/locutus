@@ -40,8 +40,8 @@ public class AllianceSheet extends Command implements Noformat {
 
     @Override
     public String desc() {
-        return "Create a nation sheet, with the following column placeholders\n - {" +
-                StringMan.join(DiscordUtil.getParser().getPlaceholders(), "}\n - {") + "}";
+        return "Create a nation sheet, with the following column placeholders\n- {" +
+                StringMan.join(DiscordUtil.getParser().getPlaceholders(), "}\n- {") + "}";
     }
 
     @Override

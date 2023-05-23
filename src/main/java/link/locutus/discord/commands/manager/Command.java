@@ -85,7 +85,7 @@ public abstract class Command {
             if (arg != null) {
                 response.append("**").append(arg).append("**\n\n");
             }
-            response.append("`").append(help()).append("`").append(" - ").append(desc());
+            response.append("`").append(help()).append("`").append("- ").append(desc());
             channel.create().embed(aliases.get(0), response.toString().trim()).send();
             throw new IllegalArgumentException("");
         }

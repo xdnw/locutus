@@ -23,6 +23,7 @@ import link.locutus.discord.db.entities.AllianceMetric;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DiscordMeta;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.game.TurnChangeEvent;
 import link.locutus.discord.network.ProxyHandler;
@@ -353,13 +354,15 @@ public final class Locutus extends ListenerAdapter {
                             System.out.println("Done loading guild members");
                             return;
                         }
-                        guild.loadMembers().onSuccess(f -> {
-                            System.out.println("Loaded " + f.size() + " members for " + guild);
-                            queueFunc[0].run();
-                        }).onError(f -> {
-                            System.out.println("Failed to load members for " + guild);
-                            queueFunc[0].run();
-                        });
+                        if (guild.getMembers().size() >= 249) {
+                            guild.loadMembers().onSuccess(f -> {
+                                System.out.println("Loaded " + f.size() + " members for " + guild);
+                                queueFunc[0].run();
+                            }).onError(f -> {
+                                System.out.println("Failed to load members for " + guild);
+                                queueFunc[0].run();
+                            });
+                        }
                     }
                 };
                 queueFunc[0].run();
@@ -468,7 +471,8 @@ public final class Locutus extends ListenerAdapter {
         if (allianceId == 0) return null;
         for (Map.Entry<Long, GuildDB> entry : initGuildDB().entrySet()) {
             GuildDB db = entry.getValue();
-            if (db.isAllianceId(allianceId)) {
+            Set<Integer> aaIds = GuildKey.ALLIANCE_ID.getOrNull(db, false);
+            if (aaIds != null && aaIds.contains(allianceId)) {
                 return db;
             }
         }
@@ -1068,7 +1072,7 @@ public final class Locutus extends ListenerAdapter {
             if (diff > 1000) {
                 StringBuilder response = new StringBuilder("## Long action: " + event.getAuthor().getIdLong() + " | " + event.getAuthor().getName() + ": " + DiscordUtil.trimContent(event.getMessage().getContentRaw()));
                 if (event.isFromGuild()) {
-                    response.append("\n\n - " + event.getGuild().getName() + " | " + event.getGuild().getId());
+                    response.append("\n\n- " + event.getGuild().getName() + " | " + event.getGuild().getId());
                 }
                 new RuntimeException(response.toString()).printStackTrace();
             }
@@ -1274,7 +1278,7 @@ public final class Locutus extends ListenerAdapter {
 
             System.out.println("\n == Ignore the following if the thread doesn't relate to anything modifying persistent data");
             for (Map.Entry<Thread, StackTraceElement[]> thread : Thread.getAllStackTraces().entrySet()) {
-                System.out.println("Thread did not close after 5s: " + thread.getKey() + "\n - " + StringMan.stacktraceToString(thread.getValue()));
+                System.out.println("Thread did not close after 5s: " + thread.getKey() + "\n- " + StringMan.stacktraceToString(thread.getValue()));
             }
 
             System.exit(1);

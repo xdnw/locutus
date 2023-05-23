@@ -4,7 +4,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.task.war.WarCard;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -33,9 +33,9 @@ public enum BeigeReason {
     NO_RECENT_5_CONSECUTIVE_LOGINS("Enemy has not had 5 consecutive logins in the past 120 days", "no 5 consecutive enemy logins"),
     INCORRECT_ENEMY_MMR("Enemy does not have 5 barracks/factories", "low barracks/factories"),
     USELESS("Enemy has no recent wars and no recent consecutive logins OR incorrect MMR", "useless"),
-    BEIGE_CYCLE("If the enemy does not have beige, and two other strong nations can sit them whilst beige. DO NOT BEIGE DEFENSIVE WARS", "only if another attacker can sit - stay at 40 res until you are ready"),
-    BEIGE_CYCLE_4D("If the enemy does not have beige, and one other strong nation can sit them whilst beige for 4d. DO NOT BEIGE DEFENSIVE WARS", "only if another attacker can sit - stay at 40 res until you are ready"),
-    BEIGE_CYCLE_1("If the enemy does not have beige, and one other strong nation can sit them whilst beige for 2d. DO NOT BEIGE DEFENSIVE WARS", "only if another attacker can sit - stay at 40 res until you are ready"),
+    BEIGE_CYCLE("If the enemy does not have beige, and two other strong nations can sit them whilst beige. DO NOT BEIGE DEFENSIVE WARS", "only if another attacker can sit- stay at 40 res until you are ready"),
+    BEIGE_CYCLE_4D("If the enemy does not have beige, and one other strong nation can sit them whilst beige for 4d. DO NOT BEIGE DEFENSIVE WARS", "only if another attacker can sit- stay at 40 res until you are ready"),
+    BEIGE_CYCLE_1("If the enemy does not have beige, and one other strong nation can sit them whilst beige for 2d. DO NOT BEIGE DEFENSIVE WARS", "only if another attacker can sit- stay at 40 res until you are ready"),
     BLOCKADED("If you are being sat on/blockaded and need to restock on warchest", "only if blockade breaking to restock on warchest"),
     LOW_RESISTANCE("Low resistance, at risk of getting beiged (use your best judgement)", "only if you're at risk of being beiged"),
     LOW_RESISTANCE_OFFENSIVE("Low resistance, at risk of getting beiged (use your best judgement)", "only if you're at risk of being beiged"),

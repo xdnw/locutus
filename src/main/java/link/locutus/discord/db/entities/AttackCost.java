@@ -3,7 +3,7 @@ package link.locutus.discord.db.entities;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -180,15 +180,15 @@ public class AttackCost {
         boolean secondary = isSecondary.apply(attack);
 
         if (primary || secondary) {
-            if (attack.attack_type == AttackType.VICTORY) {
-                if (primary) victories1.add(attack.war_id);
-                else victories2.add(attack.war_id);
+            if (attack.getAttack_type() == AttackType.VICTORY) {
+                if (primary) victories1.add(attack.getWar_id());
+                else victories2.add(attack.getWar_id());
             }
             this.attacks.add(attack);
             if (primary) primaryAttacks.add(attack);
             if (secondary) secondaryAttacks.add(attack);
 
-            wars.add(attack.war_id);
+            wars.add(attack.getWar_id());
             Map<MilitaryUnit, Integer> attUnit = attack.getUnitLosses(true);
             Map<MilitaryUnit, Integer> defUnit = attack.getUnitLosses(false);
 
@@ -205,8 +205,8 @@ public class AttackCost {
             Map<ResourceType, Double> defTotal = attack.getLosses(false, true, true, true, true);
 
             if (primary) {
-                ids1.add(attack.attacker_nation_id);
-                ids2.add(attack.defender_nation_id);
+                ids1.add(attack.getAttacker_nation_id());
+                ids2.add(attack.getDefender_nation_id());
                 unit1 = PnwUtil.add(unit1, attUnit);
                 unit2 = PnwUtil.add(unit2, defUnit);
                 loot1 = PnwUtil.addResourcesToA(loot1, attLoot);
@@ -218,8 +218,8 @@ public class AttackCost {
                 infrn1 += attInfra;
                 infrn2 += defInfra;
             } else if (secondary) {
-                ids2.add(attack.attacker_nation_id);
-                ids1.add(attack.defender_nation_id);
+                ids2.add(attack.getAttacker_nation_id());
+                ids1.add(attack.getDefender_nation_id());
                 unit1 = PnwUtil.add(unit1, defUnit);
                 unit2 = PnwUtil.add(unit2, attUnit);
                 loot1 = PnwUtil.addResourcesToA(loot1, defLoot);

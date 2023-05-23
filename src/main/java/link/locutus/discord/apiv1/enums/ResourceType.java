@@ -8,9 +8,13 @@ import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collection;
@@ -397,5 +401,129 @@ public enum ResourceType {
 
     public String getBankString() {
         return bankString;
+    }
+
+    public static interface IResourceArray {
+        public double[] get();
+
+        public static IResourceArray create(double[] resources) {
+            int numResources = 0;
+            boolean noCredits = resources[CREDITS.ordinal()] == 0;
+            ResourceType latestType = null;
+            for (ResourceType type : ResourceType.values) {
+                double amt = resources[type.ordinal()];
+                if (amt > 0) {
+                    numResources++;
+                    latestType = type;
+                }
+            }
+            switch (numResources) {
+                case 0:
+                    return new EmptyResources();
+                case 1:
+                    return new ResourceAmtCents(latestType, resources[latestType.ordinal()]);
+                case 2, 3, 4, 5, 6, 7, 8, 9, 10:
+                    return new VarArray(resources);
+                default:
+                    if (noCredits) {
+                        return new ArrayNoCredits(resources);
+                    } else {
+                        return new VarArray(resources);
+                    }
+            }
+        }
+    }
+
+    public static class EmptyResources implements IResourceArray{
+
+        @Override
+        public double[] get() {
+            return ResourceType.getBuffer();
+        }
+    }
+
+    public static class ArrayNoCredits implements IResourceArray {
+        private final byte[] data;
+
+        public ArrayNoCredits(double[] loot) {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            for (ResourceType type : ResourceType.values) {
+                if (type == ResourceType.CREDITS) continue;
+                try {
+                    IOUtil.writeVarLong(baos, (long) (loot[type.ordinal()] * 100));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            this.data = baos.toByteArray();
+        }
+        public double[] get() {
+            double[] data = ResourceType.getBuffer();
+            ByteArrayInputStream in = new ByteArrayInputStream(this.data);
+            for (ResourceType type : ResourceType.values) {
+                if (type == ResourceType.CREDITS) continue;
+                try {
+                    data[type.ordinal()] = IOUtil.readVarLong(in) / 100d;
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            return data;
+        }
+    }
+
+    public static class VarArray implements IResourceArray {
+        private final byte[] data;
+
+        public VarArray(double[] loot) {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            for (ResourceType type : ResourceType.values) {
+                long amtCents = (long) (loot[type.ordinal()] * 100);
+                if (amtCents == 0) continue;
+                try {
+                    long pair = type.ordinal() + (amtCents << 4);
+                    IOUtil.writeVarLong(baos, pair);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            this.data = baos.toByteArray();
+        }
+
+        public double[] get() {
+            double[] data = ResourceType.getBuffer();
+            ByteArrayInputStream in = new ByteArrayInputStream(this.data);
+            while (in.available() > 0) {
+                try {
+                    long pair = IOUtil.readVarLong(in);
+                    int type = (int) (pair & 0xF);
+                    long amtCents = pair >> 4;
+                    data[type] = amtCents / 100d;
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            return data;
+        }
+    }
+
+    public static class ResourceAmtCents implements IResourceArray {
+        private final long data;
+
+        public ResourceAmtCents(ResourceType type, double amount) {
+            this.data = type.ordinal() + (Math.round(amount * 100d) << 4);
+        }
+
+        public ResourceType getType() {
+            return ResourceType.values[(int) (data & 0xF)];
+        }
+        public long getAmountCents() {
+            return data >> 4;
+        }
+
+        @Override
+        public double[] get() {
+            return getType().toArray(getAmountCents() / 100d);
+        }
     }
 }

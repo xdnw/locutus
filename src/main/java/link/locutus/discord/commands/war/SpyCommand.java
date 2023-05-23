@@ -110,7 +110,7 @@ public class SpyCommand extends Command {
             double odds = SpyCount.getOdds(recommended, result, safetyOrd, op, nation);
 
             if (op == SpyCount.Operation.SOLDIER && nation.getSoldiers() == 0) op = SpyCount.Operation.INTEL;
-            response.append("\n - ").append(op.name()).append(": ");
+            response.append("\n- ").append(op.name()).append(": ");
 
             String safety = safetyOrd == 3 ? "covert" : safetyOrd == 2 ? "normal" : "quick";
 

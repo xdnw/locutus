@@ -517,8 +517,8 @@ public class IACheckup {
             case GATHER_INTEL: {
                 if (nation.getMeta(NationMeta.INTERVIEW_SPYOP) != null) return null;
                 String desc = "Please use the " + CM.spy.find.intel.cmd.toSlashMention() + " command for a spy target\n" +
-                        " - go to their nation page, and click the espionage button\n" +
-                        " - Copy the results and post them in any channel here (if you accidentally leave the page, the intel op still is in your notifications)\n\n" +
+                        "- go to their nation page, and click the espionage button\n" +
+                        "- Copy the results and post them in any channel here (if you accidentally leave the page, the intel op still is in your notifications)\n\n" +
                         "Remember to purchase max spies every day";
                 return new AbstractMap.SimpleEntry<>(false, desc);
             }
@@ -819,8 +819,8 @@ public class IACheckup {
                 "2. Set a reminder on your phone, or on discord using " + CM.alerts.beige.beigeAlert.cmd.toSlashMention() + "\n" +
                 "3. Get the war declaration page ready, and declare DURING turn change\n\n" +
                 "*Note:*\n" +
-                " - *If you don't get them on your first shot, try again later*\n" +
-                " - *If you can't be active enough, just hit any gray nation during turn change*";
+                "- *If you don't get them on your first shot, try again later*\n" +
+                "- *If you can't be active enough, just hit any gray nation during turn change*";
 
         return new AbstractMap.SimpleEntry<>(false, longDesc);
     }
