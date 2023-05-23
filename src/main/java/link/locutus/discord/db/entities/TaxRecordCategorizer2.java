@@ -373,7 +373,7 @@ public class TaxRecordCategorizer2 {
             }
             if (taxId == null) {
                 try {
-                    errors.accept("Unknown tax bracket for: - " + transfer.toSimpleString());
+                    errors.accept("Unknown tax bracket for:- " + transfer.toSimpleString());
                 } catch (Throwable e) {
                     e.printStackTrace();
                     throw e;

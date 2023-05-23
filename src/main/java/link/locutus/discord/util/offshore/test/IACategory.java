@@ -378,7 +378,7 @@ public class IACategory {
                     Message latest = RateLimitUtil.complete(tc.retrieveMessageById(tc.getLatestMessageIdLong()));
                     long created = latest.getTimeCreated().toEpochSecond() * 1000L;
                     if (System.currentTimeMillis() - created > TimeUnit.DAYS.toMillis(10)) {
-                        if (output != null) output.send("Deleted channel " + channel.getName() + " (no recent message - no nation (found)");
+                        if (output != null) output.send("Deleted channel " + channel.getName() + " (no recent message- no nation (found)");
                         RateLimitUtil.queue(tc.delete());
                     }
                 } catch (Exception e) {}

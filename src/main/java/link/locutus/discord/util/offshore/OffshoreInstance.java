@@ -510,7 +510,7 @@ public class OffshoreInstance {
         if (!failedRequirements.isEmpty()) {
             reqMsg.append("The following grant requirements were not met: ");
             for (Grant.Requirement requirement : failedRequirements) {
-                reqMsg.append(" - " + requirement.getMessage() + "\n");
+                reqMsg.append("- " + requirement.getMessage() + "\n");
             }
             if (!bypassChecks) {
                 return Map.entry(TransferStatus.GRANT_REQUIREMENT, reqMsg + "\n(set the `force` parameter to bypass)");
@@ -714,7 +714,7 @@ public class OffshoreInstance {
             StringBuilder body = new StringBuilder();
             if (reqMsg.length() > 0) {
                 body.append("**Errors:**\n");
-                body.append(" - " + reqMsg.toString().trim().replace("\n", "\n - "));
+                body.append("- " + reqMsg.toString().trim().replace("\n", "\n- "));
                 body.append("\n\n");
             }
             // type / otherNotes
@@ -761,23 +761,23 @@ public class OffshoreInstance {
 
             body.append("**Sender:**\n");
             if (banker != null) {
-                body.append(" - Banker: " + banker.getAsMention() + "\n");
+                body.append("- Banker: " + banker.getAsMention() + "\n");
             }
             if (nationAccount != null) {
-                body.append(" - Nation Account: " + nationAccount.getNationUrlMarkup(true) + "\n");
+                body.append("- Nation Account: " + nationAccount.getNationUrlMarkup(true) + "\n");
             } else if (depositType.getType() == DepositType.IGNORE) {
-                body.append(" - Will NOT deduct from a nation deposits\n");
+                body.append("- Will NOT deduct from a nation deposits\n");
             } else {
-                body.append(" - Will deduct from receiver's deposits\n");
+                body.append("- Will deduct from receiver's deposits\n");
             }
             if (allianceAccount != null) {
-                body.append(" - Alliance Account: " + allianceAccount.getMarkdownUrl() + "\n");
+                body.append("- Alliance Account: " + allianceAccount.getMarkdownUrl() + "\n");
             }
             if (senderDB != null) {
-                body.append(" - Sender Guild: " + senderDB.getGuild().getName() + "\n");
+                body.append("- Sender Guild: " + senderDB.getGuild().getName() + "\n");
             }
             if (taxAccount != null) {
-                body.append(" - Tax Account: " + taxAccount.toString() + "\n");
+                body.append("- Tax Account: " + taxAccount.toString() + "\n");
             }
             return Map.entry(TransferStatus.CONFIRMATION, body.toString());
         }
@@ -849,7 +849,7 @@ public class OffshoreInstance {
             case SUCCESS: {
                 if (taxAccount != null) {
                     result = Map.entry(result.getKey(), result.getValue() + "\n" +
-                            " - Deducted from tax account: " + taxAccount.getQualifiedName());
+                            "- Deducted from tax account: " + taxAccount.getQualifiedName());
                 }
                 break;
             }
@@ -1095,7 +1095,7 @@ public class OffshoreInstance {
                             body.append("`").append(result.getValue()).append("`\n");
                             for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : addBalanceResult.entrySet()) {
                                 NationOrAllianceOrGuild account = entry.getKey();
-                                body.append("\n - `!addbalance " + account.getTypePrefix() + ":" + account.getId() + " " + PnwUtil.resourcesToString(entry.getValue()) + " #deposit");
+                                body.append("\n- `!addbalance " + account.getTypePrefix() + ":" + account.getId() + " " + PnwUtil.resourcesToString(entry.getValue()) + " #deposit");
                             }
                             body.append("\n<@" + Settings.INSTANCE.ADMIN_USER_ID + ">");
                             log(senderDB, banker, receiver, title + ": " + body.toString());

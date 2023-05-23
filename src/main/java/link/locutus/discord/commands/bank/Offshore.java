@@ -38,7 +38,7 @@ public class Offshore extends Command {
     @Override
     public String desc() {
         return "Queue a transfer offshore (with authorization)\n" +
-                "`aa-warchest` is how much to leave in the AA bank - in the form `{money=1,food=2}`\n" +
+                "`aa-warchest` is how much to leave in the AA bank- in the form `{money=1,food=2}`\n" +
                 "`account` is what account to offshore into (e.g. your alliance or guild). Defaults to sender alliance";
     }
 

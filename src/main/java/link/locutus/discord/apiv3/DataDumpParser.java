@@ -11,7 +11,7 @@ import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -325,17 +325,17 @@ public class DataDumpParser {
         int total = 0;
 
         for (DBAttack attack : attacks) {
-            long attTurn = TimeUtil.getTurn(attack.epoch);
+            long attTurn = TimeUtil.getTurn(attack.getDate());
             long expireTurn = attTurn + 100;
 
             if (attTurn <= currentTurn && expireTurn > currentTurn) {
                 double rads = radsBase * (1 - ((currentTurn - attTurn) / 100d));
 
-                long day = TimeUtil.getDay(attack.epoch);
+                long day = TimeUtil.getDay(attack.getDate());
 
-                Continent continent = continentInfo.getOrDefault(day, Collections.emptyMap()).get(attack.defender_nation_id);
+                Continent continent = continentInfo.getOrDefault(day, Collections.emptyMap()).get(attack.getDefender_nation_id());
                 if (continent == null) {
-                    DBNation nation = DBNation.byId(attack.defender_nation_id);
+                    DBNation nation = DBNation.byId(attack.getDefender_nation_id());
                     if (nation != null) continent = nation.getContinent();
                     else {
 //                        System.out.println("Could not find continent for " + attack.defender_nation_id);
@@ -369,8 +369,8 @@ public class DataDumpParser {
         long diff1 = System.currentTimeMillis() - start2;
 
         long cutoff = minDate - TimeUnit.DAYS.toMillis(20);
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(cutoff, f -> f.attack_type == AttackType.NUKE && f.success > 0);
-        attacks.sort(Comparator.comparingLong(o -> o.epoch));
+        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(cutoff, f -> f.getAttack_type() == AttackType.NUKE && f.getSuccess() > 0);
+        attacks.sort(Comparator.comparingLong(o -> o.getDate()));
 
         long currTurn = TimeUtil.getTurn();
 
@@ -401,11 +401,11 @@ public class DataDumpParser {
     public Map<DBWar, Long> getWarEndDates(Map<Integer, DBWar> wars, Collection<DBAttack> attacks) {
         Map<DBWar, Long> warEndDates = new HashMap<>();
         for (DBAttack attack : attacks) {
-            switch (attack.attack_type) {
+            switch (attack.getAttack_type()) {
                 case VICTORY, A_LOOT, PEACE -> {
-                    DBWar war = wars.get(attack.war_id);
+                    DBWar war = wars.get(attack.getWar_id());
                     if (war != null) {
-                        warEndDates.put(war, attack.epoch);
+                        warEndDates.put(war, attack.getDate());
                     }
                 }
             }
@@ -686,11 +686,11 @@ public class DataDumpParser {
     public void backCalculateBeigeDamage() throws IOException, ParseException {
         load();
         long min = getMinDate();
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(min, f -> f.attack_type == AttackType.VICTORY && f.infra_destroyed_value <= 0);
+        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(min, f -> f.getAttack_type() == AttackType.VICTORY && f.getInfra_destroyed_value() <= 0);
         Map<Long, Set<Integer>> nationsByDay = new HashMap<>();
         for (DBAttack attack : attacks) {
-            long day = TimeUtil.getDay(attack.epoch);
-            nationsByDay.computeIfAbsent(day, k -> new HashSet<>()).add(attack.defender_nation_id);
+            long day = TimeUtil.getDay(attack.getDate());
+            nationsByDay.computeIfAbsent(day, k -> new HashSet<>()).add(attack.getDefender_nation_id());
         }
 
         System.out.println("Attacks " + attacks.size());
@@ -698,18 +698,18 @@ public class DataDumpParser {
         Map<Long, Map<Integer, Map<Integer, Double>>> infraMap = cityInfraByDay((day, nation) -> nationsByDay.getOrDefault(day, Collections.emptySet()).contains(nation));
 
         attacks.removeIf(dbAttack -> {
-            long day = TimeUtil.getDay(dbAttack.epoch);
+            long day = TimeUtil.getDay(dbAttack.getDate());
             Map<Integer, Map<Integer, Double>> infraDay = infraMap.get(day);
             if (infraDay == null) return true;
-            return infraDay.containsKey(dbAttack.defender_nation_id);
+            return infraDay.containsKey(dbAttack.getDefender_nation_id());
         });
 
         Map<Integer, DBAttack> attacksById = new HashMap<>();
         for (DBAttack attack : attacks) {
-            attacksById.put(attack.war_attack_id, attack);
+            attacksById.put(attack.getWar_attack_id(), attack);
         }
 
-        List<Integer> attacksToFetch = attacks.stream().map(f -> f.war_attack_id).collect(Collectors.toList());
+        List<Integer> attacksToFetch = attacks.stream().map(f -> f.getWar_attack_id()).collect(Collectors.toList());
         int amtPer = 999;
         for (int i = 0; i < attacksToFetch.size(); i += amtPer) {
             List<Integer> subList = attacksToFetch.subList(i, i + amtPer);
@@ -725,15 +725,15 @@ public class DataDumpParser {
                     DBAttack dbAttack = attacksById.get(id);
                     double infraPercent_cached = Double.parseDouble(split[split.length - 1]) / 100d;
 
-                    long day = TimeUtil.getDay(dbAttack.epoch);
-                    Map<Integer, Double> cityInfra = infraMap.get(day).get(dbAttack.defender_nation_id);
+                    long day = TimeUtil.getDay(dbAttack.getDate());
+                    Map<Integer, Double> cityInfra = infraMap.get(day).get(dbAttack.getDefender_nation_id());
                     double cost = 0;
                     for (Map.Entry<Integer, Double> entry : cityInfra.entrySet()) {
                         double infraAmt = entry.getValue();
                         cost += PnwUtil.calculateInfra(infraAmt * (1 - infraPercent_cached), infraAmt);
                     }
-                    dbAttack.infra_destroyed_value = cost;
-                    System.out.println("Save $" + dbAttack.infra_destroyed_value);
+                    dbAttack.setInfra_destroyed_value(cost);
+                    System.out.println("Save $" + dbAttack.getInfra_destroyed_value());
                     Locutus.imp().getWarDb().saveAttacks(List.of(dbAttack));
 
                 } catch (Throwable e) {

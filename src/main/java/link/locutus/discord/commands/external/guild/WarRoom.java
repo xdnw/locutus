@@ -153,9 +153,9 @@ public class WarRoom extends Command {
         me.setMeta(NationMeta.INTERVIEW_WAR_ROOM, (byte) 1);
 
         if (!flags.contains('m') && db.getOrNull(GuildKey.API_KEY) != null)
-            response.append("\n - add `-m` to send standard counter instructions");
+            response.append("\n- add `-m` to send standard counter instructions");
         if (!flags.contains('p') && db.getOrNull(GuildKey.API_KEY) != null)
-            response.append("\n - add `-p` to ping users in the war channel");
+            response.append("\n- add `-p` to ping users in the war channel");
 
         return response.toString();
     }
@@ -231,7 +231,7 @@ public class WarRoom extends Command {
                             String title = "Counter Attack/" + channel.getIdLong();
                             String body = info +
                                     "\n\n" + msg +
-                                    "\n - target: " + declareUrl +
+                                    "\n- target: " + declareUrl +
                                     "\n\nCheck the war room for further details: " + channelUrl;
                             String mailBody = MarkupUtil.transformURLIntoLinks(MarkupUtil.markdownToHTML(body));
 
@@ -242,7 +242,7 @@ public class WarRoom extends Command {
                             }
                         }
 
-                        RateLimitUtil.queue(channel.sendMessage(msg + "\n - <" + declareUrl + (">")));
+                        RateLimitUtil.queue(channel.sendMessage(msg + "\n- <" + declareUrl + (">")));
                     }
                 }
             }

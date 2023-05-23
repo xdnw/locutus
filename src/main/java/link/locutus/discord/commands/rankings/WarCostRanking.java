@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -162,8 +162,8 @@ public class WarCostRanking extends Command {
         GroupedRankBuilder<Integer, DBAttack> attackGroup = new RankBuilder<>(attacks)
                 .group((attack, map) -> {
                     // Group attacks into attacker and defender
-                    map.put(attack.attacker_nation_id, attack);
-                    map.put(attack.defender_nation_id, attack);
+                    map.put(attack.getAttacker_nation_id(), attack);
+                    map.put(attack.getDefender_nation_id(), attack);
                 });
 
         BiFunction<Boolean, DBAttack, Double> valueFunc;
@@ -181,7 +181,7 @@ public class WarCostRanking extends Command {
             if (attType != null) {
                 if (getValue != null) throw new IllegalArgumentException("Cannot combine multiple type rankings (2)");
                 AttackType finalAttType = attType;
-                getValue = (attacker, attack) -> attack.attack_type == finalAttType ? 1d : 0d;
+                getValue = (attacker, attack) -> attack.getAttack_type() == finalAttType ? 1d : 0d;
             }
             if (resourceType != null) {
                 if (getValue != null) throw new IllegalArgumentException("Cannot combine multiple type rankings (3)");
@@ -208,19 +208,19 @@ public class WarCostRanking extends Command {
 
         NumericMappedRankBuilder<Integer, Integer, Double> byNationMap;
         if (!damage) {
-            byNationMap = attackGroup.map((i, a) -> a.war_id,
+            byNationMap = attackGroup.map((i, a) -> a.getWar_id(),
                     // Convert attack to profit value
                     (nationdId, attack) -> {
                         DBNation nation = nationMap.get(nationdId);
-                        return nation != null ? scale(nation, sign * valueFunc.apply(attack.attacker_nation_id == nationdId, attack), scale, isAA) : 0;
+                        return nation != null ? scale(nation, sign * valueFunc.apply(attack.getAttacker_nation_id() == nationdId, attack), scale, isAA) : 0;
                     });
         } else {
-            byNationMap = attackGroup.map((i, a) -> a.war_id,
+            byNationMap = attackGroup.map((i, a) -> a.getWar_id(),
                     // Convert attack to profit value
                     (nationdId, attack) -> {
                         DBNation nation = nationMap.get(nationdId);
                         if (nation == null) return 0d;
-                        boolean primary = (attack.attacker_nation_id != nationdId) == profit;
+                        boolean primary = (attack.getAttacker_nation_id() != nationdId) == profit;
                         double total = valueFunc.apply(primary, attack);
                         if (net) {
                             total -= valueFunc.apply(!primary, attack);

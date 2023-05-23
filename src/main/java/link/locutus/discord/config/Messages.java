@@ -15,20 +15,20 @@ public class Messages {
 
     public static String BLOCKADE_HELP = "A blockade prevents you from sending or receiving funds (via bank or trade)\n" +
             "It can end when:\n" +
-            " - A war finishes (either nation is defeated). Wars also expire after 5 days\n" +
-            " - All their ships are killed\n" +
-            " - You can do a naval attack that isn't an utter failure (see `/simulate naval`)\n" +
-            " - Someone else blockades them (Immense Triumph)\n" +
+            "- A war finishes (either nation is defeated). Wars also expire after 5 days\n" +
+            "- All their ships are killed\n" +
+            "- You can do a naval attack that isn't an utter failure (see `/simulate naval`)\n" +
+            "- Someone else blockades them (Immense Triumph)\n" +
             "Tips:\n" +
-            " - Coordinate with other people fighting\n" +
-            " - Keep enough funds on your nation (5 days) so you don't need to bother breaking a blockade\n" +
+            "- Coordinate with other people fighting\n" +
+            "- Keep enough funds on your nation (5 days) so you don't need to bother breaking a blockade\n" +
             "Things you can do if you are desperately out of funds and cant wait:\n" +
-            " - Daily login can provide some cash ($500k)\n" +
-            " - Raiding (up to 5 raids), you can get cash from ground attacks or cash & other resources when you defeat a nation (see `/nation loot`)\n" +
-            " - Doing rewarded ads <https://politicsandwar.com/rewarded-ads/> or baseball (see sidebar)\n" +
-            " - Selling buildings (or replacing them with some cheaper alternative) or selling units you don't need\n" +
-            " - Converted a credit to resources: <https://politicsandwar.com/donate/resources/>\n" +
-            " - Switching your build to another power source (or buildings to mine e.g. uranium)";
+            "- Daily login can provide some cash ($500k)\n" +
+            "- Raiding (up to 5 raids), you can get cash from ground attacks or cash & other resources when you defeat a nation (see `/nation loot`)\n" +
+            "- Doing rewarded ads <https://politicsandwar.com/rewarded-ads/> or baseball (see sidebar)\n" +
+            "- Selling buildings (or replacing them with some cheaper alternative) or selling units you don't need\n" +
+            "- Converted a credit to resources: <https://politicsandwar.com/donate/resources/>\n" +
+            "- Switching your build to another power source (or buildings to mine e.g. uranium)";
 
     public static String GLOBAL_ROLE_MAPPING_INFO = "A global role mapping to ID:0 (*) will grant access to that role for all registered alliances";
 }

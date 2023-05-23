@@ -278,8 +278,8 @@ public class WarCommand extends Command {
                                 message = "No targets found. Try `" + Settings.commandPrefix(true) + "war`";
                             } else {
                                 message = "No targets found:\n" +
-                                        " - Add `-i` to include inactives\n" +
-                                        " - Add `-a` to include applicants\n" +
+                                        "- Add `-i` to include inactives\n" +
+                                        "- Add `-a` to include applicants\n" +
                                         "e.g. `" + Settings.commandPrefix(true) + "war -i -a`";
                             }
                             RateLimitUtil.queue(channel.sendMessage(message));

@@ -2,14 +2,11 @@ package link.locutus.discord.db.entities;
 
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.update.WarUpdateProcessor;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
-import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -17,9 +14,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public class AttackTypeBreakdown {
     private final String nameB;
@@ -67,35 +62,22 @@ public class AttackTypeBreakdown {
         return this;
     }
 
-    public void toEmbed(GuildMessageChannel channel) {
-        DiscordUtil.createEmbedCommand(channel, toEmbed());
-    }
+    public List<List<String>> toTableList() {
+        List<List<String>> rows = new ArrayList<>();
+        List<String> row = Arrays.asList("type", nameA, nameB);
+        rows.add(row);
 
-    public Consumer<EmbedBuilder> toEmbed() {
         List<AttackTypeSubCategory> allTypes = new ArrayList<>();
         allTypes.addAll(mapA.keySet());
         allTypes.addAll(mapB.keySet());
         Collections.sort(allTypes);
         allTypes = new ArrayList<>(new LinkedHashSet<>(allTypes));
-        List<String> typesStr = allTypes.stream().map(r -> r.name().toLowerCase()).collect(Collectors.toList());
-        typesStr.add("TOTAL");
-
-        List<AttackTypeSubCategory> finalAllTypes = allTypes;
-        return b -> {
-
-            ArrayList<String> groupA = new ArrayList<>();
-            ArrayList<String> groupB = new ArrayList<>();
-
-            for (AttackTypeSubCategory type : finalAllTypes) {
-                groupA.add(MathMan.format(mapA.getOrDefault(type, 0)));
-                groupB.add(MathMan.format(mapB.getOrDefault(type, 0)));
-            }
-            groupA.add(MathMan.format(totalA.get()));
-            groupB.add(MathMan.format(totalB.get()));
-
-            b.addField("Type", StringMan.join(typesStr, "\n"), true);
-            b.addField(nameA, StringMan.join(groupA, "\n"), true);
-            b.addField(nameB, StringMan.join(groupB, "\n"), true);
-        };
+        for (AttackTypeSubCategory type : allTypes) {
+            String amtA = MathMan.format(mapA.getOrDefault(type, 0));
+            String amtB = MathMan.format(mapB.getOrDefault(type, 0));
+            rows.add(Arrays.asList(type.name(), amtA, amtB));
+        }
+        rows.add(Arrays.asList("TOTAL", MathMan.format(totalA.get()), MathMan.format(totalB.get())));
+        return rows;
     }
 }

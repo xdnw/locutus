@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -62,14 +62,14 @@ public class AllianceLootRanking extends Command {
                 }
                 Map<ResourceType, Double> add = PnwUtil.add(map, loot);
                 byAlliance.put(allianceId, add);
-            } else if (attack.victor != 0 && attack.money_looted != 0) {
-                DBNation nation = nations.get(attack.victor);
+            } else if (attack.getVictor() != 0 && attack.getMoney_looted() != 0) {
+                DBNation nation = nations.get(attack.getVictor());
                 int allianceId = nation == null ? 0 : nation.getAlliance_id();
                 Map<ResourceType, Double> map = byAlliance.get(allianceId);
                 if (map == null) {
                     map = new HashMap<>();
                 }
-                map.put(ResourceType.MONEY, (map.getOrDefault(ResourceType.MONEY, 0d) + attack.money_looted));
+                map.put(ResourceType.MONEY, (map.getOrDefault(ResourceType.MONEY, 0d) + attack.getMoney_looted()));
                 byAlliance.put(allianceId, map);
             }
         }

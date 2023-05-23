@@ -573,6 +573,10 @@ public class JavaCity {
             return parentValue;
         };
 
+        if (origin.getRequiredInfra() > origin.getInfra()) {
+            throw new IllegalArgumentException("The city infrastructure (" + MathMan.format(origin.getInfra()) + ") is too low for the required buildings (required infra: " + MathMan.format(origin.getRequiredInfra()) + ", mmr: " + origin.getMMR() + ")");
+        }
+
         Map.Entry<JavaCity, Integer> optimized = BFSUtil.search(goal2, valueFunction2, valueCompletionFunction, searchServices, searchServices, new AbstractMap.SimpleEntry<>(origin, 4), queue, timeout);
 
         return optimized == null ? null : optimized.getKey();

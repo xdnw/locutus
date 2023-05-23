@@ -35,7 +35,7 @@ public enum Roles {
             return MILCOM_NO_PINGS.has(member);
         }
     },
-    MILCOM_NO_PINGS(4, "Access to milcom related commands - doesn't receive pings", GuildKey.ALLIANCE_ID, "MILCOM_ADVISOR"),
+    MILCOM_NO_PINGS(4, "Access to milcom related commands- doesn't receive pings", GuildKey.ALLIANCE_ID, "MILCOM_ADVISOR"),
 
     ECON(5, "Has access to econ gov commands", null),
     ECON_STAFF(6, "Has access to basic econ commands", GuildKey.ALLIANCE_ID, "ECON_LOW_GOV") {
@@ -169,7 +169,7 @@ public enum Roles {
     private static final Map<Integer, Roles> ROLES_ID_MAP = new ConcurrentHashMap<>();
 
     public static String getValidRolesStringList() {
-        return "\n - " + StringMan.join(Roles.values(), "\n - ");
+        return "\n- " + StringMan.join(Roles.values(), "\n- ");
     }
     Roles(int id, String desc) {
         this(id, desc, null);

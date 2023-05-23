@@ -1,6 +1,6 @@
 //package link.locutus.discord.apiv3.models;
 //
-//import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+//import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 //import link.locutus.discord.apiv1.enums.AttackType;
 //import link.locutus.discord.db.entities.DBWar;
 //import link.locutus.discord.util.IOUtil;

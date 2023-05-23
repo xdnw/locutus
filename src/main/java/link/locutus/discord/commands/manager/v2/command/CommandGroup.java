@@ -163,7 +163,7 @@ public class CommandGroup implements ICommandGroup {
 
     @Override
     public String desc(ValueStore store) {
-        return " - " + StringMan.join(primarySubCommandIds(), "\n - ");
+        return "- " + StringMan.join(primarySubCommandIds(), "\n- ");
 //        return null;
     }
 

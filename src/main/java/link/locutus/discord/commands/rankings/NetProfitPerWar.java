@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
@@ -68,13 +68,13 @@ public class NetProfitPerWar extends Command {
         SummedMapRankBuilder<Integer, Number> byNation = new RankBuilder<>(attacks)
                 .group((BiConsumer<DBAttack, GroupedRankBuilder<Integer, DBAttack>>) (attack, map) -> {
                     // Group attacks into attacker and defender
-                    map.put(attack.attacker_nation_id, attack);
-                    map.put(attack.defender_nation_id, attack);
-                }).map((i, a) -> a.war_id,
+                    map.put(attack.getAttacker_nation_id(), attack);
+                    map.put(attack.getDefender_nation_id(), attack);
+                }).map((i, a) -> a.getWar_id(),
                         // Convert attack to profit value
                         (nationdId, attack) -> {
                             DBNation nation = nations.get(nationdId);
-                            return nation != null ? sign * attack.getLossesConverted(attack.attacker_nation_id == nationdId) : 0;
+                            return nation != null ? sign * attack.getLossesConverted(attack.getAttacker_nation_id() == nationdId) : 0;
                         })
                 // Average it per war
                 .average();

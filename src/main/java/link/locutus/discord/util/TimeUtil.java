@@ -281,13 +281,17 @@ public class TimeUtil {
     }
 
     public static long getOrbisDate(long date) {
-        long origin = 16482268800000L / 11L;
+        long origin = getOrigin();
         return origin + (date - origin) * 12;
     }
 
     public static long getRealDate(long orbisDate) {
-        long origin = 16482268800000L / 11L;
+        long origin = getOrigin();
         return ((orbisDate - origin) / 12) + origin;
+    }
+
+    public static long getOrigin() {
+        return 16482268800000L / 11L;
     }
 
     public static <T> T runTurnTask(String id, Function<Long, T> task) {

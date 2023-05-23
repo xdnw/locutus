@@ -43,7 +43,7 @@ import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.task.war.WarCard;
 import com.google.common.eventbus.Subscribe;
 import com.google.gson.JsonObject;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -52,7 +52,6 @@ import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.guild.invite.GuildInviteCreateEvent;
@@ -570,8 +569,8 @@ public class GuildHandler {
             try {
                 double[] depoTotal = current.getNetDeposits(db);
                 body.append("\n\nPlease check the following:\n" +
-                        " - Discord roles\n" +
-                        " - Deposits: `" + PnwUtil.resourcesToString(depoTotal) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(depoTotal)));
+                        "- Discord roles\n" +
+                        "- Deposits: `" + PnwUtil.resourcesToString(depoTotal) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(depoTotal)));
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -1373,11 +1372,11 @@ public class GuildHandler {
     public void onAttack(DBNation memberNation, DBAttack root) {
         Set<Integer> aaIds = db.getAllianceIds();
         if (!aaIds.isEmpty()) {
-            if (root.attack_type == AttackType.VICTORY) {
-                DBNation attacker = Locutus.imp().getNationDB().getNation(root.attacker_nation_id);
+            if (root.getAttack_type() == AttackType.VICTORY) {
+                DBNation attacker = Locutus.imp().getNationDB().getNation(root.getAttacker_nation_id());
                 handleLostWars(attacker, aaIds, root, memberNation);
 
-                DBNation defender = Locutus.imp().getNationDB().getNation(root.defender_nation_id);
+                DBNation defender = Locutus.imp().getNationDB().getNation(root.getDefender_nation_id());
                 handleWonWars(defender, aaIds, root, memberNation);
 
             }
@@ -1391,7 +1390,7 @@ public class GuildHandler {
 
         if (channel == null) return;
 
-        DBWar war = Locutus.imp().getWarDb().getWar(root.war_id);
+        DBWar war = Locutus.imp().getWarDb().getWar(root.getWar_id());
         if (war == null) return;
         String title = "War Won";
         createWarInfoEmbed(title, war, enemy, memberNation, channel);
@@ -1402,7 +1401,7 @@ public class GuildHandler {
         MessageChannel channel = db.getOrNull(GuildKey.LOST_WAR_CHANNEL);
 
         if (channel == null) return;
-        DBWar war = Locutus.imp().getWarDb().getWar(root.war_id);
+        DBWar war = Locutus.imp().getWarDb().getWar(root.getWar_id());
         if (war == null) return;
         String title = "War Lost";
         createWarInfoEmbed(title, war, enemy, memberNation, channel);
@@ -1428,35 +1427,31 @@ public class GuildHandler {
                 "\n" +
                 "Assigned to %user% in {timediff}'";
 
-        String dismissEmoji = "Dismiss";
+        DiscordChannelIO io = new DiscordChannelIO(channel);
+        IMessageBuilder msg = io.create();
 
-        DiscordUtil.createEmbedCommand(channel, new Consumer<EmbedBuilder>() {
-            @Override
-            public void accept(EmbedBuilder builder) {
-                builder.setTitle(title);
-                builder.appendDescription(war.toUrl() + "\n");
+        StringBuilder builder = new StringBuilder();
+        builder.append(war.toUrl() + "\n");
 
-                builder.appendDescription(enemy.getNationUrlMarkup(true))
-                        .appendDescription(" | ").appendDescription(enemy.getAllianceUrlMarkup(true)).appendDescription(":");
-                builder.appendDescription(enemy.toCityMilMarkedown());
+        builder.append(enemy.getNationUrlMarkup(true))
+                .append(" | ").append(enemy.getAllianceUrlMarkup(true)).append(":");
+        builder.append(enemy.toCityMilMarkedown());
 
-                String typeStr = isAttacker ? "\uD83D\uDD2A" : "\uD83D\uDEE1";
-                builder.appendDescription(typeStr);
-                builder.appendDescription(memberNation.getNationUrlMarkup(true) + " (member):");
-                builder.appendDescription("\n").appendDescription(memberNation.toCityMilMarkedown());
+        String typeStr = isAttacker ? "\uD83D\uDD2A" : "\uD83D\uDEE1";
+        builder.append(typeStr);
+        builder.append(memberNation.getNationUrlMarkup(true) + " (member):");
+        builder.append("\n").append(memberNation.toCityMilMarkedown());
 
-                String attStr = card.condensedSubInfo(isAttacker);
-                String defStr = card.condensedSubInfo(!isAttacker);
-                builder.appendDescription("```" + attStr + "|" + defStr + "``` ");
-//                                    builder.appendDescription(StringMan.repeat("\u2501", 10) + "\n");
+        String attStr = card.condensedSubInfo(isAttacker);
+        String defStr = card.condensedSubInfo(!isAttacker);
+        builder.append("```\n" + attStr + "|" + defStr + "```\n");
 
-                breakdown.toEmbed().accept(builder);
-
-                builder.addField(infoEmoji, "For war card", false);
-                builder.addField(costEmoji, "For war cost", false);
-                builder.addField(assignEmoji, "To assign", false);
-            }
-        }, infoEmoji, infoCommand, costEmoji, costCommand, assignEmoji, assignCmd, dismissEmoji, " ");
+        msg.writeTable(title, breakdown.toTableList(), false, builder.toString());
+        msg.commandButton(infoCommand, infoEmoji);
+        msg.commandButton(costCommand, costEmoji);
+        msg.commandButton(assignCmd, assignEmoji);
+        msg.cancelButton();
+        msg.send();
     }
 
     public void onDefensiveWarAlert(List<Map.Entry<DBWar, DBWar>> wars, boolean rateLimit) {
@@ -1577,9 +1572,9 @@ public class GuildHandler {
                         if (pingMilcom) {
                             if (getDb().getCoalition(Coalition.FA_FIRST).contains(attacker.getAlliance_id()) && faRole != null) {
                                 String response = "```" + PnwUtil.getName(attacker.getAlliance_id(), true) + " is marked as FA_FIRST:\n" +
-                                        " - Solicit peace in that alliance embassy before taking military action\n" +
-                                        " - Set a reminder for 24h, to remind milcom if peace has not been obtained\n" +
-                                        " - React to this message```\n" + faRole.getAsMention();
+                                        "- Solicit peace in that alliance embassy before taking military action\n" +
+                                        "- Set a reminder for 24h, to remind milcom if peace has not been obtained\n" +
+                                        "- React to this message```\n" + faRole.getAsMention();
                                 pingUserOrRoles.computeIfAbsent(war, f -> new HashSet<>()).add(response);
                             } else {
                                 pingUserOrRoles.computeIfAbsent(war, f -> new HashSet<>()).add(milcomRole.getAsMention());
@@ -1610,7 +1605,7 @@ public class GuildHandler {
                                 pingUserOrRoles.computeIfAbsent(war, f -> new HashSet<>()).add(milcomRole.getAsMention());
                             }
                             if (faRole != null && !counterAAs.contains(attacker.getAlliance_id()) && !ignoreFA.contains(attacker.getAlliance_id())) {
-                                pingUserOrRoles.computeIfAbsent(war, f -> new HashSet<>()).add(faRole.getAsMention() + " (add enemy to IGNORE_FA coalition to not ping FA - or add to COUNTER to ping milcom)");
+                                pingUserOrRoles.computeIfAbsent(war, f -> new HashSet<>()).add(faRole.getAsMention() + " (add enemy to IGNORE_FA coalition to not ping FA- or add to COUNTER to ping milcom)");
                             }
                         }
                     }
@@ -1673,7 +1668,7 @@ public class GuildHandler {
                                     if (attacker.getAlliance_id() != 0) {
                                         body.append(" | " + attacker.getAllianceUrlMarkup(true));
                                         if (attacker.getPosition() < Rank.MEMBER.id) {
-                                            body.append(" - " + Rank.byId(attacker.getPosition()));
+                                            body.append("- " + Rank.byId(attacker.getPosition()));
                                         }
                                     }
                                     body.append(" ```\nc" + attacker.getCities() + " | " + attacker.getAvg_infra() + "\uD83C\uDFD7 | " + MathMan.format(attacker.getScore()) + "ns``` ");
@@ -1690,7 +1685,7 @@ public class GuildHandler {
                                             body.append(" | " + TimeUtil.secToTime(TimeUnit.MINUTES, defender.getActive_m()));
                                         }
                                         if (defender.getPosition() < Rank.MEMBER.id) {
-                                            body.append(" - " + Rank.byId(defender.getPosition()));
+                                            body.append("- " + Rank.byId(defender.getPosition()));
                                         }
                                     }
                                     if (!offensive && defender.getPosition() >= Rank.MEMBER.id) {
@@ -1715,7 +1710,7 @@ public class GuildHandler {
                                 bodyRaw.append("**War**: <" + war.toUrl() + ">\n");
                                 bodyRaw.append("Attacker: <" + attUrl + ">");
                                 if (attacker != null && attacker.getPosition() > 0) {
-                                    bodyRaw.append(" - " + Rank.byId(attacker.getPosition()));
+                                    bodyRaw.append("- " + Rank.byId(attacker.getPosition()));
                                 }
                                 bodyRaw.append("\n");
                                 if (!offensive && war.attacker_aa != 0) {
@@ -1727,7 +1722,7 @@ public class GuildHandler {
 
                                 bodyRaw.append("Defender: <" + defUrl + ">");
                                 if (defender != null && defender.getPosition() > 0) {
-                                    bodyRaw.append(" - " + Rank.byId(defender.getPosition()));
+                                    bodyRaw.append("- " + Rank.byId(defender.getPosition()));
                                 }
                                 bodyRaw.append("\n");
                                 if (offensive && war.attacker_aa != 0) {
@@ -1843,7 +1838,7 @@ public class GuildHandler {
                             if (footer.length() > 0 || !tips.isEmpty()) {
                                 String footerMsg = footer.toString().trim();
                                 if (!tips.isEmpty()) {
-                                    footerMsg += " ``` - " + StringMan.join(tips, "\n - ") + "```";
+                                    footerMsg += " ```- " + StringMan.join(tips, "\n- ") + "```";
                                 }
                                 msg.append(footerMsg);
                             }
@@ -1973,12 +1968,12 @@ public class GuildHandler {
             }
 
             allowed.put(Projects.MISSILE_LAUNCH_PAD, new Grant.Requirement("Please get the following projects first:\n" +
-                    " - ARMS_STOCKPILE\n" +
-                    " - BAUXITEWORKS\n" +
-                    " - IRON_WORKS\n" +
-                    " - EMERGENCY_GASOLINE_RESERVE\n" +
-                    " - PROPAGANDA_BUREAU\n" +
-                    " - INTELLIGENCE_AGENCY", overrideSafe, f -> (projects.contains(Projects.ARMS_STOCKPILE) &&
+                    "- ARMS_STOCKPILE\n" +
+                    "- BAUXITEWORKS\n" +
+                    "- IRON_WORKS\n" +
+                    "- EMERGENCY_GASOLINE_RESERVE\n" +
+                    "- PROPAGANDA_BUREAU\n" +
+                    "- INTELLIGENCE_AGENCY", overrideSafe, f -> (projects.contains(Projects.ARMS_STOCKPILE) &&
                     projects.contains(Projects.BAUXITEWORKS) &&
                     projects.contains(Projects.IRON_WORKS) &&
                     projects.contains(Projects.EMERGENCY_GASOLINE_RESERVE) &&
@@ -2010,17 +2005,17 @@ public class GuildHandler {
                 "A nation defeated gets 2 more days of being on the beige color. Beige protects from new war declarations. We want to have active enemies always in war, so they don't have the opportunity to build back up.\n" +
                 "\n" +
                 "**Tips for avoiding unnecessary attacks:**\n" +
-                " - Don't open with navals if they have units which are a threat. Ships can't attack planes, tanks or soldiers.\n" +
-                " - Dont naval if you already have them blockaded\n" +
-                " - Never airstrike infra, cash, or small amounts of units - wait for them to build more units\n" +
-                " - If they just have some soldiers and can't get a victory against you, don't spam ground attacks.\n" +
-                " - If the enemy only has soldiers (no tanks) and you have max planes. Airstriking soldiers kills more soldiers than a ground attack will.\n" +
-                " - Missiles/Nukes do NOT kill any units\n\n" +
+                "- Don't open with navals if they have units which are a threat. Ships can't attack planes, tanks or soldiers.\n" +
+                "- Dont naval if you already have them blockaded\n" +
+                "- Never airstrike infra, cash, or small amounts of units- wait for them to build more units\n" +
+                "- If they just have some soldiers and can't get a victory against you, don't spam ground attacks.\n" +
+                "- If the enemy only has soldiers (no tanks) and you have max planes. Airstriking soldiers kills more soldiers than a ground attack will.\n" +
+                "- Missiles/Nukes do NOT kill any units\n\n" +
                 "note: You can do some unnecessary attacks if the war is going to expire, or you need to beige them as part of a beige cycle\n\n");
 
         if (allowedReasons.contains(BEIGE_CYCLE)) {
             explanation.append("**What is beige cycling?**\n" +
-                    "Beige cycling is when we have a weakened enemy, and 3 strong nations declared on that enemy - then 1 nation defeats them, whilst the other two sit on them whilst they are on beige\n" +
+                    "Beige cycling is when we have a weakened enemy, and 3 strong nations declared on that enemy- then 1 nation defeats them, whilst the other two sit on them whilst they are on beige\n" +
                     "When their 2 days of beige from the defeat ends, another nation declares on the enemies free slot and the next nation defeats the enemy.\n" +
                     "\n" +
                     "**Beige cycling checklist:**\n" +
@@ -2033,7 +2028,7 @@ public class GuildHandler {
         if (!allowedReasons.isEmpty() && (allowedReasons.size() > 1 || !allowedReasons.contains(BEIGE_CYCLE))) {
             explanation.append("**Allowed beige reasons:**");
             for (BeigeReason allowedReason : allowedReasons) {
-                explanation.append("\n - " + allowedReason.name() +": " + allowedReason.getDescription());
+                explanation.append("\n- " + allowedReason.name() +": " + allowedReason.getDescription());
             }
             if (isViolation) {
                 explanation.append("\n\n**note for members**: These are informational guidelines provided to be a war aid and in no way intended to shame anyone. Locutus isn't always correct, or necessarily accounting for the nuances of the situation. \n" +
@@ -2071,11 +2066,11 @@ public class GuildHandler {
         MessageChannel channelViolation = db.getOrNull(GuildKey.ENEMY_BEIGED_ALERT_VIOLATIONS);
         if (channelAllowed == null && channelViolation == null) return;
 
-        DBNation attacker = Locutus.imp().getNationDB().getNation(root.attacker_nation_id);
-        DBNation defender = Locutus.imp().getNationDB().getNation(root.defender_nation_id);
+        DBNation attacker = Locutus.imp().getNationDB().getNation(root.getAttacker_nation_id());
+        DBNation defender = Locutus.imp().getNationDB().getNation(root.getDefender_nation_id());
         if (!enemies.contains(defender.getAlliance_id())) return;
 
-        DBWar war = Locutus.imp().getWarDb().getWar(root.war_id);
+        DBWar war = Locutus.imp().getWarDb().getWar(root.getWar_id());
 
         if (channelAllowed == null) channelAllowed = channelViolation;
         if (channelViolation == null) channelViolation = channelAllowed;
@@ -2099,9 +2094,9 @@ public class GuildHandler {
         body.append("\nAlly: " + MarkupUtil.markdownUrl(attacker.getNation(), attacker.getNationUrl()) + " | " + MarkupUtil.markdownUrl(attacker.getAllianceName(), attacker.getAllianceUrl()));
         User user = attacker.getUser();
         if (user != null) body.append("\n").append(user.getAsMention());
-        body.append("\n - Cities: " + attacker.getCities());
+        body.append("\n- Cities: " + attacker.getCities());
         body.append("\nEnemy: " + MarkupUtil.markdownUrl(defender.getNation(), defender.getNationUrl()) + " | " + MarkupUtil.markdownUrl(defender.getAllianceName(), defender.getAllianceUrl()));
-        body.append("\n - Cities: " + defender.getCities());
+        body.append("\n- Cities: " + defender.getCities());
 
         Map.Entry<Integer, Integer> res = war.getResistance(war.getAttacks());
         int otherRes = war.isAttacker(attacker) ? res.getKey() : res.getValue();
@@ -2116,12 +2111,12 @@ public class GuildHandler {
             body.append("\n\n**Categorization**");
             for (BeigeReason reason : reasons) {
                 if (allowedReasons.contains(reason)) {
-                    body.append("\n - " + reason + " -> ALLOWED");
+                    body.append("\n- " + reason + " -> ALLOWED");
                 }
             }
             for (BeigeReason reason : reasons) {
                 if (!allowedReasons.contains(reason)) {
-                    body.append("\n - " + reason);
+                    body.append("\n- " + reason);
                 }
             }
         }
@@ -2139,7 +2134,7 @@ public class GuildHandler {
 
         //
         String warInfoEmoji = 0 + "War Info";
-        String warInfoCmd = "~" + Settings.commandPrefix(true) + "warinfo " + root.war_id;
+        String warInfoCmd = "~" + Settings.commandPrefix(true) + "warinfo " + root.getWar_id();
         String defInfoEmoji = 1 + "Defender Info";
         String defInfoCmd = "~" + Settings.commandPrefix(true) + "warinfo " + defender.getNationUrl();
 
@@ -2164,7 +2159,7 @@ public class GuildHandler {
                 DiscordUtil.sendMessage(channel, explanation.toString());
             }
 
-            DBNation nation = DBNation.byId(root.attacker_nation_id);
+            DBNation nation = DBNation.byId(root.getAttacker_nation_id());
             if (nation != null && db.getGuild().getMember(user) != null) {
                 ApiKeyPool keys = db.getMailKey();
                 if (keys != null) {
@@ -2219,11 +2214,11 @@ public class GuildHandler {
         getDb().setMeta(referred.getNation_id(), meta, buf.array());
 
         if (!ignoreIncentivesForNations.contains(referrer.getNation_id())) {
-            message = "Incentive Log: " + meta.name() + " for " + referred.getNation() + "\n - " + message;
+            message = "Incentive Log: " + meta.name() + " for " + referred.getNation() + "\n- " + message;
             String note = "#deposit #incentive=" + meta.name();
             if (!Arrays.equals(amt, ResourceType.getBuffer())) {
                 getDb().addBalance(System.currentTimeMillis(), referrer, referred.getNation_id(), note, amt);
-                message += "\n - Added `" + PnwUtil.resourcesToString(amt) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(amt)) + " to " + referrer.getNation() + "'s account";
+                message += "\n- Added `" + PnwUtil.resourcesToString(amt) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(amt)) + " to " + referrer.getNation() + "'s account";
             }
             MessageChannel output = getDb().getResourceChannel(0);
             if (output != null) {
@@ -2440,7 +2435,7 @@ public class GuildHandler {
             };
             if (delay == null || delay <= 60) task.run();
             else {
-                Locutus.imp().getCommandManager().getExecutor().schedule(task, delay, TimeUnit.SECONDS);
+                Locutus.imp().getCommandManager().getExecutor().schedule(task, delay, TimeUnit.MILLISECONDS);
             }
         }
     }
@@ -2627,6 +2622,7 @@ public class GuildHandler {
         body.append("DEF: " + PnwUtil.getMarkdownUrl(current.defender_id, false) +
                 " | " + PnwUtil.getMarkdownUrl(current.defender_aa, true)).append("\n");
 
+        System.out.println("Create peace alert");
         DiscordUtil.createEmbedCommand(channel, title, body.toString());
     }
 }

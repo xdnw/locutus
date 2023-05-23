@@ -506,10 +506,10 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
     }
 
     @Command(desc="Generates sheets for a coalition war:" +
-            " - All enemies\n" +
-            " - Priority enemies\n" +
-            " - All allies\n" +
-            " - Underutilized allies")
+            "- All enemies\n" +
+            "- Priority enemies\n" +
+            "- All allies\n" +
+            "- Underutilized allies")
     @RolePermission(Roles.ADMIN)
     public void allyEnemySheets(ValueStore store, NationPlaceholders placeholders,
             @Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel,

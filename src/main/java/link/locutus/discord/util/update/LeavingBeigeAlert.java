@@ -323,9 +323,9 @@ public class LeavingBeigeAlert {
         String footer = "**note1**: To find specific beige targets, go to your alliance server on discord and use e.g. " +
                 "`" + Settings.commandPrefix(true) + "raid * 25 -beige` and set a reminder using " + CM.alerts.beige.beigeAlert.cmd.toSlashMention() + "\n" +
                 "**note2:** To set how you receive alerts for *any* target leaving beige automatically, update your settings:\n" +
-                " - " + CM.alerts.beige.beigeAlertMode.cmd.toSlashMention() + "\n" +
-                " - " + CM.alerts.beige.beigeAlertRequiredStatus.cmd.toSlashMention() + "\n" +
-                " - " + CM.alerts.beige.beigeAlertRequiredLoot.cmd.toSlashMention() + " (only get auto alerts for nations over X loot)\n\n" +
+                "- " + CM.alerts.beige.beigeAlertMode.cmd.toSlashMention() + "\n" +
+                "- " + CM.alerts.beige.beigeAlertRequiredStatus.cmd.toSlashMention() + "\n" +
+                "- " + CM.alerts.beige.beigeAlertRequiredLoot.cmd.toSlashMention() + " (only get auto alerts for nations over X loot)\n\n" +
                 "**These nations are leaving beige or VM next turn**" +
                 " (Next turn in " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff) + ")\n\n" +
                 "`note: Default day change is 5 minutes, turn change is 30s`\n" +

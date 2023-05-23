@@ -130,7 +130,7 @@ public class AddBalanceBuilder {
                 invalidRows.accept(entry.getKey());
             }
         }
-        if (throwErrorOnInvalid && !invalid.isEmpty()) throw new IllegalArgumentException("Invalid nations/alliance:\n - " + StringMan.join(invalid, "\n - "));
+        if (throwErrorOnInvalid && !invalid.isEmpty()) throw new IllegalArgumentException("Invalid nations/alliance:\n- " + StringMan.join(invalid, "\n- "));
         return this;
     }
 
@@ -243,10 +243,10 @@ public class AddBalanceBuilder {
                     String aaName = PnwUtil.getMarkdownUrl(aaIds.iterator().next(), true);
                     body.append("\n" + getFundsToSendNations().size() + " nations in " + aaName + ":");
                 }
-                if (gray > 0) body.append("\n - gray: " + gray);
-                if (vm > 0) body.append("\n - vm: " + vm);
-                if (inactive > 0) body.append("\n - inactive: " + inactive);
-                if (applicants > 0) body.append("\n - applicants: " + applicants);
+                if (gray > 0) body.append("\n- gray: " + gray);
+                if (vm > 0) body.append("\n- vm: " + vm);
+                if (inactive > 0) body.append("\n- inactive: " + inactive);
+                if (applicants > 0) body.append("\n- applicants: " + applicants);
             }
         }
         if (getFundsToSendGuilds().size() == 1) {
@@ -368,8 +368,8 @@ public class AddBalanceBuilder {
 
         }
 
-        return "Done:\n - " +
-                StringMan.join(response, "\n - ") +
+        return "Done:\n- " +
+                StringMan.join(response, "\n- ") +
                 "\nTotal added: `" + PnwUtil.resourcesToString(totalAdded) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalAdded));
     }
 

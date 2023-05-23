@@ -371,7 +371,7 @@ public class TradeCommands {
         if (!removed.isEmpty()) {
             response.append("Removed ").append(removed.size()).append(" old offers:\n");
             for (TradeDB.BulkTradeOffer o : removed) {
-                response.append(" - " + o.toSimpleString()).append("\n");
+                response.append("- " + o.toSimpleString()).append("\n");
             }
         }
 
@@ -459,7 +459,7 @@ public class TradeCommands {
         if (!removed.isEmpty()) {
             response.append("Removed ").append(removed.size()).append(" old offers:\n");
             for (TradeDB.BulkTradeOffer o : removed) {
-                response.append(" - " + o.toSimpleString()).append("\n");
+                response.append("- " + o.toSimpleString()).append("\n");
             }
         }
 
@@ -1070,7 +1070,7 @@ public class TradeCommands {
         body.append("Alliances: " + StringMan.join(aaIds, ",")).append("\n");
         body.append("Corporations: " + StringMan.join(corpIds, ",")).append("\n");
         body.append("Stockpile: `" + PnwUtil.resourcesToString(stockpile) + "`\n");
-        body.append(" - worth: ~$" + MathMan.format(PnwUtil.convertedTotal(stockpile))).append("\n");
+        body.append("- worth: ~$" + MathMan.format(PnwUtil.convertedTotal(stockpile))).append("\n");
 
         List<String> errors = new ArrayList<>();
         Set<Long> testedIds = new HashSet<>();
@@ -1107,10 +1107,10 @@ public class TradeCommands {
         Map<ResourceType, Double> diff = PnwUtil.subResourcesToA(new HashMap<>(allDeposits), stockpile);
 
         body.append("Offshored Deposits: `" + PnwUtil.resourcesToString(allDeposits) + "`\n");
-        body.append(" - worth: ~$" + MathMan.format(PnwUtil.convertedTotal(allDeposits))).append("\n");
+        body.append("- worth: ~$" + MathMan.format(PnwUtil.convertedTotal(allDeposits))).append("\n");
 
         body.append("Diff: `" + PnwUtil.resourcesToString(diff) + "`\n");
-        body.append(" - worth: ~$" + MathMan.format(PnwUtil.convertedTotal(diff))).append("\n");
+        body.append("- worth: ~$" + MathMan.format(PnwUtil.convertedTotal(diff))).append("\n");
 
         String emoji = "Show Day Graph";
 
@@ -1123,7 +1123,7 @@ public class TradeCommands {
                 .commandButton(cmd, "Show Graph (200d)")
                 .append("Done!");
         if (!errors.isEmpty()) {
-            msg.append("\n - " + StringMan.join(errors, "\n - "));
+            msg.append("\n- " + StringMan.join(errors, "\n- "));
         }
         msg.send();
 
@@ -1201,7 +1201,7 @@ public class TradeCommands {
             table.add(day, (Void) null);
         }
 
-        table.write(channel);
+        table.write(channel, true);
         return "Done!";
     }
 
@@ -1255,7 +1255,7 @@ public class TradeCommands {
         }
 
 
-        table.write(channel);
+        table.write(channel, true);
 
         return "Done!";
     }
@@ -1346,7 +1346,7 @@ public class TradeCommands {
             }
 
 
-            table.write(channel);
+            table.write(channel, true);
         }
 
 
@@ -1419,7 +1419,7 @@ public class TradeCommands {
                 }
             }
 
-            table.write(channel);
+            table.write(channel, true);
         }
     }
 

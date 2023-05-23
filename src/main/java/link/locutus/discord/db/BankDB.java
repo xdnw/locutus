@@ -115,7 +115,7 @@ import static org.jooq.impl.DSL.lower;
 import static org.springframework.data.mongodb.core.query.Update.update;
 
 public class BankDB extends DBMainV3 {
-    private final Map<Long, List<Transaction2>> transactionCache = new ConcurrentHashMap<>();
+    private final Map<Long, Set<Transaction2>> transactionCache = new ConcurrentHashMap<>();
 
     public BankDB(String name) throws SQLException, ClassNotFoundException {
         super(Settings.INSTANCE.DATABASE, name, false);
@@ -1308,7 +1308,7 @@ public class BankDB extends DBMainV3 {
     private void cache(Transaction2 tx) {
         if (shouldCache(tx.sender_id, tx.sender_type)) {
             synchronized (transactionCache) {
-                List<Transaction2> existing = transactionCache.get(tx.sender_id);
+                Set<Transaction2> existing = transactionCache.get(tx.sender_id);
                 if (existing != null) {
                     existing.add(tx);
                 }
@@ -1316,7 +1316,7 @@ public class BankDB extends DBMainV3 {
         }
         if (shouldCache(tx.receiver_id, tx.receiver_type)) {
             synchronized (transactionCache) {
-                List<Transaction2> existing = transactionCache.get(tx.receiver_id);
+                Set<Transaction2> existing = transactionCache.get(tx.receiver_id);
                 if (existing != null) {
                     existing.add(tx);
                 }
@@ -1331,7 +1331,7 @@ public class BankDB extends DBMainV3 {
                             long id = Long.parseLong(idStr);
                             if (id > Integer.MAX_VALUE) {
                                 synchronized (transactionCache) {
-                                    List<Transaction2> existing = transactionCache.get(id);
+                                    Set<Transaction2> existing = transactionCache.get(id);
                                     if (existing != null) {
                                         existing.add(tx);
                                     }
@@ -1345,7 +1345,7 @@ public class BankDB extends DBMainV3 {
                             long id = Long.parseLong(idStr);
                             if (id < Integer.MAX_VALUE) {
                                 synchronized (transactionCache) {
-                                    List<Transaction2> existing = transactionCache.get(id);
+                                    Set<Transaction2> existing = transactionCache.get(id);
                                     if (existing != null) {
                                         existing.add(tx);
                                     }
@@ -1364,7 +1364,7 @@ public class BankDB extends DBMainV3 {
     public List<Transaction2> getBankTransactions(long senderOrReceiverId, int type) {
         boolean cache = shouldCache(senderOrReceiverId, type);
         if (cache) {
-            List<Transaction2> cached = transactionCache.get(senderOrReceiverId);
+            Set<Transaction2> cached = transactionCache.get(senderOrReceiverId);
             if (cached != null) {
                 return new ArrayList<>(cached);
             }
@@ -1375,7 +1375,7 @@ public class BankDB extends DBMainV3 {
                 if (transactionCache.containsKey(senderOrReceiverId)) {
                     transactionCache.get(senderOrReceiverId).addAll(result);
                 } else {
-                    transactionCache.put(senderOrReceiverId, result);
+                    transactionCache.put(senderOrReceiverId, new LinkedHashSet<>(result));
                 }
             }
         }

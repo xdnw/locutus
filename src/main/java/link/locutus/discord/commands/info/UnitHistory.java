@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.info;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.commands.manager.Command;
@@ -48,15 +48,15 @@ public class UnitHistory extends Command {
         if (unit == MilitaryUnit.NUKE || unit == MilitaryUnit.MISSILE) {
             List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(nation.getNation_id(), day);
             AttackType attType = unit == MilitaryUnit.NUKE ? AttackType.NUKE : AttackType.MISSILE;
-            attacks.removeIf(f -> f.attack_type != attType);
+            attacks.removeIf(f -> f.getAttack_type() != attType);
 
             outer:
             for (DBAttack attack : attacks) {
-                AbstractMap.SimpleEntry<Long, Integer> toAdd = new AbstractMap.SimpleEntry<>(attack.epoch, nation.getUnits(unit));
+                AbstractMap.SimpleEntry<Long, Integer> toAdd = new AbstractMap.SimpleEntry<>(attack.getDate(), nation.getUnits(unit));
                 int i = 0;
                 for (; i < history.size(); i++) {
                     Map.Entry<Long, Integer> entry = history.get(i);
-                    long diff = Math.abs(entry.getKey() - attack.epoch);
+                    long diff = Math.abs(entry.getKey() - attack.getDate());
                     if (diff < 5 * 60 * 1000) continue outer;
 
                     toAdd.setValue(entry.getValue());

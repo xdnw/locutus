@@ -26,7 +26,7 @@ import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -74,38 +74,38 @@ public class NationUpdateProcessor {
 
         List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(now - TimeUnit.DAYS.toMillis(5));
 
-        Collections.sort(attacks, Comparator.comparingLong(o -> o.epoch));
+        Collections.sort(attacks, Comparator.comparingLong(o -> o.getDate()));
 
         Map<Integer, Map<Integer, Integer>> blockadedByNationByWar = new HashMap<>(); // map of nations getting blockaded
         Map<Integer, Map<Integer, Integer>> blockadingByNationByWar = new HashMap<>(); // map of nations blockading
 
         for (DBAttack attack : attacks) {
-            if (attack.attack_type != AttackType.NAVAL) continue;
+            if (attack.getAttack_type() != AttackType.NAVAL) continue;
 
-            DBNation defender = DBNation.byId(attack.defender_nation_id);
+            DBNation defender = DBNation.byId(attack.getDefender_nation_id());
             if (defender == null) continue;
 
-            if (attack.success == 3) {
-                Map<Integer, Integer> defenderBlockades = blockadingByNationByWar.get(attack.defender_nation_id);
+            if (attack.getSuccess() == 3) {
+                Map<Integer, Integer> defenderBlockades = blockadingByNationByWar.get(attack.getDefender_nation_id());
                 if (defenderBlockades != null && !defenderBlockades.isEmpty()) {
                     for (Map.Entry<Integer, Integer> entry : defenderBlockades.entrySet()) {
                         int blockaded = entry.getKey();
                         int warId = entry.getValue();
-                        blockadedByNationByWar.getOrDefault(blockaded, Collections.emptyMap()).remove(attack.defender_nation_id);
+                        blockadedByNationByWar.getOrDefault(blockaded, Collections.emptyMap()).remove(attack.getDefender_nation_id());
                     }
                     defenderBlockades.clear();
                 }
 
-                DBWar war = wars.get(attack.war_id);
+                DBWar war = wars.get(attack.getWar_id());
                 // Only if war is active
                 if (war != null && (war.status == WarStatus.ACTIVE || war.status == WarStatus.DEFENDER_OFFERED_PEACE || war.status == WarStatus.ATTACKER_OFFERED_PEACE)) {
-                    blockadedByNationByWar.computeIfAbsent(attack.defender_nation_id, f -> new HashMap<>()).put(attack.attacker_nation_id, attack.war_id);
-                    blockadingByNationByWar.computeIfAbsent(attack.attacker_nation_id, f -> new HashMap<>()).put(attack.defender_nation_id, attack.war_id);
+                    blockadedByNationByWar.computeIfAbsent(attack.getDefender_nation_id(), f -> new HashMap<>()).put(attack.getAttacker_nation_id(), attack.getWar_id());
+                    blockadingByNationByWar.computeIfAbsent(attack.getAttacker_nation_id(), f -> new HashMap<>()).put(attack.getDefender_nation_id(), attack.getWar_id());
                 }
             }
-            if (attack.success >= 2) {
-                blockadedByNationByWar.getOrDefault(attack.attacker_nation_id, Collections.emptyMap()).remove(attack.defender_nation_id);
-                blockadingByNationByWar.getOrDefault(attack.defender_nation_id, Collections.emptyMap()).remove(attack.attacker_nation_id);
+            if (attack.getSuccess() >= 2) {
+                blockadedByNationByWar.getOrDefault(attack.getAttacker_nation_id(), Collections.emptyMap()).remove(attack.getDefender_nation_id());
+                blockadingByNationByWar.getOrDefault(attack.getDefender_nation_id(), Collections.emptyMap()).remove(attack.getAttacker_nation_id());
             }
         }
 
@@ -917,9 +917,10 @@ public class NationUpdateProcessor {
                     if (previous.getAlliance_id() != 0 && previous.getPosition() > Rank.APPLICANT.id) {
                         GuildDB db = Locutus.imp().getGuildDBByAA(previous.getAlliance_id());
                         if (db != null && db.getOffshore() == Locutus.imp().getRootBank()) {
-                            body += "\n" + previous.getAllianceUrlMarkup(true);
+                            body += "\n" + previous.getAllianceUrlMarkup(true) + " " + previous.getPositionEnum();
                             Locutus.imp().getRootDb().addCoalition(previous.getAlliance_id(), Coalition.FROZEN_FUNDS);
                             adminInfo.add(previous.getAllianceUrlMarkup(true));
+                            AlertUtil.error(previous.getAlliance_id() + " frozen", previous.getAllianceUrlMarkup(true) + " " + previous.getPositionEnum() + " " + previous.getNationUrlMarkup(true) + " " + previous.getNation());
                         }
                     }
                     User user = previous.getUser();
@@ -931,6 +932,7 @@ public class NationUpdateProcessor {
                                 Locutus.imp().getRootDb().addCoalition(guild.getIdLong(), Coalition.FROZEN_FUNDS);
                                 body += "\nguild: " + guild;
                                 adminInfo.add(guild.toString());
+                                AlertUtil.error(guild.getIdLong() + " frozen", guild.toString() + " " + previous.getNationUrlMarkup(true) + " " + previous.getNation());
                             }
                         }
                     }

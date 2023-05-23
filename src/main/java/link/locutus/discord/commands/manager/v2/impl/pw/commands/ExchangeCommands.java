@@ -69,8 +69,8 @@ public class ExchangeCommands {
                 "Color Roles: `" + Settings.commandPrefix(false) + "exchange color <rank> <color>`\n"
         ));
 
-        String help = "Created exchange: `" + symbol.toUpperCase() + "`. To have it listed on the exchange please complete the following:\n" + " - Join " + StockDB.INVITE + "\n" +
-                " - Visit your channel and read the setup documentation: " + exchangeChannel.getAsMention() + "\n";
+        String help = "Created exchange: `" + symbol.toUpperCase() + "`. To have it listed on the exchange please complete the following:\n" + "- Join " + StockDB.INVITE + "\n" +
+                "- Visit your channel and read the setup documentation: " + exchangeChannel.getAsMention() + "\n";
         return help;
     }
 

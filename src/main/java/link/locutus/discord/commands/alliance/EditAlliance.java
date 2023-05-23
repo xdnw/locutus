@@ -64,7 +64,7 @@ public class EditAlliance extends Command {
             @Override
             public void accept(Map<String, String> post) {
                 if (args.size() == 1) {
-                    response.append("Usage: `" + help() + "` - Currently set: " + StringMan.getString(post));
+                    response.append("Usage: `" + help() + "`- Currently set: " + StringMan.getString(post));
                     return;
                 }
                 String content = DiscordUtil.trimContent(event.getMessage().getContentRaw());

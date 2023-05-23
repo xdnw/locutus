@@ -4,7 +4,7 @@ import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -98,13 +98,13 @@ public class SpyTracker {
                 }
             }
         });
-        System.out.println(" - Fetched nations " + nations.size());
+        System.out.println("- Fetched nations " + nations.size());
         try {
             updateCasualties(nations);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        System.out.println(" - updated casualties " + killTracker.size() + " | " + casualtyTracker.size());
+        System.out.println("- updated casualties " + killTracker.size() + " | " + casualtyTracker.size());
     }
 
     private final Map<Integer, Map<MilitaryUnit, Integer>> casualtyTracker = new ConcurrentHashMap<>();
@@ -205,11 +205,11 @@ public class SpyTracker {
 
         long latestAttackMs = 0;
         for (DBAttack attack : allAttacks) {
-            if (attack.epoch > latestAttackMs) {
-                latestAttackMs = attack.epoch;
+            if (attack.getDate() > latestAttackMs) {
+                latestAttackMs = attack.getDate();
             }
-            attacksByNation.computeIfAbsent(attack.attacker_nation_id, k -> new ArrayList<>()).add(attack);
-            attacksByNation.computeIfAbsent(attack.defender_nation_id, k -> new ArrayList<>()).add(attack);
+            attacksByNation.computeIfAbsent(attack.getAttacker_nation_id(), k -> new ArrayList<>()).add(attack);
+            attacksByNation.computeIfAbsent(attack.getDefender_nation_id(), k -> new ArrayList<>()).add(attack);
         }
         Iterator<SpyActivity> iter = queue.iterator();
         while (iter.hasNext()) {
@@ -218,7 +218,7 @@ public class SpyTracker {
                 List<DBAttack> attacks = attacksByNation.get(activity.nationId);
                 if (attacks != null) {
                     for (DBAttack attack : attacks) {
-                        boolean isAttacker = attack.attacker_nation_id == activity.nationId;
+                        boolean isAttacker = attack.getAttacker_nation_id() == activity.nationId;
                         boolean checkNation = activity.isKill != isAttacker;
                         Map<MilitaryUnit, Integer> losses = attack.getUnitLosses(checkNation);
                         Integer loss = losses.get(activity.unit);
@@ -227,13 +227,13 @@ public class SpyTracker {
                                 iter.remove();
                                 break;
                             }
-                            if (Math.abs(attack.epoch - activity.timestamp) < requiredProximityMs) {
+                            if (Math.abs(attack.getDate() - activity.timestamp) < requiredProximityMs) {
                                 iter.remove();
                                 break;
                             }
                         } else {
-                            if (Math.abs(attack.epoch - activity.timestamp) < requiredProximityMs && !activity.isKill) {
-                                System.out.println("Ignore loss " + attack.war_id + " " + activity.unit + " " + activity.change + " | " + attack.attack_type + " | " + Math.abs(attack.epoch - activity.timestamp));
+                            if (Math.abs(attack.getDate() - activity.timestamp) < requiredProximityMs && !activity.isKill) {
+                                System.out.println("Ignore loss " + attack.getWar_id() + " " + activity.unit + " " + activity.change + " | " + attack.getAttack_type() + " | " + Math.abs(attack.getDate() - activity.timestamp));
                                 iter.remove();
                                 break;
                             }
@@ -395,19 +395,19 @@ public class SpyTracker {
                 Map.Entry<Integer, Integer> killRangeSat = SpyCount.getUnitKillRange(60, 0, unit, defUnits, true);
 
                 body.append("\n\n**" + unit + " kill range:** ");
-                body.append(killRangeNoSat.getKey() + " - " + killRangeNoSat.getValue() + "(no SAT) | " + killRangeSat.getKey() + " - " + killRangeSat.getValue() + "(SAT)");
+                body.append(killRangeNoSat.getKey() + "- " + killRangeNoSat.getValue() + "(no SAT) | " + killRangeSat.getKey() + "- " + killRangeSat.getValue() + "(SAT)");
             }
 
             if (!alert.exact.isEmpty()) {
                 body.append("\nAttackers (high probability):");
                 for (SpyActivity offensive : alert.exact) {
-                    body.append("\n - " + alert.entryToString(offensive, null));
+                    body.append("\n- " + alert.entryToString(offensive, null));
                 }
             } else {
                 if (!alert.close.isEmpty()) {
                     body.append("\nAttackers (medium probability):");
                     for (SpyActivity offensive : alert.close) {
-                        body.append("\n - " + alert.entryToString(offensive, null));
+                        body.append("\n- " + alert.entryToString(offensive, null));
                     }
                 }
                 int defUnitBefore = alert.original;
@@ -419,15 +419,15 @@ public class SpyTracker {
                     Map.Entry<Integer, Integer> rangeNoSat = SpyCount.getSpiesUsedRange(killed, defUnitBefore, false);
                     Map.Entry<Integer, Integer> rangeSat = SpyCount.getSpiesUsedRange(killed, defUnitBefore, true);
                     body.append("\n**Attacker Spies Estimate:** ");
-                    body.append(rangeNoSat.getKey() + " - " + rangeNoSat.getValue() + "(no SAT) | " + rangeSat.getKey() + " - " + rangeSat.getValue() + "(SAT)");
-                    body.append("\n - Note: Unit counts may be incorrect (outdated/two attacks in quick succession)");
-                    body.append("\n - See: <https://politicsandwar.fandom.com/wiki/Spies>");
+                    body.append(rangeNoSat.getKey() + "- " + rangeNoSat.getValue() + "(no SAT) | " + rangeSat.getKey() + "- " + rangeSat.getValue() + "(SAT)");
+                    body.append("\n- Note: Unit counts may be incorrect (outdated/two attacks in quick succession)");
+                    body.append("\n- See: <https://politicsandwar.fandom.com/wiki/Spies>");
                 }
 
                 body.append("\nAttackers Online (low probability):");
                 for (Map.Entry<DBNation, Long> entry : alert.online) {
                     DBNation attacker = entry.getKey();
-                    body.append("\n - " + alert.entryToString(attacker, null, entry.getValue()));
+                    body.append("\n- " + alert.entryToString(attacker, null, entry.getValue()));
                 }
             }
 

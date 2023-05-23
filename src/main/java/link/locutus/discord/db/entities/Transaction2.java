@@ -274,6 +274,19 @@ public class Transaction2 {
         return true;
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof Transaction2 tx) {
+            return tx.tx_id == tx_id;
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return tx_id;
+    }
+
     public String createInsert(String table, boolean id, boolean ignore) {
         StringBuilder sql = new StringBuilder("INSERT " + (id ? "OR " + (ignore ? "IGNORE" : "REPLACE") + " " : "") + "INTO `" + table + "` (" + (id ? "tx_id, " : "") + "tx_datetime, sender_id, sender_type, receiver_id, receiver_type, banker_nation_id, note");
         int fieldCount = id ? 8 : 7;

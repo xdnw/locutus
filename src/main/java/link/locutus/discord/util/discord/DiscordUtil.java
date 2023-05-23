@@ -78,6 +78,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -484,6 +485,7 @@ public class DiscordUtil {
         Map<Integer, Set<Role>> rolesByCity = new HashMap<>();
         for (Role role : roles) {
             String name = role.getName();
+            if (name.isEmpty()) continue;
             Map.Entry<Integer, Integer> range = getCityRange(name);
             if (range == null) continue;
             int start = range.getKey();
@@ -802,8 +804,8 @@ public class DiscordUtil {
         return event.isFromGuild() ? event.getGuild() : Locutus.imp().getServer();
     }
 
-    public static Set<DBNation> parseNations(Guild guild, String aa) {
-        return parseNations(guild, aa, false, false);
+    public static Set<DBNation> parseNations(Guild guild, String query) {
+        return parseNations(guild, query, false, false);
     }
 
     public static Set<DBNation> parseNations(Guild guild, String aa, boolean noApplicants, boolean starIsSelf) {

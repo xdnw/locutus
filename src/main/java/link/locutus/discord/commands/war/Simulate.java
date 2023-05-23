@@ -82,9 +82,9 @@ public class Simulate extends Command {
         }
 
 //        event.getChannel().sendMessage("Simulating war between: " + origin.getAggressor().getNation().getNation() + " -> " + origin.getDefender().getNation().getNation()).complete();
-        Message msg2 = RateLimitUtil.complete(event.getChannel().sendMessage(" - Fetching war link.locutus.discord.util.RateLimitUtil.complete(information..."));
+        Message msg2 = RateLimitUtil.complete(event.getChannel().sendMessage("- Fetching war link.locutus.discord.util.RateLimitUtil.complete(information..."));
 
-        RateLimitUtil.queue(event.getChannel().editMessageById(msg2.getIdLong(), " - Initializing (simulation..."));
+        RateLimitUtil.queue(event.getChannel().editMessageById(msg2.getIdLong(), "- Initializing (simulation..."));
 
         long start = System.currentTimeMillis();
 
@@ -123,7 +123,7 @@ public class Simulate extends Command {
 
             SimulatedWar warSim = new SimulatedWar(origin, valueFunction, goal);
 
-            RateLimitUtil.queue(event.getChannel().editMessageById(msg2.getIdLong(), " - (Processing..."));
+            RateLimitUtil.queue(event.getChannel().editMessageById(msg2.getIdLong(), "- (Processing..."));
 
             solution = warSim.solve();
         } else {

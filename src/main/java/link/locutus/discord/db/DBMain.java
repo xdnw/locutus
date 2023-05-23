@@ -321,7 +321,7 @@ public abstract class DBMain implements Closeable {
         AlertUtil.displayTray("DATABASAE ERROR", "SSEE CONSOLE");
         log.log(Level.WARNING, "============ DATABASE ERROR ============");
         log.log(Level.WARNING, "There was an error updating the database.");
-        log.log(Level.WARNING, " - It will be corrected on shutdown");
+        log.log(Level.WARNING, "- It will be corrected on shutdown");
         log.log(Level.WARNING, "========================================");
         e.printStackTrace();
         log.log(Level.WARNING, "========================================");

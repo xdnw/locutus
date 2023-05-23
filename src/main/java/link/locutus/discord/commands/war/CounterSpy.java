@@ -105,7 +105,7 @@ public class CounterSpy extends Command {
         }
         Set<DBNation> toCounter;
         if (args.size() == 3) {
-            toCounter = DiscordUtil.parseNations(guild, args.get(2), true, true);
+            toCounter = DiscordUtil.parseNations(guild, args.get(2), false, true);
         } else {
             if (me.getAlliance_id() == 0) return usage(event);
             toCounter = Locutus.imp().getNationDB().getNations(Collections.singleton(me.getAlliance_id()));

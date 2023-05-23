@@ -1,9 +1,10 @@
 package link.locutus.discord.commands.manager.v2.command;
 
+import de.vandermeer.asciitable.AT_Context;
+import de.vandermeer.asciitable.AsciiTable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.util.RateLimitUtil;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
@@ -15,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 public interface IMessageBuilder {
     long getId();
@@ -79,6 +81,30 @@ public interface IMessageBuilder {
     @CheckReturnValue
     default IMessageBuilder paginate(String title, JSONObject command, Integer page, int perPage, List<String> results, String footer, boolean inline) {
         return paginate(title, command.toString(), page, perPage, results, footer, inline);
+    }
+
+    @CheckReturnValue
+    default IMessageBuilder writeTable(String title, List<List<String>> tableList, boolean embed, String footer) {
+        if (tableList.size() == 0) return this;
+
+        AsciiTable at = new AsciiTable(new AT_Context().setWidth(36).setLineSeparator("\n"));
+        at.addRow(tableList.get(0).toArray(new Object[0]));
+        at.addRule();
+        for (int i = 1; i < tableList.size(); i++) {
+            at.addRow(tableList.get(i).toArray(new Object[0]));
+            if (i != tableList.size() - 1) {
+                at.addRule();
+            }
+        }
+        if (footer == null) footer = "";
+        else footer = "\n" + footer;
+
+        String tableStr = at.render();
+        tableStr = tableStr.lines().map(f -> f.substring(1, f.length() - 1)).collect(Collectors.joining("\n"));
+        if (embed) {
+            return embed(title, "```\n" + tableStr + "\n```" + footer);
+        }
+        return append("```\n" + tableStr + "\n```" + footer);
     }
 
     @CheckReturnValue

@@ -43,6 +43,6 @@ public class TradeId extends Command {
             DBTrade trade = Locutus.imp().getTradeManager().getTradeDb().getTradeById(id);
             if (trade != null) offers.add(trade);
         }
-        return " - " + StringMan.join(offers, "\n - ");
+        return "- " + StringMan.join(offers, "\n- ");
     }
 }

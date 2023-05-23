@@ -87,7 +87,7 @@ public class PermissionBinding extends BindingHelper {
                 }
             }
             if (!publicOffshores.isEmpty()) {
-                response.append("\nPublic offshores:\n - ").append(String.join("\n - ", publicOffshores));
+                response.append("\nPublic offshores:\n- ").append(String.join("\n- ", publicOffshores));
             }
 
             throw new IllegalArgumentException(response.toString());

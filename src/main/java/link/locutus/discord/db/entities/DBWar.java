@@ -3,8 +3,11 @@ package link.locutus.discord.db.entities;
 import com.politicsandwar.graphql.model.War;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -12,7 +15,7 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.task.war.WarCard;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.SWarContainer;
 import link.locutus.discord.apiv1.domains.subdomains.WarContainer;
 import link.locutus.discord.apiv1.enums.WarType;
@@ -34,6 +37,28 @@ public class DBWar {
     public WarType warType;
     public WarStatus status;
     public long date;
+
+    public NationInfo attacker_info;
+    public NationInfo defender_info;
+
+    public static class NationInfo {
+        public NationColor color;
+        public int cities;
+        public double score;
+        public int position;
+        public int infra;
+        public int soldiers;
+        public int tanks;
+        public int aircraft;
+        public int ships;
+        public int missiles;
+        public int nukes;
+        public long lastLogin;
+        public long projects;
+        public Continent continent;
+        public WarPolicy war_policy;
+        public int tax_id;
+    }
 
     public DBWar(int warId, int attacker_id, int defender_id, int attacker_aa, int defender_aa, WarType warType, WarStatus status, long date) {
         this.warId = warId;
@@ -110,7 +135,7 @@ public class DBWar {
     public List<DBAttack> getAttacks(Collection<DBAttack> attacks) {
         List<DBAttack> result = new ArrayList<>();
         for (DBAttack attack : attacks) {
-            if (attack.war_id == warId) result.add(attack);
+            if (attack.getWar_id() == warId) result.add(attack);
         }
         return result;
     }
@@ -123,10 +148,10 @@ public class DBWar {
     public Map.Entry<Integer, Integer> getResistance(List<DBAttack> attacks) {
         int[] result = {100, 100};
         for (DBAttack attack : attacks) {
-            if (attack.success == 0) continue;
-            int resI = attack.attacker_nation_id == attacker_id ? 1 : 0;
+            if (attack.getSuccess() == 0) continue;
+            int resI = attack.getAttacker_nation_id() == attacker_id ? 1 : 0;
             int damage;
-            switch (attack.attack_type) {
+            switch (attack.getAttack_type()) {
                 default:continue;
                 case FORTIFY:
 //                    result[(resI + 1) % 2] = Math.min(result[(resI + 1) % 2] + 10, 100);
@@ -152,7 +177,7 @@ public class DBWar {
                     damage = 31;
                     break;
             }
-            damage -= (9 - attack.success * 3);
+            damage -= (9 - attack.getSuccess() * 3);
             result[resI] = Math.max(0, result[resI] - damage);
         }
         return new AbstractMap.SimpleEntry<>(result[0], result[1]);
@@ -183,7 +208,7 @@ public class DBWar {
         boolean enemyAttack = false;
 
         for (DBAttack attack : attacks) {
-            if (attack.attacker_nation_id == attacker_id) {
+            if (attack.getAttacker_nation_id() == attacker_id) {
                 selfAttack = true;
             } else {
                 enemyAttack = true;
@@ -197,7 +222,7 @@ public class DBWar {
         outer:
         for (DBAttack attack : attacks) {
             long[] turnMap;
-            if (attack.attacker_nation_id == attacker_id) {
+            if (attack.getAttacker_nation_id() == attacker_id) {
                 selfAttack = true;
                 turnMap = attTurnMap;
             } else {
@@ -205,11 +230,11 @@ public class DBWar {
                 turnMap = defTurnMap;
             }
             long lastTurn = turnMap[0];
-            long turn = TimeUtil.getTurn(attack.epoch);
+            long turn = TimeUtil.getTurn(attack.getDate());
             int mapUsed = 0;
-            switch (attack.attack_type) {
+            switch (attack.getAttack_type()) {
                 case FORTIFY:
-                    if (attack.attacker_nation_id == attacker_id) {
+                    if (attack.getAttacker_nation_id() == attacker_id) {
                         fortified = true;
                     }
                 case GROUND:
@@ -401,8 +426,8 @@ public class DBWar {
     public AttackCost toCost(List<DBAttack> attacks) {
         String nameA = PnwUtil.getName(attacker_id, false);
         String nameB = PnwUtil.getName(defender_id, false);
-        Function<DBAttack, Boolean> isPrimary = a -> a.attacker_nation_id == attacker_id;
-        Function<DBAttack, Boolean> isSecondary = b -> b.attacker_nation_id == defender_id;
+        Function<DBAttack, Boolean> isPrimary = a -> a.getAttacker_nation_id() == attacker_id;
+        Function<DBAttack, Boolean> isSecondary = b -> b.getAttacker_nation_id() == defender_id;
         AttackCost cost = new AttackCost(nameA, nameB);
         cost.addCost(attacks, isPrimary, isSecondary);
         return cost;
@@ -439,27 +464,27 @@ public class DBWar {
         long acDate = 0;
         int acNation = 0;
         for (DBAttack attack : getAttacks()) {
-            if (attackType.test(attack.attack_type)) {
-                switch (SuccessType.values[attack.success]) {
+            if (attackType.test(attack.getAttack_type())) {
+                switch (SuccessType.values[attack.getSuccess()]) {
                     case PYRRHIC_VICTORY, MODERATE_SUCCESS -> {
-                        if (acNation != attack.attacker_nation_id) {
+                        if (acNation != attack.getAttacker_nation_id()) {
                             acNation = 0;
                             acDate = 0;
                         }
                     }
                     case IMMENSE_TRIUMPH -> {
-                        acNation = attack.attacker_nation_id;
-                        acDate = attack.epoch;
+                        acNation = attack.getAttacker_nation_id();
+                        acDate = attack.getDate();
                     }
                 }
             }
         }
         if (acNation != 0) {
             for (DBAttack attack : Locutus.imp().getWarDb().getAttacks(acNation, acDate)) {
-                if (attackType.test(attack.attack_type) &&
-                        SuccessType.values[attack.success] == SuccessType.IMMENSE_TRIUMPH &&
-                        attack.defender_nation_id == acNation &&
-                        attack.epoch > acDate) {
+                if (attackType.test(attack.getAttack_type()) &&
+                        SuccessType.values[attack.getSuccess()] == SuccessType.IMMENSE_TRIUMPH &&
+                        attack.getDefender_nation_id() == acNation &&
+                        attack.getDate() > acDate) {
                     return 0;
                 }
 

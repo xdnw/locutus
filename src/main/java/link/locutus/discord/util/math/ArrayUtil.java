@@ -1,6 +1,8 @@
 package link.locutus.discord.util.math;
 
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.util.IOUtil;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -11,6 +13,7 @@ import java.nio.ByteBuffer;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -58,6 +61,64 @@ public class ArrayUtil {
         current.remove(x);
         //"guess" x is not in the subset
         getSubsets(superSet, k, idx+1, current, solution);
+    }
+
+    public static <T extends Enum<T>> byte[] writeEnumMap(Map<T, Integer> data) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        for (Map.Entry<T, Integer> entry : data.entrySet()) {
+            IOUtil.writeVarInt(baos, entry.getKey().ordinal());
+            IOUtil.writeVarInt(baos, entry.getValue());
+        }
+        return baos.toByteArray();
+    }
+
+
+    public static byte[] writeIntSet(Set<Integer> numbers) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        for (int i : numbers) {
+            IOUtil.writeVarInt(baos, i);
+        }
+        return baos.toByteArray();
+    }
+
+    public static Set<Integer> readIntSet(byte[] data) throws IOException {
+        ByteArrayInputStream bais = new ByteArrayInputStream(data);
+        Set<Integer> res = new HashSet<>();
+        while (bais.available() > 0) {
+            res.add(IOUtil.readVarInt(bais));
+        }
+        return res;
+    }
+    public static <T extends Enum<T>> long writeEnumSet(Set<T> enums) {
+        if (enums.size() > 64) {
+            throw new IllegalArgumentException("Enum set too large");
+        }
+        long res = 0;
+        for (T e : enums) {
+            res |= 1L << e.ordinal();
+        }
+        return res;
+    }
+
+    public static <T extends Enum<T>> Set<T> readEnumSet(long data, Class<T> clazz) {
+        Set<T> res = new HashSet<>();
+        for (T e : clazz.getEnumConstants()) {
+            if ((data & (1L << e.ordinal())) != 0) {
+                res.add(e);
+            }
+        }
+        return res;
+    }
+
+    public static <T extends Enum<T>> Map<T, Integer> readEnumMap(byte[] data, Class<T> clazz) throws IOException {
+        ByteArrayInputStream bais = new ByteArrayInputStream(data);
+        Map<T, Integer> map = new EnumMap<>(clazz);
+        while (bais.available() > 0) {
+            int ordinal = IOUtil.readVarInt(bais);
+            int value = IOUtil.readVarInt(bais);
+            map.put(clazz.getEnumConstants()[ordinal], value);
+        }
+        return map;
     }
 
     public static <T> List<Set<T>> getSubsets(List<T> superSet, int k) {

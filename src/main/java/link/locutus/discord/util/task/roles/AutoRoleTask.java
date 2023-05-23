@@ -99,7 +99,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         if (!cityRoles.isEmpty()) {
             System.out.println("City roles: " + guild.getIdLong());
             for (Role cityRole : cityRoles) {
-                System.out.println(" - " + cityRole.getName());
+                System.out.println("- " + cityRole.getName());
             }
         }
 

@@ -1490,14 +1490,16 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public Map<ResourceType, Double> getPerCityWarchest() {
         Map<ResourceType, Double> warchest = getOrNull(GuildKey.WARCHEST_PER_CITY);
-        if (warchest == null) warchest = new HashMap<>();
-        warchest.putIfAbsent(ResourceType.MONEY, 1000000d);
-        warchest.putIfAbsent(ResourceType.GASOLINE, 360d);
-        warchest.putIfAbsent(ResourceType.MUNITIONS, 720d);
-        warchest.putIfAbsent(ResourceType.ALUMINUM, 400d);
-        warchest.putIfAbsent(ResourceType.STEEL, 500d);
-        warchest.putIfAbsent(ResourceType.FOOD, 600d);
-        warchest.putIfAbsent(ResourceType.URANIUM, 15d);
+        if (warchest == null || warchest.isEmpty()) {
+            warchest = new HashMap<>();
+            warchest.putIfAbsent(ResourceType.MONEY, 1000000d);
+            warchest.putIfAbsent(ResourceType.GASOLINE, 360d);
+            warchest.putIfAbsent(ResourceType.MUNITIONS, 720d);
+            warchest.putIfAbsent(ResourceType.ALUMINUM, 400d);
+            warchest.putIfAbsent(ResourceType.STEEL, 500d);
+            warchest.putIfAbsent(ResourceType.FOOD, 600d);
+            warchest.putIfAbsent(ResourceType.URANIUM, 15d);
+        }
         return warchest;
     }
 
@@ -2480,6 +2482,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         Set<Integer> dnr_active = new HashSet<>(getCoalition("dnr_active"));
         Set<Integer> dnr_member = new HashSet<>(getCoalition("dnr_member"));
         Set<Integer> can_raid = new HashSet<>(getCoalition(Coalition.CAN_RAID));
+        can_raid.addAll(getCoalition(Coalition.ENEMIES));
         Set<Integer> can_raid_inactive = new HashSet<>(getCoalition("can_raid_inactive"));
         Map<Integer, Long> dnr_timediff_member = new HashMap<>();
         Map<Integer, Long> dnr_timediff_app = new HashMap<>();

@@ -149,19 +149,19 @@ public class TradeListener {
             long value = probabilisticValues.get(treasure);
 
             message.append("\n**Treasure**: ").append(treasure.getName());
-            message.append("\n - Expected Value: $").append(MathMan.format(value) + " (" + nations + " in treasure range)");
+            message.append("\n- Expected Value: $").append(MathMan.format(value) + " (" + nations + " in treasure range)");
             if (color != null) {
-                message.append("\n - color: " + color)
+                message.append("\n- color: " + color)
                         .append("(rev: $" + MathMan.format(color.getTurnBonus()) + "/turn OR $" +
                                 MathMan.format(color.getTurnBonus() * (5 * 12)) + "/5d)");
             }
             if (treasure.getContinent() != null) {
                 hasContinent = true;
-                message.append("\n - continent: ").append(treasure.getContinent());
+                message.append("\n- continent: ").append(treasure.getContinent());
             }
             long respawnsAt = treasure.getSpawnDate() + expireAfter;
             long respawnsIn = respawnsAt - now;
-            message.append("\n - respawns in: ").append(TimeUtil.secToTime(TimeUnit.MILLISECONDS, respawnsIn));
+            message.append("\n- respawns in: ").append(TimeUtil.secToTime(TimeUnit.MILLISECONDS, respawnsIn));
             String url = "https://www.epochconverter.com/countdown?q=" + (respawnsAt);
             message.append(" <").append(url).append(">");
         }
@@ -170,12 +170,12 @@ public class TradeListener {
 
         message.append("\n\nNotes:");
         if (hasContinent) {
-            message.append("\n - You must be on the correct continent and color to get a treasure spawn");
+            message.append("\n- You must be on the correct continent and color to get a treasure spawn");
         }
-        message.append("\n - You will NOT receive color revenue if you are NOT your alliance color (or beige)");
-        message.append("\n - All Treasures: <https://politicsandwar.com/leaderboards/display=treasures>");
-        message.append("\n - All Colors: <https://politicsandwar.com/leaderboards/display=color>");
-        message.append("\n - Edit Color: <https://politicsandwar.com/nation/edit/>");
+        message.append("\n- You will NOT receive color revenue if you are NOT your alliance color (or beige)");
+        message.append("\n- All Treasures: <https://politicsandwar.com/leaderboards/display=treasures>");
+        message.append("\n- All Colors: <https://politicsandwar.com/leaderboards/display=color>");
+        message.append("\n- Edit Color: <https://politicsandwar.com/nation/edit/>");
 
         AlertUtil.forEachChannel(f -> f.isWhitelisted() && f.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS), GuildKey.TREASURE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
@@ -196,14 +196,14 @@ public class TradeListener {
                     aaMessage.append(" | Rev: $").append(MathMan.format(colorRev)).append("/turn OR $").append(MathMan.format(colorRev5Days)).append("/5day");
                 } else {
                     for (DBAlliance alliance : alliances) {
-                        aaMessage.append("\n - ");
+                        aaMessage.append("\n- ");
                         long colorRev = alliance.getColor().getTurnBonus();
                         long colorRev5Days = colorRev * 12 * 5;
                         aaMessage.append(alliance.getColor());
                         aaMessage.append(" | Rev: $").append(MathMan.format(colorRev)).append("/turn OR $").append(MathMan.format(colorRev5Days)).append("/5day");
                     }
                 }
-                aaMessage.append("\n - To retain color income, wait for confirmation from a gov member, leave ingame, make (or join) an alliance called e.g. `" + db.getGuild().getName() + "-<color>`, and send a Protectorate treaty. Disband the alliance after 5 days");
+                aaMessage.append("\n- To retain color income, wait for confirmation from a gov member, leave ingame, make (or join) an alliance called e.g. `" + db.getGuild().getName() + "-<color>`, and send a Protectorate treaty. Disband the alliance after 5 days");
 
                 Role optOut = Roles.TREASURE_ALERT_OPT_OUT.toRole(db);
                 Role optIn = Roles.TREASURE_ALERT.toRole(db);
@@ -239,7 +239,7 @@ public class TradeListener {
                     }
                     if (!mentions.isEmpty()) {
                         aaMessage.append("\n\nThe following nations are in range of a treasure spawn if they switch color:");
-                        aaMessage.append("\n - ").append(String.join("\n - ", mentions));
+                        aaMessage.append("\n- ").append(String.join("\n- ", mentions));
                     }
                 }
 
@@ -347,7 +347,7 @@ public class TradeListener {
 
                 allPings.addAll(pings);
 
-                msg.append("**__## " + title + " ##__**\n" + body + "\n - " + StringMan.join(pings, "\n - ") + "\n---------\n");
+                msg.append("**__## " + title + " ##__**\n" + body + "\n- " + StringMan.join(pings, "\n- ") + "\n---------\n");
             }
             msg.send();
         }

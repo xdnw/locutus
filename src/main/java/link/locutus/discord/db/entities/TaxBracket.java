@@ -105,7 +105,7 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
 
     @Override
     public String toString() {
-        return (allianceId > 0 ? DBAlliance.getOrCreate(allianceId).getQualifiedName() + " - " : "") + ((name != null && !name.isEmpty()) ? (name + " - ") : "") + "#" + taxId + " (" + moneyRate + "/" + rssRate + ")";
+        return (allianceId > 0 ? DBAlliance.getOrCreate(allianceId).getQualifiedName() + "- " : "") + ((name != null && !name.isEmpty()) ? (name + "- ") : "") + "#" + taxId + " (" + moneyRate + "/" + rssRate + ")";
     }
 
     public TaxRate getTaxRate() {

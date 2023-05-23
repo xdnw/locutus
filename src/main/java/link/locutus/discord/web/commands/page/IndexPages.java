@@ -16,11 +16,9 @@ import link.locutus.discord.db.entities.Announcement;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.task.war.WarCard;
 import link.locutus.discord.web.commands.binding.AuthBindings;
@@ -29,7 +27,7 @@ import link.locutus.discord.web.commands.search.SearchType;
 import link.locutus.discord.web.jooby.PageHandler;
 import link.locutus.discord.web.jooby.WebRoot;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import io.javalin.http.Context;
@@ -355,7 +353,7 @@ public class IndexPages extends PageHelper {
         System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (4)");
 
         for (DBWar war : myWars) {
-            List<DBAttack> warAttacks = attacks.stream().filter(f -> f.war_id == war.warId).collect(Collectors.toList());
+            List<DBAttack> warAttacks = attacks.stream().filter(f -> f.getWar_id() == war.warId).collect(Collectors.toList());
             WarCard warcard = new WarCard(war, warAttacks, false, false, false);
             warCards.put(war, warcard);
 

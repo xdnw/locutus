@@ -1990,12 +1990,7 @@ public class NationDB extends DBMainV2 {
                 try (PreparedStatement close = prepareQuery("ALTER TABLE NATIONS2 ADD COLUMN `gdp` BIGINT NOT NULL DEFAULT 0" )) {close.execute();}
             } catch (SQLException ignore) {}
 
-            String warSnapShot = nationTable.setName("NATIONS_WAR_SNAPSHOT")
-                    .putColumn("war_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .putColumn("nation_id", ColumnType.INT.struct().setNullAllowed(false).configure(f -> f.apply(null)))
-                    .buildQuery(getDb().getType());
-            warSnapShot = warSnapShot.replace(");", ", PRIMARY KEY(war_id, nation_id));");
-            getDb().executeUpdate(warSnapShot);
+            update("DROP TABLE IF EXISTS NATIONS_WAR_SNAPSHOT");
 
             TablePreset.create("POSITIONS")
                     .putColumn("id", ColumnType.INT.struct().setPrimary(true).setNullAllowed(false).configure(f -> f.apply(null)))
@@ -3758,22 +3753,26 @@ public class NationDB extends DBMainV2 {
         saveNations(Collections.singleton(nations));
     }
 
-    public int[] saveNationWarSnapshots(Map<Integer, DBNation> nations) {
-        if (nations.isEmpty()) return new int[0];
+    public Map<Integer, Set<DBNation>> getWarSnapshots(Set<Integer> warIds) {
+        if (warIds.isEmpty()) return Collections.emptyMap();
+        String query = "SELECT * FROM NATIONS_WAR_SNAPSHOT WHERE war_id IN (" + warIds.stream().map(String::valueOf).collect(Collectors.joining(",")) + ")";
 
-        String query = "INSERT OR IGNORE INTO `NATIONS_WAR_SNAPSHOT`(nation_id,nation,leader,alliance_id,last_active,score,cities,domestic_policy,war_policy,soldiers,tanks,aircraft,ships,missiles,nukes,spies,entered_vm,leaving_vm,color,`date`,position,alliancePosition,continent,projects,cityTimer,projectTimer,beigeTimer,warPolicyTimer,domesticPolicyTimer,colorTimer,espionageFull,dc_turn,wars_won,wars_lost,tax_id, war_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-
-        ThrowingBiConsumer<DBNation, PreparedStatement> setNation = setNation();
-        ThrowingBiConsumer<Map.Entry<Integer, DBNation>, PreparedStatement> setNationWarId = (entry, stmt) -> {
-            setNation.accept(entry.getValue(), stmt);
-            stmt.setInt(36, entry.getKey()); // War id
-        };
-        if (nations.size() == 1) {
-            Map.Entry<Integer, DBNation> entry = nations.entrySet().iterator().next();
-            return new int[]{update(query, stmt -> setNationWarId.accept(entry, stmt))};
-        } else {
-            return executeBatch(nations.entrySet(), query, setNationWarId);
+        Map<Integer, Set<DBNation>> result = new HashMap<>();
+        try (PreparedStatement stmt = prepareQuery(query)) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int warId = rs.getInt("war_id");
+                    DBNation nation = createNation(rs);
+                    Set<DBNation> nations = result.computeIfAbsent(warId, f -> new HashSet<>());
+                    nations.add(nation);
+                }
+            }
+            return result;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
         }
+
     }
 
     private ThrowingBiConsumer<DBNation, PreparedStatement> setNation() {

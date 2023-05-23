@@ -45,7 +45,7 @@ import link.locutus.discord.web.jooby.handler.CommandResult;
 import link.locutus.discord.web.jooby.handler.DummyMessageOutput;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.Continent;
@@ -1701,6 +1701,11 @@ public class DBNation implements NationOrAlliance {
             return 2;
         }
         return 1;
+    }
+
+    public long getDateCheckedUnits() {
+        if (cache == null) return 0;
+        return cache.lastCheckUnitMS;
     }
 
     public static class LoginFactor {
@@ -3663,14 +3668,14 @@ public class DBNation implements NationOrAlliance {
         }
         List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(nation_id, System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days + 1));
         for (DBAttack attack : attacks) {
-            if (attack.attack_type != AttackType.VICTORY || attack.victor == nation_id) continue;
+            if (attack.getAttack_type() != AttackType.VICTORY || attack.getVictor() == nation_id) continue;
 
-            ZonedDateTime warTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(attack.epoch), ZoneOffset.UTC);
+            ZonedDateTime warTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(attack.getDate()), ZoneOffset.UTC);
             long warTurns = TimeUtil.getTurn(warTime);
 
             if (warTurns < currentTurn - days * 12) continue;
             int turnsAgo = (int) (currentTurn - warTurns);
-            beigeList.add(new AbstractMap.SimpleEntry<>(attack.epoch, 24));
+            beigeList.add(new AbstractMap.SimpleEntry<>(attack.getDate(), 24));
 //            beige[turnsAgo] += 24;
         }
 
@@ -4056,7 +4061,7 @@ public class DBNation implements NationOrAlliance {
             int amt = getUnits(unit);
             if (amt > 0) {
                 base += unit.getScore(amt);
-                System.out.println(" - unt " + amt + " | " + unit + " | " + unit.getScore(amt));
+                System.out.println("- unt " + amt + " | " + unit + " | " + unit.getScore(amt));
             } else if (unit == MilitaryUnit.NUKE) {
                 System.out.println("Unit " + amt + " | " + getNukes());
             }
@@ -4368,11 +4373,11 @@ public class DBNation implements NationOrAlliance {
 
             outer:
             for (DBAttack attack : attacks) {
-                MilitaryUnit[] units = attack.attack_type.getUnits();
+                MilitaryUnit[] units = attack.getAttack_type().getUnits();
                 for (MilitaryUnit other : units) {
                     if (other == unit) {
-                        Map<MilitaryUnit, Integer> losses = attack.getUnitLosses(attack.attacker_nation_id == nation_id);
-                        long turn = TimeUtil.getTurn(attack.epoch);
+                        Map<MilitaryUnit, Integer> losses = attack.getUnitLosses(attack.getAttacker_nation_id() == nation_id);
+                        long turn = TimeUtil.getTurn(attack.getDate());
                         unitsLost.put(turn, losses.getOrDefault(unit, 0) + unitsLost.getOrDefault(turn, 0));
                         continue outer;
                     }
@@ -4381,11 +4386,11 @@ public class DBNation implements NationOrAlliance {
 
             outer:
             for (DBAttack attack : attacks) {
-                AbstractMap.SimpleEntry<Long, Integer> toAdd = new AbstractMap.SimpleEntry<>(attack.epoch, getUnits(unit));
+                AbstractMap.SimpleEntry<Long, Integer> toAdd = new AbstractMap.SimpleEntry<>(attack.getDate(), getUnits(unit));
                 int i = 0;
                 for (; i < history.size(); i++) {
                     Map.Entry<Long, Integer> entry = history.get(i);
-                    long diff = Math.abs(entry.getKey() - attack.epoch);
+                    long diff = Math.abs(entry.getKey() - attack.getDate());
                     if (diff < 5 * 60 * 1000) continue outer;
 
                     toAdd.setValue(entry.getValue());
@@ -4658,7 +4663,7 @@ public class DBNation implements NationOrAlliance {
     public AttackCost getWarCost() {
         AttackCost cost = new AttackCost();
         List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(nation_id, 0);
-        cost.addCost(attacks, a -> a.attacker_nation_id == nation_id, b -> b.defender_nation_id == nation_id);
+        cost.addCost(attacks, a -> a.getAttacker_nation_id() == nation_id, b -> b.getDefender_nation_id() == nation_id);
         return cost;
     }
 
@@ -4668,7 +4673,7 @@ public class DBNation implements NationOrAlliance {
         double total = 0;
         List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(nation_id, 0);
         for (DBAttack attack : attacks) {
-            if (attack.attacker_nation_id == nation_id) {
+            if (attack.getAttacker_nation_id() == nation_id) {
                 Map<ResourceType, Double> loot = attack.getLoot();
                 if (!loot.isEmpty()) total += PnwUtil.convertedTotal(loot);
             }

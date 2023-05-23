@@ -385,7 +385,7 @@ public class SlashCommandManager extends ListenerAdapter {
             } catch (Throwable e) {
                 System.out.println("Error creating command: " + id);
                 for (OptionData option : options) {
-                    System.out.println(" - option " + option.getName() + " | " + option.getType() + " | " + option.getDescription());
+                    System.out.println("- option " + option.getName() + " | " + option.getType() + " | " + option.getDescription());
                 }
                 e.printStackTrace();
                 throw e;

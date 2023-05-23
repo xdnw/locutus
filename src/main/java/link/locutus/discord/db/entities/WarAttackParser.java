@@ -1,13 +1,12 @@
 package link.locutus.discord.db.entities;
 
-import kotlin.collections.ArrayDeque;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import net.dv8tion.jda.api.entities.Guild;
 
 import java.time.ZoneOffset;
@@ -26,8 +25,8 @@ public class WarAttackParser {
     public WarAttackParser(DBWar war, boolean attacker) {
         nameA = PnwUtil.getName(war.attacker_id, false);
         nameB = PnwUtil.getName(war.defender_id, false);
-        Function<DBAttack, Boolean> isPrimary = a -> a.attacker_nation_id == war.attacker_id;
-        Function<DBAttack, Boolean> isSecondary = b -> b.attacker_nation_id == war.defender_id;
+        Function<DBAttack, Boolean> isPrimary = a -> a.getAttacker_nation_id() == war.attacker_id;
+        Function<DBAttack, Boolean> isSecondary = b -> b.getAttacker_nation_id() == war.defender_id;
         this.isPrimary = attacker ? isPrimary : isSecondary;
         this.isSecondary = attacker ? isSecondary : isPrimary;
         attacks = war.getAttacks();
@@ -59,8 +58,8 @@ public class WarAttackParser {
                 nameA = PnwUtil.getName(warUrl.attacker_id, false);
                 nameB = PnwUtil.getName(warUrl.defender_id, false);
                 DBWar finalWarUrl = warUrl;
-                isPrimary = a -> a.attacker_nation_id == finalWarUrl.attacker_id;
-                isSecondary = b -> b.attacker_nation_id == finalWarUrl.defender_id;
+                isPrimary = a -> a.getAttacker_nation_id() == finalWarUrl.attacker_id;
+                isSecondary = b -> b.getAttacker_nation_id() == finalWarUrl.defender_id;
             }
         } else if (args.size() == 2) {
             args = new ArrayList<>(args);
@@ -97,22 +96,22 @@ public class WarAttackParser {
                 alliances.addAll(aaIdss2);
                 List<DBWar> wars = Locutus.imp().getWarDb().getWars(alliances, start - TimeUnit.DAYS.toMillis(6), end);
                 attacks = Locutus.imp().getWarDb().getAttacksByWars(wars, start, end);
-                Set<Integer> warIdsByAttacks = attacks.stream().map(a -> a.war_id).collect(Collectors.toSet());
+                Set<Integer> warIdsByAttacks = attacks.stream().map(a -> a.getWar_id()).collect(Collectors.toSet());
                 wars.removeIf(w -> w.date > start && !warIdsByAttacks.contains(w.warId));
 
                 warMap = new HashMap<>();
                 for (DBWar war : wars) warMap.put(war.warId, war);
                 Map<Integer, DBWar> finalWarMap = warMap;
                 isPrimary = a -> {
-                    DBWar war = finalWarMap.get(a.war_id);
-                    int aa1 = war.attacker_id == a.attacker_nation_id ? war.attacker_aa : war.defender_aa;
-                    int aa2 = war.attacker_id == a.attacker_nation_id ? war.defender_aa : war.attacker_aa;
+                    DBWar war = finalWarMap.get(a.getWar_id());
+                    int aa1 = war.attacker_id == a.getAttacker_nation_id() ? war.attacker_aa : war.defender_aa;
+                    int aa2 = war.attacker_id == a.getAttacker_nation_id() ? war.defender_aa : war.attacker_aa;
                     return aaIdss1.contains(aa1) && aaIdss2.contains(aa2);
                 };
                 isSecondary = a -> {
-                    DBWar war = finalWarMap.get(a.war_id);
-                    int aa1 = war.attacker_id == a.attacker_nation_id ? war.attacker_aa : war.defender_aa;
-                    int aa2 = war.attacker_id == a.attacker_nation_id ? war.defender_aa : war.attacker_aa;
+                    DBWar war = finalWarMap.get(a.getWar_id());
+                    int aa1 = war.attacker_id == a.getAttacker_nation_id() ? war.attacker_aa : war.defender_aa;
+                    int aa2 = war.attacker_id == a.getAttacker_nation_id() ? war.defender_aa : war.attacker_aa;
                     return aaIdss2.contains(aa1) && aaIdss1.contains(aa2);
                 };
                 nameA = args.get(0);
@@ -149,31 +148,31 @@ public class WarAttackParser {
 
                 if (args.get(0).equalsIgnoreCase("*")) {
                     isPrimary = a -> {
-                        DBNation n2 = nations.get(a.attacker_nation_id);
+                        DBNation n2 = nations.get(a.getAttacker_nation_id());
                         return n2 != null && alliances2.contains(n2);
                     };
                     isSecondary = a -> {
-                        DBNation n2 = nations.get(a.defender_nation_id);
+                        DBNation n2 = nations.get(a.getDefender_nation_id());
                         return n2 != null && alliances2.contains(n2);
                     };
                 } else if (args.get(1).equalsIgnoreCase("*")) {
                     isPrimary = a -> {
-                        DBNation n1 = nations.get(a.attacker_nation_id);
+                        DBNation n1 = nations.get(a.getAttacker_nation_id());
                         return n1 != null && alliances1.contains(n1);
                     };
                     isSecondary = a -> {
-                        DBNation n1 = nations.get(a.defender_nation_id);
+                        DBNation n1 = nations.get(a.getDefender_nation_id());
                         return n1 != null && alliances1.contains(n1);
                     };
                 } else {
                     isPrimary = a -> {
-                        DBNation n1 = nations.get(a.attacker_nation_id);
-                        DBNation n2 = nations.get(a.defender_nation_id);
+                        DBNation n1 = nations.get(a.getAttacker_nation_id());
+                        DBNation n2 = nations.get(a.getDefender_nation_id());
                         return n1 != null && n2 != null && alliances1.contains(n1) && alliances2.contains(n2);
                     };
                     isSecondary = a -> {
-                        DBNation n1 = nations.get(a.attacker_nation_id);
-                        DBNation n2 = nations.get(a.defender_nation_id);
+                        DBNation n1 = nations.get(a.getAttacker_nation_id());
+                        DBNation n2 = nations.get(a.getDefender_nation_id());
                         return n1 != null && n2 != null && alliances1.contains(n2) && alliances2.contains(n1);
                     };
                 }
@@ -185,7 +184,7 @@ public class WarAttackParser {
             if (warMap == null) {
                 warMap = new HashMap<>();
                 Set<Integer> warIds = new HashSet<>();
-                for (DBAttack attack : attacks) warIds.add(attack.war_id);
+                for (DBAttack attack : attacks) warIds.add(attack.getWar_id());
                 List<DBWar> wars = Locutus.imp().getWarDb().getWarsById(warIds);
                 for (DBWar war : wars) warMap.put(war.warId, war);
             }
@@ -194,11 +193,11 @@ public class WarAttackParser {
             attacks.removeIf(new Predicate<DBAttack>() {
                 @Override
                 public boolean test(DBAttack attack) {
-                    DBWar war = finalWarMap1.get(attack.war_id);
+                    DBWar war = finalWarMap1.get(attack.getWar_id());
                     if (war == null) return true;
                     DBAttack copy = new DBAttack();
-                    copy.attacker_nation_id = war.attacker_id;
-                    copy.defender_nation_id = war.defender_id;
+                    copy.setAttacker_nation_id(war.attacker_id);
+                    copy.setDefender_nation_id(war.defender_id);
                     return !filter.apply(attack);
                 }
             });
@@ -246,7 +245,7 @@ public class WarAttackParser {
     public Map<Long, AttackCost> toWarCostByDay() {
         Map<Long, AttackCost> warCostByDay = new LinkedHashMap<>();
         for (DBAttack attack : attacks) {
-            long turn = TimeUtil.getTurn(attack.epoch);
+            long turn = TimeUtil.getTurn(attack.getDate());
             long day = turn / 12;
             AttackCost cost = warCostByDay.computeIfAbsent(day, f -> new AttackCost(nameA, nameB));
             cost.addCost(attack, isPrimary, isSecondary);
@@ -261,13 +260,13 @@ public class WarAttackParser {
 
             {
                 String other = isPrimary.apply(attack) ? nameB : nameA;
-                AttackCost cost = warCostByNation.computeIfAbsent(attack.attacker_nation_id, f -> new AttackCost(PnwUtil.getName(attack.attacker_nation_id, false), other));
+                AttackCost cost = warCostByNation.computeIfAbsent(attack.getAttacker_nation_id(), f -> new AttackCost(PnwUtil.getName(attack.getAttacker_nation_id(), false), other));
                 cost.addCost(attack, true);
             }
 
             {
                 String other = isPrimary.apply(attack) ? nameA : nameB;
-                AttackCost cost = warCostByNation.computeIfAbsent(attack.defender_nation_id, f -> new AttackCost(PnwUtil.getName(attack.defender_nation_id, false), other));
+                AttackCost cost = warCostByNation.computeIfAbsent(attack.getDefender_nation_id(), f -> new AttackCost(PnwUtil.getName(attack.getDefender_nation_id(), false), other));
                 cost.addCost(attack, false);
             }
         }
@@ -278,7 +277,7 @@ public class WarAttackParser {
         Map<Integer, DBWar> wars = getWarsById();
         Map<Integer, AttackCost> warCostByAA = new HashMap<>();
         for (DBAttack attack : attacks) {
-            DBWar war = wars.get(attack.war_id);
+            DBWar war = wars.get(attack.getWar_id());
             {
                 String other = isPrimary.apply(attack) ? nameB : nameA;
                 AttackCost cost = warCostByAA.computeIfAbsent(war.attacker_aa, f -> new AttackCost(PnwUtil.getName(war.attacker_aa, true), other));
@@ -305,7 +304,7 @@ public class WarAttackParser {
     public List<DBWar> getWars() {
         Set<Integer> wars = new HashSet<>();
         for (DBAttack attack : attacks) {
-            wars.add(attack.war_id);
+            wars.add(attack.getWar_id());
         }
         return Locutus.imp().getWarDb().getWarsById(wars);
     }

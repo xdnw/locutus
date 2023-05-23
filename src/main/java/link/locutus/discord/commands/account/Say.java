@@ -29,6 +29,6 @@ public class Say extends Command {
         String msg = DiscordUtil.trimContent(event.getMessage().getContentRaw());
         msg = msg.replace("@", "@\u200B");
         msg = msg.replace("&", "&\u200B");
-        return DiscordUtil.format(guild, event.getChannel(), author, me, msg.substring(5) + "\n\n - " + author.getAsMention());
+        return DiscordUtil.format(guild, event.getChannel(), author, me, msg.substring(5) + "\n\n- " + author.getAsMention());
     }
 }

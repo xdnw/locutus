@@ -29,9 +29,9 @@ import java.util.*;
 public enum InterviewQuestion implements Question {
     INTRO("""
             Hello, welcome to Gladiators! We'll run through the following:
-             - A short interview
-             - Learning the game
-             - Your path to become a Gladiator and joining the Council
+            - A short interview
+            - Learning the game
+            - Your path to become a Gladiator and joining the Council
             """, false) {
         @Override
         public String format(Guild guild, User author, DBNation me, GuildMessageChannel channel, String message) {
@@ -403,8 +403,8 @@ public enum InterviewQuestion implements Question {
 
     ESPIONAGE("""
             Using the 2 spies you purchased, please perform a gather intelligence op against one of the nations you are fighting (covert)
-             - go to their nation page, and click the espionage button
-             - Copy the results and post them in any channel here (if you accidentally leave the page, the intel op still is in your notifications)
+            - go to their nation page, and click the espionage button
+            - Copy the results and post them in any channel here (if you accidentally leave the page, the intel op still is in your notifications)
 
             Remember to purchase max spies every day""", true) {
         @Override
@@ -545,16 +545,16 @@ public enum InterviewQuestion implements Question {
             "2. Set a reminder on your phone, or on discord using " + CM.alerts.beige.beigeAlert.cmd.toSlashMention() + "\n" +
             "3. Get the war declaration page ready, and declare DURING turn change\n\n" +
             "*Note:*\n" +
-            " - *If you don't get them on your first shot, try again later*\n" +
-            " - *If you can't be active enough, just hit any gray nation during turn change*\n\n" +
+            "- *If you don't get them on your first shot, try again later*\n" +
+            "- *If you can't be active enough, just hit any gray nation during turn change*\n\n" +
             "See also:\n" +
-            " - " + CM.alerts.beige.removeBeigeReminder.cmd.toSlashMention() + "\n" +
-            " - " + CM.alerts.beige.removeBeigeReminder.cmd.toSlashMention() + "\n" +
-            " - " + CM.alerts.beige.beigeReminders.cmd.toSlashMention() + "\n" +
-            " - " + CM.alerts.beige.beigeAlertRequiredStatus.cmd.toSlashMention() + "\n" +
-            " - " + CM.alerts.beige.beigeAlertMode.cmd.toSlashMention() + "\n" +
-            " - " + CM.alerts.beige.beigeAlertRequiredLoot.cmd.toSlashMention() + "\n" +
-            " - " + CM.alerts.beige.setBeigeAlertScoreLeeway.cmd.toSlashMention() + "", true) {
+            "- " + CM.alerts.beige.removeBeigeReminder.cmd.toSlashMention() + "\n" +
+            "- " + CM.alerts.beige.removeBeigeReminder.cmd.toSlashMention() + "\n" +
+            "- " + CM.alerts.beige.beigeReminders.cmd.toSlashMention() + "\n" +
+            "- " + CM.alerts.beige.beigeAlertRequiredStatus.cmd.toSlashMention() + "\n" +
+            "- " + CM.alerts.beige.beigeAlertMode.cmd.toSlashMention() + "\n" +
+            "- " + CM.alerts.beige.beigeAlertRequiredLoot.cmd.toSlashMention() + "\n" +
+            "- " + CM.alerts.beige.setBeigeAlertScoreLeeway.cmd.toSlashMention() + "", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
             List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id());

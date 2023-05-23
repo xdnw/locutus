@@ -48,7 +48,7 @@ import link.locutus.discord.util.offshore.test.IAChannel;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.nation.MultiReport;
 import link.locutus.discord.util.task.roles.IAutoRoleTask;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.SAllianceContainer;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -449,11 +449,11 @@ public class UtilityCommands {
             for (DBWar war : Locutus.imp().getWarDb().getWarsByAlliance(aa.getAlliance_id())) {
 
                 List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWar(war);
-                attacks.removeIf(f -> f.attack_type != AttackType.A_LOOT);
+                attacks.removeIf(f -> f.getAttack_type() != AttackType.A_LOOT);
                 if (attacks.size() != 1) continue;
 
                 DBAttack attack = attacks.get(0);
-                int attAA = war.isAttacker(attack.attacker_nation_id) ? war.attacker_aa : war.defender_aa;
+                int attAA = war.isAttacker(attack.getAttacker_nation_id()) ? war.attacker_aa : war.defender_aa;
                 if (attAA == aa.getAlliance_id()) continue;
                 boolean lowMil = false;
                 for (DBNation member : members) {
@@ -482,7 +482,7 @@ public class UtilityCommands {
 
             List<String> treaties = aa.getTreaties().keySet().stream().map(f -> PnwUtil.getName(f, true)).collect(Collectors.toList());
             if (!treaties.isEmpty()) {
-                response.append(" - Treaties: " + StringMan.join(treaties, ", ")).append("\n");
+                response.append("- Treaties: " + StringMan.join(treaties, ", ")).append("\n");
             } else{
                 Set<String> previousOfficer = new HashSet<>();
                 for (DBNation member : members) {
@@ -501,11 +501,11 @@ public class UtilityCommands {
                     }
                 }
                 if (!previousOfficer.isEmpty()) {
-                    response.append(" - Previous officer in: " + StringMan.join(previousOfficer, ", ")).append("\n");
+                    response.append("- Previous officer in: " + StringMan.join(previousOfficer, ", ")).append("\n");
                 }
             }
-            response.append(" - Age: " + maxAge).append("\n");
-            response.append(" - Cities: " + maxCities).append("\n");
+            response.append("- Age: " + maxAge).append("\n");
+            response.append("- Cities: " + maxCities).append("\n");
         }
         return response.toString();
     }
@@ -937,9 +937,9 @@ public class UtilityCommands {
         if (score == 0) throw new IllegalArgumentException("No arguments provided");
 
         return "Score: " + MathMan.format(score) + "\n" +
-                "WarRange: " + MathMan.format(score * 0.75) + " - " + MathMan.format(score * 1.75) + "\n" +
-                "Can be Attacked By: " + MathMan.format(score / 1.75) + " - " + MathMan.format(score / 0.75) + "\n" +
-                "Spy range: " + MathMan.format(score * 0.4) + " - " + MathMan.format(score * 1.5);
+                "WarRange: " + MathMan.format(score * 0.75) + "- " + MathMan.format(score * 1.75) + "\n" +
+                "Can be Attacked By: " + MathMan.format(score / 1.75) + "- " + MathMan.format(score / 0.75) + "\n" +
+                "Spy range: " + MathMan.format(score * 0.4) + "- " + MathMan.format(score * 1.5);
 
 
     }
@@ -972,7 +972,7 @@ public class UtilityCommands {
         StringBuilder result = new StringBuilder();
         result.append(nation.getNation() + " has " + projects.size() + "/" + nation.projectSlots());
         for (Project project : projects) {
-            result.append("\n - " + project.name());
+            result.append("\n- " + project.name());
         }
         result.append("\nworth: ~$" + MathMan.format(PnwUtil.convertedTotal(value)));
         result.append("\n`" + PnwUtil.resourcesToString(value) + "`");
@@ -1076,7 +1076,7 @@ public class UtilityCommands {
                 info.append("Nation Loot from " + type);
                 info.append("(" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - lootInfo.getDate()) + " ago)");
                 info.append(", worth: $" + MathMan.format(originalValue) + "($" + MathMan.format(originalLootable) + " lootable)");
-                if (nationOrAlliance.asNation().getActive_m() > 1440) info.append(" - inactive for " + TimeUtil.secToTime(TimeUnit.MINUTES, nationOrAlliance.asNation().getActive_m()));
+                if (nationOrAlliance.asNation().getActive_m() > 1440) info.append("- inactive for " + TimeUtil.secToTime(TimeUnit.MINUTES, nationOrAlliance.asNation().getActive_m()));
                 extraInfo.add(info.toString());
             } else {
                 extraInfo.add("No spy or beige loot found");
@@ -1119,7 +1119,7 @@ public class UtilityCommands {
             PnwUtil.add(total, revenue);
         }
         response.append("Total Loot (worth: $" + MathMan.format(PnwUtil.convertedTotal(total)) + "): ```" + PnwUtil.resourcesToString(total) + "``` ");
-        if (!extraInfo.isEmpty()) response.append("\n`notes:`\n` - " + StringMan.join(extraInfo, "`\n` - ") +"`");
+        if (!extraInfo.isEmpty()) response.append("\n`notes:`\n`- " + StringMan.join(extraInfo, "`\n`- ") +"`");
 
         CompletableFuture<IMessageBuilder> msgFuture = output.send(response.toString());
 
@@ -1156,7 +1156,7 @@ public class UtilityCommands {
                 }
 
                 try {
-                    msgFuture.get().append("\n` - " + StringMan.join(append, "`\n` - ") + "`").send();
+                    msgFuture.get().append("\n`- " + StringMan.join(append, "`\n`- ") + "`").send();
                 } catch (InterruptedException | ExecutionException e) {
                     throw new RuntimeException(e);
                 }
@@ -1167,16 +1167,25 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Shows the cost of a project")
-    public String ProjectCost(Project project, @Default("false") boolean technologicalAdvancement, @Default("false") boolean governmentSupportAgency) {
-        Map<ResourceType, Double> cost = project.cost();
-        if (technologicalAdvancement) {
-            double factor = 0.05;
-            if (governmentSupportAgency) {
-                factor *= 1.5;
+    public String ProjectCost(Set<Project> projects, @Default("false") boolean technologicalAdvancement, @Default("false") boolean governmentSupportAgency) {
+        double[] costs =  ResourceType.getBuffer();
+        StringBuilder response = new StringBuilder();
+        for (Project project : projects) {
+            double[] cost = PnwUtil.resourcesToArray(project.cost());
+            if (technologicalAdvancement) {
+                double factor = 0.05;
+                if (governmentSupportAgency) {
+                    factor *= 1.5;
+                }
+                cost = PnwUtil.multiply(cost, 1 - factor);
             }
-            cost = PnwUtil.multiply(cost, 1 - factor);
+            costs = PnwUtil.add(costs, cost);
+            response.append(project.name() + ":\n```" + PnwUtil.resourcesToString(cost) + "```\nworth: ~$" + MathMan.format(PnwUtil.convertedTotal(cost)) + "\n");
         }
-        return project.name() + ":\n```" + PnwUtil.resourcesToString(cost) + "```\nworth: ~$" + MathMan.format(PnwUtil.convertedTotal(cost));
+        if (projects.size() > 1) {
+            response.append("Total:\n```" + PnwUtil.resourcesToString(costs) + "```\nworth: ~$" + MathMan.format(PnwUtil.convertedTotal(costs)) + "\n");
+        }
+        return response.toString();
     }
 
     @Command(desc = "Auto rank users on discord")
@@ -1223,20 +1232,20 @@ public class UtilityCommands {
                     if (nation.getActive_m() > 10000) active = "**" + active + "**";
                     response.append(nation.getName() + " | <" + nation.getNationUrl() + "> | " + active + " | " + Rank.byId(nation.getPosition()) + " in AA:" + nation.getAllianceName());
                 }
-                response.append(" - ").append(entry.getValue());
+                response.append("- ").append(entry.getValue());
                 response.append("\n");
             }
         }
 
         if (db.getOrNull(GuildKey.AUTOROLE) == null) {
-            response.append("\n - AutoRole disabled. To enable it use: " + GuildKey.AUTOROLE.getCommandMention() + "");
+            response.append("\n- AutoRole disabled. To enable it use: " + GuildKey.AUTOROLE.getCommandMention() + "");
         }
-        else response.append("\n - AutoRole Mode: ").append(db.getOrNull(GuildKey.AUTOROLE) + "");
+        else response.append("\n- AutoRole Mode: ").append(db.getOrNull(GuildKey.AUTOROLE) + "");
         if (db.getOrNull(GuildKey.AUTONICK) == null) {
-            response.append("\n - AutoNick disabled. To enable it use: " + GuildKey.AUTONICK.getCommandMention() + "");
+            response.append("\n- AutoNick disabled. To enable it use: " + GuildKey.AUTONICK.getCommandMention() + "");
         }
-        else response.append("\n - AutoNick Mode: ").append(db.getOrNull(GuildKey.AUTONICK) + "");
-        if (Roles.REGISTERED.toRole(db) == null) response.append("\n - Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null, null).toSlashCommand() + "");
+        else response.append("\n- AutoNick Mode: ").append(db.getOrNull(GuildKey.AUTONICK) + "");
+        if (Roles.REGISTERED.toRole(db) == null) response.append("\n- Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null, null).toSlashCommand() + "");
         return response.toString();
     }
 
@@ -1253,14 +1262,14 @@ public class UtilityCommands {
         StringBuilder response = new StringBuilder("Done!");
 
         if (db.getOrNull(GuildKey.AUTOROLE) == null) {
-            response.append("\n - AutoRole disabled. To enable it use: " + GuildKey.AUTOROLE.getCommandMention() + "");
+            response.append("\n- AutoRole disabled. To enable it use: " + GuildKey.AUTOROLE.getCommandMention() + "");
         }
-        else response.append("\n - AutoRole Mode: ").append((Object) db.getOrNull(GuildKey.AUTOROLE));
+        else response.append("\n- AutoRole Mode: ").append((Object) db.getOrNull(GuildKey.AUTOROLE));
         if (db.getOrNull(GuildKey.AUTONICK) == null) {
-            response.append("\n - AutoNick disabled. To enable it use: " + GuildKey.AUTONICK.getCommandMention() + "");
+            response.append("\n- AutoNick disabled. To enable it use: " + GuildKey.AUTONICK.getCommandMention() + "");
         }
-        else response.append("\n - AutoNick Mode: ").append((Object) db.getOrNull(GuildKey.AUTONICK));
-        if (Roles.REGISTERED.toRole(db) == null) response.append("\n - Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null, null).toSlashCommand() + "");
+        else response.append("\n- AutoNick Mode: ").append((Object) db.getOrNull(GuildKey.AUTONICK));
+        if (Roles.REGISTERED.toRole(db) == null) response.append("\n- Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null, null).toSlashCommand() + "");
         return response.toString();
     }
 
@@ -1385,10 +1394,10 @@ public class UtilityCommands {
 
     @Command(desc = "Check if a nation shares networks with others\n" +
             "Notes:\n" +
-            " - Sharing networks does not mean they are the same person (mobile networks, schools, public wifi, vpns, dynamic ips\n" +
-            " - A network not shared 'concurrently' or within a short timeframe may be a false positive\n" +
-            " - Having many networks, but only a few shared may be a sign of a VPN being used (there are legitimate reasons for using a VPN)\n" +
-            " - It is against game rules to use evidence to threaten or coerce others\n" +
+            "- Sharing networks does not mean they are the same person (mobile networks, schools, public wifi, vpns, dynamic ips\n" +
+            "- A network not shared 'concurrently' or within a short timeframe may be a false positive\n" +
+            "- Having many networks, but only a few shared may be a sign of a VPN being used (there are legitimate reasons for using a VPN)\n" +
+            "- It is against game rules to use evidence to threaten or coerce others\n" +
             "See: https://politicsandwar.com/rules/")
     public String multi(@Me IMessageIO channel, DBNation nation) {
         MultiReport report = new MultiReport(nation.getNation_id());
@@ -1403,10 +1412,10 @@ public class UtilityCommands {
         }
         channel.create().embed(title, result).send();
         String disclaimer = "```Disclaimer:\n" +
-                " - Sharing networks does not mean they are the same person (mobile networks, schools, public wifi, vpns, dynamic ips)\n" +
-                " - A network not shared 'concurrently' or within a short timeframe may be a false positive\n" +
-                " - Having many networks, but only a few shared may be a sign of a VPN being used (there are legitimate reasons for using a VPN)\n" +
-                " - It is against game rules to use evidence to threaten or coerce others\n" +
+                "- Sharing networks does not mean they are the same person (mobile networks, schools, public wifi, vpns, dynamic ips)\n" +
+                "- A network not shared 'concurrently' or within a short timeframe may be a false positive\n" +
+                "- Having many networks, but only a few shared may be a sign of a VPN being used (there are legitimate reasons for using a VPN)\n" +
+                "- It is against game rules to use evidence to threaten or coerce others\n" +
                 "See: https://politicsandwar.com/rules/" +
                 "```";
         return disclaimer;
@@ -1784,20 +1793,20 @@ public Map<ParametricCallable, String> getEndpoints() {
         response.append("**" + title + "**");
         if (dnrTopX != null) {
             response.append("\n\n> Do Not Raid Guidelines:");
-            response.append("\n>  - Avoid members of the top " + dnrTopX + " alliances and members of direct allies (check ingame treaties)");
+            response.append("\n> - Avoid members of the top " + dnrTopX + " alliances and members of direct allies (check ingame treaties)");
 
             Set<String> enemiesStr = enemies.stream().map(f -> Locutus.imp().getNationDB().getAllianceName(f)).filter(Objects::nonNull).collect(Collectors.toSet());
             Set<String> canRaidStr = canRaid.stream().map(f -> Locutus.imp().getNationDB().getAllianceName(f)).filter(Objects::nonNull).collect(Collectors.toSet());
             Set<String> canRaidInactiveStr = canRaidInactive.stream().map(f -> Locutus.imp().getNationDB().getAllianceName(f)).filter(Objects::nonNull).collect(Collectors.toSet());
 
             if (!enemiesStr.isEmpty()) {
-                response.append("\n>  - Enemies: " + StringMan.getString(enemiesStr));
+                response.append("\n> - Enemies: " + StringMan.getString(enemiesStr));
             }
             if (!canRaidStr.isEmpty()) {
-                response.append("\n>  - You CAN raid: " + StringMan.getString(canRaidStr));
+                response.append("\n> - You CAN raid: " + StringMan.getString(canRaidStr));
             }
             if (!canRaidInactiveStr.isEmpty()) {
-                response.append("\n>  - You CAN raid inactives (1w) of: " + StringMan.getString(canRaidInactiveStr));
+                response.append("\n> - You CAN raid inactives (1w) of: " + StringMan.getString(canRaidInactiveStr));
             }
         }
         return response.toString();

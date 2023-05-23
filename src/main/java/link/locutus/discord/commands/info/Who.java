@@ -122,7 +122,7 @@ public class Who extends Command {
                 for (DBAlliance other : Locutus.imp().getNationDB().getAlliances()) {
                     DBAlliance parent = other.getCachedParentOfThisOffshore();
                     if (parent != null && parent.getAlliance_id() == allianceId) {
-                        response.append("\n - Offshore: ").append(other.getMarkdownUrl());
+                        response.append("\n- Offshore: ").append(other.getMarkdownUrl());
                     }
                 }
             }

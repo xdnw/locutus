@@ -276,8 +276,8 @@ public class Counter extends Command {
 
         me.setMeta(NationMeta.INTERVIEW_COUNTER, (byte) 1);
 
-        if (!flags.contains('w')) response.append("\n - add `-w` to filter out weak attackers");
-        if (!flags.contains('o')) response.append("\n - add `-o` to include nations with 5 wars");
+        if (!flags.contains('w')) response.append("\n- add `-w` to filter out weak attackers");
+        if (!flags.contains('o')) response.append("\n- add `-o` to include nations with 5 wars");
 
         return response.toString().trim();
     }

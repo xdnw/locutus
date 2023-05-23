@@ -51,7 +51,7 @@ public class AttackCommands {
         int reqUnarmedUF = (int) Math.ceil(defStr * 0.4);
         int reqArmedUF = (int) Math.ceil(defStr * 0.4 / 1.75);
 
-        response.append("\nNote:\n" + " - Tanks = 40x unarmed soldiers (22.86x armed) | Armed Soldiers = 1.75 Unarmed\n" + " - Guaranteed IT needs 2.5x enemy (").append(reqUnarmedIT).append(" unarmed, ").append(reqArmedIT).append(" armed)\n").append(" - Guaranteed UF needs 0.4x enemy (").append(reqUnarmedUF).append(" unarmed, ").append(reqArmedUF).append(" armed)");
+        response.append("\nNote:\n" + "- Tanks = 40x unarmed soldiers (22.86x armed) | Armed Soldiers = 1.75 Unarmed\n" + "- Guaranteed IT needs 2.5x enemy (").append(reqUnarmedIT).append(" unarmed, ").append(reqArmedIT).append(" armed)\n").append("- Guaranteed UF needs 0.4x enemy (").append(reqUnarmedUF).append(" unarmed, ").append(reqArmedUF).append(" armed)");
 
         return response.toString();
     }
@@ -136,11 +136,11 @@ public class AttackCommands {
                         = attack.getCasualties(attacker, defender, SuccessType.IMMENSE_TRIUMPH, warType, defFortified, attAirControl, defAirControl, unequipAttackerSoldiers, unequipDefenderSoldiers);
                 response.append("Attacker losses: ");
                 for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> entry : casualties.getKey().entrySet()) {
-                    response.append(" - " + entry.getKey().name()).append("=").append("`[" + entry.getValue().getKey()).append(" - ").append(entry.getValue().getValue()).append("]`\n");
+                    response.append("- " + entry.getKey().name()).append("=").append("`[" + entry.getValue().getKey()).append("- ").append(entry.getValue().getValue()).append("]`\n");
                 }
                 response.append("Defender losses: ");
                 for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> entry : casualties.getValue().entrySet()) {
-                    response.append(" - " + entry.getKey().name()).append("=").append("`[" + entry.getValue().getKey()).append(" - ").append(entry.getValue().getValue()).append("]`\n");
+                    response.append("- " + entry.getKey().name()).append("=").append("`[" + entry.getValue().getKey()).append("- ").append(entry.getValue().getValue()).append("]`\n");
                 }
                 break;
             }
@@ -178,12 +178,12 @@ public class AttackCommands {
                     response.append("Attacker losses: ");
                     for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> entry : casualties.getKey().entrySet()) {
                         long avg = Math.round((entry.getValue().getKey() + entry.getValue().getValue()) / 2d);
-                        response.append(" - " + entry.getKey().name()).append("=").append("`[" + entry.getValue().getKey()).append(" - ").append(entry.getValue().getValue()).append("] (avg:" + avg + ")`\n");
+                        response.append("- " + entry.getKey().name()).append("=").append("`[" + entry.getValue().getKey()).append("- ").append(entry.getValue().getValue()).append("] (avg:" + avg + ")`\n");
                     }
                     response.append("Defender losses: ");
                     for (Map.Entry<MilitaryUnit, Map.Entry<Integer, Integer>> entry : casualties.getValue().entrySet()) {
                         long avg = Math.round((entry.getValue().getKey() + entry.getValue().getValue()) / 2d);
-                        response.append(" - " + entry.getKey().name()).append("=").append("`[" + entry.getValue().getKey()).append(" - ").append(entry.getValue().getValue()).append("] (avg:" + avg + ")`\n");
+                        response.append("- " + entry.getKey().name()).append("=").append("`[" + entry.getValue().getKey()).append("- ").append(entry.getValue().getValue()).append("] (avg:" + avg + ")`\n");
                     }
                     response.append("\n");
                 }
@@ -208,7 +208,7 @@ public class AttackCommands {
             if (odds <= 0) continue;
             odds = Math.min(1, odds);
             String pctStr = MathMan.format(odds * 100) + "%";
-            response.append("\n - ").append(SuccessType.values[success]).append("=").append(pctStr);
+            response.append("\n- ").append(SuccessType.values[success]).append("=").append(pctStr);
         }
 
         response.append("\n\nNote: For a guaranteed IT, you need 2.5x enemy strength");

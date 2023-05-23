@@ -148,6 +148,8 @@ public class CommandManager2 {
         this.commands.registerMethod(new TestCommands(), List.of("test"), "embed", "embed");
         this.commands.registerMethod(new BankCommands(), List.of("tax"), "taxInfo", "info");
 
+        this.commands.registerMethod(new BankCommands(), List.of("bank"), "depositResources", "deposit");
+
         this.commands.registerMethod(new UnsortedCommands(), List.of("alerts"), "loginNotifier", "login");
         this.commands.registerMethod(new IACommands(), List.of("sheets_ia"), "dayChangeSheet", "daychange");
 

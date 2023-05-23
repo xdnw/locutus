@@ -92,7 +92,7 @@ public class MultiReport {
                     if (uuidTimeDiff == 0) timeStr = "concurrent";
                     else if (uuidTimeDiff >= Integer.MAX_VALUE || uuidTimeDiff < 0) timeStr = "unknown";
                     else timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, uuidTimeDiff);
-                    response.append(" - ").append(timeDiff.getKey()).append(": " + timeStr + "\n");
+                    response.append("- ").append(timeDiff.getKey()).append(": " + timeStr + "\n");
                 }
             }
 
@@ -146,7 +146,7 @@ public class MultiReport {
                     }
                     response.append("shared transfers: " + transfers.size() + " worth: $" + MathMan.format(worth)).append("\n");
                 } else {
-                    response.append("shared transfers:\n - ").append(StringMan.join(transfers.stream().map(t -> t.toSimpleString()).collect(Collectors.toList()), "\n - ")).append("\n\n");
+                    response.append("shared transfers:\n- ").append(StringMan.join(transfers.stream().map(t -> t.toSimpleString()).collect(Collectors.toList()), "\n- ")).append("\n\n");
                 }
             }
 
@@ -160,7 +160,7 @@ public class MultiReport {
                     response.append("3rd party transfers: " + proxyTransfers.size() + " worth: $" + MathMan.format(worth)).append("\n");
                 } else {
                     List<String> msg = proxyTransfers.stream().map(e -> e.getKey().toSimpleString() + " -> " + e.getValue().toSimpleString()).collect(Collectors.toList());
-                    response.append("\n3rd party transfers:\n - ").append(StringMan.join(msg, "\n - ")).append("\n\n");
+                    response.append("\n3rd party transfers:\n- ").append(StringMan.join(msg, "\n- ")).append("\n\n");
                 }
             }
             {
@@ -174,9 +174,9 @@ public class MultiReport {
                         if (earnings != null) response.append(" net $" + MathMan.format(earnings));
                     } else {
                         response.append("\n");
-                        if (earnings != null) response.append(" - Net: $" + MathMan.format(earnings)).append("\n");
+                        if (earnings != null) response.append("- Net: $" + MathMan.format(earnings)).append("\n");
                         if (numGames != null)
-                            response.append(" - # Wagered Games: " + MathMan.format(numGames)).append("\n");
+                            response.append("- # Wagered Games: " + MathMan.format(numGames)).append("\n");
                     }
                     response.append("\n");
                 }

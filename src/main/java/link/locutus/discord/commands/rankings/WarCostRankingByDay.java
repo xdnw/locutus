@@ -2,7 +2,7 @@ package link.locutus.discord.commands.rankings;
 
 import de.erichseifert.gral.data.DataTable;
 import de.erichseifert.gral.data.Row;
-import link.locutus.discord.apiv1.domains.subdomains.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -214,8 +214,8 @@ public class WarCostRankingByDay extends Command {
                         add2(this, day, finalMin, costMap, coalitionsByDay, cost -> {
                             ArrayList<DBAttack> a = new ArrayList<>(cost.getAttacks(true));
                             ArrayList<DBAttack> b = new ArrayList<>(cost.getAttacks(false));
-                            a.removeIf(f -> f.attack_type != attType);
-                            b.removeIf(f -> f.attack_type != attType);
+                            a.removeIf(f -> f.getAttack_type() != attType);
+                            b.removeIf(f -> f.getAttack_type() != attType);
                             return primary ? a.size() : b.size();
                         });
 
@@ -234,7 +234,7 @@ public class WarCostRankingByDay extends Command {
         }
 
         for (TimeNumericTable<Map<String, WarAttackParser>> table : tables) {
-            table.write(new DiscordChannelIO(event));
+            table.write(new DiscordChannelIO(event), true);
         }
         if (tables.isEmpty()) return "Please use one of the flag";
 

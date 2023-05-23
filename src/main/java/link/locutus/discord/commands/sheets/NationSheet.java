@@ -39,8 +39,8 @@ public class NationSheet extends Command implements Noformat {
 
     @Override
     public String desc() {
-        return "Create a nation sheet, with the following column placeholders\n - {" +
-                StringMan.join(DiscordUtil.getParser().getPlaceholders(), "}\n - {") + "}\n" +
+        return "Create a nation sheet, with the following column placeholders\n- {" +
+                StringMan.join(DiscordUtil.getParser().getPlaceholders(), "}\n- {") + "}\n" +
                 "Add `-s` to force update spies";
     }
 
