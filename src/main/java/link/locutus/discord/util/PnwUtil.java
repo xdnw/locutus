@@ -476,18 +476,25 @@ public class PnwUtil {
         }
         arg = arg.trim();
         String original = arg;
+        arg = arg.replace(", ", ",");
         if (!arg.contains(":") && !arg.contains("=")) arg = arg.replaceAll("[ ]+", ":");
         arg = arg.replace(" ", "").replace('=', ':').replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
+        arg = arg.replaceAll(",([0-9.]+):([a-zA-Z]{4,})", ",$2:$1");
         double sign = 1;
         if (arg.charAt(0) == '-') {
             sign = -1;
             arg = arg.substring(1);
         }
         if (arg.charAt(0) == '$') {
-            Map<ResourceType, Double> result = new LinkedHashMap<>();
-            result.put(ResourceType.MONEY, MathMan.parseDouble(arg) * sign);
-            return result;
+            if (!arg.contains(",")) {
+                Map<ResourceType, Double> result = new LinkedHashMap<>();
+                result.put(ResourceType.MONEY, MathMan.parseDouble(arg) * sign);
+                return result;
+            }
+            arg = arg.replace("$",ResourceType.MONEY +":");
         }
+
+        System.out.println("Arg " + arg);
 
 
         arg = arg.replace("GAS:", "GASOLINE:");
@@ -930,7 +937,6 @@ public class PnwUtil {
         }
         return total;
     }
-
 
     public static double convertedTotal(double[] resources) {
         double total = 0;
