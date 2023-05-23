@@ -585,11 +585,6 @@ public class GuildKey {
         }
 
         @Override
-        public String toReadableString(Map<ResourceType, Double> value) {
-            return PnwUtil.resourcesToString(value);
-        }
-
-        @Override
         public String help() {
             return "Amount of warchest to recommend per city in form `{steel=1234,aluminum=5678,gasoline=69,munitions=420}`";
         }
@@ -1777,6 +1772,25 @@ public class GuildKey {
             throw new IllegalArgumentException("This guild is not an offshore. See: " + CM.offshore.add.cmd.toSlashMention());
         }
     }));
+
+    public static GuildSetting<Boolean> OFFSHORE_LOANS = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String OFFSHORE_LOANS(@Me GuildDB db, @Me User user, boolean enabled) {
+            return OFFSHORE_LOANS.setAndValidate(db, user, enabled);
+        }
+
+        @Override
+        public String help() {
+            return "Allow other alliances to take automatic loans from this alliance without approval\n" +
+                    "See: ";
+        }
+    }.setupRequirements(f -> f.requires(ALLIANCE_ID).requireValidAlliance().requiresOffshore().requireFunction(db -> {
+        Map.Entry<GuildDB, Integer> offshoreDb = db.getOffshoreDB();
+        if (offshoreDb == null || offshoreDb.getKey().getIdLong() != db.getIdLong()) {
+            throw new IllegalArgumentException("This guild is not an offshore. See: " + CM.offshore.add.cmd.toSlashMention());
+        }
+    }).requires(PUBLIC_OFFSHORING));
 
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 

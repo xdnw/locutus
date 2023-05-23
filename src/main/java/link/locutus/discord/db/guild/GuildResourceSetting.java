@@ -33,6 +33,11 @@ public abstract class GuildResourceSetting extends GuildSetting<Map<ResourceType
     }
 
     @Override
+    public String toReadableString(Map<ResourceType, Double> value) {
+        return PnwUtil.resourcesToString(value);
+    }
+
+    @Override
     public Map<ResourceType, Double> parse(GuildDB db, String input) {
         return PnwUtil.resourcesToMap(ArrayUtil.toDoubleArray(input.getBytes(StandardCharsets.ISO_8859_1)));
     }

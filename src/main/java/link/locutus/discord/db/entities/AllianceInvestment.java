@@ -7,7 +7,8 @@ import java.sql.SQLException;
 
 public class AllianceInvestment {
     public int id;
-    public int nationId;
+    public long accountId;
+    public int accountType;
     public InvestmentType type;
     public double[] resources;
     public long date;
@@ -15,7 +16,8 @@ public class AllianceInvestment {
 
     public AllianceInvestment(ResultSet rs) throws SQLException {
         this.id = rs.getInt("id");
-        this.nationId = rs.getInt("nation_id");
+        this.accountId = rs.getInt("account_id");
+        this.accountType = rs.getInt("account_type");
         this.type = InvestmentType.values()[rs.getInt("type")];
         this.resources = ArrayUtil.toDoubleArray(rs.getBytes("resources"));
         this.date = rs.getLong("date");
@@ -25,5 +27,6 @@ public class AllianceInvestment {
     public enum InvestmentType {
         DONATION,
         SHARE,
+        RESERVE,
     }
 }

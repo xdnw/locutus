@@ -919,6 +919,17 @@ public class PnwUtil {
         return StringMan.getString(newMap);
     }
 
+    public static double convertedTotal(double[] resources, Function<ResourceType, Double> values) {
+        double total = 0;
+        for (int i = 0; i < resources.length; i++) {
+            double amt = resources[i];
+            if (amt != 0) {
+                total += values.apply(ResourceType.values[i]) * amt;
+            }
+        }
+        return total;
+    }
+
     public static double convertedTotal(double[] resources, boolean max) {
         if (max) return convertedTotal(resources);
         double total = 0;

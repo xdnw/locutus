@@ -1005,7 +1005,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 ")");
         executeStmt("CREATE TABLE IF NOT EXISTS `ALLIANCE_INVESTORS` " +
                 "(`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT" +
-                "`nation_id` INTEGER NOT NULL, " +
+                "`account_id` BIGINT NOT NULL, " +
+                "`account_type` INTEGER NOT NULL, " +
                 "`type` INTEGER NOT NULL, " +
                 "`resources` BLOB NOT NULL, " +
                 "`date` BOOLEAN NOT NULL," +
@@ -1104,18 +1105,20 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public void addAllianceInvestment(AllianceInvestment investment) {
         String insert = ("INSERT OR REPLACE INTO `ALLIANCE_INVESTORS`( " +
-                "`nation_id`, " +
+                "`account_id`, " +
+                "`account_type`, " +
                 "`type`, " +
                 "`resources`, " +
                 "`date`, " +
                 "`reserve_ratio`" +
-                ") VALUES (?, ?, ?, ?, ?)");
+                ") VALUES (?, ?, ?, ?, ?, ?)");
         try (PreparedStatement stmt = getConnection().prepareStatement(insert, Statement.RETURN_GENERATED_KEYS)) {
-            stmt.setInt(1, investment.nationId);
-            stmt.setInt(2, investment.type.ordinal());
-            stmt.setBytes(3, ArrayUtil.toByteArray(investment.resources));
-            stmt.setLong(4, investment.date);
-            stmt.setLong(5, Math.round(investment.reserveRatio * 100));
+            stmt.setLong(1, investment.accountId);
+            stmt.setInt(2, investment.accountType);
+            stmt.setInt(3, investment.type.ordinal());
+            stmt.setBytes(4, ArrayUtil.toByteArray(investment.resources));
+            stmt.setLong(5, investment.date);
+            stmt.setLong(6, Math.round(investment.reserveRatio * 100));
             stmt.executeUpdate();
             try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
                 if (generatedKeys.next()) {
@@ -1137,7 +1140,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         //                    "`date` BOOLEAN NOT NULL)";
         String insert = ("INSERT OR REPLACE INTO `ALLIANCE_INVESTORS`( " +
                 "`id`, " +
-                "`nation_id`, " +
+                "`account_id`, " +
+                "`account_type`, " +
                 "`type`, " +
                 "`resources`, " +
                 "`date`, " +
@@ -1146,11 +1150,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
         try (PreparedStatement stmt = getConnection().prepareStatement(insert)) {
             stmt.setInt(1, investment.id);
-            stmt.setInt(2, investment.nationId);
-            stmt.setInt(3, investment.type.ordinal());
-            stmt.setBytes(4, ArrayUtil.toByteArray(investment.resources));
-            stmt.setLong(5, investment.date);
-            stmt.setLong(6, Math.round(investment.reserveRatio * 100));
+            stmt.setLong(2, investment.accountId);
+            stmt.setInt(3, investment.accountType);
+            stmt.setInt(4, investment.type.ordinal());
+            stmt.setBytes(5, ArrayUtil.toByteArray(investment.resources));
+            stmt.setLong(6, investment.date);
+            stmt.setLong(7, Math.round(investment.reserveRatio * 100));
             stmt.executeUpdate();
 
         } catch (SQLException e) {
@@ -1784,6 +1789,15 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                     int aaId = bankerNation.getAlliance_id();
                     if (!channelWithdrawAccounts.contains((long) aaId)) {
                         if (throwError) {
+                            if (channelWithdrawAccounts.isEmpty()) {
+                                MessageChannel defaultChannel = getResourceChannel(0);
+                                if (defaultChannel == null) defaultChannel = getResourceChannel(aaId);
+                                if (defaultChannel == null) {
+                                    throw new IllegalArgumentException("Please set a default resource channel with " + CM.settings_bank_access.addResourceChannel.cmd.toSlashMention());
+                                } else {
+                                    throw new IllegalArgumentException("Please use the resource channel: " + defaultChannel.getAsMention());
+                                }
+                            }
                             throw new IllegalArgumentException("You cannot withdraw as you are not in the alliance: " + StringMan.getString(channelWithdrawAccounts) + " (your alliance id is: " + aaId + ")");
                         }
                     } else if (bankerNation.getPositionEnum().id <= Rank.APPLICANT.id) {
