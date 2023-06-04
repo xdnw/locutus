@@ -127,7 +127,7 @@ public class RankBuilder<T> {
     public void build(User author, MessageChannel channel, String cmd, String title, boolean upload) {
         List<String> items = toItems(25);
         String emoji = "Refresh";
-        String itemsStr = StringMan.join(items, "\n") + "\n";
+        String itemsStr = "```\n" + StringMan.join(items, "\n") + "\n```";
         if (cmd != null) itemsStr += "\nPress `" + emoji + "` to refresh";
         if (author != null) itemsStr += "\n" + author.getAsMention();
 
