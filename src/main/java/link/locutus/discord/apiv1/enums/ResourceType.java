@@ -1,6 +1,8 @@
 package link.locutus.discord.apiv1.enums;
 
 import com.politicsandwar.graphql.model.Bankrec;
+import it.unimi.dsi.fastutil.io.FastByteArrayInputStream;
+import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -84,7 +86,7 @@ public enum ResourceType {
 
     public static boolean isEmpty(double[] resources) {
         for (double i : resources) {
-            if (Math.round(i * 100) != 0) return false;
+            if (i != 0 && (Math.abs(i) >= 0.005)) return false;
         }
         return true;
     }
@@ -446,7 +448,7 @@ public enum ResourceType {
         private final byte[] data;
 
         public ArrayNoCredits(double[] loot) {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            FastByteArrayOutputStream baos = new FastByteArrayOutputStream();
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.CREDITS) continue;
                 try {
@@ -455,11 +457,12 @@ public enum ResourceType {
                     throw new RuntimeException(e);
                 }
             }
-            this.data = baos.toByteArray();
+            baos.trim();
+            this.data = baos.array;
         }
         public double[] get() {
             double[] data = ResourceType.getBuffer();
-            ByteArrayInputStream in = new ByteArrayInputStream(this.data);
+            FastByteArrayInputStream in = new FastByteArrayInputStream(this.data);
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.CREDITS) continue;
                 try {
@@ -476,7 +479,7 @@ public enum ResourceType {
         private final byte[] data;
 
         public VarArray(double[] loot) {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            FastByteArrayOutputStream baos = new FastByteArrayOutputStream();
             for (ResourceType type : ResourceType.values) {
                 long amtCents = (long) (loot[type.ordinal()] * 100);
                 if (amtCents == 0) continue;
@@ -487,7 +490,8 @@ public enum ResourceType {
                     throw new RuntimeException(e);
                 }
             }
-            this.data = baos.toByteArray();
+            baos.trim();
+            this.data = baos.array;
         }
 
         public double[] get() {
@@ -511,7 +515,7 @@ public enum ResourceType {
         private final long data;
 
         public ResourceAmtCents(ResourceType type, double amount) {
-            this.data = type.ordinal() + (Math.round(amount * 100d) << 4);
+            this.data = type.ordinal() + ((int)(amount * 100d) << 4);
         }
 
         public ResourceType getType() {

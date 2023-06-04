@@ -3,6 +3,8 @@ package link.locutus.discord.apiv1.domains.subdomains.attack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 
+import java.util.function.Supplier;
+
 public abstract class AirstrikeUnit extends AbstractAttack{
     protected AirstrikeUnit(int id, long date, boolean isAttackerIdGreater) {
         super(id, date, isAttackerIdGreater);
@@ -11,26 +13,34 @@ public abstract class AirstrikeUnit extends AbstractAttack{
     public static AirstrikeUnit create(int id, long date, boolean isAttackerIdGreater,
                                        AttackType type,
                                        SuccessType success,
-                                       int attcas1,
+                                       Supplier<Integer> attcas1_s,
                                        int defcas1,
-                                       int defCas2,
-                                       double city_infra_before,
-                                       double infra_destroyed,
-                                       int improvements_destroyed,
+                                       Supplier<Integer> defCas2_s,
+                                       Supplier<Double> city_infra_before_s,
+                                       Supplier<Double> infra_destroyed_s,
+                                       Supplier<Integer> improvements_destroyed_s,
                                        double att_gas_used,
                                        double att_mun_used,
                                        double def_gas_used,
-                                       double def_mun_used) {
+                                       Supplier<Double> def_mun_used_s) {
+        int improvements_destroyed = success == SuccessType.UTTER_FAILURE ? 0 : improvements_destroyed_s.get();
         if (improvements_destroyed == 0) {
             if (success == SuccessType.IMMENSE_TRIUMPH && defcas1 == 0) {
-                return new AirstrikeUnitIt_0_NoImp(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, att_gas_used, att_mun_used, defCas2, type);
+                return new AirstrikeUnitIt_0_NoImp(id, date, isAttackerIdGreater, city_infra_before_s.get(), infra_destroyed_s.get(), att_gas_used, att_mun_used, defCas2_s.get(), type);
             }
+            double def_mun_used = def_gas_used == 0 ? 0 : def_mun_used_s.get();
+            double city_infra_before = success == SuccessType.UTTER_FAILURE ? 0 : city_infra_before_s.get();
+            double infra_destroyed = success == SuccessType.UTTER_FAILURE ? 0 : infra_destroyed_s.get();
+            int attcas1 = def_gas_used == 0 ? 0 : attcas1_s.get();
+            int defCas2 = success == SuccessType.UTTER_FAILURE ? 0 : defCas2_s.get();
             return new AirstrikeUnitAny_Any_NoImp(id, date, isAttackerIdGreater, success, attcas1, defcas1, city_infra_before, infra_destroyed, att_gas_used, att_mun_used, def_gas_used, def_mun_used, defCas2, type);
         } else {
             if (success == SuccessType.IMMENSE_TRIUMPH && defcas1 == 0) {
-                return new AirstrikeUnitIt_0_Imp(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, att_gas_used, att_mun_used, defCas2, type);
+                return new AirstrikeUnitIt_0_Imp(id, date, isAttackerIdGreater, city_infra_before_s.get(), infra_destroyed_s.get(), att_gas_used, att_mun_used, defCas2_s.get(), type);
             }
-            return new AirstrikeUnitAny_Any_Imp(id, date, isAttackerIdGreater, success, attcas1, defcas1, city_infra_before, infra_destroyed, att_gas_used, att_mun_used, def_gas_used, def_mun_used, defCas2, type);
+            double def_mun_used = def_gas_used == 0 ? 0 : def_mun_used_s.get();
+            int attcas1 = def_gas_used == 0 ? 0 : attcas1_s.get();
+            return new AirstrikeUnitAny_Any_Imp(id, date, isAttackerIdGreater, success, attcas1, defcas1, city_infra_before_s.get(), infra_destroyed_s.get(), att_gas_used, att_mun_used, def_gas_used, def_mun_used, defCas2_s.get(), type);
         }
     }
 

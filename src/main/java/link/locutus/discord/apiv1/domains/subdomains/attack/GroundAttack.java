@@ -4,6 +4,8 @@ import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.util.MathMan;
 
+import java.util.function.Supplier;
+
 public abstract class GroundAttack extends AbstractAttack {
     public GroundAttack(int id, long date, boolean isAttackerIdGreater) {
         super(id, date, isAttackerIdGreater);
@@ -13,12 +15,12 @@ public abstract class GroundAttack extends AbstractAttack {
         private final long data;
         private final int data2;
 
-        public GroundIT_AC_0_NoMoneyNoImp(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, int attCas1, int attCas2, double attGas, double attMuni) {
+        public GroundIT_AC_0_NoMoneyNoImp(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, int attcas1_s, int attCas2, double attGas, double attMuni) {
             super(id, date, isAttackerIdGreater);
             char cityInfraData = (char) (int) city_infra_before;
             char infraDestroyedData = (char) (int) infra_destroyed;
-            // data = cityInfraData << ? | infraDestroyedData << ? | attCas1 << ? | attCas2 << ?
-            data = (long) cityInfraData << 48 | (long) infraDestroyedData << 32 | (long) attCas1 << 16 | attCas2;
+            // data = cityInfraData << ? | infraDestroyedData << ? | attcas1_s << ? | attCas2 << ?
+            data = (long) cityInfraData << 48 | (long) infraDestroyedData << 32 | (long) attcas1_s << 16 | attCas2;
             // pack signed
             data2 = (int) (attGas * 10) << 16 | (int) (attMuni * 10);
         }
@@ -103,11 +105,11 @@ public abstract class GroundAttack extends AbstractAttack {
     private static class GroundIT_A_0_NoMoneyNoImp extends GroundAttack {
         private final long data;
 
-        public GroundIT_A_0_NoMoneyNoImp(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, int attCas1, int attCas2) {
+        public GroundIT_A_0_NoMoneyNoImp(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, int attcas1_s, int attCas2) {
             super(id, date, isAttackerIdGreater);
             char cityInfraData = (char) (int) city_infra_before;
             char infraDestroyedData = (char) (int) infra_destroyed;
-            this.data = (long) cityInfraData << 48 | (long) infraDestroyedData << 32 | (long) attCas1 << 16 | attCas2;
+            this.data = (long) cityInfraData << 48 | (long) infraDestroyedData << 32 | (long) attcas1_s << 16 | attCas2;
         }
 
         @Override
@@ -191,12 +193,12 @@ public abstract class GroundAttack extends AbstractAttack {
         private final long data;
         private final int moneyCents;
 
-        public GroundIT_A_0_NoImp(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, int attCas1, int attCas2, double moneyLooted) {
+        public GroundIT_A_0_NoImp(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, int attcas1_s, int attCas2, double moneyLooted) {
             super(id, date, isAttackerIdGreater);
             char cityInfraData = (char) (int) city_infra_before;
             char infraDestroyedData = (char) (int) infra_destroyed;
-            this.moneyCents = (int) Math.round(moneyLooted * 100d);
-            this.data = (long) cityInfraData << 48 | (long) infraDestroyedData << 32 | (long) attCas1 << 16 | attCas2;
+            this.moneyCents = (int) (moneyLooted * 100d);
+            this.data = (long) cityInfraData << 48 | (long) infraDestroyedData << 32 | (long) attcas1_s << 16 | attCas2;
         }
 
         @Override
@@ -280,12 +282,12 @@ public abstract class GroundAttack extends AbstractAttack {
         private final long data;
         private final int moneyCents;
 
-        public GroundIT_SM_0_NoImp(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, int attCas1, double attMuni, double moneyLooted) {
+        public GroundIT_SM_0_NoImp(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, int attcas1_s, double attMuni, double moneyLooted) {
             super(id, date, isAttackerIdGreater);
             char cityInfraData = (char) (int) city_infra_before;
             char infraDestroyedData = (char) (int) infra_destroyed;
-            this.moneyCents = (int) Math.round(moneyLooted * 100d);
-            this.data = (long) cityInfraData << 48 | (long) infraDestroyedData << 32 | (long) attCas1 << 19 | (long) (attMuni * 100d);
+            this.moneyCents = (int) (moneyLooted * 100d);
+            this.data = (long) cityInfraData << 48 | (long) infraDestroyedData << 32 | (long) attcas1_s << 19 | (long) (attMuni * 100d);
         }
 
         @Override
@@ -366,11 +368,11 @@ public abstract class GroundAttack extends AbstractAttack {
     private static class GroundIT_SM_0_NoMoneyNoImp extends GroundAttack {
         private final long data;
 
-        public GroundIT_SM_0_NoMoneyNoImp(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, int attCas1, double attMuni) {
+        public GroundIT_SM_0_NoMoneyNoImp(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, int attcas1_s, double attMuni) {
             super(id, date, isAttackerIdGreater);
             char cityInfraData = (char) (int) city_infra_before;
             char infraDestroyedData = (char) (int) infra_destroyed;
-            this.data = (long) cityInfraData << 48 | (long) infraDestroyedData << 32 | (long) attCas1 << 19 | (long) (attMuni * 100d);
+            this.data = (long) cityInfraData << 48 | (long) infraDestroyedData << 32 | (long) attcas1_s << 19 | (long) (attMuni * 100d);
         }
 
         @Override
@@ -453,12 +455,12 @@ public abstract class GroundAttack extends AbstractAttack {
         private final long data;
         private final int data2;
 
-        public GroundIT_AC_0_NoMoney(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, int attCas1, int attCas2, double attGas, double attMuni) {
+        public GroundIT_AC_0_NoMoney(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, int attcas1_s, int attCas2, double attGas, double attMuni) {
             super(id, date, isAttackerIdGreater);
             char cityInfraData = (char) (int) city_infra_before;
             char infraDestroyedData = (char) (int) infra_destroyed;
-            // data = cityInfraData << ? | infraDestroyedData << ? | attCas1 << ? | attCas2 << ?
-            data = (long) cityInfraData << 48 | (long) infraDestroyedData << 32 | (long) attCas1 << 16 | attCas2;
+            // data = cityInfraData << ? | infraDestroyedData << ? | attcas1_s << ? | attCas2 << ?
+            data = (long) cityInfraData << 48 | (long) infraDestroyedData << 32 | (long) attcas1_s << 16 | attCas2;
             // pack signed
             data2 = (int) (attGas * 10) << 16 | (int) (attMuni * 10);
         }
@@ -543,11 +545,11 @@ public abstract class GroundAttack extends AbstractAttack {
     private static class GroundIT_A_0_NoMoney extends GroundAttack {
         private final long data;
 
-        public GroundIT_A_0_NoMoney(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, int attCas1, int attCas2) {
+        public GroundIT_A_0_NoMoney(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, int attcas1_s, int attCas2) {
             super(id, date, isAttackerIdGreater);
             char cityInfraData = (char) (int) city_infra_before;
             char infraDestroyedData = (char) (int) infra_destroyed;
-            this.data = (long) cityInfraData << 48 | (long) infraDestroyedData << 32 | (long) attCas1 << 16 | attCas2;
+            this.data = (long) cityInfraData << 48 | (long) infraDestroyedData << 32 | (long) attcas1_s << 16 | attCas2;
         }
 
         @Override
@@ -631,12 +633,12 @@ public abstract class GroundAttack extends AbstractAttack {
         private final long data;
         private final int moneyCents;
 
-        public GroundIT_A_0_(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, int attCas1, int attCas2, double moneyLooted) {
+        public GroundIT_A_0_(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, int attcas1_s, int attCas2, double moneyLooted) {
             super(id, date, isAttackerIdGreater);
             char cityInfraData = (char) (int) city_infra_before;
             char infraDestroyedData = (char) (int) infra_destroyed;
-            this.moneyCents = (int) Math.round(moneyLooted * 100d);
-            this.data = (long) cityInfraData << 48 | (long) infraDestroyedData << 32 | (long) attCas1 << 16 | attCas2;
+            this.moneyCents = (int) (moneyLooted * 100d);
+            this.data = (long) cityInfraData << 48 | (long) infraDestroyedData << 32 | (long) attcas1_s << 16 | attCas2;
         }
 
         @Override
@@ -720,12 +722,12 @@ public abstract class GroundAttack extends AbstractAttack {
         private final long data;
         private final int moneyCents;
 
-        public GroundIT_SM_0_(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, int attCas1, double attMuni, double moneyLooted) {
+        public GroundIT_SM_0_(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, int attcas1_s, double attMuni, double moneyLooted) {
             super(id, date, isAttackerIdGreater);
             char cityInfraData = (char) (int) city_infra_before;
             char infraDestroyedData = (char) (int) infra_destroyed;
-            this.moneyCents = (int) Math.round(moneyLooted * 100d);
-            this.data = (long) cityInfraData << 48 | (long) infraDestroyedData << 32 | (long) attCas1 << 19 | (long) (attMuni * 100d);
+            this.moneyCents = (int) (moneyLooted * 100d);
+            this.data = (long) cityInfraData << 48 | (long) infraDestroyedData << 32 | (long) attcas1_s << 19 | (long) (attMuni * 100d);
         }
 
         @Override
@@ -806,11 +808,11 @@ public abstract class GroundAttack extends AbstractAttack {
     private static class GroundIT_SM_0_NoMoney extends GroundAttack {
         private final long data;
 
-        public GroundIT_SM_0_NoMoney(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, int attCas1, double attMuni) {
+        public GroundIT_SM_0_NoMoney(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, int attcas1_s, double attMuni) {
             super(id, date, isAttackerIdGreater);
             char cityInfraData = (char) (int) city_infra_before;
             char infraDestroyedData = (char) (int) infra_destroyed;
-            this.data = (long) cityInfraData << 48 | (long) infraDestroyedData << 32 | (long) attCas1 << 19 | (long) (attMuni * 100d);
+            this.data = (long) cityInfraData << 48 | (long) infraDestroyedData << 32 | (long) attcas1_s << 19 | (long) (attMuni * 100d);
         }
 
         @Override
@@ -891,18 +893,18 @@ public abstract class GroundAttack extends AbstractAttack {
 
     public static GroundAttack create(int id, long date, boolean isAttackerIdGreater,
                                       SuccessType success,
-                                      int attcas1,
-                                      int attcas2,
+                                      int attcas1_s,
+                                      Supplier<Integer> attcas2_s,
 
-                                      int defcas1,
-                                      int defcas2,
-                                      int defcas3,
+                                      int defcas1_s,
+                                      int defcas2_s,
+                                      Supplier<Integer> defcas3_s,
 
-                                      double city_infra_before,
-                                      double infra_destroyed,
-                                      int improvements_destroyed,
+                                      Supplier<Double> city_infra_before_s,
+                                      Supplier<Double> infra_destroyed_s,
+                                      Supplier<Integer> improvements_destroyed_s,
 
-                                      double money_looted,
+                                      Supplier<Double> money_looted_s,
                                       double att_gas_used,
                                       double att_mun_used,
                                       double def_gas_used,
@@ -910,98 +912,109 @@ public abstract class GroundAttack extends AbstractAttack {
         switch (success) {
             case UTTER_FAILURE: {
                 if (att_gas_used == 0 && att_mun_used == 0) {
+                    int attcas2 = 0;
                     if (def_gas_used == 0 && def_mun_used == 0) {
-                        if (defcas1 == 0 && defcas2 == 0 && defcas3 == 0) {
-                            return new GroundUF_A(id, date, isAttackerIdGreater, attcas1, attcas2); // att_pair ->
+                        if (defcas1_s == 0 && defcas2_s == 0) {
+                            return new GroundUF_A(id, date, isAttackerIdGreater, attcas1_s, attcas2); // att_pair ->
                         } else {
-                            return new GroundUF_A_A(id, date, isAttackerIdGreater, attcas1, attcas2, defcas1, defcas2, defcas3); // att_pair -> def_pair
+                            return new GroundUF_A_A(id, date, isAttackerIdGreater, attcas1_s, attcas2, defcas1_s, defcas2_s); // att_pair -> def_pair
                         }
                     } else {
                         // att_pair -> def_pair, def_consume_pair
-                        return new GroundUF_A_AC(id, date, isAttackerIdGreater, attcas1, attcas2, defcas1, defcas2, defcas3, (int) Math.round(def_gas_used * 100), (int) Math.round(def_mun_used * 100));
+                        return new GroundUF_A_AC(id, date, isAttackerIdGreater, attcas1_s, attcas2, defcas1_s, defcas2_s, (int) (def_gas_used * 100), (int) (def_mun_used * 100));
                     }
                 } else {
+                    int attcas2 = attcas2_s.get();
                     if (def_gas_used == 0 && def_mun_used == 0) {
-                        if (defcas1 == 0 && defcas2 == 0 && defcas3 == 0) {
-                            return new GroundUF_AC(id, date, isAttackerIdGreater, attcas1, attcas2, (int) Math.round(att_gas_used * 100), (int) Math.round(att_mun_used * 100)); // att_pair ->
+                        if (defcas1_s == 0 && defcas2_s == 0) {
+                            return new GroundUF_AC(id, date, isAttackerIdGreater, attcas1_s, attcas2, (int) (att_gas_used * 100), (int) (att_mun_used * 100)); // att_pair ->
                         } else {
-                            return new GroundUF_AC_A(id, date, isAttackerIdGreater, attcas1, attcas2, (int) Math.round(att_gas_used * 100), (int) Math.round(att_mun_used * 100), defcas1, defcas2, defcas3); // att_pair -> def_pair
+                            return new GroundUF_AC_A(id, date, isAttackerIdGreater, attcas1_s, attcas2, (int) (att_gas_used * 100), (int) (att_mun_used * 100), defcas1_s, defcas2_s); // att_pair -> def_pair
                         }
                     } else {
                         // att_pair -> def_pair, def_consume_pair
-                        return new GroundUF_AC_AC(id, date, isAttackerIdGreater, attcas1, attcas2, (int) Math.round(att_gas_used * 100), (int) Math.round(att_mun_used * 100), defcas1, defcas2, defcas3, (int) Math.round(def_gas_used * 100), (int) Math.round(def_mun_used * 100));
-                    }
-                }
-            }
-            case IMMENSE_TRIUMPH: {
-                if (improvements_destroyed == 0) {
-                    if (def_gas_used == 0 && def_mun_used == 0 && defcas1 == 0 && defcas2 == 0 && defcas3 == 0) {
-                        if (money_looted == 0) {
-                            if (att_mun_used > 0) {
-                                if (att_gas_used > 0) {
-                                    return new GroundIT_AC_0_NoMoneyNoImp(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, attcas1, attcas2, att_gas_used, att_mun_used);
-                                } else {
-                                    return new GroundIT_SM_0_NoMoneyNoImp(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, attcas1, att_mun_used);
-                                }
-                            } else if (att_gas_used == 0) {
-                               return new GroundIT_A_0_NoMoneyNoImp(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, attcas1, attcas2);
-                            }
-                        } else {
-                            if (att_gas_used == 0) {
-                                if (att_mun_used == 0) {
-                                    return new GroundIT_A_0_NoImp(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, attcas1, attcas2, money_looted);
-                                } else {
-                                    return new GroundIT_SM_0_NoImp(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, attcas1, att_mun_used, money_looted);
-                                }
-                            }
-                        }
-                    }
-                } else if (improvements_destroyed == 1) {
-                    if (def_gas_used == 0 && def_mun_used == 0 && defcas1 == 0 && defcas2 == 0 && defcas3 == 0) {
-                        if (money_looted == 0) {
-                            if (att_mun_used > 0) {
-                                if (att_gas_used > 0) {
-                                    return new GroundIT_AC_0_NoMoney(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, attcas1, attcas2, att_gas_used, att_mun_used);
-                                } else {
-                                    return new GroundIT_SM_0_NoMoney(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, attcas1, att_mun_used);
-                                }
-                            } else if (att_gas_used == 0) {
-                                return new GroundIT_A_0_NoMoney(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, attcas1, attcas2);
-                            }
-                        } else {
-                            if (att_gas_used == 0) {
-                                if (att_mun_used == 0) {
-                                    return new GroundIT_A_0_(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, attcas1, attcas2, money_looted);
-                                } else {
-                                    return new GroundIT_SM_0_(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, attcas1, att_mun_used, money_looted);
-                                }
-                            }
-                        }
+                        return new GroundUF_AC_AC(id, date, isAttackerIdGreater, attcas1_s, attcas2, (int) (att_gas_used * 100), (int) (att_mun_used * 100), defcas1_s, defcas2_s, (int) (def_gas_used * 100), (int) (def_mun_used * 100));
                     }
                 }
             }
             default: {
+                int improvements_destroyed = improvements_destroyed_s.get();
+                double money_looted = money_looted_s.get();
+                double city_infra_before = city_infra_before_s.get();
+                double infra_destroyed = infra_destroyed_s.get();
+                int defcas3 = att_gas_used == 0 ? 0 : defcas3_s.get();
+
+                if (success == SuccessType.IMMENSE_TRIUMPH) {
+                    {
+                        if (improvements_destroyed == 0) {
+                            if (def_mun_used == 0 && defcas1_s == 0 && defcas2_s == 0 && defcas3 == 0) {
+                                if (money_looted == 0) {
+                                    if (att_mun_used > 0) {
+                                        if (att_gas_used > 0) {
+                                            return new GroundIT_AC_0_NoMoneyNoImp(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, attcas1_s, attcas2_s.get(), att_gas_used, att_mun_used);
+                                        } else {
+                                            return new GroundIT_SM_0_NoMoneyNoImp(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, attcas1_s, att_mun_used);
+                                        }
+                                    } else if (att_gas_used == 0) {
+                                        return new GroundIT_A_0_NoMoneyNoImp(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, attcas1_s, 0);
+                                    }
+                                } else {
+                                    if (att_gas_used == 0) {
+                                        if (att_mun_used == 0) {
+                                            return new GroundIT_A_0_NoImp(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, attcas1_s, 0, money_looted);
+                                        } else {
+                                            return new GroundIT_SM_0_NoImp(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, attcas1_s, att_mun_used, money_looted);
+                                        }
+                                    }
+                                }
+                            }
+                        } else if (improvements_destroyed == 1) {
+                            if (def_mun_used == 0 && defcas1_s == 0 && defcas2_s == 0 && defcas3 == 0) {
+                                if (money_looted == 0) {
+                                    if (att_mun_used > 0) {
+                                        if (att_gas_used > 0) {
+                                            return new GroundIT_AC_0_NoMoney(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, attcas1_s, attcas2_s.get(), att_gas_used, att_mun_used);
+                                        } else {
+                                            return new GroundIT_SM_0_NoMoney(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, attcas1_s, att_mun_used);
+                                        }
+                                    } else if (att_gas_used == 0) {
+                                        return new GroundIT_A_0_NoMoney(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, attcas1_s, 0);
+                                    }
+                                } else {
+                                    if (att_gas_used == 0) {
+                                        int attcas2 = 0;
+                                        if (att_mun_used == 0) {
+                                            return new GroundIT_A_0_(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, attcas1_s, attcas2, money_looted);
+                                        } else {
+                                            return new GroundIT_SM_0_(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, attcas1_s, att_mun_used, money_looted);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 if (att_gas_used == 0 && att_mun_used == 0) {
-                    if (def_gas_used == 0 && def_mun_used == 0) {
-                        if (defcas1 == 0 && defcas2 == 0 && defcas3 == 0) {
-                            return new GroundN_A(id, date, isAttackerIdGreater, success, city_infra_before, infra_destroyed, improvements_destroyed, money_looted, attcas1, attcas2); // att_pair ->
+                    if (def_mun_used == 0) {
+                        if (defcas1_s == 0 && defcas2_s == 0) {
+                            return new GroundN_A(id, date, isAttackerIdGreater, success, city_infra_before, infra_destroyed, improvements_destroyed, money_looted, attcas1_s, 0); // att_pair ->
                         } else {
-                            return new GroundN_A_A(id, date, isAttackerIdGreater, success, city_infra_before, infra_destroyed, improvements_destroyed, money_looted, attcas1, attcas2, defcas1, defcas2, defcas3); // att_pair -> def_pair
+                            return new GroundN_A_A(id, date, isAttackerIdGreater, success, city_infra_before, infra_destroyed, improvements_destroyed, money_looted, attcas1_s, 0, defcas1_s, defcas2_s, defcas3); // att_pair -> def_pair
                         }
                     } else {
                         // att_pair -> def_pair, def_consume_pair
-                        return new GroundN_A_AC(id, date, isAttackerIdGreater, success, city_infra_before, infra_destroyed, improvements_destroyed, money_looted, attcas1, attcas2, defcas1, defcas2, defcas3, (int) Math.round(def_gas_used * 100), (int) Math.round(def_mun_used * 100));
+                        return new GroundN_A_AC(id, date, isAttackerIdGreater, success, city_infra_before, infra_destroyed, improvements_destroyed, money_looted, attcas1_s, 0, defcas1_s, defcas2_s, defcas3, (int) (def_gas_used * 100), (int) (def_mun_used * 100));
                     }
                 } else {
-                    if (def_gas_used == 0 && def_mun_used == 0) {
-                        if (defcas1 == 0 && defcas2 == 0 && defcas3 == 0) {
-                            return new GroundN_AC(id, date, isAttackerIdGreater, success, city_infra_before, infra_destroyed, improvements_destroyed, money_looted, attcas1, attcas2, (int) Math.round(att_gas_used * 100), (int) Math.round(att_mun_used * 100)); // att_pair ->
+                    if (def_mun_used == 0) {
+                        if (defcas1_s == 0 && defcas2_s == 0 && defcas3 == 0) {
+                            return new GroundN_AC(id, date, isAttackerIdGreater, success, city_infra_before, infra_destroyed, improvements_destroyed, money_looted, attcas1_s, attcas2_s.get(), (int) (att_gas_used * 100), (int) (att_mun_used * 100)); // att_pair ->
                         } else {
-                            return new GroundN_AC_A(id, date, isAttackerIdGreater, success, city_infra_before, infra_destroyed, improvements_destroyed, money_looted, attcas1, attcas2, (int) Math.round(att_gas_used * 100), (int) Math.round(att_mun_used * 100), defcas1, defcas2, defcas3); // att_pair -> def_pair
+                            return new GroundN_AC_A(id, date, isAttackerIdGreater, success, city_infra_before, infra_destroyed, improvements_destroyed, money_looted, attcas1_s, attcas2_s.get(), (int) (att_gas_used * 100), (int) (att_mun_used * 100), defcas1_s, defcas2_s, defcas3); // att_pair -> def_pair
                         }
                     } else {
                         // att_pair -> def_pair, def_consume_pair
-                        return new GroundN_AC_AC(id, date, isAttackerIdGreater, success, city_infra_before, infra_destroyed, improvements_destroyed, money_looted, attcas1, attcas2, (int) Math.round(att_gas_used * 100), (int) Math.round(att_mun_used * 100), defcas1, defcas2, defcas3, (int) Math.round(def_gas_used * 100), (int) Math.round(def_mun_used * 100));
+                        return new GroundN_AC_AC(id, date, isAttackerIdGreater, success, city_infra_before, infra_destroyed, improvements_destroyed, money_looted, attcas1_s, attcas2_s.get(), (int) (att_gas_used * 100), (int) (att_mun_used * 100), defcas1_s, defcas2_s, defcas3, (int) (def_gas_used * 100), (int) (def_mun_used * 100));
                     }
                 }
             }
@@ -1055,21 +1068,22 @@ public abstract class GroundAttack extends AbstractAttack {
     }
 
     private static class GroundUF_A extends GroundUF {
-        private final long attPair;
 
-        public GroundUF_A(int id, long date, boolean isAttackerIdGreater, int soldiers, int tanks) {
+        public GroundUF_A(int id, long date, boolean isAttackerIdGreater, int attSoldier, int attTanks) {
             super(id, date, isAttackerIdGreater);
-            this.attPair = MathMan.pairInt(soldiers, tanks);
+            this.data = attTanks << 19 | attSoldier;
         }
+
+        private final int data;
 
         @Override
         public int getAttcas1() {
-            return MathMan.unpairIntX(attPair);
+            return data & 0x7FFFF;
         }
 
         @Override
         public int getAttcas2() {
-            return MathMan.unpairIntY(attPair);
+            return (data >> 19) & 0x7FFFF;
         }
 
         @Override
@@ -1110,26 +1124,21 @@ public abstract class GroundAttack extends AbstractAttack {
 
     private static class GroundUF_A_A extends GroundUF_A {
 
-        private final long defPair;
-
-        public GroundUF_A_A(int id, long date, boolean isAttackerIdGreater, int soldiers, int tanks, int defSoldier, int defTanks, int defPlanes) {
+        public GroundUF_A_A(int id, long date, boolean isAttackerIdGreater, int soldiers, int tanks, int defSoldier, int defTanks) {
             super(id, date, isAttackerIdGreater, soldiers, tanks);
-            this.defPair = MathMan.pairInt(defSoldier, MathMan.pair((short) defTanks, (short) defPlanes));
+            this.data = defTanks << 19 | defSoldier;
         }
+
+        private final int data;
 
         @Override
         public int getDefcas1() {
-            return MathMan.unpairIntX(defPair);
+            return data & 0x7FFFF;
         }
 
         @Override
         public int getDefcas2() {
-            return MathMan.unpairX(MathMan.unpairIntY(defPair)) & 0xFFFF;
-        }
-
-        @Override
-        public int getDefcas3() {
-            return MathMan.unpairY(MathMan.unpairIntY(defPair)) & 0xFFFF;
+            return (data >> 19) & 0x7FFFF;
         }
     }
 
@@ -1137,8 +1146,8 @@ public abstract class GroundAttack extends AbstractAttack {
 
         private final long defConsume;
 
-        public GroundUF_A_AC(int id, long date, boolean isAttackerIdGreater, int soldiers, int tanks, int defSoldier, int defTanks, int defPlanes, int defGas, int defMuni) {
-            super(id, date, isAttackerIdGreater, soldiers, tanks, defSoldier, defTanks, defPlanes);
+        public GroundUF_A_AC(int id, long date, boolean isAttackerIdGreater, int soldiers, int tanks, int defSoldier, int defTanks, int defGas, int defMuni) {
+            super(id, date, isAttackerIdGreater, soldiers, tanks, defSoldier, defTanks);
             this.defConsume = MathMan.pairInt(defGas, defMuni);
         }
 
@@ -1176,26 +1185,21 @@ public abstract class GroundAttack extends AbstractAttack {
 
     private static class GroundUF_AC_A extends GroundUF_AC {
 
-        private final long defPair;
-
-        public GroundUF_AC_A(int id, long date, boolean isAttackerIdGreater, int soldiers, int tanks, int attGas, int attMuni, int defSoldier, int defTanks, int defPlanes) {
+        public GroundUF_AC_A(int id, long date, boolean isAttackerIdGreater, int soldiers, int tanks, int attGas, int attMuni, int defSoldier, int defTanks) {
             super(id, date, isAttackerIdGreater, soldiers, tanks, attGas, attMuni);
-            this.defPair = MathMan.pairInt(defSoldier, MathMan.pair((short) defTanks, (short) defPlanes));
+            this.data = defTanks << 19 | defSoldier;
         }
+
+        private final int data;
 
         @Override
         public int getDefcas1() {
-            return MathMan.unpairIntX(defPair);
+            return data & 0x7FFFF;
         }
 
         @Override
         public int getDefcas2() {
-            return MathMan.unpairX(MathMan.unpairIntY(defPair)) & 0xFFFF;
-        }
-
-        @Override
-        public int getDefcas3() {
-            return MathMan.unpairY(MathMan.unpairIntY(defPair)) & 0xFFFF;
+            return (data >> 19) & 0x7FFFF;
         }
     }
 
@@ -1203,8 +1207,8 @@ public abstract class GroundAttack extends AbstractAttack {
 
         private final long defConsume;
 
-        public GroundUF_AC_AC(int id, long date, boolean isAttackerIdGreater, int soldiers, int tanks, int attGas, int attMuni, int defSoldier, int defTanks, int defPlanes, int defGas, int defMuni) {
-            super(id, date, isAttackerIdGreater, soldiers, tanks, attGas, attMuni, defSoldier, defTanks, defPlanes);
+        public GroundUF_AC_AC(int id, long date, boolean isAttackerIdGreater, int soldiers, int tanks, int attGas, int attMuni, int defSoldier, int defTanks, int defGas, int defMuni) {
+            super(id, date, isAttackerIdGreater, soldiers, tanks, attGas, attMuni, defSoldier, defTanks);
             this.defConsume = MathMan.pairInt(defGas, defMuni);
         }
 
@@ -1260,21 +1264,22 @@ public abstract class GroundAttack extends AbstractAttack {
     }
 
     private static class GroundN_A extends GroundSuccess {
-        private final long attPair;
 
-        public GroundN_A(int id, long date, boolean isAttackerIdGreater, SuccessType successType, double city_infra_before, double infra_destroyed, int improvementDestroyed, double money_looted, int soldiers, int tanks) {
+        public GroundN_A(int id, long date, boolean isAttackerIdGreater, SuccessType successType, double city_infra_before, double infra_destroyed, int improvementDestroyed, double money_looted, int attSoldier, int attTanks) {
             super(id, date, isAttackerIdGreater, successType, city_infra_before, infra_destroyed, improvementDestroyed, money_looted);
-            this.attPair = MathMan.pairInt(soldiers, tanks);
+            this.data = attTanks << 19 | attSoldier;
         }
+
+        private final int data;
 
         @Override
         public int getAttcas1() {
-            return MathMan.unpairIntX(attPair);
+            return data & 0x7FFFF;
         }
 
         @Override
         public int getAttcas2() {
-            return MathMan.unpairIntY(attPair);
+            return (data >> 19) & 0x7FFFF;
         }
 
         @Override
@@ -1315,26 +1320,29 @@ public abstract class GroundAttack extends AbstractAttack {
 
     private static class GroundN_A_A extends GroundN_A {
 
-        private final long defPair;
-
         public GroundN_A_A(int id, long date, boolean isAttackerIdGreater, SuccessType successType, double city_infra_before, double infra_destroyed, int improvementDestroyed, double money_looted, int soldiers, int tanks, int defSoldier, int defTanks, int defPlanes) {
             super(id, date, isAttackerIdGreater, successType, city_infra_before, infra_destroyed, improvementDestroyed, money_looted, soldiers, tanks);
-            this.defPair = MathMan.pairInt(defSoldier, MathMan.pair((short) defTanks, (short) defPlanes));
+            this.data = (long) defSoldier << 40 | (long) defTanks << 20 | defPlanes;
         }
+
+        private final long data;
 
         @Override
         public int getDefcas1() {
-            return MathMan.unpairIntX(defPair);
+            // defSoldier
+            return (int) (data >> 40) & 0xFFFFF;
         }
 
         @Override
         public int getDefcas2() {
-            return MathMan.unpairX(MathMan.unpairIntY(defPair)) & 0xFFFF;
+            // defTanks
+            return (int) (data >> 20) & 0xFFFFF;
         }
 
         @Override
         public int getDefcas3() {
-            return MathMan.unpairY(MathMan.unpairIntY(defPair)) & 0xFFFF;
+            // defplanes
+            return (int) (data & 0xFFFFF);
         }
     }
 
@@ -1381,26 +1389,30 @@ public abstract class GroundAttack extends AbstractAttack {
 
     private static class GroundN_AC_A extends GroundN_AC {
 
-        private final long defPair;
 
         public GroundN_AC_A(int id, long date, boolean isAttackerIdGreater, SuccessType successType, double city_infra_before, double infra_destroyed, int improvementDestroyed, double money_looted, int soldiers, int tanks, int attGas, int attMuni, int defSoldier, int defTanks, int defPlanes) {
             super(id, date, isAttackerIdGreater, successType, city_infra_before, infra_destroyed, improvementDestroyed, money_looted, soldiers, tanks, attGas, attMuni);
-            this.defPair = MathMan.pairInt(defSoldier, MathMan.pair((short) defTanks, (short) defPlanes));
+            this.data = (long) defSoldier << 40 | (long) defTanks << 20 | defPlanes;
         }
+
+        private final long data;
 
         @Override
         public int getDefcas1() {
-            return MathMan.unpairIntX(defPair);
+            // defSoldier
+            return (int) (data >> 40) & 0xFFFFF;
         }
 
         @Override
         public int getDefcas2() {
-            return MathMan.unpairX(MathMan.unpairIntY(defPair)) & 0xFFFF;
+            // defTanks
+            return (int) (data >> 20) & 0xFFFFF;
         }
 
         @Override
         public int getDefcas3() {
-            return MathMan.unpairY(MathMan.unpairIntY(defPair)) & 0xFFFF;
+            // defplanes
+            return (int) (data & 0xFFFFF);
         }
     }
 

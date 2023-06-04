@@ -4,24 +4,26 @@ import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.util.MathMan;
 
+import java.util.function.Supplier;
+
 public abstract class MissileAttack extends AbstractAttack{
     protected MissileAttack(int id, long date, boolean isAttackerIdGreater) {
         super(id, date, isAttackerIdGreater);
     }
 
-    public static MissileAttack create(int id, long date, boolean isAttackerIdGreater, SuccessType success, int improvements, double city_infra_before, double infra_destroyed) {
+    public static MissileAttack create(int id, long date, boolean isAttackerIdGreater, SuccessType success, Supplier<Integer> improvements, Supplier<Double> city_infra_before, Supplier<Double> infra_destroyed) {
         switch (success) {
             case UTTER_FAILURE -> {
                 return new MissileAttackUF(id, date, isAttackerIdGreater);
             }
             case PYRRHIC_VICTORY -> {
-                switch (improvements) {
+                switch (improvements.get()) {
                     case 0:
-                        return new MissileAttackPV0(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed);
+                        return new MissileAttackPV0(id, date, isAttackerIdGreater, city_infra_before.get(), infra_destroyed.get());
                     case 1:
-                        return new MissileAttackPV1(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed);
+                        return new MissileAttackPV1(id, date, isAttackerIdGreater, city_infra_before.get(), infra_destroyed.get());
                     case 2:
-                        return new MissileAttackPV2(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed);
+                        return new MissileAttackPV2(id, date, isAttackerIdGreater, city_infra_before.get(), infra_destroyed.get());
                     default:
                         throw new IllegalStateException("Unexpected improvements: " + improvements + " for MissileAttack");
                 }

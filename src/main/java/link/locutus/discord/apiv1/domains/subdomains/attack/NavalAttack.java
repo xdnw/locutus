@@ -4,39 +4,46 @@ import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.util.MathMan;
 
+import java.util.function.Supplier;
+
 public abstract class NavalAttack extends AbstractAttack {
     public NavalAttack(int id, long date, boolean isAttackerIdGreater) {
         super(id, date, isAttackerIdGreater);
     }
 
-    public static NavalAttack create(int id, long date, boolean isAttackerGreater, SuccessType success, int attcas1, double  attgas, double  attmuni, int  defcas1, double  defgas, double defmuni, double city_infra_before, double infra_destroyed, int improvements) {
+    public static NavalAttack create(int id, long date, boolean isAttackerGreater,
+                                     SuccessType success,
+                                     Supplier<Integer> attcas1_s,
+                                     double  attgas,
+                                     double  attmuni,
+                                     Integer defcas1,
+                                     double  defgas,
+                                     Supplier<Double> defmuni_s,
+                                     Supplier<Double> city_infra_before_s,
+                                     Supplier<Double> infra_destroyed_s,
+                                     Supplier<Integer> improvements_s) {
 
+        int improvements = success == SuccessType.UTTER_FAILURE ? 0 : improvements_s.get();
         if (improvements == 0) {
             switch (success) {
                 case UTTER_FAILURE: {
-                    return new NavalUF_ANY_NoImp(id, date, isAttackerGreater, attcas1, attgas, attmuni, defcas1, defgas, defmuni);
-                }
-                case IMMENSE_TRIUMPH: {
-                    if (attcas1 == 0 && defcas1 == 0 && defgas == 0) {
-                        return new NavalIT_0_0_NoImpNoGas(id, date, isAttackerGreater, city_infra_before, infra_destroyed, attgas, attmuni);
-                    }
+                    double defmuni = defgas == 0 ? 0 : defmuni_s.get();
+                    return new NavalUF_ANY_NoImp(id, date, isAttackerGreater, attcas1_s.get(), attgas, attmuni, defcas1, defgas, defmuni);
                 }
                 default: {
-                    return new Naval_ANY_NoImp(id, date, isAttackerGreater, success, attcas1, attgas, attmuni, defcas1, defgas, defmuni, city_infra_before, infra_destroyed);
+                    if (success == SuccessType.IMMENSE_TRIUMPH && defcas1 == 0 && defgas == 0) {
+                        return new NavalIT_0_0_NoImpNoGas(id, date, isAttackerGreater, city_infra_before_s.get(), infra_destroyed_s.get(), attgas, attmuni);
+                    }
+                    return new Naval_ANY_NoImp(id, date, isAttackerGreater, success, attcas1_s.get(), attgas, attmuni, defcas1, defgas, defmuni_s.get(), city_infra_before_s.get(), infra_destroyed_s.get());
                 }
             }
         } else {
             switch (success) {
-                case UTTER_FAILURE: {
-                    return new NavalUF_ANY_Imp(id, date, isAttackerGreater, attcas1, attgas, attmuni, defcas1, defgas, defmuni);
-                }
-                case IMMENSE_TRIUMPH: {
-                    if (attcas1 == 0 && defcas1 == 0 && defgas == 0) {
-                        return new NavalIT_0_0_ImpNoGas(id, date, isAttackerGreater, city_infra_before, infra_destroyed, attgas, attmuni);
-                    }
-                }
                 default: {
-                    return new Naval_ANY_Imp(id, date, isAttackerGreater, success, attcas1, attgas, attmuni, defcas1, defgas, defmuni, city_infra_before, infra_destroyed);
+                    if (success == SuccessType.IMMENSE_TRIUMPH && defcas1 == 0 && defgas == 0) {
+                        return new NavalIT_0_0_ImpNoGas(id, date, isAttackerGreater, city_infra_before_s.get(), infra_destroyed_s.get(), attgas, attmuni);
+                    }
+                    return new Naval_ANY_Imp(id, date, isAttackerGreater, success, attcas1_s.get(), attgas, attmuni, defcas1, defgas, defmuni_s.get(), city_infra_before_s.get(), infra_destroyed_s.get());
                 }
             }
         }

@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 
+import com.google.gson.reflect.TypeToken;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -117,12 +118,27 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         return result;
     }
 
+
     public String format(ValueStore<?> store, String arg) {
-        Guild guild = store.getProvided(Key.of(Guild.class, Me.class));
-        MessageChannel channel = store.getProvided(Key.of(MessageChannel.class, Me.class));
         User author = store.getProvided(Key.of(User.class, Me.class));
         DBNation me = store.getProvided(Key.of(DBNation.class, Me.class));
 
-        return DiscordUtil.format(guild, channel, author, me, arg);
+        if (author != null && arg.contains("%user%")) {
+            arg = arg.replace("%user%", author.getAsMention());
+        }
+
+        return format(arg, 0, new Function<String, String>() {
+            @Override
+            public String apply(String placeholder) {
+                NationAttribute result = NationPlaceholders.this.getMetric(store, placeholder, false);
+                if (result != null) {
+                    Object obj = result.apply(me);
+                    if (obj != null) {
+                        return obj.toString();
+                    }
+                }
+                return placeholder;
+            }
+        });
     }
 }

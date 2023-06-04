@@ -100,7 +100,7 @@ public class DBMainV2 implements Closeable {
         return rs.getInt(id);
     }
 
-    protected int getIntDef0(ResultSet rs, int id) throws SQLException {
+    public static int getIntDef0(ResultSet rs, int id) throws SQLException {
         return rs.getInt(id);
     }
 
@@ -108,7 +108,7 @@ public class DBMainV2 implements Closeable {
         return rs.getLong(id);
     }
 
-    protected long getLongDef0(ResultSet rs, int id) throws SQLException {
+    public static long getLongDef0(ResultSet rs, int id) throws SQLException {
         return rs.getLong(id);
     }
 
@@ -151,7 +151,7 @@ public class DBMainV2 implements Closeable {
         }
         return val;
     }
-    protected byte[] getBytes(ResultSet rs, int id) throws SQLException {
+    public static byte[] getBytes(ResultSet rs, int id) throws SQLException {
         byte[] val = rs.getBytes(id);
         if (rs.wasNull()) {
             return null;

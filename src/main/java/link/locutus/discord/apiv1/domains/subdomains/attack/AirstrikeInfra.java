@@ -3,32 +3,41 @@ package link.locutus.discord.apiv1.domains.subdomains.attack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 
+import java.util.function.Supplier;
+
 public abstract class AirstrikeInfra extends AbstractAttack{
     protected AirstrikeInfra(int id, long date, boolean isAttackerIdGreater) {
         super(id, date, isAttackerIdGreater);
     }
 
     public static AirstrikeInfra create(int id, long date, boolean isAttackerIdGreater,
-                                        SuccessType success,
-                                        int attcas1,
-                                        int defcas1,
-                                        double city_infra_before,
-                                        double infra_destroyed,
-                                        int improvements_destroyed,
-                                        double att_gas_used,
-                                        double att_mun_used,
-                                        double def_gas_used,
-                                        double def_mun_used) {
+                                           SuccessType success,
+                                           Supplier<Integer> attcas1_s,
+                                           int defcas1,
+                                           Supplier<Double> city_infra_before_s,
+                                           Supplier<Double> infra_destroyed_s,
+                                           Supplier<Integer> improvements_destroyed_s,
+                                           double att_gas_used,
+                                           double att_mun_used,
+                                           double def_gas_used,
+                                           Supplier<Double> def_mun_used_s) {
+        int improvements_destroyed = success == SuccessType.UTTER_FAILURE ? 0 : improvements_destroyed_s.get();
         if (improvements_destroyed == 0) {
             if (success == SuccessType.IMMENSE_TRIUMPH && defcas1 == 0) {
-                return new AirstrikeInfraIt_0_NoImp(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, att_gas_used, att_mun_used);
+                return new AirstrikeInfra.AirstrikeInfraIt_0_NoImp(id, date, isAttackerIdGreater, city_infra_before_s.get(), infra_destroyed_s.get(), att_gas_used, att_mun_used);
             }
-            return new AirstrikeInfraAny_Any_NoImp(id, date, isAttackerIdGreater, success, attcas1, defcas1, city_infra_before, infra_destroyed, att_gas_used, att_mun_used, def_gas_used, def_mun_used);
+            double def_mun_used = def_gas_used == 0 ? 0 : def_mun_used_s.get();
+            double city_infra_before = success == SuccessType.UTTER_FAILURE ? 0 : city_infra_before_s.get();
+            double infra_destroyed = success == SuccessType.UTTER_FAILURE ? 0 : infra_destroyed_s.get();
+            int attcas1 = def_gas_used == 0 ? 0 : attcas1_s.get();
+            return new AirstrikeInfra.AirstrikeInfraAny_Any_NoImp(id, date, isAttackerIdGreater, success, attcas1, defcas1, city_infra_before, infra_destroyed, att_gas_used, att_mun_used, def_gas_used, def_mun_used);
         } else {
             if (success == SuccessType.IMMENSE_TRIUMPH && defcas1 == 0) {
-                return new AirstrikeInfraIt_0_Imp(id, date, isAttackerIdGreater, city_infra_before, infra_destroyed, att_gas_used, att_mun_used);
+                return new AirstrikeInfra.AirstrikeInfraIt_0_Imp(id, date, isAttackerIdGreater, city_infra_before_s.get(), infra_destroyed_s.get(), att_gas_used, att_mun_used);
             }
-            return new AirstrikeInfraAny_Any_Imp(id, date, isAttackerIdGreater, success, attcas1, defcas1, city_infra_before, infra_destroyed, att_gas_used, att_mun_used, def_gas_used, def_mun_used);
+            double def_mun_used = def_gas_used == 0 ? 0 : def_mun_used_s.get();
+            int attcas1 = def_gas_used == 0 ? 0 : attcas1_s.get();
+            return new AirstrikeInfra.AirstrikeInfraAny_Any_Imp(id, date, isAttackerIdGreater, success, attcas1, defcas1, city_infra_before_s.get(), infra_destroyed_s.get(), att_gas_used, att_mun_used, def_gas_used, def_mun_used);
         }
     }
 

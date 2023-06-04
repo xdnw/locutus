@@ -1,6 +1,7 @@
 package link.locutus.discord.util;
 
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.util.io.PageRequestQueue;
 import org.apache.commons.io.IOUtils;
 import org.eclipse.jetty.util.UrlEncoded;
 
@@ -17,13 +18,19 @@ import java.net.HttpCookie;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public final class FileUtil {
     private static final String COOKIES_HEADER = "Set-Cookie";
@@ -113,91 +120,144 @@ public final class FileUtil {
         return split[0] + "?" + UrlEncoded.encodeString(split[1], StandardCharsets.UTF_8);
     }
 
-    public static String readStringFromURL(String urlStr, Map<String, String> arguments) throws IOException {
-        return readStringFromURL(urlStr, arguments, null);
+    public static CompletableFuture<String> readStringFromURL(int priority, String urlStr, Map<String, String> arguments) throws IOException {
+        return readStringFromURL(priority, urlStr, arguments, null);
     }
 
-    public static String readStringFromURL(String urlStr, Map<String, String> arguments, CookieManager msCookieManager) throws IOException {
-        return readStringFromURL(urlStr, arguments, true, msCookieManager, i -> {});
+    public static CompletableFuture<String> readStringFromURL(int priority, String urlStr, Map<String, String> arguments, CookieManager msCookieManager) throws IOException {
+        return readStringFromURL(priority, urlStr, arguments, true, msCookieManager, i -> {});
     }
-
-    public static String readStringFromURL(String urlStr, Map<String, String> arguments, boolean post, CookieManager msCookieManager, Consumer<HttpURLConnection> apply) throws IOException {
+    public static CompletableFuture<String> readStringFromURL(int priority, String urlStr, Map<String, String> arguments, boolean post, CookieManager msCookieManager, Consumer<HttpURLConnection> apply) throws IOException {
         StringJoiner sj = new StringJoiner("&");
         for (Map.Entry<String, String> entry : arguments.entrySet())
             sj.add(URLEncoder.encode(entry.getKey(), "UTF-8") + "="
                     + URLEncoder.encode(entry.getValue(), "UTF-8"));
         byte[] out = sj.toString().getBytes(StandardCharsets.UTF_8);
-        return readStringFromURL(urlStr, out, post, msCookieManager, apply);
+        return readStringFromURL(priority, urlStr, out, post ? RequestType.POST : RequestType.GET, msCookieManager, apply);
     }
 
-    public static String readStringFromURL(String urlStr, byte[] dataBinary, boolean post, CookieManager msCookieManager, Consumer<HttpURLConnection> apply) throws IOException {
-        URL url = new URL(urlStr);
-        URLConnection con = url.openConnection();
-        HttpURLConnection http = (HttpURLConnection) con;
-
-        if (msCookieManager != null && msCookieManager.getCookieStore().getCookies().size() > 0) {
-            for (HttpCookie cookie : msCookieManager.getCookieStore().getCookies()) {
-                http.addRequestProperty("Cookie", cookie.toString());
-            }
-            // While joining the Cookies, use ',' or ';' as needed. Most of the servers are using ';'
-//            http.setRequestProperty("Cookie",
-//                    StringMan.join(msCookieManager.getCookieStore().getCookies(), ";"));
+    public static <T> T get(Future<T> myFuture) {
+        try {
+            return myFuture.get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
         }
+    }
 
-        http.setUseCaches(false);
-        http.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9");
-        http.setRequestProperty("dnt", "1");
-        http.setRequestProperty("Connection", "keep-alive");
-        http.setRequestProperty("Referer", urlStr);
-        http.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+    public enum RequestType {
+        GET,
+        POST,
+        HEAD,
+    }
 
-        http.setRequestProperty("User-Agent", Settings.USER_AGENT);
-        if (dataBinary != null && dataBinary.length != 0 && post) {
-            http.setRequestMethod("POST");
-        } else if (!post && dataBinary == null) {
-            http.setRequestMethod("GET");
-        }
-        http.setDoOutput(true);
-        http.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+    private static PageRequestQueue pageRequestQueue = new PageRequestQueue(1000);
+    private static AtomicInteger requestOrder = new AtomicInteger();
+    private static long lastRead = 0;
 
-        int length = dataBinary != null ? dataBinary.length : 0;
-        http.setFixedLengthStreamingMode(length);
-        http.setInstanceFollowRedirects(false);
+    public static CompletableFuture<String> readStringFromURL(int priority, String urlStr, byte[] dataBinary, RequestType type, CookieManager msCookieManager, Consumer<HttpURLConnection> apply) {
+        long orderedPriority = requestOrder.incrementAndGet() + Integer.MAX_VALUE * (long) priority;
+        PageRequestQueue.PageRequestTask<String> task = pageRequestQueue.submit(new Supplier<String>() {
+            @Override
+            public String get() {
+                long now = System.currentTimeMillis();
+//                System.out.println("Requesting " + urlStr + " at " + now + " with priority " + priority + " ( last: " + (now - lastRead) + " ). Queue size: " + pageRequestQueue.size());
+                lastRead = now;
+                try {
+                    URL url = new URL(urlStr);
+                    HttpURLConnection http = (HttpURLConnection) url.openConnection();
 
-        if (apply != null) apply.accept(http);
+                    if (msCookieManager != null && msCookieManager.getCookieStore().getCookies().size() > 0) {
+                        List<String> cookies = new ArrayList<>();
+                        for (HttpCookie cookie : msCookieManager.getCookieStore().getCookies()) {
+                            if (cookie.getName().equalsIgnoreCase("XSRF-TOKEN")) {
+                                // x-requested-with: XMLHttpRequest
+                                http.setRequestProperty("x-requested-with", "XMLHttpRequest");
+                                http.setRequestProperty("x-xsrf-token", URLDecoder.decode(cookie.getValue()));
+                            }
+                            cookies.add(cookie.getName() + "=" + cookie.getValue());
+                        }
+                        if (!cookies.isEmpty()) {
+                            http.addRequestProperty("cookie", String.join(";", cookies));
+                        }
+                    }
 
-        http.connect();
-        if (dataBinary != null) {
-            try (OutputStream os = http.getOutputStream()) {
-                os.write(dataBinary);
-            }
-        }
+                    http.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7");
+                    http.setRequestProperty("Accept-Encoding", "gzip, deflate, br");
+                    http.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
+                    http.setRequestProperty("Referer", urlStr);
+                    http.setRequestProperty("dnt", "1");
 
-        try (InputStream is = http.getInputStream()) {
-            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-            int nRead;
-            byte[] data = new byte[8192];
-            while ((nRead = is.read(data, 0, data.length)) != -1) {
-                buffer.write(data, 0, nRead);
-            }
+                    http.setRequestProperty("User-Agent", Settings.USER_AGENT);
+                    switch (type) {
+                        case GET:
+                            http.setRequestMethod("GET");
+                            http.setRequestProperty("content-type", "application/json");
+                            break;
+                        case POST:
+                            http.setRequestMethod("POST");
 
-            buffer.flush();
-            byte[] bytes = buffer.toByteArray();
+                            http.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+                            http.setRequestProperty("Connection", "keep-alive");
+                            int length = dataBinary != null ? dataBinary.length : 0;
+                            http.setFixedLengthStreamingMode(length);
+                            break;
+                        case HEAD:
+                            http.setRequestMethod("HEAD");
+                            break;
+                    }
 
-            Map<String, List<String>> headerFields = http.getHeaderFields();
-            List<String> cookiesHeader = headerFields.get(COOKIES_HEADER);
-            if (cookiesHeader != null && msCookieManager != null) {
-                for (String cookie : cookiesHeader) {
-                    msCookieManager.getCookieStore().add(null, HttpCookie.parse(cookie).get(0));
+                    http.setInstanceFollowRedirects(false);
+                    http.setDoOutput(true);
+
+                    if (apply != null) apply.accept(http);
+
+                    if (dataBinary != null && dataBinary.length != 0) {
+                        try (OutputStream os = http.getOutputStream()) {
+                            os.write(dataBinary);
+                        }
+                    }
+
+                    try (InputStream is = http.getInputStream()) {
+                        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                        int nRead;
+                        byte[] data = new byte[8192];
+                        while ((nRead = is.read(data, 0, data.length)) != -1) {
+                            buffer.write(data, 0, nRead);
+                        }
+
+                        buffer.flush();
+                        byte[] bytes = buffer.toByteArray();
+
+                        Map<String, List<String>> headerFields = http.getHeaderFields();
+
+                        if (msCookieManager != null) {
+                            for (Map.Entry<String, List<String>> entry : headerFields.entrySet()) {
+                                if (entry.getKey() != null && entry.getKey().equalsIgnoreCase(COOKIES_HEADER)) {
+                                    List<String> cookiesHeader = entry.getValue();
+                                    for (String cookie : cookiesHeader) {
+                                        List<HttpCookie> parsed = HttpCookie.parse(cookie);
+                                        for (HttpCookie httpCookie : parsed) {
+                                            msCookieManager.getCookieStore().add(null, httpCookie);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        return new String(bytes, StandardCharsets.UTF_8);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+
+                        try (InputStream is = http.getErrorStream()) {
+                            throw new IOException(e.getMessage() + ":\n" + is == null ? "null" : IOUtils.toString(is, StandardCharsets.UTF_8));
+                        }
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    return null;
                 }
             }
-
-
-            return new String(bytes, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            try (InputStream is = http.getErrorStream()) {
-                throw new IOException(e.getMessage() + ":\n" + IOUtils.toString(is, StandardCharsets.UTF_8));
-            }
-        }
+        }, orderedPriority);
+        return task;
     }
 }

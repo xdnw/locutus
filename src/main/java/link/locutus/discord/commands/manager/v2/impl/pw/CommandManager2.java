@@ -171,6 +171,8 @@ public class CommandManager2 {
 
         this.commands.registerMethod(new AttackCommands(), List.of("simulate"), "casualties", "casualties");
 
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "wiki"), "dumpWiki", "save");
+
         this.commands.registerMethod(new SettingCommands(), List.of("settings"), "delete", "delete");
         this.commands.registerMethod(new SettingCommands(), List.of("settings"), "sheets", "sheets");
         this.commands.registerMethod(new SettingCommands(), List.of("settings"), "info", "info");

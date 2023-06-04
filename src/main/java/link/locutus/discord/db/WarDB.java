@@ -4,10 +4,13 @@ import com.politicsandwar.graphql.model.*;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
+import it.unimi.dsi.fastutil.ints.Int2IntArrayMap;
+import it.unimi.dsi.fastutil.ints.Int2LongArrayMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.WarAttacksContainer;
 import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.WarAttackWrapper;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.WarType;
@@ -24,6 +27,7 @@ import link.locutus.discord.event.war.AttackEvent;
 import link.locutus.discord.event.bounty.BountyCreateEvent;
 import link.locutus.discord.event.bounty.BountyRemoveEvent;
 import link.locutus.discord.event.war.WarStatusChangeEvent;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.AlertUtil;
@@ -39,10 +43,26 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.Reader;
+import java.math.BigDecimal;
+import java.net.URL;
+import java.sql.Array;
+import java.sql.Blob;
+import java.sql.Clob;
+import java.sql.Date;
+import java.sql.NClob;
 import java.sql.PreparedStatement;
+import java.sql.Ref;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.RowId;
 import java.sql.SQLException;
+import java.sql.SQLWarning;
+import java.sql.SQLXML;
 import java.sql.Statement;
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -58,10 +78,135 @@ public class WarDB extends DBMainV2 {
     private Map<Integer, DBWar> warsById;
     private Map<Integer, Map<Integer, DBWar>> warsByAllianceId;
     private Map<Integer, Map<Integer, DBWar>> warsByNationId;
-    private final Int2ObjectOpenHashMap<AbstractAttack[]> attacksByWar = new Int2ObjectOpenHashMap<>();
+    private final Int2ObjectOpenHashMap<Object> attacksByWar = new Int2ObjectOpenHashMap<>();
+    private final ObjectArrayList<DBAttack> allAttacks2 = new ObjectArrayList<>();
 
     public WarDB() throws SQLException {
         super(Settings.INSTANCE.DATABASE, "war");
+    }
+
+    public static void main(String[] args) throws SQLException {
+        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
+        WarDB warDb = new WarDB();
+
+        Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS = -1;
+
+        warDb.testLoadAttacks();
+    }
+
+    public void testLoadAttacks() {
+        String whereClause;
+        if (Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS == 0) {
+            return ;
+        } else if (Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS >= 0) {
+            long date = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS);
+            whereClause = " WHERE date > " + date;
+        } else {
+            whereClause = "";
+        }
+        try (PreparedStatement stmt= getConnection().prepareStatement("select * FROM `attacks2`" + whereClause + " ORDER BY `war_attack_id` ASC", ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY)) {
+            stmt.setFetchSize(2 << 16);
+            try (ResultSet rs = stmt.executeQuery()) {
+                AbstractAttack[] attackBuf = new AbstractAttack[1];
+                int[] warBuf = new int[1];
+                long start  = System.currentTimeMillis();
+                long[] timePerType = new long[AttackType.values.length];
+                long[] numTypes = new long[AttackType.values.length];
+
+//                ObjectArrayList<AbstractAttack> all = new ObjectArrayList<>();
+//                ObjectArrayList<DBAttack> all2 = new ObjectArrayList<>();
+
+                while (rs.next()) {
+//                    long start2 = System.nanoTime();
+                    AbstractAttack.createSingle(rs, f -> warBuf[0] = f, f -> attackBuf[0] = f);
+//                    long diff = System.nanoTime() - start2;
+//                    timePerType[attackBuf[0].getAttack_type().ordinal()] += diff;
+//                    numTypes[attackBuf[0].getAttack_type().ordinal()]++;
+//
+//                    AbstractAttack attack = attackBuf[0];
+//                    int war_id = warBuf[0];
+                    if (true) continue;
+//
+//                    DBAttack attack_legacy = createAttack(rs);
+//                    if (attack_legacy.getDate() < 0) continue;
+//                    // validate attacks are the same
+//                    if (war_id != attack_legacy.getWar_id()) {
+//                        throw new IllegalStateException("War id mismatch " + war_id + " != " + attack_legacy.getWar_id());
+//                    }
+//
+//                    if (attack.getAttack_type() != attack_legacy.getAttack_type()) {
+//                        throw new IllegalStateException("Attack type mismatch " + attack.getAttack_type() + " != " + attack_legacy.getAttack_type());
+//                    }
+//                    if (attack.getDate() != attack_legacy.getDate()) {
+//                        throw new IllegalStateException("Attack date mismatch " + attack.getDate() + " != " + attack_legacy.getDate());
+//                    }
+//                    boolean greater = attack_legacy.getAttacker_nation_id() > attack_legacy.getDefender_nation_id();
+//                    if (greater != attack.isAttackerIdGreater()) {
+//                        throw new IllegalStateException("Attack greater id mismatch " + greater + " != " + attack.isAttackerIdGreater());
+//                    }
+//
+//                    // type
+//                    if (attack.getAttack_type() != attack_legacy.getAttack_type()) {
+//                        throw new IllegalStateException("Attack type mismatch " + attack.getAttack_type() + " != " + attack_legacy.getAttack_type());
+//                    }
+//
+//
+//
+//                    switch (attack.getAttack_type()) {
+//                        case GROUND -> {
+//                        }
+//                        case VICTORY -> {
+//                        }
+//                        case FORTIFY -> {
+//                        }
+//                        case A_LOOT -> {
+//                        }
+//                        case AIRSTRIKE_INFRA -> {
+//                        }
+//                        case AIRSTRIKE_SOLDIER -> {
+//                        }
+//                        case AIRSTRIKE_TANK -> {
+//                        }
+//                        case AIRSTRIKE_MONEY -> {
+//                        }
+//                        case AIRSTRIKE_SHIP -> {
+//                        }
+//                        case AIRSTRIKE_AIRCRAFT -> {
+//                        }
+//                        case NAVAL -> {
+//                        }
+//                        case PEACE -> {
+//                        }
+//                        case MISSILE -> {
+//                        }
+//                        case NUKE -> {
+//                        }
+//                    }
+                }
+                long diff = System.currentTimeMillis() - start;
+                System.out.println("Loaded " + allAttacks2.size() + " attacks in " + diff + "ms");
+                System.gc();
+                System.gc();
+                System.gc();
+                System.gc();
+                long memUsage = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+                System.out.println("Memory usage: " + MathMan.format(memUsage / 1024d / 1024d) + "MB");
+//                System.out.println(all.hashCode());
+//                System.out.println(all2.hashCode());
+                // Memory usage: 13.22MB
+                // Memory usage: 552.15MB
+                // Memory usage: 552.29MB
+                // Memory usage: 2,136.96MB
+
+                // print time per type
+                // print total per type
+                for (AttackType type : AttackType.values) {
+                    System.out.println(type + " " + MathMan.format(timePerType[type.ordinal()]) + "ns | " + (MathMan.format(timePerType[type.ordinal()] / (double) numTypes[type.ordinal()])));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     private void setWar(DBWar war) {
