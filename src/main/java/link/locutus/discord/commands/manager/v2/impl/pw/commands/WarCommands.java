@@ -1876,22 +1876,6 @@ public class WarCommands {
             Map.Entry<Double, Boolean> opValue = nation.getIntelOpValue(time);
             if (opValue == null) {
                 iter.remove();
-
-//                if (nation.getActive_m() < 4320) continue;
-//                if (nation.getVm_turns() != 0) continue;
-//                if (!nation.isGray()) continue;
-//                if (nation.getDef() == 3) continue;
-//
-//                long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(14);
-//                Map.Entry<Long, double[]> loot = Locutus.imp().getNationDB().getLoot(nation.getNation_id());
-//                if (loot != null && loot.getKey() > cutoff) System.out.println("Looted in past 14d " + nation.getNationUrl());;
-//
-//                Map.Entry<Long, double[]> lootHistory = Locutus.imp().getWarDb().getNationLoot(nation.getNation_id()).get(nation.getNation_id());
-//                if (lootHistory != null && lootHistory.getKey() > cutoff) System.out.println("Spied in past 14d " + nation.getNationUrl());
-//
-//                long lastActiveDate = currentDate - nation.getActive_m() * 60 * 1000;
-//                if (lastActiveDate - 2880 > cutoff) System.out.println("Active in past 16 days " + nation.getNationUrl());;
-
                 continue;
             }
             opValueMap.put(nation, opValue.getKey());
@@ -3732,7 +3716,6 @@ public class WarCommands {
         channel.create().embed(title, body).send();
         return null;
     }
-
 
     @RolePermission(Roles.MEMBER)
     @Command(desc = "Calculate spies for a nation.\n" +

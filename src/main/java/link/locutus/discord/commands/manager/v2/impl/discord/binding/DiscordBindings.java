@@ -280,6 +280,7 @@ public class DiscordBindings extends BindingHelper {
         throw new IllegalArgumentException("No channel binding found.");
     }
 
+    @Binding
     public CommandCallable command(String input) {
         CommandCallable callable = Locutus.imp().getCommandManager().getV2().getCommands().get(input);
         if (callable == null) {

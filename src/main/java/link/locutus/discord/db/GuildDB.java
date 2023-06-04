@@ -1565,7 +1565,21 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                     int aaId = bankerNation.getAlliance_id();
                     if (!channelWithdrawAccounts.contains((long) aaId)) {
                         if (throwError) {
-                            throw new IllegalArgumentException("You cannot withdraw as you are not in the alliance: " + StringMan.getString(channelWithdrawAccounts) + " (your alliance id is: " + aaId + ")");
+                            if (channelWithdrawAccounts.isEmpty()) {
+                                MessageChannel defaultChannel = getResourceChannel(aaId);
+                                if (defaultChannel == null) {
+                                    throw new IllegalArgumentException("Please set a default resource channel with " + CM.settings_bank_access.addResourceChannel.cmd.toSlashMention());
+                                } else if (messageChannelIdOrNull != null && messageChannelIdOrNull != defaultChannel.getIdLong()) {
+                                    throw new IllegalArgumentException("Please use the resource channel: " + defaultChannel.getAsMention());
+                                }
+                            }
+                            if (getResourceChannel(aaId) == null) {
+                                throw new IllegalArgumentException("Please set a resource channel for your alliance with " + CM.settings_bank_access.addResourceChannel.cmd.toSlashMention());
+                            }
+                            if (channelWithdrawAccounts.isEmpty()) {
+                                throw new IllegalArgumentException("This channel is not authorized for withdrawals in your alliance: " + aaId);
+                            }
+                            throw new IllegalArgumentException("This channel is only authorized for the alliance/accounts: " + StringMan.getString(channelWithdrawAccounts) + " (your alliance id is: " + aaId + ")");
                         }
                     } else if (bankerNation.getPositionEnum().id <= Rank.APPLICANT.id) {
                         if (throwError) {

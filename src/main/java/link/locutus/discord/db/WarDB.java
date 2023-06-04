@@ -80,7 +80,6 @@ public class WarDB extends DBMainV2 {
     private Map<Integer, Map<Integer, DBWar>> warsByNationId;
     private final Int2ObjectOpenHashMap<Object> attacksByWar = new Int2ObjectOpenHashMap<>();
     private final ObjectArrayList<DBAttack> allAttacks2 = new ObjectArrayList<>();
-
     public WarDB() throws SQLException {
         super(Settings.INSTANCE.DATABASE, "war");
     }
