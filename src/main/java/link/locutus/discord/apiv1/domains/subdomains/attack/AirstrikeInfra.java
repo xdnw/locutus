@@ -23,7 +23,7 @@ public abstract class AirstrikeInfra extends AbstractAttack{
                                            Supplier<Double> def_mun_used_s) {
         int improvements_destroyed = success == SuccessType.UTTER_FAILURE ? 0 : improvements_destroyed_s.get();
         if (improvements_destroyed == 0) {
-            if (success == SuccessType.IMMENSE_TRIUMPH && defcas1 == 0) {
+            if (success == SuccessType.IMMENSE_TRIUMPH && defcas1 == 0 && def_gas_used == 0) {
                 return new AirstrikeInfra.AirstrikeInfraIt_0_NoImp(id, date, isAttackerIdGreater, city_infra_before_s.get(), infra_destroyed_s.get(), att_gas_used, att_mun_used);
             }
             double def_mun_used = def_gas_used == 0 ? 0 : def_mun_used_s.get();
@@ -32,7 +32,7 @@ public abstract class AirstrikeInfra extends AbstractAttack{
             int attcas1 = def_gas_used == 0 ? 0 : attcas1_s.get();
             return new AirstrikeInfra.AirstrikeInfraAny_Any_NoImp(id, date, isAttackerIdGreater, success, attcas1, defcas1, city_infra_before, infra_destroyed, att_gas_used, att_mun_used, def_gas_used, def_mun_used);
         } else {
-            if (success == SuccessType.IMMENSE_TRIUMPH && defcas1 == 0) {
+            if (success == SuccessType.IMMENSE_TRIUMPH && defcas1 == 0 && def_gas_used == 0) {
                 return new AirstrikeInfra.AirstrikeInfraIt_0_Imp(id, date, isAttackerIdGreater, city_infra_before_s.get(), infra_destroyed_s.get(), att_gas_used, att_mun_used);
             }
             double def_mun_used = def_gas_used == 0 ? 0 : def_mun_used_s.get();
@@ -43,21 +43,36 @@ public abstract class AirstrikeInfra extends AbstractAttack{
 
     public static class AirstrikeInfraIt_0_NoImp extends AirstrikeInfra {
         private final long data;
+        private final byte data2;
 
-        public AirstrikeInfraIt_0_NoImp(int id, long date, boolean isAttackerIdGreater, double cityInfraBefore, double infraDestroyed, double att_gas_used, double att_mun_used) {
+        public AirstrikeInfraIt_0_NoImp(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, double att_gas_used, double att_mun_used) {
             super(id, date, isAttackerIdGreater);
-            // city_infra_before = 15
-            // infra_destroyed = 15
             // att_gas_used = 17
+            // city_infra_before = 21
+            // infra_destroyed = 17
             // att_mun_used = 17
-            this.data = (long) cityInfraBefore << 49 | (long) infraDestroyed << 34 | (long) att_gas_used << 17 | (long) att_mun_used;
+            long attGasCents = (long) (att_gas_used * 100);
+            this.data = (long) (attGasCents & 511) << 55 | (long) (city_infra_before * 100) << 34 | (long) (infra_destroyed * 100) << 17 | (long) (att_mun_used * 100);
+            this.data2 = (byte) (attGasCents >> 9);
         }
 
         @Override
         public double getCity_infra_before() {
-            return (data >> 49) & 0x7FFF;
+            return ((data >> 34) & 2097151) * 0.01;
+        }
+        @Override
+        public double getInfra_destroyed() {
+            return ((data >> 17) & 131071) * 0.01;
+        }
+        @Override
+        public double getAtt_gas_used() {
+            return (((data >> 55) & 511) | (data2 << 9)) * 0.01;
         }
 
+        @Override
+        public double getAtt_mun_used() {
+            return ((data) & 131071) * 0.01;
+        }
         @Override
         public SuccessType getSuccess() {
             return SuccessType.IMMENSE_TRIUMPH;
@@ -74,23 +89,8 @@ public abstract class AirstrikeInfra extends AbstractAttack{
         }
 
         @Override
-        public double getInfra_destroyed() {
-            return (data >> 34) & 0x7FFF;
-        }
-
-        @Override
         public int getImprovements_destroyed() {
             return 0;
-        }
-
-        @Override
-        public double getAtt_gas_used() {
-            return (data >> 17) & 0x1FFFF;
-        }
-
-        @Override
-        public double getAtt_mun_used() {
-            return data & 0x1FFFF;
         }
 
         @Override
@@ -135,7 +135,7 @@ public abstract class AirstrikeInfra extends AbstractAttack{
 
         @Override
         public int getAttcas1() {
-            return (int) (data >> 49) & 0x7FFF;
+            return (int) (data >> 49) & 0x1FFF;
         }
 
         @Override

@@ -4,6 +4,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.Auth;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -34,7 +35,7 @@ public class EditNationTask implements Callable<String> {
         return PnwUtil.withLogin(new Callable<String>() {
             @Override
             public String call() throws Exception {
-                String result = auth.readStringFromURL("" + Settings.INSTANCE.PNW_URL() + "/nation/edit", Collections.emptyMap());
+                String result = auth.readStringFromURL(PagePriority.NATION_EDIT, "" + Settings.INSTANCE.PNW_URL() + "/nation/edit", Collections.emptyMap());
                 Document dom = Jsoup.parse(result);
 
                 String nattitle = dom.select("input[name=nattitle]").attr("value");
@@ -82,7 +83,7 @@ public class EditNationTask implements Callable<String> {
 
                 StringBuilder response = new StringBuilder();
 
-                result = auth.readStringFromURL("" + Settings.INSTANCE.PNW_URL() + "/nation/edit", post);
+                result = auth.readStringFromURL(PagePriority.TOKEN, "" + Settings.INSTANCE.PNW_URL() + "/nation/edit", post);
                 dom = Jsoup.parse(result);
                 for (Element element : dom.getElementsByClass("alert")) {
                     response.append('\n').append(element.text());

@@ -10,6 +10,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.util.io.PagePriority;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
@@ -172,11 +173,11 @@ public class SpyCount {
         return new AbstractMap.SimpleEntry<>((int) Math.round(min), (int) Math.round(max));
     }
 
-    public static int guessSpyCount(DBNation nation) throws IOException {
+    public static int guessSpyCount(PagePriority priority, DBNation nation) throws IOException {
         int current = nation.getSpies();
 
         int id = nation.getNation_id();
-        int index = binarySearchOpType(id, 0, BY_SUCCESS.size() - 1, DEF_OP);
+        int index = binarySearchOpType(priority, id, 0, BY_SUCCESS.size() - 1, DEF_OP);
         Map.Entry<Double, Map.Entry<Operation, Integer>> pair = BY_SUCCESS.get(index);
         Map.Entry<Operation, Integer> opSafety = pair.getValue();
         Operation opType = opSafety.getKey();
@@ -185,7 +186,7 @@ public class SpyCount {
         int def = DEF_SPIES;
         if (nation.getSpies() != -1) def = nation.getSpies();
 
-        int inversionPoint = binarySearchSpies(id, opType, safety, 0, 59, def);
+        int inversionPoint = binarySearchSpies(priority, id, opType, safety, 0, 59, def);
 
         boolean arcane = nation.getWarPolicy() == WarPolicy.ARCANE;
         boolean tactician = nation.getWarPolicy() == WarPolicy.TACTICIAN;
@@ -277,7 +278,7 @@ public class SpyCount {
         return -1;
     }
 
-    private static int binarySearchOpType(int id, int min, int max, int def) throws IOException {
+    private static int binarySearchOpType(PagePriority priority, int id, int min, int max, int def) throws IOException {
         if (min >= max) {
             return max;
         }
@@ -298,13 +299,13 @@ public class SpyCount {
         Operation opType = opSafety.getKey();
         int safety = opSafety.getValue();
 
-        boolean isGreater = checkSpiesGreater(id, opType, safety, 60);
+        boolean isGreater = checkSpiesGreater(priority, id, opType, safety, 60);
         if (!isGreater) {
             max = index - 1;
         } else {
             min = index;
         }
-        return binarySearchOpType(id, min, max, -1);
+        return binarySearchOpType(priority, id, min, max, -1);
     }
 
     public static Map.Entry<DBNation, double[]> parseSpyReport(String input) {
@@ -385,7 +386,7 @@ public class SpyCount {
         return entry;
     }
 
-    public static int binarySearchSpies(int id, Operation optype, int safety, int min, int max, int def) throws IOException {
+    public static int binarySearchSpies(PagePriority priority, int id, Operation optype, int safety, int min, int max, int def) throws IOException {
         if (min >= max) {
             return min;
         }
@@ -400,19 +401,19 @@ public class SpyCount {
         } else {
             val = (int) Math.ceil((max + min) / 2d);
         }
-        boolean isGreater = checkSpiesGreater(id, optype, safety, val);
+        boolean isGreater = checkSpiesGreater(priority, id, optype, safety, val);
         if (isGreater) {
             max = val - 1;
         } else {
             min = val;
         }
-        return binarySearchSpies(id, optype, safety, min, max, -1);
+        return binarySearchSpies(priority, id, optype, safety, min, max, -1);
     }
 
-    public static boolean checkSpiesGreater(int id, Operation optype, int safety, int spies) throws IOException {
+    public static boolean checkSpiesGreater(PagePriority priority, int id, Operation optype, int safety, int spies) throws IOException {
         String url = "" + Settings.INSTANCE.PNW_URL() + "/war/espionage_get_odds.php?id1=%s&id2=%s&id3=%s&id4=%s&id5=%s";
         url = String.format(url, Settings.INSTANCE.NATION_ID, id, optype.ordinal(), safety, spies);
-        String result = FileUtil.readStringFromURL(url).trim();
+        String result = FileUtil.readStringFromURL(priority.ordinal(), url).trim();
         return result.startsWith("Greater");
     }
 

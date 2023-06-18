@@ -8,6 +8,7 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.io.PagePriority;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -176,7 +177,7 @@ public interface NationList extends NationFilter {
         }
         if (updateManually) {
             for (DBNation nation : toUpdate) {
-                nation.updateSpies();
+                nation.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK);
                 updated.add(nation.getId());
             }
         }

@@ -4,6 +4,7 @@ import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.Auth;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -57,7 +58,7 @@ public class Keno {
             public Map.Entry<Set<Integer>, String> call() throws Exception {
                 int same = 0;
                 int notSame = 0;
-                String result = auth.readStringFromURL(url, post);
+                String result = auth.readStringFromURL(PagePriority.KENO, url, post);
                 Document dom = Jsoup.parse(result);
                 StringBuilder response = new StringBuilder();
 

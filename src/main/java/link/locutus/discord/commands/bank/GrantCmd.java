@@ -26,7 +26,6 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.util.task.balance.GetCityBuilds;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -349,7 +348,7 @@ public class GrantCmd extends Command {
 
                 Map<Integer, JavaCity> from;
                 if (amt == Double.MAX_VALUE) {
-                    from = new GetCityBuilds(me).adapt().get(me);
+                    from = me.getCityMap(true);
                     citiesAmt = -1;
                 } else if (amt == 1) {
                     from = new HashMap<>();
@@ -565,7 +564,7 @@ public class GrantCmd extends Command {
         if (numBuy > 2000 && !force) {
             throw new IllegalArgumentException("Land grants >2000 are not approved as they are unprofitable.");
         }
-        Map<Integer, JavaCity> myBuilds = new GetCityBuilds(me).adapt().get(me);
+        Map<Integer, JavaCity> myBuilds = me.getCityMap(true);
 
         double totalCost = 0;
 
@@ -628,7 +627,7 @@ public class GrantCmd extends Command {
         if (numBuy > 2500 && !force) {
             throw new IllegalArgumentException("Infra grants >2500 are not approved as they are unprofitable.");
         }
-        Map<Integer, JavaCity> myBuilds = new GetCityBuilds(me).adapt().get(me);
+        Map<Integer, JavaCity> myBuilds = me.getCityMap(true);
 
         double totalCost = 0;
 

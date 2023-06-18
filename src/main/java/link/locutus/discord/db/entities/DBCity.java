@@ -7,6 +7,7 @@ import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.db.NationDB;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.city.*;
 import link.locutus.discord.util.AlertUtil;
@@ -60,6 +61,16 @@ public class DBCity {
         }
         this.infra = Double.parseDouble(container.getInfrastructure());
         this.land = Double.parseDouble(container.getLand());
+    }
+
+    public void update(boolean events) {
+        NationDB db = Locutus.imp().getNationDB();
+        db.markCityDirty(-1, id, Long.MAX_VALUE);
+        if (events) {
+            Locutus.imp().runEventsAsync(db::updateDirtyCities);
+        } else {
+            db.updateDirtyCities(null);
+        }
     }
 
     public void set(DBCity toCopy) {

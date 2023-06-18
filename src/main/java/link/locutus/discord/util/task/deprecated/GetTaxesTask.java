@@ -9,6 +9,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.util.task.balance.GetPageTask;
@@ -44,7 +45,7 @@ public class GetTaxesTask implements Callable<List<BankDB.TaxDeposit>> {
                     Map<Integer, TaxRate> internalTaxRates = new HashMap<>();
 
                     List<BankDB.TaxDeposit> records = new ArrayList<>();
-                    GetPageTask task = new GetPageTask(auth, taxUrl, -1);
+                    GetPageTask task = new GetPageTask(PagePriority.TAXES_GET_LEGACY, auth, taxUrl, -1);
                     task.consume(element -> {
                         Elements row = element.getElementsByTag("td");
                         String indexStr = row.get(0).text().replace(")", "").trim();

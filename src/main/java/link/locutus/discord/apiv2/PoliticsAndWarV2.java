@@ -17,6 +17,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.scheduler.ThrowingFunction;
 import org.apache.commons.lang3.StringUtils;
 
@@ -52,41 +53,41 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
         return gson;
     }
 
-    public <T> T get(QueryURLV2 url, Type typeOf) {
-        return get(url, typeOf, null, null);
+    public <T> T get(PagePriority priority, QueryURLV2 url, Type typeOf) {
+        return get(priority, url, typeOf, null, null);
     }
 
-    public <T> T get(QueryURLV2 url, Type typeOf, String arg) {
-        return get(url, typeOf, arg, null);
+    public <T> T get(PagePriority priority, QueryURLV2 url, Type typeOf, String arg) {
+        return get(priority, url, typeOf, arg, null);
     }
 
-    public <T> T get(QueryURLV2 url, Type typeOf, String arg, String query) {
-        String json = read(url, arg, query, true);
+    public <T> T get(PagePriority priority, QueryURLV2 url, Type typeOf, String arg, String query) {
+        String json = read(priority, url, arg, query, true);
         return gson.fromJson(json, typeOf);
     }
 
-    public JsonElement getJson(QueryURLV2 url) {
-        return getJson(url, null);
+    public JsonElement getJson(PagePriority priority, QueryURLV2 url) {
+        return getJson(priority, url, null);
     }
 
-    public JsonElement getJson(QueryURLV2 url, String arg) {
-        return getJson(url, arg, null);
+    public JsonElement getJson(PagePriority priority, QueryURLV2 url, String arg) {
+        return getJson(priority, url, arg, null);
     }
 
-    public JsonElement getJson(QueryURLV2 url, String arg, String query) {
-        return getJson(url, arg, query, true);
+    public JsonElement getJson(PagePriority priority, QueryURLV2 url, String arg, String query) {
+        return getJson(priority, url, arg, query, true);
     }
 
-    public JsonElement getJson(QueryURLV2 url, String arg, String query, boolean removeHeader) {
-        String json = read(url, arg, query, removeHeader);
+    public JsonElement getJson(PagePriority priority, QueryURLV2 url, String arg, String query, boolean removeHeader) {
+        String json = read(priority, url, arg, query, removeHeader);
         return parser.parse(json);
     }
 
-    public String read(QueryURLV2 url, String arg, String query, boolean removeHeader) {
+    public String read(PagePriority priority, QueryURLV2 url, String arg, String query, boolean removeHeader) {
         return runWithKey(apiKey -> {
             try {
                 String urlStr = baseUrl + url.getUrl(apiKey, arg, query);
-                String json = FileUtil.readStringFromURL(urlStr);
+                String json = FileUtil.readStringFromURL(priority.ordinal(), urlStr);
 
                 if (removeHeader) {
                     String successStr = "success\":";
@@ -114,7 +115,7 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
     }
 
     public ApiRecord getApiRecord() {
-        String json = read(QueryURLV2.BANK_RECORDS, Settings.INSTANCE.NATION_ID + "", null, false);
+        String json = read(PagePriority.API_KEY_STATS, QueryURLV2.BANK_RECORDS, Settings.INSTANCE.NATION_ID + "", null, false);
         Type type = new TypeToken<ApiRecord>() {
         }.getType();
         return getGson().fromJson(json, type);
@@ -124,7 +125,7 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
         try {
             Type type = new TypeToken<List<BankRecord>>() {
             }.getType();
-            return get(QueryURLV2.BANK_RECORDS, type, nationId + "", null);
+            return get(PagePriority.API_BANK_RECS, QueryURLV2.BANK_RECORDS, type, nationId + "", null);
         } catch (Throwable e) {
             if (e.getMessage().toLowerCase().contains("error_msg\":\"no results to display.")) {
                 return new ArrayList<>();

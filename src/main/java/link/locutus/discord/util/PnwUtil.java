@@ -70,40 +70,6 @@ public class PnwUtil {
         return results;
     }
 
-//    @Deprecated
-//    public static ApiRecord apiKeyStats(String key, boolean cached) {
-//        Type type = new com.google.gson.reflect.TypeToken<ApiRecord>() {}.getType();
-//        Gson gson = new Gson();
-//        if (cached) {
-//            long id = new BigInteger(key, 16).longValue();
-//            ByteBuffer jsonBytes = Locutus.imp().getDiscordDB().getInfo(DiscordMeta.API_KEY, id);
-//            if (jsonBytes != null) {
-//                String json = new String(jsonBytes.array(), StandardCharsets.UTF_8);
-//                ApiRecord record = gson.fromJson(json, type);
-//                return record;
-//            }
-//        }
-//        PoliticsAndWarV2 api = new PoliticsAndWarV2(key, Settings.INSTANCE.TEST, false);
-//        ApiKeyDetails stats = api.getV3().getApiKeyStats();
-//        JsonObject obj = new JsonObject();
-//        obj.addProperty("api_key", stats.getKey());
-//        obj.addProperty("nation_id", stats.getNation().getId());
-//        obj.addProperty("daily_requests_maximum", stats.getMax_requests());
-//        obj.addProperty("daily_requests_used", stats.getRequests());
-//
-////        String json = api.read(QueryURLV2.BANK_RECORDS, Settings.INSTANCE.NATION_ID + "", null, false);
-////        JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
-////        JsonObject request = obj.getAsJsonObject("api_request");
-////        JsonObject details = request.getAsJsonObject("api_key_details");
-//
-//        String json = obj.toString();
-//        long id = new BigInteger(key, 16).longValue();
-//        ApiRecord record = gson.fromJson(obj, type);
-//
-//        Locutus.imp().getDiscordDB().setInfo(DiscordMeta.API_KEY, id, json.getBytes(StandardCharsets.UTF_8));
-//        return record;
-//    }
-
     public static String getAlert(Document document) {
         for (Element element : document.getElementsByClass("alert")) {
             if (element.hasClass("alert-info")) continue;

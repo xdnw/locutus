@@ -14,6 +14,7 @@ import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.apiv1.domains.War;
 import link.locutus.discord.apiv1.domains.subdomains.WarContainer;
+import link.locutus.discord.util.io.PagePriority;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
@@ -117,9 +118,9 @@ public class CounterSpy extends Command {
         Message msg = RateLimitUtil.complete(event.getChannel().sendMessage("Please wait..."));
 
         try {
-            Integer enemySpies = enemy.updateSpies();
+            Integer enemySpies = enemy.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE);
             if (enemySpies == null) {
-                enemySpies = SpyCount.guessSpyCount(enemy);
+                enemySpies = SpyCount.guessSpyCount(PagePriority.ESPIONAGE_ODDS_SINGLE, enemy);
             }
 
             for (DBNation counterWith : toCounter) {
@@ -191,7 +192,7 @@ public class CounterSpy extends Command {
 
                 body.append(op.name())
                         .append(" (" + safetyStr + ") with ")
-                        .append(nation.updateSpies() + " spies (")
+                        .append(nation.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE) + " spies (")
                         .append(MathMan.format(odds) + "% for $")
                         .append(MathMan.format(damage) + "net damage)")
                         .append("\n")

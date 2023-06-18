@@ -16,6 +16,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.util.io.PagePriority;
 import net.dv8tion.jda.api.entities.MessageChannel;
 
 import java.io.IOException;
@@ -377,7 +378,7 @@ public class SpyTracker {
             if (alert.unit == MilitaryUnit.SPIES) {
                 defSpiesStr = alert.original + "->" + (alert.original - alert.change);
             } else {
-                defender.updateSpies(24);
+                defender.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, 24);
                 defSpiesStr = "" + defender.getSpies();
             }
 
@@ -477,7 +478,7 @@ public class SpyTracker {
 
         public String entryToString(DBNation attacker, Map.Entry<Integer, Integer> killRange, long diff) {
             int defSpies = original;
-            int attSpies = attacker.updateSpies(24);;
+            int attSpies = attacker.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, 24);;
 
             double odds = SpyCount.getOdds(attSpies, defSpies, 3, SpyCount.Operation.getByUnit(unit), defender);
 
@@ -509,7 +510,7 @@ public class SpyTracker {
         if (activitiesToFlag.isEmpty()) return;
 
         String url = "https://politicsandwar.com/index.php?id=15&keyword=&cat=everything&ob=lastactive&od=DESC&maximum=50&minimum=0&search=Go&vmode=false";
-        String html = FileUtil.readStringFromURL(url);
+        String html = FileUtil.readStringFromURL(PagePriority.ACTIVE_PAGE.ordinal(), url);
 
         List<Integer> nationIds = PnwUtil.getNationsFromTable(html, 0);
         Map<Integer, Integer> nationIdIndex = new HashMap<>();

@@ -36,6 +36,7 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.io.PagePriority;
 import net.dv8tion.jda.api.entities.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Invite;
@@ -137,7 +138,7 @@ public class GuildKey {
 
                         if (!isValid) {
                             String url = Settings.INSTANCE.PNW_URL() + "/alliance/id=" + aaId;
-                            String content = FileUtil.readStringFromURL(url);
+                            String content = FileUtil.readStringFromURL(PagePriority.ALLIANCE_ID_AUTH_CODE.ordinal(), url);
                             String idStr = db.getGuild().getId();
 
                             if (!content.contains(idStr)) {

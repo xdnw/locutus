@@ -2,6 +2,7 @@ package link.locutus.discord.db;
 
 import link.locutus.discord.db.entities.DBComment;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MarkupUtil;
@@ -111,7 +112,7 @@ public class ForumDB extends DBMain {
         List<DBComment> newComments = new ArrayList<>();
 
         String url = "https://forum.politicsandwar.com/index.php?/discover/&view=expanded";
-        String content = FileUtil.readStringFromURL(url);
+        String content = FileUtil.readStringFromURL(PagePriority.FORUM_PAGE.ordinal(), url);
         Document dom = Jsoup.parse(content);
         Elements elems = dom.select("[data-searchable]");
         for (Element elem : elems) {

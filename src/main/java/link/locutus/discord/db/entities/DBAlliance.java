@@ -32,6 +32,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.domains.AllianceMembers;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.task.deprecated.GetTaxesTask;
@@ -474,7 +475,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
         }
         if (!updateManually) return updated;
         for (DBNation nation : getNations(true, 1440, true)) {
-            nation.updateSpies();
+            nation.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK);
             updated.add(nation.getId());
         }
         return updated;

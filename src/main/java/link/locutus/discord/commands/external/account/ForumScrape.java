@@ -7,6 +7,7 @@ import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.io.PagePriority;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -40,7 +41,7 @@ public class ForumScrape extends Command {
             String url = String.format(urlRaw, i);
 
             try {
-                String html = FileUtil.readStringFromURL(url);
+                String html = FileUtil.readStringFromURL(PagePriority.FORUM_PAGE.ordinal(), url);
                 Document dom = Jsoup.parse(html);
                 int nationId = Integer.parseInt(dom.select("strong:matches(Nation ID)").first().parent().nextElementSibling().text());
                 String discordId = dom.select("strong:matches(Discord Name)").first().parent().nextElementSibling().text();

@@ -47,6 +47,7 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -171,7 +172,7 @@ public class AdminCommands {
         }
         int count = 0;
         // read string from url
-        String csvTabSeparated = FileUtil.readStringFromURL(url);
+        String csvTabSeparated = FileUtil.readStringFromURL(PagePriority.DISCORD_IDS_ENDPOINT.ordinal(), url);
         // split into lines
         String[] lines = csvTabSeparated.split("\n");
         // iterate each line

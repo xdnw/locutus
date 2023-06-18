@@ -11,6 +11,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.SpyCount;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -199,7 +200,7 @@ public class SpyBlitzGenerator {
 
                     if (operation.unit != MilitaryUnit.AIRCRAFT && operation.unit != MilitaryUnit.SPIES) opNetDamage /= 2;
 
-                    Integer defSpies = defender.updateSpies(false, false);
+                    Integer defSpies = defender.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, false, false);
                     if (defSpies < 48 && operation == SpyCount.Operation.NUKE) defSpies += 3;
                     int safety = bestValue.getKey();
                     int numSpies = (int) Math.ceil(Math.min(mySpies, SpyCount.getRequiredSpies(defSpies, safety, operation, defender)));
@@ -365,7 +366,7 @@ public class SpyBlitzGenerator {
         if (checkEspionageSlots && !isAttacker) {
             list.removeIf(DBNation::isEspionageFull);
         }
-        list.removeIf(f -> f.updateSpies(false, false) == null);
+        list.removeIf(f -> f.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, false, false) == null);
 
         Map<DBNation, Double> spyValueMap = new LinkedHashMap<>();
         for (DBNation nation : list) {
@@ -611,8 +612,8 @@ public class SpyBlitzGenerator {
             safety = SpyCount.Safety.QUICK;
         }
 
-        Integer attSpies = att.updateSpies(update != null && !update.contains(att), false);
-        Integer defSpies = target.updateSpies(update != null && !update.contains(target), false);
+        Integer attSpies = att.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, update != null && !update.contains(att), false);
+        Integer defSpies = target.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, update != null && !update.contains(target), false);
         if (update != null) {
             update.add(att);
             update.add(target);
@@ -784,7 +785,7 @@ public class SpyBlitzGenerator {
                     defender = tmp;
 
                     Integer spies = attacker.getSpies();
-                    if (spies == null) spies = attacker.updateSpies();
+                    if (spies == null) spies = attacker.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK);
                     if (spies == null) spies = 60;
                     Spyop op = new Spyop(attacker, defender, spies, type, 0, safety);
                     if (groupByAttacker) {

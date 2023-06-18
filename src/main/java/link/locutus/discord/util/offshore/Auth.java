@@ -25,6 +25,7 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.util.io.PagePriority;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -65,26 +66,26 @@ public class Auth {
 
     private boolean loggedIn = false;
 
-    public String getToken(String url) throws IOException {
-        String html = readStringFromURL(url, emptyMap());
+    public String getToken(PagePriority priority, String url) throws IOException {
+        String html = readStringFromURL(priority, url, emptyMap());
         Document dom = Jsoup.parse(html);
         return dom.select("input[name=token]").attr("value");
     }
 
-    public String readStringFromURL(String urlStr, Map<String, String> arguments) throws IOException {
-        return readStringFromURL(urlStr, arguments, true);
+    public String readStringFromURL(PagePriority priority, String urlStr, Map<String, String> arguments) throws IOException {
+        return readStringFromURL(priority, urlStr, arguments, true);
     }
 
-    public String readStringFromURL(String urlStr, Map<String, String> arguments, boolean post) throws IOException {
+    public String readStringFromURL(PagePriority priority, String urlStr, Map<String, String> arguments, boolean post) throws IOException {
         synchronized (this)
         {
             login(false);
-            String result = FileUtil.readStringFromURL(urlStr, arguments, post, msCookieManager, i -> {});
+            String result = FileUtil.get(FileUtil.readStringFromURL(priority.ordinal(), urlStr, arguments, post, msCookieManager, i -> {}));
             if (result.contains("<!--Logged Out-->")) {
                 logout();
                 msCookieManager = new CookieManager();
                 login(true);
-                result = FileUtil.readStringFromURL(urlStr, arguments, post, msCookieManager, i -> {});
+                result = FileUtil.get(FileUtil.readStringFromURL(priority.ordinal(), urlStr, arguments, post, msCookieManager, i -> {}));
                 if (result.contains("<!--Logged Out-->")) {
                     throw new IllegalArgumentException("Failed to login to PNW");
                 }
@@ -108,7 +109,7 @@ public class Auth {
             userPass.put("rememberme", "1");
             String url = "" + Settings.INSTANCE.PNW_URL() + "/login/";
 
-            String loginResult = FileUtil.readStringFromURL(url, userPass, this.getCookieManager());
+            String loginResult = FileUtil.get(FileUtil.readStringFromURL(PagePriority.LOGIN.ordinal(), url, userPass, this.getCookieManager()));
             if (!loginResult.contains("Login Successful")) {
                 throw new IllegalArgumentException("Error: " + PnwUtil.parseDom(Jsoup.parse(loginResult), "columnheader"));
             }
@@ -117,7 +118,7 @@ public class Auth {
     }
 
     public String logout() throws IOException {
-        String logout = FileUtil.readStringFromURL("" + Settings.INSTANCE.PNW_URL() + "/logout/");
+        String logout = FileUtil.readStringFromURL(PagePriority.LOGOUT.ordinal(), "" + Settings.INSTANCE.PNW_URL() + "/logout/");
         Document dom = Jsoup.parse(logout);
         clearCookies();
         return PnwUtil.getAlert(dom);
@@ -177,7 +178,7 @@ public class Auth {
                 @Override
                 public String call() throws Exception {
                     try {
-                        String html = Auth.this.readStringFromURL(url + "account/", emptyMap());
+                        String html = Auth.this.readStringFromURL(PagePriority.FETCH_KEY, url + "account/", emptyMap());
                         Document dom = Jsoup.parse(html);
                         Elements tables = dom.select(".nationtable");
                         if (tables.isEmpty()) {
@@ -218,7 +219,7 @@ public class Auth {
 //                Document dom = Jsoup.parse(result);
 //                String token = dom.getElementsByAttributeValue("name", "token").get(0).attr("value");
 
-                String result = Auth.this.readStringFromURL(url, post);
+                String result = Auth.this.readStringFromURL(PagePriority.EMBARGO, url, post);
                 return PnwUtil.getAlert(Jsoup.parse(result));
             }
         }, this);
@@ -228,7 +229,7 @@ public class Auth {
 
     public String setCityName(int id, String name) throws IOException {
         String url = PnwUtil.getCityUrl(id);
-        String result = readStringFromURL(url, Collections.emptyMap());
+        String result = readStringFromURL(PagePriority.CITY_NAME, url, Collections.emptyMap());
         Document dom = Jsoup.parse(result);
         String token = dom.select("input[name=token]").attr("value");
 
@@ -237,7 +238,7 @@ public class Auth {
         post.put("rename", "Rename");
         post.put("token", token);
 
-        return readStringFromURL(url, post);
+        return readStringFromURL(PagePriority.TOKEN, url, post);
     }
 
     public String setBounty(DBNation target, WarType type, long amount) {
@@ -246,7 +247,7 @@ public class Auth {
             public String call() throws Exception {
                 String url = "" + Settings.INSTANCE.PNW_URL() + "/world/bounties";
 
-                String result = Auth.this.readStringFromURL(url, emptyMap());
+                String result = Auth.this.readStringFromURL(PagePriority.PLACE_BOUNTY, url, emptyMap());
                 Document dom = Jsoup.parse(result);
                 String token = dom.getElementsByAttributeValue("name", "token").get(0).attr("value");
 
@@ -258,7 +259,7 @@ public class Auth {
                 post.put("post_bounty", "Post Bounty");
                 post.put("token", token);
 
-                result = Auth.this.readStringFromURL(url, post);
+                result = Auth.this.readStringFromURL(PagePriority.TOKEN, url, post);
                 return PnwUtil.getAlert(Jsoup.parse(result));
             }
         }, this);
@@ -272,7 +273,7 @@ public class Auth {
         String url = "" + Settings.INSTANCE.PNW_URL() + "/city/improvements/import/id=" + cityId;
 
         return PnwUtil.withLogin(() -> {
-            return readStringFromURL(url, post);
+            return readStringFromURL(PagePriority.IMPORT_BUILD, url, post);
         }, this);
     }
 
@@ -285,7 +286,7 @@ public class Auth {
         else post.put("cancelTreatyId", "" + treatyId);
 
         return PnwUtil.withLogin(() -> {
-            String html = Auth.this.readStringFromURL(url, post);
+            String html = Auth.this.readStringFromURL(PagePriority.MODIFY_TREATY_UNUSED, url, post);
             Document dom = Jsoup.parse(html);
             return PnwUtil.getAlert(dom);
         }, this);
@@ -306,7 +307,7 @@ public class Auth {
         String url = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + aaId + "&display=acp#treaties";
 
         return PnwUtil.withLogin(() -> {
-            String html = Auth.this.readStringFromURL(url, post);
+            String html = Auth.this.readStringFromURL(PagePriority.MODIFY_TREATY_UNUSED, url, post);
             Document dom = Jsoup.parse(html);
             return PnwUtil.getAlert(dom);
         }, this);
@@ -317,7 +318,7 @@ public class Auth {
         String url = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + aaId + "&display=acp";
         return PnwUtil.withLogin(() -> {
             List<PendingTreaty> result = new ArrayList<>();
-            String html = Auth.this.readStringFromURL(url, emptyMap());
+            String html = Auth.this.readStringFromURL(PagePriority.GET_TREATIES_UNUSED, url, emptyMap());
             Document dom = Jsoup.parse(html);
             Element table = dom.getElementsByClass("nationtable").get(1);
             Elements rows = table.getElementsByTag("tr");
@@ -367,12 +368,12 @@ public class Auth {
         Callable<String> task = new Callable<>() {
             @Override
             public String call() throws IOException {
-                String result = Auth.this.readStringFromURL("" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", emptyMap());
+                String result = Auth.this.readStringFromURL(PagePriority.BANK_DEPOSIT, "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", emptyMap());
                 Document dom = Jsoup.parse(result);
                 String token = dom.select("input[name=token]").attr("value");
                 post.put("token", token);
 
-                result = Auth.this.readStringFromURL("" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", post);
+                result = Auth.this.readStringFromURL(PagePriority.TOKEN, "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", post);
                 dom = Jsoup.parse(result);
                 String alert = PnwUtil.getAlert(dom);
                 if (alert.length() == 0) {
@@ -388,14 +389,10 @@ public class Auth {
         }
     }
 
-    public Map<Integer, TaxBracket> getTaxBrackets() {
-        return getTaxBrackets(false);
-    }
-
     public String setRank(DBNation nation, DBAlliancePosition position) {
         return PnwUtil.withLogin(() -> {
             String url = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + getAllianceId() + "&display=acp#assign_positions";
-            String result = readStringFromURL(url, Collections.emptyMap());
+            String result = readStringFromURL(PagePriority.RANK_SET, url, Collections.emptyMap());
 
 
             Document dom = Jsoup.parse(result);
@@ -410,7 +407,7 @@ public class Auth {
                     if (elem.parent().parent().nextElementSibling().nextElementSibling().html().contains(nation.getNationUrl())) {
                         String acceptUrl = elem.parent().attr("href");
 
-                        result = readStringFromURL(acceptUrl, Collections.emptyMap());
+                        result = readStringFromURL(PagePriority.TOKEN, acceptUrl, Collections.emptyMap());
                         response.append(PnwUtil.getAlert(Jsoup.parse(result)));
 
                         if (position == DBAlliancePosition.REMOVE) {
@@ -422,7 +419,7 @@ public class Auth {
                 System.out.println(result);
                 new Exception().printStackTrace();
             }
-            result = readStringFromURL(url, Collections.emptyMap());
+            result = readStringFromURL(PagePriority.TOKEN, url, Collections.emptyMap());
             dom = Jsoup.parse(result);
 
             String token = dom.select("input[name=validation_token]").attr("value");
@@ -444,7 +441,7 @@ public class Auth {
             post.put("validation_token", token);
             post.put("alliance_positions_assign_submit", "Save Position Assignment");
 
-            result = readStringFromURL(url, post);
+            result = readStringFromURL(PagePriority.TOKEN, url, post);
             dom = Jsoup.parse(result);
             int alerts = 0;
             for (Element element : dom.getElementsByClass("alert")) {
@@ -476,7 +473,7 @@ public class Auth {
         String url = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + aaId + "&display=taxes";
         return PnwUtil.withLogin(() -> {
             Map<Integer, TaxBracket> result = new HashMap<>();
-            String html = Auth.this.readStringFromURL(url, emptyMap());
+            String html = Auth.this.readStringFromURL(PagePriority.GET_BRACKETS_UNUSED, url, emptyMap());
             Document dom = Jsoup.parse(html);
             Element table = dom.getElementsByClass("nationtable").get(0);
             Elements rows = table.getElementsByTag("tr");
@@ -527,7 +524,7 @@ public class Auth {
                     moreTrades = false;
 
                     String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/trade/";
-                    String html = Auth.this.readStringFromURL(url, emptyMap());
+                    String html = Auth.this.readStringFromURL(PagePriority.BANK_TRADE, url, emptyMap());
                     Document dom = Jsoup.parse(html);
 
                     Elements tables = dom.getElementsByClass("nationtable");
@@ -649,7 +646,7 @@ public class Auth {
                         post.put("token", token);
                         post.put("acctrade", "");
 
-                        String tradeAlert = PnwUtil.getAlert(Jsoup.parse(Auth.this.readStringFromURL(url, post)));
+                        String tradeAlert = PnwUtil.getAlert(Jsoup.parse(Auth.this.readStringFromURL(PagePriority.TOKEN, url, post)));
                         if (tradeAlert == null) {
                             response.setResult(TradeResultType.UNKNOWN_ERROR);
                             continue;
@@ -824,13 +821,13 @@ public class Auth {
         }
         if (total < 3000000) return null;
         return PnwUtil.withLogin(() -> {
-            String result = readStringFromURL("" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", emptyMap());
+            String result = readStringFromURL(PagePriority.BANK_DEPOSIT, "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", emptyMap());
             Document dom = Jsoup.parse(result);
             String token = dom.select("input[name=token]").attr("value");
             post.put("token", token);
             StringBuilder response = new StringBuilder();
 
-            result = readStringFromURL("" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", post);
+            result = readStringFromURL(PagePriority.TOKEN, "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", post);
             dom = Jsoup.parse(result);
             for (Element element : dom.getElementsByClass("alert")) {
                 String text = element.text();

@@ -13,6 +13,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.Rank;
 import net.dv8tion.jda.api.entities.Guild;
@@ -93,7 +94,7 @@ public class NationSheet extends Command implements Noformat {
                 toUpdate.removeIf(f -> updated.contains(f.getNation_id()));
             }
             for (DBNation nation : toUpdate) {
-                nation.updateSpies();
+                nation.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK);
             }
         }
 

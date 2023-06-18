@@ -3,6 +3,7 @@ package link.locutus.discord.util.task.war;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.io.PagePriority;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -24,7 +25,7 @@ public class GetActiveWars implements Callable<Collection<Map.Entry<Integer, Int
     @Override
     public Collection<Map.Entry<Integer, Integer>> call() throws Exception {
         String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nationId + "&display=war";
-        Document dom = Jsoup.parse(FileUtil.readStringFromURL(url));
+        Document dom = Jsoup.parse(FileUtil.readStringFromURL(PagePriority.ACTIVE_WARS_UNUSED.ordinal(), url));
 
         Element table = dom.getElementsByClass("nationtable").get(0);
         Elements rows = table.getElementsByTag("tr");

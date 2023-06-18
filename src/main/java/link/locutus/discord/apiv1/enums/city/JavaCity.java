@@ -1,8 +1,11 @@
 package link.locutus.discord.apiv1.enums.city;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.info.optimal.CityBranch;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.event.Event;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -34,6 +37,8 @@ import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -50,6 +55,27 @@ public class JavaCity {
     private long nuke_date;
 
     private Metrics metrics;
+
+    public static Map.Entry<DBNation, JavaCity> getOrCreate(int cityId, boolean update) {
+        List<Event> events = new LinkedList<>();
+        long now = System.currentTimeMillis();
+        Map.Entry<Integer, DBCity> cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId, true, events::add);
+        Locutus.imp().runEventsAsync(events);
+        if (cityEntry != null) {
+            DBCity city = cityEntry.getValue();
+            if (update && now > city.fetched) {
+                city.update(true);
+            }
+            DBNation nation = DBNation.byId(cityEntry.getKey());
+            if (nation != null) {
+                return Map.entry(nation, city.toJavaCity(nation));
+            }
+            DBNation dummy = new DBNation();
+            dummy.setNation_id(cityEntry.getKey());
+            return Map.entry(dummy, city.toJavaCity(f -> false));
+        }
+        return null;
+    }
 
     public void clear() {
         numBuildings = 0;

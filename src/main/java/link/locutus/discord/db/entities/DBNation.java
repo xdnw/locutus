@@ -34,11 +34,11 @@ import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.battle.BlitzGenerator;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.MailTask;
-import link.locutus.discord.util.task.balance.GetCityBuilds;
 import link.locutus.discord.util.task.multi.GetUid;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.jooby.handler.CommandResult;
@@ -573,6 +573,16 @@ public class DBNation implements NationOrAlliance {
         return (int) TimeUnit.MILLISECONDS.toDays(now - timestamp);
     }
 
+    @Command(desc = "Milliseconds since joining the alliance")
+    @RolePermission(Roles.MEMBER)
+    public long allianceSeniorityMs() {
+        if (alliance_id == 0) return 0;
+        long timestamp = Locutus.imp().getNationDB().getAllianceMemberSeniorityTimestamp(this, getSnapshot());
+        long now = System.currentTimeMillis();
+        if (timestamp > now) return 0;
+        return now - timestamp;
+    }
+
     @Command(desc="Military strength (1 plane = 1)")
     public double getStrength() {
         return BlitzGenerator.getAirStrength(this, true);
@@ -704,12 +714,12 @@ public class DBNation implements NationOrAlliance {
         String url = String.format("" + Settings.INSTANCE.PNW_URL() + "/alliance/id=%s&display=taxes", alliance_id);
 
         return PnwUtil.withLogin(() -> {
-            String token = auth.getToken(url);
+            String token = auth.getToken(PagePriority.BRACKET_SET_UNUSED, url);
             post.put("token", token);
 
             StringBuilder response = new StringBuilder();
 
-            String result = auth.readStringFromURL(url, post);
+            String result = auth.readStringFromURL(PagePriority.TOKEN, url, post);
             Document dom = Jsoup.parse(result);
             int alerts = 0;
             for (Element element : dom.getElementsByClass("alert")) {
@@ -1409,19 +1419,19 @@ public class DBNation implements NationOrAlliance {
         return soldiers * (munitions ? 1.75 : 1) + (tanks * 40) * (enemyAc ? 0.66 : 1);
     }
 
-    public Integer updateSpies() {
-        return updateSpies(false);
+    public Integer updateSpies(PagePriority priority) {
+        return updateSpies(priority, false);
     }
 
-    public Integer updateSpies(boolean update, boolean force) {
+    public Integer updateSpies(PagePriority priority, boolean update, boolean force) {
         if (!update && spies >= 0) {
             return spies;
         }
-        return updateSpies(force);
+        return updateSpies(priority, force);
     }
 
-    public Integer updateSpies(boolean force) {
-        return updateSpies(force ? Integer.MIN_VALUE : 0);
+    public Integer updateSpies(PagePriority priority, boolean force) {
+        return updateSpies(priority, force ? Integer.MIN_VALUE : 0);
     }
 
     public Long getTurnUpdatedSpies() {
@@ -1429,7 +1439,7 @@ public class DBNation implements NationOrAlliance {
         return lastTurn == null ? null : lastTurn.getLong();
     }
 
-    public Integer updateSpies(int turns) {
+    public Integer updateSpies(PagePriority priority, int turns) {
         ByteBuffer lastTurn = spies < 0 ? null : getMeta(NationMeta.UPDATE_SPIES);
         long currentTurn = TimeUtil.getTurn();
 
@@ -1440,7 +1450,7 @@ public class DBNation implements NationOrAlliance {
                         return spies;
                     }
                 }
-                SpyCount.guessSpyCount(this);
+                SpyCount.guessSpyCount(priority, this);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -1972,7 +1982,7 @@ public class DBNation implements NationOrAlliance {
     @Deprecated
     public Map.Entry<String, String> generateRecruitmentMessage(boolean force) throws InterruptedException, ExecutionException, IOException {
         StringBuilder body = new StringBuilder();
-        Map<Integer, JavaCity> cities = new GetCityBuilds(this).adapt().get(this);
+        Map<Integer, JavaCity> cities = getCityMap(true);
         body.append("Hey hey! I'm Danzek. If you would like any help, feel free to ask me here or on discord! :D<br>" +
                 "Here are some beginner tips for you<hr><br>");
         if (cities.size() == 1) {
@@ -2138,7 +2148,7 @@ public class DBNation implements NationOrAlliance {
         post.put("target_id", getNation_id() + "");
         String key = Locutus.imp().getRootPnwApi().getApiKeyUsageStats().entrySet().iterator().next().getKey();
         post.put("api_key", key);
-        Locutus.imp().getRootAuth().readStringFromURL(url, post);
+        Locutus.imp().getRootAuth().readStringFromURL(PagePriority.COMMEND, url, post);
 
         String actionStr = isCommend ? "commended" : "denounced";
         return "Borg has publicly " + actionStr +" the nation of " + getNation() + " led by " + getLeader()+ ".";
@@ -3599,23 +3609,7 @@ public class DBNation implements NationOrAlliance {
             post.put("subject", subject);
             post.put("message", message);
             String url = "" + Settings.INSTANCE.PNW_URL() + "/api/send-message/?key=" + pair.getKey();
-            String result;
-            try {
-                result = FileUtil.readStringFromURL(url, post, null);
-            } catch (IOException e) {
-                if (e.getMessage().contains("Server returned HTTP response code: 429")) {
-                    if (exponentialBackoff >= 60000) throw e;
-                    try {
-                        Thread.sleep(exponentialBackoff);
-                    } catch (InterruptedException ex) {
-                        throw new RuntimeException(ex);
-                    }
-                    exponentialBackoff = Math.min(60000, exponentialBackoff * 2);
-                    continue;
-                } else {
-                    throw e;
-                }
-            }
+            String result = FileUtil.get(FileUtil.readStringFromURL(PagePriority.MAIL_SEND.ordinal(), url, post, null));
             System.out.println("Result " + result);
             if (result.contains("Invalid API key")) {
                 pair.deleteApiKey();
@@ -3814,23 +3808,6 @@ public class DBNation implements NationOrAlliance {
         return multiNations;
     }
 
-//    public Nation getPnwNation() throws IOException {
-//        return getPnwNation(Locutus.imp().getPnwApi());
-//    }
-
-//    public Nation getPnwNation(PoliticsAndWarV2 api) throws IOException {
-//        if (api == null) Locutus.imp().getPnwApi();
-//        long start = System.currentTimeMillis();
-//        Nation pnwNation = api.getNation(nation_id);
-//
-//        DBNation previous = new DBNation(this);
-//        NationUpdateProcessor.process(previous, this, null, start, NationUpdateProcessor.UpdateType.INITIAL);
-//        update(pnwNation);
-//        Locutus.imp().getNationDB().addNation(this);
-//
-//        return pnwNation;
-//    }
-
     @Command(desc = "If this nation is not daily active and lost their most recent war")
     public boolean lostInactiveWar() {
         if (getActive_m() < 2880) return false;
@@ -4009,7 +3986,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public Map.Entry<Integer, Integer> getCommends() throws IOException {
-        Document dom = Jsoup.parse(FileUtil.readStringFromURL(getNationUrl()));
+        Document dom = Jsoup.parse(FileUtil.readStringFromURL(PagePriority.COMMEND.ordinal(), getNationUrl()));
         int commend = Integer.parseInt(dom.select("#commendment_count").text());
         int denounce = Integer.parseInt(dom.select("#denouncement_count").text());
         return new AbstractMap.SimpleEntry<>(commend, denounce);
@@ -4799,7 +4776,7 @@ public class DBNation implements NationOrAlliance {
             public Long call() throws Exception {
                 String baseUrl = "" + Settings.INSTANCE.PNW_URL() + "/nation/espionage/eid=";
                 String url = baseUrl + getNation_id();
-                String html = auth.readStringFromURL(url, Collections.emptyMap());
+                String html = auth.readStringFromURL(PagePriority.ESPIONAGE_FULL_UNUSED, url, Collections.emptyMap());
                 if (html.contains("This target has already had 3 espionage operations executed upon them today.")) {
                     return TimeUtil.getTurn() + getTurnsTillDC();
                 }

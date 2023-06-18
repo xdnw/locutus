@@ -35,6 +35,7 @@ import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.trade.TradeManager;
 import net.dv8tion.jda.api.entities.Guild;
@@ -761,7 +762,7 @@ public class StatCommands {
             int k = 0;
             for (DBNation nation : coalition) {
                 cities[nation.getCities()]++;
-                spies[nation.getCities()] += nation.updateSpies(false, false);
+                spies[nation.getCities()] += nation.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, 1);
             }
             if (!total) {
                 for (int j = 0; j < cities.length; j++) {

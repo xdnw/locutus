@@ -7,6 +7,7 @@ import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.util.io.PagePriority;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -27,7 +28,7 @@ public class GetUid implements Callable<BigInteger> {
     @Override
     public BigInteger call() throws IOException {
         String url = nation.getNationUrl();
-        String html = FileUtil.readStringFromURL(url);
+        String html = FileUtil.readStringFromURL(PagePriority.NATION_UID.ordinal(), url);
 
         Document dom = Jsoup.parse(html);
         try {
@@ -36,11 +37,6 @@ public class GetUid implements Callable<BigInteger> {
 
                 String hexString = uuidTd.first().nextElementSibling().text();
                 this.uuid = new BigInteger(hexString, 16);
-
-                BigInteger invalid = new BigInteger("cb0cf3109e61373be1c18de4", 16);
-                if (!invalid.equals(uuid)) {
-                    Locutus.imp().getDiscordDB().addUUID(nation.getNation_id(), uuid);
-                }
                 this.verified = dom.select(".fa-check-circle").size() > 0;
                 if (verified) {
                     Locutus.imp().getDiscordDB().addVerified(nation.getNation_id());

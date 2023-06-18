@@ -15,6 +15,7 @@ import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.SpyCount;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
@@ -118,9 +119,9 @@ public class SpySheet extends Command {
         if (flags.contains('f')) {
             for (DBNation defender : defenders) {
                 if (defender.getSpies() <= 3 && flags.contains('c')) continue;
-                defender.updateSpies(true);
+                defender.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, true);
             }
-            for (DBNation attacker : attackers) attacker.updateSpies(true);
+            for (DBNation attacker : attackers) attacker.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, true);
         }
 
         Map<DBNation, Double> loginProb = new HashMap<>();
@@ -137,8 +138,8 @@ public class SpySheet extends Command {
         }
 
         // Spies are valued by their square
-        BiFunction<Double, Double, Double> attSpyGraph = PnwUtil.getXInRange(attackers, n -> Math.pow(n.updateSpies(false, false).doubleValue(), 2));
-        BiFunction<Double, Double, Double> defSpyGraph = PnwUtil.getXInRange(defenders, n -> Math.pow(n.updateSpies(false, false).doubleValue(), 2));
+        BiFunction<Double, Double, Double> attSpyGraph = PnwUtil.getXInRange(attackers, n -> Math.pow(n.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, false, false).doubleValue(), 2));
+        BiFunction<Double, Double, Double> defSpyGraph = PnwUtil.getXInRange(defenders, n -> Math.pow(n.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, false, false).doubleValue(), 2));
 
         Integer finalMinSpies = minSpies;
         attackers.removeIf(n -> n.getSpies() <= finalMinSpies);
@@ -253,7 +254,7 @@ public class SpySheet extends Command {
 
                         int safety = bestValue.getKey();
 
-                        Integer defSpies = defender.updateSpies(false, false);
+                        Integer defSpies = defender.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK, false, false);
                         if (defSpies < 48 && operation == SpyCount.Operation.NUKE) defSpies += 3;
                         int numSpies = (int) Math.ceil(Math.min(mySpies, SpyCount.getRequiredSpies(defSpies, safety, operation, defender)));
 

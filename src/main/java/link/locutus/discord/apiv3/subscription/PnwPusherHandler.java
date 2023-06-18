@@ -23,6 +23,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.io.PagePriority;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
 import java.io.IOException;
@@ -223,7 +224,7 @@ public class PnwPusherHandler {
 
         private String getChannel() {
             try {
-                String channelInfo = FileUtil.readStringFromURL(getEndpoint());
+                String channelInfo = FileUtil.readStringFromURL(PagePriority.PUSHER.ordinal(), getEndpoint());
                 JsonElement json = parser.parse(channelInfo);
                 if (json.isJsonObject()) {
                     JsonElement channel = json.getAsJsonObject().get("channel");

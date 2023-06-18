@@ -1250,7 +1250,8 @@ public class OffshoreInstance {
             }
         }
 
-        if (auth == null || !auth.isValid() || true) {
+//        if (auth == null || !auth.isValid() || true)
+        {
             // get api
             try {
                 PoliticsAndWarV3 api = getAlliance().getApiOrThrow(AlliancePermission.WITHDRAW_BANK);
@@ -1266,30 +1267,30 @@ public class OffshoreInstance {
                 return categorize(msg);
             }
         }
-
-
-        DBNation receiverNation = null;
-        int receiverAlliance = 0;
-        if (receiver.isNation()) receiverNation = receiver.asNation();
-        else receiverAlliance = receiver.asAlliance().getAlliance_id();
-        BankWithTask task = new BankWithTask(auth, allianceId, receiverAlliance, receiverNation, new Function<Map<ResourceType, Double>, String>() {
-            @Override
-            public String apply(Map<ResourceType, Double> stock) {
-                for (Map.Entry<ResourceType, Double> entry : transfer.entrySet()) {
-                    if (entry.getValue() > stock.getOrDefault(entry.getKey(), 0d)) {
-                        return "Insufficient funds.";
-                    }
-                }
-                for (Map.Entry<ResourceType, Double> entry : transfer.entrySet()) {
-                    ResourceType type = entry.getKey();
-                    double stored = stock.getOrDefault(type, 0d);
-                    double withdraw = entry.getValue();
-                    stock.put(type, stored - withdraw);
-                }
-                return note;
-            }
-        });
-        return categorize(task);
+//
+//
+//        DBNation receiverNation = null;
+//        int receiverAlliance = 0;
+//        if (receiver.isNation()) receiverNation = receiver.asNation();
+//        else receiverAlliance = receiver.asAlliance().getAlliance_id();
+//        BankWithTask task = new BankWithTask(auth, allianceId, receiverAlliance, receiverNation, new Function<Map<ResourceType, Double>, String>() {
+//            @Override
+//            public String apply(Map<ResourceType, Double> stock) {
+//                for (Map.Entry<ResourceType, Double> entry : transfer.entrySet()) {
+//                    if (entry.getValue() > stock.getOrDefault(entry.getKey(), 0d)) {
+//                        return "Insufficient funds.";
+//                    }
+//                }
+//                for (Map.Entry<ResourceType, Double> entry : transfer.entrySet()) {
+//                    ResourceType type = entry.getKey();
+//                    double stored = stock.getOrDefault(type, 0d);
+//                    double withdraw = entry.getValue();
+//                    stock.put(type, stored - withdraw);
+//                }
+//                return note;
+//            }
+//        });
+//        return categorize(task);
     }
 
     public Map.Entry<TransferStatus, String> transfer(DBAlliance alliance, Map<ResourceType, Double> transfer, String note) {

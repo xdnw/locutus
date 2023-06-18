@@ -85,33 +85,39 @@ public abstract class NavalAttack extends AbstractAttack {
     }
 
     public static class NavalIT_0_0_NoImpNoGas extends NavalAttack {
-        private final long data;
+        private final long data1;
+        private final char data2;
         public NavalIT_0_0_NoImpNoGas(int id, long date, boolean isAttackerIdGreater, double city_infra_before, double infra_destroyed, double att_gas_used, double att_mun_used) {
             super(id, date, isAttackerIdGreater);
-            data = MathMan.pairInt(
-                    MathMan.pair((short) city_infra_before, (short) infra_destroyed),
-                    MathMan.pair((short) att_gas_used, (short) att_mun_used)
-            );
+            // att_mun_used 146000 18
+            // city_infra_before 596476 21
+            // infra_destroyed 198776 18
+            // att_gas_used 146000 18
+            // 4
+            // 14
+            long att_mun_usedCents = (long) (att_mun_used * 100);
+            data1 = ((long) (att_mun_usedCents & 15)) << 60 | (long) (city_infra_before * 100) << 38 | ((long) (infra_destroyed * 100) << 19) | ((long) (att_gas_used * 100));
+            data2 = (char) (att_mun_usedCents >> 4);
         }
 
         @Override
         public double getInfra_destroyed() {
-            return MathMan.unpairY(MathMan.unpairIntX(data));
+            return ((data1 >> 19) & 524287) * 0.01;
         }
 
         @Override
         public double getCity_infra_before() {
-            return MathMan.unpairX(MathMan.unpairIntX(data));
+            return ((data1 >> 38) & 4194303) * 0.01;
         }
 
         @Override
         public double getAtt_gas_used() {
-            return MathMan.unpairX(MathMan.unpairIntY(data));
+            return (data1 & 524287) * 0.01;
         }
 
         @Override
         public double getAtt_mun_used() {
-            return MathMan.unpairY(MathMan.unpairIntY(data));
+            return (((data1 >> 60) & 15) | (data2 << 4)) * 0.01;
         }
 
         @Override
@@ -158,11 +164,22 @@ public abstract class NavalAttack extends AbstractAttack {
 
     public static class NavalUF_ANY_NoImp extends NavalAttack{
 
-        private final long data;
+        private final long data1;
+        private final int data2;
 
-        public NavalUF_ANY_NoImp(int id, long date, boolean isAttackerIdGreater, int attCas1, double attGas, double attMuni, int defCas1, double defGas, double defMuni) {
+        public NavalUF_ANY_NoImp(int id, long date, boolean isAttackerIdGreater, int attCas1, double att_gas_used, double att_mun_used, int defCas1, double def_gas_used, double def_mun_used) {
             super(id, date, isAttackerIdGreater);
-            this.data = (long) defMuni << 52 | (long) defGas << 40 | (long) attMuni << 28 | (long) attGas << 16 | (long) attCas1 << 8 | (long) defCas1;
+            // att_mun_used 50175   2 << 16 | 19
+            // attcas1 308          2 << 9 | 12
+
+
+            // att_gas_used 50175   2 << 16 | 18
+            // def_mun_used 29250   2 << 15 | 18
+            // def_gas_used 29250   2 << 15 | 18
+            // defcas1 94           2 << 7 | 10
+
+            this.data1 = (long) (att_gas_used * 100) << 46 | (long) (def_mun_used * 100) << 28 | (long) (def_gas_used * 100) << 10 | (long) defCas1;
+            this.data2 = (int) (att_mun_used * 100) << 12 | attCas1;
         }
 
         @Override
@@ -172,33 +189,32 @@ public abstract class NavalAttack extends AbstractAttack {
 
         @Override
         public int getAttcas1() {
-            // signed
-            return (int) ((data >> 8) & 0xFF);
+            return (int) ((data2) & 4095);
         }
 
         @Override
         public int getDefcas1() {
-            return (int) (data & 0xFF);
+            return (int) (data1 & 1023);
         }
 
         @Override
         public double getAtt_gas_used() {
-            return (int) ((data >> 16) & 0xFF);
+            return (int) ((data1 >> 46) & 262143) * 0.01;
         }
 
         @Override
         public double getAtt_mun_used() {
-            return (int) ((data >> 28) & 0xFF);
+            return (int) ((data2 >> 12) & 1048575) * 0.01;
         }
 
         @Override
         public double getDef_gas_used() {
-            return (int) ((data >> 40) & 0xFF);
+            return (int) ((data1 >> 10) & 262143) * 0.01;
         }
 
         @Override
         public double getDef_mun_used() {
-            return (int) ((data >> 52) & 0xFF);
+            return (int) ((data2 >> 28) & 262143) * 0.01;
         }
 
         @Override
@@ -230,26 +246,26 @@ public abstract class NavalAttack extends AbstractAttack {
     }
 
     public static class Naval_ANY_NoImp extends NavalUF_ANY_NoImp {
-        private final int data2;
+        private final long data1;
 
         public Naval_ANY_NoImp(int id, long date, boolean isAttackerIdGreater, SuccessType success, int attCas1, double att_gas_used, double att_mun_used, int defCas1, double def_gas_used, double def_mun_used, double city_infra_before, double infra_destroyed) {
             super(id, date, isAttackerIdGreater, attCas1, att_gas_used, att_mun_used, defCas1, def_gas_used, def_mun_used);
-            this.data2 = ((int) city_infra_before << 17) | ((int) infra_destroyed << 2) | success.ordinal();
+            this.data1 = (long) (city_infra_before * 100) << 20 | (long) (infra_destroyed * 100) << 2 | success.ordinal();
         }
 
         @Override
         public SuccessType getSuccess() {
-            return SuccessType.values()[data2 & 0x3];
+            return SuccessType.values()[(int) (data1 & 0x3)];
         }
 
         @Override
         public double getCity_infra_before() {
-            return (data2 >> 17) & 0x1FFFF;
+            return ((data1 >> 20) & 17592186044415L) * 0.01;
         }
 
         @Override
         public double getInfra_destroyed() {
-            return (data2 >> 2) & 0x1FFFF;
+            return ((data1 >> 2) & 262143) * 0.01;
         }
     }
 

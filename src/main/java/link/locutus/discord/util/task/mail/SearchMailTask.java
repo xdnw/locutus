@@ -6,6 +6,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.Auth;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -67,7 +68,7 @@ public class SearchMailTask implements Callable<List<Mail>> {
                 post.put("minimum", "0");
                 post.put("od", "DESC");
 
-                String html = auth.readStringFromURL(url, post);
+                String html = auth.readStringFromURL(PagePriority.MAIL_SEARCH, url, post);
 
                 if (html.contains("Are You Human?\n") || html.contains("https://politicsandwar.com/human/")) {
                     throw new IllegalArgumentException("Captcha");
@@ -112,7 +113,7 @@ public class SearchMailTask implements Callable<List<Mail>> {
                         List<String> messagesStr = new ArrayList<>();
 
                         if (readContent) {
-                            Document msgDom = Jsoup.parse(auth.readStringFromURL(url, Collections.emptyMap()));
+                            Document msgDom = Jsoup.parse(auth.readStringFromURL(PagePriority.MAIL_READ, url, Collections.emptyMap()));
                             Elements messages = msgDom.select(".red-msg");
 
                             for (Element message : messages) {

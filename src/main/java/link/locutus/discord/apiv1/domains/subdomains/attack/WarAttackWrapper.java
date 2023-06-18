@@ -49,17 +49,17 @@ public record WarAttackWrapper(DBWar war, IAttack attack) implements IAttack {
 
     public int getAttackerAA() {
         if (attack.isAttackerIdGreater()) {
-            return Math.max(war.attacker_aa, war.defender_aa);
+            return war.attacker_id > war.defender_id ? war.attacker_aa : war.defender_aa;
         } else {
-            return Math.min(war.attacker_aa, war.defender_aa);
+            return war.attacker_id > war.defender_id ? war.defender_aa : war.attacker_aa;
         }
     }
 
     public int getDefenderAA() {
         if (!attack.isAttackerIdGreater()) {
-            return Math.max(war.attacker_aa, war.defender_aa);
+            return war.attacker_id > war.defender_id ? war.attacker_aa : war.defender_aa;
         } else {
-            return Math.min(war.attacker_aa, war.defender_aa);
+            return war.attacker_id > war.defender_id ? war.defender_aa : war.attacker_aa;
         }
     }
 

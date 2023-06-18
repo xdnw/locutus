@@ -4,6 +4,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.Auth;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -38,7 +39,7 @@ public class EditAllianceTask implements Callable<String> {
         return PnwUtil.withLogin(new Callable<String>() {
             @Override
             public String call() throws Exception {
-                String result = auth.readStringFromURL("" + Settings.INSTANCE.PNW_URL() + "/alliance/edit/id=" + allianceId, Collections.emptyMap());
+                String result = auth.readStringFromURL(PagePriority.ALLIANCE_EDIT, "" + Settings.INSTANCE.PNW_URL() + "/alliance/edit/id=" + allianceId, Collections.emptyMap());
                 Document dom = Jsoup.parse(result);
 
                 String flag = dom.select("select[name=flag]").select("option:matches(Current)").attr("value");
@@ -97,7 +98,7 @@ public class EditAllianceTask implements Callable<String> {
 
                 StringBuilder response = new StringBuilder();
 
-                result = auth.readStringFromURL("" + Settings.INSTANCE.PNW_URL() + "/alliance/edit/id=" + allianceId, post);
+                result = auth.readStringFromURL(PagePriority.TOKEN, "" + Settings.INSTANCE.PNW_URL() + "/alliance/edit/id=" + allianceId, post);
                 dom = Jsoup.parse(result);
                 for (Element element : dom.getElementsByClass("alert")) {
                     response.append('\n').append(element.text());

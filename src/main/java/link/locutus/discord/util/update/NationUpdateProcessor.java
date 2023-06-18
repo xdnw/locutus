@@ -22,6 +22,7 @@ import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -906,7 +907,7 @@ public class NationUpdateProcessor {
             String body = previous.toEmbedString(false);
             String url = previous.getNationUrl();
             try {
-                String html = FileUtil.readStringFromURL(url);
+                String html = FileUtil.readStringFromURL(PagePriority.DELETION_ALERT_BAN.ordinal(), url);
                 Document dom = Jsoup.parse(html);
                 String alert = PnwUtil.getAlert(dom);
                 if (alert != null && alert.startsWith("This nation was banned")) {

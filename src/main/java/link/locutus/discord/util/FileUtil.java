@@ -80,38 +80,52 @@ public final class FileUtil {
         return Thread.currentThread().getContextClassLoader();
     }
 
-    public static byte[] readBytesFromUrl(String urlStr) {
-        try (InputStream is = new URL(urlStr).openStream()) {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            byte[] byteChunk = new byte[4096]; // Or whatever size you want to read in at a time.
-            int n;
-
-            while ( (n = is.read(byteChunk)) > 0 ) {
-                baos.write(byteChunk, 0, n);
-            }
-            is.close();
-            return baos.toByteArray();
-        }
-        catch (IOException e) {
-            e.printStackTrace ();
-            return null;
-        }
+    public static <T> T submit(int priority, Supplier<T> task) {
+        return get(pageRequestQueue.submit(task, getPriority(priority)));
     }
 
-    public static String readStringFromURL(String requestURL) throws IOException {
-        URL website = new URL(requestURL);
-        URLConnection connection = website.openConnection();
-        try (BufferedReader in = new BufferedReader(
-            new InputStreamReader(connection.getInputStream()))) {
+    public static byte[] readBytesFromUrl(int priority, String urlStr) {
+        return submit(priority, () -> {
+            try (InputStream is = new URL(urlStr).openStream()) {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                byte[] byteChunk = new byte[4096]; // Or whatever size you want to read in at a time.
+                int n;
 
-            StringBuilder response = new StringBuilder();
-            String inputLine;
-
-            while ((inputLine = in.readLine()) != null) {
-                response.append(inputLine);
+                while ( (n = is.read(byteChunk)) > 0 ) {
+                    baos.write(byteChunk, 0, n);
+                }
+                is.close();
+                return baos.toByteArray();
             }
-            return response.toString();
-        }
+            catch (IOException e) {
+                e.printStackTrace ();
+                return null;
+            }
+        });
+    }
+
+    public static String readStringFromURL(int priority, String requestURL) throws IOException {
+        return submit(priority, () -> {
+                try {
+                    URL website = new URL(requestURL);
+                    URLConnection connection = website.openConnection();
+                    try (BufferedReader in = new BufferedReader(
+                            new InputStreamReader(connection.getInputStream()))) {
+
+                        StringBuilder response = new StringBuilder();
+                        String inputLine;
+
+                        while ((inputLine = in.readLine()) != null) {
+                            response.append(inputLine);
+                        }
+                        return response.toString();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    return null;
+                }
+            }
+        );
     }
 
     public static String encode(String url) throws UnsupportedEncodingException {
@@ -127,6 +141,7 @@ public final class FileUtil {
     public static CompletableFuture<String> readStringFromURL(int priority, String urlStr, Map<String, String> arguments, CookieManager msCookieManager) throws IOException {
         return readStringFromURL(priority, urlStr, arguments, true, msCookieManager, i -> {});
     }
+
     public static CompletableFuture<String> readStringFromURL(int priority, String urlStr, Map<String, String> arguments, boolean post, CookieManager msCookieManager, Consumer<HttpURLConnection> apply) throws IOException {
         StringJoiner sj = new StringJoiner("&");
         for (Map.Entry<String, String> entry : arguments.entrySet())
@@ -150,18 +165,18 @@ public final class FileUtil {
         HEAD,
     }
 
-    private static PageRequestQueue pageRequestQueue = new PageRequestQueue(1000);
+    private static PageRequestQueue pageRequestQueue = new PageRequestQueue(250);
     private static AtomicInteger requestOrder = new AtomicInteger();
-    private static long lastRead = 0;
+
+    private static long getPriority(int priority) {
+        return requestOrder.incrementAndGet() + Integer.MAX_VALUE * (long) priority;
+    }
 
     public static CompletableFuture<String> readStringFromURL(int priority, String urlStr, byte[] dataBinary, RequestType type, CookieManager msCookieManager, Consumer<HttpURLConnection> apply) {
-        long orderedPriority = requestOrder.incrementAndGet() + Integer.MAX_VALUE * (long) priority;
-        PageRequestQueue.PageRequestTask<String> task = pageRequestQueue.submit(new Supplier<String>() {
+        Supplier<String> fetch = new Supplier<String>() {
             @Override
             public String get() {
-                long now = System.currentTimeMillis();
 //                System.out.println("Requesting " + urlStr + " at " + now + " with priority " + priority + " ( last: " + (now - lastRead) + " ). Queue size: " + pageRequestQueue.size());
-                lastRead = now;
                 try {
                     URL url = new URL(urlStr);
                     HttpURLConnection http = (HttpURLConnection) url.openConnection();
@@ -253,11 +268,37 @@ public final class FileUtil {
                         }
                     }
                 } catch (IOException e) {
-                    e.printStackTrace();
-                    return null;
+                    throw new RuntimeException(e);
                 }
             }
-        }, orderedPriority);
+        };
+        PageRequestQueue.PageRequestTask<String> task = pageRequestQueue.submit(new Supplier<String>() {
+            @Override
+            public String get() {
+                int backoff = 4000;
+                while (true) {
+                    try {
+                        String result = fetch.get();
+                        return result;
+                    } catch (RuntimeException e) {
+                        Throwable cause = e;
+                        while (cause.getCause() != null) {
+                            cause = cause.getCause();
+                        }
+                        if (e.getMessage().contains("Server returned HTTP response code: 429")) {
+                            try {
+                                Thread.sleep(backoff);
+                                backoff += 4000;
+                            } catch (InterruptedException ex) {
+                                throw new RuntimeException(ex);
+                            }
+                            continue;
+                        }
+                        throw e;
+                    }
+                }
+            }
+        }, getPriority(priority));
         return task;
     }
 }

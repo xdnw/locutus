@@ -20,6 +20,7 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.io.PagePriority;
 import net.dv8tion.jda.api.entities.*;
 import rocker.grant.cities;
 
@@ -397,7 +398,7 @@ public enum InterviewQuestion implements Question {
             https://politicsandwar.com/nation/military/spies/""", false) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
-            return me.updateSpies(true) > 0;
+            return me.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE, true) > 0;
         }
     },
 

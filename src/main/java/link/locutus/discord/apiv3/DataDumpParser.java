@@ -28,6 +28,7 @@ import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.update.LootEstimateTracker;
 import org.apache.commons.io.FileUtils;
@@ -794,7 +795,7 @@ public class DataDumpParser {
 
     public Map<Long, File> load(String url, File savePath) throws IOException, ParseException {
         Map<Long, File> filesByDate = new LinkedHashMap<>();
-        Document dom = Jsoup.parse(FileUtil.readStringFromURL(url));
+        Document dom = Jsoup.parse(FileUtil.readStringFromURL(PagePriority.DATA_DUMP.ordinal(), url));
         for (Element a : dom.select("a")) {
             String subUrl = a.attr("href");
             if (subUrl != null && subUrl.contains(".zip")) {
@@ -812,7 +813,7 @@ public class DataDumpParser {
 
     private void download(String fileUrl, File savePath) throws IOException {
         System.out.println("Saving " + savePath);
-        byte[] bytes = FileUtil.readBytesFromUrl(fileUrl);
+        byte[] bytes = FileUtil.readBytesFromUrl(PagePriority.DATA_DUMP.ordinal(), fileUrl);
         assert bytes != null;
         try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(bytes))) {
             ZipEntry entry = in.getNextEntry();

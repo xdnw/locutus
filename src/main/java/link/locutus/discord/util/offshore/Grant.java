@@ -261,7 +261,7 @@ public class Grant {
 
     }
 
-    public static class Requirement implements Function<DBNation, Boolean> {
+    public static abstract class Requirement implements Function<DBNation, Boolean> {
         private final Function<DBNation, Boolean> function;
         private final String message;
         private boolean canOverride;
@@ -271,6 +271,12 @@ public class Grant {
             this.function = requirement;
             this.canOverride = canOverride;
         }
+
+//        public abstract Map<String, String> serialize();
+//
+//        protected Map<String, String> serializeHelper(String command, String... argNameValuePairs) {
+//            // todo
+//        }
 
         public boolean canOverride() {
             return canOverride;

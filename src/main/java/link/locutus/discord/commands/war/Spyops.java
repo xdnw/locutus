@@ -18,6 +18,7 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -203,13 +204,13 @@ public class Spyops extends Command {
             return "No nations found (1)";
         }
 
-        int mySpies = SpyCount.guessSpyCount(me);
+        int mySpies = SpyCount.guessSpyCount(PagePriority.ESPIONAGE_ODDS_SINGLE, me);
         long dcTime = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - (TimeUtil.getTurn() % 12));
 
         List<Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>>> netDamage = new ArrayList<>();
 
         for (DBNation nation : nations) {
-            Integer spies = nation.updateSpies(false, flags.contains('f'));
+            Integer spies = nation.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE, false, flags.contains('f'));
             if (spies == null) {
                 continue;
             }
@@ -278,7 +279,7 @@ public class Spyops extends Command {
 
             int spiesUsed = mySpies;
             if (operation != SpyCount.Operation.SPIES) {
-                Integer enemySpies = nation.updateSpies(false, false);
+                Integer enemySpies = nation.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE, false, false);
                 spiesUsed = SpyCount.getRecommendedSpies(spiesUsed, enemySpies, safety, op, nation);
             }
 

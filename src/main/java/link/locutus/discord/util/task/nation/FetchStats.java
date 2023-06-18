@@ -5,6 +5,7 @@ import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.util.io.PagePriority;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -32,7 +33,7 @@ public class FetchStats{
         String statUrl = "" + Settings.INSTANCE.PNW_URL() + "/index.php?id=132&name=%s&type=%s&date=%s&submit=Go";
         statUrl = String.format(statUrl, URLEncoder.encode(name, "UTF-8"), type, dateStr);
 
-        Document dom = Jsoup.parse(FileUtil.readStringFromURL(statUrl));
+        Document dom = Jsoup.parse(FileUtil.readStringFromURL(PagePriority.NATION_STATS_UNUSED.ordinal(), statUrl));
         Elements tables = dom.getElementsByClass("nationtable");
         if (tables.isEmpty()) return;
 

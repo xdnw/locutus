@@ -16,11 +16,11 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.task.balance.GetCityBuilds;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,8 +31,7 @@ public class GetBuild extends Command {
     }
 
     public static String onCommand(DBNation nation, IMessageIO channel) throws Exception {
-        Map<DBNation, Map<Integer, JavaCity>> builds = new GetCityBuilds(nation).adapt(i -> {
-        });
+        Map<DBNation, Map<Integer, JavaCity>> builds = Collections.singletonMap(nation, nation.getCityMap(true));
         Map<DBNation, Map<CityBuild, List<String>>> uniqueBuilds = new HashMap<>();
         for (Map.Entry<DBNation, Map<Integer, JavaCity>> nationEntry : builds.entrySet()) {
             Map<CityBuild, List<String>> nMap = uniqueBuilds.computeIfAbsent(nationEntry.getKey(), i -> Maps.newHashMap());

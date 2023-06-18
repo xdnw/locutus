@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.offshore.Auth;
@@ -45,7 +46,7 @@ public class MailTask implements Callable<String> {
                 msgPost.put("sndmsg", "Send Message");
 
                 String url = "" + Settings.INSTANCE.PNW_URL() + "/inbox/message/";
-                String msgResponse = auth.readStringFromURL(url, msgPost);
+                String msgResponse = auth.readStringFromURL(PagePriority.MAIL_SEND, url, msgPost);
                 if (msgResponse.contains("You have successfully sent a message.")) {
                     return "Message sent to " + nation.getNation() + "! (check your out folder)";
                 } else if (msgResponse.contains("because they are less than 3 minutes old. Please give new players some time to catch their")) {

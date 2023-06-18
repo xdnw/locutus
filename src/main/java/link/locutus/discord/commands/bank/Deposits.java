@@ -72,6 +72,9 @@ public class Deposits extends Command {
 
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+        GuildDB guildDb = Locutus.imp().getGuildDB(event);
+        guild = guildDb.getGuild();
+
         DBNation banker = DiscordUtil.getNation(event);
         if (banker == null) {
             return "Please use " + Settings.commandPrefix(true) + "validate.";
@@ -106,8 +109,6 @@ public class Deposits extends Command {
         String arg0 = args.get(0);
 
         Set<String> split = new LinkedHashSet<>(Arrays.asList(arg0.split(",")));
-
-        GuildDB guildDb = Locutus.imp().getGuildDB(event);
 
         StringBuilder response = new StringBuilder();
         response.append("**").append(arg0).append("**:\n");

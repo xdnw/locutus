@@ -17,6 +17,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.util.io.PagePriority;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -88,7 +89,7 @@ public class SpyCommand extends Command {
         me.setMeta(NationMeta.INTERVIEW_SPIES, (byte) 1);
 
 
-        int result = nation.updateSpies(true, true);
+        int result = nation.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE, true, true);
         Long turnUpdate = nation.getTurnUpdatedSpies();
         long turnsAgo = TimeUtil.getTurn() - (turnUpdate == null ? 0 : turnUpdate);
 

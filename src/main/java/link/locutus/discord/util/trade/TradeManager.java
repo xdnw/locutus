@@ -19,6 +19,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 import com.google.gson.JsonArray;
@@ -483,7 +484,7 @@ public class TradeManager {
                 Map<ResourceType, int[]> result = new EnumMap<ResourceType, int[]>(ResourceType.class);
 
                 String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/trade/history/";
-                String html = auth.readStringFromURL(url, Collections.emptyMap());
+                String html = auth.readStringFromURL(PagePriority.TRADE_HISTORY, url, Collections.emptyMap());
 
                 String var = "var histcatexplong =";
                 int varI = html.indexOf(var);
@@ -517,7 +518,7 @@ public class TradeManager {
             public Map<Long, Long> apply(Long aLong) {
                 try {
                     String url = "" + Settings.INSTANCE.PNW_URL() + "/world-graphs/graphID=%s";
-                    String html = FileUtil.readStringFromURL(String.format(url, type.getGraphId()));
+                    String html = FileUtil.readStringFromURL(PagePriority.WORLD_GRAPHS.ordinal(), String.format(url, type.getGraphId()));
 
                     String var = String.format("total_%s_over_time_Trace1", type.name().toLowerCase());
                     int varI = html.indexOf(var);
@@ -686,44 +687,9 @@ public class TradeManager {
 
                 processTrades(fetched, idsToFetch, mixupAlerts, eventConsumer);
             }
-
-
-
-
             List<DBTrade> newTrades = new ArrayList<>();
         }
         updateLowHighCache();
-
-
-
-//        List<TradeContainer> trades = new ArrayList<>();
-//        if (force) {
-//            for (ResourceType type : ResourceType.values) {
-//                if (type == ResourceType.MONEY) continue;
-//                PoliticsAndWarV2 api = Locutus.imp().getPnwApi();
-//                System.out.println("API " + api);
-//                List<TradeContainer> apiTrades = api.getTradehistory(10000, type).getTrades();
-//                trades.addAll(apiTrades);
-//            }
-//        } else {
-//            trades = Locutus.imp().getPnwApi().getTradehistoryByAmount(10000).getTrades();
-//        }
-//
-//        DBTrade latest = tradeDb.getLatestTrade();
-//        int latestId = latest == null ? -1 : latest.getTradeId();
-//
-//        Set<Integer> alertedNations = new HashSet<>();
-//        List<DBTrade> DBTrades = new ArrayList<>();
-//        for (TradeContainer trade : trades) {
-//             DBTrade offer = new DBTrade(trade);
-//
-//            if (offer.getTradeId() > latestId && alerts) {
-//                handleTradeAlerts(DBTrade, alertedNations);
-//            }
-//            DBTrades.add(DBTrade);
-//        }
-//        tradeDb.addTrades(DBTrades);
-
         return true;
     }
 

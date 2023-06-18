@@ -17,6 +17,7 @@ import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.test.IAChannel;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
@@ -142,7 +143,7 @@ public class DiscordCommands {
             }
 
             String url = emote.getImageUrl();
-            byte[] bytes = FileUtil.readBytesFromUrl(url);
+            byte[] bytes = FileUtil.readBytesFromUrl(PagePriority.DISCORD_EMOJI_URL.ordinal(), url);
 
             channel.send("Creating emote: " + emote.getName() + " | " + url);
 

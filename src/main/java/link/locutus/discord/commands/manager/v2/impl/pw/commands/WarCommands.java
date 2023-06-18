@@ -47,6 +47,7 @@ import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.battle.SpyBlitzGenerator;
 import link.locutus.discord.util.battle.sim.WarNation;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.war.WarCard;
@@ -1417,16 +1418,16 @@ public class WarCommands {
 
         channel.send("Please wait...");
 
-        Integer enemySpies = enemy.updateSpies();
+        Integer enemySpies = enemy.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE);
         if (enemySpies == null) {
-            enemySpies = SpyCount.guessSpyCount(enemy);
+            enemySpies = SpyCount.guessSpyCount(PagePriority.ESPIONAGE_ODDS_SINGLE, enemy);
         }
 
         SpyCount.Operation[] opTypes = operations.toArray(new SpyCount.Operation[0]);
         for (DBNation nation : counterWith) {
-            Integer mySpies = nation.updateSpies();
+            Integer mySpies = nation.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE);
             if (mySpies == null) {
-                mySpies = SpyCount.guessSpyCount(nation);
+                mySpies = SpyCount.guessSpyCount(PagePriority.ESPIONAGE_ODDS_SINGLE, nation);
             }
 
             if (enemySpies == -1) {
@@ -1484,7 +1485,7 @@ public class WarCommands {
 
             body.append(op.name())
                     .append(" (" + safetyStr + ") with ")
-                    .append(nation.updateSpies() + " spies (")
+                    .append(nation.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE) + " spies (")
                     .append(MathMan.format(odds) + "% for $")
                     .append(MathMan.format(damage) + "net damage)")
                     .append("\n")
@@ -1581,13 +1582,13 @@ public class WarCommands {
             return "No nations found (1)";
         }
 
-        int mySpies = SpyCount.guessSpyCount(me);
+        int mySpies = SpyCount.guessSpyCount(PagePriority.ESPIONAGE_ODDS_SINGLE, me);
         long dcTime = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - (TimeUtil.getTurn() % 12));
 
         List<Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>>> netDamage = new ArrayList<>();
 
         for (DBNation nation : enemies) {
-            Integer spies = nation.updateSpies(false, false);
+            Integer spies = nation.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE, false, false);
             if (spies == null) {
                 continue;
             }
@@ -1652,7 +1653,7 @@ public class WarCommands {
 
             int spiesUsed = mySpies;
             if (op != SpyCount.Operation.SPIES) {
-                Integer enemySpies = nation.updateSpies(false, false);
+                Integer enemySpies = nation.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE, false, false);
                 spiesUsed = SpyCount.getRecommendedSpies(spiesUsed, enemySpies, safety, op, nation);
             }
 
@@ -3729,7 +3730,7 @@ public class WarCommands {
                         @Default() SpyCount.Safety requiredSafety) throws IOException {
         me.setMeta(NationMeta.INTERVIEW_SPIES, (byte) 1);
 
-        int result = nation.updateSpies(true, true);
+        int result = nation.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE, true, true);
         Long turnUpdate = nation.getTurnUpdatedSpies();
         long turnsAgo = TimeUtil.getTurn() - (turnUpdate == null ? 0 : turnUpdate);
 

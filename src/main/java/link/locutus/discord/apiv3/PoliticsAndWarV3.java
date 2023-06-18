@@ -14,6 +14,7 @@ import com.kobylynskyi.graphql.codegen.model.graphql.*;
 import com.politicsandwar.graphql.model.*;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import graphql.GraphQLException;
+import link.locutus.discord.util.io.PagePriority;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.http.HttpEntity;
@@ -30,6 +31,7 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 public class PoliticsAndWarV3 {
     static {
@@ -97,7 +99,10 @@ public class PoliticsAndWarV3 {
 
     private static final RateLimit rateLimitGlobal = new RateLimit();
 
-    public <T> T readTemplate(GraphQLRequest graphQLRequest, Class<T> resultBody) {
+    public <T> T readTemplate(PagePriority priority, GraphQLRequest graphQLRequest, Class<T> resultBody) {
+        return readTemplate(priority.ordinal(), graphQLRequest, resultBody);
+    }
+    public <T> T readTemplate(int priority, GraphQLRequest graphQLRequest, Class<T> resultBody) {
         if (rateLimitGlobal.intervalMs != 0) {
             synchronized (rateLimitGlobal) {
                 long now = System.currentTimeMillis();
@@ -133,10 +138,10 @@ public class PoliticsAndWarV3 {
                 HttpEntity<String> entity = httpEntity(graphQLRequest, pair.getKey(), pair.getBotKey());
 
 
-                exchange = restTemplate.exchange(URI.create(url),
+                exchange = FileUtil.submit(priority, () -> restTemplate.exchange(URI.create(url),
                         HttpMethod.POST,
                         entity,
-                        String.class);
+                        String.class));
 
                 String body = exchange.getBody();
                 JsonNode json = jacksonObjectMapper.readTree(body);
@@ -248,13 +253,13 @@ public class PoliticsAndWarV3 {
         if (throwRuntime) throw new RuntimeException(msg);
     }
 
-    public <T extends GraphQLResult<?>> void handlePagination(Function<Integer, GraphQLRequest> requestFactory, Function<GraphQLError, ErrorResponse> errorBehavior, Class<T> resultBody, Predicate<T> hasMorePages, Consumer<T> onEachResult) {
+    public <T extends GraphQLResult<?>> void handlePagination(PagePriority priority, Function<Integer, GraphQLRequest> requestFactory, Function<GraphQLError, ErrorResponse> errorBehavior, Class<T> resultBody, Predicate<T> hasMorePages, Consumer<T> onEachResult) {
         pageLoop:
         for (int page = 1; ; page++) {
             GraphQLRequest graphQLRequest = requestFactory.apply(page);
 
             for (int i = 0; i < 5; i++) {
-                T result = readTemplate(graphQLRequest, resultBody);
+                T result = readTemplate(priority.ordinal() - (page == 1 ? 0 : 1), graphQLRequest, resultBody);
 
                 boolean iterateNext = result != null && hasMorePages.test(result);
 
@@ -308,7 +313,7 @@ public class PoliticsAndWarV3 {
     public List<Bounty> fetchBounties(int perPage, Consumer<BountiesQueryRequest> filter, Consumer<BountyResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bounty> recResults) {
         List<Bounty> allResults = new ArrayList<>();
 
-        handlePagination(page -> {
+        handlePagination(PagePriority.API_BOUNTIES, page -> {
                     BountiesQueryRequest request = new BountiesQueryRequest();
                     if (filter != null) filter.accept(request);
                     request.setFirst(perPage);
@@ -342,7 +347,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Treasure> fetchTreasures() {
-        TreasuresQueryResponse result = request(new TreasuresQueryRequest(), new TreasureResponseProjection()
+        TreasuresQueryResponse result = request(PagePriority.API_TREASURES, new TreasuresQueryRequest(), new TreasureResponseProjection()
                         .name()
                     .color()
                     .continent()
@@ -361,7 +366,7 @@ public class PoliticsAndWarV3 {
     public List<BBGame> fetchBaseballGames(int perPage, Consumer<Baseball_gamesQueryRequest> filter, Consumer<BBGameResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<BBGame> recResults) {
         List<BBGame> allResults = new ArrayList<>();
 
-        handlePagination(page -> {
+        handlePagination(PagePriority.API_BASEBALL, page -> {
                     Baseball_gamesQueryRequest request = new Baseball_gamesQueryRequest();
                     if (filter != null) filter.accept(request);
                     request.setFirst(perPage);
@@ -446,7 +451,7 @@ public class PoliticsAndWarV3 {
     public List<WarAttack> fetchAttacks(int perPage, Consumer<WarattacksQueryRequest> filter, Consumer<WarAttackResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<WarAttack> recResults) {
         List<WarAttack> allResults = new ArrayList<>();
 
-        handlePagination(page -> {
+        handlePagination(PagePriority.API_ATTACKS, page -> {
                     WarattacksQueryRequest request = new WarattacksQueryRequest();
                     if (filter != null) filter.accept(request);
                     request.setFirst(perPage);
@@ -501,7 +506,7 @@ public class PoliticsAndWarV3 {
     public List<War> fetchWars(int perPage, Consumer<WarsQueryRequest> filter, Consumer<WarResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<War> recResults) {
         List<War> allResults = new ArrayList<>();
 
-        handlePagination(page -> {
+        handlePagination(PagePriority.API_WARS, page -> {
                     WarsQueryRequest request = new WarsQueryRequest();
                     if (filter != null) filter.accept(request);
                     request.setFirst(perPage);
@@ -585,7 +590,7 @@ public class PoliticsAndWarV3 {
     public List<City> fetchCities(int perPage, Consumer<CitiesQueryRequest> filter, Consumer<CityResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<City> recResults) {
         List<City> allResults = new ArrayList<>();
 
-        handlePagination(page -> {
+        handlePagination(PagePriority.API_CITIES, page -> {
                     CitiesQueryRequest request = new CitiesQueryRequest();
                     if (filter != null) filter.accept(request);
                     request.setFirst(perPage);
@@ -677,7 +682,7 @@ public class PoliticsAndWarV3 {
     public List<Bankrec> fetchBankRecs(int perPage, Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bankrec> recResults) {
         List<Bankrec> allResults = new ArrayList<>();
 
-        handlePagination(page -> {
+        handlePagination(PagePriority.API_BANK_RECS, page -> {
                     BankrecsQueryRequest request = new BankrecsQueryRequest();
                     if (filter != null) filter.accept(request);
                     request.setFirst(perPage);
@@ -849,7 +854,7 @@ public class PoliticsAndWarV3 {
     public List<Nation> fetchNations(int perPage, Consumer<NationsQueryRequest> filter, Consumer<NationResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Nation> nationResults) {
         List<Nation> allResults = new ArrayList<>();
 
-        handlePagination(page -> {
+        handlePagination(PagePriority.API_NATIONS, page -> {
             NationsQueryRequest request = new NationsQueryRequest();
             if (filter != null) filter.accept(request);
             request.setFirst(perPage);
@@ -924,7 +929,7 @@ public class PoliticsAndWarV3 {
     public List<Alliance> fetchAlliances(int perPage, Consumer<AlliancesQueryRequest> filter, Consumer<AllianceResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Alliance> addEachResult) {
         List<Alliance> allResults = new ArrayList<>();
 
-        handlePagination(page -> {
+        handlePagination(PagePriority.API_ALLIANCES, page -> {
                     AlliancesQueryRequest request = new AlliancesQueryRequest();
                     if (filter != null) filter.accept(request);
                     request.setFirst(perPage);
@@ -993,7 +998,7 @@ public class PoliticsAndWarV3 {
     public List<Treaty> fetchTreaties(int perPage, Consumer<TreatiesQueryRequest> filter, Consumer<TreatyResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Treaty> addEachResult) {
         List<Treaty> allResults = new ArrayList<>();
 
-        handlePagination(page -> {
+        handlePagination(PagePriority.API_TREATIES, page -> {
                     TreatiesQueryRequest request = new TreatiesQueryRequest();
                     if (filter != null) filter.accept(request);
                     request.setFirst(perPage);
@@ -1026,12 +1031,12 @@ public class PoliticsAndWarV3 {
         return allResults;
     }
 
-    public <T> T request(GraphQLOperationRequest request, GraphQLResponseProjection response, Class<T> resultBody) {
-        return readTemplate(new GraphQLRequest(request, response), resultBody);
+    public <T> T request(PagePriority priority, GraphQLOperationRequest request, GraphQLResponseProjection response, Class<T> resultBody) {
+        return readTemplate(priority, new GraphQLRequest(request, response), resultBody);
     }
 
     public ApiKeyDetails getApiKeyStats() {
-        MeQueryResponse result = request(new MeQueryRequest(), new ApiKeyDetailsResponseProjection()
+        MeQueryResponse result = request(PagePriority.API_KEY_STATS, new MeQueryRequest(), new ApiKeyDetailsResponseProjection()
                         .key()
                         .max_requests()
                         .requests()
@@ -1043,7 +1048,7 @@ public class PoliticsAndWarV3 {
     public Tradeprice getTradePrice() {
         List<Tradeprice> allResults = new ArrayList<>();
 
-        handlePagination(page -> {
+        handlePagination(PagePriority.API_TRADE_PRICE, page -> {
                     TradepricesQueryRequest request = new TradepricesQueryRequest();
                     request.setFirst(1);
                     request.setPage(page);
@@ -1087,7 +1092,7 @@ public class PoliticsAndWarV3 {
     }
 
     public GameInfo getGameInfo() {
-        Game_infoQueryResponse result = request(new Game_infoQueryRequest(), new GameInfoResponseProjection()
+        Game_infoQueryResponse result = request(PagePriority.API_GAME_TIME, new Game_infoQueryRequest(), new GameInfoResponseProjection()
                         .game_date()
                         .radiation(new RadiationResponseProjection().all$()),
                 Game_infoQueryResponse.class);
@@ -1200,7 +1205,7 @@ public class PoliticsAndWarV3 {
         projection.id();
         projection.date();
 
-        return request(mutation, projection, Bankrec.class);
+        return request(PagePriority.API_BANK_SEND, mutation, projection, Bankrec.class);
     }
 
 
@@ -1225,7 +1230,7 @@ public class PoliticsAndWarV3 {
         projection.id();
         projection.date();
 
-        return request(mutation, projection, Bankrec.class);
+        return request(PagePriority.API_BANK_DEPOSIT, mutation, projection, Bankrec.class);
     }
 
     /**
@@ -1241,7 +1246,7 @@ public class PoliticsAndWarV3 {
         projection.date();
 
         try {
-            request(mutation, projection, Bankrec.class);
+            request(PagePriority.API_BOT_KEY, mutation, projection, Bankrec.class);
             return false;
         } catch (RuntimeException e) {
             if (e.getMessage().contains("The bot key you provided is not valid.")) {
@@ -1271,13 +1276,13 @@ public class PoliticsAndWarV3 {
     public Treaty approveTreaty(int id) {
         ApproveTreatyMutationRequest mutation = new ApproveTreatyMutationRequest();
         mutation.setId(id);
-        return request(mutation, treatyResponseProjection(), Treaty.class);
+        return request(PagePriority.API_TREATY_APPROVE, mutation, treatyResponseProjection(), Treaty.class);
     }
 
     public Treaty cancelTreaty(int id) {
         CancelTreatyMutationRequest mutation = new CancelTreatyMutationRequest();
         mutation.setId(id);
-        return request(mutation, treatyResponseProjection(), Treaty.class);
+        return request(PagePriority.API_TREATY_CANCEL, mutation, treatyResponseProjection(), Treaty.class);
     }
 
     public Treaty proposeTreaty(int alliance_id, int length, TreatyType type, String url) {
@@ -1286,7 +1291,7 @@ public class PoliticsAndWarV3 {
         mutation.setLength(length);
         mutation.setType(type.getId());
         mutation.setUrl(url);
-        return request(mutation, treatyResponseProjection(), Treaty.class);
+        return request(PagePriority.API_TREATY_SEND, mutation, treatyResponseProjection(), Treaty.class);
     }
 
     private TaxBracketResponseProjection createTaxBracketProjection() {
@@ -1306,7 +1311,7 @@ public class PoliticsAndWarV3 {
         AssignTaxBracketMutationRequest mutation = new AssignTaxBracketMutationRequest();
         mutation.setId(taxId);
         mutation.setTarget_id(nationId);
-        return request(mutation, createTaxBracketProjection(), TaxBracket.class);
+        return request(PagePriority.API_TAX_ASSIGN, mutation, createTaxBracketProjection(), TaxBracket.class);
     }
 
     public TaxBracket createTaxBracket(String name, Integer moneyRate, Integer rssRate) {
@@ -1315,13 +1320,13 @@ public class PoliticsAndWarV3 {
         mutation.setMoney_tax_rate(moneyRate);
         mutation.setResource_tax_rate(rssRate);
 
-        return request(mutation, createTaxBracketProjection(), TaxBracket.class);
+        return request(PagePriority.API_TAX_CREATE, mutation, createTaxBracketProjection(), TaxBracket.class);
     }
 
     public void deleteTaxBracket(int id) {
         DeleteTaxBracketMutationRequest request = new DeleteTaxBracketMutationRequest();
         request.setId(id);
-        request(request, createTaxBracketProjection(), TaxBracket.class);
+        request(PagePriority.API_TAX_DELETE, request, createTaxBracketProjection(), TaxBracket.class);
     }
 
     public TaxBracket editTaxBracket(int id, String name, Integer moneyRate, Integer rssRate) {
@@ -1331,7 +1336,7 @@ public class PoliticsAndWarV3 {
         if (moneyRate != null) mutation.setMoney_tax_rate(moneyRate);
         if (rssRate != null) mutation.setResource_tax_rate(rssRate);
 
-        return request(mutation, createTaxBracketProjection(), TaxBracket.class);
+        return request(PagePriority.API_TAX_EDIT, mutation, createTaxBracketProjection(), TaxBracket.class);
     }
 
     public Map<Integer, TaxBracket> fetchTaxBrackets(int allianceId) {
@@ -1394,7 +1399,7 @@ public class PoliticsAndWarV3 {
     public List<Embargo> fetchEmbargoWithInfo(Consumer<EmbargoesQueryRequest> filter, Consumer<EmbargoResponseProjection> query, Predicate<Embargo> embargoResults) {
         List<Embargo> allResults = new ArrayList<>();
 
-        handlePagination(page -> {
+        handlePagination(PagePriority.API_EMBARGO_GET, page -> {
                     EmbargoesQueryRequest request = new EmbargoesQueryRequest();
                     if (filter != null) filter.accept(request);
                     request.setFirst(EMBARGO_PER_PAGE);
@@ -1428,7 +1433,7 @@ public class PoliticsAndWarV3 {
     public List<Trade> fetchTrades(int perPage, Consumer<TradesQueryRequest> filter, Consumer<TradeResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Trade> tradeResults) {
         List<Trade> allResults = new ArrayList<>();
 
-        handlePagination(page -> {
+        handlePagination(PagePriority.API_TRADE_GET, page -> {
             TradesQueryRequest request = new TradesQueryRequest();
             if (filter != null) filter.accept(request);
             request.setFirst(perPage);
@@ -1460,7 +1465,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Color> getColors() {
-        ColorsQueryResponse result = request(new ColorsQueryRequest(), new ColorResponseProjection()
+        ColorsQueryResponse result = request(PagePriority.API_COLOR_GET, new ColorsQueryRequest(), new ColorResponseProjection()
                         .color()
                         .bloc_name()
                         .turn_bonus(),

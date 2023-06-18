@@ -184,18 +184,18 @@ public abstract class AbstractAttack implements IAttack {
             case NUKE -> {
                 return NukeAttack.create(war_attack_id, date, isAttackerIdGreater, success.get(), improvements_destroyed, city_infra_before, infra_destroyed);
             }
-            case AIRSTRIKE_INFRA -> {
-                return AirstrikeInfra.create(war_attack_id, date, isAttackerIdGreater, success.get(),
-                        attcas1,
-                        defcas1.get(),
-                        city_infra_before,
-                        infra_destroyed,
-                        improvements_destroyed,
-                        att_gas_used.get(),
-                        att_mun_used.get(),
-                        def_gas_used.get(),
-                        def_mun_used);
-            }
+//            case AIRSTRIKE_INFRA -> {
+//                return AirstrikeInfra.create(war_attack_id, date, isAttackerIdGreater, success.get(),
+//                        attcas1,
+//                        defcas1.get(),
+//                        city_infra_before,
+//                        infra_destroyed,
+//                        improvements_destroyed,
+//                        att_gas_used.get(),
+//                        att_mun_used.get(),
+//                        def_gas_used.get(),
+//                        def_mun_used);
+//            }
             case AIRSTRIKE_SOLDIER,AIRSTRIKE_TANK,AIRSTRIKE_MONEY,AIRSTRIKE_SHIP -> {
                 return AirstrikeUnit.create(war_attack_id,
                         date,
@@ -213,10 +213,15 @@ public abstract class AbstractAttack implements IAttack {
                         def_gas_used.get(),
                         def_mun_used);
             }
-            case AIRSTRIKE_AIRCRAFT -> {
-                return AirstrikeAircraft.create(war_attack_id, date, isAttackerIdGreater, success.get(),
+            case AIRSTRIKE_AIRCRAFT,AIRSTRIKE_INFRA -> {
+                return AirstrikeUnit.create(war_attack_id,
+                        date,
+                        isAttackerIdGreater,
+                        attack_type,
+                        success.get(),
                         attcas1,
                         defcas1.get(),
+                        () -> 0,
                         city_infra_before,
                         infra_destroyed,
                         improvements_destroyed,
@@ -224,6 +229,16 @@ public abstract class AbstractAttack implements IAttack {
                         att_mun_used.get(),
                         def_gas_used.get(),
                         def_mun_used);
+//                return AirstrikeAircraft.create(war_attack_id, date, isAttackerIdGreater, success.get(),
+//                        attcas1,
+//                        defcas1.get(),
+//                        city_infra_before,
+//                        infra_destroyed,
+//                        improvements_destroyed,
+//                        att_gas_used.get(),
+//                        att_mun_used.get(),
+//                        def_gas_used.get(),
+//                        def_mun_used);
             }
             case NAVAL -> {
                 return NavalAttack.create(war_attack_id, date, isAttackerIdGreater, success.get(),

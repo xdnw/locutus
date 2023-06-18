@@ -46,10 +46,6 @@ public abstract class AirstrikeAircraft extends AbstractAttack{
 
         public AirstrikeAircraftIt_0_NoImp(int id, long date, boolean isAttackerIdGreater, double cityInfraBefore, double infraDestroyed, double att_gas_used, double att_mun_used) {
             super(id, date, isAttackerIdGreater);
-            // city_infra_before = 15
-            // infra_destroyed = 15
-            // att_gas_used = 17
-            // att_mun_used = 17
             this.data = (long) cityInfraBefore << 49 | (long) infraDestroyed << 34 | (long) att_gas_used << 17 | (long) att_mun_used;
         }
 
@@ -124,6 +120,10 @@ public abstract class AirstrikeAircraft extends AbstractAttack{
                                      double city_infra_before, double infra_destroyed,
                                      double att_gas_used, double att_mun_used, double def_gas_used, double def_mun_used) {
             super(id, date, isAttackerIdGreater);
+            // success 2
+            // attcas1
+            // defcas1
+            // att_gas_used
             this.data = (long) success.ordinal() << 62 | (long) attcas1 << 49 | (long) defcas1 << 36 | (long) att_gas_used << 18 | (long) att_mun_used;
             this.data2 = (long) def_gas_used << 46 | (long) def_mun_used << 28 | (long) city_infra_before << 14 | (long) infra_destroyed;
         }
@@ -135,7 +135,7 @@ public abstract class AirstrikeAircraft extends AbstractAttack{
 
         @Override
         public int getAttcas1() {
-            return (int) (data >> 49) & 0x7FFF;
+            return (int) (data >> 49) & 0x1FFF;
         }
 
         @Override

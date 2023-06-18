@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.io.PagePriority;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
@@ -37,7 +38,7 @@ public class ImportEmoji extends Command {
         if (arg.startsWith("https://discord.com/channels/")) {
         } else if (arg.startsWith("http")) {
             List<Future<?>> tasks = new ArrayList<>();
-            byte[] bytes = FileUtil.readBytesFromUrl(arg);
+            byte[] bytes = FileUtil.readBytesFromUrl(PagePriority.DISCORD_EMOJI_URL.ordinal(), arg);
             if (bytes != null) {
                 Icon icon = Icon.from(bytes);
                 String[] split = arg.split("/");
@@ -67,7 +68,7 @@ public class ImportEmoji extends Command {
                 continue;
             }
             String url = emote.getImageUrl();
-            byte[] bytes = FileUtil.readBytesFromUrl(url);
+            byte[] bytes = FileUtil.readBytesFromUrl(PagePriority.DISCORD_EMOJI_URL.ordinal(), url);
 
             RateLimitUtil.queue(event.getChannel().editMessageById(msg.getIdLong(), "Creating emote: " + emote.getName() + " | " + url));
 

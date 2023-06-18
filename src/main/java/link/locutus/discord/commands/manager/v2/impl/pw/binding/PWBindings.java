@@ -237,8 +237,12 @@ public class PWBindings extends BindingHelper {
         CityBuild build = null;
         if (input.contains("city/id=")) {
             int cityId = Integer.parseInt(input.split("=")[1]);
-            DBCity city = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
-            if (city == null) throw new IllegalArgumentException("No city found in cache for " + cityId);
+            Map.Entry<Integer, DBCity> cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
+            if (cityEntry == null) throw new IllegalArgumentException("No city found in cache for " + cityId);
+            int nationId = cityEntry.getKey();
+            DBCity city = cityEntry.getValue();
+            DBNation nation2 = DBNation.byId(nationId);
+            if (nation2 != null) nation = nation2;
             build = city.toJavaCity(nation == null ? f -> false : nation::hasProject).toCityBuild();
         }
         if (json != null) {
@@ -259,9 +263,9 @@ public class PWBindings extends BindingHelper {
         } else {
             throw new IllegalArgumentException("Not a valid city url: `" + input + "`");
         }
-        DBCity city = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
-        if (city == null) throw new IllegalArgumentException("No city found in cache for " + cityId);
-        return city;
+        Map.Entry<Integer, DBCity> cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
+        if (cityEntry == null) throw new IllegalArgumentException("No city found in cache for " + cityId);
+        return cityEntry.getValue();
     }
 
     @Binding(examples = ("#grant #city=1"), value = "A DepositType optionally with a value and a city tag")

@@ -220,9 +220,10 @@ public class NationDB extends DBMainV2 {
     }
 
     public void markCityDirty(int nationId, int cityId, long timestamp) {
-        DBCity city = getDBCity(nationId, cityId);
-        if (city != null && city.fetched > timestamp) return;
-
+        if (nationId > 0) {
+            DBCity city = getDBCity(nationId, cityId);
+            if (city != null && city.fetched > timestamp) return;
+        }
         synchronized (dirtyCities) {
             dirtyCities.add(cityId);
         }
@@ -1131,6 +1132,9 @@ public class NationDB extends DBMainV2 {
      * @return if success
      */
     private void updateCities(Map<Integer, Map<Integer, City>> completeCitiesByNation, Consumer<Event> eventConsumer) {
+        updateCities(completeCitiesByNation, true, eventConsumer);
+    }
+    private void updateCities(Map<Integer, Map<Integer, City>> completeCitiesByNation, boolean deleteMissing, Consumer<Event> eventConsumer) {
         DBCity buffer = new DBCity();
         List<Map.Entry<Integer, DBCity>> dirtyCities = new ArrayList<>(); // List<nation id, db city>
         AtomicBoolean dirtyFlag = new AtomicBoolean();
@@ -1151,22 +1155,18 @@ public class NationDB extends DBMainV2 {
             synchronized (citiesByNation) {
                 existingMap = new HashMap<>(citiesByNation.getOrDefault(nationId, Collections.EMPTY_MAP));
             }
-            for (Map.Entry<Integer, DBCity> cityEntry : existingMap.entrySet()) {
-                City city = cities.get(cityEntry.getKey());
 
-                if (city != null) {
-                    dirtyFlag.set(false);
-                    DBCity dbCity = processCityUpdate(city, buffer, eventConsumer, dirtyFlag);
-                    if (dirtyFlag.get()) {
-                        dirtyCities.add(Map.entry(city.getNation_id(), dbCity));
-                    }
-                } else {
-                    synchronized (citiesByNation) {
-                        citiesByNation.getOrDefault(nationId, Collections.EMPTY_MAP).remove(cityEntry.getKey());
-                    }
-                    citiesToDelete.add(cityEntry.getKey());
-                    if (eventConsumer != null) {
-                        eventConsumer.accept(new CityDeleteEvent(nationId, cityEntry.getValue()));
+            if (deleteMissing) {
+                for (Map.Entry<Integer, DBCity> cityEntry : existingMap.entrySet()) {
+                    City city = cities.get(cityEntry.getKey());
+                    if (city == null) {
+                        synchronized (citiesByNation) {
+                            citiesByNation.getOrDefault(nationId, Collections.EMPTY_MAP).remove(cityEntry.getKey());
+                        }
+                        citiesToDelete.add(cityEntry.getKey());
+                        if (eventConsumer != null) {
+                            eventConsumer.accept(new CityDeleteEvent(nationId, cityEntry.getValue()));
+                        }
                     }
                 }
             }
@@ -3702,20 +3702,26 @@ public class NationDB extends DBMainV2 {
         return result;
     }
 
-    public DBCity getCitiesV3ByCityId(int cityId) {
-        try (PreparedStatement stmt = prepareQuery("select nation FROM CITY_BUILDS WHERE id = ?")) {
-            stmt.setInt(1, cityId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    int nationId = rs.getInt("nation");
-                    return getDBCity(nationId, cityId);
-                }
+    public Map.Entry<Integer, DBCity> getCitiesV3ByCityId(int cityId) {
+        return getCitiesV3ByCityId(cityId, false, null);
+    }
+
+    public Map.Entry<Integer, DBCity> getCitiesV3ByCityId(int cityId, boolean fetch, Consumer<Event> eventConsumer) {
+        for (Map.Entry<Integer, Map<Integer, DBCity>> entry : citiesByNation.entrySet()) {
+            Map<Integer, DBCity> cities = entry.getValue();
+            if (cities.containsKey(cityId)) {
+                DBCity city = cities.get(cityId);
+                return Map.entry(entry.getKey(), city);
             }
-            return null;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
         }
+        if (fetch) {
+            synchronized (dirtyCities) {
+                dirtyCities.add(cityId);
+            }
+            updateDirtyCities(eventConsumer);
+            return getCitiesV3ByCityId(cityId, false, eventConsumer);
+        }
+        return null;
     }
 
     public void saveAllCities() {

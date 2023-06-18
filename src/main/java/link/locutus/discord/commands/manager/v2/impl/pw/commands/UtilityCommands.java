@@ -43,6 +43,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.sim.AttackTypeNode;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.offshore.test.IAChannel;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -1372,7 +1373,7 @@ public class UtilityCommands {
         LocalValueStore locals = new LocalValueStore(store);
         for (DBNation nation : nations) {
             if (updateSpies) {
-                nation.updateSpies();
+                nation.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK);
             }
             locals.addProvider(Key.of(DBNation.class, Me.class), nation);
             locals.addProvider(Key.of(User.class, Me.class), nation.getUser());

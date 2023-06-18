@@ -8,6 +8,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.web.jooby.BankRequestHandler;
@@ -53,7 +54,7 @@ public class BankWithTask implements Callable<String> {
     public String call() {
         return PnwUtil.withLogin(() -> {
             String url = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank";
-            String result = auth.readStringFromURL(url, Collections.emptyMap());
+            String result = auth.readStringFromURL(PagePriority.BANK_SEND, url, Collections.emptyMap());
             Document dom = Jsoup.parse(result);
 
             try {
@@ -135,7 +136,7 @@ public class BankWithTask implements Callable<String> {
 
                 StringBuilder response = new StringBuilder();
 
-                result = auth.readStringFromURL("" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", post);
+                result = auth.readStringFromURL(PagePriority.TOKEN, "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + fromBank + "&display=bank", post);
                 dom = Jsoup.parse(result);
                 for (Element element : dom.getElementsByClass("alert")) {
                     String text = element.text();

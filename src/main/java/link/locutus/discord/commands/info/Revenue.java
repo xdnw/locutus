@@ -87,12 +87,12 @@ public class Revenue extends Command {
             }
         } else if (content.contains("/city/id=")) {
             int cityId = Integer.parseInt(content.split("=")[1]);
-            City city = Locutus.imp().getPnwApi().getCity(cityId);
-            JavaCity jc = new JavaCity(city);
+            Map.Entry<DBNation, JavaCity> jcPair = JavaCity.getOrCreate(cityId, true);
+            JavaCity jc = jcPair.getValue();
+            DBNation nation = jcPair.getKey();
 
             HashMap<Integer, JavaCity> map = new HashMap<>();
             map.put(cityId, jc);
-            DBNation nation = Locutus.imp().getNationDB().getNation(Integer.parseInt(city.getNationid()));
             cities.put(nation, map);
         } else {
             showTradeAndMilitary = true;
