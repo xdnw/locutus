@@ -73,7 +73,7 @@ public class Projects {
             .image("internationaltradecenter.png")
             .cost(ALUMINUM, 2500)
             .cost(STEEL, 2500)
-            .cost(GASOLINE, 5000)
+            .cost(GASOLINE, 500)
             .cost(MONEY, 45000000)
             .output(MONEY)
             .build();

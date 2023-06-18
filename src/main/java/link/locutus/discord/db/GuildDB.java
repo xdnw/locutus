@@ -2708,7 +2708,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         setInfo(key.name(), value);
     }
 
-    private void setInfo(String key, String value) {
+    public void setInfo(String key, String value) {
         checkNotNull(key);
         checkNotNull(value);
         initInfo();

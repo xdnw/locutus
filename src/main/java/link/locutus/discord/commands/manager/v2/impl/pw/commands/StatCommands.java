@@ -218,10 +218,10 @@ public class StatCommands {
                         }
                     } else {
                         if (!onlyRankCoalition1 || parser.getIsPrimary().apply(war)) {
-                            map.put(attack.getAttacker_nation_id(), attack);
+                            map.put(war.attacker_id, attack);
                         }
                         if (!onlyRankCoalition1 || !parser.getIsPrimary().apply(war)) {
-                            map.put(attack.getDefender_nation_id(), attack);
+                            map.put(war.defender_id, attack);
                         }
                     }
                 });

@@ -71,9 +71,10 @@ public class CityBuild {
     private Integer impHangars;
     @SerializedName("imp_drydock")
     private Integer impDrydock;
-
-    private transient Integer age;
-    private transient Double land;
+    @SerializedName("age")
+    private Integer age;
+    @SerializedName("land")
+    private Double land;
     private transient Integer population;
     private transient Double disease;
     private transient Double crime;

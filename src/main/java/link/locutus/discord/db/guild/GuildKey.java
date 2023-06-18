@@ -96,7 +96,6 @@ public class GuildKey {
             }
             return ALLIANCE_ID.set(db, existing);
         }
-
         @Override
         public Set<Integer> validate(GuildDB db, Set<Integer> aaIds) {
             if (DELEGATE_SERVER.has(db, false))
@@ -229,6 +228,7 @@ public class GuildKey {
             apiKeys = API_KEY.allowedAndValidate(db, user, apiKeys);
 
             existing.addAll(apiKeys);
+            existing.removeIf(String::isBlank);
             // List the missing keys
             Set<Integer> aaIds = new HashSet<>(db.getAllianceIds());
             for (String key : existing) {
@@ -293,7 +293,13 @@ public class GuildKey {
 
         @Override
         public String toString(List<String> value) {
+            value.removeIf(f -> f.isBlank() || f.endsWith(","));
             return StringMan.join(value, ",");
+        }
+
+        @Override
+        public List<String> parse(GuildDB db, String input) {
+            return new ArrayList<>(StringMan.split(input, ','));
         }
 
         @Override

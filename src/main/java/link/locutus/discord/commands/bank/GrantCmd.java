@@ -87,9 +87,9 @@ public class GrantCmd extends Command {
     @Override
     public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         String expireStr = DiscordUtil.parseArg(args, "expire");
-        Long expire = expireStr == null ? null : System.currentTimeMillis() + TimeUtil.timeToSec(expireStr);
+        Long expire = expireStr == null ? null : TimeUtil.timeToSec(expireStr) * 1000L;
         if (flags.contains('e')) {
-            expire = System.currentTimeMillis() + TimeUnit.DAYS.toMillis(60);
+            expire = TimeUnit.DAYS.toMillis(60);
         }
         GuildDB guildDb = Locutus.imp().getGuildDB(event);
 
@@ -128,7 +128,7 @@ public class GrantCmd extends Command {
         for (Iterator<String> iter = args.iterator(); iter.hasNext(); ) {
             String arg = iter.next().toLowerCase();
             if (arg.startsWith("-expire") || arg.startsWith("-e") || arg.startsWith("#expire")) {
-                expire = System.currentTimeMillis() + TimeUtil.timeToSec(arg.split("[:=]", 2)[1]);
+                expire = TimeUtil.timeToSec(arg.split("[:=]", 2)[1]) * 1000L;
                 iter.remove();
             }
             else if (arg.endsWith("%")) {
@@ -245,6 +245,10 @@ public class GrantCmd extends Command {
             resources = PnwUtil.multiply(resources, factor);
         }
 
+        if (expire != null) {
+            System.out.println(expire + " | " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire));
+        }
+
         JSONObject command = CM.transfer.resources.cmd.create(
                 me.getUrl(),
                 PnwUtil.resourcesToString(resources),
@@ -255,7 +259,7 @@ public class GrantCmd extends Command {
                 taxAccount != null ? taxAccount.getQualifiedName() : null,
                 flags.contains('t') ? "true" : null,
                 String.valueOf(flags.contains('o')),
-                expire != null ? "timestamp:" + expire : null,
+                expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null,
                 uuid.toString(),
                 String.valueOf(flags.contains('c')),
                 String.valueOf(flags.contains('f')),
@@ -339,7 +343,7 @@ public class GrantCmd extends Command {
         } else if (arg.startsWith("{")) {
             if (arg.contains("infra_needed")) {
                 JavaCity city = new JavaCity(arg);
-                city.setLand(0d);
+                if (!arg.contains("land")) city.setLand(0d);
 
                 city.validate(me.getContinent(), me::hasProject);
 

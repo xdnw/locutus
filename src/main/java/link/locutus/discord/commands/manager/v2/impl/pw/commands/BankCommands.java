@@ -897,7 +897,7 @@ public class BankCommands {
         }
 
         List<String> output = new ArrayList<>();
-        List<String> errors = new ArrayList<>();
+        List<String> allStatuses = new ArrayList<>();
 
         if (nations.size() != 1) {
             int originalSize = nations.size();
@@ -920,7 +920,7 @@ public class BankCommands {
                 }
                 if (status != OffshoreInstance.TransferStatus.SUCCESS) {
                     iter.remove();
-                    errors.add(nation.getName() + "\t" + status.name() + "\t" + status.getMessage() + debug);
+                    allStatuses.add(nation.getName() + "\t" + status.name() + "\t" + status.getMessage() + debug);
                 }
             }
             int removed = originalSize - nations.size();
@@ -933,8 +933,8 @@ public class BankCommands {
 
         if (nations.isEmpty()) {
             msg.append("No nations found (1)\n" + StringMan.join(output, "\n"));
-            if (!errors.isEmpty()) {
-                msg.file("errors.csv", StringMan.join(errors, "\n"));
+            if (!allStatuses.isEmpty()) {
+                msg.file("errors.csv", StringMan.join(allStatuses, "\n"));
             }
             msg.send();
             return null;
@@ -950,12 +950,12 @@ public class BankCommands {
             if (status == OffshoreInstance.TransferStatus.SUCCESS) {
                 fundsToSendNations.put(nation, PnwUtil.resourcesToMap(amount));
             } else {
-                errors.add(nation.getName() + "\t" + status.name() + "\t" + status.getMessage());
+                allStatuses.add(nation.getName() + "\t" + status.name() + "\t" + status.getMessage());
             }
         }
 
-        if (!errors.isEmpty() && !force) {
-            msg.file("errors.csv", StringMan.join(errors, "\n"));
+        if (!allStatuses.isEmpty()) {
+            msg.file("errors.csv", StringMan.join(allStatuses, "\n"));
             msg.send();
         }
 
@@ -1129,18 +1129,18 @@ public class BankCommands {
             double profit = city1.profitConvertedCached(nation.getContinent(), nation.getRads(), nation::hasProject, nation.getCities(), nation.getGrossModifier());
             JavaCity origin = new JavaCity(city1);
             origin.zeroNonMilitary();
-            JavaCity optimal = origin.optimalBuild(nation, 0);
-            double profitOptimal;
-            if (optimal != null) {
-                profitOptimal = optimal.profitConvertedCached(nation.getContinent(), nation.getRads(), nation::hasProject, nation.getCities(), nation.getGrossModifier());
-            } else {
-                profitOptimal = 0;
+            try {
+                JavaCity optimal = origin.optimalBuild(nation, 0);
+                double profitOptimal = 0;
+                if (optimal != null) {
+                    profitOptimal = optimal.profitConvertedCached(nation.getContinent(), nation.getRads(), nation::hasProject, nation.getCities(), nation.getGrossModifier());
+                }
+                double optimalGain = profit >= profitOptimal ? 1 : profit / profitOptimal;
+
+                row.set(16, MathMan.format(100 * optimalGain));
+            } catch (IllegalArgumentException e) {
+                row.set(16, e.getMessage());
             }
-
-            double optimalGain = profit >= profitOptimal ? 1 : profit / profitOptimal;
-
-            row.set(16, MathMan.format(100 * optimalGain));
-
 
             int i = 17;
             for (ResourceType type : ResourceType.values) {

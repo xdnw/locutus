@@ -12,6 +12,7 @@ import link.locutus.discord.db.entities.DiscordMeta;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.nation.NationRegisterEvent;
 import link.locutus.discord.pnw.PNWUser;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.offshore.EncryptionUtil;
 import com.google.api.client.util.Base64;
@@ -20,6 +21,7 @@ import com.google.gson.Gson;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.dv8tion.jda.api.entities.User;
+import org.apache.commons.codec.binary.Hex;
 
 import java.lang.reflect.Type;
 import java.math.BigInteger;
@@ -56,8 +58,49 @@ public class DiscordDB extends DBMainV2 {
         executeStmt("CREATE TABLE IF NOT EXISTS `VERIFIED` (`nation_id` INT NOT NULL PRIMARY KEY)");
 
         executeStmt("CREATE TABLE IF NOT EXISTS `DISCORD_META` (`key` BIGINT NOT NULL, `id` BIGINT NOT NULL, `value` BLOB NOT NULL, PRIMARY KEY(`key`, `id`))");
-        executeStmt("CREATE TABLE IF NOT EXISTS `API_KEYS2`(`nation_id` INT NOT NULL PRIMARY KEY, `api_key` BIGINT, `bot_key` BIGINT)");
+//        executeStmt("CREATE TABLE IF NOT EXISTS `API_KEYS2`(`nation_id` INT NOT NULL PRIMARY KEY, `api_key` BIGINT, `bot_key` BIGINT)");
+        executeStmt("CREATE TABLE IF NOT EXISTS `API_KEYS3`(`nation_id` INT NOT NULL PRIMARY KEY, `api_key` BLOB, `bot_key` BLOB)");
+        try {
+            migrateKeys();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
         setupApiKeys();
+    }
+
+    public void migrateKeys() throws SQLException {
+        // from API_KEYS2 `api_key` BIGINT, `bot_key` BIGINT
+        // to API_KEYS3 `api_key` BLOB, `bot_key` BLOB
+        if (!tableExists("API_KEYS2")) return;
+        // iterate rows
+        try (PreparedStatement stmt = prepareQuery("select * FROM API_KEYS2")) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Long keyId = getLong(rs, "api_key");
+                    if (keyId == null) continue;
+
+                    String key = String.format("%014X", keyId);
+                    Long botKeyId = getLong(rs, "bot_key");
+                    String botKey = botKeyId == null ? null : String.format("%016X", botKeyId);
+
+                    int nationId = rs.getInt("nation_id");
+
+                    byte[] keyBytes = new BigInteger(key, 16).toByteArray();
+                    byte[] botKeyBytes = botKey == null ? null : new BigInteger(botKey, 16).toByteArray();
+
+                    // insert into API_KEYS3
+                    try (PreparedStatement stmt2 = prepareQuery("INSERT INTO API_KEYS3 VALUES (?, ?, ?)")) {
+                        stmt2.setInt(1, nationId);
+                        stmt2.setBytes(2, keyBytes);
+                        stmt2.setBytes(3, botKeyBytes);
+                        stmt2.executeUpdate();
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     private void setupApiKeys() {
@@ -96,19 +139,19 @@ public class DiscordDB extends DBMainV2 {
     }
 
     public void addApiKey(int nationId, String key) {
-        long keyId = new BigInteger(key.toLowerCase(Locale.ROOT), 16).longValue();
-        update("INSERT OR REPLACE INTO `API_KEYS2`(`nation_id`, `api_key`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        byte[] keyId = new BigInteger(key.toLowerCase(Locale.ROOT), 16).toByteArray();
+        update("INSERT OR REPLACE INTO `API_KEYS3`(`nation_id`, `api_key`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
-            stmt.setLong(2, keyId);
+            stmt.setBytes(2, keyId);
 
         });
     }
 
     public void addBotKey(int nationId, String key) {
-        long keyId = new BigInteger(key.toLowerCase(Locale.ROOT), 16).longValue();
-        update("INSERT OR REPLACE INTO `API_KEYS2`(`nation_id`, `bot_key`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        byte[] keyId = new BigInteger(key.toLowerCase(Locale.ROOT), 16).toByteArray();
+        update("INSERT OR REPLACE INTO `API_KEYS3`(`nation_id`, `bot_key`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
-            stmt.setLong(2, keyId);
+            stmt.setBytes(2, keyId);
 
         });
     }
@@ -118,12 +161,12 @@ public class DiscordDB extends DBMainV2 {
             addApiKey(nationId, key);
             return;
         }
-        long keyId = new BigInteger(key, 16).longValue();
-        long botId = new BigInteger(botKey, 16).longValue();
-        update("INSERT OR REPLACE INTO `API_KEYS2`(`nation_id`, `api_key`, `bot_key`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        byte[] keyId = new BigInteger(key, 16).toByteArray();
+        byte[] botId = new BigInteger(botKey, 16).toByteArray();
+        update("INSERT OR REPLACE INTO `API_KEYS3`(`nation_id`, `api_key`, `bot_key`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
-            stmt.setLong(2, keyId);
-            stmt.setLong(3, botId);
+            stmt.setBytes(2, keyId);
+            stmt.setBytes(3, botId);
 
         });
     }
@@ -132,16 +175,17 @@ public class DiscordDB extends DBMainV2 {
         if (nationId == Settings.INSTANCE.NATION_ID && !Settings.INSTANCE.API_KEY_PRIMARY.isEmpty()) {
             return new ApiKeyPool.ApiKey(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY, Settings.INSTANCE.ACCESS_KEY);
         }
-        try (PreparedStatement stmt = prepareQuery("select * FROM API_KEYS2 WHERE nation_id = ?")) {
+        try (PreparedStatement stmt = prepareQuery("select * FROM API_KEYS3 WHERE nation_id = ?")) {
             stmt.setInt(1, nationId);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    Long keyId = getLong(rs, "api_key");
+                    byte[] keyId = getBytes(rs, "api_key");
                     if (keyId == null) return null;
 
-                    String key = String.format("%014X", keyId);
-                    Long botKeyId = getLong(rs, "bot_key");
-                    String botKey = botKeyId == null ? null : String.format("%016X", botKeyId);
+                    byte[] botKeyId = getBytes(rs, "bot_key");
+                    // byte[] to hex string
+                    String key = Hex.encodeHexString(keyId);
+                    String botKey = botKeyId == null ? null : Hex.encodeHexString(botKeyId);
                     return new ApiKeyPool.ApiKey(nationId, key, botKey);
                 }
             }
@@ -152,7 +196,7 @@ public class DiscordDB extends DBMainV2 {
     }
 
     public void deleteApiKeyPairByNation(int nationId) {
-        update("DELETE FROM `API_KEYS2` WHERE nation_id = ? ", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        update("DELETE FROM `API_KEYS3` WHERE nation_id = ? ", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setLong(1, nationId);
 
         });
@@ -160,16 +204,16 @@ public class DiscordDB extends DBMainV2 {
 
     public void deleteApiKey(String key) {
         long keyId = new BigInteger(key.toLowerCase(Locale.ROOT), 16).longValue();
-        update("UPDATE API_KEYS2 SET api_key = NULL WHERE api_key = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setLong(1, keyId);
+        update("UPDATE API_KEYS3 SET api_key = NULL WHERE api_key = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setBytes(1, new BigInteger(key.toLowerCase(Locale.ROOT), 16).toByteArray());
 
         });
     }
 
     public void deleteBotKey(String key) {
         long keyId = new BigInteger(key.toLowerCase(Locale.ROOT), 16).longValue();
-        update("UPDATE API_KEYS2 SET bot_key = NULL WHERE bot_key = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setLong(1, keyId);
+        update("UPDATE API_KEYS3 SET bot_key = NULL WHERE bot_key = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setBytes(1, new BigInteger(key.toLowerCase(Locale.ROOT), 16).toByteArray());
 
         });
     }
@@ -181,9 +225,9 @@ public class DiscordDB extends DBMainV2 {
         if (Settings.INSTANCE.API_KEY_PRIMARY.equalsIgnoreCase(key) && Settings.INSTANCE.NATION_ID > 0) {
             return Settings.INSTANCE.NATION_ID;
         }
-        try (PreparedStatement stmt = prepareQuery("select * FROM API_KEYS2 WHERE api_key = ?")) {
-            long keyId = new BigInteger(key.toLowerCase(Locale.ROOT), 16).longValue();
-            stmt.setLong(1, keyId);
+        try (PreparedStatement stmt = prepareQuery("select * FROM API_KEYS3 WHERE api_key = ?")) {
+            byte[] keyId = new BigInteger(key.toLowerCase(Locale.ROOT), 16).toByteArray();
+            stmt.setBytes(1, keyId);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     int id = rs.getInt("nation_id");
@@ -192,6 +236,9 @@ public class DiscordDB extends DBMainV2 {
             }
         } catch (SQLException e) {
             e.printStackTrace();
+        } catch (Throwable e) {
+            e.printStackTrace();
+            throw new RuntimeException(e.getMessage().toLowerCase().replace(key.toLowerCase(), "<redacted>"));
         }
         if (allowFetch) {
             ApiKeyDetails keyStats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
