@@ -366,6 +366,12 @@ public class JavaCity {
         Map<String, String> json = new HashMap<>();
         json.put("infra_needed", getRequiredInfra() + "");
         json.put("imp_total", getImpTotal() + "");
+        if (land_ > 0) {
+            json.put("land", getLand() + "");
+        }
+        if (getAge() > 0) {
+            json.put("age", getAge() + "");
+        }
         for (int ordinal = 0; ordinal < buildings.length; ordinal++) {
             int amt = buildings[ordinal];
             if (amt == 0) continue;
@@ -885,7 +891,6 @@ public class JavaCity {
     }
 
     public Double getLand() {
-        if (land_ <= 0) return infra;
         return land_;
     }
     public JavaCity setInfra(double infra) {

@@ -239,9 +239,10 @@ public class PWBindings extends BindingHelper {
             int cityId = Integer.parseInt(input.split("=")[1]);
             DBCity city = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
             if (city == null) throw new IllegalArgumentException("No city found in cache for " + cityId);
-            build = city.toJavaCity(nation == null ? f -> false : nation::hasProject).toCityBuild();
+            JavaCity jc = city.toJavaCity(nation == null ? f -> false : nation::hasProject);
+            build = jc.toCityBuild();
         }
-        if (json != null) {
+        if (json != null && !json.isBlank()) {
             CityBuild build2 = CityBuild.of(json, true);
             json = build2.toString().replace("}", "") + "," + build.toString().replace("{", "");
             build = CityBuild.of(json, true);

@@ -109,10 +109,6 @@ public class Revenue extends Command {
                 force = true;
             }
 
-            if (nations.size() > 250 && !Locutus.imp().getGuildDB(guild).isWhitelisted()) {
-                return "Too many nations (max: 250), Please try using a filter";
-            }
-
             if (nations.size() == 0) {
                 return "Invalid nation or alliance: `" + args.get(0) + "` (add `-i` if they are inactive/vm/gray/app/beige)";
             } else {

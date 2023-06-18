@@ -248,6 +248,8 @@ public class CommandManager2 {
         this.commands.registerMethod(new StatCommands(), List.of("stats_war"), "warAttacksByDay", "warattacksbyday");
         this.commands.registerMethod(new FunCommands(), List.of("fun"), "stealBorgsCity", "stealborgscity");
 
+        this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "audit"), "auditAlertOptOut", "optout");
+
         StringBuilder output = new StringBuilder();
         this.commands.generatePojo("", output, 0);
         System.out.println(output);

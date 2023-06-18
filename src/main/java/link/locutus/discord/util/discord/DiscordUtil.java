@@ -895,7 +895,7 @@ public class DiscordUtil {
 
                         Object cell = row.get(nationI);
                         if (cell == null) continue;
-                        String nationName = cell + "";
+                        String nationName = (cell + "").trim();
                         if (nationName.isEmpty()) continue;
 
                         DBNation nation = null;

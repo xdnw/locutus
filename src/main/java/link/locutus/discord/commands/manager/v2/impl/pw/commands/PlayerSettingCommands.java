@@ -9,7 +9,12 @@ import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DiscordMeta;
+import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.RateLimitUtil;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 
 public class PlayerSettingCommands {
@@ -31,6 +36,18 @@ public class PlayerSettingCommands {
             }
         }
         return "Set " + DiscordMeta.OPT_OUT + " to " + optOut;
+    }
+
+    @Command(desc = "Opt out of audit alerts")
+    @RolePermission(Roles.MEMBER)
+    public String auditAlertOptOut(@Me Member member, @Me DBNation me, @Me Guild guild, @Me GuildDB db) {
+        Role role = Roles.AUDIT_ALERT_OPT_OUT.toRole(guild);
+        if (role == null) {
+            role = RateLimitUtil.complete(guild.createRole().setName(Roles.AUDIT_ALERT_OPT_OUT.name()));
+            db.addRole(Roles.AUDIT_ALERT_OPT_OUT, role, 0);
+        }
+        RateLimitUtil.queue(guild.addRoleToMember(member, role));
+        return "Opted out of audit alerts";
     }
 
 }
