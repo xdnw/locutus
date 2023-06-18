@@ -51,7 +51,6 @@ public class Auth {
     private final String username;
     private String apiKey;
     private boolean valid;
-
     private CookieManager msCookieManager = new CookieManager();
 
     private final ReentrantLock lock = new ReentrantLock();
@@ -71,7 +70,6 @@ public class Auth {
         Document dom = Jsoup.parse(html);
         return dom.select("input[name=token]").attr("value");
     }
-
 
     public String readStringFromURL(String urlStr, Map<String, String> arguments) throws IOException {
         return readStringFromURL(urlStr, arguments, true);

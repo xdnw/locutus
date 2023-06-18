@@ -136,6 +136,48 @@ public class Placeholders<T> {
         return argStart != -1 ? input.substring(0, argStart) : input;
     }
 
+    public String format(String line, int recursion, Function<String, String> formatPlaceholder) {
+        try {
+            int q = 0;
+            List<Integer> indicies = null;
+            for (int i = 0; i < line.length(); i++) {
+                char current = line.charAt(i);
+                if (current == '{') {
+                    if (indicies == null) indicies = new ArrayList<>();
+                    indicies.add(i);
+                    q++;
+                } else if (current == '}' && indicies != null) {
+                    if (q > 0) {
+                        if (recursion < 513) {
+                            q--;
+                            int lastindx = indicies.size() - 1;
+                            int start = indicies.get(lastindx);
+                            String arg = line.substring(start, i + 1);
+
+                            Object result;
+                            try {
+                                System.out.println("Format `" + arg + "`");
+                                result = formatPlaceholder.apply(arg.substring(1, arg.length() - 1));
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                result = null;
+                            }
+                            if (result != null) {
+                                line = new StringBuffer(line).replace(start, i + 1, result + "").toString();
+                            }
+                            indicies.remove(lastindx);
+                            i = start;
+                        }
+                    }
+                }
+            }
+            return line;
+        } catch (Exception e2) {
+            e2.printStackTrace();
+            return "";
+        }
+    }
+
     public Map.Entry<Type, Function<T, Object>> getPlaceholderFunction(ValueStore store, String input) {
         List<String> args;
         int argStart = input.indexOf('(');
@@ -196,5 +238,17 @@ public class Placeholders<T> {
             func = obj -> cmdObj.call(obj, store, arguments);
         }
         return new AbstractMap.SimpleEntry<>(cmdObj.getReturnType(), func);
+    }
+
+    public CommandGroup getCommands() {
+        return commands;
+    }
+
+    public PermissionHandler getPermisser() {
+        return permisser;
+    }
+
+    public ValidatorStore getValidators() {
+        return validators;
     }
 }

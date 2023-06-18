@@ -9,6 +9,7 @@ import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
+import link.locutus.discord.commands.manager.CommandManager;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -21,6 +22,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -37,6 +39,7 @@ import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.DocPrinter2;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -63,7 +66,10 @@ import net.dv8tion.jda.api.entities.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Files;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -85,6 +91,36 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class AdminCommands {
+
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String dumpWiki(@Default String pathRelative) throws IOException, InvocationTargetException, IllegalAccessException {
+        if (pathRelative == null) pathRelative = "../locutus.wiki";
+        CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
+
+        String commandsStr = DocPrinter2.printCommands(manager.getCommands(), manager.getStore(), manager.getPermisser());
+        String argumentsStr = DocPrinter2.printParsers(manager.getStore());
+        String placeholderStr = DocPrinter2.printPlaceholders(manager.getNationPlaceholders(), manager.getStore());
+        String aaPlaceholderStr = DocPrinter2.printPlaceholders(manager.getNationPlaceholders(), manager.getStore());
+
+        // write commandsStr to file `path` + File.separator + "commands.md"
+        File file = new File(pathRelative + File.separator + "commands.md");
+        Files.write(file.toPath(), commandsStr.getBytes());
+
+        // write argumentsStr   to file `path` + File.separator + "arguments.md"
+        file = new File(pathRelative + File.separator + "arguments.md");
+        Files.write(file.toPath(), argumentsStr.getBytes());
+
+        // write placeholderStr to file `path` + File.separator + "kingdom_placeholders.md"
+        file = new File(pathRelative + File.separator + "nation_placeholders.md");
+        Files.write(file.toPath(), placeholderStr.getBytes());
+
+        file = new File(pathRelative + File.separator + "alliance_placeholders.md");
+        Files.write(file.toPath(), aaPlaceholderStr.getBytes());
+
+        return "Done!";
+    }
+
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
