@@ -2,6 +2,7 @@ package link.locutus.discord.util;
 
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.io.PageRequestQueue;
+import link.locutus.discord.util.offshore.Auth;
 import org.apache.commons.io.IOUtils;
 import org.eclipse.jetty.util.UrlEncoded;
 
@@ -162,7 +163,6 @@ public final class FileUtil {
     public enum RequestType {
         GET,
         POST,
-        HEAD,
     }
 
     private static PageRequestQueue pageRequestQueue = new PageRequestQueue(250);
@@ -179,54 +179,42 @@ public final class FileUtil {
 //                System.out.println("Requesting " + urlStr + " at " + now + " with priority " + priority + " ( last: " + (now - lastRead) + " ). Queue size: " + pageRequestQueue.size());
                 try {
                     URL url = new URL(urlStr);
-                    HttpURLConnection http = (HttpURLConnection) url.openConnection();
+                    URLConnection con = url.openConnection();
+                    HttpURLConnection http = (HttpURLConnection) con;
 
                     if (msCookieManager != null && msCookieManager.getCookieStore().getCookies().size() > 0) {
-                        List<String> cookies = new ArrayList<>();
                         for (HttpCookie cookie : msCookieManager.getCookieStore().getCookies()) {
-                            if (cookie.getName().equalsIgnoreCase("XSRF-TOKEN")) {
-                                // x-requested-with: XMLHttpRequest
-                                http.setRequestProperty("x-requested-with", "XMLHttpRequest");
-                                http.setRequestProperty("x-xsrf-token", URLDecoder.decode(cookie.getValue()));
-                            }
-                            cookies.add(cookie.getName() + "=" + cookie.getValue());
+                            http.addRequestProperty("Cookie", cookie.toString());
                         }
-                        if (!cookies.isEmpty()) {
-                            http.addRequestProperty("cookie", String.join(";", cookies));
-                        }
+                        // While joining the Cookies, use ',' or ';' as needed. Most of the servers are using ';'
+//            http.setRequestProperty("Cookie",
+//                    StringMan.join(msCookieManager.getCookieStore().getCookies(), ";"));
                     }
 
-                    http.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7");
-                    http.setRequestProperty("Accept-Encoding", "gzip, deflate, br");
-                    http.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
-                    http.setRequestProperty("Referer", urlStr);
+                    http.setUseCaches(false);
+                    http.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9");
                     http.setRequestProperty("dnt", "1");
+                    http.setRequestProperty("Connection", "keep-alive");
+                    http.setRequestProperty("Referer", urlStr);
+                    http.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
 
                     http.setRequestProperty("User-Agent", Settings.USER_AGENT);
-                    switch (type) {
-                        case GET:
-                            http.setRequestMethod("GET");
-                            http.setRequestProperty("content-type", "application/json");
-                            break;
-                        case POST:
-                            http.setRequestMethod("POST");
-
-                            http.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-                            http.setRequestProperty("Connection", "keep-alive");
-                            int length = dataBinary != null ? dataBinary.length : 0;
-                            http.setFixedLengthStreamingMode(length);
-                            break;
-                        case HEAD:
-                            http.setRequestMethod("HEAD");
-                            break;
+                    if (dataBinary != null && dataBinary.length != 0 && type == RequestType.POST) {
+                        http.setRequestMethod("POST");
+                    } else if (type != RequestType.POST && dataBinary == null) {
+                        http.setRequestMethod("GET");
                     }
-
-                    http.setInstanceFollowRedirects(false);
                     http.setDoOutput(true);
+                    http.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+
+                    int length = dataBinary != null ? dataBinary.length : 0;
+                    http.setFixedLengthStreamingMode(length);
+                    http.setInstanceFollowRedirects(false);
 
                     if (apply != null) apply.accept(http);
 
-                    if (dataBinary != null && dataBinary.length != 0) {
+                    http.connect();
+                    if (dataBinary != null) {
                         try (OutputStream os = http.getOutputStream()) {
                             os.write(dataBinary);
                         }
@@ -244,27 +232,18 @@ public final class FileUtil {
                         byte[] bytes = buffer.toByteArray();
 
                         Map<String, List<String>> headerFields = http.getHeaderFields();
-
-                        if (msCookieManager != null) {
-                            for (Map.Entry<String, List<String>> entry : headerFields.entrySet()) {
-                                if (entry.getKey() != null && entry.getKey().equalsIgnoreCase(COOKIES_HEADER)) {
-                                    List<String> cookiesHeader = entry.getValue();
-                                    for (String cookie : cookiesHeader) {
-                                        List<HttpCookie> parsed = HttpCookie.parse(cookie);
-                                        for (HttpCookie httpCookie : parsed) {
-                                            msCookieManager.getCookieStore().add(null, httpCookie);
-                                        }
-                                    }
-                                }
+                        List<String> cookiesHeader = headerFields.get(COOKIES_HEADER);
+                        if (cookiesHeader != null && msCookieManager != null) {
+                            for (String cookie : cookiesHeader) {
+                                msCookieManager.getCookieStore().add(null, HttpCookie.parse(cookie).get(0));
                             }
                         }
 
+
                         return new String(bytes, StandardCharsets.UTF_8);
                     } catch (IOException e) {
-                        e.printStackTrace();
-
                         try (InputStream is = http.getErrorStream()) {
-                            throw new IOException(e.getMessage() + ":\n" + is == null ? "null" : IOUtils.toString(is, StandardCharsets.UTF_8));
+                            throw new IOException(e.getMessage() + ":\n" + IOUtils.toString(is, StandardCharsets.UTF_8));
                         }
                     }
                 } catch (IOException e) {

@@ -60,11 +60,11 @@ public class DiscordDB extends DBMainV2 {
         executeStmt("CREATE TABLE IF NOT EXISTS `DISCORD_META` (`key` BIGINT NOT NULL, `id` BIGINT NOT NULL, `value` BLOB NOT NULL, PRIMARY KEY(`key`, `id`))");
 //        executeStmt("CREATE TABLE IF NOT EXISTS `API_KEYS2`(`nation_id` INT NOT NULL PRIMARY KEY, `api_key` BIGINT, `bot_key` BIGINT)");
         executeStmt("CREATE TABLE IF NOT EXISTS `API_KEYS3`(`nation_id` INT NOT NULL PRIMARY KEY, `api_key` BLOB, `bot_key` BLOB)");
-        try {
-            migrateKeys();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
+//        try {
+//            migrateKeys();
+//        } catch (SQLException e) {
+//            throw new RuntimeException(e);
+//        }
 
         setupApiKeys();
     }
@@ -90,7 +90,7 @@ public class DiscordDB extends DBMainV2 {
                     byte[] botKeyBytes = botKey == null ? null : new BigInteger(botKey, 16).toByteArray();
 
                     // insert into API_KEYS3
-                    try (PreparedStatement stmt2 = prepareQuery("INSERT INTO API_KEYS3 VALUES (?, ?, ?)")) {
+                    try (PreparedStatement stmt2 = prepareQuery("INSERT OR REPLACE INTO API_KEYS3 VALUES (?, ?, ?)")) {
                         stmt2.setInt(1, nationId);
                         stmt2.setBytes(2, keyBytes);
                         stmt2.setBytes(3, botKeyBytes);
@@ -105,37 +105,6 @@ public class DiscordDB extends DBMainV2 {
 
     private void setupApiKeys() {
         initInfo();
-
-        Type type = new com.google.gson.reflect.TypeToken<ApiRecord>() {}.getType();
-        Gson gson = new Gson();
-
-        Map<Long, byte[]> keys = info.getOrDefault(DiscordMeta.API_KEY, Collections.emptyMap());
-        for (byte[] jsonBytes : keys.values()) {
-            String json = new String(jsonBytes, StandardCharsets.UTF_8);
-            ApiRecord record = gson.fromJson(json, type);
-
-            if (record.getNationId() == null || record.getApiKey() == null) continue;
-            int nationId = record.getNationId();
-            String key = record.getApiKey();
-
-            addApiKey(nationId, key);
-        }
-        deleteInfo(DiscordMeta.API_KEY);
-
-        try {
-            if (tableExists("API_KEYS")) {
-                try (ResultSet rs = getDb().selectBuilder("API_KEYS").select("*").executeRaw()) {
-                    while (rs.next()) {
-                        int nationId = rs.getInt("nation_id");
-                        String key = Long.toHexString(rs.getLong("api_key"));
-                        addApiKey(nationId, key);
-                    }
-                }
-                getDb().drop("API_KEYS");
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     public void addApiKey(int nationId, String key) {
@@ -184,8 +153,9 @@ public class DiscordDB extends DBMainV2 {
 
                     byte[] botKeyId = getBytes(rs, "bot_key");
                     // byte[] to hex string
-                    String key = Hex.encodeHexString(keyId);
-                    String botKey = botKeyId == null ? null : Hex.encodeHexString(botKeyId);
+
+                    String key = new BigInteger(keyId).toString(16).toLowerCase(Locale.ROOT);
+                    String botKey = botKeyId == null ? null : new BigInteger(botKeyId).toString(16).toLowerCase(Locale.ROOT);
                     return new ApiKeyPool.ApiKey(nationId, key, botKey);
                 }
             }
@@ -203,7 +173,6 @@ public class DiscordDB extends DBMainV2 {
     }
 
     public void deleteApiKey(String key) {
-        long keyId = new BigInteger(key.toLowerCase(Locale.ROOT), 16).longValue();
         update("UPDATE API_KEYS3 SET api_key = NULL WHERE api_key = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setBytes(1, new BigInteger(key.toLowerCase(Locale.ROOT), 16).toByteArray());
 
@@ -211,7 +180,6 @@ public class DiscordDB extends DBMainV2 {
     }
 
     public void deleteBotKey(String key) {
-        long keyId = new BigInteger(key.toLowerCase(Locale.ROOT), 16).longValue();
         update("UPDATE API_KEYS3 SET bot_key = NULL WHERE bot_key = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setBytes(1, new BigInteger(key.toLowerCase(Locale.ROOT), 16).toByteArray());
 

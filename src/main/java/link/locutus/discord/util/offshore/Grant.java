@@ -261,7 +261,7 @@ public class Grant {
 
     }
 
-    public static abstract class Requirement implements Function<DBNation, Boolean> {
+    public static class Requirement implements Function<DBNation, Boolean> {
         private final Function<DBNation, Boolean> function;
         private final String message;
         private boolean canOverride;

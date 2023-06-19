@@ -116,19 +116,6 @@ public class SlashCommandManager extends ListenerAdapter {
         this.commands = root.getCommandManager().getV2();
     }
 
-    public static void main(String[] args) throws LoginException, InterruptedException, SQLException, ClassNotFoundException {
-        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-
-        Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();
-        Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
-
-        Settings.INSTANCE.ENABLED_COMPONENTS.SLASH_COMMANDS = true;
-
-        Locutus locutus = Locutus.create().start();
-        // TODO test the command?
-//        System.exit(1);
-    }
-
     public static Collection<ChannelType> getChannelType(Type type) {
         if (type instanceof Class tClass) {
             while (tClass != null) {

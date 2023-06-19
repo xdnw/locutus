@@ -111,6 +111,7 @@ public class Auth {
 
             String loginResult = FileUtil.get(FileUtil.readStringFromURL(PagePriority.LOGIN.ordinal(), url, userPass, this.getCookieManager()));
             if (!loginResult.contains("Login Successful")) {
+                System.out.println(loginResult);
                 throw new IllegalArgumentException("Error: " + PnwUtil.parseDom(Jsoup.parse(loginResult), "columnheader"));
             }
             loggedIn = true;

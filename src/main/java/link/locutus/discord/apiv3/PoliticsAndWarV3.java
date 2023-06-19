@@ -7,6 +7,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.DiscordDB;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.StringMan;
@@ -16,6 +18,7 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import graphql.GraphQLException;
 import link.locutus.discord.util.io.PagePriority;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -26,6 +29,9 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.function.Consumer;
@@ -102,6 +108,7 @@ public class PoliticsAndWarV3 {
     public <T> T readTemplate(PagePriority priority, GraphQLRequest graphQLRequest, Class<T> resultBody) {
         return readTemplate(priority.ordinal(), graphQLRequest, resultBody);
     }
+
     public <T> T readTemplate(int priority, GraphQLRequest graphQLRequest, Class<T> resultBody) {
         if (rateLimitGlobal.intervalMs != 0) {
             synchronized (rateLimitGlobal) {
@@ -138,10 +145,11 @@ public class PoliticsAndWarV3 {
                 HttpEntity<String> entity = httpEntity(graphQLRequest, pair.getKey(), pair.getBotKey());
 
 
-                exchange = FileUtil.submit(priority, () -> restTemplate.exchange(URI.create(url),
+                exchange = restTemplate.exchange(URI.create(url),
+//                        FileUtil.submit(priority, () -> restTemplate.exchange(URI.create(url),
                         HttpMethod.POST,
                         entity,
-                        String.class));
+                        String.class);
 
                 String body = exchange.getBody();
                 JsonNode json = jacksonObjectMapper.readTree(body);
@@ -176,14 +184,15 @@ public class PoliticsAndWarV3 {
                 backOff++;
             } catch (HttpClientErrorException.Unauthorized e) {
                 System.out.println("Unauthorized ");
-
-                pair.deleteApiKey();
-
-                if (badKey++ >= 4 || pool.size() <= 1) {
-                    e.printStackTrace();
-                    AlertUtil.error(e.getMessage(), e);
-                    rethrow(e, pair,false);
-                    throw e;
+                try {
+                    if (badKey++ >= 4 || pool.size() <= 1) {
+                        e.printStackTrace();
+                        AlertUtil.error(e.getMessage(), e);
+                        rethrow(e, pair, false);
+                        throw e;
+                    }
+                } finally {
+                    pair.deleteApiKey();
                 }
                 pool.removeKey(pair);
             } catch (HttpClientErrorException e) {
@@ -251,6 +260,9 @@ public class PoliticsAndWarV3 {
             }
         }
         if (throwRuntime) throw new RuntimeException(msg);
+        if (e instanceof HttpClientErrorException.Unauthorized unauthorized) {
+            throw HttpClientErrorException.create(msg, unauthorized.getStatusCode(), unauthorized.getStatusText(), unauthorized.getResponseHeaders(), unauthorized.getResponseBodyAsByteArray(), /* charset utf-8 */ StandardCharsets.UTF_8);
+        }
     }
 
     public <T extends GraphQLResult<?>> void handlePagination(PagePriority priority, Function<Integer, GraphQLRequest> requestFactory, Function<GraphQLError, ErrorResponse> errorBehavior, Class<T> resultBody, Predicate<T> hasMorePages, Consumer<T> onEachResult) {
@@ -1499,6 +1511,7 @@ public class PoliticsAndWarV3 {
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         headers.setContentType(MediaType.APPLICATION_JSON);
 
+        System.out.println("Bot " + (bot != null && !bot.isEmpty()));
         if (api != null && bot != null && !bot.isEmpty()) {
             headers.set("X-Api-Key", api);
         } else {

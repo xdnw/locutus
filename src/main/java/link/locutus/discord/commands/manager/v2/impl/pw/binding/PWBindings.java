@@ -139,6 +139,8 @@ public class PWBindings extends BindingHelper {
                 boolean containsNation = false;
                 for (String arg : filterStr.split(",")) {
                     if (!arg.startsWith("#")) containsNation = true;
+                    if (arg.contains("tax_id=")) containsNation = true;
+                    if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) containsNation = true;
                 }
                 if (!containsNation) filterStr += ",*";
                 DiscordUtil.parseNations(db.getGuild(), filterStr); // validate
@@ -168,6 +170,8 @@ public class PWBindings extends BindingHelper {
             boolean containsNation = false;
             for (String arg : filterStr.split(",")) {
                 if (!arg.startsWith("#")) containsNation = true;
+                if (arg.contains("tax_id=")) containsNation = true;
+                if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) containsNation = true;
             }
             if (!containsNation) filterStr += ",*";
             NationFilterString filter = new NationFilterString(filterStr, db.getGuild());
@@ -197,6 +201,8 @@ public class PWBindings extends BindingHelper {
             boolean containsNation = false;
             for (String arg : filterStr.split(",")) {
                 if (!arg.startsWith("#")) containsNation = true;
+                if (arg.contains("tax_id=")) containsNation = true;
+                if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) containsNation = true;
             }
             if (!containsNation) filterStr += ",*";
             NationFilterString filter = new NationFilterString(filterStr, db.getGuild());

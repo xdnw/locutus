@@ -1,6 +1,9 @@
 package link.locutus.discord.util.update;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
+import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBWar;
@@ -17,7 +20,9 @@ import com.google.common.eventbus.Subscribe;
 import link.locutus.discord.apiv1.enums.Rank;
 import net.dv8tion.jda.api.entities.MessageChannel;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -32,6 +37,45 @@ public class AllianceListener {
             }
         }
 
+        { // update internal taxrates
+            for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
+                if (db.isDelegateServer()) continue;
+
+                Set<DBNation> nations = db.getAllianceList().getNations(DBNation::isTaxable);
+                if (nations.isEmpty()) continue;
+
+                Map<NationFilter, TaxRate> internal = GuildKey.REQUIRED_INTERNAL_TAXRATE.getOrNull(db, false);
+                Map<NationFilter, Integer> taxrate = GuildKey.REQUIRED_TAX_BRACKET.getOrNull(db, false);
+                if ((internal == null || internal.isEmpty())
+//                        && (taxrate == null || taxrate.isEmpty())
+                ) {
+                    continue;
+                }
+
+                MessageChannel output = db.getResourceChannel(0);
+                if (output == null) output = GuildKey.ADDBALANCE_ALERT_CHANNEL.getOrNull(db, false);
+
+                try {
+                    List<String> messages = new ArrayList<>();
+                    db.getHandler().setNationInternalTaxRate(nations, messages::add);
+//                    db.getHandler().setNationTaxBrackets(nations, messages::add);
+                    if (!messages.isEmpty() && output != null) {
+                        StringBuilder footer = new StringBuilder();
+                        if (internal != null) {
+                            footer.append("Configure automatic internal taxrate: " + CM.settings.info.cmd.toSlashMention() + " with key " + GuildKey.REQUIRED_INTERNAL_TAXRATE.name() + "\n");
+                        }
+//                        if (taxrate != null) {
+//                            footer.append("Configure automatic tax bracket: " + CM.settings.info.cmd.toSlashMention() + " with key " + GuildKey.REQUIRED_TAX_BRACKET.name() + "\n");
+//                        }
+                        DiscordUtil.sendMessage(output, StringMan.join(messages, "\n") + "\n" + footer);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+        }
+
         { // Update tax records
             for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
                 // Only update taxes if alliance has locutus taxable nations
@@ -39,7 +83,7 @@ public class AllianceListener {
                 try {
                     alliance.updateTaxes();
                 } catch (Throwable ignore) {
-
+                    ignore.printStackTrace();
                 }
             }
         }
