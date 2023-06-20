@@ -929,12 +929,11 @@ public class WarUpdateProcessor {
                 if (nation.getCities() >= 10) numC10Plus++;
             }
             if (numDefending == 0) continue;
-            if (numDefendingUnprovoked > 4) {
+            if (numDefending > 4) {
                 double ratio = (numDefendingUnprovoked * 5d + numDefending) / Math.max(1, (nations.size() - numBeige));
                 warRatio.put(alliance, ratio);
             }
         }
-
 
         Map<DBAlliance, Boolean> isAtWar = new HashMap<>();
         Map<DBAlliance, String> warInfo = new HashMap<>();
@@ -953,12 +952,11 @@ public class WarUpdateProcessor {
                 if (otherAA == 0) continue;
                 if (war.defender_aa != alliance.getAlliance_id()) continue;
 
+                DBNation attacker = war.getNation(true);
                 DBNation defender = war.getNation(false);
+                if (attacker == null || defender == null) continue;
                 if (!nations.contains(defender)) continue;
-
-                for (DBWar defWar : defender.getWars()) {
-                    if (defWar.defender_aa != 0 && defWar.attacker_id == defender.getNation_id()) continue outer;
-                }
+                if (defender.getActive_m() > 2000 || defender.getPositionEnum().id <= Rank.APPLICANT.id || (defender.getSoldiers() == 0 && defender.getTanks() == 0)) continue;
 
                 int amt = notableByAA.getOrDefault(otherAA, 0) + 1;
                 notableByAA.put(otherAA, amt);
@@ -997,7 +995,6 @@ public class WarUpdateProcessor {
             alliance.setMeta(AllianceMeta.LAST_BLITZ_PCT, currentRatio);
             alliance.setMeta(AllianceMeta.IS_WARRING, (byte) (warring ? 1 : 0));
             if (warring) alliance.setMeta(AllianceMeta.LAST_AT_WAR_TURN, currentTurn);
-
             String body = warInfo.get(alliance);
 
             if (body != null && !lastWarring && warring && currentTurn - lastWarTurn > warTurnThresheld) {
