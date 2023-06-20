@@ -9,8 +9,12 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.MMRDouble;
 import link.locutus.discord.db.entities.MMRMatcher;
+import link.locutus.discord.db.entities.TaxBracket;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -106,6 +110,13 @@ public class GrantRequirements {
     }
 
     @Command
+    public Grant.Requirement mmr_correct() {
+        return new Grant.Requirement("Requires the correct MMR (see " + CM.settings.info.cmd.toSlashMention() + " with key " + GuildKey.REQUIRED_MMR.name(), false,
+                DBNation::correctAllianceMMR
+        );
+    }
+
+    @Command
     public Grant.Requirement color(Set<NationColor> color) {
         return new Grant.Requirement("Requires nation on color bloc: " + StringMan.getString(color), false,
                 f -> color.contains(f.getColor())
@@ -120,9 +131,23 @@ public class GrantRequirements {
     }
 
     @Command
-    public Grant.Requirement login_percent(@Timestamp long validUntil) {
-        return new Grant.Requirement("Requires nation weekly login percent above: " + MathMan.format(percent), false,
-                f -> f.avg_daily_login_week() >= (percent / 100d)
+    public Grant.Requirement no_losing_wars() {
+        return new Grant.Requirement("Nation is losing a war", false,
+                f -> f.getRelativeStrength() < 1
+        );
+    }
+
+    @Command
+    public Grant.Requirement avg_land(int amount) {
+        return new Grant.Requirement("Nation requires an average of " + amount + " land", false,
+                f -> f.getAvgLand() >= amount
+        );
+    }
+
+    @Command
+    public Grant.Requirement avg_infra(int amount) {
+        return new Grant.Requirement("Nation requires an average of " + amount + " infrastructure", false,
+                f -> f.getAvg_infra() >= amount
         );
     }
 
@@ -133,12 +158,7 @@ public class GrantRequirements {
     // - OnlyNewCity
     // You have already received infra of that level for that city
     // Nation is losing", overrideSafe, f -> f.getRelativeStrength() < 1
-    // "Nation is on low military", overrideSafe, f -> f.getAircraftPct() < 0.7)
     // "Already received warchest since last war"
-    // infra requirements
-    // correctMMR
-    // mmr requirement
-    // mmrunit requirement
     // taxrate requirement
     // tax bracket requirement
     // off requirement
@@ -156,4 +176,12 @@ public class GrantRequirements {
     // auto add uranium continent to uranium project
     // auto add required projects
     // auto add city requirements (e.g. planning)
+    // valid until
+
+    // total
+    // total_per_banker
+    // daily_per_banker_daily
+    // check timeframe 3d
+
+
 }
