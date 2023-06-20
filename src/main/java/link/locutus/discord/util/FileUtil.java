@@ -156,6 +156,8 @@ public final class FileUtil {
         try {
             return myFuture.get();
         } catch (InterruptedException | ExecutionException e) {
+            Throwable cause = e.getCause();
+            if (cause != null && cause instanceof RuntimeException run) throw run;
             throw new RuntimeException(e);
         }
     }
