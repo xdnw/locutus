@@ -56,6 +56,7 @@ import link.locutus.discord.util.update.NationUpdateProcessor;
 import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.Rank;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
+import link.locutus.discord.util.update.WarUpdateProcessor;
 import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.Category;
 import net.dv8tion.jda.api.entities.Guild;
@@ -92,6 +93,12 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class AdminCommands {
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String checkActiveConflicts() {
+        WarUpdateProcessor.checkActiveConflicts();
+        return "Done! (see console)";
+    }
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)

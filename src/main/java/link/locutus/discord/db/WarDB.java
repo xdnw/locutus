@@ -908,12 +908,6 @@ public class WarDB extends DBMainV2 {
     public CounterStat updateCounter(DBWar war) {
         DBNation attacker = Locutus.imp().getNationDB().getNation(war.attacker_id);
         DBNation defender = Locutus.imp().getNationDB().getNation(war.defender_id);
-        if (war.attacker_aa == 0 && attacker != null) {
-            war.attacker_aa = attacker.getAlliance_id();
-        }
-        if (war.defender_aa == 0 && defender != null) {
-            war.defender_aa = defender.getAlliance_id();
-        }
         if (war.attacker_aa == 0 || war.defender_aa == 0) {
             CounterStat stat = new CounterStat();
             stat.type = CounterType.UNCONTESTED;
@@ -930,7 +924,6 @@ public class WarDB extends DBMainV2 {
         long endDate = TimeUtil.getTimeFromTurn(endTurn + 1);
 
         boolean isOngoing = war.status == WarStatus.ACTIVE || war.status == WarStatus.DEFENDER_OFFERED_PEACE || war.status == WarStatus.ATTACKER_OFFERED_PEACE;
-
         boolean isActive = war.status == WarStatus.DEFENDER_OFFERED_PEACE || war.status == WarStatus.DEFENDER_VICTORY || war.status == WarStatus.ATTACKER_OFFERED_PEACE;
         for (DBAttack attack : attacks) {
             if (attack.getAttack_type() == AttackType.VICTORY && attack.getAttacker_nation_id() == war.attacker_id) {
@@ -974,7 +967,10 @@ public class WarDB extends DBMainV2 {
         Set<Integer> counters = new HashSet<>();
         Set<Integer> isCounter = new HashSet<>();
 
-        List<DBWar> possibleCounters = Locutus.imp().getWarDb().getWars(war.attacker_id, war.defender_id, startDate - TimeUnit.DAYS.toMillis(5), endDate);
+        Set<Integer> nationIds = new HashSet<>(Arrays.asList(war.attacker_id, war.defender_id));
+        long finalEndDate = endDate;
+        Collection<DBWar> possibleCounters = getWarsForNationOrAlliance(nationIds::contains, null,
+                f -> f.date >= startDate - TimeUnit.DAYS.toMillis(5) && f.date <= finalEndDate).values();
         for (DBWar other : possibleCounters) {
             if (other.warId == war.warId) continue;
             if (attAA.contains(other.attacker_aa) || !(defAA.contains(other.attacker_aa))) continue;
@@ -2082,8 +2078,8 @@ public class WarDB extends DBMainV2 {
     }
 
     public void iterateAttacks(long start, long end, Consumer<DBAttack> consumer) {
-        if (start >= end) return;
-        if (end > System.currentTimeMillis()) {
+        if (start > end) return;
+        if (end >= System.currentTimeMillis()) {
             iterateAttacks(start, consumer);
             return;
         }

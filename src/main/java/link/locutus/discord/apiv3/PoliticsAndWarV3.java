@@ -144,12 +144,12 @@ public class PoliticsAndWarV3 {
 //
                 HttpEntity<String> entity = httpEntity(graphQLRequest, pair.getKey(), pair.getBotKey());
 
-
-                exchange = restTemplate.exchange(URI.create(url),
-//                        FileUtil.submit(priority, () -> restTemplate.exchange(URI.create(url),
+                exchange =
+//                        restTemplate.exchange(URI.create(url),
+                        FileUtil.submit(priority, () -> restTemplate.exchange(URI.create(url),
                         HttpMethod.POST,
                         entity,
-                        String.class);
+                        String.class));
 
                 String body = exchange.getBody();
                 JsonNode json = jacksonObjectMapper.readTree(body);
@@ -1511,7 +1511,6 @@ public class PoliticsAndWarV3 {
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        System.out.println("Bot " + (bot != null && !bot.isEmpty()));
         if (api != null && bot != null && !bot.isEmpty()) {
             headers.set("X-Api-Key", api);
         } else {
