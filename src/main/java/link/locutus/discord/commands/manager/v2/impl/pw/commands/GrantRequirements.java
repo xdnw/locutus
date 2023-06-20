@@ -119,12 +119,12 @@ public class GrantRequirements {
         );
     }
 
-    @Command
-    public Grant.Requirement login_percent(@Timestamp long validUntil) {
-        return new Grant.Requirement("Requires nation weekly login percent above: " + MathMan.format(percent), false,
-                f -> f.avg_daily_login_week() >= (percent / 100d)
-        );
-    }
+//    @Command
+//    public Grant.Requirement login_percent(@Timestamp long validUntil) {
+//        return new Grant.Requirement("Requires nation weekly login percent above: " + MathMan.format(percent), false,
+//                f -> f.avg_daily_login_week() >= (percent / 100d)
+//        );
+//    }
 
     // days since last infragrant
     // valid until

@@ -450,14 +450,16 @@ public enum AllianceMetric {
 
     public static synchronized void updateLegacy() {
         long currentTurn = TimeUtil.getTurn();
-        long[] min = new long[0];
-        Locutus.imp().getWarDb().iterateAttacks(0, new Consumer<DBAttack>() {
-            @Override
-            public void accept(DBAttack dbAttack) {
-                min[0] = dbAttack.getDate();
-                throw new RuntimeException("break");
-            }
-        });
+        long[] min = new long[1];
+        try {
+            Locutus.imp().getWarDb().iterateAttacks(0, new Consumer<DBAttack>() {
+                @Override
+                public void accept(DBAttack dbAttack) {
+                    min[0] = dbAttack.getDate();
+                    throw new RuntimeException("break");
+                }
+            });
+        } catch (RuntimeException ignore) {};
         long startTurn = TimeUtil.getTurn(min[0]);
         AllianceMetric metric = AllianceMetric.WARCOST_DAILY;
         Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances(true, true, true, 80);
@@ -480,7 +482,7 @@ public enum AllianceMetric {
             }
             for (DBAlliance alliance : alliances) {
                 Map<DBAttack, Boolean> attacks = attacksByAA.get(alliance.getAlliance_id());
-                if (attacks.isEmpty()) continue;
+                if (attacks == null || attacks.isEmpty()) continue;
 
                 AttackCost cost = new AttackCost();
 
