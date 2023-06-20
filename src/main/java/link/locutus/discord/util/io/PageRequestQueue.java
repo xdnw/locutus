@@ -1,5 +1,7 @@
 package link.locutus.discord.util.io;
 
+import org.springframework.web.client.HttpClientErrorException;
+
 import java.util.Comparator;
 import java.util.PriorityQueue;
 import java.util.concurrent.CompletableFuture;
@@ -39,9 +41,20 @@ public class PageRequestQueue {
             task = queue.poll();
         }
         if (task != null) {
-            lastRun = System.currentTimeMillis();
-            Supplier supplier = task.getTask();
-            task.complete(supplier.get());
+            try {
+                lastRun = System.currentTimeMillis();
+                Supplier supplier = task.getTask();
+                task.complete(supplier.get());
+            } catch (Throwable e) {
+                if (e instanceof HttpClientErrorException.TooManyRequests) {
+                    try {
+                        Thread.sleep(6000);
+                    } catch (InterruptedException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+                task.completeExceptionally(e);
+            }
         }
     }
 
