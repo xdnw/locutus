@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.domains.subdomains.WarAttacksContainer;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
@@ -647,5 +648,9 @@ public class DBAttack {
 
     public void setDef_mun_used(double def_mun_used) {
         this.def_mun_used = def_mun_used;
+    }
+
+    public DBWar getWar() {
+        return Locutus.imp().getWarDb().getWar(war_id);
     }
 }

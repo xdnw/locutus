@@ -14,11 +14,14 @@ import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public enum AllianceMetric {
@@ -185,7 +188,7 @@ public enum AllianceMetric {
             AttackCost cost = new AttackCost();
             long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
             List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(nationIds, cutoff);
-            cost.addCost(attacks, a -> nationIds.contains(a.getAttacker_nation_id()), b -> !nationIds.contains(b.getDefender_nation_id()));
+            cost.addCost(attacks, a -> nationIds.contains(a.getAttacker_nation_id()), b -> nationIds.contains(b.getDefender_nation_id()));
             return cost.convertedTotal(true);
         }
     },
@@ -444,6 +447,50 @@ public enum AllianceMetric {
     },
 
     ;
+
+    public static synchronized void updateLegacy() {
+        long currentTurn = TimeUtil.getTurn();
+        long[] min = new long[0];
+        Locutus.imp().getWarDb().iterateAttacks(0, new Consumer<DBAttack>() {
+            @Override
+            public void accept(DBAttack dbAttack) {
+                min[0] = dbAttack.getDate();
+                throw new RuntimeException("break");
+            }
+        });
+        long startTurn = TimeUtil.getTurn(min[0]);
+        AllianceMetric metric = AllianceMetric.WARCOST_DAILY;
+        Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances(true, true, true, 80);
+        Set<Integer> allianceIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
+        for (long turn = startTurn; turn < currentTurn; turn++) {
+            System.out.println("Updating " + ((turn - startTurn)) + "/" + (currentTurn - startTurn) + " " + ((double) (turn - startTurn) / (currentTurn - startTurn) * 100) + "%");
+            long start = TimeUtil.getTimeFromTurn(turn + 1) - TimeUnit.DAYS.toMillis(1);
+            long end = TimeUtil.getTimeFromTurn(turn + 1);
+            List<DBAttack> allAttacks = Locutus.imp().getWarDb().getAttacks(start, end, f -> true);
+            Map<Integer, Map<DBAttack, Boolean>> attacksByAA = new HashMap<>();
+            for (DBAttack attack : allAttacks) {
+                DBWar war = attack.getWar();
+                if (war == null) continue;
+                if (allianceIds.contains(war.attacker_aa)) {
+                    attacksByAA.computeIfAbsent(war.attacker_aa, f -> new HashMap<>()).put(attack, war.attacker_id == attack.getAttacker_nation_id());
+                }
+                if (allianceIds.contains(war.defender_aa)) {
+                    attacksByAA.computeIfAbsent(war.defender_aa, f -> new HashMap<>()).put(attack, war.defender_id == attack.getAttacker_nation_id());
+                }
+            }
+            for (DBAlliance alliance : alliances) {
+                Map<DBAttack, Boolean> attacks = attacksByAA.get(alliance.getAlliance_id());
+                if (attacks.isEmpty()) continue;
+
+                AttackCost cost = new AttackCost();
+
+                cost.addCost(attacks.keySet(), a -> attacks.get(a), b -> !attacks.get(b));
+                double total = cost.convertedTotal(true);
+
+                Locutus.imp().getNationDB().addMetric(alliance, metric, turn, total);
+            }
+        }
+    }
 
     private static Map.Entry<Integer, double[]> aaRevenueCache;
 
