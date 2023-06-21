@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
@@ -65,7 +66,7 @@ public class Warchest extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
         DBNation nationAccount = null;
         DBAlliance allianceAccount = null;
@@ -98,7 +99,7 @@ public class Warchest extends Command {
         }
 
         if (args.size() < 3) {
-            return usage(event, "Current warchest (per city): " + PnwUtil.resourcesToString(guildDb.getPerCityWarchest(me)));
+            return usage("Current warchest (per city): " + PnwUtil.resourcesToString(guildDb.getPerCityWarchest(me)), channel);
         }
 
 
@@ -109,7 +110,7 @@ public class Warchest extends Command {
         DepositType.DepositTypeInfo type = PWBindings.DepositTypeInfo(args.get(2));
 
         String arg = args.get(0);
-        List<DBNation> nations = new ArrayList<>(DiscordUtil.parseNations(event.getGuild(), arg));
+        List<DBNation> nations = new ArrayList<>(DiscordUtil.parseNations(guild, arg));
         if (nations.size() != 1 || !flags.contains('b')) {
             nations.removeIf(n -> n.getPosition() <= 1);
             nations.removeIf(n -> n.getVm_turns() != 0);
@@ -123,7 +124,7 @@ public class Warchest extends Command {
         boolean skipStockpile = flags.contains('s');
         return UnsortedCommands.warchest(
                 guildDb,
-                new DiscordChannelIO(event.getChannel()),
+                channel,
                 guild,
                 author,
                 me,

@@ -3,6 +3,7 @@ package link.locutus.discord.commands.account;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -45,14 +46,13 @@ public class CheckMail extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 4) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 4) return usage(args.size(), 4, channel);
 
         String query = args.get(0);
         if (query.equalsIgnoreCase("*")) query = "";
 
-        MessageChannel channel = event.getChannel();
-        RateLimitUtil.queue(channel.sendMessage("Please wait..."));
+        channel.sendMessage("Please wait...");
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.MAIL_RESPONSES_SHEET);
@@ -128,7 +128,7 @@ public class CheckMail extends Command {
         sheet.clear("A:Z");
         sheet.set(0, 0);
 
-        sheet.attach(new DiscordChannelIO(channel).create(), null, false, 0).send();
+        sheet.attach(channel.create(), null, false, 0).send();
         return null;
     }
 }

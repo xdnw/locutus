@@ -45,14 +45,14 @@ public class CopyPasta extends Command implements Noformat {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (guild == null) return "Not in a guild";
         GuildDB db = Locutus.imp().getGuildDB(guild);
         if (args.isEmpty()) {
             Set<String> options = new HashSet<>(db.getInfoMap().keySet());
             options.removeIf(f -> !f.toLowerCase().startsWith("copypasta."));
             options = options.stream().map(f -> f.split("\\.", 2)[1]).collect(Collectors.toSet());
-            return usage(StringMan.join(options, ","), event.getChannel());
+            return usage(StringMan.join(options, ","), channel);
         }
         String key = args.get(0).toLowerCase();
         if (args.size() == 1) {
@@ -79,7 +79,7 @@ public class CopyPasta extends Command implements Noformat {
             if (event.getMessage().getEmbeds().isEmpty()) {
                 RateLimitUtil.queue(event.getMessage().delete());
             }
-            return DiscordUtil.format(guild, event.getGuildChannel(), author, me, value);
+            return DiscordUtil.format(guild, channel, author, me, value);
         } else {
             if (!Roles.INTERNAL_AFFAIRS.has(author, guild)) return "No permission.";
 
@@ -91,7 +91,7 @@ public class CopyPasta extends Command implements Noformat {
                     return "Invalid role name: `" + split[i] + "` (note: Periods are used as a delimiter in the copypasta key)";
             }
 
-            String content = DiscordUtil.trimContent(event.getMessage().getContentRaw());
+            String content = DiscordUtil.trimContent(fullCommandRaw);
             int start = content.indexOf(' ', content.indexOf(' ') + 1);
             String message = content.substring(start + 1);
             if (message.isEmpty() || message.equalsIgnoreCase("null")) {

@@ -51,8 +51,8 @@ public class NationSheet extends Command implements Noformat {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() < 2) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() < 2) return usage(args.size(), 2, channel);
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         SpreadSheet sheet = null;
@@ -110,7 +110,7 @@ public class NationSheet extends Command implements Noformat {
         for (DBNation nation : nationsSorted) {
             for (int i = 1; i < args.size(); i++) {
                 String arg = args.get(i);
-                String formatted = DiscordUtil.format(guild, event.getGuildChannel(), author, nation, arg);
+                String formatted = DiscordUtil.format(guild, channel, author, nation, arg);
 
                 header.set(i - 1, formatted);
             }
@@ -121,7 +121,7 @@ public class NationSheet extends Command implements Noformat {
         sheet.clear("A:ZZ");
         sheet.set(0, 0);
 
-        sheet.attach(new DiscordChannelIO(event).create()).send();
+        sheet.attach(channel.create()).send();
         return null;
 //        I need, Nation name, nation link, score, war range, offensive/defensive slots open, military count (planes/tanks/ships/soldiers)
     }

@@ -48,7 +48,6 @@ import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import retrofit2.http.HEAD;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -224,7 +223,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             for (String key : keys) {
                 Integer nationIdFromKey = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
                 if (nationIdFromKey != null) {
-                    DBNation nation = DBNation.byId(nationIdFromKey);
+                    DBNation nation = DBNation.getById(nationIdFromKey);
                     if (nation != null) {
                         if (nation.getAlliance_id() == allianceId) {
                             DBAlliancePosition position = nation.getAlliancePosition();
@@ -243,7 +242,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         Set<Integer> aaIds = getAllianceIds();
         Set<Integer> allowedNations = Settings.INSTANCE.TASKS.MAIL.getInstances().stream().map(f -> f.NATION_ID).collect(Collectors.toSet());
         for (int nationId : allowedNations) {
-            DBNation nation = DBNation.byId(nationId);
+            DBNation nation = DBNation.getById(nationId);
             if (nation == null || !aaIds.contains(nation.getAlliance_id())) continue;
             ApiKeyPool.ApiKey key = nation.getApiKey(false);
             if (key != null) return ApiKeyPool.builder().addKey(key).build();
@@ -255,7 +254,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             for (String key : apiKeys) {
                 Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
                 if (nationId != null) {
-                    DBNation nation = DBNation.byId(nationId);
+                    DBNation nation = DBNation.getById(nationId);
                     if (nation != null) {
                         if (aaIds.contains(nation.getAlliance_id())) {
                             return ApiKeyPool.builder().addKey(nationId, key).build();

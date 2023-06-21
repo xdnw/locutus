@@ -60,11 +60,11 @@ public class WarCostAB extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         String attackTypeStr = DiscordUtil.parseArg(args, "attack_type");
         String attackSuccesStr = DiscordUtil.parseArg(args, "success");
         if (args.isEmpty() || args.size() > 4 || (args.size() >= 3 && args.get(0).equalsIgnoreCase(args.get(1)))) {
-            return usage(event);
+            return usage(args.size(), unkown, channel);
         }
 
         String arg0 = args.get(0);
@@ -83,7 +83,7 @@ public class WarCostAB extends Command {
 
         StringBuilder result = new StringBuilder(cost.toString(!flags.contains('u'), !flags.contains('i'), !flags.contains('c'), !flags.contains('l')));
         if (flags.contains('w')) {
-            DiscordUtil.upload(event.getChannel(), cost.getNumWars() + " wars", "- " + StringMan.join(cost.getWarIds(), "\n- "));
+            DiscordUtil.upload(channel, cost.getNumWars() + " wars", "- " + StringMan.join(cost.getWarIds(), "\n- "));
         }
         if (flags.contains('t')) {
             List<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
@@ -95,7 +95,7 @@ public class WarCostAB extends Command {
             for (Map.Entry<WarType, Integer> entry : byType.entrySet()) {
                 response.append("\n" + entry.getKey() + ": " + entry.getValue());
             }
-            DiscordUtil.createEmbedCommand(event.getChannel(), "War Types", response.toString());
+            DiscordUtil.createEmbedCommand(channel, "War Types", response.toString());
         }
         if (flags.contains('s')) {
             List<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
@@ -128,7 +128,7 @@ public class WarCostAB extends Command {
             for (Map.Entry<CoalitionWarStatus, Integer> entry : byStatus.entrySet()) {
                 response.append("\n" + entry.getKey() + ": " + entry.getValue());
             }
-            DiscordUtil.createEmbedCommand(event.getChannel(), "War Status", response.toString());
+            DiscordUtil.createEmbedCommand(channel, "War Status", response.toString());
         }
 
         if (Roles.ECON.has(author, guild)) {
@@ -136,7 +136,7 @@ public class WarCostAB extends Command {
                 arg0 = arg0.split("war=")[1];
                 int warId = Integer.parseInt(arg0);
                 DBWar warUrl = Locutus.imp().getWarDb().getWar(warId);
-                reimburse(cost, warUrl, event.getGuild(), new DiscordChannelIO(event));
+                reimburse(cost, warUrl, guild, channel);
             }
         }
         return result.toString();

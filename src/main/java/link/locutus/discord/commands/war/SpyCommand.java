@@ -52,7 +52,7 @@ public class SpyCommand extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
         if (args.size() < 1 || args.size() > 3) {
             return "Usage: `" + Settings.commandPrefix(true) + "spy <nation-link> [num-used] [safety]`";

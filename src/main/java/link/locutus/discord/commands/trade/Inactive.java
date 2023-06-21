@@ -37,9 +37,9 @@ public class Inactive extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty()) {
-            return usage(event);
+            return usage(args.size(), 1, channel);
         }
         Integer days = 7;
         if (args.size() >= 2) {
@@ -98,7 +98,7 @@ public class Inactive extends Command {
         }
         String[] actionsArr = actions.toArray(new String[0]);
 
-        DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString(), actionsArr);
+        DiscordUtil.createEmbedCommand(channel, title, response.toString(), actionsArr);
 
         return null;
     }

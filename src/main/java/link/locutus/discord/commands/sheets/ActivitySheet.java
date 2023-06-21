@@ -38,13 +38,13 @@ public class ActivitySheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         String sheetUrl = DiscordUtil.parseArg(args, "sheet");
-        if (args.size() != 1) return usage(event);
+        if (args.size() != 1) return usage(args.size(), 1, channel);
 
         Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
 
-        GuildDB db = Locutus.imp().getGuildDB(event);
+        GuildDB db = Locutus.imp().getGuildDB(guild);
 
         SpreadSheet sheet;
         if (sheetUrl != null) {
@@ -99,7 +99,7 @@ public class ActivitySheet extends Command {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        sheet.attach(new DiscordChannelIO(event).create()).send();
+        sheet.attach(channel.create()).send();
         return null;
     }
 }

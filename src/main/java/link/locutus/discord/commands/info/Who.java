@@ -55,10 +55,10 @@ public class Who extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         Integer page = DiscordUtil.parseArgInt(args, "page");
         Integer perpage = DiscordUtil.parseArgInt(args, "perpage");
-        String cmd = DiscordUtil.trimContent(event.getMessage().getContentRaw());
+        String cmd = DiscordUtil.trimContent(fullCommandRaw);
 
         if (args.isEmpty()) {
             return "Usage: `" + Settings.commandPrefix(true) + "pnw-who <discord-user>`";
@@ -66,7 +66,7 @@ public class Who extends Command {
 
         StringBuilder response = new StringBuilder();
 
-        boolean isAdmin = Roles.ADMIN.hasOnRoot(event.getAuthor());
+        boolean isAdmin = Roles.ADMIN.hasOnRoot(author);
 
         String arg0 = args.get(0);
         Set<DBNation> nations = DiscordUtil.parseNations(guild, arg0, false, false, flags.contains('f'));
@@ -80,7 +80,7 @@ public class Who extends Command {
             DBNation nation = nations.iterator().next();
             title = nation.getNation();
             boolean showMoney = false;
-            nation.toCard(new DiscordChannelIO(event), false, showMoney);
+            nation.toCard(channel, false, showMoney);
 
             List<String> commands = new ArrayList<>();
             commands.add(Settings.commandPrefix(true) + "multi " + nation.getNation_id());
@@ -133,7 +133,7 @@ public class Who extends Command {
             // averages
         }
         if (!flags.contains('i') && page == null && nations.size() > 1) {
-            DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString());
+            DiscordUtil.createEmbedCommand(channel, title, response.toString());
         }
 
         if (flags.contains('l') || flags.contains('p') || flags.contains('r') || flags.contains('c')) {
@@ -182,7 +182,7 @@ public class Who extends Command {
             }
             int pages = (nations.size() + perpage - 1) / perpage;
             title += "(" + (page + 1) + "/" + pages + ")";
-            DiscordUtil.paginate(event.getChannel(), title, cmd, page, perpage, nationList);
+            DiscordUtil.paginate(channel, title, cmd, page, perpage, nationList);
         }
         if (flags.contains('i')) {
             if (perpage == null) perpage = 5;
@@ -214,7 +214,7 @@ public class Who extends Command {
                 results.add(entry);
             }
 
-            DiscordUtil.paginate(event.getGuildChannel(), "Nations", cmd, page, perpage, results);
+            DiscordUtil.paginate(channel, "Nations", cmd, page, perpage, results);
         }
 
         return null;//response.toString();

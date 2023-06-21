@@ -36,8 +36,8 @@ public class Treaties extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 1) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 1) return usage(args.size(), 1, channel);
 
         Set<Integer> alliances = PnwUtil.parseAlliances(Locutus.imp().getGuildDB(guild), args.get(0));
 
@@ -68,7 +68,7 @@ public class Treaties extends Command {
         if (allTreaties.isEmpty()) return "No treaties.";
 
         String title = allTreaties.size() + " treaties";
-        DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString());
+        DiscordUtil.createEmbedCommand(channel, title, response.toString());
         return null;
     }
 }

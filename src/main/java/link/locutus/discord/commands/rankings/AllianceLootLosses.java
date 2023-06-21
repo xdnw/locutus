@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.DBNation;
@@ -39,8 +40,8 @@ public class AllianceLootLosses extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.isEmpty() || args.size() > 2) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.isEmpty() || args.size() > 2) return usage(args.size(), 1, 2, channel);
         if (args.size() == 1) args.add("*");
 
         long millis = TimeUtil.timeToSec(args.get(0)) * 1000L;
@@ -75,7 +76,7 @@ public class AllianceLootLosses extends Command {
         ranks.build(event, title);
 
         if (ranks.get().size() > 25) {
-            DiscordUtil.upload(event.getGuildChannel(), title, ranks.toString());
+            DiscordUtil.upload(channel, title, ranks.toString());
         }
 
         return super.onCommand(event, guild, author, me, args, flags);

@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTrade;
@@ -41,9 +42,9 @@ public class Inflows extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 2) {
-            return usage(event);
+            return usage(args.size(), 2, channel);
         }
         if (!MathMan.isInteger(args.get(1))) {
             return "Invalid number of days: `" + args.get(1) + "`";
@@ -73,7 +74,7 @@ public class Inflows extends Command {
         if (nationId == null || arg0.contains("/alliance/") || arg0.charAt(0) == '~') {
             if (arg0.charAt(0) == '~') {
                 arg0 = args.get(0).substring(1);
-                self = Locutus.imp().getGuildDB(event).getCoalition(arg0);
+                self = Locutus.imp().getGuildDB(guild).getCoalition(arg0);
                 selfName = arg0;
             } else {
                 Integer selfId = PnwUtil.parseAllianceId(arg0);

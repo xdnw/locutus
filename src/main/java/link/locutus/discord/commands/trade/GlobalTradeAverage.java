@@ -25,9 +25,9 @@ public class GlobalTradeAverage extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) {
-            return usage(event);
+            return usage(args.size(), 1, channel);
         }
         long seconds = TimeUtil.timeToSec(args.get(0));
         if (seconds <= 0 || MathMan.isInteger(args.get(0))) return "Invalid amount of time: `" + args.get(0) + "`";
@@ -39,7 +39,7 @@ public class GlobalTradeAverage extends Command {
         Map<ResourceType, Double> highMap = averages.getValue();
 
 
-        DiscordUtil.createEmbedCommand(event.getChannel(), b -> {
+        DiscordUtil.createEmbedCommand(channel, b -> {
             List<String> resourceNames = new ArrayList<>();
             List<String> low = new ArrayList<>();
             List<String> high = new ArrayList<>();
@@ -63,7 +63,7 @@ public class GlobalTradeAverage extends Command {
             b.addField("High", StringMan.join(high, "\n"), true);
 
 
-        }, "Refresh", DiscordUtil.trimContent(event.getMessage().getContentRaw()));
+        }, "Refresh", DiscordUtil.trimContent(fullCommandRaw));
 
         return null;
     }

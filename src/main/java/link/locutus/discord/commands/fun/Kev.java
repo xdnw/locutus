@@ -22,7 +22,7 @@ public class Kev extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         return "The leader of men and master of Miralax. The voice of an angel. An enigma. Kev, the first of his name and leader of all toilets. Praise be.";
     }
 }

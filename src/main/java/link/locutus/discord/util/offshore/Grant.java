@@ -254,7 +254,7 @@ public class Grant {
     }
 
     public DBNation getNation() {
-        return DBNation.byId(nation.getNation_id());
+        return DBNation.getById(nation.getNation_id());
     }
 
     public static class GrantRequirementBuilder {

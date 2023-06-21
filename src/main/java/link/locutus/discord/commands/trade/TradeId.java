@@ -33,8 +33,8 @@ public class TradeId extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-        if (args.size() != 1) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 1) return usage(args.size(), 1, channel);
 
         List<DBTrade> offers = new ArrayList<>();
         for (String idStr : args.get(0).split(",")) {

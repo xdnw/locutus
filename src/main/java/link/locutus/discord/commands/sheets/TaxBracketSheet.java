@@ -49,7 +49,7 @@ public class TaxBracketSheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         GuildDB db = Locutus.imp().getGuildDB(guild);
 
         SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.TAX_BRACKET_SHEET);
@@ -119,7 +119,7 @@ public class TaxBracketSheet extends Command {
 
         StringBuilder response = new StringBuilder();
         if (failedFetch) response.append("\nnote: Please set an api key with " + CM.credentials.addApiKey.cmd.toSlashMention() + " to view updated tax brackets");
-        sheet.attach(new DiscordChannelIO(event).create(), response.toString()).send();
+        sheet.attach(channel.create(), response.toString()).send();
         return null;
     }
 }

@@ -41,8 +41,8 @@ public class ValidateSpyBlitzSheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.isEmpty()) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.isEmpty()) return usage(args.size(), 1, channel);
 
         SpreadSheet sheet = SpreadSheet.create(args.get(0));
         StringBuilder response = new StringBuilder();

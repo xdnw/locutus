@@ -6,6 +6,7 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -48,8 +49,8 @@ public class MailCommand extends Command implements Noformat {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() < 3) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() < 3) return usage(args.size(), 3, channel);
         String fromStr = DiscordUtil.parseArg(args, "from");
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
@@ -73,14 +74,14 @@ public class MailCommand extends Command implements Noformat {
                 }
 
                 int messageId = Integer.parseInt(arg1.split("=")[1]);
-                String content = DiscordUtil.trimContent(event.getMessage().getContentRaw());
+                String content = DiscordUtil.trimContent(fullCommandRaw);
                 String body = content.substring(content.indexOf(' ', content.indexOf("message/id=")) + 1);
 
                 String result = new MailRespondTask(auth, arg0, messageId, body, null).call();
                 return "Mail: " + result;
             }
 
-            Set<DBNation> nations = DiscordUtil.parseNations(event.getGuild(), arg0);
+            Set<DBNation> nations = DiscordUtil.parseNations(guild, arg0);
             if (nations.isEmpty()) {
                 return "Invalid nation `" + arg0 + "`";
             }
@@ -108,7 +109,7 @@ public class MailCommand extends Command implements Noformat {
 
             if (!flags.contains('f')) {
                 String title = "Send " + nations.size() + " messages.";
-                String pending = Settings.commandPrefix(true) + "pending '" + title + "' " + DiscordUtil.trimContent(event.getMessage().getContentRaw()).replaceFirst(" ", " -f ");
+                String pending = Settings.commandPrefix(true) + "pending '" + title + "' " + DiscordUtil.trimContent(fullCommandRaw).replaceFirst(" ", " -f ");
 
                 Set<Integer> alliances = new LinkedHashSet<>();
                 for (DBNation nation : nations) alliances.add(nation.getAlliance_id());
@@ -124,7 +125,7 @@ public class MailCommand extends Command implements Noformat {
                 String body = "subject: " + subject + "\n" +
                         "body: ```" + message + "```";
 
-                DiscordUtil.createEmbedCommand(event.getChannel(), embedTitle, body, "Next", pending);
+                DiscordUtil.createEmbedCommand(channel, embedTitle, body, "Next", pending);
                 return null;
             }
 
@@ -132,18 +133,18 @@ public class MailCommand extends Command implements Noformat {
                 message += "\n\n<i>This message was sent by: " + author.getName() + "</i>";
             }
 
-            Message msg = RateLimitUtil.complete(event.getChannel().sendMessage("Sending to..."));
+            Message msg = RateLimitUtil.complete(channel.sendMessage("Sending to..."));
             StringBuilder response = new StringBuilder();
             long start = System.currentTimeMillis();
             for (DBNation nation : nations) {
                 if (System.currentTimeMillis() - start > 10000) {
-                    RateLimitUtil.queue(event.getChannel().editMessageById(msg.getIdLong(), "Sending to " + nation.getNation()));
+                    RateLimitUtil.queue(channel.editMessageById(msg.getIdLong(), "Sending to " + nation.getNation()));
                     start = System.currentTimeMillis();
                 }
                 response.append(nation.sendMail(key, subject, message)).append("\n");
             }
 
-            RateLimitUtil.queue(event.getChannel().deleteMessageById(msg.getIdLong()));
+            RateLimitUtil.queue(channel.deleteMessageById(msg.getIdLong()));
             return response.toString();
         } catch (Throwable e) {
             e.printStackTrace();

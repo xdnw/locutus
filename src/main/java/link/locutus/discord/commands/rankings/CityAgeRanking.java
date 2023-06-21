@@ -22,8 +22,8 @@ public class CityAgeRanking extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() < 2) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() < 2) return usage(args.size(), 2, channel);
         int min = Integer.parseInt(args.get(0));
         int max = Integer.parseInt(args.get(1));
 

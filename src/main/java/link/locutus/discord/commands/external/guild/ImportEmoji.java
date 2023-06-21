@@ -30,9 +30,9 @@ public class ImportEmoji extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) {
-            return usage(event);
+            return usage(args.size(), 1, channel);
         }
         String arg = args.get(0);
         if (arg.startsWith("https://discord.com/channels/")) {
@@ -46,7 +46,7 @@ public class ImportEmoji extends Command {
                 if (name.lastIndexOf('.') != -1) {
                     name = name.substring(0, name.lastIndexOf('.'));
                 }
-                tasks.add(RateLimitUtil.queue(event.getGuild().createEmote(name, icon)));
+                tasks.add(RateLimitUtil.queue(guild.createEmote(name, icon)));
             }
             for (Future<?> task : tasks) {
                 task.get();
@@ -58,10 +58,10 @@ public class ImportEmoji extends Command {
 
         List<Emote> emotes = other.getEmotes();
 
-        Message msg = RateLimitUtil.complete(event.getChannel().sendMessage("Creating emotes..."));
+        Message msg = RateLimitUtil.complete(channel.sendMessage("Creating emotes..."));
 
 
-        Guild guild = event.getGuild();
+        Guild guild = guild;
         List<Future<?>> tasks = new ArrayList<>();
         for (Emote emote : emotes) {
             if (emote.isManaged() || !emote.isAvailable()) {
@@ -70,7 +70,7 @@ public class ImportEmoji extends Command {
             String url = emote.getImageUrl();
             byte[] bytes = FileUtil.readBytesFromUrl(PagePriority.DISCORD_EMOJI_URL.ordinal(), url);
 
-            RateLimitUtil.queue(event.getChannel().editMessageById(msg.getIdLong(), "Creating emote: " + emote.getName() + " | " + url));
+            RateLimitUtil.queue(channel.editMessageById(msg.getIdLong(), "Creating emote: " + emote.getName() + " | " + url));
 
             if (bytes != null) {
                 Icon icon = Icon.from(bytes);

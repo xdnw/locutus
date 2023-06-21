@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.db.GuildDB;
@@ -51,11 +52,11 @@ public class IntelOp extends Command {
     private Map<Integer, Long> alreadySpied = new ConcurrentHashMap<>();
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         String nationStr = DiscordUtil.parseArg(args, "nation");
         String scoreStr = DiscordUtil.parseArg(args, "score");
         if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
-        if (args.size() > 1) return usage(event);
+        if (args.size() > 1) return usage(args.size(), 0, 1, channel);
 
         DBNation finalNation = nationStr == null ? me : PWBindings.nation(null, nationStr);
         double score = scoreStr == null ? finalNation.getScore() : PrimitiveBindings.Double(scoreStr);
@@ -134,7 +135,7 @@ public class IntelOp extends Command {
             response += "\n1 spy on extremely covert: ";
             response += "\n*Please post the result of your spy report here*";
             response += "\nMore info: https://docs.google.com/document/d/1gEeSOjjSDNBpKhrU9dhO_DN-YM3nYcklYzSYzSqq8k0";
-            DiscordUtil.createEmbedCommand(event.getChannel(), title, response);
+            DiscordUtil.createEmbedCommand(channel, title, response);
             return null;
         }
         return "No results found";

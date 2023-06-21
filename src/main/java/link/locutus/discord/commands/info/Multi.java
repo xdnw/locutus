@@ -33,9 +33,9 @@ public class Multi extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty()) {
-            return usage(event);
+            return usage(args.size(), 1, channel);
         }
         Integer nationId = DiscordUtil.parseNationId(args.get(0));
         if (nationId == null) {
@@ -48,11 +48,11 @@ public class Multi extends Command {
         if (result.length() + title.length() >= 2000) {
             String condensed = report.toString(true);
             if (condensed.length() + title.length() < 2000) {
-                DiscordUtil.createEmbedCommand(event.getChannel(), PnwUtil.getName(nationId, false), condensed);
+                DiscordUtil.createEmbedCommand(channel, PnwUtil.getName(nationId, false), condensed);
             }
         }
 
-        DiscordUtil.createEmbedCommand(event.getChannel(), title, result);
+        DiscordUtil.createEmbedCommand(channel, title, result);
 
         return """
                 ```Disclaimer:

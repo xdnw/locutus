@@ -57,7 +57,7 @@ public class TradeListener {
         body.append("Nation Bonus: " + treasure.getBonus() + "%\n");
         if (previous != null) {
             if (previous.getNation_id() != treasure.getNation_id()) {
-                DBNation previousNation = DBNation.byId(previous.getNation_id());
+                DBNation previousNation = DBNation.getById(previous.getNation_id());
                 if (previousNation == null) {
                     body.append("Previous owner: " + previous.getNation_id() + " (deleted)\n");
                 } else {
@@ -66,7 +66,7 @@ public class TradeListener {
             }
         }
 
-        DBNation currentNation = DBNation.byId(treasure.getNation_id());
+        DBNation currentNation = DBNation.getById(treasure.getNation_id());
         if (currentNation == null) {
             body.append("Current owner: " + treasure.getNation_id() + " (deleted)\n");
         } else {

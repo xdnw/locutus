@@ -276,7 +276,7 @@ public class UtilityCommands {
         List<Transaction2> transactions = Locutus.imp().getBankDB().getToNationTransactions(cutoffMs);
         long now = System.currentTimeMillis();
         transactions.removeIf(t -> {
-            DBNation nation = DBNation.byId((int) t.getReceiver());
+            DBNation nation = DBNation.getById((int) t.getReceiver());
             return nation == null || t.getDate() > now || t.getSender() == alliance.getAlliance_id() || nation.getAlliance_id() != alliance.getAlliance_id() || (t.note != null && t.note.contains("defeated"));
         });
         Map<Integer, Integer> numTransactions = new HashMap<>();
@@ -317,7 +317,7 @@ public class UtilityCommands {
             List<DBSpyUpdate> updates = Locutus.imp().getNationDB().getSpyActivity(timestamp, interval);
             for (DBSpyUpdate update : updates) {
 //                nations.put(update.nation_id, nations.getOrDefault(update.nation_id, 0) + 1);
-                DBNation nation = DBNation.byId(update.nation_id);
+                DBNation nation = DBNation.getById(update.nation_id);
                 if (nation == null) continue;
                 if (!defender.isInSpyRange(nation)) continue;
 
@@ -592,7 +592,7 @@ public class UtilityCommands {
 
                 for (Transaction2 tx : transfers) {
                     if (tx.banker_nation == tx.receiver_id) continue;
-                    DBNation receiver = DBNation.byId((int) tx.getReceiver());
+                    DBNation receiver = DBNation.getById((int) tx.getReceiver());
                     if (receiver != null && enemies.contains(receiver.getAlliance_id())) {
                         int existingNum = numTransfers.getOrDefault(receiver.getAlliance_id(), 0);
                         double existingVal = valueTransfers.getOrDefault(receiver.getAlliance_id(), 0d);
@@ -1852,7 +1852,7 @@ public Map<ParametricCallable, String> getEndpoints() {
                 long date = change.getKey();
                 if (date < cutoff) continue;
 
-                DBNation nation = DBNation.byId(nationId);
+                DBNation nation = DBNation.getById(nationId);
                 if (nation == null || nation.getPosition() <= 1) continue;
 
                 Rank rank = natRank.getValue();

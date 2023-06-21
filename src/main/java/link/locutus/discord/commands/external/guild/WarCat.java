@@ -39,14 +39,14 @@ public class WarCat extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 1) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 1) return usage(args.size(), 1, channel);
 
-        GuildDB db = Locutus.imp().getGuildDB(event);
+        GuildDB db = Locutus.imp().getGuildDB(guild);
         WarCategory warChannels = db.getWarChannel();
         if (warChannels == null) return "War channels are not enabled.";
 
-        WarCategory.WarRoom waRoom = warChannels.getWarRoom(event.getGuildChannel());
+        WarCategory.WarRoom waRoom = warChannels.getWarRoom(channel);
         if (waRoom == null) return "This command must be run in a war room.";
 
         String categoryName = args.get(0);
@@ -74,7 +74,7 @@ public class WarCat extends Command {
             category = categories.get(0);
         }
 
-        MessageChannel currentChannel = event.getChannel();
+        MessageChannel currentChannel = channel;
         if (!(currentChannel instanceof ICategorizableChannel cc)) return "This channel cannot have a category.";
         if (category.equals(cc.getParentCategory())) {
             return "Already in category: " + categoryName;

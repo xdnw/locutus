@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -17,6 +18,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.Set;
 
 public class Sudo extends Command implements Noformat {
     public Sudo() {
@@ -39,12 +41,12 @@ public class Sudo extends Command implements Noformat {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() < 2) {
-            return usage(event);
+            return usage(args.size(), 2, channel);
         }
         String arg0 = args.get(0);
-        String content = DiscordUtil.trimContent(event.getMessage().getContentRaw());
+        String content = DiscordUtil.trimContent(fullCommandRaw);
         int start = content.indexOf(' ', content.indexOf(' ') + 1);
 
         String command = content.substring(start + 1);
@@ -56,7 +58,7 @@ public class Sudo extends Command implements Noformat {
             return "Unknown command: ``" + args.get(1) + "`" + "`";
         }
 
-        Guild guild = event.isFromGuild() ? event.getGuild() : null;
+        Guild guild = guild != null ? guild : null;
 
         DBNation nation;
         if (user == null) {
@@ -71,7 +73,7 @@ public class Sudo extends Command implements Noformat {
             if (nation == null) {
                 return "Invalid nation: `" + arg0 + "`";
             }
-            if (!Roles.ADMIN.hasOnRoot(event.getAuthor()) || !cmd.checkPermission(guild, user)) {
+            if (!Roles.ADMIN.hasOnRoot(author) || !cmd.checkPermission(guild, user)) {
                 user = null;
             }
         }
@@ -87,7 +89,7 @@ public class Sudo extends Command implements Noformat {
             @Nonnull
             @Override
             public User getAuthor() {
-                return finalUser == null ? event.getAuthor() : finalUser;
+                return finalUser == null ? author : finalUser;
             }
 
             @Nullable
@@ -97,7 +99,7 @@ public class Sudo extends Command implements Noformat {
             }
         };
 
-        MessageReceivedEvent finalEvent = new DelegateMessageEvent(event.isFromGuild() ? event.getGuild() : null, event.getResponseNumber(), message);
+        MessageReceivedEvent finalEvent = new DelegateMessageEvent(guild != null ? guild : null, event.getResponseNumber(), message);
         DiscordUtil.withNation(nation, () -> {
             Locutus.imp().getCommandManager().run(finalEvent, false, true);
             return null;

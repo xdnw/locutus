@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
@@ -85,13 +86,13 @@ public class GrantCmd extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         String expireStr = DiscordUtil.parseArg(args, "expire");
         Long expire = expireStr == null ? null : TimeUtil.timeToSec(expireStr) * 1000L;
         if (flags.contains('e')) {
             expire = TimeUnit.DAYS.toMillis(60);
         }
-        GuildDB guildDb = Locutus.imp().getGuildDB(event);
+        GuildDB guildDb = Locutus.imp().getGuildDB(guild);
 
         DBNation nationAccount = null;
         DBAlliance allianceAccount = null;
@@ -155,10 +156,10 @@ public class GrantCmd extends Command {
                 else if (args.get(1).equalsIgnoreCase("warchest")) {
                     num = 1d;
                 } else {
-                    return usage(event);
+                    return usage(args.size(), 3, channel);
                 }
             } else {
-                return usage(event);
+                return usage(args.size(), 3, channel);
             }
         } else {
             num = MathMan.parseDouble(args.get(2));
@@ -214,7 +215,7 @@ public class GrantCmd extends Command {
             sheet.set(0, 0);
 
             String totalStr = PnwUtil.resourcesToString(total) + " worth ~$" + MathMan.format(PnwUtil.convertedTotal(total));
-            sheet.attach(new DiscordChannelIO(event).create().append(totalStr), null, false, 0).send();
+            sheet.attach(channel.create().append(totalStr), null, false, 0).send();
             return null;
         }
 
@@ -274,7 +275,7 @@ public class GrantCmd extends Command {
 
         msg.append("\n**INSTRUCTIONS:** ").append(grant.getInstructions());
 
-        new DiscordChannelIO(event).create().confirmation(grant.title(), msg.toString(), command).cancelButton().send();
+        channel.create().confirmation(grant.title(), msg.toString(), command).cancelButton().send();
 
         return null;
     }

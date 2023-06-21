@@ -3,6 +3,7 @@ package link.locutus.discord.commands.external.guild;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -43,8 +44,8 @@ public class CardCommand extends Command implements Noformat {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() < 2) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() < 2) return usage(args.size(), 2, channel);
 
         String title = args.get(0);
         String body = args.get(1);
@@ -70,7 +71,7 @@ public class CardCommand extends Command implements Noformat {
             reactions.add(cmd);
         }
         String[] reactionsArr = reactions.toArray(new String[0]);
-        DiscordUtil.createEmbedCommand(event.getChannel(), title, body, reactionsArr);
+        DiscordUtil.createEmbedCommand(channel, title, body, reactionsArr);
         return null;
     }
 }

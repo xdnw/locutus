@@ -25,8 +25,8 @@ public class BankSubscriptions extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-        Set<BankDB.Subscription> subscriptions = Locutus.imp().getBankDB().getSubscriptions(event.getAuthor().getIdLong());
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        Set<BankDB.Subscription> subscriptions = Locutus.imp().getBankDB().getSubscriptions(author.getIdLong());
         if (subscriptions.isEmpty()) {
             return "No subscriptions. Subscribe to get alerts using `" + Settings.commandPrefix(true) + "alert-bank`";
         }
@@ -65,7 +65,7 @@ public class BankSubscriptions extends Command {
             String emoji = "Unsubscribe";
             String unsubCommand = Settings.commandPrefix(true) + "UnsubBank " + url;
 
-            DiscordUtil.createEmbedCommand(event.getChannel(), title, body.toString(), emoji, unsubCommand);
+            DiscordUtil.createEmbedCommand(channel, title, body.toString(), emoji, unsubCommand);
         }
 
         if (subscriptions.isEmpty()) {

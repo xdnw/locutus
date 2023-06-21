@@ -87,8 +87,8 @@ public class RankBuilder<T> {
         return this;
     }
 
-    public void build(MessageReceivedEvent event, String title) {
-        build(event.getAuthor(), event.getChannel(), DiscordUtil.trimContent(event.getMessage().getContentRaw()), title);
+    public void build(User author, IMessageIO channel, String fullCommandRaw, String title) {
+        build(author, channel, DiscordUtil.trimContent(fullCommandRaw), title);
     }
 
     public void build(MessageChannel channel, String cmd, String title) {

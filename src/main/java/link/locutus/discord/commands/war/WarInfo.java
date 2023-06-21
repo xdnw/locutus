@@ -48,9 +48,9 @@ public class WarInfo extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) {
-            return usage(event);
+            return usage(args.size(), 1, channel);
         }
         String arg0 = args.get(0);
         if (arg0.contains("/war=")) {
@@ -63,9 +63,9 @@ public class WarInfo extends Command {
             List<DBWar> wars = nation.getActiveWars();
             String title = wars.size() + " wars";
             String body = nation.getWarInfoEmbed(flags.contains('l'));
-            DiscordUtil.createEmbedCommand(event.getChannel(), title, body);
+            DiscordUtil.createEmbedCommand(channel, title, body);
         } else {
-            new WarCard(warId).embed(new DiscordChannelIO(event), true, false);
+            new WarCard(warId).embed(channel, true, false);
         }
         return null;
     }

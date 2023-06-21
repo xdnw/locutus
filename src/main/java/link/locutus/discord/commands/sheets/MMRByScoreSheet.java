@@ -27,9 +27,9 @@ public class MMRByScoreSheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
 
-        if (args.size() < 1) return usage(event);
+        if (args.size() < 1) return usage(args.size(), 1, channel);
         int minutesInactive;
         if (false || args.size() == 3) {
             minutesInactive = (int) (TimeUtil.timeToSec(args.get(2)) / 60);
@@ -37,7 +37,7 @@ public class MMRByScoreSheet extends Command {
             minutesInactive = 2880;
         }
 
-        GuildDB guildDb = checkNotNull(Locutus.imp().getGuildDB(event));
+        GuildDB guildDb = checkNotNull(Locutus.imp().getGuildDB(guild));
         SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKeys.CITY_GRAPH_SHEET);
 
         List<String> header = new ArrayList<>();
@@ -80,7 +80,7 @@ public class MMRByScoreSheet extends Command {
 
         sheet.clearAll();
         sheet.set(0, 0);
-        sheet.attach(new DiscordChannelIO(event).create()).send();
+        sheet.attach(channel.create()).send();
         return null;
 
 //        return super.onCommand(event, guild, author, me, args, flags);

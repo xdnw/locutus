@@ -9,6 +9,7 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.rankings.table.TimeDualNumericTable;
 import link.locutus.discord.db.entities.AttackCost;
@@ -64,9 +65,9 @@ public class WarCostByDay extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty() || args.size() > 3 || (args.size() == 3 && args.get(0).equalsIgnoreCase(args.get(1))) || flags.isEmpty()) {
-            return usage(event);
+            return usage(args.size(), unkown, channel);
         }
 
         String arg0 = args.get(0);
@@ -100,7 +101,7 @@ public class WarCostByDay extends Command {
 
         if (args.size() == 3) {
             if (!MathMan.isInteger(args.get(2))) {
-                return usage(event);
+                return usage("Not a valid whole number: `" + args.get(2) + "`" , channel);
             }
             int days = MathMan.parseInt(args.get(2));
             long cutoffTurn = TimeUtil.getTurn(ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L);
@@ -313,7 +314,7 @@ public class WarCostByDay extends Command {
         }
 
         for (TimeDualNumericTable<AttackCost> table : tables) {
-            table.write(new DiscordChannelIO(event), true);
+            table.write(channel, true);
         }
 
         return null;

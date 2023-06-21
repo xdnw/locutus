@@ -40,8 +40,8 @@ public class TopAABeigeLoot extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 1) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 1) return usage(args.size(), 1, channel);
         String title = "AA loot/score";
 
         boolean total = flags.contains('t');

@@ -31,6 +31,7 @@ public class Placeholders<T> {
 
     private final T nullInstance;
     private final Type instanceType;
+    private final ValueStore store;
 
     public Placeholders(Type type, T nullInstance, ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
         this.nullInstance = nullInstance;
@@ -40,8 +41,13 @@ public class Placeholders<T> {
         this.permisser = permisser;
 
         this.commands = CommandGroup.createRoot(store, validators);
+        this.store = store;
         this.commands.registerCommands(nullInstance);
         this.commands.registerCommands(this);
+    }
+
+    public ValueStore getStore() {
+        return store;
     }
 
     public Set<String> getKeys() {

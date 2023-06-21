@@ -302,7 +302,7 @@ public class SpyTracker {
 
             // iterate
             for (SpyActivity defensive : defensives) {
-                DBNation defender = DBNation.byId(defensive.nationId);
+                DBNation defender = DBNation.getById(defensive.nationId);
                 if (defender == null) continue;
 
                 System.out.println("Finding match for " + defender.getNation_id() + " c" + defender.getCities() + " | " + defensive.change + "x" + defensive.unit + " | " + defensive.timestamp + " | " + defensive.score);
@@ -318,7 +318,7 @@ public class SpyTracker {
                         if (offensive.change == defensive.change) {
                             alert.exact.add(offensive);
                         } else {
-                            DBNation attacker = DBNation.byId(offensive.nationId);
+                            DBNation attacker = DBNation.getById(offensive.nationId);
                             if (attacker != null && attacker.getAlliance_id() == defender.getAlliance_id()) continue;
                             alert.close.add(offensive);
                         }
@@ -327,7 +327,7 @@ public class SpyTracker {
                         for (Nation nation : defensive.nationActiveInfo) {
                             int id = nation.getId();
                             if (id == defensive.nationId) continue;
-                            DBNation cachedNation = DBNation.byId(nation.getId());
+                            DBNation cachedNation = DBNation.getById(nation.getId());
                             if (cachedNation == null) continue;
                             if (!SpyCount.isInScoreRange(cachedNation.getScore(), defensive.score)) continue;
                             long activeMs = nation.getLast_active().toEpochMilli();
@@ -471,7 +471,7 @@ public class SpyTracker {
         }
 
         public String entryToString(SpyActivity offensive, Map.Entry<Integer, Integer> killRange) {
-            DBNation attacker = DBNation.byId(offensive.nationId);
+            DBNation attacker = DBNation.getById(offensive.nationId);
             long diff = Math.abs(offensive.timestamp - timestamp);
             return entryToString(attacker, killRange, diff);
         }

@@ -35,8 +35,8 @@ public class ProlificOffshores extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-        if (args.isEmpty()) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.isEmpty()) return usage(args.size(), 1, channel);
         Integer days = MathMan.parseInt(args.get(0));
         if (days == null) {
             return "Invalid number of days: `" + args.get(0) + "`";

@@ -3,6 +3,9 @@ package link.locutus.discord.commands.bank;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -15,6 +18,7 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -38,6 +42,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public class Deposits extends Command {
@@ -71,11 +77,11 @@ public class Deposits extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        GuildDB guildDb = Locutus.imp().getGuildDB(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        GuildDB guildDb = Locutus.imp().getGuildDB(guild);
         guild = guildDb.getGuild();
 
-        DBNation banker = DiscordUtil.getNation(event);
+        DBNation banker = me;
         if (banker == null) {
             return "Please use " + Settings.commandPrefix(true) + "validate.";
         }
@@ -101,7 +107,7 @@ public class Deposits extends Command {
         }
 
         if (args.size() != 1 && args.size() != 2) {
-            return usage(event);
+            return usage(args.size(), 1, 2, channel);
         }
 
         Map<String, Map<DepositType, double[]>> accountDeposits = new HashMap<>();
@@ -316,8 +322,8 @@ public class Deposits extends Command {
             response.append("\n`note").append(i == 0 ? "" : i).append(": ").append(footer).append("`");
         }
 
-        MessageChannel output = flags.contains('d') ? RateLimitUtil.complete(author.openPrivateChannel()) : event.getChannel();
-        Message message = RateLimitUtil.complete(output.sendMessage(response.toString()));
+        IMessageIO output = flags.contains('d') ? new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel())) : channel;
+        CompletableFuture<IMessageBuilder> msgFuture = output.send(response.toString());
 
         if (requiredUser != null && requiredUser.getPositionEnum() != null && requiredUser.getPosition() > 1 && guildDb.isValidAlliance() && guildDb.getAllianceIds(true).contains(requiredUser.getAlliance_id())) {
             DBNation finalNation = requiredUser;
@@ -325,6 +331,7 @@ public class Deposits extends Command {
                 @Override
                 public void run() {
                     List<String> tips2 = new ArrayList<>();
+                    StringBuilder append = new StringBuilder();
 
                     {
                         Map<ResourceType, Double> stockpile = finalNation.getStockpile();
@@ -361,9 +368,13 @@ public class Deposits extends Command {
                     }
 
                     if (!tips2.isEmpty()) {
-                        for (String tip : tips2) response.append("\n`tip: " + tip + "`");
+                        for (String tip : tips2) append.append("\n`tip: " + tip + "`");
 
-                        RateLimitUtil.queue(output.editMessageById(message.getIdLong(), response.toString()));
+                        try {
+                            msgFuture.get().append(append.toString()).send();
+                        } catch (InterruptedException | ExecutionException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
                 }
             });

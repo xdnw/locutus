@@ -37,12 +37,12 @@ public class NoteSheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 1) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 1) return usage(args.size(), 1, channel);
         Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
-        if (nations == null || nations.isEmpty()) return usage(event);
+        if (nations == null || nations.isEmpty()) return usage(args.size(), unkown, channel);
 
-        GuildDB db = Locutus.imp().getGuildDB(event);
+        GuildDB db = Locutus.imp().getGuildDB(guild);
         if (db == null) return "Not in guild";
 
         SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.NOTE_SHEET);
@@ -84,7 +84,7 @@ public class NoteSheet extends Command {
 
         sheet.set(0, 0);
 
-        sheet.attach(new DiscordChannelIO(event).create()).send();
+        sheet.attach(channel.create()).send();
         return null;
     }
 }

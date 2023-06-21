@@ -62,8 +62,8 @@ public class WarCostSheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 3) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 3) return usage(args.size(), 3, channel);
         if (guild == null) return "not in guild";
         long millis = TimeUtil.timeToSec(args.get(2)) * 1000L;
         long cutOff = System.currentTimeMillis() - millis;
@@ -72,7 +72,7 @@ public class WarCostSheet extends Command {
 
         WarParser parser1 = WarParser.of(guild, args.get(0), args.get(1), cutOff);
 
-        Message msg = RateLimitUtil.complete(event.getChannel().sendMessage("Clearing sheet..."));
+        Message msg = RateLimitUtil.complete(channel().sendMessage("Clearing sheet..."));
 
         SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKeys.WAR_COST_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
@@ -100,7 +100,7 @@ public class WarCostSheet extends Command {
 
         sheet.clear("A:Z");
 
-        RateLimitUtil.queue(event.getChannel().editMessageById(msg.getIdLong(), "Updating (wars..."));
+        RateLimitUtil.queue(channel().editMessageById(msg.getIdLong(), "Updating (wars..."));
 
         sheet.setHeader(header);
         long start = System.currentTimeMillis();
@@ -126,7 +126,7 @@ public class WarCostSheet extends Command {
         for (Map.Entry<DBNation, List<DBWar>> entry : warsByNation.entrySet()) {
             DBNation nation = entry.getKey();
             if (-start + (start = System.currentTimeMillis()) > 5000) {
-                RateLimitUtil.queue(event.getChannel().editMessageById(msg.getIdLong(), "Updating wars for " + nation.getNation()));
+                RateLimitUtil.queue(channel().editMessageById(msg.getIdLong(), "Updating wars for " + nation.getNation()));
             }
             int nationId = nation.getNation_id();
 
@@ -225,16 +225,16 @@ public class WarCostSheet extends Command {
 
         try {
 
-            RateLimitUtil.queue(event.getChannel().editMessageById(msg.getIdLong(), "Uploading (sheet"));
+            RateLimitUtil.queue(channel().editMessageById(msg.getIdLong(), "Uploading (sheet"));
             sheet.clear("A:Z");
             sheet.set(0, 0);
 
-            RateLimitUtil.queue(event.getChannel().deleteMessageById(msg.getIdLong()));
+            RateLimitUtil.queue(channel().deleteMessageById(msg.getIdLong()));
         } catch (Throwable e) {
             e.printStackTrace();
         }
 
-        sheet.attach(new DiscordChannelIO(event).create()).send();
+        sheet.attach(channel.create()).send();
         return null;
     }
 

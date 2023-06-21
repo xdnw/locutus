@@ -26,11 +26,11 @@ public class GlobalTradeVolume extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         TradeManager trader = Locutus.imp().getTradeManager();
         String refreshEmoji = "Refresh";
 
-        DiscordUtil.createEmbedCommand(event.getChannel(), b -> {
+        DiscordUtil.createEmbedCommand(channel, b -> {
             List<String> resourceNames = new ArrayList<>();
             List<String> daily = new ArrayList<>();
             List<String> weekly = new ArrayList<>();
@@ -62,7 +62,7 @@ public class GlobalTradeVolume extends Command {
             b.addField("Resource", "\u200B\n" + StringMan.join(resourceNames, "\n"), true);
             b.addField("Daily", StringMan.join(daily, " "), true);
             b.addField("Weekly", StringMan.join(weekly, " "), true);
-        }, refreshEmoji, DiscordUtil.trimContent(event.getMessage().getContentRaw()));
+        }, refreshEmoji, DiscordUtil.trimContent(fullCommandRaw));
 
         return null;
     }

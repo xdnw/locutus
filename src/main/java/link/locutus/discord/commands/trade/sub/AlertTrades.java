@@ -3,17 +3,21 @@ package link.locutus.discord.commands.trade.sub;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.TradeDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public class AlertTrades extends Command {
@@ -33,9 +37,9 @@ public class AlertTrades extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 5) {
-            return usage(event);
+            return usage(args.size(), 5, channel);
         }
         ResourceType resource;
         try {
@@ -85,11 +89,11 @@ public class AlertTrades extends Command {
         }
 
         TradeDB db = Locutus.imp().getTradeManager().getTradeDb();
-        User user = event.getAuthor();
+        User user = author;
 
         db.subscribe(user, resource, date, isBuy, above, ppu, TradeDB.TradeAlertType.ABSOLUTE);
 
-        return "Subscribed to `" + DiscordUtil.trimContent(event.getMessage().getContentRaw()).toUpperCase() + "`" +
+        return "Subscribed to `" + DiscordUtil.trimContent(fullCommandRaw).toUpperCase() + "`" +
                 "\nCheck your subscriptions with: `" + Settings.commandPrefix(true) + "trade-subs`";
     }
 }

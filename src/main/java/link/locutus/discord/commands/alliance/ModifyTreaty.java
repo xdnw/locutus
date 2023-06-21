@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.FACommands;
 import link.locutus.discord.config.Settings;
@@ -48,8 +49,8 @@ public class ModifyTreaty extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 1) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 1) return usage(args.size(), 1, channel);
         GuildDB db = Locutus.imp().getGuildDB(guild);
         AllianceList aaList = Roles.FOREIGN_AFFAIRS.getAllianceList(author, db);
         if (aaList.isEmpty()) return "Missing roles: " + Roles.FOREIGN_AFFAIRS.toDiscordRoleNameElseInstructions(guild);

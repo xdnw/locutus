@@ -37,14 +37,14 @@ public class HelpCommand extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         StringBuilder response = new StringBuilder();
         if (args.size() == 0) {
             Set<CommandCategory> categories = new HashSet<>();
             Set<Command> cmds = new LinkedHashSet<>(manager.getCommandMap().values());
             cmds.removeIf(cmd -> {
                 try {
-                    return !cmd.checkPermission(event.isFromGuild() ? event.getGuild() : null, event.getAuthor());
+                    return !cmd.checkPermission(guild != null ? guild : null, author);
                 } catch (Throwable e) {
                     return true;
                 }
@@ -60,7 +60,7 @@ public class HelpCommand extends Command {
             response.append("\n").append("**For help on a specific command, use: `").append(Settings.commandPrefix(true)).append("? <command>`**");
             response.append("\n").append("**To search for a cmd, use: `").append(Settings.commandPrefix(true)).append("? <search>`**");
             String footer = "Bot created and managed by the Interwebs Sourcery division of the Borg Collective. If you would like this bot in your server use the chant `" + Settings.commandPrefix(true) + "invite` and follow the summoning ritual instructions.";
-            DiscordUtil.createEmbedCommandWithFooter(event.getChannel(), "Locutus Cats", response.toString().trim(), footer);
+            DiscordUtil.createEmbedCommandWithFooter(channel, "Locutus Cats", response.toString().trim(), footer);
         } else {
             Integer page = DiscordUtil.parseArgInt(args, "page");
 
@@ -78,7 +78,7 @@ public class HelpCommand extends Command {
                 LinkedHashSet<Command> commands = new LinkedHashSet<>(manager.getCommandMap().values());
                 for (Command command : commands) {
                     try {
-                        if (!command.checkPermission(event.isFromGuild() ? event.getGuild() : null, event.getAuthor()))
+                        if (!command.checkPermission(guild != null ? guild : null, author))
                             continue;
                         if (command.getCategories().containsAll(requiredCategories)) {
                             if (command.desc() == null) throw new IllegalArgumentException("Command: " + command.getAliases().get(0) + " returns null for description");
@@ -91,14 +91,14 @@ public class HelpCommand extends Command {
                     }
                 }
                 if (!commandsDescShort.isEmpty()) {
-                    String cmd = DiscordUtil.trimContent(event.getMessage().getContentRaw());
+                    String cmd = DiscordUtil.trimContent(fullCommandRaw);
                     if (page == null) page = 0;
                     int perPage = 15;
                     int pages = (commandsDescShort.size() + perPage - 1) / perPage;
 
                     String title = StringMan.join(requiredCategories, ",");
                     title += " (" + (page + 1) + "/" + pages + ")";
-                    DiscordUtil.paginate(event.getGuildChannel(), title, cmd, page, perPage, commandsDescShort);
+                    DiscordUtil.paginate(channel, title, cmd, page, perPage, commandsDescShort);
                     return null;
                 }
             }
@@ -117,7 +117,7 @@ public class HelpCommand extends Command {
                 }
             }
             response.append("\n").append("`").append(cmd.help()).append("`").append("- ").append(cmd.desc());
-            DiscordUtil.createEmbedCommand(event.getChannel(), args.get(0), response.toString().trim());
+            DiscordUtil.createEmbedCommand(channel, args.get(0), response.toString().trim());
         }
         return null;
     }

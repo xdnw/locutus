@@ -67,8 +67,8 @@ public class MailTargets extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 3 && args.size() != 4) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 3 && args.size() != 4) return usage(args.size(), unkown, channel);
 
         Map<DBNation, Set<DBNation>> warDefAttMap = new HashMap<>();
         Map<DBNation, Set<DBNation>> spyDefAttMap = new HashMap<>();
@@ -110,7 +110,7 @@ public class MailTargets extends Command {
         allAttackers.addAll(spyAttDefMap.keySet());
 
         String date = TimeUtil.YYYY_MM_DD.format(ZonedDateTime.now());
-        String subject = "Targets-" + date + "/" + event.getChannel().getIdLong();
+        String subject = "Targets-" + date + "/" + channel().getIdLong();
 
         String blurb = "BE ACTIVE ON DISCORD. Additional attack instructions may be in your war room\n" +
                 "\n" +
@@ -236,7 +236,7 @@ public class MailTargets extends Command {
 
         if (!flags.contains('f')) {
             String title = totalWarTargets + " wars & " + totalSpyTargets + " spyops";
-            String pending = Settings.commandPrefix(true) + "pending '" + title + "' " + DiscordUtil.trimContent(event.getMessage().getContentRaw()) + " -f";
+            String pending = Settings.commandPrefix(true) + "pending '" + title + "' " + DiscordUtil.trimContent(fullCommandRaw) + " -f";
 
             Set<Integer> alliances = new LinkedHashSet<>();
             for (DBNation nation : mailTargets.keySet()) alliances.add(nation.getAlliance_id());
@@ -246,11 +246,11 @@ public class MailTargets extends Command {
             StringBuilder body = new StringBuilder();
             body.append("subject: " + subject + "\n");
 
-            DiscordUtil.createEmbedCommand(event.getChannel(), embedTitle, body.toString(), "Next", pending);
-            return event.getAuthor().getAsMention();
+            DiscordUtil.createEmbedCommand(channel(), embedTitle, body.toString(), "Next", pending);
+            return author.getAsMention();
         }
 
-        Message msg = RateLimitUtil.complete(event.getChannel().sendMessage("Sending messages..."));
+        Message msg = RateLimitUtil.complete(channel().sendMessage("Sending messages..."));
         for (Map.Entry<DBNation, Map.Entry<String, String>> entry : mailTargets.entrySet()) {
             DBNation attacker = entry.getKey();
             subject = entry.getValue().getKey();
@@ -263,19 +263,19 @@ public class MailTargets extends Command {
                 try {
                     attacker.sendDM("**" + subject + "**:\n" + markup);
                 } catch (Throwable e) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage(e.getMessage() + " for " + attacker.getNation()));
+                    RateLimitUtil.queue(channel().sendMessage(e.getMessage() + " for " + attacker.getNation()));
                     e.printStackTrace();
                 }
             }
 
             if (System.currentTimeMillis() - start > 10000) {
                 start = System.currentTimeMillis();
-                RateLimitUtil.queue(event.getChannel().editMessageById(msg.getIdLong(), "Sending to " + attacker.getNation()));
+                RateLimitUtil.queue(channel().editMessageById(msg.getIdLong(), "Sending to " + attacker.getNation()));
             }
         }
 
 
-        RateLimitUtil.queue(event.getChannel().deleteMessageById(msg.getIdLong()));
+        RateLimitUtil.queue(channel().deleteMessageById(msg.getIdLong()));
 
         return "Done, sent " + sent + " messages";
     }

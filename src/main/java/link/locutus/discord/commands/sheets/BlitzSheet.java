@@ -86,10 +86,10 @@ public class BlitzSheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         String sheetUrl = DiscordUtil.parseArg(args, "sheet");
         if (args.size() < 2) {
-            return usage(event);
+            return usage(args.size(), 2, channel);
         }
 
         Set<DBNation> attNations = DiscordUtil.parseNations(guild, args.get(0));
@@ -98,7 +98,7 @@ public class BlitzSheet extends Command {
         if (attNations == null || attNations.isEmpty())  return "Invalid alliance or coalition: `" + args.get(0) + "`";
         if (defNations == null || defNations.isEmpty())  return "Invalid alliance or coalition: `" + args.get(1) + "`";
 
-        GuildDB guildDB = Locutus.imp().getGuildDB(event);
+        GuildDB guildDB = Locutus.imp().getGuildDB(guild);
         if (guildDB == null) {
             return "This command must be run from a valid guild";
         }
@@ -216,7 +216,7 @@ public class BlitzSheet extends Command {
         sheet.clear("A:Z");
         sheet.write(rowData);
 
-        sheet.attach(new DiscordChannelIO(event).create()).send();
+        sheet.attach(channel.create()).send();
         return null;
 
 //        int att1Index = 13;

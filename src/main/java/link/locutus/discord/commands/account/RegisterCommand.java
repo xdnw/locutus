@@ -3,6 +3,7 @@ package link.locutus.discord.commands.account;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
@@ -15,7 +16,6 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.exceptions.HierarchyException;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
@@ -50,8 +50,8 @@ public class RegisterCommand extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        User user = event.getAuthor();
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        User user = author;
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
         if (args.size() >= 2) {
             User mention = DiscordUtil.getMention(args.get(0));
@@ -78,7 +78,7 @@ public class RegisterCommand extends Command {
                         if (!mentionMember.getRoles().contains(appRole) && !mentionMember.getRoles().contains(memberRole))
                             return "User does not have applicant role.";
                         if (DiscordUtil.getNation(mention) != null) return "User is already registered.";
-                        DBNation mentionNation = DBNation.byId(nationId);
+                        DBNation mentionNation = DBNation.getById(nationId);
                         if (mentionNation == null) return "Invalid nation";
                         if (mentionNation.getUser() != null) return "Nation already registered: " + mentionNation.getNation() + " = " + mentionNation.getUser();
                         if (!guildDb.hasAlliance()) return "This guild is not registered to an alliance";
@@ -90,15 +90,14 @@ public class RegisterCommand extends Command {
             return register(event, guildDb, mention, nationId, true);
         }
         if (args.size() != 1) {
-            DBNation nation = DiscordUtil.getNation(event);
-            if (nation == null) {
+            if (me == null) {
                 return "Usage: " + CM.register.cmd.toSlashMention();
             } else {
-                return nation.register(user, guildDb, false);
+                return me.register(user, guildDb, false);
             }
         }
         if (args.get(0).equalsIgnoreCase("*")) {
-            if (!Roles.ADMIN.hasOnRoot(event.getAuthor())) {
+            if (!Roles.ADMIN.hasOnRoot(author)) {
                 return "No permission.";
             }
 
@@ -109,7 +108,7 @@ public class RegisterCommand extends Command {
                 byLeader.putIfAbsent(entry.getValue().getNation().toLowerCase(), entry.getValue());
             }
 
-            for (Member member : event.getGuild().getMembers()) {
+            for (Member member : guild.getMembers()) {
                 if (member.getUser().isBot()) continue;
                 String nick = member.getNickname();
                 String name = member.getUser().getName();
@@ -143,7 +142,7 @@ public class RegisterCommand extends Command {
         return register(event, guildDb, user, nationId, false);
     }
 
-    public String register(MessageReceivedEvent event, GuildDB db, User user, int nationId, boolean force) throws IOException {
+    public String register(Guild guild, GuildDB db, User user, int nationId, boolean force) throws IOException {
         boolean notRegistered = DiscordUtil.getUserByNationId(nationId) == null;
 
         String fullDiscriminator = user.getName() + "#" + user.getDiscriminator();
@@ -190,7 +189,7 @@ public class RegisterCommand extends Command {
 
                 PNWUser pnwUser = new PNWUser(nationId, id, userName);
                 discordDb.addUser(pnwUser);
-                String registerMessage = nation.register(user, event.isFromGuild() ? db : null, notRegistered);
+                String registerMessage = nation.register(user, guild != null ? db : null, notRegistered);
 
                 if (!success) {
                     registerMessage += "\n" + "Error: " + errorMsg;

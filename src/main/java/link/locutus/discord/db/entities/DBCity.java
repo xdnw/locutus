@@ -12,8 +12,6 @@ import link.locutus.discord.event.Event;
 import link.locutus.discord.event.city.*;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.PnwUtil;
-import rocker.grant.city;
-import rocker.grant.nation;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -140,7 +138,7 @@ public class DBCity {
     public boolean runChangeEvents(int nationId, DBCity previous, Consumer<Event> eventConsumer) {
         if (previous == null) {
             if (eventConsumer != null) {
-                DBNation nation = DBNation.byId(nationId);
+                DBNation nation = DBNation.getById(nationId);
                 if (nation != null && nation.active_m() > 4880) {
                     new Exception().printStackTrace();
                     AlertUtil.error("Invalid city create", "city for " + nationId + " | " + this);

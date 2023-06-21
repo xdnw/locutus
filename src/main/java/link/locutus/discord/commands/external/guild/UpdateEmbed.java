@@ -41,7 +41,7 @@ public class UpdateEmbed extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty()) return usage();
 
         Message message = event.getMessage();
@@ -53,7 +53,7 @@ public class UpdateEmbed extends Command {
             String roleRaw = requiredRole.replaceAll("[<@>]", "");
             if (MathMan.isInteger(roleRaw)) {
                 Role role = guild.getRoleById(roleRaw);
-                if (role == null || !Objects.requireNonNull(event.getMember()).getRoles().contains(role)) {
+                if (role == null || !Objects.requireNonNull(guild.getMember(author)).getRoles().contains(role)) {
                     return null;
                 }
             }
@@ -89,7 +89,7 @@ public class UpdateEmbed extends Command {
             return "Invalid arguments: `" + StringMan.getString(args) + "`";
         }
 
-        DiscordMessageBuilder discMsg = new DiscordMessageBuilder(event.getChannel(), message);
+        DiscordMessageBuilder discMsg = new DiscordMessageBuilder(channel, message);
 
         discMsg.clearEmbeds();
         discMsg.embed(builder.build());

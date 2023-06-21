@@ -9,6 +9,7 @@ import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.json.CityBuild;
@@ -47,9 +48,9 @@ public class Revenue extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty()) {
-            return usage(event);
+            return usage(args.size(), 1, channel);
         }
         if (me == null) {
             return "Please use " + Settings.commandPrefix(true) + "validate";
@@ -61,7 +62,7 @@ public class Revenue extends Command {
             if (next.contains("http") || next.contains("{")) break;
         }
 
-        String content = DiscordUtil.trimContent(event.getMessage().getContentRaw());
+        String content = DiscordUtil.trimContent(fullCommandRaw);
         int jsonStart = content.indexOf('{');
         int jsonEnd = content.lastIndexOf('}');
 
@@ -112,7 +113,7 @@ public class Revenue extends Command {
             if (nations.size() == 0) {
                 return "Invalid nation or alliance: `" + args.get(0) + "` (add `-i` if they are inactive/vm/gray/app/beige)";
             } else {
-                RateLimitUtil.queue(event.getChannel().sendMessage("Fetching cities (please wait)..."));
+                RateLimitUtil.queue(channel.sendMessage("Fetching cities (please wait)..."));
                 for (DBNation aaMember : nations) {
                     if (!force && (aaMember.isGray() || aaMember.getVm_turns() != 0)) {
                         continue;

@@ -15,6 +15,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.StringMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -32,6 +33,7 @@ import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.battle.BlitzGenerator;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.sheet.SheetUtil;
@@ -40,7 +42,6 @@ import link.locutus.discord.util.task.MailTask;
 import link.locutus.discord.util.task.multi.GetUid;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.jooby.handler.CommandResult;
-import link.locutus.discord.web.jooby.handler.DummyMessageOutput;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
@@ -64,7 +65,6 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -128,6 +128,10 @@ public class DBNation implements NationOrAlliance {
 //    private double gdp;
     private double gni;
     private transient  DBNationCache cache;
+
+    public static DBNation getByUser(User user) {
+        return DiscordUtil.getNation(user);
+    }
 
     public void processTurnChange(long lastTurn, long turn, Consumer<Event> eventConsumer) {
         if (leaving_vm == turn) {
@@ -232,7 +236,7 @@ public class DBNation implements NationOrAlliance {
         };
     }
 
-    public static DBNation byId(int nationId) {
+    public static DBNation getById(int nationId) {
         return Locutus.imp().getNationDB().getNation(nationId);
     }
 
@@ -4887,7 +4891,7 @@ public class DBNation implements NationOrAlliance {
     public Map.Entry<CommandResult, String> runCommandInternally(Guild guild, User user, String command) {
         if (user == null) return new AbstractMap.SimpleEntry<>(CommandResult.ERROR, "No user for: " + getNation());
 
-        DummyMessageOutput output = new DummyMessageOutput();
+        StringMessageIO output = new StringMessageIO(user);
         CommandResult type;
         String result;
         try {

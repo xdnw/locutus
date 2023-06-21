@@ -37,7 +37,7 @@ public class ListMultisByAlliance extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         NationDB nationDB = Locutus.imp().getNationDB();
 
         String[] lines = Objects.requireNonNull(FileUtil.readFile("/debug/nonreferrals.txt")).split("\\r?\\n");
@@ -133,7 +133,7 @@ public class ListMultisByAlliance extends Command {
             response.append(nationUrl).append("\t").append(allianceUrl).append("\t").append(referredNations.containsKey(nationId)).append("\t").append(sharedWars).append("\t").append(sharedTrades).append("\t").append(sentBank).append("\t").append(sentBank || sharedTrades || sharedWars).append("\t").append(nation.getAgeDays()).append("\t").append(nation.getPosition()).append("\t").append(multiStr).append("\n");
         }
 
-        DiscordUtil.createEmbedCommand(event.getChannel(), "Potential multis:", response.toString());
+        DiscordUtil.createEmbedCommand(channel, "Potential multis:", response.toString());
 
         return null;
     }

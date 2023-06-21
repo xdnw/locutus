@@ -44,14 +44,12 @@ import com.google.common.eventbus.EventBus;
 import link.locutus.discord.apiv1.PoliticsAndWarBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.MessageReaction;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.emoji.EmojiUnion;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
@@ -834,7 +832,7 @@ public final class Locutus extends ListenerAdapter {
             long channelId = task.CHANNEL_ID;
 
             if (nationId <= 0 || channelId <= 0 || interval <= 0) continue;
-            DBNation nation = DBNation.byId(nationId);
+            DBNation nation = DBNation.getById(nationId);
             if (nation == null) {
                 AlertUtil.error("Mail error", "Cannot check mail for " + section + "(nation=" + nationId + "): Unknown nation");
                 continue;
@@ -1067,7 +1065,9 @@ public final class Locutus extends ListenerAdapter {
                 isMessageLocutusMap.put(event.getMessageIdLong(), false);
             }
 
-            commandManager.run(event);
+            String message = event.getMessage().getContentRaw();
+            DiscordChannelIO io = new DiscordChannelIO(event.getChannel(), () -> event.getMessage());
+            commandManager.run(guild, io, author, message, true, true);
             long diff = System.currentTimeMillis() - start;
             if (diff > 1000) {
                 StringBuilder response = new StringBuilder("## Long action: " + event.getAuthor().getIdLong() + " | " + event.getAuthor().getName() + ": " + DiscordUtil.trimContent(event.getMessage().getContentRaw()));
@@ -1140,31 +1140,19 @@ public final class Locutus extends ListenerAdapter {
         if (!(cmdObject instanceof Noformat)) {
             cmd = DiscordUtil.format(message.getGuild(), channel, user, DiscordUtil.getNation(user), cmd);
         }
-        Message cmdMessage = DelegateMessage.create(message, cmd, channel);
-
-        MessageReceivedEvent cmdEvent = new DelegateMessageEvent(message.getGuild(), 0, cmdMessage) {
-            @Nonnull
-            @Override
-            public User getAuthor() {
-                return user;
-            }
-
-            @Override
-            public long getResponseNumber() {
-                return -1;
-            }
-        };
+        Guild guild = message.isFromGuild() ? message.getGuild() : null;
 
         if (cmdObject != null) {
             try {
-                if (!cmdObject.checkPermission(cmdEvent)) {
+                if (!cmdObject.checkPermission(guild, user)) {
                     return false;
                 }
             } catch (InsufficientPermissionException e) {
                 return false;
             }
         }
-        commandManager.run(cmdEvent, async, false);
+        DiscordChannelIO io = new DiscordChannelIO(channel, () -> message);
+        commandManager.run(guild, io, user, cmd, async, false);
         return true;
     }
 

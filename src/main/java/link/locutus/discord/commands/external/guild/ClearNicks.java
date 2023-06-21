@@ -34,11 +34,11 @@ public class ClearNicks extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         int failed = 0;
         String msg = null;
         List<Future<?>> tasks = new ArrayList<>();
-        for (Member member : event.getGuild().getMembers()) {
+        for (Member member : guild.getMembers()) {
             if (member.getNickname() != null) {
                 try {
                     String nick;
@@ -50,7 +50,7 @@ public class ClearNicks extends Command {
                             nick = previous.get(member.getIdLong());
                         } else {
                             previous.put(member.getIdLong(), member.getNickname());
-                            nick = DiscordUtil.trimContent(event.getMessage().getContentRaw());
+                            nick = DiscordUtil.trimContent(fullCommandRaw);
                             nick = nick.substring(nick.indexOf(' ') + 1);
                         }
                     }

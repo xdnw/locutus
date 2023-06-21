@@ -37,4 +37,8 @@ public interface IMessageIO {
     }
 
     long getIdLong();
+
+    default CompletableFuture<IMessageBuilder> sendMessage(String s) {
+        return send(s);
+    }
 }

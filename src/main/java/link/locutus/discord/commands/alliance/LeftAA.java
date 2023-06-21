@@ -4,6 +4,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PnwUtil;
@@ -12,7 +14,6 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -43,9 +44,9 @@ public class LeftAA extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty()) {
-            return usage(event);
+            return usage(args.size(), 1, channel);
         }
         StringBuilder response = new StringBuilder();
         Map<Integer, Map.Entry<Long, Rank>> removes;
@@ -55,9 +56,9 @@ public class LeftAA extends Command {
         Integer aaId = PnwUtil.parseAllianceId(args.get(0));
         if (aaId == null || args.get(0).contains("/nation/")) {
             Integer nationId = DiscordUtil.parseNationId(args.get(0));
-            if (nationId == null) return usage(event);
+            if (nationId == null) return usage("Invalid nation id: `" + args.get(0) + "`", channel);
 
-            DBNation nation = DBNation.byId(nationId);
+            DBNation nation = DBNation.getById(nationId);
             removes = Locutus.imp().getNationDB().getRemovesByNation(nationId);
             for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {
                 DBAlliance aa = DBAlliance.getOrCreate(entry.getKey());
@@ -77,7 +78,7 @@ public class LeftAA extends Command {
             showCurrentAA = true;
             removes = Locutus.imp().getNationDB().getRemovesByAlliance(aaId);
 
-            if (args.size() != 2 && args.size() != 3) return usage(event);
+            if (args.size() != 2 && args.size() != 3) return usage(args.size(), 2, channel);
 
             long timeDiff = TimeUtil.timeToSec(args.get(1)) * 1000L;
             if (timeDiff == 0) return "Invalid time: `" + args.get(1) + "`";
@@ -123,11 +124,16 @@ public class LeftAA extends Command {
             response.append("\n");
         }
 
+        IMessageBuilder msg = channel.create();
         if (flags.contains('i')) {
-            DiscordUtil.upload(event.getChannel(), "ids.txt", StringMan.join(ids, ","));
+            msg.file("ids.txt", StringMan.join(ids, ","));
         }
-        if (response.length() == 0) return "No history found in the specified timeframe.";
-
-        return response.toString();
+        if (response.length() == 0) {
+            msg.append("No history found in the specified timeframe.");
+        } else {
+            msg.append(response.toString());
+        }
+        msg.send();
+        return null;
     }
 }

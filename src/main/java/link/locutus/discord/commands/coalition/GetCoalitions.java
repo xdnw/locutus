@@ -3,6 +3,7 @@ package link.locutus.discord.commands.coalition;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -38,11 +39,11 @@ public class GetCoalitions extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        boolean isAdmin = Roles.ADMIN.has(event.getAuthor(), guild);
-        if (args.size() > 1) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        boolean isAdmin = Roles.ADMIN.has(author, guild);
+        if (args.size() > 1) return usage(args.size(), 1, channel);
 
-        Map<String, Set<Long>> coalitions = Locutus.imp().getGuildDB(event).getCoalitionsRaw();
+        Map<String, Set<Long>> coalitions = Locutus.imp().getGuildDB(guild).getCoalitionsRaw();
         List<String> coalitionNames = new ArrayList<>(coalitions.keySet());
         Collections.sort(coalitionNames);
 

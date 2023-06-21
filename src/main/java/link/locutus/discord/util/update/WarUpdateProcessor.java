@@ -843,7 +843,7 @@ public class WarUpdateProcessor {
                     for (DBWar war : wars) {
                         if (war.attacker_id != defender.getNation_id()) continue;
 
-                        DBNation warDef = DBNation.byId(war.defender_id);
+                        DBNation warDef = DBNation.getById(war.defender_id);
                         if (warDef == null || warDef.getPosition() < 1) continue;
                         CounterStat stats = war.getCounterStat();
                         if (stats != null && stats.type == CounterType.IS_COUNTER) {

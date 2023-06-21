@@ -65,7 +65,7 @@ public class SpySheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         String sheetUrl = DiscordUtil.parseArg(args, "sheet");
         Integer minSpies = -1;
         Iterator<String> iter = args.iterator();
@@ -77,7 +77,7 @@ public class SpySheet extends Command {
             }
         }
 
-        if (args.size() < 2) return usage(event);
+        if (args.size() < 2) return usage(args.size(), 2, channel);
         Integer turns = Integer.MAX_VALUE;
         Set<SpyCount.Operation> allowedOpTypes = new HashSet<>();
         if (args.size() == 3) {
@@ -320,7 +320,7 @@ public class SpySheet extends Command {
         generateSpySheet(sheet, opsAgainstNations);
         sheet.set(0, 0);
 
-        sheet.attach(new DiscordChannelIO(event).create()).send();
+        sheet.attach(channel.create()).send();
         return null;
     }
 

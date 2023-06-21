@@ -247,7 +247,7 @@ public class PWBindings extends BindingHelper {
             if (cityEntry == null) throw new IllegalArgumentException("No city found in cache for " + cityId);
             int nationId = cityEntry.getKey();
             DBCity city = cityEntry.getValue();
-            DBNation nation2 = DBNation.byId(nationId);
+            DBNation nation2 = DBNation.getById(nationId);
             if (nation2 != null) nation = nation2;
             build = city.toJavaCity(nation == null ? f -> false : nation::hasProject).toCityBuild();
         }

@@ -22,9 +22,7 @@ import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.util.scheduler.ThrowingFunction;
 import net.dv8tion.jda.api.entities.User;
-import org.jooq.meta.derby.sys.Sys;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -338,7 +336,7 @@ public class TradeDB extends DBMainV2 {
         }
 
         public DBNation getNation() {
-            return DBNation.byId(nation);
+            return DBNation.getById(nation);
         }
 
         public String toSimpleString() {
@@ -420,7 +418,7 @@ public class TradeDB extends DBMainV2 {
                 result.append("**NEGOTIABLE**\n");
             }
 //            nation as Seller: NATION_NAME
-            DBNation natObj = DBNation.byId(nation);
+            DBNation natObj = DBNation.getById(nation);
             result.append((isBuy ? "Buyer" : "Seller") + ": ");
             if (natObj != null) {
                 result.append(natObj.getNationUrlMarkup(true) + " | " + natObj.getAllianceUrlMarkup(true));

@@ -41,8 +41,8 @@ public abstract class Command {
     public static Command create(ICommand command) {
         return new Command() {
             @Override
-            public String onCommand(Guild guild, IMessageIO channel, User user, DBNation nation, List<String> args, Set<Character> flags) throws Exception {
-                return command.onCommand(guild, channel, user, nation, args, flags);
+            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+                return command.onCommand(guild, channel, author, me, args, flags);
             }
         };
     }
@@ -76,6 +76,14 @@ public abstract class Command {
 
     public String usage(String arg, MessageChannel channel) {
         return usage(arg, channel == null ? null : new DiscordChannelIO(channel));
+    }
+
+    public String usage(int size, int expectedMin, int expectedMax, IMessageIO channel) {
+        return usage("Expected between " + expectedMin + " and " + expectedMax + " arguments, got " + size + ".", channel);
+    }
+
+    public String usage(int size, int expected, IMessageIO channel) {
+        return usage("Expected " + expected + " arguments, got " + size + ".", channel);
     }
 
     public String usage(String arg, IMessageIO channel) {
@@ -165,7 +173,7 @@ public abstract class Command {
         return "Run the " + aliases.get(0) + " command";
     }
 
-    public abstract String onCommand(Guild guild, IMessageIO channel, User user, DBNation nation, List<String> args, Set<Character> flags) throws Exception;
+    public abstract String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception;
 
     public String onCommand(Guild guild, MessageChannel channel, User user, DBNation me, String command) throws Exception {
         return onCommand(guild, new DiscordChannelIO(channel), user, me, command);
@@ -174,14 +182,14 @@ public abstract class Command {
 
     public String onCommand(Guild guild, IMessageIO channel, User user, DBNation me, String command) throws Exception {
         List<String> split = StringMan.split(command, ' ');
-        return onCommand(guild, channel, user, me, split);
+        return onCommand(guild, channel, user, me, command, split);
     }
 
-    public String onCommand(Guild guild, MessageChannel channel, User user, DBNation me, List<String> args) throws Exception {
-        return onCommand(guild, new DiscordChannelIO(channel), user, me, args, new HashSet<>());
+    public String onCommand(Guild guild, MessageChannel channel, User user, DBNation me, String fullCommandRaw, List<String> args) throws Exception {
+        return onCommand(guild, new DiscordChannelIO(channel), user, me, fullCommandRaw, args, new HashSet<>());
     }
 
-    public String onCommand(Guild guild, IMessageIO channel, User user, DBNation me, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User user, DBNation me, String fullCommandRaw, List<String> args) throws Exception {
         Set<Character> flags = new HashSet<>();
         Iterator<String> iterator = args.iterator();
         while (iterator.hasNext()) {
@@ -192,7 +200,7 @@ public abstract class Command {
                 iterator.remove();
             }
         }
-        return onCommand(guild, channel, user, me, args, flags);
+        return onCommand(guild, channel, user, me, fullCommandRaw, args, flags);
     }
 
     @Override

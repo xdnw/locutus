@@ -46,8 +46,8 @@ public class IASheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        GuildDB db = Locutus.imp().getGuildDB(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        GuildDB db = Locutus.imp().getGuildDB(guild);
         if (db == null) return "Not in guild";
         Set<Integer> aaIds = db.getAllianceIds();
         if (aaIds.isEmpty()) return "Please use " + GuildKey.ALLIANCE_ID.getCommandMention() + "";
@@ -64,7 +64,7 @@ public class IASheet extends Command {
         nations.sort(Comparator.comparingInt(DBNation::getCities));
 
 
-        Message message = RateLimitUtil.complete(event.getChannel().sendMessage("Updating..."));
+        Message message = RateLimitUtil.complete(channel().sendMessage("Updating..."));
 
         boolean individual = flags.contains('f') || nations.size() == 1;
         IACheckup checkup = new IACheckup(db, db.getAllianceList().subList(aaIds), false);
@@ -73,7 +73,7 @@ public class IASheet extends Command {
                     @Override
                     public void accept(DBNation nation) {
                         if (-start + (start = System.currentTimeMillis()) > 5000) {
-                            RateLimitUtil.queue(event.getChannel().editMessageById(message.getIdLong(), "Updating for: " + nation.getNation()));
+                            RateLimitUtil.queue(channel().editMessageById(message.getIdLong(), "Updating for: " + nation.getNation()));
                         }
                     }
                 },
@@ -145,7 +145,7 @@ public class IASheet extends Command {
 
         sheet.set(0, 0);
 
-        sheet.attach(new DiscordChannelIO(event).create()).send();
+        sheet.attach(channel.create()).send();
         return null;
     }
 }

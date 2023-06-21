@@ -23,8 +23,8 @@ public class ChannelAccess extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 1) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 1) return usage(args.size(), 1, channel);
         User user = DiscordUtil.getUser(args.get(0));
         if (user == null) return "Invalid usage `" + args.get(0) + "`";
         return super.onCommand(event, guild, author, me, args, flags);

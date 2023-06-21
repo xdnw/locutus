@@ -240,7 +240,7 @@ public class StatCommands {
                     (byNatOrAA, attack) -> {
                         DBWar war = wars.get(attack.getWar_id());
                         int nationId = groupByAlliance ? war.getNationId(byNatOrAA) : byNatOrAA;
-                        DBNation nation = DBNation.byId(nationId);
+                        DBNation nation = DBNation.getById(nationId);
                         return scale(nation, sign * valueFunc.apply(attack.getAttacker_nation_id() == nationId, attack), scalePerCity, groupByAlliance);
                     });
         } else {
@@ -854,8 +854,8 @@ public class StatCommands {
         Map<Integer, Integer> mostGames = new HashMap<>();
         for (BBGame game : games) {
             if (byAlliance) {
-                DBNation home = DBNation.byId(game.getHome_nation_id());
-                DBNation away = DBNation.byId(game.getAway_nation_id());
+                DBNation home = DBNation.getById(game.getHome_nation_id());
+                DBNation away = DBNation.getById(game.getAway_nation_id());
                 if (home != null) mostGames.merge(home.getAlliance_id(), 1, Integer::sum);
                 if (away != null) mostGames.merge(away.getAlliance_id(), 1, Integer::sum);
             } else {
@@ -878,8 +878,8 @@ public class StatCommands {
         for (BBGame game : games) {
             if (byAlliance) {
 
-                DBNation home = DBNation.byId(game.getHome_nation_id());
-                DBNation away = DBNation.byId(game.getAway_nation_id());
+                DBNation home = DBNation.getById(game.getHome_nation_id());
+                DBNation away = DBNation.getById(game.getAway_nation_id());
                 if (home != null) mostGames.merge(home.getAlliance_id(), 1, Integer::sum);
                 if (away != null) mostGames.merge(away.getAlliance_id(), 1, Integer::sum);
             } else {
@@ -943,7 +943,7 @@ public class StatCommands {
                 id = game.getAway_nation_id();
             } else continue;
             if (byAlliance) {
-                DBNation nation = DBNation.byId(id);
+                DBNation nation = DBNation.getById(id);
                 if (nation == null) continue;
                 id = nation.getAlliance_id();
             }
@@ -971,7 +971,7 @@ public class StatCommands {
                 id = game.getAway_nation_id();
             } else continue;
             if (byAlliance) {
-                DBNation nation = DBNation.byId(id);
+                DBNation nation = DBNation.getById(id);
                 if (nation == null) continue;
                 id = nation.getAlliance_id();
             }
@@ -1675,7 +1675,7 @@ public class StatCommands {
         Set<Integer> natIds = attackers.stream().filter(NationOrAlliance::isNation).map(NationOrAlliance::getId).collect(Collectors.toSet());
         for (Map.Entry<Integer, List<DBWar>> entry : warsByNation.entrySet()) {
             int nationId = entry.getKey();
-            DBNation nation = DBNation.byId(nationId);
+            DBNation nation = DBNation.getById(nationId);
             if (nation == null) continue;
             if (!natIds.contains(nation.getId()) && !aaIds.contains(nation.getAlliance_id())) continue;
 

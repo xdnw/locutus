@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
@@ -16,6 +17,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -37,11 +39,11 @@ public class NationLootRanking extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 2) {
-            return usage(event);
+            return usage(args.size(), 2, channel);
         }
-        Collection<DBNation> nations = DiscordUtil.parseNations(event.getGuild(), args.get(0));
+        Collection<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
         if (nations == null || nations.isEmpty()) {
             return "Invalid alliance or coalition: `" + args.get(0) + "`";
         }
@@ -80,7 +82,7 @@ public class NationLootRanking extends Command {
 
         String emoji = "Refresh";
         response.append("\n\nPress `").append(emoji).append("` to refresh");
-        DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString(), emoji, DiscordUtil.trimContent(event.getMessage().getContentRaw()));
+        DiscordUtil.createEmbedCommand(channel, title, response.toString(), emoji, DiscordUtil.trimContent(fullCommandRaw));
 
         return null;
     }

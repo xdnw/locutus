@@ -31,8 +31,8 @@ public class Rebuy extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 1) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 1) return usage(args.size(), 1, channel);
         DBNation nation = DiscordUtil.parseNation(args.get(0));
         if (nation == null) return "Unknown nation `" + args.get(0) + "`";
 
@@ -60,7 +60,7 @@ public class Rebuy extends Command {
             body.append(dateStr).append(" | ").append(dcStr).append("\n");
         }
 
-        DiscordUtil.createEmbedCommand(event.getChannel(), title, body.toString());
+        DiscordUtil.createEmbedCommand(channel, title, body.toString());
         return null;
     }
 }

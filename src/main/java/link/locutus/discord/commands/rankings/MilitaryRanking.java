@@ -52,7 +52,7 @@ public class MilitaryRanking extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         Map<Integer, List<DBNation>> byAA = Locutus.imp().getNationDB().getNationsByAlliance(true, true, true, true);
 
         Map<Integer, Color> sphereColors = new HashMap<>();
@@ -251,7 +251,7 @@ public class MilitaryRanking extends Command {
             DrawableWriter writer = DrawableWriterFactory.getInstance().get("image/png");
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             writer.write(plot, baos, 1400, 600);
-            RateLimitUtil.queue(event.getChannel().sendFile(baos.toByteArray(), ("img.png")));
+            RateLimitUtil.queue(channel.sendFile(baos.toByteArray(), ("img.png")));
         }
 
         sheet.clear("A:Z");
@@ -260,7 +260,7 @@ public class MilitaryRanking extends Command {
         String msg = "> Each bar is segmented into four sections, from bottom to top: (soldiers, tanks, planes, ships)\n" +
                 "> Each alliance is grouped by sphere and color coded";
 
-        sheet.send(new DiscordChannelIO(event), null, msg).send();
+        sheet.send(channel, null, msg).send();
         return null;
     }
 }

@@ -31,8 +31,8 @@ public class Mask extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 3) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 3) return usage(args.size(), 3, channel);
 
         Role role = DiscordUtil.getRole(guild, args.get(1));
         boolean value = args.get(2).toLowerCase().startsWith("t") || args.get(2).equals("1");

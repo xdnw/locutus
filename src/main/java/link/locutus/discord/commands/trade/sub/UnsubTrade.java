@@ -28,14 +28,14 @@ public class UnsubTrade extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty()) {
-            return usage(event);
+            return usage(args.size(), 1, channel);
         }
         TradeDB db = Locutus.imp().getTradeManager().getTradeDb();
         ResourceType type = ResourceType.parse(args.get(0));
 
-        db.unsubscribe(event.getAuthor(), type);
+        db.unsubscribe(author, type);
         return "Unsubscribed from " + type + " alerts";
     }
 }

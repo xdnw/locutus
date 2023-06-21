@@ -808,7 +808,7 @@ public class StockDB extends DBMain {
                     Rank rank = Rank.byId(rs.getInt("rank"));
                     int exchangeId = rs.getInt("exchange");
                     Exchange exchange = exchanges.get(exchangeId);
-                    DBNation nation = DBNation.byId(nationId);
+                    DBNation nation = DBNation.getById(nationId);
                     if (exchange != null && nation != null) {
                         result.computeIfAbsent(nation, f -> new ArrayList<>())
                         .add(new AbstractMap.SimpleEntry<>(exchange, rank));

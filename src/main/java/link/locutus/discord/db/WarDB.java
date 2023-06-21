@@ -4,8 +4,6 @@ import com.politicsandwar.graphql.model.*;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
-import it.unimi.dsi.fastutil.ints.Int2IntArrayMap;
-import it.unimi.dsi.fastutil.ints.Int2LongArrayMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.WarAttacksContainer;
@@ -43,26 +41,10 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.Reader;
-import java.math.BigDecimal;
-import java.net.URL;
-import java.sql.Array;
-import java.sql.Blob;
-import java.sql.Clob;
-import java.sql.Date;
-import java.sql.NClob;
 import java.sql.PreparedStatement;
-import java.sql.Ref;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.RowId;
 import java.sql.SQLException;
-import java.sql.SQLWarning;
-import java.sql.SQLXML;
 import java.sql.Statement;
-import java.sql.Time;
-import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -1843,7 +1825,7 @@ public class WarDB extends DBMainV2 {
                     if (war != null) {
 
                         if (runAlerts) {
-                            DBNation defender = DBNation.byId(attack.getDefender_nation_id());
+                            DBNation defender = DBNation.getById(attack.getDefender_nation_id());
                             if (defender != null && defender.getLastFetchedUnitsMs() < attack.getDate()) {
                                 DBNation copyOriginal = null;
                                 if (!defender.isBeige()) copyOriginal = new DBNation(defender);
@@ -1939,7 +1921,7 @@ public class WarDB extends DBMainV2 {
                                 }
                             }
                         } else {
-                            DBNation defender = DBNation.byId(attack.getDefender_nation_id());
+                            DBNation defender = DBNation.getById(attack.getDefender_nation_id());
                             if (defender != null) {
                                 int numCities = defender.getCities();
                                 double scoreNoInfra = defender.estimateScore(0);

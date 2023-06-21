@@ -48,9 +48,9 @@ public class TradeProfit extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 2) {
-            return usage(event);
+            return usage(args.size(), 2, channel);
         }
         Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
         if (nations.isEmpty()) {

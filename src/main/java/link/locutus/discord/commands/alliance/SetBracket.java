@@ -3,8 +3,10 @@ package link.locutus.discord.commands.alliance;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -52,13 +54,10 @@ public class SetBracket extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.isEmpty() || args.size() > 3) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.isEmpty() || args.size() > 3) return usage(args.size(), 1, 3, channel);
 
-        DBNation nation = DiscordUtil.parseNation(args.get(0));
-        if (nation == null) {
-            return usage(event);
-        }
+        DBNation nation = PWBindings.nation(author, args.get(0));
         GuildDB db = Locutus.imp().getGuildDB(guild);
         boolean isGov = Roles.ECON_STAFF.has(author, guild) || Roles.INTERNAL_AFFAIRS.has(author, guild);
         if (!isGov) {
@@ -80,7 +79,7 @@ public class SetBracket extends Command {
                 String url = bracket.getUrl();
                 response.append("\n- " + MarkupUtil.markdownUrl("#" + bracket.taxId, url) + ": " + bracket.moneyRate + "/" + bracket.rssRate + " (" + bracket.getNations().size() + " nations)- " + bracket.getName());
             }
-            return usage(event, response.toString());
+            return usage(response.toString(), channel);
         }
 
         String arg = args.get(1);

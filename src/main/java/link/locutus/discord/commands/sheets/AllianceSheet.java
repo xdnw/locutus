@@ -50,8 +50,8 @@ public class AllianceSheet extends Command implements Noformat {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() < 2) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() < 2) return usage(args.size(), 2, channel);
 
         List<String> header = new ArrayList<>(args);
         header.remove(0);
@@ -106,7 +106,7 @@ public class AllianceSheet extends Command implements Noformat {
                     }
                 }
 
-                String formatted = DiscordUtil.format(guild, event.getGuildChannel(), author, nation, arg);
+                String formatted = DiscordUtil.format(guild, channel, author, nation, arg);
 
                 header.set(i - 1, formatted);
             }
@@ -117,7 +117,7 @@ public class AllianceSheet extends Command implements Noformat {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        sheet.attach(new DiscordChannelIO(event).create()).send();
+        sheet.attach(channel.create()).send();
         return null;
     }
 }

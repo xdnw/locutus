@@ -26,7 +26,7 @@ public class NAPDown extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         long turnEnd = 227742;
         String napLink = "https://politicsandwar.fandom.com/wiki/Brawlywood";
         long turn = TimeUtil.getTurn();
@@ -87,7 +87,7 @@ public class NAPDown extends Command {
         String emoji = "Refresh";
         response.append("\n\nPress `" + emoji + "` to refresh");
 
-        DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString(), emoji, DiscordUtil.trimContent(event.getMessage().getContentRaw()));
+        DiscordUtil.createEmbedCommand(channel, title, response.toString(), emoji, DiscordUtil.trimContent(fullCommandRaw));
         return null;
     }
 }

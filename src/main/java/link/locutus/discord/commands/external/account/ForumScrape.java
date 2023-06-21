@@ -3,7 +3,9 @@ package link.locutus.discord.commands.external.account;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.DiscordDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.FileUtil;
@@ -15,6 +17,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
 import java.util.List;
+import java.util.Set;
 
 public class ForumScrape extends Command {
     public ForumScrape() {
@@ -32,7 +35,7 @@ public class ForumScrape extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         String urlRaw = "https://forum.politicsandwar.com/index.php?/profile/%s-ignore/";
 
         DiscordDB db = Locutus.imp().getDiscordDB();

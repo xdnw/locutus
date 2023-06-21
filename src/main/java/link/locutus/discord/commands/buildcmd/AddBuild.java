@@ -5,7 +5,9 @@ import com.google.gson.JsonSyntaxException;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.pnw.json.CityBuildRange;
 import link.locutus.discord.user.Roles;
@@ -17,6 +19,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class AddBuild extends Command {
     public AddBuild() {
@@ -39,10 +42,10 @@ public class AddBuild extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-        String content = DiscordUtil.trimContent(event.getMessage().getContentRaw());
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        String content = DiscordUtil.trimContent(fullCommandRaw);
         if (args.size() < 3) {
-            return usage(event);
+            return usage(args.size(), 3, channel);
         }
         int jsonStart = content.indexOf('{');
         if (jsonStart != -1) {
@@ -65,11 +68,11 @@ public class AddBuild extends Command {
                 CityBuild gson = new Gson().fromJson(buildJson, CityBuild.class);
                 int min = Integer.parseInt(minStr);
                 int max = Integer.parseInt(maxStr);
-                Locutus.imp().getGuildDB(event).addBuild(category, min, max, buildJson);
+                Locutus.imp().getGuildDB(guild).addBuild(category, min, max, buildJson);
 
                 StringBuilder response = new StringBuilder("Added build: ```" + gson + "```");
 
-                Map<String, List<CityBuildRange>> builds = Locutus.imp().getGuildDB(event).getBuilds();
+                Map<String, List<CityBuildRange>> builds = Locutus.imp().getGuildDB(guild).getBuilds();
                 List<CityBuildRange> list = builds.get(category);
                 for (CityBuildRange range : list) {
                     if (range.getMin() == min) continue;
@@ -82,6 +85,6 @@ public class AddBuild extends Command {
                 return "Invalid build json: " + e.getMessage();
             }
         }
-        return usage(event, "No build json provided.");
+        return usage("No build json provided.", channel);
     }
 }

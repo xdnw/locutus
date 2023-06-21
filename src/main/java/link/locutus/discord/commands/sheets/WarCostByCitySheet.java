@@ -38,8 +38,8 @@ public class WarCostByCitySheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        GuildDB guildDb = checkNotNull(Locutus.imp().getGuildDB(event));
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        GuildDB guildDb = checkNotNull(Locutus.imp().getGuildDB(guild));
         SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKeys.WAR_COST_BY_CITY_SHEET);
 
         List<String> header = new ArrayList<>();
@@ -76,7 +76,7 @@ public class WarCostByCitySheet extends Command {
 
         sheet.clearAll();
         sheet.set(0, 0);
-        sheet.attach(new DiscordChannelIO(event).create()).send();
+        sheet.attach(channel.create()).send();
         return null;
     }
 }

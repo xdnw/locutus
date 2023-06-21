@@ -74,7 +74,7 @@ public class IACategory {
         return DiscordUtil.findFreeCategory(categories);
     }
 
-    public boolean isInCategory(GuildMessageChannel channel) {
+    public boolean isInCategory(MessageChannel channel) {
         if (!(channel instanceof ICategorizableChannel)) return false;
         Category parent = ((ICategorizableChannel) channel).getParentCategory();
         for (Category category : getCategories()) {
@@ -471,7 +471,7 @@ public class IACategory {
             IAChannel iaChannel = null;
             if (MathMan.isInteger(idStr)) {
                 int nationId = Integer.parseInt(idStr);
-                DBNation nation = DBNation.byId(nationId);
+                DBNation nation = DBNation.getById(nationId);
                 if (nation != null) {
                     iaChannel = new IAChannel(nation, db, channel.getParentCategory(), channel);
 //                    iaChannel.updatePerms();
@@ -690,7 +690,7 @@ public class IACategory {
         for (NationMeta meta : metas) {
             ByteBuffer buf = db.getMeta(member.getNation_id(), meta);
             if (buf != null) {
-                DBNation nation = DBNation.byId(buf.getInt());
+                DBNation nation = DBNation.getById(buf.getInt());
                 long timeStamp = buf.getLong();
                 if (timeStamp > latestTime) {
                     latestTime = timeStamp;

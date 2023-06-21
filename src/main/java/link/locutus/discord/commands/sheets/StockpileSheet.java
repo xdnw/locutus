@@ -42,7 +42,7 @@ public class StockpileSheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         AllianceList alliance = db.getAllianceList();
         if (alliance == null || alliance.isEmpty()) return "Pleas set " + GuildKey.ALLIANCE_ID.getCommandMention() + "";
@@ -96,9 +96,9 @@ public class StockpileSheet extends Command {
 
         String totalStr = PnwUtil.resourcesToFancyString(aaTotal);
         totalStr += "\n`note:total ignores nations with alliance info disabled`";
-        DiscordUtil.createEmbedCommand(event.getChannel(), "Nation Stockpiles", totalStr);
+        DiscordUtil.createEmbedCommand(channel(), "Nation Stockpiles", totalStr);
 
-        sheet.attach(new DiscordChannelIO(event).create()).send();
+        sheet.attach(channel.create()).send();
         return null;
     }
 }

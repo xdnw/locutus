@@ -31,15 +31,15 @@ public class PendingCommand extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-        if (args.isEmpty()) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.isEmpty()) return usage(args.size(), 1, channel);
 
         String title = args.get(0);
-        String raw = DiscordUtil.trimContent(event.getMessage().getContentRaw());
+        String raw = DiscordUtil.trimContent(fullCommandRaw);
         String cmd = raw.substring(raw.indexOf(' ', raw.indexOf(title) + title.length()) + 1);
 
         String emoji = "Approve";
-        DiscordUtil.createEmbedCommand(event.getChannel(), embed -> {
+        DiscordUtil.createEmbedCommand(channel, embed -> {
             embed.setTitle(title);
             embed.setDescription(cmd + "\n\nPlease Click " + emoji + " after you have fullfilled this request.");
         }, emoji, cmd);

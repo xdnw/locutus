@@ -138,21 +138,21 @@ public class ROI extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 2) {
-            return usage(event);
+            return usage(args.size(), 2, channel);
         }
         Integer days = MathMan.parseInt(args.get(1));
         if (days == null) {
             return "Invalid number of days: `" + args.get(1) + "`";
         }
 
-        GuildDB guildDb = Locutus.imp().getGuildDB(event);
+        GuildDB guildDb = Locutus.imp().getGuildDB(guild);
         if (guildDb == null || !guildDb.hasAlliance()) {
             return "Invalid guild. Please register your alliance id with: " + GuildKey.ALLIANCE_ID.getCommandMention() + "";
         }
 
-        Message message = RateLimitUtil.complete(event.getChannel().sendMessage("Fetching nations: "));
+        Message message = RateLimitUtil.complete(channel().sendMessage("Fetching nations: "));
 
         Set<Integer> aaIds = guildDb.getAllianceIds();
         if (aaIds.isEmpty()) return "Please use " + GuildKey.ALLIANCE_ID.getCommandMention() + "";
@@ -161,7 +161,7 @@ public class ROI extends Command {
         boolean useSheet = false;
 
         if (args.get(0).toLowerCase().equals("*")) {
-            if (!Roles.ECON.has(event.getAuthor(), guildDb.getGuild())) {
+            if (!Roles.ECON.has(author, guildDb.getGuild())) {
                 return "You do not have the role: " + Roles.ECON;
             }
             Set<DBNation> nations = Locutus.imp().getNationDB().getNations(aaIds);
@@ -169,7 +169,7 @@ public class ROI extends Command {
                 for (DBNation nation : nations) {
                     if (nation.getPosition() <= 1) continue;
                     if (nation.getActive_m() > TimeUnit.DAYS.toMinutes(7)) continue;
-                    RateLimitUtil.queue(event.getChannel().editMessageById(message.getIdLong(),
+                    RateLimitUtil.queue(channel().editMessageById(message.getIdLong(),
                             "Calculating ROI for: " + nation.getNation()));
 
                     roi(nation, days, roiMap);
@@ -188,7 +188,7 @@ public class ROI extends Command {
         } else {
             Collection<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
             nations.removeIf(n -> n.getActive_m() > 10000 || n.getVm_turns() > 0);
-            if (nations.size() > 1 && !Roles.ADMIN.hasOnRoot(event.getAuthor())) {
+            if (nations.size() > 1 && !Roles.ADMIN.hasOnRoot(author)) {
                 nations.removeIf(n -> !aaIds.contains(n.getAlliance_id()));
                 if (nations.isEmpty()) {
                     return "You are only allowed to find grants for other alliances";
@@ -203,7 +203,7 @@ public class ROI extends Command {
             useSheet = nations.size() > 1;
             for (DBNation nation : nations) {
                 try {
-                    RateLimitUtil.queue(event.getChannel().editMessageById(message.getIdLong(),
+                    RateLimitUtil.queue(channel().editMessageById(message.getIdLong(),
                             "Calculating ROI for: " + nation.getNation()));
 
                     roi(nation, days, roiMap);
@@ -212,7 +212,7 @@ public class ROI extends Command {
                 }
             }
         }
-        RateLimitUtil.complete(event.getChannel().editMessageById(message.getIdLong(), "Results:"));
+        RateLimitUtil.complete(channel().editMessageById(message.getIdLong(), "Results:"));
 
         roiMap.removeIf(roi -> roi.roi <= 0);
 
@@ -313,7 +313,7 @@ public class ROI extends Command {
             } catch (Throwable e) {
                 e.printStackTrace();
             }
-            sheet.attach(new DiscordChannelIO(event).create()).send();
+            sheet.attach(channel.create()).send();
             return null;
         } else {
             StringBuilder output = new StringBuilder("Weekly ROI (" + days + " days):\n");

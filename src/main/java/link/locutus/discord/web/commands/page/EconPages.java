@@ -8,7 +8,6 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.TaxBracket;
@@ -124,7 +123,7 @@ public class EconPages {
             allowedNations =  f -> true;
         } else {
             allowedNations = id -> {
-                DBNation nation = DBNation.byId(id);
+                DBNation nation = DBNation.getById(id);
                 return nation != null && nationList.getNations().contains(nation);
             };
         }

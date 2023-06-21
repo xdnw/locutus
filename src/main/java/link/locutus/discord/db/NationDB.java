@@ -49,7 +49,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -2697,7 +2696,7 @@ public class NationDB extends DBMainV2 {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     int attackerId = rs.getInt(1);
-                    DBNation other = DBNation.byId(attackerId);
+                    DBNation other = DBNation.getById(attackerId);
                     if (other != null) {
                         result.add(other);
                     }
@@ -2718,7 +2717,7 @@ public class NationDB extends DBMainV2 {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     int attackerId = rs.getInt(1);
-                    DBNation other = DBNation.byId(attackerId);
+                    DBNation other = DBNation.getById(attackerId);
                     if (other != null) {
                         result.add(other);
                     }

@@ -6,7 +6,6 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.entities.CityInfraLand;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
@@ -17,7 +16,6 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -53,7 +51,7 @@ public class Damage extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         Double score = DiscordUtil.parseArgDouble(args, "score");
         if (args.size() != 1) return usage();
 
@@ -133,9 +131,9 @@ public class Damage extends Command {
 
         MessageChannel channel;
         if (flags.contains('d')) {
-            channel = RateLimitUtil.complete(event.getAuthor().openPrivateChannel());
+            channel = RateLimitUtil.complete(author.openPrivateChannel());
         } else {
-            channel = event.getGuildChannel();
+            channel = channel;
         }
 
         if (valueFunction.isEmpty()) {
@@ -145,7 +143,7 @@ public class Damage extends Command {
 
         List<Map.Entry<DBNation, Double>>  maxInfraSorted = new ArrayList<>();
         for (Map.Entry<Integer, Double> entry : valueFunction.entrySet()) {
-            DBNation nation = DBNation.byId(entry.getKey());
+            DBNation nation = DBNation.getById(entry.getKey());
             double amt = entry.getValue();
             maxInfraSorted.add(new AbstractMap.SimpleEntry<>(nation, amt));
         }
@@ -177,7 +175,7 @@ public class Damage extends Command {
     }
 
     public double damageEstimate(DBNation me, int nationId, List<Double> cityInfra) {
-        DBNation nation = DBNation.byId(nationId);
+        DBNation nation = DBNation.getById(nationId);
         if (nation == null) return 0;
 
 

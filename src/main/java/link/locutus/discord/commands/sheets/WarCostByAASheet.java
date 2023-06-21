@@ -53,7 +53,7 @@ public class WarCostByAASheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty()) return usage();
 //        boolean includeUntaxable = flags.contains('t');
         boolean includeInactive = flags.contains('i');
@@ -161,7 +161,7 @@ public class WarCostByAASheet extends Command {
         sheet.clear("A:Z");
         sheet.set(0, 0);
 
-        sheet.attach(new DiscordChannelIO(event).create()).send();
+        sheet.attach(channel.create()).send();
         return null;
     }
 }

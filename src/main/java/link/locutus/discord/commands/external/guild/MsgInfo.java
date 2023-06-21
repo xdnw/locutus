@@ -32,12 +32,12 @@ public class MsgInfo extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         String arg = args.get(0);
         String[] split = arg.split("/");
-        if (!arg.startsWith("https://discord.com/channels/") || split.length < 3) return usage(event);
+        if (!arg.startsWith("https://discord.com/channels/") || split.length < 3) return usage(args.size(), unkown, channel);
         Message message = DiscordUtil.getMessage(arg);
-        if (message == null) return usage(event);
+        if (message == null) if (args.size() > 1) return usage(args.size(), 0, 1, channel);
 
         StringBuilder response = new StringBuilder();
 
@@ -61,7 +61,7 @@ public class MsgInfo extends Command {
             }
         }
 
-        DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString());
+        DiscordUtil.createEmbedCommand(channel, title, response.toString());
         return null;
     }
 }

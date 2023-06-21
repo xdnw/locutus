@@ -463,7 +463,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
                 Integer spies = nation.getSpies();
                 if (spies != null) {
                     updated.add(nation.getId());
-                    DBNation locutusNation = DBNation.byId(nation.getId());
+                    DBNation locutusNation = DBNation.getById(nation.getId());
                     if (locutusNation != null) {
                         locutusNation.setSpies(spies, true);
                         toSave.add(locutusNation);
@@ -821,7 +821,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
         Map<Integer, double[]> stockPile = api.getStockPile(f -> f.setId(ids));
         Map<DBNation, Map<ResourceType, Double>> result = new HashMap<>();
         for (Map.Entry<Integer, double[]> entry : stockPile.entrySet()) {
-            DBNation nation = DBNation.byId(entry.getKey());
+            DBNation nation = DBNation.getById(entry.getKey());
             if (nation == null) continue;
             result.put(nation, PnwUtil.resourcesToMap(entry.getValue()));
         }
@@ -1276,7 +1276,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
                 proj.espionage_available();
             }
         })) {
-            DBNation dbNation = DBNation.byId(nation.getId());
+            DBNation dbNation = DBNation.getById(nation.getId());
             if (dbNation == null) continue;
             DBNation copy = new DBNation(dbNation);
 

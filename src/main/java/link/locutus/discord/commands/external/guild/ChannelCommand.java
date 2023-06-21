@@ -3,6 +3,8 @@ package link.locutus.discord.commands.external.guild;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -49,11 +51,11 @@ public class ChannelCommand extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() < 2) return usage(event);
-        DBNation nation = DiscordUtil.getNation(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() < 2) return usage(args.size(), 2, channel);
+        DBNation nation = me;
 
-        String channelName = DiscordUtil.format(guild, event.getChannel(), author, nation, args.get(0));
+        String channelName = DiscordUtil.format(guild, channel, author, nation, args.get(0));
         List<Category> categories = new ArrayList<>();
         List<TextChannel> channels = new ArrayList<>();
         Category freeCategory = null;
@@ -76,7 +78,7 @@ public class ChannelCommand extends Command {
         holders.addAll(member.getRoles());
         holders.add(guild.getRolesByName("@everyone", false).get(0));
 
-        boolean hasOverride = event.getResponseNumber() == -1;
+        boolean hasOverride = !(channel instanceof DiscordChannelIO);
 
         Set<Roles> roles = new HashSet<>();
         if (flags.contains('i')) roles.add(Roles.INTERNAL_AFFAIRS);
@@ -89,9 +91,9 @@ public class ChannelCommand extends Command {
         if (roles.isEmpty()) roles.add(Roles.INTERNAL_AFFAIRS);
 
         TextChannel createdChannel = null;
-        for (TextChannel channel : channels) {
-            if (channel.getName().equalsIgnoreCase(channelName)) {
-                createdChannel = updateChannel(channel, member, roles);
+        for (TextChannel catChan : channels) {
+            if (catChan.getName().equalsIgnoreCase(channelName)) {
+                createdChannel = updateChannel(catChan, member, roles);
                 break;
             }
         }
@@ -117,10 +119,10 @@ public class ChannelCommand extends Command {
             if (args.size() == 3) {
                 String arg = args.get(2).toLowerCase();
                 if (arg.equalsIgnoreCase("#interview")) {
-                    GuildDB db = Locutus.imp().getGuildDB(event);
+                    GuildDB db = Locutus.imp().getGuildDB(guild);
                     IACommands.interview(db, author);
                 } else {
-                    String copyPasta = Locutus.imp().getGuildDB(event).getCopyPasta(arg, true);
+                    String copyPasta = Locutus.imp().getGuildDB(guild).getCopyPasta(arg, true);
                     if (copyPasta != null) {
                         RateLimitUtil.queue(createdChannel.sendMessage(copyPasta));
                     }

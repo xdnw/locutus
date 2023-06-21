@@ -31,8 +31,8 @@ public class WeeklyInterest extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-        if (args.size() != 3) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 3) return usage(args.size(), 3, channel);
         Double amount = MathMan.parseDouble(args.get(0));
         Double pct = MathMan.parseDouble(args.get(1).replaceAll("%", ""));
         Integer weeks = MathMan.parseInt(args.get(2));

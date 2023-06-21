@@ -30,7 +30,6 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
@@ -78,7 +77,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -402,6 +400,13 @@ public class DiscordUtil {
 
     private static final ArgParser parser = new ArgParser();
 
+    public static String format(Guild guild, IMessageIO channel, User user, DBNation nation, String message) {
+        if (user != null && message.contains("%user%")) {
+            message = message.replace("%user%", user.getAsMention());
+        }
+        return Locutus.imp().getCommandManager().getV2().getNationPlaceholders().format(guild, nation, user, message);
+    }
+
     public static String format(Guild guild, MessageChannel channel, User user, DBNation nation, String message) {
         if (user != null && message.contains("%user%")) {
             message = message.replace("%user%", user.getAsMention());
@@ -579,7 +584,7 @@ public class DiscordUtil {
         DiscordDB disDb = Locutus.imp().getDiscordDB();
         PNWUser pnwUser = disDb.getUserFromDiscordId(userId);
         if (pnwUser != null) {
-            return DBNation.byId(pnwUser.getNationId());
+            return DBNation.getById(pnwUser.getNationId());
         }
         return null;
     }
@@ -672,7 +677,7 @@ public class DiscordUtil {
                 if (id > Integer.MAX_VALUE) {
                     nation = getNation(id);
                 } else {
-                    nation = DBNation.byId((int) id);
+                    nation = DBNation.getById((int) id);
                 }
                 if (nation != null) {
                     return (int) id;
@@ -1593,7 +1598,7 @@ public class DiscordUtil {
     }
 
     public static User getUserByNationId(int nationId) {
-        DBNation nation = DBNation.byId(nationId);
+        DBNation nation = DBNation.getById(nationId);
         return nation != null ? nation.getUser() : null;
     }
 

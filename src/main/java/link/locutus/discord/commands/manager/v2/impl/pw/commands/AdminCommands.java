@@ -9,7 +9,6 @@ import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
-import link.locutus.discord.commands.manager.CommandManager;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -772,7 +771,7 @@ public class AdminCommands {
             String key = e.getKey();
             ApiKeyDetails record = e.getValue();
             int natId = record.getNation().getId();
-            DBNation nation = DBNation.byId(natId);
+            DBNation nation = DBNation.getById(natId);
             if (nation != null) {
                 response.append(key + ": " + record.toString() + " | " + nation.getNation() + " | " + nation.getAllianceName() + " | " + nation.getPosition() + "\n");
             } else {

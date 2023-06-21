@@ -3,6 +3,7 @@ package link.locutus.discord.commands.war;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Activity;
@@ -58,9 +59,9 @@ public class Counter extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty() || args.size() > 2) {
-            return usage(event);
+            return usage(args.size(), 1, 2, channel);
         }
         if (me == null) {
             return "Please use " + Settings.commandPrefix(true) + "validate";
@@ -102,13 +103,13 @@ public class Counter extends Command {
 
         if (args.size() == 2) {
             if (args.get(1).equalsIgnoreCase("*")) {
-                Set<Integer> aaIds = Locutus.imp().getGuildDB(event).getAllianceIds();
-                Set<Integer> allies = Locutus.imp().getGuildDB(event).getCoalition("allies");
+                Set<Integer> aaIds = Locutus.imp().getGuildDB(guild).getAllianceIds();
+                Set<Integer> allies = Locutus.imp().getGuildDB(guild).getCoalition("allies");
                 if (!aaIds.isEmpty()) allies.addAll(aaIds);
                 pool = Locutus.imp().getNationDB().getNations(allies);
             } else {
                 try {
-                    pool = DiscordUtil.parseNations(event.getGuild(), args.get(1));
+                    pool = DiscordUtil.parseNations(guild, args.get(1));
                 } catch (Throwable e) {
                     e.printStackTrace();
                     throw e;
@@ -116,9 +117,9 @@ public class Counter extends Command {
             }
         } else {
             filterApps = true;
-            Set<Integer> aaIds = Locutus.imp().getGuildDB(event).getAllianceIds();
+            Set<Integer> aaIds = Locutus.imp().getGuildDB(guild).getAllianceIds();
             if (aaIds.isEmpty()) {
-                Set<Integer> allies = Locutus.imp().getGuildDB(event).getCoalition("allies");
+                Set<Integer> allies = Locutus.imp().getGuildDB(guild).getCoalition("allies");
                 pool = Locutus.imp().getNationDB().getNations(allies);
             }
             else {

@@ -110,8 +110,8 @@ public class OptimalBuild extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        DiscordChannelIO io = new DiscordChannelIO(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        DiscordChannelIO io = channel;
         return onCommand(io, guild, author, me, args, flags);
     }
 
@@ -574,7 +574,7 @@ public class OptimalBuild extends Command {
             return title + "\n" + result.toString() + "";
         }
         io.create().embed(title, result.toString()).commandButton(command, emoji).send();
-//        DiscordUtil.createEmbedCommand(event.getChannel(), title, result.toString(), emoji, command);
+//        DiscordUtil.createEmbedCommand(channel, title, result.toString(), emoji, command);
         return null;
     }
 

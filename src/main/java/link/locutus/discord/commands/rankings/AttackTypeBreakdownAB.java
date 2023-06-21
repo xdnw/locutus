@@ -30,17 +30,17 @@ public class AttackTypeBreakdownAB extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty() || args.size() > 3 || (args.size() == 3 && args.get(0).equalsIgnoreCase(args.get(1)))) {
-            return usage(event);
+            return usage(args.size(), unkown, channel);
         }
 
-        WarAttackParser parser = new WarAttackParser(Locutus.imp().getGuildDB(event), args, flags);
+        WarAttackParser parser = new WarAttackParser(Locutus.imp().getGuildDB(guild), args, flags);
 
         AttackTypeBreakdown breakdown = new AttackTypeBreakdown(parser.getNameA(), parser.getNameB());
         breakdown.addAttacks(parser.getAttacks(), parser.getIsPrimary(), parser.getIsSecondary());
 
-        new DiscordChannelIO(event).create().writeTable("Attack Breakdown", breakdown.toTableList(), true, null).send();
+        channel.create().writeTable("Attack Breakdown", breakdown.toTableList(), true, null).send();
 
         return null;
     }

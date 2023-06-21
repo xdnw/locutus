@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -42,13 +43,13 @@ public class Bank extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) {
-            return usage(event);
+            return usage(args.size(), 1, channel);
         }
 
-        User user = event.getAuthor();
-        DBNation banker = DiscordUtil.getNation(event);
+        User user = author;
+        DBNation banker = me;
         if (banker == null) {
             return "Please use " + Settings.commandPrefix(true) + "validate";
         }
@@ -86,7 +87,7 @@ public class Bank extends Command {
             totals = DBAlliance.getOrCreate(alliance).getStockpile();
         }
         String out = PnwUtil.resourcesToFancyString(totals);
-        DiscordUtil.createEmbedCommand(event.getChannel(), args.get(0) + " stockpile", out);
+        channel.create().embed(args.get(0) + " stockpile", out).send();
         return null;
     }
 }

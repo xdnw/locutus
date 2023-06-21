@@ -12,7 +12,7 @@ import java.util.Set;
 
 public class GroundSim extends Command {
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         // att soldiers
         // att tanks
         Integer attSoldiers = MathMan.parseInt(args.get(0));

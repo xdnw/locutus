@@ -40,7 +40,7 @@ public class LandCost extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         int cities = 1;
         Iterator<String> iter = args.iterator();
         while (iter.hasNext()) {
@@ -50,7 +50,7 @@ public class LandCost extends Command {
                 iter.remove();
             }
         }
-        if (args.size() < 2 || args.size() > 6) return usage(event);
+        if (args.size() < 2 || args.size() > 6) return usage(args.size(), unkown, channel);
 
         int current = Preconditions.checkNotNull(MathMan.parseInt(args.get(0)), "invalid amount: `" + args.get(0) + "`");
         int max = checkNotNull(MathMan.parseInt(args.get(1)), "invalid amount: `" + args.get(1) + "`");

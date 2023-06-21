@@ -33,7 +33,7 @@ public class CoalitionSheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         Map<Integer, List<String>> coalitionsInverse = new LinkedHashMap<>();
@@ -54,7 +54,7 @@ public class CoalitionSheet extends Command {
 
         sheet.clearAll();
         sheet.set(0, 0);
-        sheet.attach(new DiscordChannelIO(event).create()).send();
+        sheet.attach(channel.create()).send();
         return null;
     }
 }

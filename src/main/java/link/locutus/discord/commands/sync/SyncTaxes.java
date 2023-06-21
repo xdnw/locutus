@@ -58,7 +58,7 @@ public class SyncTaxes extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         if (args.size() >= 1) {
             switch (args.get(0).toLowerCase()) {
@@ -98,12 +98,12 @@ public class SyncTaxes extends Command {
                         throw new IllegalArgumentException("Alliance AA:" + aaId + " is not registered to guild: " + StringMan.getString(ids));
                     }
 
-                    CompletableFuture<Message> msgFuture = RateLimitUtil.queue(event.getChannel().sendMessage("Syncing taxes for " + StringMan.getString(ids) + ". Please wait..."));
+                    CompletableFuture<Message> msgFuture = RateLimitUtil.queue(channel.sendMessage("Syncing taxes for " + StringMan.getString(ids) + ". Please wait..."));
 
                     int taxesCount = aa.updateTaxesLegacy(latestDate);
 
                     Message msg = msgFuture.get();
-                    RateLimitUtil.queue(event.getChannel().deleteMessageById(msg.getIdLong()));
+                    RateLimitUtil.queue(channel.deleteMessageById(msg.getIdLong()));
 
                     return "Updated " + taxesCount + " records.\n"
                             + "<" + updateTurnGraph(db, aaId) + ">";

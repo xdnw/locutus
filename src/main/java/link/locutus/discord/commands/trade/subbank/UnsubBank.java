@@ -2,15 +2,20 @@ package link.locutus.discord.commands.trade.subbank;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
+import java.util.Set;
 
 public class UnsubBank extends Command {
     public UnsubBank() {
@@ -28,14 +33,14 @@ public class UnsubBank extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) {
-            return usage(event);
+            return usage(args.size(), 1, channel);
         }
         BankDB db = Locutus.imp().getBankDB();
 
         if (args.get(0).equalsIgnoreCase("*")) {
-            db.unsubscribe(event.getAuthor(), 0, BankDB.BankSubType.ALL);
+            db.unsubscribe(author, 0, BankDB.BankSubType.ALL);
         } else {
             Integer nationId = DiscordUtil.parseNationId(args.get(0));
             if (nationId == null || args.get(0).contains("/alliance/")) {
@@ -43,9 +48,9 @@ public class UnsubBank extends Command {
                 if (allianceId == null) {
                     return "Invalid alliance: `" + args.get(0) + "`";
                 }
-                db.unsubscribe(event.getAuthor(), allianceId, BankDB.BankSubType.ALLIANCE);
+                db.unsubscribe(author, allianceId, BankDB.BankSubType.ALLIANCE);
             } else {
-                db.unsubscribe(event.getAuthor(), nationId, BankDB.BankSubType.NATION);
+                db.unsubscribe(author, nationId, BankDB.BankSubType.NATION);
             }
         }
         return "Unsubscribed from `" + args.get(0) + "`" + " alerts";

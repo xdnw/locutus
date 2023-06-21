@@ -2,6 +2,7 @@ package link.locutus.discord.commands.sheets;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -47,9 +48,9 @@ public class WarSheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() < 2 || args.size() > 3) {
-            return usage(event);
+            return usage(args.size(), 2, 3, channel);
         }
         Set<DBNation> allies = DiscordUtil.parseNations(guild, args.get(0));
         Set<DBNation> enemies = DiscordUtil.parseNations(guild, args.get(1));
@@ -166,7 +167,7 @@ public class WarSheet extends Command {
         sheet.clear("A:Z");
         sheet.set(0, 0);
 
-        sheet.attach(new DiscordChannelIO(event).create()).send();
+        sheet.attach(channel.create()).send();
         return null;
     }
 }

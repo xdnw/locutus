@@ -3,6 +3,7 @@ package link.locutus.discord.commands.trade;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.Transfer;
@@ -46,9 +47,9 @@ public class FindTrader extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 3) {
-            return usage(event);
+            return usage(args.size(), 3, channel);
         }
         Integer days = MathMan.parseInt(args.get(2));
         if (days == null) {
@@ -86,7 +87,7 @@ public class FindTrader extends Command {
         SummedMapRankBuilder<Integer, Double> builder = new SummedMapRankBuilder<>(newMap);
         Map<Integer, Double> sorted = (findsign == 1 ? builder.sort() : builder.sortAsc()).get();
 
-        DiscordUtil.createEmbedCommand(event.getChannel(), b -> {
+        DiscordUtil.createEmbedCommand(channel, b -> {
             List<String> nationName = new ArrayList<>();
             List<String> amtList = new ArrayList<>();
             List<String> ppuList = new ArrayList<>();
@@ -105,7 +106,7 @@ public class FindTrader extends Command {
             b.addField("Nation", StringMan.join(nationName, "\n"), true);
             b.addField("Amt", StringMan.join(amtList, "\n"), true);
             b.addField("Ppu", StringMan.join(ppuList, "\n"), true);
-        }, "Refresh", DiscordUtil.trimContent(event.getMessage().getContentRaw()));
+        }, "Refresh", DiscordUtil.trimContent(fullCommandRaw));
         return null;
     }
 }

@@ -36,13 +36,13 @@ public class ClearRoles extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) return usage();
 
         List<Future<?>> tasks = new ArrayList<>();
         if (args.get(0).equalsIgnoreCase("UNUSED")) {
-            Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(event.getGuild().getRoles());
-            Guild guild = event.getGuild();
+            Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(guild.getRoles());
+            Guild guild = guild;
             for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
                 if (guild.getMembersWithRoles(entry.getValue()).isEmpty()) {
                     tasks.add(RateLimitUtil.queue(entry.getValue().delete()));
@@ -55,7 +55,7 @@ public class ClearRoles extends Command {
             return "Cleared unused AA roles!";
         }
         if (args.get(0).equalsIgnoreCase("ALLIANCE")) {
-            Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(event.getGuild().getRoles());
+            Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(guild.getRoles());
             for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
                 tasks.add(RateLimitUtil.queue(entry.getValue().delete()));
             }
@@ -64,14 +64,14 @@ public class ClearRoles extends Command {
             }
             return "Cleared all AA roles!";
         } else if (args.get(0).equalsIgnoreCase("UNREGISTERED")) {
-            GuildDB db = Locutus.imp().getGuildDB(event);
+            GuildDB db = Locutus.imp().getGuildDB(guild);
             Set<Integer> aaIds = db.getAllianceIds();
 
-            Role memberRole = Roles.MEMBER.toRole(event.getGuild());
+            Role memberRole = Roles.MEMBER.toRole(guild);
 
             StringBuilder response = new StringBuilder();
 
-            for (Member member : event.getGuild().getMembers()) {
+            for (Member member : guild.getMembers()) {
                 DBNation nation = DiscordUtil.getNation(member.getIdLong());
                 List<Role> roles = member.getRoles();
                 if (roles.contains(memberRole)) {

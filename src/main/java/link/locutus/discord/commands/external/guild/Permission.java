@@ -30,9 +30,9 @@ public class Permission extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() < 2) {
-            return usage(event);
+            return usage(args.size(), 2, channel);
         }
         if (!MathMan.isInteger(args.get(1))) {
             return "Invalid number: `" + args.get(1) + "`";
@@ -60,7 +60,7 @@ public class Permission extends Command {
                 db = Locutus.imp().getGuildDB(id);
             }
         } else {
-            db = Locutus.imp().getGuildDB(event);
+            db = Locutus.imp().getGuildDB(guild);
         }
         int value = Integer.parseInt(args.get(1));
         assert db != null;

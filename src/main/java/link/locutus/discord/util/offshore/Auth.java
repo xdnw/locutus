@@ -4,10 +4,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.PendingTreaty;
 import link.locutus.discord.db.entities.TaxBracket;
@@ -857,7 +855,7 @@ public class Auth {
             if (nation.getPositionEnum().id < Rank.HEIR.id && (position == null || !position.hasPermission(AlliancePermission.WITHDRAW_BANK) || !position.hasPermission(AlliancePermission.VIEW_BANK))) {
                 throw new IllegalArgumentException("Receiver does not have bank access");
             }
-            DBNation senderNation = DBNation.byId(expectedNationId);
+            DBNation senderNation = DBNation.getById(expectedNationId);
             if (senderNation == null) throw new IllegalArgumentException("Sender is null");
             if (senderNation.isBlockaded()) throw new IllegalArgumentException("Sender is blockaded");
             if (nation.isBlockaded()) throw new IllegalArgumentException("Receiver is blockaded");

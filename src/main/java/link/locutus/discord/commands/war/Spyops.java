@@ -74,19 +74,19 @@ public class Spyops extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         String nationStr = DiscordUtil.parseArg(args, "nation");
         DBNation finalNation = nationStr == null ? me : PWBindings.nation(null, nationStr);
 
         MessageChannel channel;
         if (flags.contains('d')) {
-            channel = RateLimitUtil.complete(event.getAuthor().openPrivateChannel());
+            channel = RateLimitUtil.complete(author.openPrivateChannel());
         } else {
-            channel = event.getGuildChannel();
+            channel = channel;
         }
 
         CompletableFuture<Message> msg = RateLimitUtil.queue(channel.sendMessage("Please wait... "));
-        GuildDB db = Locutus.imp().getGuildDB(event);
+        GuildDB db = Locutus.imp().getGuildDB(guild);
 
         try {
             String title = "Recommended ops";
@@ -109,7 +109,7 @@ public class Spyops extends Command {
             return null;
         } finally {
             Message msgObj = msg.get();
-            RateLimitUtil.queue(event.getChannel().deleteMessageById(msgObj.getIdLong()));
+            RateLimitUtil.queue(channel.deleteMessageById(msgObj.getIdLong()));
         }
     }
 
@@ -131,7 +131,7 @@ public class Spyops extends Command {
             }
         }
         if (args.size() != 2) {
-            return usage(event);
+            return usage(args.size(), 2, channel);
         }
         if (me == null) {
             return "Please use " + CM.register.cmd.toSlashMention() + "";

@@ -839,10 +839,10 @@ public class TradeManager {
         Integer acceptingNationId = offer.isBuy() ? offer.getBuyer() : offer.getSeller();
         if (alertedNations.contains(acceptingNationId)) return;
 
-        DBNation acceptingNation = DBNation.byId(acceptingNationId);
+        DBNation acceptingNation = DBNation.getById(acceptingNationId);
         if (acceptingNation == null || acceptingNation.getPosition() <= 1 || acceptingNation.getAlliance_id() == 0) return;
 
-        DBNation DBTradeingNation = DBNation.byId(offer.isBuy() ? offer.getSeller() : offer.getBuyer());
+        DBNation DBTradeingNation = DBNation.getById(offer.isBuy() ? offer.getSeller() : offer.getBuyer());
         if (DBTradeingNation == null || DBTradeingNation.getAlliance_id() == acceptingNation.getAlliance_id()) return;
 
         if (offer.isBuy() && offer.getPpu() < getHigh(offer.getResource())) return; // bought cheaper than market

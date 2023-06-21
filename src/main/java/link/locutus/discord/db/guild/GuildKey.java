@@ -234,7 +234,7 @@ public class GuildKey {
             for (String key : existing) {
                 Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key, false);
                 if (nationId != null) {
-                    DBNation nation = DBNation.byId(nationId);
+                    DBNation nation = DBNation.getById(nationId);
                     if (nation != null) {
                         aaIds.remove(nation.getAlliance_id());
                     }
@@ -261,7 +261,7 @@ public class GuildKey {
                     if (nationId == null) {
                         throw new IllegalArgumentException("Invalid API key");
                     }
-                    DBNation nation = DBNation.byId(nationId);
+                    DBNation nation = DBNation.getById(nationId);
                     if (nation == null) {
                         throw new IllegalArgumentException("Nation not found for id: " + nationId + "(out of sync?)");
                     }
@@ -276,7 +276,7 @@ public class GuildKey {
                         ApiKeyDetails details = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
                         Integer nationId = details.getNation().getId();
                         if (nationId != null) {
-                            DBNation nation = DBNation.byId(nationId);
+                            DBNation nation = DBNation.getById(nationId);
                             if (nation != null && !aaIds.contains(nation.getAlliance_id())) {
                                 continue;
                             }
@@ -343,7 +343,7 @@ public class GuildKey {
             for (String key : db.getOrThrow(API_KEY)) {
                 Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(key);
                 if (nationId == null) throw new IllegalArgumentException(msg);
-                DBNation nation = DBNation.byId(nationId);
+                DBNation nation = DBNation.getById(nationId);
                 if (nation.getAlliancePosition() == null)
                     throw new IllegalArgumentException(msg + " (no position found for nation: " + nationId + ")");
                 if (!nation.getAlliancePosition().hasPermission(AlliancePermission.SEE_SPIES))

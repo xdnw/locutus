@@ -52,10 +52,10 @@ public class MMRSheet extends Command {
 
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         try {
             String sheetUrl = DiscordUtil.parseArg(args, "sheet");
-            if (args.size() != 1) return usage(event);
+            if (args.size() != 1) return usage(args.size(), 1, channel);
             if (args.get(0).contains("*")) return "Cannot use *";
 
             Collection<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
@@ -211,7 +211,7 @@ public class MMRSheet extends Command {
             String response = "";
             if (!flags.contains('f')) response += "\nNote: Results may be outdated, add `-f` to update.";
 
-            sheet.attach(new DiscordChannelIO(event).create(), response).send();
+            sheet.attach(channel.create(), response).send();
             return null;
         } catch (Throwable e) {
             e.printStackTrace();

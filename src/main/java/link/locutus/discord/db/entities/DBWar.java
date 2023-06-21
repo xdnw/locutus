@@ -490,7 +490,7 @@ public class DBWar {
 
             }
         }
-        DBNation nation = DBNation.byId(acNation);
+        DBNation nation = DBNation.getById(acNation);
         if (nation != null) {
             boolean hasUnits = false;
             for (MilitaryUnit unit : units) {

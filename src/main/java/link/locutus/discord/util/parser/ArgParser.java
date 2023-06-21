@@ -55,7 +55,7 @@ public class ArgParser {
 
         placeholderMap.put("js", Command.create(new ICommand() {
             @Override
-            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
                 String cmd = StringMan.join(args, " ");
                 String msg = DiscordUtil.trimContent(cmd);
                 if (msg.contains("[a-zA-Z]+")){
@@ -69,42 +69,42 @@ public class ArgParser {
 
         placeholderMap.put("random", Command.create(new ICommand() {
             @Override
-            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
                 return args.get(ThreadLocalRandom.current().nextInt(args.size()));
             }
         }));
 
         placeholderMap.put("turn", Command.create(new ICommand() {
             @Override
-            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
                 return TimeUtil.getTurn() + "";
             }
         }));
 
         placeholderMap.put("day", Command.create(new ICommand() {
             @Override
-            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
                 return TimeUtil.getDay() + "";
             }
         }));
 
         placeholderMap.put("date", Command.create(new ICommand() {
             @Override
-            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
                 return Instant.now().toString();
             }
         }));
 
         placeholderMap.put("timestamp", Command.create(new ICommand() {
             @Override
-            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
                 return System.currentTimeMillis() + "";
             }
         }));
 
         placeholderMap.put("cityage", Command.create(new ICommand() {
              @Override
-             public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+             public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
                  DBNation nation = me;
                  Set<Map.Entry<Integer, JavaCity>> cities = nation.getCityMap(false, false).entrySet();
                  List<JavaCity> citiesByDate = new ArrayList<>();
@@ -124,7 +124,7 @@ public class ArgParser {
 
         placeholderMap.put("city", Command.create(new ICommand() {
             @Override
-            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
                 DBNation nation = me;
                 Integer index = 1;
                 switch (args.size()) {

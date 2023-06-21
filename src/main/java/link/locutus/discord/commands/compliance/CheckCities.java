@@ -5,6 +5,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
@@ -55,17 +56,17 @@ public class CheckCities extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         Integer page = DiscordUtil.parseArgInt(args, "page");
         if (args.size() != 1) {
-            return usage(event);
+            return usage(args.size(), 1, channel);
         }
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         Set<Integer> aaIds = db.getAllianceIds(true);
         Collection<DBNation> nations;
         if (args.get(0).equalsIgnoreCase("*")) {
-            if (!Roles.INTERNAL_AFFAIRS_STAFF.has(event.getAuthor(), event.getGuild())) return "No permission.";
+            if (!Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild)) return "No permission.";
 
             nations = Locutus.imp().getNationDB().getNations(aaIds);
             nations.removeIf(n -> n.getPosition() <= 1 ||
@@ -73,7 +74,7 @@ public class CheckCities extends Command {
                     n.getActive_m() > 10000
                     );
         } else {
-            nations = DiscordUtil.parseNations(event.getGuild(), args.get(0));
+            nations = DiscordUtil.parseNations(guild, args.get(0));
         }
 
         if (aaIds.isEmpty()) return "No alliance registered to this guild";
@@ -95,8 +96,8 @@ public class CheckCities extends Command {
             IACategory category = db.getIACategory();
             if (category != null) {
                 category.load();
-                category.purgeUnusedChannels(new DiscordChannelIO(event.getChannel()));
-                category.alertInvalidChannels(new DiscordChannelIO(event.getChannel()));
+                category.purgeUnusedChannels(new DiscordChannelIO(channel));
+                category.alertInvalidChannels(new DiscordChannelIO(channel));
             }
         }
 
@@ -120,7 +121,7 @@ public class CheckCities extends Command {
                 auditResult = auditResults.get(nation);
             }
             if (auditResult == null) {
-                CompletableFuture<Message> messageFuture = RateLimitUtil.queue(event.getChannel().sendMessage("Fetching city info: (this will take a minute)"));
+                CompletableFuture<Message> messageFuture = RateLimitUtil.queue(channel.sendMessage("Fetching city info: (this will take a minute)"));
                 auditResult = checkup.checkup(nation, individual, false);
                 auditResults.put(nation, auditResult);
                 RateLimitUtil.queue(messageFuture.get().delete());
@@ -147,7 +148,7 @@ public class CheckCities extends Command {
                 if (flags.contains('p')) {
                     PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(nation.getNation_id());
                     if (user != null) {
-                        RateLimitUtil.complete(event.getChannel().sendMessage("^ " + user.getAsMention()));
+                        RateLimitUtil.complete(channel.sendMessage("^ " + user.getAsMention()));
                     }
                 } else if (mail) {
                     String title = nation.getAllianceName() + " Automatic checkup";
@@ -161,10 +162,10 @@ public class CheckCities extends Command {
 
                     JsonObject response = nation.sendMail(keys, title, markdown);
                     String userStr = nation.getNation() + "/" + nation.getNation_id();
-                    RateLimitUtil.queue(event.getChannel().sendMessage(userStr + ": " + response));
+                    RateLimitUtil.queue(channel.sendMessage(userStr + ": " + response));
                 }
             } else {
-                RateLimitUtil.queue(event.getChannel().sendMessage("All checks passed for " + nation.getNation()));
+                RateLimitUtil.queue(channel.sendMessage("All checks passed for " + nation.getNation()));
             }
             output.setLength(0);
         }
@@ -184,6 +185,6 @@ public class CheckCities extends Command {
     }
 
     private void createEmbed(DBNation nation, MessageReceivedEvent event, Map<IACheckup.AuditType, Map.Entry<Object, String>> auditResult, Integer page) {
-        IACheckup.createEmbed(event.getChannel(), event.getMessage(), Settings.commandPrefix(true) + "Checkup " + nation.getNation_id(), nation, auditResult, page);
+        IACheckup.createEmbed(channel, event.getMessage(), Settings.commandPrefix(true) + "Checkup " + nation.getNation_id(), nation, auditResult, page);
     }
 }

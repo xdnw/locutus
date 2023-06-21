@@ -13,7 +13,6 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -35,8 +34,8 @@ public class FindSpyOp extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() < 2) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() < 2) return usage(args.size(), 2, channel);
 
         int defenderSpies = Integer.parseInt(args.get(1));
 
@@ -45,7 +44,7 @@ public class FindSpyOp extends Command {
             defender = DiscordUtil.parseNation(args.get(2));
         } else if (args.size() == 2) {
             defender = me;
-        } else return usage(event);
+        } else return usage(args.size(), unkown, channel);
 
         Set<Integer> ids = new HashSet<>();
         Map<DBSpyUpdate, Long> updatesTmp = new HashMap<>();
@@ -56,7 +55,7 @@ public class FindSpyOp extends Command {
             long timestamp = TimeUtil.parseDate(TimeUtil.MMDD_HH_MM_A, timeStr, true);
             List<DBSpyUpdate> updates = Locutus.imp().getNationDB().getSpyActivity(timestamp, interval);
             for (DBSpyUpdate update : updates) {
-                DBNation nation = DBNation.byId(update.nation_id);
+                DBNation nation = DBNation.getById(update.nation_id);
                 if (nation == null) continue;
                 assert defender != null;
                 if (!defender.isInSpyRange(nation)) continue;

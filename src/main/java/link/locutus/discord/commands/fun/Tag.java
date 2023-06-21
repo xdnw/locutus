@@ -18,7 +18,7 @@ public class Tag {
     private Long previous;
 
     public String tag(MessageReceivedEvent event) {
-        if (!event.isFromGuild()) {
+        if (guild == null) {
             return null;
         }
 
@@ -38,14 +38,14 @@ public class Tag {
                 }
             }
         }
-        Member member = event.getMember();
+        Member member = guild.getMember(author);
         if (it == null) {
             assert member != null;
             if ((member.getOnlineStatus() != OnlineStatus.ONLINE && member.getOnlineStatus() != OnlineStatus.DO_NOT_DISTURB)) {
                 return "You can only play tag if you are online.";
             }
             previous = it;
-            it = event.getAuthor().getIdLong();
+            it = author.getIdLong();
             return "Tag, you're it!";
         }
         return null;
@@ -56,18 +56,18 @@ public class Tag {
     }
 
     public void checkTag(MessageReceivedEvent event) {
-        if (event.isFromGuild() && it != null && it.equals(event.getAuthor().getIdLong()) && !event.getAuthor().isBot()) {
+        if (guild != null && it != null && it.equals(author.getIdLong()) && !author.isBot()) {
             Mentions mentions = event.getMessage().getMentions();
             for (Member mention : mentions.getMembers()) {
                 if ((mention.getOnlineStatus() == OnlineStatus.ONLINE || mention.getOnlineStatus() == OnlineStatus.DO_NOT_DISTURB)) {
                     String msg = "%s tagged %s. %s is now it. Run for your lives!";
-                    msg = String.format(msg, event.getAuthor().getName(), mention.getEffectiveName(), mention.getEffectiveName());
+                    msg = String.format(msg, author.getName(), mention.getEffectiveName(), mention.getEffectiveName());
                     if (it == Settings.INSTANCE.APPLICATION_ID) {
                         it = null;
                         previous = null;
                     } else {
                         Long tmp = previous;
-                        if (DiscordUtil.trimContent(event.getMessage().getContentRaw()).toLowerCase().contains("no backsies")) {
+                        if (DiscordUtil.trimContent(fullCommandRaw).toLowerCase().contains("no backsies")) {
                             previous = it;
                         } else {
                             previous = null;
@@ -78,7 +78,7 @@ public class Tag {
                             it = mention.getIdLong();
                         }
                     }
-                    RateLimitUtil.queue(event.getChannel().sendMessage(msg));
+                    RateLimitUtil.queue(channel.sendMessage(msg));
                     return;
                 }
             }

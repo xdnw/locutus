@@ -57,9 +57,9 @@ public class FindProducer extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() == 0 || args.size() > 2) {
-            return usage(event);
+            return usage(args.size(), 1, 2, channel);
         }
 
         boolean militaryUpkeep = !flags.contains('m');
@@ -90,7 +90,7 @@ public class FindProducer extends Command {
             nations.removeIf(f -> !f.isTaxable());
         }
 
-        Message msg = RateLimitUtil.complete(event.getChannel().sendMessage("Fetching cities for " + nations.size() + " nations. Please wait..."));
+        Message msg = RateLimitUtil.complete(channel.sendMessage("Fetching cities for " + nations.size() + " nations. Please wait..."));
         long last = System.currentTimeMillis();
         Map<DBNation, Number> profitByNation = new HashMap<>();
 
@@ -150,7 +150,7 @@ public class FindProducer extends Command {
         ranks.build(event, title);
 
         if (ranks.get().size() > 25) {
-            DiscordUtil.upload(event.getGuildChannel(), title, ranks.toString());
+            DiscordUtil.upload(channel, title, ranks.toString());
         }
         return null;
     }

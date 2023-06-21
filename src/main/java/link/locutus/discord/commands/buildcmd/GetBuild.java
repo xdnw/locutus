@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class GetBuild extends Command {
     public GetBuild() {
@@ -83,10 +84,10 @@ public class GetBuild extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-        DBNation me = DiscordUtil.getNation(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        
         if (me == null) {
-            return "Invalid nation, Are you sure you are registered?" + event.getAuthor().getAsMention();
+            return "Invalid nation, Are you sure you are registered?" + author.getAsMention();
         }
 
         Integer id = DiscordUtil.parseNationId(args.get(0));
@@ -97,6 +98,6 @@ public class GetBuild extends Command {
         if (nation == null) {
             return "Nation not found: `" + args.get(0) + "`";
         }
-        return onCommand(nation, new DiscordChannelIO(event));
+        return onCommand(nation, channel);
     }
 }

@@ -32,8 +32,8 @@ public class LargestBanks extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-        if (args.size() != 1) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 1) return usage(args.size(), 1, channel);
 
         long millis = TimeUtil.timeToSec(args.get(0)) * 1000L;
         long cutOff = System.currentTimeMillis() - millis;

@@ -24,6 +24,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 public class AssignBuild extends Command {
@@ -78,19 +79,19 @@ public class AssignBuild extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
 
-        DBNation me = DiscordUtil.getNation(event);
+        
         if (me == null) {
-            return "Invalid nation, Are you sure you are registered?" + event.getAuthor().getAsMention();
+            return "Invalid nation, Are you sure you are registered?" + author.getAsMention();
         }
 
         if (args.size() != 1) {
-            return usage(event);
+            return usage(args.size(), 1, channel);
         }
-        GuildDB db = Locutus.imp().getGuildDB(event);
+        GuildDB db = Locutus.imp().getGuildDB(guild);
 
-        return build(new DiscordChannelIO(event), db, me, me.getCities(), args.get(0));
+        return build(channel, db, me, me.getCities(), args.get(0));
     }
 
     @Override

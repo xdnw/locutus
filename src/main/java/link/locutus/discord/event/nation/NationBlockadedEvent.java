@@ -31,11 +31,11 @@ public class NationBlockadedEvent extends GuildScopeEvent {
     }
 
     public DBNation getBlockadedNation() {
-        return DBNation.byId(blockaded);
+        return DBNation.getById(blockaded);
     }
 
     public DBNation getBlockaderNation() {
-        return DBNation.byId(blockader);
+        return DBNation.getById(blockader);
     }
 
     @Override

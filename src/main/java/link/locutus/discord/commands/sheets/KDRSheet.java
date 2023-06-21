@@ -45,16 +45,16 @@ public class KDRSheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 1) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 1) return usage(args.size(), 1, channel);
         if (guild == null) return "not in guild";
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
 
         Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
 
-        if (nations.isEmpty()) return usage(event);
+        if (nations.isEmpty()) return usage(args.size(), unkown, channel);
 
-        Message msg = RateLimitUtil.complete(event.getChannel().sendMessage("Clearing sheet..."));
+        Message msg = RateLimitUtil.complete(channel().sendMessage("Clearing sheet..."));
 
         SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKeys.WAR_COST_BY_RESOURCE_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
@@ -81,12 +81,12 @@ public class KDRSheet extends Command {
 
         sheet.clear(SheetUtil.getRange(0, 0, header.size(), nations.size()));
 
-        RateLimitUtil.queue(event.getChannel().editMessageById(msg.getIdLong(), "Updating (wars..."));
+        RateLimitUtil.queue(channel().editMessageById(msg.getIdLong(), "Updating (wars..."));
 
         sheet.setHeader(header);
 
         for (DBNation nation : nations) {
-            RateLimitUtil.queue(event.getChannel().editMessageById(msg.getIdLong(), "Updating wars for " + nation.getNation()));
+            RateLimitUtil.queue(channel().editMessageById(msg.getIdLong(), "Updating wars for " + nation.getNation()));
             int nationId = nation.getNation_id();
 
             AttackCost attInactiveCost = new AttackCost();
@@ -181,16 +181,16 @@ public class KDRSheet extends Command {
 
         try {
 
-            RateLimitUtil.queue(event.getChannel().editMessageById(msg.getIdLong(), "Uploading (sheet"));
+            RateLimitUtil.queue(channel().editMessageById(msg.getIdLong(), "Uploading (sheet"));
 
             sheet.set(0, 0);
 
-            RateLimitUtil.queue(event.getChannel().deleteMessageById(event.getMessageIdLong()));
+            RateLimitUtil.queue(channel().deleteMessageById(event.getMessageIdLong()));
         } catch (Throwable e) {
             e.printStackTrace();
         }
 
-        sheet.attach(new DiscordChannelIO(event).create()).send();
+        sheet.attach(channel.create()).send();
         return null;
     }
 }

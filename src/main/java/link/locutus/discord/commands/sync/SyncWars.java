@@ -15,7 +15,7 @@ public class SyncWars extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         Locutus.imp().getWarDb().updateAllWarsV2(Event::post);
         return "Done!";
     }

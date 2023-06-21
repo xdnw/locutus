@@ -3,7 +3,6 @@ package link.locutus.discord.event.city;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.event.Event;
 import link.locutus.discord.event.guild.GuildScopeEvent;
 
 public class CityChangeEvent extends GuildScopeEvent { // post to guilds with that nation
@@ -22,7 +21,7 @@ public class CityChangeEvent extends GuildScopeEvent { // post to guilds with th
     }
 
     public DBNation getNation() {
-        return DBNation.byId(nation);
+        return DBNation.getById(nation);
     }
 
     public DBCity getPrevious() {

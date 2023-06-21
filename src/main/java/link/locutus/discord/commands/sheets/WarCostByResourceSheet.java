@@ -63,8 +63,8 @@ public class WarCostByResourceSheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 3) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 3) return usage(args.size(), 3, channel);
         if (guild == null) return "not in guild";
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
 
@@ -73,9 +73,9 @@ public class WarCostByResourceSheet extends Command {
         Set<Integer> alliances = args.get(1).equals("*") ? null : DiscordUtil.parseAlliances(guild, args.get(1));
         Function<Integer, Boolean> aaFilter = f -> true;
 
-        if (nations.isEmpty()) return usage(event);
+        if (nations.isEmpty()) return usage(args.size(), unkown, channel);
         if (alliances == null || alliances.isEmpty()) {
-            if (!args.get(1).equalsIgnoreCase("*")) return usage(event);
+            if (!args.get(1).equalsIgnoreCase("*")) return usage(args.size(), unkown, channel);
         } else {
             aaFilter = f -> alliances.contains(f);
         }
@@ -86,7 +86,7 @@ public class WarCostByResourceSheet extends Command {
         }
         long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
 
-        Message msg = RateLimitUtil.complete(event.getChannel().sendMessage("Clearing sheet..."));
+        Message msg = RateLimitUtil.complete(channel().sendMessage("Clearing sheet..."));
 
         SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKeys.WAR_COST_BY_RESOURCE_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
@@ -103,14 +103,14 @@ public class WarCostByResourceSheet extends Command {
 
         sheet.clear("A:Z");
 
-        RateLimitUtil.queue(event.getChannel().editMessageById(msg.getIdLong(), "Updating (wars..."));
+        RateLimitUtil.queue(channel().editMessageById(msg.getIdLong(), "Updating (wars..."));
 
         sheet.setHeader(header);
 
         long start = System.currentTimeMillis();
         for (DBNation nation : nations) {
             if (System.currentTimeMillis() - start > 10000) {
-                RateLimitUtil.queue(event.getChannel().editMessageById(msg.getIdLong(), "Updating wars for " + nation.getNation()));
+                RateLimitUtil.queue(channel().editMessageById(msg.getIdLong(), "Updating wars for " + nation.getNation()));
                 start = System.currentTimeMillis();
             }
             int nationId = nation.getNation_id();
@@ -225,16 +225,16 @@ public class WarCostByResourceSheet extends Command {
 
         try {
 
-            RateLimitUtil.queue(event.getChannel().editMessageById(msg.getIdLong(), "Uploading (sheet"));
+            RateLimitUtil.queue(channel().editMessageById(msg.getIdLong(), "Uploading (sheet"));
 
             sheet.set(0, 0);
 
-            RateLimitUtil.queue(event.getChannel().deleteMessageById(msg.getIdLong()));
+            RateLimitUtil.queue(channel().deleteMessageById(msg.getIdLong()));
         } catch (Throwable e) {
             e.printStackTrace();
         }
 
-        sheet.attach(new DiscordChannelIO(event).create()).send();
+        sheet.attach(channel.create()).send();
         return null;
     }
 }

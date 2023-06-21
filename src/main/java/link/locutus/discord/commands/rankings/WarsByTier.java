@@ -42,7 +42,7 @@ public class WarsByTier extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 3) return usage();
 
         long start = System.currentTimeMillis() - TimeUtil.timeToSec(args.get(2)) * 1000L;
@@ -82,7 +82,7 @@ public class WarsByTier extends Command {
             table.add(cities, (Void) null);
         }
 
-        table.write(new DiscordChannelIO(event), false);
+        table.write(channel, false);
         return null;
     }
 }

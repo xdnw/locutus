@@ -38,7 +38,7 @@ public class FASheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.FA_CONTACT_SHEET);
@@ -97,7 +97,7 @@ public class FASheet extends Command {
 
         sheet.set(0, 0);
 
-        sheet.attach(new DiscordChannelIO(event).create()).send();
+        sheet.attach(channel.create()).send();
         return null;
     }
 }

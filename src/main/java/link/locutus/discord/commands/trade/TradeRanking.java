@@ -55,9 +55,9 @@ public class TradeRanking extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 2) {
-            return usage(event);
+            return usage(args.size(), 2, channel);
         }
         boolean isAA = flags.contains('a');
         Function<DBNation, Integer> groupBy = isAA ? groupBy = f -> f.getAlliance_id() : f -> f.getNation_id();

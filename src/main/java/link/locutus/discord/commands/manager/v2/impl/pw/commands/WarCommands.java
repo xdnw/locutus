@@ -512,7 +512,7 @@ public class WarCommands {
 
             Set<Integer> enemies = me.getBlockadedBy();
             for (Integer id : enemies) {
-                DBNation enemy = DBNation.byId(id);
+                DBNation enemy = DBNation.getById(id);
                 int maxShips = 0;
                 for (DBWar war : enemy.getActiveWars()) {
                     DBNation other = war.getNation(!war.isAttacker(enemy));
@@ -542,7 +542,7 @@ public class WarCommands {
                     Set<Integer> blockading = enemy.getBlockading();
                     blockading.remove(me.getNation_id());
                     blockading.removeIf(f -> {
-                        DBNation nation = DBNation.byId(f);
+                        DBNation nation = DBNation.getById(f);
                         return (nation == null || nation.getActive_m() > 2880);
                     });
 
@@ -596,7 +596,7 @@ public class WarCommands {
         Map<DBNation, Map<DBNation, Boolean>> alliesBlockadedBy = new HashMap<>();
         for (DBNation ally : allies) {
             for (Integer nationId : ally.getBlockadedBy()) {
-                DBNation blockader = DBNation.byId(nationId);
+                DBNation blockader = DBNation.getById(nationId);
                 if (blockader == null) continue;
                 alliesBlockadedBy.computeIfAbsent(ally, f -> new HashMap<>()).put(blockader, false);
 
@@ -762,7 +762,7 @@ public class WarCommands {
                     Set<Integer> blockading = enemy.getBlockading();
                     blockading.remove(ally.getNation_id());
                     blockading.removeIf(f -> {
-                        DBNation nation = DBNation.byId(f);
+                        DBNation nation = DBNation.getById(f);
                         return (nation == null || nation.getActive_m() > 2880);
                     });
 
@@ -1321,7 +1321,7 @@ public class WarCommands {
 
         List<Map.Entry<DBNation, Double>>  maxInfraSorted = new ArrayList<>();
         for (Map.Entry<Integer, Double> entry : valueFunction.entrySet()) {
-            DBNation nation = DBNation.byId(entry.getKey());
+            DBNation nation = DBNation.getById(entry.getKey());
             double amt = entry.getValue();
             maxInfraSorted.add(new AbstractMap.SimpleEntry<>(nation, amt));
         }
@@ -1352,7 +1352,7 @@ public class WarCommands {
     }
 
     public double damageEstimate(DBNation me, int nationId, List<Double> cityInfra) {
-        DBNation nation = DBNation.byId(nationId);
+        DBNation nation = DBNation.getById(nationId);
         if (nation == null) return 0;
 
 
@@ -3804,7 +3804,7 @@ public class WarCommands {
                              @Switch("s") boolean allowSameAlliance) {
         Set<Integer> allies = db.getAllies(true);
         int enemyId = allies.contains(war.attacker_aa) ? war.defender_id : war.attacker_id;
-        DBNation enemy = DBNation.byId(enemyId);
+        DBNation enemy = DBNation.getById(enemyId);
         if (enemy == null) throw new IllegalArgumentException("No nation found for id `" + enemyId + "`");
         return counter(me, db, enemy, counterWith, allowAttackersWithMaxOffensives, filterWeak, onlyActive, requireDiscord, ping, allowSameAlliance);
     }

@@ -3,6 +3,8 @@ package link.locutus.discord.commands.alliance;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -29,8 +31,8 @@ public class Unregister extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 1) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 1) return usage(args.size(), 1, channel);
         String arg0 = args.get(0);
         DBNation nation = DiscordUtil.parseNation(arg0);
 
@@ -44,9 +46,8 @@ public class Unregister extends Command {
         if (nation != null) {
             Locutus.imp().getDiscordDB().unregister(nation.getNation_id(), null);
         } else {
-            List<User> mentions = event.getMessage().getMentionedUsers();
-            if (mentions.size() != 1) return usage(event);
-            Locutus.imp().getDiscordDB().unregister(null, mentions.get(0).getIdLong());
+            User user = DiscordBindings.user(author, arg0);
+            Locutus.imp().getDiscordDB().unregister(null, user.getIdLong());
         }
         return "Unregistered user.";
     }

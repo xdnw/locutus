@@ -372,7 +372,7 @@ public class IACommands {
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
     public String unassignMentee(@Me GuildDB db, @Me Guild guild, @Me DBNation nation, DBNation mentee) {
         ByteBuffer mentorBuf = db.getNationMeta(mentee.getNation_id(), NationMeta.CURRENT_MENTOR);
-        DBNation currentMentor = mentorBuf != null ?  DBNation.byId(mentorBuf.getInt()) : null;
+        DBNation currentMentor = mentorBuf != null ?  DBNation.getById(mentorBuf.getInt()) : null;
 
         if (currentMentor != null && currentMentor.getActive_m() < 1440) {
             User currentMentorUser = currentMentor.getUser();
@@ -469,7 +469,7 @@ public class IACommands {
         if (!force) {
             ByteBuffer mentorBuf = db.getNationMeta(mentee.getNation_id(), NationMeta.CURRENT_MENTOR);
             if (mentorBuf != null) {
-                DBNation current = DBNation.byId(mentorBuf.getInt());
+                DBNation current = DBNation.getById(mentorBuf.getInt());
                 if (current != null && current.getActive_m() < 2880 && current.getVm_turns() == 0) {
                     User currentUser = current.getUser();
                     if (currentUser != null && Roles.MEMBER.has(currentUser, db.getGuild())) {
@@ -767,8 +767,8 @@ public class IACommands {
             if (transaction.note == null || !transaction.note.contains("#incentive")) continue;
             Map<String, String> notes = PnwUtil.parseTransferHashNotes(transaction.note);
             String incentive = notes.get("#incentive");
-            DBNation member = DBNation.byId(transaction.banker_nation);
-            DBNation gov = DBNation.byId((int) transaction.sender_id);
+            DBNation member = DBNation.getById(transaction.banker_nation);
+            DBNation gov = DBNation.getById((int) transaction.sender_id);
 
             if (gov != null) {
                 Map<DBNation, Integer> byIncentive = incentivesByGov.computeIfAbsent(incentive, f -> new HashMap<>());

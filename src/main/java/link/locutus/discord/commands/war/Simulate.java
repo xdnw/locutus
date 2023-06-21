@@ -40,7 +40,7 @@ public class Simulate extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         boolean war = false;
         args = new ArrayList<>(args);
         String attmmr = null;
@@ -57,7 +57,7 @@ public class Simulate extends Command {
                 args.remove(i);
             }
         }
-        DBNation me = DiscordUtil.getNation(event);
+        
         if (me == null) {
             return "Please use " + Settings.commandPrefix(true) + "validate";
         }
@@ -81,10 +81,10 @@ public class Simulate extends Command {
             );
         }
 
-//        event.getChannel().sendMessage("Simulating war between: " + origin.getAggressor().getNation().getNation() + " -> " + origin.getDefender().getNation().getNation()).complete();
-        Message msg2 = RateLimitUtil.complete(event.getChannel().sendMessage("- Fetching war link.locutus.discord.util.RateLimitUtil.complete(information..."));
+//        channel.sendMessage("Simulating war between: " + origin.getAggressor().getNation().getNation() + " -> " + origin.getDefender().getNation().getNation()).complete();
+        Message msg2 = RateLimitUtil.complete(channel.sendMessage("- Fetching war link.locutus.discord.util.RateLimitUtil.complete(information..."));
 
-        RateLimitUtil.queue(event.getChannel().editMessageById(msg2.getIdLong(), "- Initializing (simulation..."));
+        RateLimitUtil.queue(channel.editMessageById(msg2.getIdLong(), "- Initializing (simulation..."));
 
         long start = System.currentTimeMillis();
 
@@ -123,7 +123,7 @@ public class Simulate extends Command {
 
             SimulatedWar warSim = new SimulatedWar(origin, valueFunction, goal);
 
-            RateLimitUtil.queue(event.getChannel().editMessageById(msg2.getIdLong(), "- (Processing..."));
+            RateLimitUtil.queue(channel.editMessageById(msg2.getIdLong(), "- (Processing..."));
 
             solution = warSim.solve();
         } else {
@@ -145,7 +145,7 @@ public class Simulate extends Command {
 
         List<SimulatedWarNode> solutionList = solution.toActionList();
 
-        RateLimitUtil.queue(event.getChannel().editMessageById(msg2.getIdLong(), "**The following attack orders are recommended " + verb + "**(:"));
+        RateLimitUtil.queue(channel.editMessageById(msg2.getIdLong(), "**The following attack orders are recommended " + verb + "**(:"));
 
         int wait = 0;
         for (SimulatedWarNode node : solutionList) {
@@ -162,9 +162,9 @@ public class Simulate extends Command {
 
         MessageEmbed card = solution.toString(origin);
 
-        DiscordUtil.sendMessage(event.getChannel(), result.toString());
+        DiscordUtil.sendMessage(channel, result.toString());
 
-        RateLimitUtil.queue(event.getChannel().sendMessageEmbeds(card));
+        RateLimitUtil.queue(channel.sendMessageEmbeds(card));
 
         String totalMsg;
         String attName = origin.getAggressor().getNation().getNation();

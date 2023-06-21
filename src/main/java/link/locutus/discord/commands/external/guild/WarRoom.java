@@ -61,10 +61,10 @@ public class WarRoom extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty()) return usage();
 
-        if ((flags.contains('p') || flags.contains('m')) && !Roles.MILCOM.has(event.getMember())) {
+        if ((flags.contains('p') || flags.contains('m')) && !Roles.MILCOM.has(guild.getMember(author))) {
             return "You need to have milcom role to use `-p` or `-m`.";
         }
         GuildDB db = Locutus.imp().getGuildDB(guild);
@@ -82,7 +82,7 @@ public class WarRoom extends Command {
 
         String arg = args.get(0);
         if (arg.equalsIgnoreCase("close") || arg.equalsIgnoreCase("delete")) {
-            WarCategory.WarRoom room = warCat.getWarRoom(event.getGuildChannel());
+            WarCategory.WarRoom room = warCat.getWarRoom(channel);
             if (room != null) {
                 room.delete("Closed by " + author.getName() + "#" + author.getDiscriminator());
                 return "Goodbye.";
@@ -90,20 +90,20 @@ public class WarRoom extends Command {
                 return "You are not in a war room!";
             }
         }
-        if (args.size() < 2) return usage(event);
+        if (args.size() < 2) return usage(args.size(), 2, channel);
 
         if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) {
             SpreadSheet sheet = SpreadSheet.create(arg);
             StringBuilder response = new StringBuilder();
             Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(sheet, headerRow, f -> 3, 0.75, 1.75, true, true, false, f -> true, (dbNationDBNationEntry, s) -> response.append(s).append("\n"));
             if (response.length() != 0) {
-                DiscordUtil.sendMessage(event.getChannel(), response.toString());
+                DiscordUtil.sendMessage(channel, response.toString());
                 if (!flags.contains('f')) {
                     return "Add `-f` to force create the channels anyway.";
                 }
             }
 
-            RateLimitUtil.queue(event.getChannel().sendMessage("Generating channels..."));
+            RateLimitUtil.queue(channel.sendMessage("Generating channels..."));
 
             if (filterArg != null) {
                 Set<DBNation> nations = DiscordUtil.parseNations(guild, filterArg);

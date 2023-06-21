@@ -57,9 +57,9 @@ public class IntelOpSheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         String sheetUrl = DiscordUtil.parseArg(args, "sheet");
-        if (args.size() < 2) return usage(event);
+        if (args.size() < 2) return usage(args.size(), 2, channel);
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
 
@@ -71,9 +71,9 @@ public class IntelOpSheet extends Command {
         attackers.removeIf(f -> f.getPosition() <= 1 || f.getActive_m() > 1440 || f.getVm_turns() > 0);
         Integer topX = db.getOrNull(GuildKey.DO_NOT_RAID_TOP_X);
         if (args.size() > 2) topX = Integer.parseInt(args.get(2));
-        if (topX == null) return usage(event);
+        if (topX == null) return usage(args.size(), unkown, channel);
 
-        if (attackers.isEmpty()) return usage(event);
+        if (attackers.isEmpty()) return usage(args.size(), unkown, channel);
 
         List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
 
@@ -174,7 +174,7 @@ public class IntelOpSheet extends Command {
 
         sheet.set(0, 0);
 
-        sheet.attach(new DiscordChannelIO(event).create()).send();
+        sheet.attach(channel.create()).send();
         return null;
     }
 }

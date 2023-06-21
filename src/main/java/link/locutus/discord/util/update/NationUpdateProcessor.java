@@ -34,12 +34,10 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
@@ -82,7 +80,7 @@ public class NationUpdateProcessor {
         for (DBAttack attack : attacks) {
             if (attack.getAttack_type() != AttackType.NAVAL) continue;
 
-            DBNation defender = DBNation.byId(attack.getDefender_nation_id());
+            DBNation defender = DBNation.getById(attack.getDefender_nation_id());
             if (defender == null) continue;
 
             if (attack.getSuccess() == 3) {
@@ -115,7 +113,7 @@ public class NationUpdateProcessor {
 
         // Remove if nation is deleted
         for (Integer nationId : nationIds) {
-            DBNation nation = DBNation.byId(nationId);
+            DBNation nation = DBNation.getById(nationId);
             if (nation == null) {
                 Map<Integer, Integer> blockading = blockadingByNationByWar.remove(nationId);
                 if (blockading != null && !blockading.isEmpty()) {
@@ -197,7 +195,7 @@ public class NationUpdateProcessor {
             if (active) {
                 activeMembersByAA.put(aaId, activeMembersByAA.getOrDefault(aaId, 0) + 1);
                 double value = 0;
-                DBNation previous = DBNation.byId(nation.getNation_id());
+                DBNation previous = DBNation.getById(nation.getNation_id());
                 if (previous != null) {
                     value = (previous.getAircraftPct() + previous.getTankPct() + previous.getSoldierPct()) / 3d;
                 }

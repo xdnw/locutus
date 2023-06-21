@@ -2163,7 +2163,7 @@ public class GuildHandler {
                 DiscordUtil.sendMessage(channel, explanation.toString());
             }
 
-            DBNation nation = DBNation.byId(root.getAttacker_nation_id());
+            DBNation nation = DBNation.getById(root.getAttacker_nation_id());
             if (nation != null && db.getGuild().getMember(user) != null) {
                 ApiKeyPool keys = db.getMailKey();
                 if (keys != null) {
@@ -2467,7 +2467,7 @@ public class GuildHandler {
                         if (user != null) {
                             Map.Entry<Integer, Long> pair = getNationTimestampReferrer(user.getIdLong());
                             if (pair != null) {
-                                DBNation referrer = DBNation.byId(pair.getKey());
+                                DBNation referrer = DBNation.getById(pair.getKey());
                                 reward(nation, NationMeta.INCENTIVE_REFERRER, true, amt, "Inviting a nation to the alliance", () -> referrer);
                             }
                         }

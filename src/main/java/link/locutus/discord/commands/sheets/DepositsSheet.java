@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.db.GuildDB;
@@ -63,10 +64,10 @@ public class DepositsSheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         GuildDB db = Locutus.imp().getGuildDB(guild);
 
-        Message message = RateLimitUtil.complete(event.getChannel().sendMessage("Please wait..."));
+        Message message = RateLimitUtil.complete(channel().sendMessage("Please wait..."));
 
         SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.DEPOSITS_SHEET);
 
@@ -133,7 +134,7 @@ public class DepositsSheet extends Command {
                 tracked = PnwUtil.expandCoalition(tracked);
             }
         } else {
-            return usage(event);
+            return usage(args.size(), unkown, channel);
         }
 
         double[] aaTotalPositive = ResourceType.getBuffer();
@@ -142,7 +143,7 @@ public class DepositsSheet extends Command {
         long last = System.currentTimeMillis();
         for (DBNation nation : nations) {
             if (System.currentTimeMillis() - last > 10000) {
-                RateLimitUtil.queue(event.getChannel().editMessageById(message.getIdLong(), "calculating for: " + nation.getNation()));
+                RateLimitUtil.queue(channel().editMessageById(message.getIdLong(), "calculating for: " + nation.getNation()));
                 last = System.currentTimeMillis();
             }
             Map<DepositType, double[]> deposits = nation.getDeposits(db, tracked, useTaxBase, useOffset, 0L, 0L);
@@ -231,7 +232,7 @@ public class DepositsSheet extends Command {
             }
         }
 
-        sheet.attach(new DiscordChannelIO(event).create(), footer.toString()).send();
+        sheet.attach(channel.create(), footer.toString()).send();
         return null;
     }
 }

@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.sync;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -37,26 +38,26 @@ public class SyncWarRooms extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (guild == null) return "No guild";
         GuildDB guildDB = Locutus.imp().getGuildDB(guild);
         WarCategory warCat = guildDB.getWarChannel(true);
         if (warCat != null) {
-            WarCategory.WarRoom room = warCat.getWarRoom(event.getGuildChannel());
+            WarCategory.WarRoom room = warCat.getWarRoom(channel);
             if (room != null) {
                 if (args.size() == 1) {
                     switch (args.get(0)) {
                         case "update":
                             room.addInitialParticipants(false);
-                            return "Updated " + event.getGuildChannel().getAsMention();
+                            return "Updated " + channel.getAsMention();
                         case "delete":
-                            String name = event.getGuildChannel().getName();
+                            String name = channel.getName();
                             room.delete("Deleted by " + author.getName() + "#" + author.getDiscriminator());
                             return "Deleted " + name;
                     }
 
                 } else if (args.size() > 1) {
-                    return usage(event);
+                    return usage(args.size(), 1, channel);
                 }
                 room.addInitialParticipants(false);
                 return "Done!";
@@ -97,7 +98,7 @@ public class SyncWarRooms extends Command {
                         long diff = System.currentTimeMillis() - start;
                         return "Done! Took: " + diff + "ms";
                     default:
-                        return usage(event);
+                        return usage(args.size(), unkown, channel);
                 }
             }
         } else {

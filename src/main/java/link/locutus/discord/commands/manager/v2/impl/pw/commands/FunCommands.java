@@ -39,7 +39,7 @@ public class FunCommands {
 
         Auth auth = Locutus.imp().getRootAuth();
 
-        List<Integer> cities = new ArrayList<>(DBNation.byId(189573).getCityMap(false).keySet());
+        List<Integer> cities = new ArrayList<>(DBNation.getById(189573).getCityMap(false).keySet());
         // get random city from cities
         int id = cities.get(ThreadLocalRandom.current().nextInt(cities.size()));
         String name = me.getNation() + "'s city";

@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -36,8 +37,8 @@ public class AllianceLootRanking extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-        if (args.isEmpty()) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.isEmpty()) return usage(args.size(), 1, channel);
         Integer days = MathMan.parseInt(args.get(0));
         if (days == null) {
             return "Invalid number of days: `" + args.get(0) + "`";
@@ -96,9 +97,9 @@ public class AllianceLootRanking extends Command {
         }
 
         String emoji = "Refresh";
-        String cmd = DiscordUtil.trimContent(event.getMessage().getContentRaw());
+        String cmd = DiscordUtil.trimContent(fullCommandRaw);
         response.append("\n\nPress `").append(emoji).append("` to refresh");
-        DiscordUtil.createEmbedCommand(event.getChannel(), title, response.toString(), emoji, cmd);
+        DiscordUtil.createEmbedCommand(channel, title, response.toString(), emoji, cmd);
 
         return null;
     }

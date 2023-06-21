@@ -3,12 +3,14 @@ package link.locutus.discord.commands.account;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -23,6 +25,7 @@ import net.dv8tion.jda.internal.utils.PermissionUtil;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class RoleAlias extends Command {
@@ -51,11 +54,11 @@ public class RoleAlias extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() > 3) return usage();
-        User user = event.getAuthor();
-        Guild server = event.getGuild();
-        GuildDB db = Locutus.imp().getGuildDB(event);
+        User user = author;
+        Guild server = guild;
+        GuildDB db = Locutus.imp().getGuildDB(guild);
         Roles locutusRole = args.size() > 0 ? Roles.parse(args.get(0)) : null;
         Role role = args.size() > 1 ? DiscordUtil.getRole(server, args.get(1)) : null;
         boolean removeRole = false;

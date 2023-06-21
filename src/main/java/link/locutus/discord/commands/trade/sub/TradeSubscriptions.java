@@ -27,8 +27,8 @@ public class TradeSubscriptions extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-        List<TradeSubscription> subscriptions = Locutus.imp().getTradeManager().getTradeDb().getSubscriptions(event.getAuthor().getIdLong());
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        List<TradeSubscription> subscriptions = Locutus.imp().getTradeManager().getTradeDb().getSubscriptions(author.getIdLong());
         if (subscriptions.isEmpty()) {
             return "No subscriptions. Subscribe to get alerts using `" + Settings.commandPrefix(true) + "alert-trade`";
         }
@@ -56,7 +56,7 @@ public class TradeSubscriptions extends Command {
 
             body.append("\n\n").append("*Press `" + emoji + "` to unsubscribe*");
 
-            DiscordUtil.createEmbedCommand(event.getChannel(), title, body.toString(), emoji, unsubCommand);
+            DiscordUtil.createEmbedCommand(channel, title, body.toString(), emoji, unsubCommand);
         }
 
         return null;

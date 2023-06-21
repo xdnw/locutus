@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -49,7 +50,7 @@ public class EditAlliance extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty() || args.size() < 2) return usage();
         StringBuilder response = new StringBuilder();
 
@@ -67,7 +68,7 @@ public class EditAlliance extends Command {
                     response.append("Usage: `" + help() + "`- Currently set: " + StringMan.getString(post));
                     return;
                 }
-                String content = DiscordUtil.trimContent(event.getMessage().getContentRaw());
+                String content = DiscordUtil.trimContent(fullCommandRaw);
                 String attr = args.get(1).split("\\r?\\n")[0];
                 String finalValue = content.substring(content.indexOf(attr) + attr.length() + 1);
 

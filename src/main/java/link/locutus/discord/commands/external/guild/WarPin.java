@@ -33,12 +33,12 @@ public class WarPin extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        GuildDB db = Locutus.imp().getGuildDB(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        GuildDB db = Locutus.imp().getGuildDB(guild);
         WarCategory warChannels = db.getWarChannel();
         if (warChannels == null) return "War channels are not enabled.";
 
-        WarCategory.WarRoom warRoom = warChannels.getWarRoom(event.getGuildChannel());
+        WarCategory.WarRoom warRoom = warChannels.getWarRoom(channel);
         if (warRoom == null) return "This command must be run in a war room.";
 
         IMessageBuilder message = warRoom.updatePin(true);

@@ -136,7 +136,7 @@ public class Nev extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         String text = "Nev. The warm light in this cold dark world. The music note in the deafening wasteland of our society.";
 
         if (zal++ > 0) {

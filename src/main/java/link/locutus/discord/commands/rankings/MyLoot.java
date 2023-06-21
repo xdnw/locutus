@@ -33,8 +33,8 @@ public class MyLoot extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 1 || !MathMan.isInteger(args.get(0))) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 1 || !MathMan.isInteger(args.get(0))) return usage(args.size(), unkown, channel);
         if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
         return parent.onCommand(event, guild, author, me, new ArrayList<>(Arrays.asList(me.getNationUrl(), "*", args.get(0))), flags);
     }

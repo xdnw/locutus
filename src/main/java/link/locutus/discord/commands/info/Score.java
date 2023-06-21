@@ -3,6 +3,7 @@ package link.locutus.discord.commands.info;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
@@ -39,8 +40,8 @@ public class Score extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() == 0) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() == 0) return usage(args.size(), 1, channel);
         double infra = -1;
         double avg_infra = -1;
 
@@ -71,7 +72,7 @@ public class Score extends Command {
             String next = iterator.next();
 
             String[] split = next.split("=");
-            if (split.length != 2) return usage(event);
+            if (split.length != 2) return usage(args.size(), unkown, channel);
 
             Double amt = MathMan.parseDouble(split[1]);
             if (amt == null) return "Unknown number `" + split[1] + "`";
@@ -119,7 +120,7 @@ public class Score extends Command {
 
         double score = nation.estimateScore(infra);
 
-        if (score == 0) return usage(event);
+        if (score == 0) return usage(args.size(), unkown, channel);
 
         return "Score: " + MathMan.format(score) + "\n" +
                 "WarRange: " + MathMan.format(score * 0.75) + "- " + MathMan.format(score * 1.75) + "\n" +

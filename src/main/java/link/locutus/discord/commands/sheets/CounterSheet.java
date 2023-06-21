@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.sheets;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
@@ -56,9 +57,9 @@ public class CounterSheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         String sheetUrl = DiscordUtil.parseArg(args, "sheet");
-        if (args.size() > 2) return usage(event);
+        if (args.size() > 2) return usage(args.size(), 2, channel);
 
         // nation info, then attackers att1 att2 att3
 
@@ -285,7 +286,7 @@ public class CounterSheet extends Command {
 
         sheet.set(0, 0);
 
-        sheet.attach(new DiscordChannelIO(event).create()).send();
+        sheet.attach(channel.create()).send();
         return null;
     }
 }

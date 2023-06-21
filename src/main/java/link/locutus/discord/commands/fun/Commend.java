@@ -32,7 +32,7 @@ public class Commend extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) return usage();
         DBNation nation = DiscordUtil.parseNation(args.get(0));
         if (nation == null) return "Invalid nation: `" + args.get(0) + "`";

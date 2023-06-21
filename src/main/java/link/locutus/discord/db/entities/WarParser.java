@@ -327,6 +327,6 @@ public class WarParser {
     }
 
     public DBNation getNation(int nationId, DBWar war) {
-        return DBNation.byId(nationId);
+        return DBNation.getById(nationId);
     }
 }

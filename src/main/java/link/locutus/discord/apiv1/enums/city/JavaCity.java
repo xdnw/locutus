@@ -66,7 +66,7 @@ public class JavaCity {
             if (update && now > city.fetched) {
                 city.update(true);
             }
-            DBNation nation = DBNation.byId(cityEntry.getKey());
+            DBNation nation = DBNation.getById(cityEntry.getKey());
             if (nation != null) {
                 return Map.entry(nation, city.toJavaCity(nation));
             }

@@ -52,7 +52,7 @@ public class CounterSpy extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         double minSuccess = 0;
 
         Iterator<String> iterator = args.iterator();
@@ -68,7 +68,7 @@ public class CounterSpy extends Command {
                 }
             }
         }
-        if (args.size() != 2 && args.size() != 3) return usage(event);
+        if (args.size() != 2 && args.size() != 3) return usage(args.size(), unkown, channel);
 
         DBNation enemy;
         if (args.get(0).startsWith("" + Settings.INSTANCE.PNW_URL() + "/nation/war/")) {
@@ -108,14 +108,14 @@ public class CounterSpy extends Command {
         if (args.size() == 3) {
             toCounter = DiscordUtil.parseNations(guild, args.get(2), false, true);
         } else {
-            if (me.getAlliance_id() == 0) return usage(event);
+            if (me.getAlliance_id() == 0) return usage(args.size(), unkown, channel);
             toCounter = Locutus.imp().getNationDB().getNations(Collections.singleton(me.getAlliance_id()));
         }
         toCounter.removeIf(n -> n.getSpies() == 0 || !n.isInSpyRange(enemy) || n.getActive_m() > TimeUnit.DAYS.toMinutes(2));
 
         List<Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>>> netDamage = new ArrayList<>();
 
-        Message msg = RateLimitUtil.complete(event.getChannel().sendMessage("Please wait..."));
+        Message msg = RateLimitUtil.complete(channel.sendMessage("Please wait..."));
 
         try {
             Integer enemySpies = enemy.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE);
@@ -209,9 +209,9 @@ public class CounterSpy extends Command {
                     ;
 
 
-            DiscordUtil.createEmbedCommand(event.getChannel(), title, body.toString());
+            DiscordUtil.createEmbedCommand(channel, title, body.toString());
         } finally {
-            RateLimitUtil.queue(event.getChannel().deleteMessageById(msg.getIdLong()));
+            RateLimitUtil.queue(channel.deleteMessageById(msg.getIdLong()));
         }
         return null;
     }

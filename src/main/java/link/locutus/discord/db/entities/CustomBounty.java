@@ -20,7 +20,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class CustomBounty {
@@ -303,7 +302,7 @@ public class CustomBounty {
                 int targetId = isAttacker ? war.defender_id : war.attacker_id;
 
                 Set<DBNation> snapshots = warSnapshots.get(war.warId);
-                DBNation snapshotNation = DBNation.byId(targetId);
+                DBNation snapshotNation = DBNation.getById(targetId);
                 for (DBNation snapshot : snapshots) {
                     if (snapshot.getNation_id() == targetId) {
                         snapshotNation = snapshot;

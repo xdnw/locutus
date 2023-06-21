@@ -58,17 +58,17 @@ public class Loot extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         String scoreStr = DiscordUtil.parseArg(args, "score");
         Double score = scoreStr == null ? null : PrimitiveBindings.Double(scoreStr);
         if (args.size() != 1) {
-            return usage(event);
+            return usage(args.size(), 1, channel);
         }
         if (me == null) {
             return "Please use " + Settings.commandPrefix(true) + "validate";
         }
 
         NationOrAlliance nationOrAlliance = PWBindings.nationOrAlliance(args.get(0));
-        return UtilityCommands.loot(new DiscordChannelIO(event), me, nationOrAlliance, score, flags.contains('p'));
+        return UtilityCommands.loot(channel, me, nationOrAlliance, score, flags.contains('p'));
     }
 }

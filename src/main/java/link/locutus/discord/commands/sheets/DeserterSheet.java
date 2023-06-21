@@ -54,8 +54,8 @@ public class DeserterSheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 2) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 2) return usage(args.size(), 2, channel);
 
         Set<Integer> aaIds = DiscordUtil.parseAlliances(guild, args.get(0));
         if (aaIds == null || aaIds.isEmpty()) return "Unknown alliances: " + aaIds;
@@ -168,7 +168,7 @@ public class DeserterSheet extends Command {
         sheet.set(0, 0);
 
 
-        sheet.attach(new DiscordChannelIO(event).create()).send();
+        sheet.attach(channel.create()).send();
         return null;
     }
 }

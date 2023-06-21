@@ -7,15 +7,12 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.javalin.http.Context;
 import io.javalin.http.RedirectResponse;
-import io.javalin.http.UnauthorizedResponse;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -32,7 +29,6 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.http.HttpHeaders;
 import org.apache.http.NameValuePair;
-import org.apache.http.client.RedirectException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.methods.RequestBuilder;
@@ -42,13 +38,11 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
 
 import java.io.IOException;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -131,7 +125,7 @@ public class AuthBindings extends WebBindingHelper {
         }
 
         public DBNation getNation() {
-            return nationId == null ? null : DBNation.byId(nationId);
+            return nationId == null ? null : DBNation.getById(nationId);
         }
 
         public boolean isValid() {
@@ -409,7 +403,7 @@ public class AuthBindings extends WebBindingHelper {
             }
             if (nationIdFilter != null) {
                 if (message != null) errors.add(message);
-                DBNation nation = DBNation.byId(nationIdFilter);
+                DBNation nation = DBNation.getById(nationIdFilter);
                 if (nation != null) {
                     UUID tmpUid = UUID.randomUUID();
                     String authUrl = WebRoot.REDIRECT + "/page/login?token=" + tmpUid + "&nation=" + nation.getNation_id();

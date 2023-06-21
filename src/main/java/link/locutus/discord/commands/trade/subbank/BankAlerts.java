@@ -2,11 +2,14 @@ package link.locutus.discord.commands.trade.subbank;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
@@ -29,9 +32,9 @@ public class BankAlerts extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 4) {
-            return usage(event);
+            return usage(args.size(), 4, channel);
         }
         boolean isReceive;
         if (args.get(1).equalsIgnoreCase("receive")) {
@@ -60,7 +63,7 @@ public class BankAlerts extends Command {
             ids = Collections.singleton(nationId);
         } else {
             isNation = BankDB.BankSubType.ALLIANCE;
-            ids = DiscordUtil.parseAlliances(event.getGuild(), args.get(0));
+            ids = DiscordUtil.parseAlliances(guild, args.get(0));
         }
         if (ids == null || ids.isEmpty()) {
             return "Invalid alliance or nation: `" + args.get(0) + "`";
@@ -70,11 +73,11 @@ public class BankAlerts extends Command {
         long msOffset = TimeUtil.timeToSec(args.get(3)) * 1000;
         long date = now + msOffset;
 
-        User user = event.getAuthor();
+        User user = author;
         for (int id : ids) {
             Locutus.imp().getBankDB().subscribe(user, id, isNation, date, isReceive, amount);
         }
-        return "Subscribed to `" + DiscordUtil.trimContent(event.getMessage().getContentRaw()).toUpperCase() + "`" +
+        return "Subscribed to `" + DiscordUtil.trimContent(fullCommandRaw).toUpperCase() + "`" +
                 "\nCheck your subscriptions with: `" + Settings.commandPrefix(true) + "bank-alerts`";
     }
 }

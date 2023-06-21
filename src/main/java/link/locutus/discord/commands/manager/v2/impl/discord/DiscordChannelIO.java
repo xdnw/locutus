@@ -34,6 +34,14 @@ public class DiscordChannelIO implements IMessageIO {
         this(event.getChannel(), event::getMessage);
     }
 
+    public MessageChannel getChannel() {
+        return channel;
+    }
+
+    public Message getUserMessage() {
+        return userMessage != null ? userMessage.get() : null;
+    }
+
     @Override
     @Deprecated
     public IMessageBuilder getMessage() {

@@ -783,7 +783,7 @@ public class IACheckup {
         for (DBWar war : nation.getActiveWars()) {
             if (war.attacker_id != nation.getNation_id()) continue;
             if (war.status != WarStatus.ACTIVE) continue;
-            DBNation defender = DBNation.byId(war.getDefender_id());
+            DBNation defender = DBNation.getById(war.getDefender_id());
             if (defender == null || defender.getActive_m() < 2880) continue;
             Map.Entry<Integer, Integer> map = war.getMap(war.getAttacks());
             if (map.getKey() >= 12) {

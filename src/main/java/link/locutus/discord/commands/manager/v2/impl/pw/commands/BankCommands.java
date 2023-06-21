@@ -67,6 +67,10 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.channel.concrete.NewsChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import org.json.JSONObject;
 
@@ -815,7 +819,7 @@ public class BankCommands {
         lines.add(StringMan.join(header, ","));
         for (Map.Entry<Integer, double[]> entry : warcostByNation.entrySet()) {
             int id = entry.getKey();
-            DBNation nation = DBNation.byId(id);
+            DBNation nation = DBNation.getById(id);
             if (nation == null || !allies.contains(nation.getAlliance_id()) || nation.getPosition() <= 1 || nation.getVm_turns() > 0 || nation.getActive_m() > 7200 || nation.getCities() < 10) continue;
             header.clear();
             header.add(PnwUtil.getName(id, false));
@@ -2506,7 +2510,7 @@ public class BankCommands {
 
         for (BankDB.TaxDeposit tax : taxes) {
             if (tax.date < startDate || tax.date > endDate) continue;
-            DBNation nation = DBNation.byId(tax.nationId);
+            DBNation nation = DBNation.getById(tax.nationId);
             if (!nations.contains(nation)) continue;
 
             int[] internalRate = new int[] {tax.internalMoneyRate, tax.internalResourceRate};
@@ -2528,7 +2532,7 @@ public class BankCommands {
         }
         Map<NationOrAlliance, double[]> transfers = new HashMap<>();
         for (Map.Entry<Integer, double[]> entry : totalByNation.entrySet()) {
-            transfers.put(DBNation.byId(entry.getKey()), entry.getValue());
+            transfers.put(DBNation.getById(entry.getKey()), entry.getValue());
         }
         txSheet.write(transfers).build();
 
@@ -3178,7 +3182,7 @@ public class BankCommands {
                     List<NewsChannel> newsChannels = db.getGuild().getNewsChannels();
                     if (!newsChannels.isEmpty()) channel = newsChannels.get(0);
                 }
-                if (channel == null) channel = db.getGuild().getDefaultChannel();
+                if (channel == null) channel = (MessageChannel) db.getGuild().getDefaultChannel();
                 if (channel != null) {
                     announceChannels.add(channel.getIdLong());
                 }

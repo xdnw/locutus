@@ -336,7 +336,7 @@ public class DataDumpParser {
 
                 Continent continent = continentInfo.getOrDefault(day, Collections.emptyMap()).get(attack.getDefender_nation_id());
                 if (continent == null) {
-                    DBNation nation = DBNation.byId(attack.getDefender_nation_id());
+                    DBNation nation = DBNation.getById(attack.getDefender_nation_id());
                     if (nation != null) continent = nation.getContinent();
                     else {
 //                        System.out.println("Could not find continent for " + attack.defender_nation_id);
@@ -450,7 +450,7 @@ public class DataDumpParser {
         //                throw new IllegalArgumentException("Call to get nation not allowed");
         LootEstimateTracker tracker = new LootEstimateTracker(true, 0L, false, f -> {
         }, (nationId, taxIds, doubles) -> System.out.println("Ignore saving tax rate"),
-                DBNation::byId);
+                DBNation::getById);
 
         for (Map.Entry<Integer, LootEntry> entry : minLootDate.entrySet()) {
             int nationId = entry.getKey();
@@ -462,7 +462,7 @@ public class DataDumpParser {
 
         // add daily logins
         {
-            Map<Long, Set<Integer>> activity = Locutus.imp().getNationDB().getActivityByDay(minDate, id -> DBNation.byId(id) != null);
+            Map<Long, Set<Integer>> activity = Locutus.imp().getNationDB().getActivityByDay(minDate, id -> DBNation.getById(id) != null);
             Map<Integer, Integer> sequentialLoginsByNationId = new Int2IntOpenHashMap();
             // for loop each day
             for (long day = TimeUtil.getDay(minDate); day < TimeUtil.getDay(); day++) {
@@ -471,7 +471,7 @@ public class DataDumpParser {
                 // remove all nations that are not active today from sequentialLoginsByNationId
                 sequentialLoginsByNationId.entrySet().removeIf(entry -> !activeToday.contains(entry.getKey()));
                 for (int nationId : activeToday) {
-                    DBNation nation = DBNation.byId(nationId);
+                    DBNation nation = DBNation.getById(nationId);
                     int total = sequentialLoginsByNationId.getOrDefault(nationId, 0) + 1;
 
                     int age = (int) TimeUnit.MILLISECONDS.toDays(nation.getDate() - timestamp);
@@ -884,7 +884,7 @@ public class DataDumpParser {
 
         int nationId = Integer.parseInt(row.getField(header.nation_id));
         if (!allowedNationIds.test(nationId)) return null;
-        DBNation existing = DBNation.byId(nationId);
+        DBNation existing = DBNation.getById(nationId);
         if (existing == null && !allowDeleted) {
             return null;
         }

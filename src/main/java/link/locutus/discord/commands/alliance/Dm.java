@@ -2,6 +2,7 @@ package link.locutus.discord.commands.alliance;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
@@ -31,10 +32,10 @@ public class Dm extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() < 2) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() < 2) return usage(args.size(), 2, channel);
 
-        String content = DiscordUtil.trimContent(event.getMessage().getContentRaw());
+        String content = DiscordUtil.trimContent(fullCommandRaw);
         String body = content.substring(content.indexOf(' ', content.indexOf(args.get(0)) + args.get(0).length()) + 1);
         List<User> mentions = new ArrayList<>();
 
@@ -60,7 +61,7 @@ public class Dm extends Command {
 
         if (mentions.size() > 1 && !flags.contains('f')) {
             String title = "Send " + mentions.size() + " messages.";
-            String pending = Settings.commandPrefix(true) + "pending " + DiscordUtil.trimContent(event.getMessage().getContentRaw()) + " -f";
+            String pending = Settings.commandPrefix(true) + "pending " + DiscordUtil.trimContent(fullCommandRaw) + " -f";
 
             Set<Integer> alliances = new LinkedHashSet<>();
             for (DBNation nation : nations) alliances.add(nation.getAlliance_id());
@@ -70,16 +71,16 @@ public class Dm extends Command {
 
             String dmMsg = "content: ```" + body + "```";
 
-            DiscordUtil.createEmbedCommand(event.getChannel(), embedTitle, dmMsg, "Next", pending);
+            DiscordUtil.createEmbedCommand(channel, embedTitle, dmMsg, "Next", pending);
             return null;
         }
 
-        Message message = RateLimitUtil.complete(event.getChannel().sendMessage("Please wait..."));
+        Message message = RateLimitUtil.complete(channel.sendMessage("Please wait..."));
 
         for (User mention : mentions) {
-            mention.openPrivateChannel().queue(channel -> RateLimitUtil.queue(channel.sendMessage(event.getAuthor().getAsMention() + " said: " + body + "\n\n(no reply)")));
+            mention.openPrivateChannel().queue(channel -> RateLimitUtil.queue(channel.sendMessage(author.getAsMention() + " said: " + body + "\n\n(no reply)")));
         }
-        RateLimitUtil.queue(event.getChannel().editMessageById(message.getIdLong(), "Sent " + mentions.size() + " messages"));
+        RateLimitUtil.queue(channel.editMessageById(message.getIdLong(), "Sent " + mentions.size() + " messages"));
         return null;
     }
 }

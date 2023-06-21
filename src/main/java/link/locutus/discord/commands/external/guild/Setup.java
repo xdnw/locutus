@@ -40,8 +40,8 @@
 //    }
 //
 //    @Override
-//    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-//        GuildDB guildDb = Locutus.imp().getGuildDB(event);
+//    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+//        GuildDB guildDb = Locutus.imp().getGuildDB(guild);
 //        for (GuildKey key : values()) {
 //            if (!key.requiresSetup) continue;
 //            if (key.requires != null) {
@@ -59,7 +59,7 @@
 //        }
 //
 //        for (Roles role : Roles.values()) {
-//            if (role.toRole(event.getGuild()) == null) {
+//            if (role.toRole(guild) == null) {
 //                return "Please use `" + Settings.commandPrefix(true) + "AliasRole " + role.name() + " <discord-role>`";
 //            }
 //        }

@@ -34,9 +34,9 @@ public class UnitHistory extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         Integer page = DiscordUtil.parseArgInt(args, "page");
-        if (args.size() != 2) return usage(event);
+        if (args.size() != 2) return usage(args.size(), 2, channel);
         DBNation nation = DiscordUtil.parseNation(args.get(0));
         if (nation == null) return "Invalid nation: `" + args.get(0) + "`";
         MilitaryUnit unit = MilitaryUnit.valueOfVerbose(args.get(1).toUpperCase().replaceAll(" ", "_"));
@@ -120,7 +120,7 @@ public class UnitHistory extends Command {
         if (page == null) page = 0;
         title += " (" + (page + 1) + "/" + pages + ")";
 
-        new DiscordChannelIO(event).create().paginate(title, cmd, page, perPage, results, footer.toString(), false).send();
+        channel.create().paginate(title, cmd, page, perPage, results, footer.toString(), false).send();
         return null;
     }
 }

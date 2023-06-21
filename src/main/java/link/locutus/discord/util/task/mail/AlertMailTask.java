@@ -16,14 +16,12 @@ import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.SpyCount;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.task.MailRespondTask;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
@@ -190,7 +188,7 @@ public class AlertMailTask extends CaughtRunnable implements BiConsumer<Mail, Li
         String reply = strings.get(0);
         if (reply.isEmpty() || reply.charAt(0) != (Settings.commandPrefix(true)).charAt(0)) return;
 
-        DBNation nation = DBNation.byId(mail.nationId);
+        DBNation nation = DBNation.getById(mail.nationId);
         if (nation == null) return;
 
         GuildDB db = Locutus.imp().getGuildDB(guild);

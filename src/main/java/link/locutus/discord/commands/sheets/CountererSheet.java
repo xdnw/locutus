@@ -17,7 +17,7 @@ import java.util.Set;
 
 public class CountererSheet extends Command {
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         Set<DBNation> nations;
         if (args.isEmpty()) {
@@ -27,7 +27,7 @@ public class CountererSheet extends Command {
         } else if (args.size() == 1) {
             nations = (DiscordUtil.parseNations(guild, args.get(0)));
         } else {
-            return usage(event);
+            return usage(args.size(), unkown, channel);
         }
 
         nations.removeIf(f -> f.getActive_m() > 2440);

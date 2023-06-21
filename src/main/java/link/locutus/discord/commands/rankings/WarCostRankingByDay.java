@@ -80,9 +80,9 @@ public class WarCostRankingByDay extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() < 2) {
-            return usage(event);
+            return usage(args.size(), 2, channel);
         }
         int days = Integer.parseInt(args.get(args.size() - 1));
         if (days > 1000 || days <= 1) return "Invalid number of days: `" + days + "`";
@@ -234,7 +234,7 @@ public class WarCostRankingByDay extends Command {
         }
 
         for (TimeNumericTable<Map<String, WarAttackParser>> table : tables) {
-            table.write(new DiscordChannelIO(event), true);
+            table.write(channel, true);
         }
         if (tables.isEmpty()) return "Please use one of the flag";
 

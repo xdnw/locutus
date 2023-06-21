@@ -38,11 +38,11 @@ public class Trending extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         int days = 1;
         if (args.size() == 1) {
             days = Integer.parseInt(args.get(0));
-        } else if (args.size() != 0) return usage(event);
+        } else if (args.size() != 0) return usage(args.size(), unkown, channel);
 
 
         Map<ResourceType, Map<Integer, LongAdder>> sold = new EnumMap<>(ResourceType.class);
@@ -137,7 +137,7 @@ public class Trending extends Command {
 
         sheet.set(0, 0);
 
-        sheet.attach(new DiscordChannelIO(event).create()).send();
+        sheet.attach(channel.create()).send();
         return null;
     }
 }

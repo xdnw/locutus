@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -22,6 +23,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -47,12 +49,12 @@ public class AutoRole extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) {
-            return usage(event);
+            return usage(args.size(), 1, channel);
         }
 
-        GuildDB db = Locutus.imp().getGuildDB(event);
+        GuildDB db = Locutus.imp().getGuildDB(guild);
         if (db == null) return "No registered guild.";
         IAutoRoleTask task = db.getAutoRoleTask();
         task.syncDB();
@@ -60,7 +62,7 @@ public class AutoRole extends Command {
         StringBuilder response = new StringBuilder();
 
         if (args.get(0).equalsIgnoreCase("*")) {
-            if (!Roles.INTERNAL_AFFAIRS.has(event.getMember())) return "No permission";
+            if (!Roles.INTERNAL_AFFAIRS.has(author, guild)) return "No permission";
             Function<Long, Boolean> func = i -> {
                 task.autoRoleAll(new Consumer<>() {
                     private boolean messaged = false;
@@ -69,12 +71,12 @@ public class AutoRole extends Command {
                     public void accept(String s) {
                         if (messaged) return;
                         messaged = true;
-                        RateLimitUtil.queue(event.getChannel().sendMessage(s));
+                        channel.send(s);
                     }
                 });
                 return true;
             };
-            RateLimitUtil.queue(event.getChannel().sendMessage("Please wait..."));
+            channel.send("Please wait...");
             func.apply(0L);
 
             if (db.hasAlliance()) {
@@ -104,7 +106,7 @@ public class AutoRole extends Command {
             task.autoRole(member, out);
 
             if (!output.isEmpty()) {
-                DiscordUtil.sendMessage(event.getGuildChannel(), StringMan.join(output, "\n"));
+                channel.send(StringMan.join(output, "\n"));
             }
         }
 

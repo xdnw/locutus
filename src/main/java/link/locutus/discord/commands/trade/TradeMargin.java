@@ -36,7 +36,7 @@ public class TradeMargin extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         boolean usePercent = flags.contains('p');
 
         TradeManager trader = Locutus.imp().getTradeManager();
@@ -45,7 +45,7 @@ public class TradeMargin extends Command {
         Map<ResourceType, Double> low = trader.getLow().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
         Map<ResourceType, Double> high = trader.getHigh().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().doubleValue()));
 
-        DiscordUtil.createEmbedCommand(event.getChannel(), b -> {
+        DiscordUtil.createEmbedCommand(channel, b -> {
             List<ResourceType> resources = new ArrayList<>(ResourceType.valuesList);
             resources.remove(ResourceType.MONEY);
 
@@ -68,7 +68,7 @@ public class TradeMargin extends Command {
 
             b.addField("Resource", StringMan.join(resourceNames, "\n"), true);
             b.addField("margin", StringMan.join(diffList, "\n"), true);
-        }, refreshEmoji, DiscordUtil.trimContent(event.getMessage().getContentRaw()));
+        }, refreshEmoji, DiscordUtil.trimContent(fullCommandRaw));
         return null;
     }
 }

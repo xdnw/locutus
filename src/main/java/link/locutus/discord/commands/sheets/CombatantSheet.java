@@ -46,10 +46,10 @@ public class CombatantSheet extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 1) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 1) return usage(args.size(), 1, channel);
         Set<Integer> alliances = DiscordUtil.parseAlliances(guild, args.get(0));
-        if (alliances == null) return usage(event);
+        if (alliances == null) return usage(args.size(), unkown, channel);
 
         List<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(alliances, WarStatus.ACTIVE, WarStatus.DEFENDER_OFFERED_PEACE, WarStatus.ATTACKER_OFFERED_PEACE);
         wars.removeIf(w -> {
@@ -165,7 +165,7 @@ public class CombatantSheet extends Command {
 
         sheet.set(0, 0);
 
-            sheet.attach(new DiscordChannelIO(event).create()).send();
+            sheet.attach(channel.create()).send();
             return null;
         } catch (Throwable e) {
             e.printStackTrace();

@@ -29,8 +29,8 @@ public class CounterStats extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 1) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 1) return usage(args.size(), 1, channel);
         Integer id = PnwUtil.parseAllianceId(args.get(0));
         if (id == null) return "Invalid id: `" + id + "`";
 
@@ -77,7 +77,7 @@ public class CounterStats extends Command {
         String response = MathMan.format(chanceActive * 100) + "% for actives (" + totalActive + " wars)" + '\n' +
                 MathMan.format(chanceInactive * 100) + "% for inactives (" + totalInactive + " wars)";
 
-        DiscordUtil.createEmbedCommand(event.getChannel(), title, response);
+        DiscordUtil.createEmbedCommand(channel, title, response);
         return null;
     }
 }

@@ -66,7 +66,7 @@ public class WarCommand extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         String numStr = DiscordUtil.parseArg(args, "results");
         int num = numStr == null ? 8 : Integer.parseInt(numStr);
         String nationArg = DiscordUtil.parseArg(args, "nation");
@@ -77,7 +77,7 @@ public class WarCommand extends Command {
 
         if (nationArg != null) me = DiscordUtil.parseNation(nationArg);
         if (me == null) {
-            return "Invalid nation? Are you sure you are registered?" + event.getAuthor().getAsMention();
+            return "Invalid nation? Are you sure you are registered?" + author.getAsMention();
         }
 
         String scoreStr = DiscordUtil.parseArg(args, "score");
@@ -87,9 +87,9 @@ public class WarCommand extends Command {
 
         MessageChannel channel;
         if (flags.contains('d')) {
-            channel = RateLimitUtil.complete(event.getAuthor().openPrivateChannel());
+            channel = RateLimitUtil.complete(author.openPrivateChannel());
         } else {
-            channel = event.getGuildChannel();
+            channel = channel;
         }
 
         boolean includeInactives = flags.contains('i');
@@ -98,12 +98,12 @@ public class WarCommand extends Command {
         boolean includeStrong = flags.contains('s');
         boolean filteredUpdeclare = false;
 
-        GuildDB db = Locutus.imp().getGuildDB(event);
+        GuildDB db = Locutus.imp().getGuildDB(guild);
         String aa = null;
 
         switch (args.size()) {
             default:
-                return usage(event);
+                return usage(args.size(), unkown, channel);
             case 1:
                 aa = args.get(0);
             case 0:
@@ -118,7 +118,7 @@ public class WarCommand extends Command {
                         nations.removeIf(n -> n.getPosition() <= 1);
                     }
                 } else {
-                    nations = DiscordUtil.parseNations(event.getGuild(), aa);
+                    nations = DiscordUtil.parseNations(guild, aa);
                 }
 
                 if (!includeInactives) nations.removeIf(n -> n.getActive_m() >= 2440);
@@ -161,7 +161,7 @@ public class WarCommand extends Command {
                     nations.remove(war.getNation(false));
                 }
 
-                CompletableFuture<Message> msg = RateLimitUtil.queue(event.getChannel().sendMessage("Please wait... "));
+                CompletableFuture<Message> msg = RateLimitUtil.queue(channel.sendMessage("Please wait... "));
 
                 Set<Integer> allies = db.getAllies();
                 Set<Integer> enemies = db.getCoalitions().get("enemies");
@@ -358,7 +358,7 @@ public class WarCommand extends Command {
                     return null;
                 } finally {
                     Message msgObj = msg.get();
-                    RateLimitUtil.queue(event.getChannel().deleteMessageById(msgObj.getIdLong()));
+                    RateLimitUtil.queue(channel.deleteMessageById(msgObj.getIdLong()));
                 }
         }
     }

@@ -50,7 +50,7 @@ public class CityUpdateProcessor {
     public void onInfraBuy(CityInfraBuyEvent event) {
         DBCity city = event.getCurrent();
 
-        DBNation nation = DBNation.byId(event.getNationId());
+        DBNation nation = DBNation.getById(event.getNationId());
 
         if (city.infra % 50 != 0 && nation != null) {
             System.out.println(":||TODO: Fix infra buy audit: " + event.getPrevious().infra + " -> " + city.infra);
@@ -77,7 +77,7 @@ public class CityUpdateProcessor {
         outer:
         while (iter.hasNext()) {
             Map.Entry<Integer, Map<Integer, MMRChange>> entry = iter.next();
-            DBNation nation = DBNation.byId(entry.getKey());
+            DBNation nation = DBNation.getById(entry.getKey());
             if (nation == null) {
                 iter.remove();
                 continue;
@@ -95,7 +95,7 @@ public class CityUpdateProcessor {
         if (changesByNation.isEmpty()) return;
 
         for (Map.Entry<Integer, List<MMRChange>> entry : changesByNation.entrySet()) {
-            DBNation nation = DBNation.byId(entry.getKey());
+            DBNation nation = DBNation.getById(entry.getKey());
             if (nation == null) continue;
 
             int arrLen = 0;

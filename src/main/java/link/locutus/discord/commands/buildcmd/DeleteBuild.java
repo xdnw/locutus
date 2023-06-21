@@ -3,7 +3,9 @@ package link.locutus.discord.commands.buildcmd;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import net.dv8tion.jda.api.entities.Guild;
@@ -11,6 +13,7 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
+import java.util.Set;
 
 public class DeleteBuild extends Command {
     public DeleteBuild() {
@@ -33,14 +36,14 @@ public class DeleteBuild extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() == 2) {
             if (!MathMan.isInteger(args.get(1))) {
                 return "Not an integer. `" + args.get(1) + "`";
             }
-            Locutus.imp().getGuildDB(event).removeBuild(args.get(0), Integer.parseInt(args.get(1)));
+            Locutus.imp().getGuildDB(guild).removeBuild(args.get(0), Integer.parseInt(args.get(1)));
             return "Removed build: `" + args.get(0) + "`";
         }
-        return usage(event);
+        return usage(args.size(), 2, channel);
     }
 }

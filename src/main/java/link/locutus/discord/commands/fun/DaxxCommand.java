@@ -41,7 +41,7 @@ public class DaxxCommand extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         ThreadLocalRandom r = ThreadLocalRandom.current();
         String insult = c1.get(r.nextInt(c1.size())) + " " + c2.get(r.nextInt(c2.size())) + " " + c3.get(r.nextInt(c3.size()));
         String form = c0.get(r.nextInt(c0.size()));

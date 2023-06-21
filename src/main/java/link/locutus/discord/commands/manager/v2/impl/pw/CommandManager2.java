@@ -12,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveValida
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBinding;
@@ -32,6 +33,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.test.TestCommands;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.json.JSONObject;
@@ -312,21 +314,19 @@ public class CommandManager2 {
         return new AbstractMap.SimpleEntry<>(root, StringMan.join(path, " "));
     }
 
-    public void run(MessageReceivedEvent event) {
-        run(event, true);
-    }
-
-    public void run(MessageReceivedEvent event, boolean async) {
-        Guild guild = event.isFromGuild() ? event.getGuild() : event.getMessage().isFromGuild() ? event.getMessage().getGuild() : null;
-        System.out.println("Guild " + guild);
-        DiscordChannelIO io = new DiscordChannelIO(event.getChannel(), event::getMessage);
-        User user = event.getAuthor();
-        String fullCmdStr = DiscordUtil.trimContent(event.getMessage().getContentRaw()).trim();
+    public void run(Guild guild, IMessageIO io, User author, String command, boolean async) {
+        String fullCmdStr = DiscordUtil.trimContent(command).trim();
         if (fullCmdStr.startsWith(Settings.commandPrefix(false))) {
             fullCmdStr = fullCmdStr.substring(Settings.commandPrefix(false).length());
         }
         System.out.println("remove:|| full " + fullCmdStr);
-        run(guild, event.getChannel(), user, event.getMessage(), io, fullCmdStr, async);
+        Message message = null;
+        MessageChannel channel = null;
+        if (io instanceof DiscordChannelIO dio) {
+            message = dio.getUserMessage();
+            channel = dio.getChannel();
+        }
+        run(guild, channel, author, message, io, fullCmdStr, async);
     }
 
     private LocalValueStore createLocals(@Nullable LocalValueStore<Object> existingLocals, @Nullable Guild guild, @Nullable MessageChannel channel, @Nullable User user, @Nullable Message message, IMessageIO io, @Nullable Map<String, String> fullCmdStr) {

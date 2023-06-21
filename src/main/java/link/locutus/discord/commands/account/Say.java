@@ -2,6 +2,7 @@ package link.locutus.discord.commands.account;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -22,13 +23,13 @@ public class Say extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty()) {
             return null;
         }
-        String msg = DiscordUtil.trimContent(event.getMessage().getContentRaw());
+        String msg = DiscordUtil.trimContent(fullCommandRaw);
         msg = msg.replace("@", "@\u200B");
         msg = msg.replace("&", "&\u200B");
-        return DiscordUtil.format(guild, event.getChannel(), author, me, msg.substring(5) + "\n\n- " + author.getAsMention());
+        return DiscordUtil.format(guild, channel, author, me, msg.substring(5) + "\n\n- " + author.getAsMention());
     }
 }

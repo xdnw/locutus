@@ -463,7 +463,7 @@ public class DBAttack {
     }
 
     public DBNation getNation(boolean attacker) {
-        return DBNation.byId(attacker ? getAttacker_nation_id() : getDefender_nation_id());
+        return DBNation.getById(attacker ? getAttacker_nation_id() : getDefender_nation_id());
     }
 
     public int getWar_attack_id() {

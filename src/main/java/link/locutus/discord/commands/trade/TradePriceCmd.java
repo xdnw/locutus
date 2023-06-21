@@ -40,7 +40,7 @@ public class TradePriceCmd extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         TradeManager trader = Locutus.imp().getTradeManager();
         String refreshEmoji = "Refresh";
 
@@ -71,7 +71,7 @@ public class TradePriceCmd extends Command {
                 maxDiff = MathMan.parseDouble(args.get(2));
                 if (minDiff == null || minDiff <= 0 || minDiff >= 100) return "Invalid percent: `" + args.get(1) + "`";
                 if (maxDiff == null || maxDiff <= 0 || maxDiff >= 100) return "Invalid percent: `" + args.get(2) + "`";
-            } else if (args.size() != 1) return usage(event);
+            } else if (args.size() != 1) return usage(args.size(), 1, channel);
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.MONEY || type == ResourceType.CREDITS) {
                     low.put(type, Double.NaN);
@@ -116,7 +116,7 @@ public class TradePriceCmd extends Command {
             highKey = "High";
         }
 
-        DiscordUtil.createEmbedCommand(event.getChannel(), b -> {
+        DiscordUtil.createEmbedCommand(channel, b -> {
             List<ResourceType> resources = new ArrayList<>(ResourceType.valuesList);
             resources.remove(ResourceType.MONEY);
 
@@ -136,7 +136,7 @@ public class TradePriceCmd extends Command {
             b.addField("Resource", StringMan.join(resourceNames, "\n"), true);
             b.addField(lowKey, StringMan.join(lowList, "\n"), true);
             b.addField(highKey, StringMan.join(highList, "\n"), true);
-        }, refreshEmoji, DiscordUtil.trimContent(event.getMessage().getContentRaw()));
+        }, refreshEmoji, DiscordUtil.trimContent(fullCommandRaw));
         return null;
     }
 

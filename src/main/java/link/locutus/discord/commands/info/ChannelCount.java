@@ -22,7 +22,7 @@ public class ChannelCount extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
 
         StringBuilder channelList = new StringBuilder();
 
@@ -42,7 +42,7 @@ public class ChannelCount extends Command {
         }
 
         if (Roles.ADMIN.has(author, guild)) {
-            DiscordUtil.upload(event.getChannel(), guild.getChannels().size() + "/500 channels", channelList.toString());
+            DiscordUtil.upload(channel, guild.getChannels().size() + "/500 channels", channelList.toString());
             return null;
         } else {
             return "This discord has " + guild.getChannels().size() + "/500 channels";

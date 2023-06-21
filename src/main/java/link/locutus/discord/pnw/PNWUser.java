@@ -56,7 +56,7 @@ public class PNWUser {
                     public void run() {
                         List<Map.Entry<ActionType, String>> guildResult = new ArrayList<>();
 
-                        AuditLogPaginationAction kicks = logs.type(ActionType.KICK).user(getDiscordId()).limit(1);
+                        AuditLogPaginationAction kicks = logs.type(ActionType.KICK).user(getUser()).limit(1);
                         for (AuditLogEntry kick : kicks) {
                             if (kick.getTargetType() != TargetType.MEMBER) continue;
 
@@ -65,7 +65,7 @@ public class PNWUser {
                             }
                         }
 
-                        AuditLogPaginationAction bans = logs.type(ActionType.BAN).user(getDiscordId()).limit(1);
+                        AuditLogPaginationAction bans = logs.type(ActionType.BAN).user(getUser()).limit(1);
                         for (AuditLogEntry ban : bans) {
                             if (ban.getTargetType() != TargetType.MEMBER) continue;
 

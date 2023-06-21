@@ -3,6 +3,7 @@ package link.locutus.discord.commands.coalition;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBNation;
@@ -38,7 +39,7 @@ public class RemoveCoalition extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty()) return usage();
         String coalition = args.get(0);
         Coalition.checkPermission(coalition, guild, author);
@@ -48,7 +49,7 @@ public class RemoveCoalition extends Command {
                 return "Usage: " + Settings.commandPrefix(true) + "removecoalition <coalition> [alliance]";
             }
             case 1 -> {
-                Locutus.imp().getGuildDB(event).removeCoalition(args.get(0));
+                Locutus.imp().getGuildDB(guild).removeCoalition(args.get(0));
                 return "Removed coalition: `" + coalition + "`";
             }
             case 2 -> {
@@ -66,7 +67,7 @@ public class RemoveCoalition extends Command {
                 }
                 StringBuilder result = new StringBuilder();
                 for (Long allianceOrGuild : alliancesOrGuilds) {
-                    Locutus.imp().getGuildDB(event).removeCoalition(allianceOrGuild, coalition);
+                    Locutus.imp().getGuildDB(guild).removeCoalition(allianceOrGuild, coalition);
                     String name = allianceOrGuild <= Integer.MAX_VALUE ? PnwUtil.getName(allianceOrGuild, true) : allianceOrGuild + "";
                     result.append("Removed `").append(name).append("`").append(" from `").append(coalition).append("`").append("\n");
                 }

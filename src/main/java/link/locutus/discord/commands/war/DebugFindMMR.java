@@ -21,10 +21,10 @@ public class DebugFindMMR extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 2) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 2) return usage(args.size(), 2, channel);
         String mmr = args.get(0);
-        if (mmr.length() != 4 && !MathMan.isInteger(mmr)) return usage(event);
+        if (mmr.length() != 4 && !MathMan.isInteger(mmr)) return usage(args.size(), unkown, channel);
 
         Integer cities = MathMan.parseInt(args.get(1));
         if (cities == null) return "Invalid city count: `" + args.get(1) + "`";

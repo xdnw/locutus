@@ -3,6 +3,8 @@ package link.locutus.discord.commands.account;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
@@ -33,10 +35,9 @@ public class HasRole extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        List<User> users = event.getMessage().getMentionedUsers();
-        if (args.size() != 2 || users.size() != 1) return usage(event);
-        User user = users.get(0);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 2) return usage(args.size(), 2, channel);
+        User user = DiscordBindings.user(author, args.get(0));
         Roles role = Roles.valueOf(args.get(1).toUpperCase());
 
         List<Long> guildIds = new ArrayList<>();

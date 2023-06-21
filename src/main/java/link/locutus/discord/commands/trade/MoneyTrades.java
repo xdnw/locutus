@@ -43,8 +43,8 @@ public class MoneyTrades extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 2) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 2) return usage(args.size(), 2, channel);
         Integer user = DiscordUtil.parseNationId(args.get(0));
         if (user == null) {
             return "invalid user `" + args.get(0) + "`";

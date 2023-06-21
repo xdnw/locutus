@@ -163,11 +163,6 @@ public class CommandManager {
         modernized = new CommandManager2().registerDefaults();
     }
 
-    public static MessageReceivedEvent dummyEvent(Message parent, String cmd, Member member, long response) {
-        Message cmdMessage = DelegateMessage.create(parent, cmd, member.getGuild(), member.getUser());
-        return new DelegateMessageEvent(member.getGuild(), response, cmdMessage);
-    }
-
     public ScheduledExecutorService getExecutor() {
         return executor;
     }
@@ -229,15 +224,12 @@ public class CommandManager {
         }
 
         // prioritize updating nations using commands
-        DBNation nation = DiscordUtil.getNation(event.getAuthor());
+        DBNation nation = DiscordUtil.getNation(author);
         if (nation != null) {
             Locutus.imp().getNationDB().markNationDirty(nation.getNation_id());
         }
 
-        Guild msgGuild = event.isFromGuild() ? event.getGuild() : message.isFromGuild() ? message.getGuild() : null;
         // Channel blacklisting / whitelisting
-        MessageChannel channel = event.getChannel();
-
         if (char0 == prefix2 || jsonCommand) {
             try {
                 modernized.run(event, async);
@@ -776,7 +768,7 @@ public class CommandManager {
             assert member != null;
 
             try {
-                return cmd.onCommand(guild, io, user, nation, args);
+                return cmd.onCommand(guild, io, user, nation, content, args);
             } catch (Exception e) {
                 e.printStackTrace();
                 return e.getMessage();

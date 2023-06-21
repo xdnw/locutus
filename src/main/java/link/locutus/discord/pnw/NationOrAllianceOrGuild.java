@@ -20,7 +20,7 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
     static NationOrAllianceOrGuild create(long id, int type) {
         switch (type) {
             case 1:
-                DBNation nation = DBNation.byId((int) id);
+                DBNation nation = DBNation.getById((int) id);
                 if (nation == null) {
                     nation = new DBNation();
                     nation.setNation_id((int) id);

@@ -41,8 +41,8 @@ public class ConvertedTotal extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 1 || args.get(0).isEmpty()) return usage(event);
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        if (args.size() != 1 || args.get(0).isEmpty()) return usage(args.size(), unkown, channel);
 
         Map<ResourceType, Double> transfer = PnwUtil.parseResources(args.get(0));
 
