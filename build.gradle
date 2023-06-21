@@ -72,7 +72,7 @@ dependencies {
     implementation 'org.jsoup:jsoup:1.12.1'
     implementation 'org.bitbucket.cowwoc:diff-match-patch:1.2'
 
-    implementation ('net.dv8tion:JDA:5.0.0-alpha.5') {
+    implementation ('net.dv8tion:JDA:5.0.0-beta.11') {
 //        implementation 'club.minnced:discord-webhooks:4.2.0_182'
         exclude module: 'opus-java'
     }

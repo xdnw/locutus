@@ -11,7 +11,6 @@ import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
-import link.locutus.discord.commands.manager.v2.impl.discord.HookMessageChannel;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -21,6 +20,11 @@ import link.locutus.discord.util.discord.GuildShardManager;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.json.JSONObject;
 
@@ -239,10 +243,6 @@ public class DiscordBindings extends BindingHelper {
     @Binding
     @Me
     public TextChannel textChannel(@Me MessageChannel channel) {
-        if (channel instanceof HookMessageChannel hook) {
-            MessageChannel parent = hook.getParent();
-            if (parent != null) channel = parent;
-        }
         if (!(channel instanceof TextChannel))
             throw new IllegalArgumentException("This command can only be used in a guild text channel.");
         return (TextChannel) channel;

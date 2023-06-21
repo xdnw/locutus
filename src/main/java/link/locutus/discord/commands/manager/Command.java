@@ -5,8 +5,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.dummy.DelegateMessage;
-import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
@@ -16,6 +14,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.*;
@@ -42,8 +41,8 @@ public abstract class Command {
     public static Command create(ICommand command) {
         return new Command() {
             @Override
-            public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-                return command.onCommand(event, guild, author, me, args, flags);
+            public String onCommand(Guild guild, IMessageIO channel, User user, DBNation nation, List<String> args, Set<Character> flags) throws Exception {
+                return command.onCommand(guild, channel, user, nation, args, flags);
             }
         };
     }
@@ -166,29 +165,23 @@ public abstract class Command {
         return "Run the " + aliases.get(0) + " command";
     }
 
-    public String onCommand(Guild guild, MessageChannel channel, User user, DBNation nation, List<String> args) throws Exception {
-        List<String> args2 = new ArrayList<>();
-        for (String arg : args) {
-            if (arg.contains(" ") && !StringMan.isQuote(arg.charAt(0)) && !StringMan.isQuote(arg.charAt(arg.length() - 1))) {
-                arg = '\u201C' + arg + '\u201C';
-            }
-            args2.add(arg);
-        }
-        String cmd = StringMan.join(args2, " ");
-        return onCommand(guild, channel, user, nation, cmd);
+    public abstract String onCommand(Guild guild, IMessageIO channel, User user, DBNation nation, List<String> args, Set<Character> flags) throws Exception;
+
+    public String onCommand(Guild guild, MessageChannel channel, User user, DBNation me, String command) throws Exception {
+        return onCommand(guild, new DiscordChannelIO(channel), user, me, command);
+
     }
 
-    public String onCommand(Guild guild, MessageChannel channel, User user, DBNation nation, String cmd) throws Exception {
-        Message msg = DelegateMessage.create(cmd, guild, user, channel);
-        MessageReceivedEvent event = new DelegateMessageEvent(guild, 0, msg);
-        return onCommand(event, StringMan.split(cmd, ' '), nation);
+    public String onCommand(Guild guild, IMessageIO channel, User user, DBNation me, String command) throws Exception {
+        List<String> split = StringMan.split(command, ' ');
+        return onCommand(guild, channel, user, me, split);
     }
 
-    public String onCommand(MessageReceivedEvent event, List<String> args) throws Exception {
-        return onCommand(event, args, null);
+    public String onCommand(Guild guild, MessageChannel channel, User user, DBNation me, List<String> args) throws Exception {
+        return onCommand(guild, new DiscordChannelIO(channel), user, me, args, new HashSet<>());
     }
 
-    private String onCommand(MessageReceivedEvent event, List<String> args, DBNation me) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User user, DBNation me, List<String> args) throws Exception {
         Set<Character> flags = new HashSet<>();
         Iterator<String> iterator = args.iterator();
         while (iterator.hasNext()) {
@@ -199,21 +192,11 @@ public abstract class Command {
                 iterator.remove();
             }
         }
-        Guild guild = event.isFromGuild() ? event.getGuild() : null;
-        if (me == null) me = DiscordUtil.getNation(event);
-        return onCommand(event, guild, event.getAuthor(), me, args, flags);
-    }
-
-    public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-        return null;
+        return onCommand(guild, channel, user, me, args, flags);
     }
 
     @Override
     public String toString() {
         return aliases.get(0);
-    }
-
-    public boolean checkPermission(MessageReceivedEvent event) {
-        return checkPermission(event.isFromGuild() ? event.getGuild() : null, event.getAuthor());
     }
 }

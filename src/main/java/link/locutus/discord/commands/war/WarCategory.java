@@ -31,17 +31,18 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.GuildChannel;
-import net.dv8tion.jda.api.entities.ICategorizableChannel;
+
+import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.PermissionOverride;
 import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
@@ -455,12 +456,10 @@ public class WarCategory {
 
     public void processChannelCreation(WarRoom room, TextChannel channel, boolean planning) {
         room.updatePin(false);
-        RateLimitUtil.queueWhenFree(channel.putPermissionOverride(guild.getMemberById(Settings.INSTANCE.APPLICATION_ID))
-                .setAllow(Permission.VIEW_CHANNEL)
-                .setAllow(Permission.MANAGE_CHANNEL)
-                .setAllow(Permission.MANAGE_PERMISSIONS)
+        RateLimitUtil.queueWhenFree(channel.upsertPermissionOverride(guild.getMemberById(Settings.INSTANCE.APPLICATION_ID))
+                .setAllowed(Permission.VIEW_CHANNEL, Permission.MANAGE_CHANNEL, Permission.MANAGE_PERMISSIONS)
         );
-        RateLimitUtil.queueWhenFree(channel.putPermissionOverride(guild.getRolesByName("@everyone", false).get(0)).deny(Permission.VIEW_CHANNEL));
+        RateLimitUtil.queueWhenFree(channel.upsertPermissionOverride(guild.getRolesByName("@everyone", false).get(0)).deny(Permission.VIEW_CHANNEL));
 
         room.addInitialParticipants(planning);
     }
@@ -510,7 +509,7 @@ public class WarCategory {
                 }
 
                 if (!contains) {
-                    RateLimitUtil.complete(channel.putPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
+                    RateLimitUtil.complete(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
                     if (ping) {
                         String msg = (author != null ? author.getName() : "null") + " added " + user.getAsMention();
 
@@ -833,7 +832,7 @@ public class WarCategory {
 //                                if (channel.getPermissionOverride(member) != null) continue;
 //                            }
 //                            {
-//                                PermissionOverride result = link.locutus.discord.util.RateLimitUtil.complete(channel.putPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
+//                                PermissionOverride result = link.locutus.discord.util.RateLimitUtil.complete(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
 //                                String mention = allianceIds.contains(nation.getAlliance_id()) ? member.getAsMention() : member.getEffectiveName();
 //                                String msg = "`" + mention + "` joined the fray";
 //                                Role milcomRole = Roles.MILCOM.toRole(guild);
@@ -910,24 +909,24 @@ public class WarCategory {
                             List<Category> existingCat = guild.getCategoriesByName(name, true);
                             if (existingCat.isEmpty()) {
                                 useCat = RateLimitUtil.complete(guild.createCategory(name));
-                                RateLimitUtil.queue(useCat.putPermissionOverride(guild.getMemberById(Settings.INSTANCE.APPLICATION_ID))
-                                        .setAllow(Permission.VIEW_CHANNEL)
-                                        .setAllow(Permission.MANAGE_CHANNEL)
-                                        .setAllow(Permission.MANAGE_PERMISSIONS)
+                                RateLimitUtil.queue(useCat.upsertPermissionOverride(guild.getMemberById(Settings.INSTANCE.APPLICATION_ID))
+                                        .setAllowed(Permission.VIEW_CHANNEL)
+                                        .setAllowed(Permission.MANAGE_CHANNEL)
+                                        .setAllowed(Permission.MANAGE_PERMISSIONS)
                                 );
 
-                                RateLimitUtil.queue(useCat.putPermissionOverride(guild.getRolesByName("@everyone", false).get(0))
+                                RateLimitUtil.queue(useCat.upsertPermissionOverride(guild.getRolesByName("@everyone", false).get(0))
                                         .deny(Permission.VIEW_CHANNEL));
 
                                 Role milcomRole = Roles.MILCOM.toRole(guild);
                                 if (milcomRole != null) {
-                                    RateLimitUtil.complete(useCat.putPermissionOverride(milcomRole)
-                                            .setAllow(Permission.VIEW_CHANNEL));
+                                    RateLimitUtil.complete(useCat.upsertPermissionOverride(milcomRole)
+                                            .setAllowed(Permission.VIEW_CHANNEL));
                                 }
                                 Role advisor = Roles.MILCOM_NO_PINGS.toRole(guild);
                                 if (advisor != null) {
-                                    RateLimitUtil.complete(useCat.putPermissionOverride(advisor)
-                                            .setAllow(Permission.VIEW_CHANNEL));
+                                    RateLimitUtil.complete(useCat.upsertPermissionOverride(advisor)
+                                            .setAllowed(Permission.VIEW_CHANNEL));
                                 }
                                 break;
                             }
@@ -1039,7 +1038,7 @@ public class WarCategory {
                 participants.add(nation);
 
                 if (channel != null && member != null && channel.getPermissionOverride(member) == null) {
-                    RateLimitUtil.queue(channel.putPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
+                    RateLimitUtil.queue(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
                     if (ping && channel != null) {
                         String msg = member.getAsMention() + " joined the fray";
                         RateLimitUtil.queue(channel.sendMessage(msg));
@@ -1076,7 +1075,7 @@ public class WarCategory {
 
             Member botMember = guild.getMemberById(Settings.INSTANCE.APPLICATION_ID);
             if (botMember != null && channel != null && channel.getPermissionOverride(botMember) == null) {
-                RateLimitUtil.queue(channel.putPermissionOverride(botMember)
+                RateLimitUtil.queue(channel.upsertPermissionOverride(botMember)
                         .grant(Permission.VIEW_CHANNEL)
                         .grant(Permission.MANAGE_CHANNEL)
                         .grant(Permission.MANAGE_PERMISSIONS)
@@ -1100,7 +1099,7 @@ public class WarCategory {
                     addedMembers.add(member);
                 }
                 if (channel != null && member != null && channel.getPermissionOverride(member) == null) {
-                    RateLimitUtil.queue(channel.putPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
+                    RateLimitUtil.queue(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
                 }
             }
             if (!planned && channel != null) {

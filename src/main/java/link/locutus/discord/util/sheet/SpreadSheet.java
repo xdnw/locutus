@@ -49,7 +49,7 @@ import com.google.api.services.sheets.v4.model.UpdateValuesResponse;
 import com.google.api.services.sheets.v4.model.ValueRange;
 import com.opencsv.CSVWriter;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 
 import java.io.*;

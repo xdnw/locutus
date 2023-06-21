@@ -8,7 +8,6 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.autocomplete.PrimitiveCompleter;
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.HookMessageChannel;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.autocomplete.DiscordCompleter;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete.PWCompleter;
@@ -18,6 +17,20 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.channel.Channel;
+import net.dv8tion.jda.api.entities.channel.ChannelType;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.NewsChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.StageChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.entities.emoji.Emoji;
+import net.dv8tion.jda.api.entities.sticker.Sticker;
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -51,7 +64,6 @@ public class SlashCommandManager extends ListenerAdapter {
 //        channelTypes.put(TODO unused, ChannelType.GROUP);
         CHANNEL_TYPES.put(Category.class, Collections.singleton(ChannelType.CATEGORY));
         CHANNEL_TYPES.put(NewsChannel.class, Collections.singleton(ChannelType.NEWS));
-        CHANNEL_TYPES.put(StoreChannel.class, Collections.singleton(ChannelType.STORE));
         CHANNEL_TYPES.put(StageChannel.class, Collections.singleton(ChannelType.STAGE));
         CHANNEL_TYPES.put(ThreadChannel.class, List.of(ChannelType.GUILD_PUBLIC_THREAD, ChannelType.GUILD_PRIVATE_THREAD));
     }
@@ -84,7 +96,6 @@ public class SlashCommandManager extends ListenerAdapter {
         OPTION_TYPES.put(ThreadChannel.class, OptionType.CHANNEL);
         OPTION_TYPES.put(VoiceChannel.class, OptionType.CHANNEL);
         OPTION_TYPES.put(NewsChannel.class, OptionType.CHANNEL);
-        OPTION_TYPES.put(StoreChannel.class, OptionType.CHANNEL);
         OPTION_TYPES.put(StageChannel.class, OptionType.CHANNEL);
         OPTION_TYPES.put(PrivateChannel.class, OptionType.CHANNEL);
 
@@ -96,9 +107,8 @@ public class SlashCommandManager extends ListenerAdapter {
         OPTION_TYPES.put(IMentionable.class, OptionType.MENTIONABLE);
         // Redundant but added for clarity:
         OPTION_TYPES.put(Emoji.class, OptionType.MENTIONABLE);
-        OPTION_TYPES.put(Emote.class, OptionType.MENTIONABLE);
+        OPTION_TYPES.put(Sticker.class, OptionType.MENTIONABLE);
         OPTION_TYPES.put(ThreadMember.class, OptionType.MENTIONABLE);
-        OPTION_TYPES.put(WidgetUtil.Widget.Member.class, OptionType.MENTIONABLE);
 
         // Fallback, default
         OPTION_TYPES.put(Object.class, OptionType.STRING);
@@ -533,11 +543,11 @@ public class SlashCommandManager extends ListenerAdapter {
         User user = event.getUser();
         userIdToAutoCompleteTimeNs.put(user.getIdLong(), startNanos);
 
-        String path = event.getCommandPath();
+        String path = event.getFullCommandName().replaceAll("/", " ");
         AutoCompleteQuery option = event.getFocusedOption();
         String optionName = option.getName();
 
-        List<String> pathArgs = StringMan.split(path, '/');
+        List<String> pathArgs = StringMan.split(path, ' ');
         Map.Entry<CommandCallable, String> cmdAndPath = commands.getCallableAndPath(pathArgs);
         CommandCallable cmd = cmdAndPath.getKey();
 
@@ -655,9 +665,7 @@ public class SlashCommandManager extends ListenerAdapter {
             MessageChannel channel = event.getChannel();
             InteractionHook hook = event.getHook();
 
-            HookMessageChannel hookChannel = new HookMessageChannel(channel, hook);
-
-            String path = event.getCommandPath();
+            String path = event.getFullCommandName();
 
             Map<String, String> combined = new HashMap<>();
             List<OptionMapping> options = event.getOptions();
@@ -669,7 +677,7 @@ public class SlashCommandManager extends ListenerAdapter {
 
             DiscordHookIO io = new DiscordHookIO(hook);
             Guild guild = event.isFromGuild() ? event.getGuild() : null;
-            Locutus.imp().getCommandManager().getV2().run(guild, hookChannel, event.getUser(), null, io, path.replace("/", " "), combined, true);
+            Locutus.imp().getCommandManager().getV2().run(guild, channel, event.getUser(), null, io, path.replace("/", " "), combined, true);
             long end = System.currentTimeMillis();
             if (end - start > 15) {
                 System.out.println("remove:||Slash command took " + (end - start) + "ms");

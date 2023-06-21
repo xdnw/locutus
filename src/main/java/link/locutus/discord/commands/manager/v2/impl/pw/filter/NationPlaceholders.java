@@ -15,7 +15,7 @@ import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 
 import java.lang.reflect.Type;

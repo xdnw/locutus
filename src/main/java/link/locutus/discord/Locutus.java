@@ -8,8 +8,6 @@ import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandManager;
 import link.locutus.discord.commands.manager.Noformat;
-import link.locutus.discord.commands.manager.dummy.DelegateMessage;
-import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
@@ -48,13 +46,14 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.MessageReaction;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.emoji.EmojiUnion;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.invite.GuildInviteCreateEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
@@ -268,7 +267,7 @@ public final class Locutus extends ListenerAdapter {
                 builder.enableIntents(GatewayIntent.DIRECT_MESSAGES);
             }
             if (Settings.INSTANCE.DISCORD.INTENTS.EMOJI) {
-                builder.enableIntents(GatewayIntent.GUILD_EMOJIS);
+                builder.enableIntents(GatewayIntent.GUILD_EMOJIS_AND_STICKERS);
             }
             if (Settings.INSTANCE.DISCORD.CACHE.MEMBER_OVERRIDES) {
                 builder.enableCache(CacheFlag.MEMBER_OVERRIDES);
@@ -277,7 +276,7 @@ public final class Locutus extends ListenerAdapter {
                 builder.enableCache(CacheFlag.ONLINE_STATUS);
             }
             if (Settings.INSTANCE.DISCORD.CACHE.EMOTE) {
-                builder.enableCache(CacheFlag.EMOTE);
+                builder.enableCache(CacheFlag.EMOJI);
             }
 //                Set<Long> whitelist = Settings.INSTANCE.Discord.Guilds.GET().WHITELIST();
 //                long[] whitelistArr = new long[whitelist.size()];
@@ -1111,18 +1110,19 @@ public final class Locutus extends ListenerAdapter {
         }
         Message message = isMessageLocutus(event.getMessageIdLong(), event.getGuildChannel());
         if (message == null) return;
+        EmojiUnion emote;
         if (event.getUser().getIdLong() == Settings.INSTANCE.ADMIN_USER_ID) {
-            MessageReaction.ReactionEmote emote = event.getReactionEmote();
-            if ("\uD83D\uDEAB".equals(emote.getEmoji())) {
+            emote = event.getEmoji();
+            if ("\uD83D\uDEAB".equals(emote.asUnicode().getAsCodepoints())) {
                 link.locutus.discord.util.RateLimitUtil.queue(event.getChannel().deleteMessageById(event.getMessageIdLong()));
                 return;
             }
         }
-        MessageReaction.ReactionEmote emote = event.getReactionEmote();
+        emote = event.getEmoji();
         onMessageReact(message, event.getUser(), emote, event.getResponseNumber());
     }
 
-    public void onMessageReact(Message message, User user, MessageReaction.ReactionEmote emote, long responseId) {
+    public void onMessageReact(Message message, User user, EmojiUnion emote, long responseId) {
         onMessageReact(message, user, emote, responseId, true);
     }
 
@@ -1168,7 +1168,7 @@ public final class Locutus extends ListenerAdapter {
         return true;
     }
 
-    public void onMessageReact(Message message, User user, MessageReaction.ReactionEmote emote, long responseId, boolean async) {
+    public void onMessageReact(Message message, User user, EmojiUnion emote, long responseId, boolean async) {
         List<MessageEmbed> embeds = message.getEmbeds();
         if (embeds.size() != 1) {
             return;
@@ -1179,9 +1179,9 @@ public final class Locutus extends ListenerAdapter {
         Map<String, String> map = DiscordUtil.getReactions(embed);
         if (map == null) return;
 
-        String raw = map.getOrDefault(emote.getName(), map.get(emote.getEmoji()));
+        String raw = map.getOrDefault(emote.getName(), map.get(emote.asUnicode().getAsCodepoints()));
         if (raw == null) {
-            RateLimitUtil.queue(message.removeReaction(emote.getEmoji(), user));
+            RateLimitUtil.queue(message.removeReaction(emote, user));
             return;
         } else if (raw.isEmpty()) {
             link.locutus.discord.util.RateLimitUtil.queue(message.delete());
@@ -1235,10 +1235,10 @@ public final class Locutus extends ListenerAdapter {
                 RateLimitUtil.queue(message.clearReactions());
             }
             if (deleteReaction) {
-                RateLimitUtil.queue(message.removeReaction(emote.getEmoji(), user));
+                RateLimitUtil.queue(message.removeReaction(emote, user));
             }
         } else {
-            RateLimitUtil.queue(message.removeReaction(emote.getEmoji(), user));
+            RateLimitUtil.queue(message.removeReaction(emote, user));
         }
     }
 

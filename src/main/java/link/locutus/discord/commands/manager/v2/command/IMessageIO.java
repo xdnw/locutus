@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.manager.v2.command;
 
 import link.locutus.discord.config.Settings;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.json.JSONObject;
 
 import javax.annotation.CheckReturnValue;

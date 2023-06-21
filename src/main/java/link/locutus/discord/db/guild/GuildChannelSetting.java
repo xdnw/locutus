@@ -3,7 +3,7 @@ package link.locutus.discord.db.guild;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.db.GuildDB;
 import net.dv8tion.jda.api.entities.IMentionable;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 public abstract class GuildChannelSetting extends GuildSetting<MessageChannel> {
     public GuildChannelSetting(GuildSettingCategory category) {

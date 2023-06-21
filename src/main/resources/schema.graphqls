@@ -64,6 +64,7 @@ type Query {
     offer_resource: [String]
     buy_or_sell: String
     accepted: Boolean
+    original_trade_id: [Int]
     orderBy: [QueryTradesOrderByOrderByClause!]
 
     # Limits number of fetched items. Maximum allowed value: 1000.
@@ -372,6 +373,24 @@ type Nation {
   # Number of spies the nation has, this field will return null unless you are an officer or higher in the same alliance as this nation and this nation allows alliance bank access or you are this nation
   spies: Int
 
+  # Number of soldiers the nation bought today, this field will return null unless you are this nation
+  soldiers_today: Int
+
+  # Number of tanks the nation bought today, this field will return null unless you are this nation
+  tanks_today: Int
+
+  # Number of aircraft the nation bought today, this field will return null unless you are this nation
+  aircraft_today: Int
+
+  # Number of ships the nation bought today, this field will return null unless you are this nation
+  ships_today: Int
+
+  # Number of missiles the nation bought today, this field will return null unless you are this nation
+  missiles_today: Int
+
+  # Number of nukes the nation bought today, this field will return null unless you are this nation
+  nukes_today: Int
+
   # The Discord username of the nation
   discord: String
 
@@ -487,6 +506,7 @@ type Nation {
 
     # Selects active (false) or accepted (true) trades
     accepted: Boolean
+    original_trade_id: [Int]
 
     # Clause telling how to order the data returned e.g. trades(orderBy: {column: Int, order: ASC})
     orderBy: [NationTradesOrderByOrderByClause!]
@@ -3038,7 +3058,6 @@ enum QueryResourceStatsOrderByColumn {
   IRON
   BAUXITE
   LEAD
-  CREDITS
 }
 
 # A paginated list of ResourceStat items.

@@ -22,7 +22,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;

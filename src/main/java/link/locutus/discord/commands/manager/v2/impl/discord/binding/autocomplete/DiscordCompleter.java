@@ -15,6 +15,8 @@ import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.channel.Channel;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
 import java.lang.reflect.Type;

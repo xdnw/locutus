@@ -9,8 +9,8 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
-import net.dv8tion.jda.api.entities.MessageChannel;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 
 import java.io.IOException;
 import java.util.AbstractMap;

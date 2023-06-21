@@ -143,9 +143,6 @@ public class Settings extends Config {
         @Comment("If P&W events should be enabled")
         public boolean EVENTS = true;
 
-        @Comment("Game of tag")
-        public boolean TAG = false;
-
         public void disableTasks() {
             CREATE_DATABASES_ON_STARTUP = false;
             REPEATING_TASKS = false;

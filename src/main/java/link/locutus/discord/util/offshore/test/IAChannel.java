@@ -11,12 +11,12 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.ia.IACheckup;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 
 import java.util.HashMap;
@@ -54,7 +54,7 @@ public class IAChannel {
         if (user == null) return;
         Member member = db.getGuild().getMember(user);
         if (member == null) return;
-        RateLimitUtil.complete(channel.putPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
+        RateLimitUtil.complete(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
 
         String expected = DiscordUtil.toDiscordChannelString(nation.getNation()) + "-" + nation.getNation_id();
         String name = channel.getName();

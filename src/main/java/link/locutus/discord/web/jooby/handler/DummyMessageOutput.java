@@ -2,7 +2,6 @@ package link.locutus.discord.web.jooby.handler;
 
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.web.jooby.adapter.JoobyMessageAction;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
@@ -43,12 +42,6 @@ public class DummyMessageOutput implements IMessageOutput {
                 }
             }
         }
-    }
-
-    @Override
-    public void sendEvent(JoobyMessageAction action) {
-        String msg = MarkupUtil.messageToHtml(action);
-        outputs.put(action.getId(), msg);
     }
 
     public String getOutput() {

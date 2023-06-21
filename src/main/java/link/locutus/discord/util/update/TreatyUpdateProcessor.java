@@ -10,7 +10,7 @@ import link.locutus.discord.event.treaty.*;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.PnwUtil;
 import com.google.common.eventbus.Subscribe;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.util.Set;
 import java.util.function.BiConsumer;

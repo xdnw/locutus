@@ -22,6 +22,11 @@ import link.locutus.discord.util.offshore.test.IAChannel;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.entities.emoji.RichCustomEmoji;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.requests.restaction.PermissionOverrideAction;
@@ -86,7 +91,7 @@ public class DiscordCommands {
 
         List<Future<?>> tasks = new ArrayList<>();
         for (Member member : members) {
-            PermissionOverrideAction override = channel.createPermissionOverride(member);
+            PermissionOverrideAction override = channel.upsertPermissionOverride(member);
             PermissionOverrideAction action;
             if (negate) {
                 action = override.deny(permission);
@@ -99,7 +104,7 @@ public class DiscordCommands {
         }
 
         for (Member member : toRemove) {
-            tasks.add(RateLimitUtil.queue(channel.putPermissionOverride(member).clear(permission)));
+            tasks.add(RateLimitUtil.queue(channel.upsertPermissionOverride(member).clear(permission)));
             changes.add("Clear " + permission + " for " + nameFuc.apply(member));
         }
 
@@ -134,10 +139,10 @@ public class DiscordCommands {
         if (!Settings.INSTANCE.DISCORD.INTENTS.EMOJI) {
             throw new IllegalStateException("Please enable DISCORD.INTENTS.EMOJI in " + Settings.INSTANCE.getDefaultFile());
         }
-        List<Emote> emotes = guild.getEmotes();
+        List<RichCustomEmoji> emotes = guild.getEmojis();
 
         List<Future<?>> tasks = new ArrayList<>();
-        for (Emote emote : emotes) {
+        for (RichCustomEmoji emote : emotes) {
             if (emote.isManaged() || !emote.isAvailable()) {
                 continue;
             }
@@ -149,7 +154,7 @@ public class DiscordCommands {
 
             if (bytes != null) {
                 Icon icon = Icon.from(bytes);
-                tasks.add(RateLimitUtil.queue(guild.createEmote(emote.getName(), icon)));
+                tasks.add(RateLimitUtil.queue(guild.createEmoji(emote.getName(), icon)));
             }
         }
         for (Future<?> task : tasks) {
@@ -278,14 +283,14 @@ public class DiscordCommands {
     }
 
     private TextChannel updateChannel(TextChannel channel, IPermissionHolder holder, Set<Roles> depts) {
-        RateLimitUtil.complete(channel.putPermissionOverride(channel.getGuild().getRolesByName("@everyone", false).get(0))
+        RateLimitUtil.complete(channel.upsertPermissionOverride(channel.getGuild().getRolesByName("@everyone", false).get(0))
                 .deny(Permission.VIEW_CHANNEL));
-        RateLimitUtil.complete(channel.putPermissionOverride(holder).grant(Permission.VIEW_CHANNEL));
+        RateLimitUtil.complete(channel.upsertPermissionOverride(holder).grant(Permission.VIEW_CHANNEL));
 
         for (Roles dept : depts) {
             Role role = dept.toRole(channel.getGuild());
             if (role != null) {
-                RateLimitUtil.complete(channel.putPermissionOverride(role).grant(Permission.VIEW_CHANNEL));
+                RateLimitUtil.complete(channel.upsertPermissionOverride(role).grant(Permission.VIEW_CHANNEL));
             }
         }
         return channel;

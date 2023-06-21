@@ -5,9 +5,12 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.utils.FileUpload;
+import net.dv8tion.jda.api.utils.messages.MessageCreateData;
+import net.dv8tion.jda.api.utils.messages.MessageEditData;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -58,7 +61,7 @@ public class DiscordChannelIO implements IMessageIO {
         if (builder instanceof DiscordMessageBuilder discMsg) {
             if (builder.getId() > 0) {
                 System.out.println("Send ");
-                CompletableFuture<Message> future = RateLimitUtil.queue(channel.editMessageById(builder.getId(), discMsg.build(true)));
+                CompletableFuture<Message> future = RateLimitUtil.queue(channel.editMessageById(builder.getId(), discMsg.buildEdit(true)));
                 return future.thenApply(msg -> new DiscordMessageBuilder(this, msg));
             }
             if (discMsg.embeds.size() > 10) {
@@ -74,9 +77,9 @@ public class DiscordChannelIO implements IMessageIO {
             }
             CompletableFuture<IMessageBuilder> msgFuture = null;
             if (!discMsg.content.isEmpty() || !discMsg.buttons.isEmpty() || !discMsg.embeds.isEmpty()) {
-                Message message = discMsg.build(true);
+                MessageCreateData message = discMsg.build(true);
 
-                if (message.getContentRaw().length() > 20000) {
+                if (message.getContent().length() > 20000) {
                     Message result = null;
                     if (!discMsg.buttons.isEmpty() || !discMsg.embeds.isEmpty()) {
                         message = discMsg.build(false);
@@ -99,7 +102,7 @@ public class DiscordChannelIO implements IMessageIO {
                 allFiles.putAll(discMsg.images);
                 Message result = null;
                 for (Map.Entry<String, byte[]> entry : allFiles.entrySet()) {
-                    result = RateLimitUtil.complete(channel.sendFile(entry.getValue(), entry.getKey()));
+                    result = RateLimitUtil.complete(channel.sendFiles(FileUpload.fromData(entry.getValue(), entry.getKey())));
                 }
                 if (result != null && msgFuture == null)
                     msgFuture = CompletableFuture.completedFuture(new DiscordMessageBuilder(this, result));
@@ -113,7 +116,7 @@ public class DiscordChannelIO implements IMessageIO {
     @Override
     public IMessageIO update(IMessageBuilder builder, long id) {
         if (builder instanceof DiscordMessageBuilder discMsg) {
-            Message message = discMsg.build(true);
+            MessageEditData message = discMsg.buildEdit(true);
             RateLimitUtil.queue(channel.editMessageById(id, message));
             return this;
         } else {

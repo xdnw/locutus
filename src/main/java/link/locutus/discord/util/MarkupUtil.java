@@ -1,6 +1,5 @@
 package link.locutus.discord.util;
 
-import link.locutus.discord.web.jooby.adapter.JoobyMessageAction;
 import com.overzealous.remark.Remark;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import org.apache.commons.lang3.StringEscapeUtils;
@@ -83,15 +82,6 @@ public class MarkupUtil {
             }
         }
         return StringMan.join(responses, "<br>");
-    }
-
-    public static String messageToHtml(JoobyMessageAction action) {
-        String content = action.getContent();
-        List<MessageEmbed> embeds = action.getEmbeds();
-        Map<String, String> files = action.getUrlFileNames();
-        String result = messageToHtml(content, embeds, files);
-        result = result.replace("<code>", "<code class=\"col-sm-12\">");
-        return result;
     }
 
     public static String markdownToBBCode(String source) {

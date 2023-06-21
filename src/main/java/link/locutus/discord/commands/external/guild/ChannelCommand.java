@@ -3,17 +3,17 @@ package link.locutus.discord.commands.external.guild;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.commands.manager.dummy.DelegateChannelMessage;
-import link.locutus.discord.commands.manager.dummy.DelegateContentMessage;
-import link.locutus.discord.commands.manager.dummy.DelegateMessage;
-import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
@@ -117,10 +117,8 @@ public class ChannelCommand extends Command {
             if (args.size() == 3) {
                 String arg = args.get(2).toLowerCase();
                 if (arg.equalsIgnoreCase("#interview")) {
-                    DelegateMessage msg = new DelegateContentMessage(event.getMessage(), Settings.commandPrefix(true) + "interview " + author.getAsMention() + " 0");
-                    msg = new DelegateChannelMessage(msg, createdChannel);
-                    MessageReceivedEvent finalEvent = new DelegateMessageEvent(event.isFromGuild() ? event.getGuild() : null, event.getResponseNumber(), msg);
-                    Locutus.imp().getCommandManager().run(finalEvent);
+                    GuildDB db = Locutus.imp().getGuildDB(event);
+                    IACommands.interview(db, author);
                 } else {
                     String copyPasta = Locutus.imp().getGuildDB(event).getCopyPasta(arg, true);
                     if (copyPasta != null) {
@@ -149,14 +147,14 @@ public class ChannelCommand extends Command {
     }
 
     private TextChannel updateChannel(TextChannel channel, IPermissionHolder holder, Set<Roles> depts) {
-        RateLimitUtil.complete(channel.putPermissionOverride(channel.getGuild().getRolesByName("@everyone", false).get(0))
+        RateLimitUtil.complete(channel.upsertPermissionOverride(channel.getGuild().getRolesByName("@everyone", false).get(0))
                 .deny(Permission.VIEW_CHANNEL));
-        RateLimitUtil.complete(channel.putPermissionOverride(holder).grant(Permission.VIEW_CHANNEL));
+        RateLimitUtil.complete(channel.upsertPermissionOverride(holder).grant(Permission.VIEW_CHANNEL));
 
         for (Roles dept : depts) {
             Role role = dept.toRole(channel.getGuild());
             if (role != null) {
-                RateLimitUtil.complete(channel.putPermissionOverride(role).grant(Permission.VIEW_CHANNEL));
+                RateLimitUtil.complete(channel.upsertPermissionOverride(role).grant(Permission.VIEW_CHANNEL));
             }
         }
         return channel;

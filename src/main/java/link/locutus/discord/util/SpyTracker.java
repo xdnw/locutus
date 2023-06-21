@@ -17,7 +17,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.io.PagePriority;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.io.IOException;
 import java.util.ArrayList;

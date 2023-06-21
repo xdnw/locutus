@@ -15,7 +15,7 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.mail.Mail;
 import link.locutus.discord.util.task.mail.SearchMailTask;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 

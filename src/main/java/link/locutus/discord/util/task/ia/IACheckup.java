@@ -27,7 +27,7 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

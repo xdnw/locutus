@@ -12,14 +12,14 @@ import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Invite;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.PermissionOverride;
 import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 
 import java.sql.ResultSet;
@@ -514,16 +514,16 @@ public class Exchange {
             if (override == null) {
                 switch (entry.getKey()) {
                     case LEADER:
-//                        link.locutus.discord.util.RateLimitUtil.queue(channel.putPermissionOverride(role).setAllow(Permission.MANAGE_CHANNEL));
+//                        link.locutus.discord.util.RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.MANAGE_CHANNEL));
                     case HEIR:
-                        RateLimitUtil.queue(channel.putPermissionOverride(role).setAllow(Permission.MANAGE_PERMISSIONS));
+                        RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.MANAGE_PERMISSIONS));
                     case OFFICER:
-                        RateLimitUtil.queue(channel.putPermissionOverride(role).setAllow(Permission.MESSAGE_MANAGE));
+                        RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.MESSAGE_MANAGE));
                     case MEMBER:
-                        RateLimitUtil.queue(channel.putPermissionOverride(role).setAllow(Permission.MESSAGE_SEND));
+                        RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.MESSAGE_SEND));
                     case APPLICANT:
-                        RateLimitUtil.queue(channel.putPermissionOverride(role).setAllow(Permission.VIEW_CHANNEL));
-//                        link.locutus.discord.util.RateLimitUtil.queue(channel.putPermissionOverride(role).setAllow(Permission.MESSAGE_ADD_REACTION));
+                        RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.VIEW_CHANNEL));
+//                        link.locutus.discord.util.RateLimitUtil.queue(channel.upsertPermissionOverride(role).setAllowed(Permission.MESSAGE_ADD_REACTION));
                         break;
                 }
             } else {
@@ -533,11 +533,11 @@ public class Exchange {
 
         if (!hasRoleSet) {
             if (requiredRank.id <= 0) {
-                RateLimitUtil.queue(channel.putPermissionOverride(everyone).setAllow(Permission.VIEW_CHANNEL));
-                RateLimitUtil.queue(channel.putPermissionOverride(everyone).setAllow(Permission.MESSAGE_SEND));
+                RateLimitUtil.queue(channel.upsertPermissionOverride(everyone).setAllowed(Permission.VIEW_CHANNEL));
+                RateLimitUtil.queue(channel.upsertPermissionOverride(everyone).setAllowed(Permission.MESSAGE_SEND));
             } else {
-                RateLimitUtil.queue(channel.putPermissionOverride(everyone).deny(Permission.VIEW_CHANNEL));
-                RateLimitUtil.queue(channel.putPermissionOverride(everyone).deny(Permission.MESSAGE_SEND));
+                RateLimitUtil.queue(channel.upsertPermissionOverride(everyone).deny(Permission.VIEW_CHANNEL));
+                RateLimitUtil.queue(channel.upsertPermissionOverride(everyone).deny(Permission.MESSAGE_SEND));
             }
         }
     }

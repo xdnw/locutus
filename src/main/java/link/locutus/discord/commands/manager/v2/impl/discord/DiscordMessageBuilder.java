@@ -8,13 +8,16 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
+import net.dv8tion.jda.api.utils.messages.MessageCreateData;
+import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
+import net.dv8tion.jda.api.utils.messages.MessageEditData;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.message.BasicNameValuePair;
@@ -97,9 +100,45 @@ public class DiscordMessageBuilder implements IMessageBuilder {
         this.parent = parent;
     }
 
-    public Message build(boolean includeContent) {
-        MessageBuilder discBuilder = new MessageBuilder();
-        if (!buttons.isEmpty()) discBuilder.setActionRows(ActionRow.partitionOf(buttons));
+    public MessageEditData buildEdit(boolean includeContent) {
+        MessageEditBuilder discBuilder = new MessageEditBuilder();
+        if (!buttons.isEmpty()) discBuilder.setActionRow(buttons);
+
+        if (!embeds.isEmpty()) {
+            if (!remapLongCommands.isEmpty()) {
+                MessageEmbed embed = embeds.get(0);
+                EmbedBuilder builder = new EmbedBuilder(embed);
+                List<NameValuePair> pairs = remapLongCommands.entrySet().stream()
+                        .map((Function<Map.Entry<String, String>, NameValuePair>)
+                                e -> new BasicNameValuePair(e.getKey(), e.getValue()))
+                        .collect(Collectors.toList());
+                String query = URLEncodedUtils.format(pairs, "UTF-8");
+
+                builder.setThumbnail("https://example.com?" + query);
+                embeds.set(0, builder.build());
+//            embed.setImage("https://example.com?" + query);
+            }
+
+            discBuilder.setEmbeds(embeds);
+        } else if (!remapLongCommands.isEmpty()) {
+            throw new IllegalStateException("Cannot remap long commands without embeds: " + StringMan.getString(remapLongCommands));
+        }
+
+        if (includeContent && !content.isEmpty()) discBuilder.setContent(content.toString());
+
+        return discBuilder.build();
+    }
+
+    public MessageCreateData build(boolean includeContent) {
+        MessageCreateBuilder discBuilder = new MessageCreateBuilder();
+        if (!buttons.isEmpty()) {
+            List<Button> buttons = new ArrayList<>(this.buttons);
+            while (!buttons.isEmpty()) {
+                List<Button> group = buttons.subList(0, Math.min(5, buttons.size()));
+                buttons = buttons.subList(group.size(), buttons.size());
+                discBuilder.addActionRow(group);
+            }
+        }
 
         if (!embeds.isEmpty()) {
             if (!remapLongCommands.isEmpty()) {

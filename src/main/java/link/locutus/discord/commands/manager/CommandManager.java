@@ -30,6 +30,7 @@ import link.locutus.discord.commands.account.GuildInfo;
 import link.locutus.discord.commands.account.HasRole;
 import link.locutus.discord.commands.account.RunAllNations;
 import link.locutus.discord.commands.account.Runall;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.sync.SyncTreaties;
 import link.locutus.discord.commands.info.CounterStats;
@@ -56,8 +57,6 @@ import link.locutus.discord.commands.info.Treaties;
 import link.locutus.discord.commands.info.TurnTimer;
 import link.locutus.discord.commands.info.UnitHistory;
 import link.locutus.discord.commands.info.WeeklyInterest;
-import link.locutus.discord.commands.manager.dummy.DelegateMessage;
-import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.rankings.AllianceAttackTypeRanking;
 import link.locutus.discord.commands.rankings.AllianceLootLosses;
@@ -134,7 +133,12 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
+import link.locutus.discord.web.jooby.handler.DummyMessageOutput;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.nio.ByteBuffer;
@@ -183,26 +187,21 @@ public class CommandManager {
         return tag;
     }
 
-    public boolean run(MessageReceivedEvent event) {
-        return run(event, true, true);
-    }
-
     public CommandManager2 getV2() {
         return modernized;
     }
 
-    public boolean run(final MessageReceivedEvent event, final boolean async, final boolean noPermMsg) {
-        if (Settings.INSTANCE.ENABLED_COMPONENTS.TAG) {
-            getTag().checkTag(event);
-        }
+    public boolean run(Guild guild, IMessageIO channel, User author, String command, final boolean async, final boolean noPermMsg) {
+//        if (Settings.INSTANCE.ENABLED_COMPONENTS.TAG) {
+//            getTag().checkTag(event);
+//        }
 
-        User msgUser = event.getAuthor();
+        User msgUser = author;
         if (msgUser.isSystem() || msgUser.isBot()) {
             return false;
         }
 
-        Message message = event.getMessage();
-        String content = DiscordUtil.trimContent(message.getContentRaw());
+        String content = command;
         if (content.length() == 0) {
             return false;
         }
@@ -337,24 +336,22 @@ public class CommandManager {
         return false;
     }
 
-    private void handleWarRoomSync(MessageReceivedEvent event) {
-        User msgUser = event.getAuthor();
-        // War room message sync
-        if (!event.isFromGuild()) return;
-        Guild msgGuild = event.getGuild();
-        MessageChannel channel = event.getChannel();
+    private void handleWarRoomSync(Guild guild, User msgUser, IMessageIO io, String command) {
+        if (guild == null) return;
+        GuildChannel channel = guild.getGuildChannelById(io.getIdLong());
         if (!(channel instanceof ICategorizableChannel GuildMessageChannel)) return;
+        if (!(channel instanceof MessageChannel)) return;
 
         Category category = GuildMessageChannel.getParentCategory();
         if (category == null) return;
         if (!category.getName().startsWith("warcat")) return;
-        GuildDB db = Locutus.imp().getGuildDB(msgGuild);
+        GuildDB db = Locutus.imp().getGuildDB(guild);
         if (db == null) return;
         if (!db.isWhitelisted() && db.getOrNull(GuildKey.ENABLE_WAR_ROOMS) != Boolean.TRUE) return;
 
         if (!db.hasAlliance()) return;
 
-        WarCategory.WarRoom room = WarCategory.getGlobalWarRoom(channel);
+        WarCategory.WarRoom room = WarCategory.getGlobalWarRoom((MessageChannel) channel);
         if (room == null || room.target == null) return;
 
         Set<WarCategory.WarRoom> rooms = WarCategory.getGlobalWarRooms(room.target);
@@ -750,7 +747,7 @@ public class CommandManager {
     }
 
     @Deprecated
-    public String run(Guild guild, String content, DBNation nation, User user) throws Exception {
+    public String run(Guild guild, IMessageIO io, String content, DBNation nation, User user) throws Exception {
         return DiscordUtil.withNation(nation, () -> {
             List<String> split = StringMan.split(content, ' ');
             split.replaceAll(s -> s.replaceAll("\"", ""));
@@ -777,10 +774,9 @@ public class CommandManager {
             }
 
             assert member != null;
-            MessageReceivedEvent dummy = dummyEvent(null, content, member, 0);
 
             try {
-                return cmd.onCommand(dummy, args);
+                return cmd.onCommand(guild, io, user, nation, args);
             } catch (Exception e) {
                 e.printStackTrace();
                 return e.getMessage();

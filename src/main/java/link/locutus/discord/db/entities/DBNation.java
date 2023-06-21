@@ -10,8 +10,6 @@ import link.locutus.discord.apiv1.enums.city.building.PowerBuilding;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.GameTimers;
-import link.locutus.discord.commands.manager.dummy.DelegateMessage;
-import link.locutus.discord.commands.manager.dummy.DelegateMessageEvent;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
@@ -363,7 +361,7 @@ public class DBNation implements NationOrAlliance {
                 try {
                     Member member = db.getGuild().getMember(user);
                     if (member != null) {
-                        RateLimitUtil.complete(db.getGuild().addRoleToMember(user.getIdLong(), role));
+                        RateLimitUtil.complete(db.getGuild().addRoleToMember(user, role));
                         output.append("You have been assigned the role: " + role.getName());
                         db.getAutoRoleTask().autoRole(member, s -> {
                             output.append("\n").append(s);
@@ -4890,13 +4888,10 @@ public class DBNation implements NationOrAlliance {
         if (user == null) return new AbstractMap.SimpleEntry<>(CommandResult.ERROR, "No user for: " + getNation());
 
         DummyMessageOutput output = new DummyMessageOutput();
-        DelegateMessage message = DelegateMessage.createWithDummyChannel(command, guild, user, output, null);
-
-        MessageReceivedEvent finalEvent = new DelegateMessageEvent(guild, -1L, message);
         CommandResult type;
         String result;
         try {
-            Locutus.imp().getCommandManager().run(finalEvent, false, true);
+            Locutus.imp().getCommandManager().run(guild, output, user, command, false, true);
             type = CommandResult.SUCCESS;
             result = output.getOutput();
         } catch (Throwable e) {

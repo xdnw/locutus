@@ -8,7 +8,7 @@
 //import link.locutus.discord.util.MarkupUtil;
 //import link.locutus.discord.util.MathMan;
 //import link.locutus.discord.apiv1.enums.ResourceType;
-//import net.dv8tion.jda.api.entities.MessageChannel;
+//import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 //
 //import java.util.Objects;
 //

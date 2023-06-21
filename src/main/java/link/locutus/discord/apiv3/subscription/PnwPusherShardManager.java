@@ -16,7 +16,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.SpyTracker;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.util.HashSet;
 import java.util.Set;

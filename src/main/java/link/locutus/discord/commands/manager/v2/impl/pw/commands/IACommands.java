@@ -54,6 +54,12 @@ import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.Rank;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
+import net.dv8tion.jda.api.entities.channel.attribute.IMemberContainer;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.HierarchyException;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.json.JSONObject;
@@ -166,7 +172,7 @@ public class IACommands {
         List<MessageReaction> reactions = message.getReactions();
         Map<User, List<String>> reactionsByUser = new LinkedHashMap<>();
         for (MessageReaction reaction : reactions) {
-            String emoji = reaction.getReactionEmote().getEmoji();
+            String emoji = reaction.getEmoji().asUnicode().getAsCodepoints();
             List<User> users = RateLimitUtil.complete(reaction.retrieveUsers());
             for (User user : users) {
                 reactionsByUser.computeIfAbsent(user, f -> new ArrayList<>()).add(emoji);
@@ -210,7 +216,7 @@ public class IACommands {
             String[] split = channel.getName().split("-");
             if (!MathMan.isInteger(split[split.length - 1])) continue;
 
-            if (channel.hasLatestMessage()) {
+            if (channel.getLatestMessageIdLong() > 0) {
                 long lastId = channel.getLatestMessageIdLong();
                 long lastMessageTime = net.dv8tion.jda.api.utils.TimeUtil.getTimeCreated(lastId).toEpochSecond() * 1000L;
                 if (lastMessageTime > cutoff) continue;
@@ -634,7 +640,7 @@ public class IACommands {
                 if (myChan != null && myChan.getChannel() != null) {
                     GuildMessageChannel tc = myChan.getChannel();
                     response.append(" | " + tc.getAsMention());
-                    if (tc.hasLatestMessage()) {
+                    if (tc.getLatestMessageIdLong() > 0) {
                         long lastMessageTime = net.dv8tion.jda.api.utils.TimeUtil.getTimeCreated(tc.getLatestMessageIdLong()).toEpochSecond() * 1000L;
                         response.append(" | " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - lastMessageTime));
                     }
@@ -1560,7 +1566,7 @@ public class IACommands {
             } else if (parent != null && (parent.getName().toLowerCase().startsWith("treasury") || parent.getName().toLowerCase().startsWith("grant"))) {
                 int i = 0;
                 for (GuildMessageChannel otherChannel : db.getGuild().getTextChannels()) {
-                    if (otherChannel.getName().contains(closeChar) && otherChannel.hasLatestMessage()) {
+                    if (otherChannel.getName().contains(closeChar) && otherChannel.getLatestMessageIdLong() > 0) {
                         String[] split = otherChannel.getName().split("-");
                         if (split.length == 2 && MathMan.isInteger(split[1])) {
                             long id = otherChannel.getLatestMessageIdLong();
@@ -1600,7 +1606,7 @@ public class IACommands {
                     });
                     RateLimitUtil.queue(tc.getManager().setParent(archiveCategory));
                     for (PermissionOverride perm : tc.getMemberPermissionOverrides()) {
-                        RateLimitUtil.queue(tc.putPermissionOverride(perm.getMember()).setAllow(Permission.VIEW_CHANNEL).setDeny(Permission.MESSAGE_SEND));
+                        RateLimitUtil.queue(tc.upsertPermissionOverride(perm.getMember()).setAllowed(Permission.VIEW_CHANNEL).setDenied(Permission.MESSAGE_SEND));
                     }
                     return "This channel is archived and marked for deletion after 2 days. Do not reply here";
                 }
@@ -1613,7 +1619,7 @@ public class IACommands {
     }
 
     @Command(desc = "Create an interview channel")
-    public String interview(@Me GuildDB db, @Default("%user%") User user) {
+    public static String interview(@Me GuildDB db, @Default("%user%") User user) {
         IACategory iaCat = db.getIACategory(true, true, true);
 
         if (iaCat.getCategories().isEmpty()) {
@@ -1627,7 +1633,7 @@ public class IACommands {
         if (applicantRole != null) {
             Member member = db.getGuild().getMember(user);
             if (member == null || !member.getRoles().contains(applicantRole)) {
-                RateLimitUtil.queue(db.getGuild().addRoleToMember(user.getIdLong(), applicantRole));
+                RateLimitUtil.queue(db.getGuild().addRoleToMember(user, applicantRole));
             }
         }
 

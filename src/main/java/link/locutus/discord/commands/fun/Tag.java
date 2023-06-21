@@ -7,6 +7,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Mentions;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
@@ -56,8 +57,8 @@ public class Tag {
 
     public void checkTag(MessageReceivedEvent event) {
         if (event.isFromGuild() && it != null && it.equals(event.getAuthor().getIdLong()) && !event.getAuthor().isBot()) {
-            List<Member> mentioned = event.getMessage().getMentionedMembers();
-            for (Member mention : mentioned) {
+            Mentions mentions = event.getMessage().getMentions();
+            for (Member mention : mentions.getMembers()) {
                 if ((mention.getOnlineStatus() == OnlineStatus.ONLINE || mention.getOnlineStatus() == OnlineStatus.DO_NOT_DISTURB)) {
                     String msg = "%s tagged %s. %s is now it. Run for your lives!";
                     msg = String.format(msg, event.getAuthor().getName(), mention.getEffectiveName(), mention.getEffectiveName());

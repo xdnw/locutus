@@ -44,7 +44,7 @@ public class MsgInfo extends Command {
         List<MessageReaction> reactions = message.getReactions();
         Map<User, List<String>> reactionsByUser = new LinkedHashMap<>();
         for (MessageReaction reaction : reactions) {
-            String emoji = reaction.getReactionEmote().getEmoji();
+            String emoji = reaction.getEmoji().asUnicode().getAsCodepoints();
             List<User> users = RateLimitUtil.complete(reaction.retrieveUsers());
             for (User user : users) {
                 reactionsByUser.computeIfAbsent(user, f -> new ArrayList<>()).add(emoji);

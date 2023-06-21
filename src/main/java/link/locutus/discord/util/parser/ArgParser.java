@@ -2,6 +2,7 @@ package link.locutus.discord.util.parser;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.ICommand;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -12,7 +13,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
@@ -40,11 +41,9 @@ public class ArgParser {
         for (Field field : DBNation.class.getDeclaredFields()) {
             if ((field.getModifiers() & Modifier.VOLATILE) == 0) {
                 field.setAccessible(true);
-                placeholderMap.put(field.getName(), Command.create((event, guild, author, me, args, flags) -> {
+                placeholderMap.put(field.getName(), Command.create((guild, channel, author, me, args, flags) -> {
                         DBNation nation = me;
-                        if (nation == null && args.isEmpty()) {
-                            nation = DiscordUtil.getNation(event);
-                        } else if (nation == null || args.size() == 1) {
+                        if (nation == null || args.size() == 1) {
                             nation = DiscordUtil.parseNation(args.get(0));
                         }
                         if (nation == null) return null;
@@ -56,8 +55,9 @@ public class ArgParser {
 
         placeholderMap.put("js", Command.create(new ICommand() {
             @Override
-            public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-                String msg = DiscordUtil.trimContent(event.getMessage().getContentRaw());
+            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+                String cmd = StringMan.join(args, " ");
+                String msg = DiscordUtil.trimContent(cmd);
                 if (msg.contains("[a-zA-Z]+")){
                     if (!Roles.ADMIN.hasOnRoot(author)) {
                         return null;
@@ -69,43 +69,43 @@ public class ArgParser {
 
         placeholderMap.put("random", Command.create(new ICommand() {
             @Override
-            public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
                 return args.get(ThreadLocalRandom.current().nextInt(args.size()));
             }
         }));
 
         placeholderMap.put("turn", Command.create(new ICommand() {
             @Override
-            public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
                 return TimeUtil.getTurn() + "";
             }
         }));
 
         placeholderMap.put("day", Command.create(new ICommand() {
             @Override
-            public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
                 return TimeUtil.getDay() + "";
             }
         }));
 
         placeholderMap.put("date", Command.create(new ICommand() {
             @Override
-            public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
                 return Instant.now().toString();
             }
         }));
 
         placeholderMap.put("timestamp", Command.create(new ICommand() {
             @Override
-            public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
                 return System.currentTimeMillis() + "";
             }
         }));
 
         placeholderMap.put("cityage", Command.create(new ICommand() {
              @Override
-             public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-                 DBNation nation = DiscordUtil.getNation(event);
+             public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+                 DBNation nation = me;
                  Set<Map.Entry<Integer, JavaCity>> cities = nation.getCityMap(false, false).entrySet();
                  List<JavaCity> citiesByDate = new ArrayList<>();
                  for (Map.Entry<Integer, JavaCity> entry : cities) {
@@ -124,8 +124,8 @@ public class ArgParser {
 
         placeholderMap.put("city", Command.create(new ICommand() {
             @Override
-            public String onCommand(MessageReceivedEvent event, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
-                DBNation nation = DiscordUtil.getNation(event);
+            public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+                DBNation nation = me;
                 Integer index = 1;
                 switch (args.size()) {
                     case 2:
@@ -158,9 +158,7 @@ public class ArgParser {
             if (annotation == null) continue;
             Command cmd = Command.create((event, guild, author, me, args, flags) -> {
                 DBNation nation = me;
-                if (nation == null && args.isEmpty()) {
-                    nation = DiscordUtil.getNation(event);
-                } else if (nation == null || args.size() == 1) {
+                if (nation == null || args.size() == 1) {
                     nation = DiscordUtil.parseNation(args.get(0));
                 }
                 if (nation == null) return null;

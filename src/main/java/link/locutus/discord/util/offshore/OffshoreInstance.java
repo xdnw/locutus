@@ -35,7 +35,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.web.jooby.BankRequestHandler;
 import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import org.springframework.web.client.HttpClientErrorException;

@@ -58,13 +58,13 @@ import link.locutus.discord.apiv1.enums.Rank;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import link.locutus.discord.util.update.WarUpdateProcessor;
 import link.locutus.discord.web.jooby.WebRoot;
-import net.dv8tion.jda.api.entities.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.PrivateChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
 import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 

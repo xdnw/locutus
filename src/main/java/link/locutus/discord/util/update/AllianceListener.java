@@ -18,7 +18,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import com.google.common.eventbus.Subscribe;
 import link.locutus.discord.apiv1.enums.Rank;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.util.ArrayList;
 import java.util.HashMap;

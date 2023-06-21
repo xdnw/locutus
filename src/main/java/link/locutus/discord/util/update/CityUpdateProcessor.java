@@ -17,7 +17,7 @@ import link.locutus.discord.event.city.CityInfraBuyEvent;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.CaughtTask;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.util.ArrayList;
 import java.util.HashMap;

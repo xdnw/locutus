@@ -9,7 +9,7 @@ import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.offshore.Auth;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.jsoup.Jsoup;
 
 import java.io.IOException;

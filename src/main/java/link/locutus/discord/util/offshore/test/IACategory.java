@@ -23,16 +23,17 @@ import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Category;
+import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.ICategorizableChannel;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.PermissionOverride;
 import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
-import net.dv8tion.jda.api.entities.TextChannel;
+
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 
@@ -161,7 +162,7 @@ public class IACategory {
         List<Future> tasks = new ArrayList<>();
 
         for (GuildMessageChannel channel : getAllChannels()) {
-            if (!channel.hasLatestMessage()) continue;
+            if (channel.getLatestMessageIdLong() == 0) continue;
             long lastMessageId = channel.getLatestMessageIdLong();
             long created = net.dv8tion.jda.api.utils.TimeUtil.getTimeCreated(lastMessageId).toInstant().toEpochMilli();
 
@@ -197,7 +198,7 @@ public class IACategory {
         Member member = guild.getMember(user);
         if (member == null) {
             try {
-                member = RateLimitUtil.complete(guild.retrieveMemberById(user.getIdLong(), true));
+                member = RateLimitUtil.complete(guild.retrieveMember(user));
                 if (member == null) {
                     if (throwError) throw new IllegalArgumentException("Member is null");
                     return null;
@@ -265,23 +266,23 @@ public class IACategory {
                 return null;
             }
         }
-        RateLimitUtil.complete(channel.putPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
+        RateLimitUtil.complete(channel.upsertPermissionOverride(member).grant(Permission.VIEW_CHANNEL));
 
         Role interviewer = Roles.INTERVIEWER.toRole(guild);
         if (interviewer != null) {
-            RateLimitUtil.queue(channel.putPermissionOverride(interviewer).grant(Permission.VIEW_CHANNEL));
+            RateLimitUtil.queue(channel.upsertPermissionOverride(interviewer).grant(Permission.VIEW_CHANNEL));
         }
         Role iaRole = Roles.INTERNAL_AFFAIRS_STAFF.toRole(guild);
         if (iaRole != null && interviewer == null) {
-            RateLimitUtil.queue(channel.putPermissionOverride(iaRole).grant(Permission.VIEW_CHANNEL));
+            RateLimitUtil.queue(channel.upsertPermissionOverride(iaRole).grant(Permission.VIEW_CHANNEL));
         }
 
         Role iaRole2 = Roles.INTERNAL_AFFAIRS.toRole(guild);
         if (iaRole2 != null && interviewer == null && iaRole2 != iaRole) {
-            RateLimitUtil.queue(channel.putPermissionOverride(iaRole).grant(Permission.VIEW_CHANNEL));
+            RateLimitUtil.queue(channel.upsertPermissionOverride(iaRole).grant(Permission.VIEW_CHANNEL));
         }
 
-        RateLimitUtil.queue(channel.putPermissionOverride(guild.getRolesByName("@everyone", false).get(0)).deny(Permission.VIEW_CHANNEL));
+        RateLimitUtil.queue(channel.upsertPermissionOverride(guild.getRolesByName("@everyone", false).get(0)).deny(Permission.VIEW_CHANNEL));
 
         if (nation != null) {
             IAChannel iaChannel = new IAChannel(nation, db, channel.getParentCategory(), channel);
@@ -426,7 +427,7 @@ public class IACategory {
                             body.append("\n").append(user.getAsMention());
                         }
                     }
-                    if (channel.hasLatestMessage()) {
+                    if (channel.getLatestMessageIdLong() > 0) {
                         long latestMessage = channel.getLatestMessageIdLong();
                         Message message = RateLimitUtil.complete(channel.retrieveMessageById(latestMessage));
                         if (message != null) {
@@ -704,7 +705,7 @@ public class IACategory {
             IAChannel iaChan = get(member);
             if (iaChan != null) {
                 GuildMessageChannel channel = iaChan.getChannel();
-                if (channel != null && channel.hasLatestMessage()) {
+                if (channel != null && channel.getLatestMessageIdLong() > 0) {
                     long latestMessageId = channel.getLatestMessageIdLong();
                     OffsetDateTime created = net.dv8tion.jda.api.utils.TimeUtil.getTimeCreated(latestMessageId);
                     if (created.toEpochSecond() * 1000L > cutoff) {

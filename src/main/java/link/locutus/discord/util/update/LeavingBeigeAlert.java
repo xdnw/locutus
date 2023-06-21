@@ -22,9 +22,9 @@ import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.apiv1.enums.Rank;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.PrivateChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
 
 import java.nio.ByteBuffer;
 import java.util.Collection;

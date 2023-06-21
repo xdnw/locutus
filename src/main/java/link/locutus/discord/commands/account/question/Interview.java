@@ -10,6 +10,9 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.test.IACategory;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
@@ -101,7 +104,7 @@ public class Interview extends QuestionCommand<InterviewQuestion> {
         if (applicantRole != null) {
             Member member = guild.getMember(user);
             if (member == null || !member.getRoles().contains(applicantRole)) {
-                RateLimitUtil.queue(db.getGuild().addRoleToMember(user.getIdLong(), applicantRole));
+                RateLimitUtil.queue(db.getGuild().addRoleToMember(user, applicantRole));
             }
         }
 

@@ -14,7 +14,7 @@ import link.locutus.discord.pnw.NationOrExchange;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;

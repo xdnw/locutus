@@ -94,8 +94,10 @@ public class WarDB extends DBMainV2 {
 
         Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS = -1;
 
-        warDb.loadWars();
-        warDb.testLoadAttacks();
+        System.exit(0);
+
+//        warDb.loadWars();
+//        warDb.testLoadAttacks();
     }
 
     public void testLoadAttacks() {

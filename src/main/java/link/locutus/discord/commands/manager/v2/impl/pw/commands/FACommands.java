@@ -24,11 +24,11 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.TreatyType;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 
 import java.util.ArrayList;
@@ -325,13 +325,13 @@ public class FACommands {
     }
 
     public static void updateEmbassyPerms(TextChannel channel, Role role, User user, boolean mention) {
-        RateLimitUtil.complete(channel.putPermissionOverride(channel.getGuild().getRolesByName("@everyone", false).get(0))
+        RateLimitUtil.complete(channel.upsertPermissionOverride(channel.getGuild().getRolesByName("@everyone", false).get(0))
                 .deny(Permission.VIEW_CHANNEL));
-        RateLimitUtil.complete(channel.putPermissionOverride(role).grant(Permission.VIEW_CHANNEL));
+        RateLimitUtil.complete(channel.upsertPermissionOverride(role).grant(Permission.VIEW_CHANNEL));
 
         Role ambassador = Roles.FOREIGN_AFFAIRS.toRole(channel.getGuild());
         if (ambassador != null) {
-            RateLimitUtil.complete(channel.putPermissionOverride(ambassador).grant(Permission.VIEW_CHANNEL));
+            RateLimitUtil.complete(channel.upsertPermissionOverride(ambassador).grant(Permission.VIEW_CHANNEL));
         }
 
         if (mention) {

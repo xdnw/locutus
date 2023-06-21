@@ -2,7 +2,7 @@ package link.locutus.discord.db.guild;
 
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.db.GuildDB;
-import net.dv8tion.jda.api.entities.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.IMentionable;
 
 public abstract class GuildCategorySetting extends GuildSetting<Category> {

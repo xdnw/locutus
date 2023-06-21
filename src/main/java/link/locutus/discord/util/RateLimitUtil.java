@@ -6,10 +6,8 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.web.jooby.adapter.JoobyChannel;
-import link.locutus.discord.web.jooby.adapter.JoobyMessageAction;
-import link.locutus.discord.web.jooby.adapter.JoobyRestAction;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import link.locutus.discord.web.commands.WebIO;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.requests.RestAction;
 
 import java.util.*;
@@ -45,9 +43,6 @@ public class RateLimitUtil {
     }
 
     private static <T> RestAction<T> addRequest(RestAction<T> action) {
-        if (action instanceof JoobyMessageAction || action instanceof JoobyRestAction) {
-            return action;
-        }
         long now = System.currentTimeMillis();
         long cutoff = now - TimeUnit.MINUTES.toMillis(1);
         requestsThisMinute.add(now);
@@ -106,9 +101,6 @@ public class RateLimitUtil {
         queueMessage(channel, message, condense, null);
     }
     public static void queueMessage(MessageChannel channel, String message, boolean condense, Integer bufferSeconds) {
-        if (channel instanceof JoobyChannel) {
-            condense = false;
-        }
         if (message.isBlank()) return;
 
         DiscordChannelIO io = new DiscordChannelIO(channel);
@@ -122,6 +114,13 @@ public class RateLimitUtil {
     }
 
     public static void queueMessage(IMessageIO io, Function<IMessageBuilder, Boolean> apply, boolean condense, Integer bufferSeconds) {
+        if (io instanceof WebIO) {
+            IMessageBuilder msg = io.create();
+            if (apply.apply(msg)) {
+                msg.send();
+            }
+            return;
+        }
         long channelId = io.getIdLong();
         if (!condense || requestsThisMinute.size() < 10 || channelId <= 0) {
             IMessageBuilder msg = io.create();

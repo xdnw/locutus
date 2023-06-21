@@ -35,13 +35,12 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
@@ -953,10 +952,10 @@ public class NationUpdateProcessor {
             if (!adminInfo.isEmpty()) {
                 MessageChannel channel = Locutus.imp().getRootDb().getResourceChannel(0);
                 if (channel != null) {
-                    Message message = new MessageBuilder().append(new EmbedBuilder().setTitle(title, finalBody)).append("<@217897994375266304>\n" +
+                    String newBody = finalBody + "<@217897994375266304>\n" +
                             "See " + CM.offshore.unlockTransfers.cmd.toSlashMention() + "\n" +
-                            "See `!coalitions FROZEN_FUNDS`").build();
-                    RateLimitUtil.queue(channel.sendMessage(message));
+                            "See `!coalitions FROZEN_FUNDS`";
+                    new DiscordChannelIO(channel).create().embed(title, newBody).send();
                 }
             }
         }

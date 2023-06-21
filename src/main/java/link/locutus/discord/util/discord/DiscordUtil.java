@@ -31,20 +31,20 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.MessageBuilder;
-import net.dv8tion.jda.api.entities.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.GuildChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
-import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.interactions.InteractionHook;
+import net.dv8tion.jda.api.utils.FileUpload;
 import org.apache.commons.lang3.text.WordUtils;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
@@ -105,7 +105,7 @@ public class DiscordUtil {
 
     public static CompletableFuture<Message> upload(MessageChannel channel, String title, String body) {
         if (!title.contains(".")) title += ".txt";
-        return RateLimitUtil.queue(channel.sendFile(body.getBytes(StandardCharsets.ISO_8859_1), title));
+        return RateLimitUtil.queue(channel.sendFiles(FileUpload.fromData(body.getBytes(StandardCharsets.ISO_8859_1), title)));
     }
 
     public static void sortInterviewChannels(List<? extends GuildMessageChannel> channels, Map<Long, List<InterviewMessage>> messages, Map<? extends GuildMessageChannel, User> interviewUsers) {
@@ -118,8 +118,8 @@ public class DiscordUtil {
                 long created1 = net.dv8tion.jda.api.utils.TimeUtil.getTimeCreated(o1).toEpochSecond();
                 long created2 = net.dv8tion.jda.api.utils.TimeUtil.getTimeCreated(o2).toEpochSecond();
 
-                long lastMessage1 = o1.hasLatestMessage() ? net.dv8tion.jda.api.utils.TimeUtil.getTimeCreated(o1.getLatestMessageIdLong()).toEpochSecond() : created1;
-                long lastMessage2 = o2.hasLatestMessage() ? net.dv8tion.jda.api.utils.TimeUtil.getTimeCreated(o2.getLatestMessageIdLong()).toEpochSecond() : created2;
+                long lastMessage1 = o1.getLatestMessageIdLong() > 0 ? net.dv8tion.jda.api.utils.TimeUtil.getTimeCreated(o1.getLatestMessageIdLong()).toEpochSecond() : created1;
+                long lastMessage2 = o2.getLatestMessageIdLong() > 0 ? net.dv8tion.jda.api.utils.TimeUtil.getTimeCreated(o2.getLatestMessageIdLong()).toEpochSecond() : created2;
 
                 if (m1s.isEmpty()) {
                     if (m2s.isEmpty()) {
@@ -727,7 +727,7 @@ public class DiscordUtil {
     public static CompletableFuture<Message> sendMessage(InteractionHook hook, String message) {
         if (message.length() > 20000) {
             if (message.length() < 200000) {
-                return RateLimitUtil.queue(hook.sendFile(message.getBytes(StandardCharsets.ISO_8859_1), "message.txt"));
+                return RateLimitUtil.queue(hook.sendFiles(FileUpload.fromData(message.getBytes(StandardCharsets.ISO_8859_1), "message.txt")));
             }
             new Exception().printStackTrace();
             System.out.println(message);
@@ -1550,20 +1550,6 @@ public class DiscordUtil {
         return null;
     }
 
-    public static void copyMessage(Message msg, JDA outputAPI, long outputGuildId, long outputChannelId) {
-        Guild guild = outputAPI.getGuildById(outputGuildId);
-        if (guild != null) {
-            GuildMessageChannel outChannel = guild.getTextChannelById(outputChannelId);
-            if (outChannel != null) {
-                MessageBuilder copy = new MessageBuilder(msg);
-                copy.setContent(msg.getGuild().toString() + ": " + DiscordUtil.trimContent(msg.getContentRaw()));
-                RateLimitUtil.queue(outChannel.sendMessage(copy.build()));
-                for (Message.Attachment attachment : msg.getAttachments()) {
-                    RateLimitUtil.queue(outChannel.sendMessage(attachment.getUrl()));
-                }
-            }
-        }
-    }
     public static void pending(IMessageIO output, JSONObject command, String title, String desc) {
         pending(output, command, title, desc, "force");
     }
@@ -1586,10 +1572,6 @@ public class DiscordUtil {
 
     public static String getChannelUrl(GuildMessageChannel channel) {
         return "https://discord.com/channels/" + channel.getGuild().getIdLong() + "/" + channel.getIdLong();
-    }
-
-    public static void copyMessage(Message message, GuildMessageChannel outChannel) {
-        RateLimitUtil.queue(outChannel.sendMessage(message));
     }
 
     public static String cityRangeToString(Map.Entry<Integer, Integer> range) {

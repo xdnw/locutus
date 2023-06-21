@@ -42,7 +42,7 @@ import link.locutus.discord.util.trade.TradeManager;
 import com.google.common.collect.Maps;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.collections4.CollectionUtils;
