@@ -1,6 +1,7 @@
 package link.locutus.discord.util.offshore.test;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -91,7 +92,7 @@ public class IAChannel {
                 emojis.add(type.emoji);
             }
             String cmd = CM.audit.run.cmd.create(nation.getNation_id() + "", null, null, null, null, null).toCommandArgs();
-            IACheckup.createEmbed(channel, null, cmd, nation, audits, 0);
+            IACheckup.createEmbed(new DiscordChannelIO(channel), cmd, nation, audits, 0);
         }
 //        emojis.remove("");
 //        if (!emojis.isEmpty()) {

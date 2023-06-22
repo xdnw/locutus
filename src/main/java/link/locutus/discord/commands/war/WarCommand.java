@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
@@ -35,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.function.BiFunction;
 
 public class WarCommand extends Command {
@@ -160,7 +162,7 @@ public class WarCommand extends Command {
                     nations.remove(war.getNation(false));
                 }
 
-                CompletableFuture<Message> msg = RateLimitUtil.queue(channel.sendMessage("Please wait... "));
+                CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Please wait... ");
 
                 Set<Integer> allies = db.getAllies();
                 Set<Integer> enemies = db.getCoalitions().get("enemies");
@@ -281,7 +283,7 @@ public class WarCommand extends Command {
                                         "- Add `-a` to include applicants\n" +
                                         "e.g. `" + Settings.commandPrefix(true) + "war -i -a`";
                             }
-                            RateLimitUtil.queue(channel.sendMessage(message));
+                            channel.sendMessage(message);
                             return null;
                         }
                     }
@@ -349,15 +351,21 @@ public class WarCommand extends Command {
                     }
 
                     if (count == 0) {
-                        RateLimitUtil.queue(channel.sendMessage("No results. Please ping a target (advisor"));
+                        channel.sendMessage("No results. Please ping a target (advisor");
                         return null;
                     }
 
-                    DiscordUtil.sendMessage(channel, response.toString().trim());
+                    channel.send(response.toString().trim());
                     return null;
                 } finally {
-                    Message msgObj = msg.get();
-                    RateLimitUtil.queue(channel.deleteMessageById(msgObj.getIdLong()));
+                    try {
+                        IMessageBuilder msg = msgFuture.get();
+                        if (msg != null && msg.getId() > 0) {
+                            channel.delete(msg.getId());
+                        }
+                    } catch (InterruptedException | ExecutionException e) {
+                        e.printStackTrace();
+                    }
                 }
         }
     }

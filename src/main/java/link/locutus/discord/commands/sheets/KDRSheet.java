@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
@@ -28,6 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 public class KDRSheet extends Command {
@@ -53,9 +55,9 @@ public class KDRSheet extends Command {
 
         Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
 
-        if (nations.isEmpty()) return usage(args.size(), unkown, channel);
+        if (nations.isEmpty()) return usage("Invalid nation: `" + args.get(0) + "`", channel);
 
-        Message msg = RateLimitUtil.complete(channel().sendMessage("Clearing sheet..."));
+        CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Clearing sheet...");
 
         SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKeys.WAR_COST_BY_RESOURCE_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
@@ -82,12 +84,9 @@ public class KDRSheet extends Command {
 
         sheet.clear(SheetUtil.getRange(0, 0, header.size(), nations.size()));
 
-        RateLimitUtil.queue(channel().editMessageById(msg.getIdLong(), "Updating (wars..."));
-
         sheet.setHeader(header);
 
         for (DBNation nation : nations) {
-            RateLimitUtil.queue(channel().editMessageById(msg.getIdLong(), "Updating wars for " + nation.getNation()));
             int nationId = nation.getNation_id();
 
             AttackCost attInactiveCost = new AttackCost();
@@ -181,12 +180,9 @@ public class KDRSheet extends Command {
         }
 
         try {
-
-            RateLimitUtil.queue(channel().editMessageById(msg.getIdLong(), "Uploading (sheet"));
-
             sheet.set(0, 0);
-
-            RateLimitUtil.queue(channel().deleteMessageById(event.getMessageIdLong()));
+            IMessageBuilder msg = msgFuture.get();
+            if (msg != null && msg.getId() > 0) channel.delete(msg.getId());
         } catch (Throwable e) {
             e.printStackTrace();
         }

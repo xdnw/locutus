@@ -3,7 +3,9 @@ package link.locutus.discord.commands.war;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.config.Settings;
@@ -44,6 +46,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -79,24 +82,23 @@ public class Spyops extends Command {
         String nationStr = DiscordUtil.parseArg(args, "nation");
         DBNation finalNation = nationStr == null ? me : PWBindings.nation(null, nationStr);
 
-        MessageChannel channel;
         if (flags.contains('d')) {
-            channel = RateLimitUtil.complete(author.openPrivateChannel());
+            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel()));
         } else {
             channel = channel;
         }
 
-        CompletableFuture<Message> msg = RateLimitUtil.queue(channel.sendMessage("Please wait... "));
+        CompletableFuture<IMessageBuilder> msgFuture = (channel.sendMessage("Please wait... "));
         GuildDB db = Locutus.imp().getGuildDB(guild);
 
         try {
             String title = "Recommended ops";
-            String body = run(event, finalNation, db, args, flags);
+            String body = run(channel, finalNation, db, args, flags);
 
             if (flags.contains('r')) {
                 return body;
             } else {
-                DiscordUtil.createEmbedCommand(channel, title, body.toString());
+                channel.create().embed(title, body).send();
             }
 
             if (!flags.contains('f')) {
@@ -104,17 +106,23 @@ public class Spyops extends Command {
                 if (!flags.contains('s')) {
                     response.append(". Add `-s` to remove enemies who are already spy slotted");
                 }
-                RateLimitUtil.queue(channel.sendMessage(response.toString()));
+                channel.sendMessage(response.toString());
                 return null;
             }
             return null;
         } finally {
-            Message msgObj = msg.get();
-            RateLimitUtil.queue(channel.deleteMessageById(msgObj.getIdLong()));
+            try {
+                IMessageBuilder msg = msgFuture.get();
+                if (msg != null && msg.getId() > 0) {
+                    channel.delete(msg.getId());
+                }
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
         }
     }
 
-    public String run(MessageReceivedEvent event, DBNation me, GuildDB db, List<String> args, Set<Character> flags) throws IOException {
+    public String run(IMessageIO channel, DBNation me, GuildDB db, List<String> args, Set<Character> flags) throws IOException {
         double minSuccess = 50;
         int numOps = 5;
 

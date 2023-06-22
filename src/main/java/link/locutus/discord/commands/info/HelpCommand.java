@@ -62,7 +62,7 @@ public class HelpCommand extends Command {
             response.append("\n").append("**For help on a specific command, use: `").append(Settings.commandPrefix(true)).append("? <command>`**");
             response.append("\n").append("**To search for a cmd, use: `").append(Settings.commandPrefix(true)).append("? <search>`**");
             String footer = "Bot created and managed by the Interwebs Sourcery division of the Borg Collective. If you would like this bot in your server use the chant `" + Settings.commandPrefix(true) + "invite` and follow the summoning ritual instructions.";
-            DiscordUtil.createEmbedCommandWithFooter(channel, "Locutus Cats", response.toString().trim(), footer);
+            channel.create().embed("Locutus Cats", response.toString().trim(), footer).send();
         } else {
             Integer page = DiscordUtil.parseArgInt(args, "page");
 
@@ -100,7 +100,7 @@ public class HelpCommand extends Command {
 
                     String title = StringMan.join(requiredCategories, ",");
                     title += " (" + (page + 1) + "/" + pages + ")";
-                    DiscordUtil.paginate(channel, title, cmd, page, perPage, commandsDescShort);
+                    DiscordUtil.paginate(channel, title, cmd, page, perPage, commandsDescShort, null, false);
                     return null;
                 }
             }
@@ -119,7 +119,7 @@ public class HelpCommand extends Command {
                 }
             }
             response.append("\n").append("`").append(cmd.help()).append("`").append("- ").append(cmd.desc());
-            DiscordUtil.createEmbedCommand(channel, args.get(0), response.toString().trim());
+            channel.create().embed(args.get(0), response.toString().trim()).send();
         }
         return null;
     }

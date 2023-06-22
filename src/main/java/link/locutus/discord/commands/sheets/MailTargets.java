@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
@@ -35,6 +36,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 public class MailTargets extends Command {
     public MailTargets() {
@@ -111,7 +114,7 @@ public class MailTargets extends Command {
         allAttackers.addAll(spyAttDefMap.keySet());
 
         String date = TimeUtil.YYYY_MM_DD.format(ZonedDateTime.now());
-        String subject = "Targets-" + date + "/" + channel().getIdLong();
+        String subject = "Targets-" + date + "/" + channel.getIdLong();
 
         String blurb = "BE ACTIVE ON DISCORD. Additional attack instructions may be in your war room\n" +
                 "\n" +
@@ -247,11 +250,14 @@ public class MailTargets extends Command {
             StringBuilder body = new StringBuilder();
             body.append("subject: " + subject + "\n");
 
-            DiscordUtil.createEmbedCommand(channel(), embedTitle, body.toString(), "Next", pending);
+            channel.create().embed(embedTitle, body.toString())
+                    .commandButton(pending, "Next").send();
             return author.getAsMention();
         }
 
-        Message msg = RateLimitUtil.complete(channel().sendMessage("Sending messages..."));
+        CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Sending messages...");
+        IMessageBuilder msg = null;
+
         for (Map.Entry<DBNation, Map.Entry<String, String>> entry : mailTargets.entrySet()) {
             DBNation attacker = entry.getKey();
             subject = entry.getValue().getKey();
@@ -264,19 +270,25 @@ public class MailTargets extends Command {
                 try {
                     attacker.sendDM("**" + subject + "**:\n" + markup);
                 } catch (Throwable e) {
-                    RateLimitUtil.queue(channel().sendMessage(e.getMessage() + " for " + attacker.getNation()));
+                    channel.sendMessage(e.getMessage() + " for " + attacker.getNation());
                     e.printStackTrace();
                 }
             }
 
             if (System.currentTimeMillis() - start > 10000) {
                 start = System.currentTimeMillis();
-                RateLimitUtil.queue(channel().editMessageById(msg.getIdLong(), "Sending to " + attacker.getNation()));
+                try {
+                    msg = msgFuture.get();
+                    if (msg != null && msg.getId() > 0) {
+                        msg.clear().append("Sending to " + attacker.getNation()).send();
+                    }
+                } catch (InterruptedException | ExecutionException e) {
+                    e.printStackTrace();
+                }
             }
         }
 
-
-        RateLimitUtil.queue(channel().deleteMessageById(msg.getIdLong()));
+        if (msg != null && msg.getId() > 0) channel.delete(msg.getId());
 
         return "Done, sent " + sent + " messages";
     }
