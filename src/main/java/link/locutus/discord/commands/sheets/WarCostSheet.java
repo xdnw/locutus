@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
@@ -33,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -73,7 +75,7 @@ public class WarCostSheet extends Command {
 
         WarParser parser1 = WarParser.of(guild, args.get(0), args.get(1), cutOff);
 
-        Message msg = RateLimitUtil.complete(channel().sendMessage("Clearing sheet..."));
+        CompletableFuture<IMessageBuilder> msgFuture = (channel.sendMessage("Please wait..."));
 
         SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKeys.WAR_COST_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
@@ -101,8 +103,6 @@ public class WarCostSheet extends Command {
 
         sheet.clear("A:Z");
 
-        RateLimitUtil.queue(channel.editMessageById(msg.getIdLong(), "Updating (wars..."));
-
         sheet.setHeader(header);
         long start = System.currentTimeMillis();
 
@@ -127,7 +127,10 @@ public class WarCostSheet extends Command {
         for (Map.Entry<DBNation, List<DBWar>> entry : warsByNation.entrySet()) {
             DBNation nation = entry.getKey();
             if (-start + (start = System.currentTimeMillis()) > 5000) {
-                RateLimitUtil.queue(channel().editMessageById(msg.getIdLong(), "Updating wars for " + nation.getNation()));
+                IMessageBuilder msg = msgFuture.get();
+                if (msg != null && msg.getId() > 0) {
+                    msg.clear().append("Updating wars for " + nation.getNation()).sendIfFree();
+                }
             }
             int nationId = nation.getNation_id();
 
@@ -224,13 +227,11 @@ public class WarCostSheet extends Command {
             sheet.addRow(header);
         }
 
+        sheet.clear("A:Z");
+        sheet.set(0, 0);
         try {
-
-            RateLimitUtil.queue(channel().editMessageById(msg.getIdLong(), "Uploading (sheet"));
-            sheet.clear("A:Z");
-            sheet.set(0, 0);
-
-            RateLimitUtil.queue(channel().deleteMessageById(msg.getIdLong()));
+            IMessageBuilder msg = msgFuture.get();
+            if (msg != null && msg.getId() > 0) channel.delete(msg.getId());
         } catch (Throwable e) {
             e.printStackTrace();
         }

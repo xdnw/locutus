@@ -8,6 +8,7 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.rankings.builder.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -82,7 +83,7 @@ public class WarCostRanking extends Command {
     }
 
     @Override
-    public String onCommand(MessageReceivedEvent event2, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
+    public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         Iterator<String> iter = args.iterator();
         MilitaryUnit unitKill = null;
         MilitaryUnit unitLoss = null;
@@ -121,7 +122,7 @@ public class WarCostRanking extends Command {
             }
         }
 
-        if (args.size() == 0 || args.size() > 3) return usage(event2);
+        if (args.size() == 0 || args.size() > 3) return usage(args.size(), 1, 2, channel);
 
         Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
         Map<Integer, DBNation> nationMap = nations.stream().collect(Collectors.toMap(DBNation::getNation_id, e -> e));
@@ -261,7 +262,7 @@ public class WarCostRanking extends Command {
         }
 
         // Embed the rank list
-        ranks.build(event2.getAuthor(), event2.getChannel(), DiscordUtil.trimContent(event2.getMessage().getContentRaw()), title, flags.contains('f'));
+        ranks.build(author, channel, DiscordUtil.trimContent(fullCommandRaw), title, flags.contains('f'));
         return null;
     }
 }

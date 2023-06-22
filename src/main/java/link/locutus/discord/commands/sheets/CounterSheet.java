@@ -243,9 +243,9 @@ public class CounterSheet extends Command {
 
             WarCategory.WarRoom warroom = warCat != null ? warCat.get(enemy, true, false, false) : null;
 //            warCat.sync();
-            GuildMessageChannel channel = warroom != null ? warroom.getChannel(false) : null;
-            if (channel != null) {
-                String url = DiscordUtil.getChannelUrl(channel);
+            GuildMessageChannel warChan = warroom != null ? warroom.getChannel(false) : null;
+            if (warChan != null) {
+                String url = DiscordUtil.getChannelUrl(warChan);
                 String name = "#" + enemy.getName();
                 row.add(MarkupUtil.sheetUrl(name, url));
             } else {

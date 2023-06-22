@@ -146,7 +146,7 @@ public class MailCommand extends Command implements Noformat {
                     try {
                         msg = msgFuture.get();
                         if (msg != null && msg.getId() > 0) {
-                            msg.clear().append("Sending to " + nation.getNation()).send();
+                            msg.clear().append("Sending to " + nation.getNation()).sendIfFree();
                         }
                     } catch (InterruptedException | ExecutionException e) {
                         e.printStackTrace();

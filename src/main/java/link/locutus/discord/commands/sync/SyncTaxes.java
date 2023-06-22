@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sync;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
@@ -99,12 +100,14 @@ public class SyncTaxes extends Command {
                         throw new IllegalArgumentException("Alliance AA:" + aaId + " is not registered to guild: " + StringMan.getString(ids));
                     }
 
-                    CompletableFuture<Message> msgFuture = RateLimitUtil.queue(channel.sendMessage("Syncing taxes for " + StringMan.getString(ids) + ". Please wait..."));
+                    CompletableFuture<IMessageBuilder> msgFuture = (channel.sendMessage("Syncing taxes for " + StringMan.getString(ids) + ". Please wait..."));
 
                     int taxesCount = aa.updateTaxesLegacy(latestDate);
 
-                    Message msg = msgFuture.get();
-                    RateLimitUtil.queue(channel.deleteMessageById(msg.getIdLong()));
+                    IMessageBuilder msg = msgFuture.get();
+                    if (msg != null && msg.getId() > 0) {
+                        channel.delete(msg.getId());
+                    }
 
                     return "Updated " + taxesCount + " records.\n"
                             + "<" + updateTurnGraph(db, aaId) + ">";
@@ -112,7 +115,6 @@ public class SyncTaxes extends Command {
                 case "auto": {
                     List<BankDB.TaxDeposit> taxes = db.getAllianceList().updateTaxes();
                     return "Updated " + taxes.size() + " records.";
-
                 }
             }
         }

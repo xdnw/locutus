@@ -87,7 +87,7 @@ public class RegisterCommand extends Command {
                 }
             }
 
-            return register(event, guildDb, mention, nationId, true);
+            return register(guild, guildDb, mention, nationId, true);
         }
         if (args.size() != 1) {
             if (me == null) {
@@ -139,7 +139,7 @@ public class RegisterCommand extends Command {
             return "Must be an nation id or link: ``" + args.get(0) + "`" + "`";
         }
 
-        return register(event, guildDb, user, nationId, false);
+        return register(guild, guildDb, user, nationId, false);
     }
 
     public String register(Guild guild, GuildDB db, User user, int nationId, boolean force) throws IOException {

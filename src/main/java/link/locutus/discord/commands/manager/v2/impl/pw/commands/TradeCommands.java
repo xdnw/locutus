@@ -625,7 +625,7 @@ public class TradeCommands {
     }
 
     @Command(desc = "Get the margin between buy and sell for each resource")
-    public String tradeMargin(@Me JSONObject command, @Me IMessageIO channel, TradeManager manager,
+    public static String tradeMargin(@Me JSONObject command, @Me IMessageIO channel, TradeManager manager,
                               @Arg("Display the margin percent instead of absolute difference")
                               @Switch("p") boolean usePercent) {
         TradeManager trader = Locutus.imp().getTradeManager();

@@ -376,7 +376,7 @@ public class DiscordCommands {
         return null;
     }
 
-    private String parse(String arg, MessageEmbed embed, IMessageBuilder message) {
+    public static String parse(String arg, MessageEmbed embed, IMessageBuilder message) {
         long timestamp = message.getTimeCreated();
         long diff = System.currentTimeMillis() - timestamp;
         arg = arg.replace("{timediff}", TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff));

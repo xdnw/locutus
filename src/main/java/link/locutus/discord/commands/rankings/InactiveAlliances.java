@@ -75,7 +75,7 @@ public class InactiveAlliances extends Command {
                     double size2 = allianceSize.get(o2.getKey()) / (double) (1 + o2.getValue());
                     return Double.compare(size2, size1);
                 })
-                .name(e -> PnwUtil.getName(e.getKey(), true) + ": " + e.getValue() + "/" + allianceSize.get(e.getKey())).build(event, "Active in " + group + " (" + days + " days)");
+                .name(e -> PnwUtil.getName(e.getKey(), true) + ": " + e.getValue() + "/" + allianceSize.get(e.getKey())).build(author, channel, fullCommandRaw, "Active in " + group + " (" + days + " days)");
 
         return null;
     }

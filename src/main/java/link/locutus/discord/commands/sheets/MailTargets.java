@@ -280,7 +280,7 @@ public class MailTargets extends Command {
                 try {
                     msg = msgFuture.get();
                     if (msg != null && msg.getId() > 0) {
-                        msg.clear().append("Sending to " + attacker.getNation()).send();
+                        msg.clear().append("Sending to " + attacker.getNation()).sendIfFree();
                     }
                 } catch (InterruptedException | ExecutionException e) {
                     e.printStackTrace();

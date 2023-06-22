@@ -42,7 +42,7 @@ public abstract class Command {
         return new Command() {
             @Override
             public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
-                return command.onCommand(guild, channel, author, me, args, flags);
+                return command.onCommand(guild, channel, author, me, fullCommandRaw, args, flags);
             }
         };
     }

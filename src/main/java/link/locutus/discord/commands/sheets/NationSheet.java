@@ -74,7 +74,7 @@ public class NationSheet extends Command implements Noformat {
             header.set(i, arg);
         }
 
-        Set<DBNation> nations = DiscordUtil.parseNations(guild, DiscordUtil.format(guild, null, author, me, args.get(0)));
+        Set<DBNation> nations = DiscordUtil.parseNations(guild, DiscordUtil.format(guild, channel, author, me, args.get(0)));
         if (nations.isEmpty()) return "No nations found for `" + args.get(0) + "`";
 
         if (sheet == null) {

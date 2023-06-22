@@ -2,6 +2,7 @@ package link.locutus.discord.commands.war;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
@@ -84,10 +85,6 @@ public class Simulate extends Command {
         }
 
 //        channel.sendMessage("Simulating war between: " + origin.getAggressor().getNation().getNation() + " -> " + origin.getDefender().getNation().getNation()).complete();
-        Message msg2 = RateLimitUtil.complete(channel.sendMessage("- Fetching war link.locutus.discord.util.RateLimitUtil.complete(information..."));
-
-        RateLimitUtil.queue(channel.editMessageById(msg2.getIdLong(), "- Initializing (simulation..."));
-
         long start = System.currentTimeMillis();
 
         Function<SimulatedWarNode, Double> raidFunction = new Function<SimulatedWarNode, Double>() {
@@ -125,8 +122,6 @@ public class Simulate extends Command {
 
             SimulatedWar warSim = new SimulatedWar(origin, valueFunction, goal);
 
-            RateLimitUtil.queue(channel.editMessageById(msg2.getIdLong(), "- (Processing..."));
-
             solution = warSim.solve();
         } else {
             verb = "for both nations";
@@ -147,7 +142,7 @@ public class Simulate extends Command {
 
         List<SimulatedWarNode> solutionList = solution.toActionList();
 
-        RateLimitUtil.queue(channel.editMessageById(msg2.getIdLong(), "**The following attack orders are recommended " + verb + "**(:"));
+        IMessageBuilder msg = channel.create().append("**The following attack orders are recommended " + verb + "**(:");
 
         int wait = 0;
         for (SimulatedWarNode node : solutionList) {
@@ -164,9 +159,8 @@ public class Simulate extends Command {
 
         MessageEmbed card = solution.toString(origin);
 
-        DiscordUtil.sendMessage(channel, result.toString());
-
-        RateLimitUtil.queue(channel.sendMessageEmbeds(card));
+        msg.append(result.toString());
+        msg.embed(card.getTitle(), card.getDescription());
 
         String totalMsg;
         String attName = origin.getAggressor().getNation().getNation();
@@ -176,6 +170,8 @@ public class Simulate extends Command {
             totalMsg = "Fighting this war will net an estimated: $" + Math.abs((int) total) + " for " + attName + " (super inaccurate guess)";
         }
 
-        return totalMsg;
+        msg.append(totalMsg);
+        msg.send();
+        return null;
     }
 }

@@ -69,7 +69,7 @@ public class UnitRanking extends Command {
                 .group(DBNation::getAlliance_id)
                 .sumValues(n -> n.getUnits(finalUnit))
                 .sort()
-                .nameKeys(f -> PnwUtil.getName(f, true)).build(event, "Total " + unit.getName() + " in " + group);
+                .nameKeys(f -> PnwUtil.getName(f, true)).build(author, channel, fullCommandRaw, "Total " + unit.getName() + " in " + group);
 
         return null;
     }

@@ -212,9 +212,8 @@ public class CounterSpy extends Command {
                     ;
 
 
-            DiscordUtil.createEmbedCommand(channel, title, body.toString());
+            channel.create().embed(title, body.toString()).send();
         } finally {
-            RateLimitUtil.queue(channel.deleteMessageById(msg.getIdLong()));
         }
         return null;
     }

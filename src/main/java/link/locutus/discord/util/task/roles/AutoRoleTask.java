@@ -419,7 +419,7 @@ public class AutoRoleTask implements IAutoRoleTask {
 
         if (!isRegistered && registeredRole != null) {
             if (nationSup.get() != null) {
-                RateLimitUtil.complete(guild.addRoleToMember(user.getIdLong(), registeredRole));
+                RateLimitUtil.complete(guild.addRoleToMember(user, registeredRole));
                 isRegistered = true;
             }
         }

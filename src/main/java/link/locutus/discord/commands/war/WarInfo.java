@@ -64,7 +64,7 @@ public class WarInfo extends Command {
             List<DBWar> wars = nation.getActiveWars();
             String title = wars.size() + " wars";
             String body = nation.getWarInfoEmbed(flags.contains('l'));
-            DiscordUtil.createEmbedCommand(channel, title, body);
+            channel.create().embed(title, body).send();
         } else {
             new WarCard(warId).embed(channel, true, false);
         }

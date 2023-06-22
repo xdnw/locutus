@@ -113,7 +113,7 @@ public class Revenue extends Command {
             if (nations.size() == 0) {
                 return "Invalid nation or alliance: `" + args.get(0) + "` (add `-i` if they are inactive/vm/gray/app/beige)";
             } else {
-                RateLimitUtil.queue(channel.sendMessage("Fetching cities (please wait)..."));
+                channel.sendMessage("Fetching cities (please wait)...");
                 for (DBNation aaMember : nations) {
                     if (!force && (aaMember.isGray() || aaMember.getVm_turns() != 0)) {
                         continue;

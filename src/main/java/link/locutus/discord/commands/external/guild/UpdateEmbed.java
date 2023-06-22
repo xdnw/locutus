@@ -2,8 +2,11 @@ package link.locutus.discord.commands.external.guild;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordMessageBuilder;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.DiscordCommands;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -45,9 +48,7 @@ public class UpdateEmbed extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.isEmpty()) return usage();
 
-        Message message = event.getMessage();
-        if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID)
-            return "This command can only be run when bound to a Locutus embed.";
+        IMessageBuilder message = channel.getMessage();
 
         String requiredRole = DiscordUtil.parseArg(args, "role");
         if (requiredRole != null) {
@@ -64,6 +65,10 @@ public class UpdateEmbed extends Command {
             }
         }
 
+        if (message == null || message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
+            return "This command can only be run when bound to a Locutus embed.";
+        }
+
         List<MessageEmbed> embeds = message.getEmbeds();
         if (embeds.size() != 1) return "No embeds found";
         MessageEmbed embed = embeds.get(0);
@@ -77,12 +82,12 @@ public class UpdateEmbed extends Command {
 
         String setTitle = DiscordUtil.parseArg(args, "title");
         if (setTitle != null) {
-            builder.setTitle(parse(setTitle.replace(("{title}"), Objects.requireNonNull(embed.getTitle())), embed, message));
+            builder.setTitle(DiscordCommands.parse(setTitle.replace(("{title}"), Objects.requireNonNull(embed.getTitle())), embed, message));
         }
 
         String setDesc = DiscordUtil.parseArg(args, "description");
         if (setDesc != null) {
-            builder.setDescription(parse(setDesc.replace(("{description}"), Objects.requireNonNull(embed.getDescription())), embed, message));
+            builder.setDescription(DiscordCommands.parse(setDesc.replace(("{description}"), Objects.requireNonNull(embed.getDescription())), embed, message));
         }
 
 
@@ -90,20 +95,10 @@ public class UpdateEmbed extends Command {
             return "Invalid arguments: `" + StringMan.getString(args) + "`";
         }
 
-        DiscordMessageBuilder discMsg = new DiscordMessageBuilder(channel, message);
+        message.clearEmbeds();
+        message.embed(builder.build());
+        message.send();
 
-        discMsg.clearEmbeds();
-        discMsg.embed(builder.build());
-        discMsg.send();
-
-        return super.onCommand(event, guild, author, me, args, flags);
+        return null;
     }
-
-    public String parse(String arg, MessageEmbed embed, Message message) {
-        long timestamp = message.getTimeCreated().toEpochSecond() * 1000L;
-        long diff = System.currentTimeMillis() - timestamp;
-        arg = arg.replace("{timediff}", TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff));
-        return arg;
-    }
-
 }

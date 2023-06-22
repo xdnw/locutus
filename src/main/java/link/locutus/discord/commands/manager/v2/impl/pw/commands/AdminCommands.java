@@ -795,7 +795,7 @@ public class AdminCommands {
         long now = System.currentTimeMillis();
         int deleted = 0;
         for (GuildMessageChannel GuildMessageChannel : category.getTextChannels()) {
-            if (GuildMessageChannel.hasLatestMessage()) {
+            if (GuildMessageChannel.getLatestMessageIdLong() > 0) {
                 long message = GuildMessageChannel.getLatestMessageIdLong();
                 try {
                     long created = net.dv8tion.jda.api.utils.TimeUtil.getTimeCreated(message).toEpochSecond() * 1000L;
@@ -839,7 +839,7 @@ public class AdminCommands {
 
                 outer:
                 for (GuildMessageChannel channel : guild.getTextChannels()) {
-                    if (!channel.hasLatestMessage()) continue;
+                    if (channel.getLatestMessageIdLong() == 0) continue;
                     try {
                         long latestSnowflake = channel.getLatestMessageIdLong();
                         long latestMs = net.dv8tion.jda.api.utils.TimeUtil.getTimeCreated(latestSnowflake).toEpochSecond() * 1000L;

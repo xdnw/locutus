@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
@@ -43,6 +44,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
@@ -153,7 +155,7 @@ public class ROI extends Command {
             return "Invalid guild. Please register your alliance id with: " + GuildKey.ALLIANCE_ID.getCommandMention() + "";
         }
 
-        Message message = RateLimitUtil.complete(channel().sendMessage("Fetching nations: "));
+        CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Fetching nations: ");
 
         Set<Integer> aaIds = guildDb.getAllianceIds();
         if (aaIds.isEmpty()) return "Please use " + GuildKey.ALLIANCE_ID.getCommandMention() + "";
@@ -170,9 +172,10 @@ public class ROI extends Command {
                 for (DBNation nation : nations) {
                     if (nation.getPosition() <= 1) continue;
                     if (nation.getActive_m() > TimeUnit.DAYS.toMinutes(7)) continue;
-                    RateLimitUtil.queue(channel().editMessageById(message.getIdLong(),
-                            "Calculating ROI for: " + nation.getNation()));
-
+                    IMessageBuilder msg = msgFuture.get();
+                    if (msg != null && msg.getId() > 0) {
+                        msg.clear().append("Calculating ROI for: " + nation.getNation()).sendIfFree();
+                    }
                     roi(nation, days, roiMap);
                 }
             } catch (Throwable e) {
@@ -204,16 +207,21 @@ public class ROI extends Command {
             useSheet = nations.size() > 1;
             for (DBNation nation : nations) {
                 try {
-                    RateLimitUtil.queue(channel().editMessageById(message.getIdLong(),
-                            "Calculating ROI for: " + nation.getNation()));
-
+                    IMessageBuilder msg = msgFuture.get();
+                    if (msg != null && msg.getId() > 0) {
+                        msg.clear().append("Calculating ROI for: " + nation.getNation()).sendIfFree();
+                    }
                     roi(nation, days, roiMap);
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
             }
         }
-        RateLimitUtil.complete(channel().editMessageById(message.getIdLong(), "Results:"));
+        IMessageBuilder msg = msgFuture.get();
+        if (msg != null && msg.getId() > 0) {
+            channel.delete(msg.getId());
+        }
+        msg = channel.create().append("Results:");
 
         roiMap.removeIf(roi -> roi.roi <= 0);
 
@@ -350,7 +358,8 @@ public class ROI extends Command {
                 }
             }
 
-            return output.toString();
+            msg.append("\n" + output.toString()).send();
+            return null;
         }
     }
 

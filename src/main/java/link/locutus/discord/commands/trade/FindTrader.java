@@ -14,6 +14,7 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -48,6 +49,8 @@ public class FindTrader extends Command {
 
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        boolean groupByAlliance = flags.contains('a');
+
         if (args.size() != 3) {
             return usage(args.size(), 3, channel);
         }
@@ -72,41 +75,44 @@ public class FindTrader extends Command {
         List<DBTrade> offers = db.getTrades(cutoff);
 
         Collection<Transfer> transfers = manager.toTransfers(offers, false);
-        Map<Integer, double[]> inflows = manager.inflows(transfers, flags.contains('a'));
-        Map<Integer, double[]> ppu = manager.ppuByNation(offers, flags.contains('a'));
+        Map<Integer, double[]> inflows = manager.inflows(transfers, groupByAlliance);
+        Map<Integer, double[]> ppu = manager.ppuByNation(offers, groupByAlliance);
 
 //        for (ResourceType type : ResourceType.values()) {
 
-            Map<Integer, Double> newMap = new HashMap<>();
-            for (Map.Entry<Integer, double[]> entry : inflows.entrySet()) {
-                double value = entry.getValue()[type.ordinal()];
-                if (value != 0 && Math.signum(value) == findsign) {
-                    newMap.put(entry.getKey(), value);
-                }
+        Map<Integer, Double> newMap = new HashMap<>();
+        for (Map.Entry<Integer, double[]> entry : inflows.entrySet()) {
+            double value = entry.getValue()[type.ordinal()];
+            if (value != 0 && Math.signum(value) == findsign) {
+                newMap.put(entry.getKey(), value);
             }
+        }
         SummedMapRankBuilder<Integer, Double> builder = new SummedMapRankBuilder<>(newMap);
         Map<Integer, Double> sorted = (findsign == 1 ? builder.sort() : builder.sortAsc()).get();
 
-        DiscordUtil.createEmbedCommand(channel, b -> {
-            List<String> nationName = new ArrayList<>();
-            List<String> amtList = new ArrayList<>();
-            List<String> ppuList = new ArrayList<>();
+        List<String> nationName = new ArrayList<>();
+        List<String> amtList = new ArrayList<>();
+        List<String> ppuList = new ArrayList<>();
 
-            int i = 0;
-            for (Map.Entry<Integer, Double> entry : sorted.entrySet()) {
-                if (i++ >= 25) break;
-                int nationId = entry.getKey();
-                double amount = entry.getValue();
-                double myPpu = ppu.get(nationId)[type.ordinal()];
+        int i = 0;
+        for (Map.Entry<Integer, Double> entry : sorted.entrySet()) {
+            if (i++ >= 25) break;
+            int nationId = entry.getKey();
+            double amount = entry.getValue();
+            double myPpu = ppu.get(nationId)[type.ordinal()];
 //                nationName.add(MarkupUtil.markdownUrl(PnwUtil.getName(nationId, false), PnwUtil.getUrl(nationId, false)));
-                nationName.add(PnwUtil.getName(nationId, flags.contains('a')));
-                amtList.add(MathMan.format(amount));
-                ppuList.add("$" + MathMan.format(myPpu));
-            }
-            b.addField("Nation", StringMan.join(nationName, "\n"), true);
-            b.addField("Amt", StringMan.join(amtList, "\n"), true);
-            b.addField("Ppu", StringMan.join(ppuList, "\n"), true);
-        }, "Refresh", DiscordUtil.trimContent(fullCommandRaw));
+            nationName.add(PnwUtil.getName(nationId, groupByAlliance));
+            amtList.add(MathMan.format(amount));
+            ppuList.add("$" + MathMan.format(myPpu));
+        }
+
+        channel.create().embed(new EmbedBuilder()
+                .setTitle("Trade Price")
+                .addField("Nation", StringMan.join(nationName, "\n"), true)
+                .addField("Amt", StringMan.join(amtList, "\n"), true)
+                .addField("Ppu", StringMan.join(ppuList, "\n"), true)
+                .build()
+        ).commandButton(DiscordUtil.trimContent(fullCommandRaw), "Refresh").send();
         return null;
     }
 }

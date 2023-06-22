@@ -146,7 +146,7 @@ public class WarCommands {
                 Member member = guild.getMember(user);
                 if (role != null && member != null && member.getRoles().contains(role)) {
                     try {
-                        RateLimitUtil.queue(guild.removeRoleFromMember(user.getIdLong(), role));
+                        RateLimitUtil.queue(guild.removeRoleFromMember(user, role));
                         response.append("\nRemoved ").append(role.getName()).append(" from ").append(guild.getName());
                     } catch (Exception e) {
                         response.append("\nFailed to remove ").append(role.getName()).append(" from ").append(guild.getName() + " (" + e.getMessage() + ")");

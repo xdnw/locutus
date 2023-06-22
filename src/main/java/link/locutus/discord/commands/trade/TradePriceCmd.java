@@ -119,27 +119,29 @@ public class TradePriceCmd extends Command {
             highKey = "High";
         }
 
-        DiscordUtil.createEmbedCommand(channel, b -> {
-            List<ResourceType> resources = new ArrayList<>(ResourceType.valuesList);
-            resources.remove(ResourceType.MONEY);
+        List<ResourceType> resources = new ArrayList<>(ResourceType.valuesList);
+        resources.remove(ResourceType.MONEY);
 
-            List<String> resourceNames = resources.stream().map(r -> r.name().toLowerCase()).collect(Collectors.toList());
+        List<String> resourceNames = resources.stream().map(r -> r.name().toLowerCase()).collect(Collectors.toList());
 
-            ArrayList<String> lowList = new ArrayList<>();
-            ArrayList<String> highList = new ArrayList<>();
+        ArrayList<String> lowList = new ArrayList<>();
+        ArrayList<String> highList = new ArrayList<>();
 
-            for (ResourceType type : resources) {
-                Double o1 = low.get(type);
-                Double o2 = high.get(type);
+        for (ResourceType type : resources) {
+            Double o1 = low.get(type);
+            Double o2 = high.get(type);
 
-                lowList.add(o1 == null ? "" : MathMan.format(o1));
-                highList.add(o2 == null ? "" : MathMan.format(o2));
-            }
+            lowList.add(o1 == null ? "" : MathMan.format(o1));
+            highList.add(o2 == null ? "" : MathMan.format(o2));
+        }
 
-            b.addField("Resource", StringMan.join(resourceNames, "\n"), true);
-            b.addField(lowKey, StringMan.join(lowList, "\n"), true);
-            b.addField(highKey, StringMan.join(highList, "\n"), true);
-        }, refreshEmoji, DiscordUtil.trimContent(fullCommandRaw));
+        channel.create().embed(new EmbedBuilder()
+                .setTitle("Trade Price")
+                .addField("Resource", StringMan.join(resourceNames, "\n"), true)
+                .addField(lowKey, StringMan.join(lowList, "\n"), true)
+                .addField(highKey, StringMan.join(highList, "\n"), true)
+                .build()
+        ).commandButton(DiscordUtil.trimContent(fullCommandRaw), "Refresh").send();
         return null;
     }
 

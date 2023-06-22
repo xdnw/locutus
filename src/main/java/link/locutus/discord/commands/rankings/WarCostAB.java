@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
@@ -82,8 +83,9 @@ public class WarCostAB extends Command {
         AttackCost cost = parser.toWarCost();
 
         StringBuilder result = new StringBuilder(cost.toString(!flags.contains('u'), !flags.contains('i'), !flags.contains('c'), !flags.contains('l')));
+        IMessageBuilder msg = channel.create();
         if (flags.contains('w')) {
-            DiscordUtil.upload(channel, cost.getNumWars() + " wars", "- " + StringMan.join(cost.getWarIds(), "\n- "));
+            msg.file(cost.getNumWars() + " wars", "- " + StringMan.join(cost.getWarIds(), "\n- "));
         }
         if (flags.contains('t')) {
             List<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
@@ -95,7 +97,7 @@ public class WarCostAB extends Command {
             for (Map.Entry<WarType, Integer> entry : byType.entrySet()) {
                 response.append("\n" + entry.getKey() + ": " + entry.getValue());
             }
-            DiscordUtil.createEmbedCommand(channel, "War Types", response.toString());
+            msg.embed("War Types", response.toString());
         }
         if (flags.contains('s')) {
             List<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
@@ -128,7 +130,7 @@ public class WarCostAB extends Command {
             for (Map.Entry<CoalitionWarStatus, Integer> entry : byStatus.entrySet()) {
                 response.append("\n" + entry.getKey() + ": " + entry.getValue());
             }
-            DiscordUtil.createEmbedCommand(channel, "War Status", response.toString());
+            msg.embed("War Status", response.toString());
         }
 
         if (Roles.ECON.has(author, guild)) {
@@ -139,7 +141,9 @@ public class WarCostAB extends Command {
                 reimburse(cost, warUrl, guild, channel);
             }
         }
-        return result.toString();
+        msg.append(result.toString());
+        msg.send();
+        return null;
     }
 
     public static void reimburse(AttackCost cost, DBWar warUrl, Guild guild, IMessageIO io) {

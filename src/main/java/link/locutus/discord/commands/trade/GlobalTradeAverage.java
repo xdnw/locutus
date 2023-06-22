@@ -11,7 +11,9 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
@@ -19,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 public class GlobalTradeAverage extends Command {
     public GlobalTradeAverage() {
@@ -44,31 +47,34 @@ public class GlobalTradeAverage extends Command {
         Map<ResourceType, Double> highMap = averages.getValue();
 
 
-        DiscordUtil.createEmbedCommand(channel, b -> {
-            List<String> resourceNames = new ArrayList<>();
-            List<String> low = new ArrayList<>();
-            List<String> high = new ArrayList<>();
+        List<String> resourceNames = new ArrayList<>();
+        List<String> low = new ArrayList<>();
+        List<String> high = new ArrayList<>();
 
-            for (ResourceType type : ResourceType.values) {
-                if (type == ResourceType.MONEY) continue;
+        for (ResourceType type : ResourceType.values) {
+            if (type == ResourceType.MONEY) continue;
 
-                resourceNames.add(MarkupUtil.markdownUrl(type.name().toLowerCase(), type.url(true, true)));
+            resourceNames.add(MarkupUtil.markdownUrl(type.name().toLowerCase(), type.url(true, true)));
 
-                int i = type.ordinal();
+            int i = type.ordinal();
 
-                double avgLow = lowMap.getOrDefault(type, 0d);
-                low.add(MathMan.format(avgLow));
+            double avgLow = lowMap.getOrDefault(type, 0d);
+            low.add(MathMan.format(avgLow));
 
-                double avgHigh = highMap.getOrDefault(type, 0d);
-                high.add(MathMan.format(avgHigh));
-            }
+            double avgHigh = highMap.getOrDefault(type, 0d);
+            high.add(MathMan.format(avgHigh));
+        }
 
-            b.addField("Resource", StringMan.join(resourceNames, "\n"), true);
-            b.addField("Low", StringMan.join(low, "\n"), true);
-            b.addField("High", StringMan.join(high, "\n"), true);
-
-
-        }, "Refresh", DiscordUtil.trimContent(fullCommandRaw));
+        String timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, cutOff);
+        MessageEmbed embed = new EmbedBuilder()
+                .setTitle("Global Trade Average " + timeStr)
+                .addField("Resource", StringMan.join(resourceNames, "\n"), true)
+                .addField("Low", StringMan.join(low, "\n"), true)
+                .addField("High", StringMan.join(high, "\n"), true).build();
+        channel.create()
+                .embed(embed)
+                .commandButton(DiscordUtil.trimContent(fullCommandRaw), "Refresh")
+                .send();
 
         return null;
     }

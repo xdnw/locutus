@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -29,6 +30,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
 public class IASheet extends Command {
@@ -65,7 +68,7 @@ public class IASheet extends Command {
         nations.sort(Comparator.comparingInt(DBNation::getCities));
 
 
-        Message message = RateLimitUtil.complete(channel().sendMessage("Updating..."));
+        CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Updating...");
 
         boolean individual = flags.contains('f') || nations.size() == 1;
         IACheckup checkup = new IACheckup(db, db.getAllianceList().subList(aaIds), false);
@@ -74,7 +77,14 @@ public class IASheet extends Command {
                     @Override
                     public void accept(DBNation nation) {
                         if (-start + (start = System.currentTimeMillis()) > 5000) {
-                            RateLimitUtil.queue(channel().editMessageById(message.getIdLong(), "Updating for: " + nation.getNation()));
+                            try {
+                                IMessageBuilder msg = msgFuture.get();
+                                if (msg != null && msg.getId() > 0) {
+                                    msg.clear().append("Updating for: " + nation.getNation()).sendIfFree();
+                                }
+                            } catch (InterruptedException | ExecutionException e) {
+                                throw new RuntimeException(e);
+                            }
                         }
                     }
                 },

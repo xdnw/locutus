@@ -97,7 +97,6 @@ public class TransferCommand extends Command {
         }
 
         if (args.size() < 3) return usage();
-        IMessageIO channel = new DiscordChannelIO(channel);
         NationOrAlliance receiver = PWBindings.nationOrAlliance(args.get(0));
         String rssStr = args.size() > 3 ? args.get(1) + " " + args.get(2) : args.get(1);
         Map<ResourceType, Double> transfer = PnwUtil.parseResources(rssStr);
