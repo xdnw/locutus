@@ -66,8 +66,14 @@ public class WarCostByDay extends Command {
 
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
-        if (args.isEmpty() || args.size() > 3 || (args.size() == 3 && args.get(0).equalsIgnoreCase(args.get(1))) || flags.isEmpty()) {
-            return usage(args.size(), unkown, channel);
+        if (args.isEmpty() || args.size() > 3) {
+            return usage(args.size(), 1, 3, channel);
+        }
+        if ((args.size() == 3 && args.get(0).equalsIgnoreCase(args.get(1)))) {
+            return usage("Please specify two different coalitions", channel);
+        }
+        if (flags.isEmpty()) {
+            return usage("Please specify a breakdown type flag", channel);
         }
 
         String arg0 = args.get(0);
@@ -133,8 +139,8 @@ public class WarCostByDay extends Command {
                 nameA = args.get(0);
                 nameB = args.get(1);
             } else {
-                Set<DBNation> alliances1 = DiscordUtil.parseNations(DiscordUtil.getDefaultGuild(event), args.get(0));
-                Set<DBNation> alliances2 = DiscordUtil.parseNations(DiscordUtil.getDefaultGuild(event), args.get(1));
+                Set<DBNation> alliances1 = DiscordUtil.parseNations(guild, args.get(0));
+                Set<DBNation> alliances2 = DiscordUtil.parseNations(guild, args.get(1));
                 Set<Integer> allIds = new HashSet<>();
 
                 for (DBNation nation : alliances1) allIds.add(nation.getNation_id());

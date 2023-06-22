@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBWar;
@@ -73,9 +74,9 @@ public class WarCostByResourceSheet extends Command {
         Set<Integer> alliances = args.get(1).equals("*") ? null : DiscordUtil.parseAlliances(guild, args.get(1));
         Function<Integer, Boolean> aaFilter = f -> true;
 
-        if (nations.isEmpty()) return usage(args.size(), unkown, channel);
+        if (nations.isEmpty()) return usage("No nations found for `" + args.get(0) + "`", channel);
         if (alliances == null || alliances.isEmpty()) {
-            if (!args.get(1).equalsIgnoreCase("*")) return usage(args.size(), unkown, channel);
+            if (!args.get(1).equalsIgnoreCase("*")) return usage("No alliances found for: `" + args.get(1) + "`", channel);
         } else {
             aaFilter = f -> alliances.contains(f);
         }

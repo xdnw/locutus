@@ -3,6 +3,7 @@ package link.locutus.discord.commands.trade;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
@@ -42,7 +43,7 @@ public class Trending extends Command {
         int days = 1;
         if (args.size() == 1) {
             days = Integer.parseInt(args.get(0));
-        } else if (args.size() != 0) return usage(args.size(), unkown, channel);
+        } else if (args.size() != 0) return usage(args.size(), 0, 1, channel);
 
 
         Map<ResourceType, Map<Integer, LongAdder>> sold = new EnumMap<>(ResourceType.class);

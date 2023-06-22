@@ -5,6 +5,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -28,6 +29,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 public class CheckCities extends Command {
     private final Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> auditResults = new HashMap<>();
@@ -96,8 +98,8 @@ public class CheckCities extends Command {
             IACategory category = db.getIACategory();
             if (category != null) {
                 category.load();
-                category.purgeUnusedChannels(new DiscordChannelIO(channel));
-                category.alertInvalidChannels(new DiscordChannelIO(channel));
+                category.purgeUnusedChannels(channel);
+                category.alertInvalidChannels(channel);
             }
         }
 
@@ -121,10 +123,17 @@ public class CheckCities extends Command {
                 auditResult = auditResults.get(nation);
             }
             if (auditResult == null) {
-                CompletableFuture<Message> messageFuture = RateLimitUtil.queue(channel.sendMessage("Fetching city info: (this will take a minute)"));
+                CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Fetching city info: (this will take a minute)");
                 auditResult = checkup.checkup(nation, individual, false);
                 auditResults.put(nation, auditResult);
-                RateLimitUtil.queue(messageFuture.get().delete());
+                try {
+                    IMessageBuilder msg = msgFuture.get();
+                    if (msg != null && msg.getId() > 0) {
+                        channel.delete(msg.getId());
+                    }
+                } catch (InterruptedException | ExecutionException e) {
+                    throw new RuntimeException(e);
+                }
             }
             if (auditResult != null) {
                 auditResult = IACheckup.simplify(auditResult);
@@ -143,12 +152,12 @@ public class CheckCities extends Command {
                 }
             }
             if (failed > 0) {
-                createEmbed(nation, event, auditResult, page);
+                createEmbed(channel, nation, auditResult, page);
 
                 if (flags.contains('p')) {
                     PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(nation.getNation_id());
                     if (user != null) {
-                        RateLimitUtil.complete(channel.sendMessage("^ " + user.getAsMention()));
+                        channel.sendMessage("^ " + user.getAsMention());
                     }
                 } else if (mail) {
                     String title = nation.getAllianceName() + " Automatic checkup";
@@ -162,10 +171,10 @@ public class CheckCities extends Command {
 
                     JsonObject response = nation.sendMail(keys, title, markdown);
                     String userStr = nation.getNation() + "/" + nation.getNation_id();
-                    RateLimitUtil.queue(channel.sendMessage(userStr + ": " + response));
+                    channel.sendMessage(userStr + ": " + response);
                 }
             } else {
-                RateLimitUtil.queue(channel.sendMessage("All checks passed for " + nation.getNation()));
+                channel.sendMessage("All checks passed for " + nation.getNation());
             }
             output.setLength(0);
         }
@@ -184,7 +193,7 @@ public class CheckCities extends Command {
         return null;
     }
 
-    private void createEmbed(DBNation nation, MessageReceivedEvent event, Map<IACheckup.AuditType, Map.Entry<Object, String>> auditResult, Integer page) {
-        IACheckup.createEmbed(channel, event.getMessage(), Settings.commandPrefix(true) + "Checkup " + nation.getNation_id(), nation, auditResult, page);
+    private void createEmbed(IMessageIO channel, DBNation nation, Map<IACheckup.AuditType, Map.Entry<Object, String>> auditResult, Integer page) {
+        IACheckup.createEmbed(channel, Settings.commandPrefix(true) + "Checkup " + nation.getNation_id(), nation, auditResult, page);
     }
 }

@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBSpyUpdate;
@@ -44,7 +45,7 @@ public class FindSpyOp extends Command {
             defender = DiscordUtil.parseNation(args.get(2));
         } else if (args.size() == 2) {
             defender = me;
-        } else return usage(args.size(), unkown, channel);
+        } else return usage(args.size(), 2, 3, channel);
 
         Set<Integer> ids = new HashSet<>();
         Map<DBSpyUpdate, Long> updatesTmp = new HashMap<>();

@@ -2,7 +2,10 @@ package link.locutus.discord.commands.info;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.nation.MultiReport;
@@ -11,6 +14,7 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
+import java.util.Set;
 
 public class Multi extends Command {
     public Multi() {
@@ -45,21 +49,26 @@ public class Multi extends Command {
         String result = report.toString();
 
         String title = PnwUtil.getName(nationId, false) + " multi report";
+        IMessageBuilder msg = channel.create();
+        boolean sendCondensed = false;
         if (result.length() + title.length() >= 2000) {
             String condensed = report.toString(true);
             if (condensed.length() + title.length() < 2000) {
-                DiscordUtil.createEmbedCommand(channel, PnwUtil.getName(nationId, false), condensed);
+                msg.embed( PnwUtil.getName(nationId, false), condensed);
+                sendCondensed = true;
             }
         }
 
-        DiscordUtil.createEmbedCommand(channel, title, result);
+        msg.file(title, result);
 
-        return """
-                ```Disclaimer:
-                - Sharing networks does not mean they are the same person (mobile networks, schools, public wifi, vpns, dynamic ips)
-                - A network not shared 'concurrently' or within a short timeframe may be a false positive
-                - Having many networks, but only a few shared may be a sign of a VPN being used (there are legitimate reasons for using a VPN)
-                - It is against game rules to use evidence to threaten or coerce others
-                See: https://politicsandwar.com/rules/```""";
+        msg.append("""
+            ```Disclaimer:
+            - Sharing networks does not mean they are the same person (mobile networks, schools, public wifi, vpns, dynamic ips)
+            - A network not shared 'concurrently' or within a short timeframe may be a false positive
+            - Having many networks, but only a few shared may be a sign of a VPN being used (there are legitimate reasons for using a VPN)
+            - It is against game rules to use evidence to threaten or coerce others
+            See: https://politicsandwar.com/rules/```""");
+        msg.send();
+        return null;
     }
 }

@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -68,7 +69,7 @@ public class MailTargets extends Command {
 
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 3 && args.size() != 4) return usage(args.size(), unkown, channel);
+        if (args.size() != 3 && args.size() != 4) return usage(args.size(), 3, 4, channel);
 
         Map<DBNation, Set<DBNation>> warDefAttMap = new HashMap<>();
         Map<DBNation, Set<DBNation>> spyDefAttMap = new HashMap<>();

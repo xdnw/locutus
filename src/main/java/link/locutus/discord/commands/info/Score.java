@@ -72,7 +72,7 @@ public class Score extends Command {
             String next = iterator.next();
 
             String[] split = next.split("=");
-            if (split.length != 2) return usage(args.size(), unkown, channel);
+            if (split.length != 2) return usage("Argument must have a value in form e.g. `key=1234`. Instead received: `" + next + "`", channel);
 
             Double amt = MathMan.parseDouble(split[1]);
             if (amt == null) return "Unknown number `" + split[1] + "`";
@@ -120,7 +120,7 @@ public class Score extends Command {
 
         double score = nation.estimateScore(infra);
 
-        if (score == 0) return usage(args.size(), unkown, channel);
+        if (score == 0) return usage("No score provided", channel);
 
         return "Score: " + MathMan.format(score) + "\n" +
                 "WarRange: " + MathMan.format(score * 0.75) + "- " + MathMan.format(score * 1.75) + "\n" +

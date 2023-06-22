@@ -3,15 +3,19 @@ package link.locutus.discord.commands.external.guild;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.io.PagePriority;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.emoji.RichCustomEmoji;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Future;
 
 public class ImportEmoji extends Command {
@@ -46,7 +50,7 @@ public class ImportEmoji extends Command {
                 if (name.lastIndexOf('.') != -1) {
                     name = name.substring(0, name.lastIndexOf('.'));
                 }
-                tasks.add(RateLimitUtil.queue(guild.createEmote(name, icon)));
+                tasks.add(RateLimitUtil.queue(guild.createEmoji(name, icon)));
             }
             for (Future<?> task : tasks) {
                 task.get();
@@ -56,25 +60,22 @@ public class ImportEmoji extends Command {
         Guild other = Locutus.imp().getDiscordApi().getGuildById(Long.parseLong(args.get(0)));
         if (other == null) return "Unknown guild id: `" + args.get(0) + "`";
 
-        List<Emote> emotes = other.getEmotes();
+        List<RichCustomEmoji> emotes = guild.getEmojis();
 
-        Message msg = RateLimitUtil.complete(channel.sendMessage("Creating emotes..."));
-
-
-        Guild guild = guild;
         List<Future<?>> tasks = new ArrayList<>();
-        for (Emote emote : emotes) {
+        for (RichCustomEmoji emote : emotes) {
             if (emote.isManaged() || !emote.isAvailable()) {
                 continue;
             }
+
             String url = emote.getImageUrl();
             byte[] bytes = FileUtil.readBytesFromUrl(PagePriority.DISCORD_EMOJI_URL.ordinal(), url);
 
-            RateLimitUtil.queue(channel.editMessageById(msg.getIdLong(), "Creating emote: " + emote.getName() + " | " + url));
+            channel.send("Creating emote: " + emote.getName() + " | " + url);
 
             if (bytes != null) {
                 Icon icon = Icon.from(bytes);
-                tasks.add(RateLimitUtil.queue(guild.createEmote(emote.getName(), icon)));
+                tasks.add(RateLimitUtil.queue(guild.createEmoji(emote.getName(), icon)));
             }
         }
         for (Future<?> task : tasks) {

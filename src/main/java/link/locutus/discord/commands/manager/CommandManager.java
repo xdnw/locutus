@@ -99,7 +99,6 @@ import link.locutus.discord.commands.info.Reroll;
 import link.locutus.discord.commands.account.CheckMail;
 import link.locutus.discord.commands.info.PendingCommand;
 import link.locutus.discord.commands.info.HelpCommand;
-import link.locutus.discord.commands.fun.Tag;
 import link.locutus.discord.commands.account.AutoRole;
 import link.locutus.discord.commands.account.RegisterCommand;
 import link.locutus.discord.commands.account.RoleAlias;
@@ -152,7 +151,7 @@ public class CommandManager {
     private final ScheduledThreadPoolExecutor executor;
     private final Map<String, Command> commandMap;
     private final CommandManager2 modernized;
-    private Tag tag;
+//    private Tag tag;
 
     public CommandManager(Locutus locutus) {
         this.prefix1 = Settings.commandPrefix(true).charAt(0);
@@ -177,10 +176,10 @@ public class CommandManager {
         return commandMap;
     }
 
-    public Tag getTag() {
-        if (tag == null) tag = new Tag();
-        return tag;
-    }
+//    public Tag getTag() {
+////        if (tag == null) tag = new Tag();
+//        return tag;
+//    }
 
     public CommandManager2 getV2() {
         return modernized;
@@ -209,14 +208,14 @@ public class CommandManager {
         boolean jsonCommand = (content.startsWith("{") && content.endsWith("}"));
         char char0 = content.charAt(0);
         if (char0 != (prefix1) && char0 != prefix2 && !jsonCommand) {
-            handleWarRoomSync(event);
+            handleWarRoomSync(guild, msgUser, channel, content);
 
             if (content.contains("You successfully gathered intelligence about")) {
-                handleIntelOp(event, content);
+                handleIntelOp(guild, msgUser, channel, content);
                 return false;
             }
             if (content.contains("of your spies were captured and executed.")) {
-                handleSpyOp(event, content);
+                handleSpyOp(guild, msgUser, channel, content);
                 return false;
             }
 
@@ -232,7 +231,7 @@ public class CommandManager {
         // Channel blacklisting / whitelisting
         if (char0 == prefix2 || jsonCommand) {
             try {
-                modernized.run(event, async);
+                modernized.run(guild, channel, msgUser, content, async);
             } catch (Throwable e) {
                 e.printStackTrace();
             }
@@ -241,9 +240,7 @@ public class CommandManager {
 
         Runnable task = () -> {
             try {
-                Message message1 = event.getMessage();
-                String content1 = DiscordUtil.trimContent(message1.getContentRaw());
-                MessageReceivedEvent finalEvent = event;
+                String content1 = DiscordUtil.trimContent(content);
 
                 String arg0 = content1.indexOf(' ') != -1 ? content1.substring(0, content1.indexOf(' ')) : content1;
                 if (arg0.isEmpty() || arg0.charAt(0) != prefix1) {
@@ -254,38 +251,36 @@ public class CommandManager {
                 Command cmd = commandMap.get(arg0.toLowerCase());
                 if (cmd == null) return;
 
-                if (!cmd.checkPermission(msgGuild, msgUser)) {
+                if (!cmd.checkPermission(guild, msgUser)) {
                     if (noPermMsg) {
                         DBNation nation1 = DiscordUtil.getNation(msgUser);
                         if (nation1 == null) {
-                            RateLimitUtil.queue(event.getChannel().sendMessage("Please use " + CM.register.cmd.toSlashMention() + ""));
+                            channel.sendMessage("Please use " + CM.register.cmd.toSlashMention() + "");
                             return;
                         }
-                        if (msgGuild != null) {
-                            Member member = msgGuild.getMember(msgUser);
+                        if (guild != null) {
+                            Member member = guild.getMember(msgUser);
                             if (member != null) {
-                                if (sendPermissionMessage(cmd, event)) {
+                                if (sendPermissionMessage(cmd, guild, msgUser, channel)) {
                                     return;
                                 }
                             }
                         }
-                        RateLimitUtil.queue(event.getChannel().sendMessage(Messages.NOT_MEMBER));
+                        channel.sendMessage(Messages.NOT_MEMBER);
                     }
                     return;
                 }
 
-                DBNation nation1 = DiscordUtil.getNation(event);
+                DBNation nation1 = DiscordUtil.getNation(msgUser);
                 if (nation1 != null && !(cmd instanceof RegisterCommand) && !(cmd instanceof Unregister) && !(cmd instanceof MeCommand) && !(cmd instanceof HelpCommand) && !(cmd instanceof Who) && !(cmd instanceof Embassy)) {
                     if (Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.contains(nation1.getAlliance_id()) || Settings.INSTANCE.MODERATION.BANNED_NATIONS.contains(nation1.getNation_id()) || Settings.INSTANCE.MODERATION.BANNED_USERS.contains(msgUser.getIdLong()))
                         return;
                 }
 
                 if (!(cmd instanceof Noformat)) {
-                    String formatted = DiscordUtil.format(msgGuild, channel, msgUser, nation1, content1);
+                    String formatted = DiscordUtil.format(guild, channel, msgUser, nation1, content1);
                     if (!content1.equals(formatted)) {
-                        message1 = DelegateMessage.create(message1, formatted, msgGuild, msgUser);
-                        assert msgGuild != null;
-                        finalEvent = new DelegateMessageEvent(msgGuild, event.getResponseNumber(), message1);
+                        assert guild != null;
                     }
                     content1 = formatted;
                 }
@@ -300,8 +295,7 @@ public class CommandManager {
                 String result;
                 try {
 //                    DBNation me = DiscordUtil.getNation(finalEvent);
-                    System.out.println("Nation " + finalEvent.getAuthor() + ": " + content1);
-                    result = cmd.onCommand(finalEvent, args);
+                    result = cmd.onCommand(guild, channel, msgUser, nation1, content1, args);
                 } catch (Throwable e) { // IllegalArgumentException | UnsupportedOperationException |
                     e.printStackTrace();
                     result = e.getClass().getSimpleName() + ": " + e.getMessage();
@@ -314,7 +308,7 @@ public class CommandManager {
                     for (String key : Locutus.imp().getPnwApi().getApiKeyUsageStats().keySet()) {
                         result = result.replaceAll(key, "");
                     }
-                    DiscordUtil.sendMessage(finalEvent.getChannel(), result);
+                    channel.send(result);
                 }
             } catch (Throwable e) {
                 e.printStackTrace();
@@ -357,9 +351,9 @@ public class CommandManager {
             String userPrefix = msgUser.getName() + "#" + msgUser.getDiscriminator();
             DBNation authorNation = DiscordUtil.getNation(msgUser);
             if (authorNation != null) {
-                userPrefix = msgGuild.getName() + "|" + authorNation.getNation() + "/`" + userPrefix + "`";
+                userPrefix = guild.getName() + "|" + authorNation.getNation() + "/`" + userPrefix + "`";
             }
-            String msg = userPrefix + ": " + DiscordUtil.trimContent(event.getMessage().getContentRaw());
+            String msg = userPrefix + ": " + DiscordUtil.trimContent(command);
             msg = msg.replaceAll("@everyone", "@ everyone");
             msg = msg.replaceAll("@here", "@ here");
             msg = msg.replaceAll("<@&", "<@ &");
@@ -367,18 +361,17 @@ public class CommandManager {
         }
     }
 
-    private boolean sendPermissionMessage(Command cmd, MessageReceivedEvent event) {
-        Member member = event.getMember();
-        Guild msgGuild = event.isFromGuild() ? event.getGuild() : null;
+    private boolean sendPermissionMessage(Command cmd, Guild msgGuild, User msgUser, IMessageIO channel) {
+        Member member = msgGuild != null && msgUser != null ? msgGuild.getMember(msgUser) : null;
         {
             Role registeredRole = Roles.REGISTERED.toRole(msgGuild);
             if (registeredRole == null) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("No registered role set, please have an admin use " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null, null).toSlashCommand() + ""));
+                channel.sendMessage("No registered role set, please have an admin use " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null, null).toSlashCommand() + "");
                 return true;
             } else {
                 assert member != null;
                 if (!member.getRoles().contains(registeredRole)) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("Please use " + CM.register.cmd.toSlashMention() + " to get masked with the role: " + registeredRole.getName()));
+                    channel.sendMessage("Please use " + CM.register.cmd.toSlashMention() + " to get masked with the role: " + registeredRole.getName());
                     return true;
                 }
             }
@@ -386,10 +379,10 @@ public class CommandManager {
         {
             Role memberRole = Roles.MEMBER.toRole(msgGuild);
             if (memberRole == null) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("No member role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole MEMBER @someRole`"));
+                channel.sendMessage("No member role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole MEMBER @someRole`");
                 return true;
             } else if (!member.getRoles().contains(memberRole)) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("You do not have the role: " + memberRole.getName()));
+                channel.sendMessage("You do not have the role: " + memberRole.getName());
                 return true;
             }
         }
@@ -397,11 +390,11 @@ public class CommandManager {
             Role adminRole = Roles.ADMIN.toRole(msgGuild);
             if (adminRole == null) {
                 if (!member.hasPermission(net.dv8tion.jda.api.Permission.ADMINISTRATOR)) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("No admin role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole ADMIN @someRole`"));
+                    channel.sendMessage("No admin role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole ADMIN @someRole`");
                     return true;
                 }
             } else if (!member.getRoles().contains(adminRole)) {
-                RateLimitUtil.queue(event.getChannel().sendMessage("You do not have the role: " + adminRole.getName()));
+                channel.sendMessage("You do not have the role: " + adminRole.getName());
                 return true;
             }
         }
@@ -409,10 +402,10 @@ public class CommandManager {
             if (cmd.getCategories().contains(CommandCategory.MILCOM)) {
                 Role milcomRole = Roles.MILCOM.toRole(msgGuild);
                 if (milcomRole == null) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("No milcom role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole MILCOM (@someRole`"));
+                    channel.sendMessage("No milcom role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole MILCOM (@someRole`");
                     return true;
                 } else if (!member.getRoles().contains(milcomRole)) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("You do not have the role: " + milcomRole.getName()));
+                    channel.sendMessage("You do not have the role: " + milcomRole.getName());
                     return true;
                 }
             }
@@ -420,10 +413,10 @@ public class CommandManager {
             if (cmd.getCategories().contains(CommandCategory.ECON)) {
                 Role role = Roles.ECON.toRole(msgGuild);
                 if (role == null) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("No " + Roles.ECON + " role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole " + Roles.ECON + " @someRole`"));
+                    channel.sendMessage("No " + Roles.ECON + " role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole " + Roles.ECON + " @someRole`");
                     return true;
                 } else if (!member.getRoles().contains(role)) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("You do not have the role: " + role.getName()));
+                    channel.sendMessage("You do not have the role: " + role.getName());
                     return true;
                 }
             }
@@ -431,10 +424,10 @@ public class CommandManager {
             if (cmd.getCategories().contains(CommandCategory.INTERNAL_AFFAIRS)) {
                 Role role = Roles.INTERNAL_AFFAIRS.toRole(msgGuild);
                 if (role == null) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("No " + Roles.INTERNAL_AFFAIRS + " role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole " + Roles.INTERNAL_AFFAIRS + " @someRole`"));
+                    channel.sendMessage("No " + Roles.INTERNAL_AFFAIRS + " role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole " + Roles.INTERNAL_AFFAIRS + " @someRole`");
                     return true;
                 } else if (!member.getRoles().contains(role)) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("You do not have the role: " + role.getName()));
+                    channel.sendMessage("You do not have the role: " + role.getName());
                     return true;
                 }
             }
@@ -442,10 +435,10 @@ public class CommandManager {
             if (cmd.getCategories().contains(CommandCategory.FOREIGN_AFFAIRS)) {
                 Role role = Roles.FOREIGN_AFFAIRS.toRole(msgGuild);
                 if (role == null) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("No " + Roles.FOREIGN_AFFAIRS + " role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole " + Roles.FOREIGN_AFFAIRS + " @someRole`"));
+                    channel.sendMessage("No " + Roles.FOREIGN_AFFAIRS + " role set, please have an admin use `" + Settings.commandPrefix(true) + "aliasrole " + Roles.FOREIGN_AFFAIRS + " @someRole`");
                     return true;
                 } else if (!member.getRoles().contains(role)) {
-                    RateLimitUtil.queue(event.getChannel().sendMessage("You do not have the role: " + role.getName()));
+                    channel.sendMessage("You do not have the role: " + role.getName());
                     return true;
                 }
             }
@@ -453,16 +446,16 @@ public class CommandManager {
         return false;
     }
 
-    private void handleSpyOp(MessageReceivedEvent event, String content) {
+    private void handleSpyOp(Guild guild, User user, IMessageIO channel, String content) {
 
     }
 
-    private void handleIntelOp(MessageReceivedEvent event, String content) {
+    private void handleIntelOp(Guild guild, User user, IMessageIO channel, String content) {
         this.executor.submit(new CaughtRunnable() {
             @Override
             public void runUnsafe() {
                 try {
-                    DBNation attacker = DiscordUtil.getNation(event);
+                    DBNation attacker = DiscordUtil.getNation(user);
                     Map.Entry<DBNation, double[]> value = SpyCount.parseSpyReport(attacker, content);
                     if (value != null) {
                         if (attacker != null) {
@@ -470,10 +463,7 @@ public class CommandManager {
                         }
                         DBNation nation = value.getKey();
                         if (nation != null) {
-                            GuildDB db = Locutus.imp().getGuildDB(event.getGuild());
-                            if (db.isWhitelisted()) {
-                                RateLimitUtil.queue(event.getMessage().addReaction("\u2705"));
-                            }
+                            GuildDB db = Locutus.imp().getGuildDB(guild);
                         }
                     }
 
@@ -490,14 +480,13 @@ public class CommandManager {
                     if (nation != null) {
                         long now = System.currentTimeMillis();
                         Locutus.imp().getNationDB().saveLoot(nation.getNation_id(), now, entry.getValue(), NationLootType.ESPIONAGE);
-                        GuildDB db = Locutus.imp().getGuildDB(event.getGuild());
+                        GuildDB db = Locutus.imp().getGuildDB(guild);
                         if (db != null) {
-                            RateLimitUtil.queue(event.getMessage().addReaction("\u2705"));
                             assert value != null;
                             double converted = PnwUtil.convertedTotal(value.getValue());
                             double pct = attacker == null ? 0.10 : attacker.getWarPolicy() == WarPolicy.PIRATE ? 0.14 : 0.1;
                             if (nation.asNation().getWarPolicy() == WarPolicy.MONEYBAGS) pct *= 0.6;
-                            RateLimitUtil.queue(event.getMessage().getChannel().sendMessage(nation.getNation() + " worth: ~$" + MathMan.format(converted) + ". You would loot $" + MathMan.format(converted * pct)));
+                            channel.sendMessage(nation.getNation() + " worth: ~$" + MathMan.format(converted) + ". You would loot $" + MathMan.format(converted * pct));
                         }
                     }
                 } catch (Throwable e) {
@@ -549,7 +538,7 @@ public class CommandManager {
         this.register(new Kev());
         this.register(new Nev());
         this.register(new SriCommand());
-        this.register(new TagCommand(this));
+//        this.register(new TagCommand(this));
         this.register(new Lury());
         this.register(new TradeId());
 

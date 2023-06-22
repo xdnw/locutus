@@ -3,6 +3,7 @@ package link.locutus.discord.commands.external.guild;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
@@ -63,15 +64,13 @@ public class CardCommand extends Command implements Noformat {
                     "Note: Commands must be inside \"double quotes\", and each subsequent command separated by a space.";
         }
 
-        ArrayList<String> reactions = new ArrayList<>();
+        IMessageBuilder msg = channel.create().embed(title, body);
         for (int i = 0; i < commands.size(); i++) {
             String cmd = commands.get(i);
             String codePoint = i + emoji;
-            reactions.add(codePoint);
-            reactions.add(cmd);
+            msg.commandButton(cmd, codePoint);
         }
-        String[] reactionsArr = reactions.toArray(new String[0]);
-        DiscordUtil.createEmbedCommand(channel, title, body, reactionsArr);
+        msg.send();
         return null;
     }
 }

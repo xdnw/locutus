@@ -2,6 +2,7 @@ package link.locutus.discord.commands.info;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.war.SpyCommand;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
@@ -13,6 +14,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 public class MeCommand extends Command {
     private final Who who;
@@ -43,6 +45,6 @@ public class MeCommand extends Command {
         if (me == null) {
             return "Please use " + Settings.commandPrefix(true) + "validate";
         }
-        return who.onCommand(event, Collections.singletonList(me.getNation_id() + ""));
+        return who.onCommand(guild, channel, author, me, fullCommandRaw, Collections.singletonList(me.getNation_id() + ""));
     }
 }

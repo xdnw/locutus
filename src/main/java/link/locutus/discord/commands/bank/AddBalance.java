@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -50,13 +51,9 @@ public class AddBalance extends Command {
 
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
-        return onCommand(event.getMessage(), channel, guild, author, me, args, flags);
-    }
-
-    public String onCommand(Message message, MessageChannel channel, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {
         if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
 
-        if (args.isEmpty()) return usage(channel);
+        if (args.isEmpty()) return usage(args.size(), 4, channel);
         String note = null;
         for (Iterator<String> iter = args.iterator(); iter.hasNext(); ) {
             String arg = iter.next();
@@ -134,7 +131,7 @@ public class AddBalance extends Command {
                 } else if (args.size() == 2) {
                     transfer = PnwUtil.parseResources(args.get(1));
                 } else {
-                    return usage(channel);
+                    return usage(args.size(), 2, channel);
                 }
                 transfer.entrySet().removeIf(entry -> entry.getValue() == 0);
                 if (transfer.isEmpty()) return "No amount specified.";
@@ -153,10 +150,9 @@ public class AddBalance extends Command {
         }
 
 
-        DiscordChannelIO io = new DiscordChannelIO(channel, () -> message);
         if (!flags.contains('f')) {
-            String cmd = DiscordUtil.trimContent(message.getContentRaw()) + " -f";
-            builder.buildWithConfirmation(io, cmd);
+            String cmd = DiscordUtil.trimContent(fullCommandRaw) + " -f";
+            builder.buildWithConfirmation(channel, cmd);
             return null;
         }
 

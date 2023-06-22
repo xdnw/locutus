@@ -3,6 +3,8 @@ package link.locutus.discord.commands.external.guild;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -12,6 +14,10 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
@@ -46,7 +52,8 @@ public class WarCat extends Command {
         WarCategory warChannels = db.getWarChannel();
         if (warChannels == null) return "War channels are not enabled.";
 
-        WarCategory.WarRoom waRoom = warChannels.getWarRoom(channel);
+        MessageChannel textChannel = channel instanceof DiscordChannelIO ? ((DiscordChannelIO) channel).getChannel() : null;
+        WarCategory.WarRoom waRoom = warChannels.getWarRoom((GuildMessageChannel) textChannel);
         if (waRoom == null) return "This command must be run in a war room.";
 
         String categoryName = args.get(0);
@@ -74,14 +81,13 @@ public class WarCat extends Command {
             category = categories.get(0);
         }
 
-        MessageChannel currentChannel = channel;
-        if (!(currentChannel instanceof ICategorizableChannel cc)) return "This channel cannot have a category.";
+        if (!(textChannel instanceof ICategorizableChannel cc)) return "This channel cannot have a category.";
         if (category.equals(cc.getParentCategory())) {
             return "Already in category: " + categoryName;
         }
 
         RateLimitUtil.complete(cc.getManager().setParent(category));
 
-        return "Set category for " + currentChannel.getAsMention() + " to " + categoryName;
+        return "Set category for " + textChannel.getAsMention() + " to " + categoryName;
     }
 }

@@ -3,6 +3,7 @@ package link.locutus.discord.commands.rankings;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -61,7 +62,7 @@ public class TopAABeigeLoot extends Command {
 
 
         SummedMapRankBuilder<Integer, ? extends Number> sorted = new SummedMapRankBuilder<>(lootPerScore).sort();
-        sorted.nameKeys(i -> PnwUtil.getName(i, true)).build(event, title);
+        sorted.nameKeys(i -> PnwUtil.getName(i, true)).build(author, channel, fullCommandRaw, title);
 
         for (Integer integer : sorted.get().keySet()) {
             System.out.println(PnwUtil.getBBUrl(integer, true));

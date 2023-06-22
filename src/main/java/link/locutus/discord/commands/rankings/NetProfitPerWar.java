@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
@@ -51,7 +52,7 @@ public class NetProfitPerWar extends Command {
                 AAs = new HashSet<>();
             } else {
                 id = arg;
-                AAs = DiscordUtil.parseAlliances(DiscordUtil.getDefaultGuild(event), arg);
+                AAs = DiscordUtil.parseAlliances(guild, arg);
             }
         }
         int sign = profit ? -1 : 1;
@@ -106,7 +107,7 @@ public class NetProfitPerWar extends Command {
         }
 
         // Embed the rank list
-        ranks.build(event, title);
+        ranks.build(author, channel, fullCommandRaw, title);
 
 
         return null;

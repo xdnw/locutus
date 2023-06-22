@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -71,9 +72,9 @@ public class IntelOpSheet extends Command {
         attackers.removeIf(f -> f.getPosition() <= 1 || f.getActive_m() > 1440 || f.getVm_turns() > 0);
         Integer topX = db.getOrNull(GuildKey.DO_NOT_RAID_TOP_X);
         if (args.size() > 2) topX = Integer.parseInt(args.get(2));
-        if (topX == null) return usage(args.size(), unkown, channel);
+        if (topX == null) return usage("No `topX` value provided", channel);
 
-        if (attackers.isEmpty()) return usage(args.size(), unkown, channel);
+        if (attackers.isEmpty()) return usage("No nations found for `attackers`: `" + args.get(1) + "`", channel);
 
         List<DBNation> enemies = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
 

@@ -72,7 +72,7 @@ public class ForumDB extends DBMain {
             long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
             for (Category category : purgeCategories) {
                 for (GuildMessageChannel GuildMessageChannel : category.getTextChannels()) {
-                    if (GuildMessageChannel.hasLatestMessage()) {
+                    if (GuildMessageChannel.getLatestMessageIdLong() > 0) {
                         long message = GuildMessageChannel.getLatestMessageIdLong();
                         try {
                             Message msg = RateLimitUtil.complete(GuildMessageChannel.retrieveMessageById(message));

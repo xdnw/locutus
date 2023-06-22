@@ -99,7 +99,8 @@ public class AllianceLootRanking extends Command {
         String emoji = "Refresh";
         String cmd = DiscordUtil.trimContent(fullCommandRaw);
         response.append("\n\nPress `").append(emoji).append("` to refresh");
-        DiscordUtil.createEmbedCommand(channel, title, response.toString(), emoji, cmd);
+        channel.create().embed(title, response.toString())
+                        .commandButton(cmd, emoji).send();
 
         return null;
     }

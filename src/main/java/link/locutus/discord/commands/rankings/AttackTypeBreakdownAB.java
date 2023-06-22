@@ -3,6 +3,7 @@ package link.locutus.discord.commands.rankings;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.entities.AttackTypeBreakdown;
 import link.locutus.discord.db.entities.DBNation;
@@ -31,8 +32,11 @@ public class AttackTypeBreakdownAB extends Command {
 
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
-        if (args.isEmpty() || args.size() > 3 || (args.size() == 3 && args.get(0).equalsIgnoreCase(args.get(1)))) {
-            return usage(args.size(), unkown, channel);
+        if (args.isEmpty() || args.size() > 3) {
+            return usage(args.size(), 2, 3, channel);
+        }
+        if (args.size() == 3 && args.get(0).equalsIgnoreCase(args.get(1))) {
+            return usage("Coalition 1 and 2 are the same", channel);
         }
 
         WarAttackParser parser = new WarAttackParser(Locutus.imp().getGuildDB(guild), args, flags);

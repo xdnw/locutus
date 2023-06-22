@@ -2,6 +2,7 @@ package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
@@ -34,8 +35,9 @@ public class MyLoot extends Command {
 
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 1 || !MathMan.isInteger(args.get(0))) return usage(args.size(), unkown, channel);
+        if (args.size() != 1) return usage(args.size(), 1, channel);
+        if (!MathMan.isInteger(args.get(0))) return usage(args.get(0) + " is not a valid number of days", channel);
         if (me == null) return "Please use " + CM.register.cmd.toSlashMention() + "";
-        return parent.onCommand(event, guild, author, me, new ArrayList<>(Arrays.asList(me.getNationUrl(), "*", args.get(0))), flags);
+        return parent.onCommand(guild, channel, author, me, fullCommandRaw, new ArrayList<>(Arrays.asList(me.getNationUrl(), "*", args.get(0))), flags);
     }
 }

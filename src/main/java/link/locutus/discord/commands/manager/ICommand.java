@@ -11,5 +11,5 @@ import java.util.List;
 import java.util.Set;
 
 public interface ICommand {
-    String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception;
+    String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception;
 }

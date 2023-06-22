@@ -2,6 +2,7 @@ package link.locutus.discord.commands.external.guild;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.user.Roles;
@@ -45,7 +46,7 @@ public class Meta extends Command {
         try {
             meta = NationMeta.valueOf(args.get(1).toUpperCase());
         } catch (IllegalArgumentException e) {
-            return usage(event, "Keys: " + StringMan.getString(NationMeta.values()));
+            return usage("Keys: " + StringMan.getString(NationMeta.values()), channel);
         }
 
         ByteBuffer buf = nation.getMeta(meta);

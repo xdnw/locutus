@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.info;
 
 import link.locutus.discord.commands.manager.Command;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -30,19 +31,19 @@ public class ChannelCount extends Command {
         for (Category category : categories) {
             channelList.append(category.getName()).append("\n");
 
-            for (GuildChannel channel : category.getChannels()) {
+            for (GuildChannel catChan : category.getChannels()) {
                 String prefix = "+ ";
-                if (channel instanceof VoiceChannel) {
+                if (catChan instanceof VoiceChannel) {
                     prefix = "\uD83D\uDD0A ";
                 }
-                channelList.append(prefix).append(channel.getName()).append("\n");
+                channelList.append(prefix).append(catChan.getName()).append("\n");
             }
 
             channelList.append("\n");
         }
 
         if (Roles.ADMIN.has(author, guild)) {
-            DiscordUtil.upload(channel, guild.getChannels().size() + "/500 channels", channelList.toString());
+            channel.create().file(guild.getChannels().size() + "_of_500_channels.txt", channelList.toString()).send();
             return null;
         } else {
             return "This discord has " + guild.getChannels().size() + "/500 channels";

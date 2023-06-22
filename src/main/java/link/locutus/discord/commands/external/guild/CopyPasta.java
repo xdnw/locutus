@@ -4,6 +4,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -76,9 +78,8 @@ public class CopyPasta extends Command implements Noformat {
 
             if (value == null)
                 return "No message set for `" + args.get(0) + "`. Plase use `" + Settings.commandPrefix(true) + "copypasta <key> <message>`";
-            if (event.getMessage().getEmbeds().isEmpty()) {
-                RateLimitUtil.queue(event.getMessage().delete());
-            }
+            IMessageBuilder existing = channel.getMessage();
+            if (existing != null && existing.getId() > 0) channel.delete(existing.getId());
             return DiscordUtil.format(guild, channel, author, me, value);
         } else {
             if (!Roles.INTERNAL_AFFAIRS.has(author, guild)) return "No permission.";

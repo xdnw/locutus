@@ -2,6 +2,7 @@ package link.locutus.discord.commands.info;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.TimeUtil;
@@ -60,7 +61,7 @@ public class Rebuy extends Command {
             body.append(dateStr).append(" | ").append(dcStr).append("\n");
         }
 
-        DiscordUtil.createEmbedCommand(channel, title, body.toString());
+        channel.create().embed(title, body.toString()).send();
         return null;
     }
 }

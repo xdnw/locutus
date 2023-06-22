@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.trade;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -90,7 +91,7 @@ public class FindProducer extends Command {
             nations.removeIf(f -> !f.isTaxable());
         }
 
-        Message msg = RateLimitUtil.complete(channel.sendMessage("Fetching cities for " + nations.size() + " nations. Please wait..."));
+        channel.sendMessage("Fetching cities for " + nations.size() + " nations. Please wait...");
         long last = System.currentTimeMillis();
         Map<DBNation, Number> profitByNation = new HashMap<>();
 
@@ -147,11 +148,7 @@ public class FindProducer extends Command {
         String title = "Daily " + args.get(0) + " production";
         if (listAlliances && average) title += " per member";
         if (types.size() > 1) title += " (market value)";
-        ranks.build(event, title);
-
-        if (ranks.get().size() > 25) {
-            DiscordUtil.upload(channel, title, ranks.toString());
-        }
+        ranks.build(author, channel, fullCommandRaw, title, true);
         return null;
     }
 }

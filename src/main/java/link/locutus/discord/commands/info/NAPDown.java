@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.info;
 
 import link.locutus.discord.commands.manager.Command;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.TimeUtil;
@@ -87,7 +88,7 @@ public class NAPDown extends Command {
         String emoji = "Refresh";
         response.append("\n\nPress `" + emoji + "` to refresh");
 
-        DiscordUtil.createEmbedCommand(channel, title, response.toString(), emoji, DiscordUtil.trimContent(fullCommandRaw));
+        channel.create().embed(title, response.toString()).commandButton(DiscordUtil.trimContent(fullCommandRaw), emoji);
         return null;
     }
 }

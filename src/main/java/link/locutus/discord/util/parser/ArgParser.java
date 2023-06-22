@@ -41,7 +41,7 @@ public class ArgParser {
         for (Field field : DBNation.class.getDeclaredFields()) {
             if ((field.getModifiers() & Modifier.VOLATILE) == 0) {
                 field.setAccessible(true);
-                placeholderMap.put(field.getName(), Command.create((guild, channel, author, me, args, flags) -> {
+                placeholderMap.put(field.getName(), Command.create((guild, channel, author, me, fullCmd, args, flags) -> {
                         DBNation nation = me;
                         if (nation == null || args.size() == 1) {
                             nation = DiscordUtil.parseNation(args.get(0));
@@ -156,7 +156,7 @@ public class ArgParser {
             if(method.getReturnType().equals(Void.TYPE)) continue;
             link.locutus.discord.commands.manager.v2.binding.annotation.Command annotation = method.getAnnotation(link.locutus.discord.commands.manager.v2.binding.annotation.Command.class);
             if (annotation == null) continue;
-            Command cmd = Command.create((event, guild, author, me, args, flags) -> {
+            Command cmd = Command.create((event, guild, author, me, fullCmd, args, flags) -> {
                 DBNation nation = me;
                 if (nation == null || args.size() == 1) {
                     nation = DiscordUtil.parseNation(args.get(0));

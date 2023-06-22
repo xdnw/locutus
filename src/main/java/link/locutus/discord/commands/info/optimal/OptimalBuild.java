@@ -111,8 +111,7 @@ public class OptimalBuild extends Command {
 
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
-        DiscordChannelIO io = channel;
-        return onCommand(io, guild, author, me, args, flags);
+        return onCommand(channel, guild, author, me, args, flags);
     }
 
     public String onCommand(IMessageIO io, Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) throws Exception {

@@ -3,6 +3,8 @@ package link.locutus.discord.commands.trade;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -12,6 +14,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class TradeId extends Command {
     public TradeId() {

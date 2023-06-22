@@ -3,8 +3,10 @@ package link.locutus.discord.commands.rankings;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.LootEntry;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
@@ -15,6 +17,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class LargestBanks extends Command {
     public LargestBanks() {
@@ -48,7 +51,7 @@ public class LargestBanks extends Command {
         }
 
         SummedMapRankBuilder<Integer, ? extends Number> sorted = new SummedMapRankBuilder<>(total).sort();
-        sorted.nameKeys(i -> PnwUtil.getName(i, true)).build(event, "AA bank");
+        sorted.nameKeys(i -> PnwUtil.getName(i, true)).build(author, channel, fullCommandRaw, "AA bank");
 
         for (Integer integer : sorted.get().keySet()) {
             System.out.println(PnwUtil.getBBUrl(integer, true));

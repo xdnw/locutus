@@ -3,6 +3,8 @@ package link.locutus.discord.commands.trade;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -14,6 +16,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -50,7 +53,7 @@ public class Inactive extends Command {
         }
         long minutes = TimeUnit.DAYS.toMinutes(days);
 
-        Set<Integer> allianceIds = DiscordUtil.parseAlliances(DiscordUtil.getDefaultGuild(event), args.get(0));
+        Set<Integer> allianceIds = DiscordUtil.parseAlliances(guild, args.get(0));
         if (allianceIds == null) {
             if (args.get(0).equalsIgnoreCase("*")) {
                 allianceIds = new HashSet<>();
@@ -87,18 +90,19 @@ public class Inactive extends Command {
         String prev = Settings.commandPrefix(true) + "inactive " + args.get(0) + " " + days + " " + (page - 1) + (applicants ? " -a" : "");
         String next = Settings.commandPrefix(true) + "inactive " + args.get(0) + " " + days + " " + (page + 1) + (applicants ? " -a" : "");
 
-        List<String> actions = new ArrayList<>();
+        List<Map.Entry<String, String>> labelCommandPairs = new ArrayList<>();
         if (page > 1) {
-            actions.add("\u2b05\ufe0f");
-            actions.add(prev);
+            labelCommandPairs.add(Map.entry("\u2b05\ufe0f", prev));
         }
         if (page < pages) {
-            actions.add("\u27a1\ufe0f");
-            actions.add(next);
+            labelCommandPairs.add(Map.entry("\u27a1\ufe0f", next));
         }
-        String[] actionsArr = actions.toArray(new String[0]);
 
-        DiscordUtil.createEmbedCommand(channel, title, response.toString(), actionsArr);
+        IMessageBuilder msg = channel.create().embed(title, response.toString());
+        for (Map.Entry<String, String> entry : labelCommandPairs) {
+            msg = msg.commandButton(entry.getValue(), entry.getKey());
+        }
+        msg.send();
 
         return null;
     }

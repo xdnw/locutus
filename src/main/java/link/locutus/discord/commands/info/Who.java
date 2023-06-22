@@ -3,6 +3,7 @@ package link.locutus.discord.commands.info;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.war.SpyCommand;
 import link.locutus.discord.config.Settings;
@@ -133,7 +134,7 @@ public class Who extends Command {
             // averages
         }
         if (!flags.contains('i') && page == null && nations.size() > 1) {
-            DiscordUtil.createEmbedCommand(channel, title, response.toString());
+            channel.create().embed(title, response.toString()).send();
         }
 
         if (flags.contains('l') || flags.contains('p') || flags.contains('r') || flags.contains('c')) {
@@ -168,12 +169,12 @@ public class Who extends Command {
                         }
                     }
                     if (iaCat != null) {
-                        IAChannel channel = iaCat.get(nation);
-                        if (channel != null) {
+                        IAChannel iaChan = iaCat.get(nation);
+                        if (iaChan != null) {
                             if (flags.contains('r')) {
-                                nationStr += " `" + channel.getChannel().getAsMention() + "`";
+                                nationStr += " `" + iaChan.getChannel().getAsMention() + "`";
                             } else {
-                                nationStr += " " + channel.getChannel().getAsMention();
+                                nationStr += " " + iaChan.getChannel().getAsMention();
                             }
                         }
                     }
@@ -182,7 +183,7 @@ public class Who extends Command {
             }
             int pages = (nations.size() + perpage - 1) / perpage;
             title += "(" + (page + 1) + "/" + pages + ")";
-            DiscordUtil.paginate(channel, title, cmd, page, perpage, nationList);
+            DiscordUtil.paginate(channel, title, cmd, page, perpage, nationList, null, false);
         }
         if (flags.contains('i')) {
             if (perpage == null) perpage = 5;
@@ -214,7 +215,7 @@ public class Who extends Command {
                 results.add(entry);
             }
 
-            DiscordUtil.paginate(channel, "Nations", cmd, page, perpage, results);
+            DiscordUtil.paginate(channel, "Nations", cmd, page, perpage, results, null, false);
         }
 
         return null;//response.toString();

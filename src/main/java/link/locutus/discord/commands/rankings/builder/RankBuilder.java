@@ -87,8 +87,25 @@ public class RankBuilder<T> {
         return this;
     }
 
+    public void build(User author, IMessageIO channel, String command, String title, boolean upload) {
+        List<String> items = toItems(25);
+        String emoji = "Refresh";
+        String itemsStr = StringMan.join(items, "\n") + "\n";
+        if (command != null) itemsStr += "\nPress `" + emoji + "` to refresh";
+        if (author != null) itemsStr += "\n" + author.getAsMention();
+
+        IMessageBuilder msg = channel.create().embed(title, itemsStr);
+        if (command != null) msg = msg.commandButton(command.toString(), emoji);
+
+        if (upload && values.size() > 25) {
+            msg.file(title, toString());
+        }
+
+        msg.send();
+    }
+
     public void build(User author, IMessageIO channel, String fullCommandRaw, String title) {
-        build(author, channel, DiscordUtil.trimContent(fullCommandRaw), title);
+        build(author, channel, DiscordUtil.trimContent(fullCommandRaw), title, false);
     }
 
     public void build(MessageChannel channel, String cmd, String title) {
@@ -104,20 +121,7 @@ public class RankBuilder<T> {
     }
 
     public void build(User author, IMessageIO io, JSONObject command, String title, boolean upload) {
-        List<String> items = toItems(25);
-        String emoji = "Refresh";
-        String itemsStr = StringMan.join(items, "\n") + "\n";
-        if (command != null) itemsStr += "\nPress `" + emoji + "` to refresh";
-        if (author != null) itemsStr += "\n" + author.getAsMention();
-
-        IMessageBuilder msg = io.create().embed(title, itemsStr);
-        if (command != null) msg = msg.commandButton(command.toString(), emoji);
-
-        if (upload && values.size() > 25) {
-            msg.file(title, toString());
-        }
-
-        msg.send();
+        build(author, io, command == null ? null : command.toString(), title, upload);
     }
 
     public void build(User author, MessageChannel channel, String cmd, String title) {

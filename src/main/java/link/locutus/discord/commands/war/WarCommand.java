@@ -4,6 +4,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Activity;
@@ -85,11 +87,8 @@ public class WarCommand extends Command {
         double minScore = score * 0.75;
         double maxScore = score * 1.75;
 
-        MessageChannel channel;
         if (flags.contains('d')) {
-            channel = RateLimitUtil.complete(author.openPrivateChannel());
-        } else {
-            channel = channel;
+            channel = new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel()));
         }
 
         boolean includeInactives = flags.contains('i');
@@ -103,7 +102,7 @@ public class WarCommand extends Command {
 
         switch (args.size()) {
             default:
-                return usage(args.size(), unkown, channel);
+                return usage(args.size(), 0, 1, channel);
             case 1:
                 aa = args.get(0);
             case 0:

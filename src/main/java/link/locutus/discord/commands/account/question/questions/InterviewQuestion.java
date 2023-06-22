@@ -8,6 +8,7 @@ import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.commands.account.question.Question;
 import link.locutus.discord.commands.alliance.SetRank;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -35,7 +36,7 @@ public enum InterviewQuestion implements Question {
             - Your path to become a Gladiator and joining the Council
             """, false) {
         @Override
-        public String format(Guild guild, User author, DBNation me, GuildMessageChannel channel, String message) {
+        public String format(Guild guild, User author, DBNation me, IMessageIO channel, String message) {
             Role role = Roles.INTERVIEWER.toRole(guild);
             if (role != null) {
                 message += "\nDon't be shy to ping an " + role.getAsMention() + " gov member if you want to walk through something with us!";
@@ -46,14 +47,14 @@ public enum InterviewQuestion implements Question {
 
     VERIFY("please use " + CM.register.cmd.toSlashMention() + " or tell us what your nation is so we can register you.", true) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) {
             return me != null;
         }
     },
 
     APPLY_INGAME("please apply ingame: <https://politicsandwar.com/alliance/join/id={guild.alliance_id}>", true) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             GuildDB db = Locutus.imp().getGuildDB(guild);
             Set<Integer> aaIds = db.getAllianceIds();
             if (aaIds.isEmpty() || aaIds.contains(me.getAlliance_id())) return true;
@@ -66,14 +67,14 @@ public enum InterviewQuestion implements Question {
 //    REROLL("Why did you choose us?\n\n" +
 //            "*please type out your answer*", false) {
 //        @Override
-//        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+//        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
 //            long latestId = channel.getLatestMessageIdLong();
 //        }
 //    },
 
     LONG_TERM("Did you like the game so far? Are you planning to be a long term player?", false, "Y", "N") {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             if (!input.equalsIgnoreCase("Y")) {
                 Role role = Roles.TEMP.toRole(guild);
                 if (role != null) {
@@ -90,7 +91,7 @@ public enum InterviewQuestion implements Question {
 //            "If you go inactive for 7 days without warning, we will set you as applicant and wont protect you if you are attacked.\n\n" +
 //            "Can you be active on discord daily?", false, "Y", "N") {
 //        @Override
-//        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+//        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
 //            if (input.equalsIgnoreCase("Y")) {
 //                Role role = Roles.TEMP.toRole(guild);
 //                if (role != null) {
@@ -107,13 +108,13 @@ public enum InterviewQuestion implements Question {
             "Note: your profit from raiding or trading is never taxed.\n\n" +
             "Are you fine with with the default rate of 50%? (Note: You can change it at any time using `" + Settings.commandPrefix(true) + "SetTaxRate`)", false, "Y", "N") {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             if (!input.equalsIgnoreCase("Y")) {
                 Role ia = Roles.INTERVIEWER.toRole(guild);
                 if (ia != null) {
                     String mention = author.getAsMention();
                     String msg = "Please use `" + Settings.commandPrefix(true) + "SetTaxRate " + mention + " 25/25` or `" + Settings.commandPrefix(true) + "SetTaxRate " + mention + " 50/50`";
-                    RateLimitUtil.queue(channel.sendMessage(msg));
+                    channel.sendMessage(msg);
                 }
             }
             return true;
@@ -122,12 +123,12 @@ public enum InterviewQuestion implements Question {
 
     FIGHTING("Do you like the idea of fighting with us during war, and defending allies when called upon?", false, "Y", "N") {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             if (!input.equalsIgnoreCase("Y")) {
                 Role ia = Roles.INTERVIEWER.toRole(guild);
                 if (ia != null) {
                     String msg = ia.getAsMention() + "please discuss the importance of fighting in this game with " + author.getAsMention();
-                    RateLimitUtil.queue(channel.sendMessage(msg));
+                    channel.sendMessage(msg);
                 }
                 throw new IllegalArgumentException("Fighting is an important part of this game, and a requirement of the alliance. Please discuss your stance with gov");
             }
@@ -137,12 +138,12 @@ public enum InterviewQuestion implements Question {
 
     RESPECT("We are trying to create a positive community, do you promise to be nice to all the other members? (i.e. no nazism, racism, homophobia)", false, "Y", "N") {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             if (!input.equalsIgnoreCase("Y")) {
                 Role ia = Roles.INTERVIEWER.toRole(guild);
                 if (ia != null) {
                     String msg = ia.getAsMention() + " please discuss why we want to create a positive community with " + author.getAsMention();
-                    RateLimitUtil.queue(channel.sendMessage(msg));
+                    channel.sendMessage(msg);
                 }
                 throw new IllegalArgumentException("**Please discuss with gov on why you think you can't be nice to others**\n\n" + getContent());
             }
@@ -152,7 +153,7 @@ public enum InterviewQuestion implements Question {
 
     DEBT("Do you agree to settle any debts if you are leaving the alliance?", false, "Y", "N") {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             if (!input.equalsIgnoreCase("Y")) {
                 throw new IllegalArgumentException("If you accept loans from the AA, and your taxes or deposits haven't paid that off, a repayment plan should be worked out when you leave. " +
                         "This is standard procedure. Discuss with gov if you have any concerns.\n\n" + getContent());
@@ -165,7 +166,7 @@ public enum InterviewQuestion implements Question {
                 Set<Integer> aaIds = db.getAllianceIds();
                 if (!aaIds.isEmpty() && !aaIds.contains(me.getAlliance_id()) || me.getPosition() <= 1) {
                     String msg = ia.getAsMention() + " please conduct a short interview";
-                    RateLimitUtil.queue(channel.sendMessage(msg));
+                    channel.sendMessage(msg);
                 }
             }
             return true;
@@ -174,7 +175,7 @@ public enum InterviewQuestion implements Question {
 
     CHECK_RANK("please wait for a gov member to conduct a short interview", true) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             GuildDB db = Locutus.imp().getGuildDB(guild);
             Set<Integer> aaIds = db.getAllianceIds();
             if (!aaIds.isEmpty()) {
@@ -187,7 +188,7 @@ public enum InterviewQuestion implements Question {
                             try {
                                 String result = new SetRank().onCommand(guild, channel, sudoUser, sudoer, me.getUser().getAsMention() + " MEMBER");
                                 if (result != null) {
-                                    RateLimitUtil.queue(channel.sendMessage(result));
+                                    channel.sendMessage(result);
                                 }
                             } catch (Exception e) {
                                 e.printStackTrace();
@@ -223,7 +224,7 @@ public enum InterviewQuestion implements Question {
     OBJECTIVES("Complete the objectives https://politicsandwar.com/nation/objectives/\n" +
             "If you'd like any funds or assistance, give us a ping", true) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             if (me.getCities() <= 1) {
                 return me.getCities() > 1;
             }
@@ -234,7 +235,7 @@ public enum InterviewQuestion implements Question {
     COLOR("You can go to <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/>" + " and change your trade bloc from {color} to {alliance.color} (for trade block revenue)\n\n" +
             "(Note, if you can't change your policy yet, you can skip this step and do it later)", true, "\u27A1\uFE0F", "\uD83D\uDEAB") {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             if ("\uD83D\uDEAB".equalsIgnoreCase(input)) return true;
 
             NationColor color = me.getColor();
@@ -246,7 +247,7 @@ public enum InterviewQuestion implements Question {
         }
 
         @Override
-        public String format(Guild guild, User author, DBNation me, GuildMessageChannel channel, String message) {
+        public String format(Guild guild, User author, DBNation me, IMessageIO channel, String message) {
             try {
                 Alliance alliance = Locutus.imp().getPnwApi().getAlliance(me.getAlliance_id());
                 message = message.replace("{alliance.color}", alliance.getColor());
@@ -260,7 +261,7 @@ public enum InterviewQuestion implements Question {
     PIRATE("Raiding is the best way to make $$ for new nations. Go to <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/> and set your war policy to pirate to increase your raiding profit by 40%\n\n" +
             "(Note, if you can't change your policy yet, you can skip this step and do it later)", true, "\u27A1\uFE0F", "\uD83D\uDEAB") {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             if ("\uD83D\uDEAB".equalsIgnoreCase(input)) return true;
 
             if (me.getCities() >= 10) return true;
@@ -276,7 +277,7 @@ public enum InterviewQuestion implements Question {
 
             *Note: You can sell off buildings, or buy more infrastructure if you are lacking building slots*""", true) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             if (me.getCities() > 10) return true;
 
             Map<Integer, JavaCity> cityMap = me.getCityMap(true, true);
@@ -298,7 +299,7 @@ public enum InterviewQuestion implements Question {
 
             Note: Your city needs to be powered to recruit units. Let us know if you need any help powering cities!""", true) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             if (me.getCities() > 10) return true;
             int perDay = me.getCities() * 5 * Buildings.BARRACKS.perDay();
             if (me.getSoldiers() < perDay * 0.3) {
@@ -314,7 +315,7 @@ public enum InterviewQuestion implements Question {
             "You can checkout the raiding guide when you have time: <https://docs.google.com/document/d/1OAbR_pwza9bomKmJr7bjbRq40EPvbHmoj1_KdQM0GZs/edit>\n\n" +
             "tl;dr since you just have soldiers, do ground attacks. Inactive enemies don't generally fight back", true) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             if (me.getOff() == 5 || me.getCities() >= 10) return true;
 
             return (me.getOff() >= 5);
@@ -324,7 +325,7 @@ public enum InterviewQuestion implements Question {
 //    PERFORM_ATTACKS("Now that you have declared your raids, you can perform your attacks. Inactive enemies won't fight back, and if you've picked targets with no ground, you can perform ground attacks to defeat them.\n" +
 //            "https://politicsandwar.com/nation/war/", true) {
 //        @Override
-//        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+//        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
 //            return super.validate(guild, author, me, channel, input);
 //        }
 //    },
@@ -333,7 +334,7 @@ public enum InterviewQuestion implements Question {
             "https://politicsandwar.com/alliance/id={guild.alliance_id}&display=bank\n\n" +
             "*Note: deposit $1 if you don't need to safekeep*", true) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             GuildDB db = Locutus.imp().getGuildDB(guild);
             Set<Integer> aaIds = db.getAllianceIds();
             if (!aaIds.isEmpty()) {
@@ -352,7 +353,7 @@ public enum InterviewQuestion implements Question {
             "> Likewise, debt can be repaid with any resource or $$.\n\n" +
             "Try checking your deposits now", true) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             return me.getMeta(NationMeta.INTERVIEW_DEPOSITS) != null;
         }
     },
@@ -360,7 +361,7 @@ public enum InterviewQuestion implements Question {
     WITHDRAW_DEPOSITS("You can request your funds by using: " + CM.transfer.self.cmd.toSlashMention() + "\n" +
             "*Note: Below 7 cities, we can provide funds to get your two cities up and running, we don't do city grants initially since we want members to start off by raiding for $$$*", false) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             GuildDB db = Locutus.imp().getGuildDB(guild);
             if (db.hasAlliance()) {
                 List<Transaction2> transactions = me.getTransactions(0);
@@ -372,7 +373,7 @@ public enum InterviewQuestion implements Question {
         }
 
         @Override
-        public String format(Guild guild, User author, DBNation me, GuildMessageChannel channel, String message) {
+        public String format(Guild guild, User author, DBNation me, IMessageIO channel, String message) {
             Role econ = Roles.ECON.toRole(guild);
             if (econ != null) {
                 message += " . Ping " + econ.getAsMention() + " to request funds";
@@ -383,7 +384,7 @@ public enum InterviewQuestion implements Question {
 
 //    TRAINING_DISCORD("Checkout our training discord: <https://discord.gg/ZqbNBvb>", true) {
 //        @Override
-//        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+//        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
 //            Member member = Locutus.imp().getDiscordApi().getGuildById(710321760519848009L).getMemberById(author.getIdLong());
 //            return member != null;
 //        }
@@ -397,7 +398,7 @@ public enum InterviewQuestion implements Question {
             Please purchase spies from the military tab if you have not:
             https://politicsandwar.com/nation/military/spies/""", false) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             return me.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE, true) > 0;
         }
     },
@@ -409,7 +410,7 @@ public enum InterviewQuestion implements Question {
 
             Remember to purchase max spies every day""", true) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             return me.getMeta(NationMeta.INTERVIEW_SPYOP) != null;
         }
     },
@@ -420,7 +421,7 @@ public enum InterviewQuestion implements Question {
             "and\n" +
             "`" + Settings.commandPrefix(true) + "loot https://politicsandwar.com/nation/id=6`\n\n*note: loot estimates are a work in progress*", true) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             return me.getMeta(NationMeta.INTERVIEW_SPIES) != null && me.getMeta(NationMeta.INTERVIEW_LOOT) != null;
         }
     },
@@ -429,7 +430,7 @@ public enum InterviewQuestion implements Question {
             "Too high population density means your citizens are congested and very prone to Disease.\n" +
             "For simplicity, we recommend purchasing land equal to your infrastructure level", true) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             Map<Integer, JavaCity> cities = me.getCityMap(true, true);
             for (Map.Entry<Integer, JavaCity> entry : cities.entrySet()) {
                 JavaCity city = entry.getValue();
@@ -444,12 +445,12 @@ public enum InterviewQuestion implements Question {
 
     GENERATE_CITY_BUILDS("", true) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             return me.getMeta(NationMeta.INTERVIEW_OPTIMALBUILD) != null;
         }
 
         @Override
-        public String format(Guild guild, User author, DBNation me, GuildMessageChannel channel, String message) {
+        public String format(Guild guild, User author, DBNation me, IMessageIO channel, String message) {
             double maxInfra = 0;
             Set<Integer> infraLevels = new HashSet<>();
 
@@ -508,7 +509,7 @@ public enum InterviewQuestion implements Question {
             "You can take a quick quiz when you are ready:\n" +
             "https://docs.google.com/forms/d/e/1FAIpQLSdnD6MnbGNqW5ldrdpSD6wS2YDpoxraM_vkkz4XQ2eBraFZrg/viewform?usp=sf_link", false) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             if (Roles.GRADUATED.has(author, guild)) return true;
 
             throw new IllegalArgumentException("**Please ping an IA gov to check your test**\n\n" + getContent());
@@ -519,7 +520,7 @@ public enum InterviewQuestion implements Question {
             "> " + Settings.commandPrefix(true) + "checkup %user%\n" +
             "To perform an automated audit on yourself", true) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             return me.getMeta(NationMeta.INTERVIEW_CHECKUP) != null;
         }
     },
@@ -535,7 +536,7 @@ public enum InterviewQuestion implements Question {
             "To list raid targets currently on beige, use:\n" +
             "> `" + Settings.commandPrefix(true) + "raid * 15 -beige`", true) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             return me.getMeta(NationMeta.INTERVIEW_RAID_BEIGE) != null;
         }
     },
@@ -557,7 +558,7 @@ public enum InterviewQuestion implements Question {
             "- " + CM.alerts.beige.beigeAlertRequiredLoot.cmd.toSlashMention() + "\n" +
             "- " + CM.alerts.beige.setBeigeAlertScoreLeeway.cmd.toSlashMention() + "", true) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id());
             wars.removeIf(w -> w.attacker_id != me.getNation_id());
 
@@ -574,7 +575,7 @@ public enum InterviewQuestion implements Question {
     GET_YOURSELF_ROLLED("Get yourself rolled. e.g. Find an inactive raid target in an alliance, attack them and get some counters on yourself.\n" +
             "Remember to deposit your resources so nothing of value gets looted", true) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             if (me.getCities() >= 10) return true;
             if (me.getDef() == 3) return true;
             throw new IllegalArgumentException("**You have not have 3 defensive wars yet. Note: the bot checks wars every 15m**\n\n" + getContent());
@@ -585,7 +586,7 @@ public enum InterviewQuestion implements Question {
             "> `" + Settings.commandPrefix(true) + "counter <nation>`\n" +
             "And see who is online and in range to raid that person with you.", false) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             if (me.getMeta(NationMeta.INTERVIEW_COUNTER) == null) {
                 throw new IllegalArgumentException("**Please use `" + Settings.commandPrefix(true) + "counter`**\n\n" + getContent());
             }
@@ -596,7 +597,7 @@ public enum InterviewQuestion implements Question {
     CREATE_A_WAR_ROOM("War rooms are channels created to coordinate a war against an enemy target. They will be created automatically by the bot against active enemies.\n" +
             "To manually create a war room, use: `" + Settings.commandPrefix(true) + "WarRoom`", true) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             return me.getMeta(NationMeta.INTERVIEW_WAR_ROOM) != null;
         }
     },
@@ -625,7 +626,7 @@ public enum InterviewQuestion implements Question {
 
     DONE("That's all  for now. Check back later.", true) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             return false;
         }
     };

@@ -3,6 +3,7 @@ package link.locutus.discord.commands.trade;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -42,7 +43,7 @@ public class ConvertedTotal extends Command {
 
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
-        if (args.size() != 1 || args.get(0).isEmpty()) return usage(args.size(), unkown, channel);
+        if (args.size() != 1 || args.get(0).isEmpty()) return usage(args.size(), 1, channel);
 
         Map<ResourceType, Double> transfer = PnwUtil.parseResources(args.get(0));
 

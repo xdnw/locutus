@@ -135,7 +135,7 @@ public class IntelOp extends Command {
             response += "\n1 spy on extremely covert: ";
             response += "\n*Please post the result of your spy report here*";
             response += "\nMore info: https://docs.google.com/document/d/1gEeSOjjSDNBpKhrU9dhO_DN-YM3nYcklYzSYzSqq8k0";
-            DiscordUtil.createEmbedCommand(channel, title, response);
+            channel.create().embed(title, response).send();
             return null;
         }
         return "No results found";

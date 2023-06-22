@@ -64,7 +64,7 @@ public class WarCostAB extends Command {
         String attackTypeStr = DiscordUtil.parseArg(args, "attack_type");
         String attackSuccesStr = DiscordUtil.parseArg(args, "success");
         if (args.isEmpty() || args.size() > 4 || (args.size() >= 3 && args.get(0).equalsIgnoreCase(args.get(1)))) {
-            return usage(args.size(), unkown, channel);
+            return usage(args.size(), 1, 4, channel);
         }
 
         String arg0 = args.get(0);

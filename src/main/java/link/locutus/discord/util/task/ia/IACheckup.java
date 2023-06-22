@@ -2,6 +2,7 @@ package link.locutus.discord.util.task.ia;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.building.ServiceBuilding;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.config.Messages;
@@ -69,7 +70,7 @@ public class IACheckup {
         return tmp;
     }
 
-    public static void createEmbed(MessageChannel channel, Message message, String command, DBNation nation, Map<IACheckup.AuditType, Map.Entry<Object, String>> auditFinal, Integer page) {
+    public static void createEmbed(IMessageIO channel, String command, DBNation nation, Map<IACheckup.AuditType, Map.Entry<Object, String>> auditFinal, Integer page) {
         Map<AuditType, Map.Entry<Object, String>> audit = simplify(auditFinal);
         int failed = audit.size();
 
@@ -89,7 +90,7 @@ public class IACheckup {
             body.append(info.getValue());
             pages.add(body.toString());
         }
-        DiscordUtil.paginate(channel, newPage ? null : message, title, command, page, 1, pages, "", true);
+        DiscordUtil.paginate(channel, title, command, page, 1, pages, "", true);
     }
 
     private Map<DBNation, Map<ResourceType, Double>> memberStockpile;

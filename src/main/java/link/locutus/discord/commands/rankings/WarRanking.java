@@ -3,6 +3,7 @@ package link.locutus.discord.commands.rankings;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
@@ -57,7 +58,7 @@ public class WarRanking extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() < 2) return usage(args.size(), 2, channel);
         Integer days = MathMan.parseInt(args.get(0));
-        if (days == null) return usage(args.size(), unkown, channel);
+        if (days == null) return usage("Invalid days (number): `" + args.get(0) + "`", channel);
         Function<Integer, Boolean> allowedAttackersF;
         Function<Integer, Boolean> allowedDefendersF;
 
@@ -103,11 +104,7 @@ public class WarRanking extends Command {
 
         String title = "Most " + offOrDef + "wars (" + days + " days)";
         if (flags.contains('n')) title += "(per " + (flags.contains('i') ? "active " : "") + "nation)";
-        ranks.build(event, title);
-
-        if (ranks.get().size() > 25) {
-            DiscordUtil.upload(channel, title, ranks.toString());
-        }
+        ranks.build(author, channel, fullCommandRaw, title, true);
 
         return null;
     }

@@ -109,7 +109,7 @@ public class Disperse extends Command {
         return BankCommands.disburse(
                 author,
                 guildDb,
-                new DiscordChannelIO(channel),
+                channel,
                 me,
                 new SimpleNationList(nations),
                 daysDefault,

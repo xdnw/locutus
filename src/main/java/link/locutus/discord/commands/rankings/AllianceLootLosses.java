@@ -73,12 +73,7 @@ public class AllianceLootLosses extends Command {
 
         String title = "Alliance bank loot losses (" + args.get(0) + ")";
 
-        ranks.build(event, title);
-
-        if (ranks.get().size() > 25) {
-            DiscordUtil.upload(channel, title, ranks.toString());
-        }
-
-        return super.onCommand(event, guild, author, me, args, flags);
+        ranks.build(author, channel, fullCommandRaw, title, true);
+        return null;
     }
 }

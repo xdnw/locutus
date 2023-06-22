@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBWar;
@@ -49,7 +50,7 @@ public class CombatantSheet extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) return usage(args.size(), 1, channel);
         Set<Integer> alliances = DiscordUtil.parseAlliances(guild, args.get(0));
-        if (alliances == null) return usage(args.size(), unkown, channel);
+        if (alliances == null) return usage("Unknown alliance: `" + args.get(0) + "`", channel);
 
         List<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(alliances, WarStatus.ACTIVE, WarStatus.DEFENDER_OFFERED_PEACE, WarStatus.ATTACKER_OFFERED_PEACE);
         wars.removeIf(w -> {

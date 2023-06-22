@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.account.question;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -18,11 +19,11 @@ public interface Question {
 
     String[] getOptions();
 
-    default boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+    default boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
         return true;
     }
 
-    default String format(Guild guild, User author, DBNation me, GuildMessageChannel channel, String message) {
+    default String format(Guild guild, User author, DBNation me, IMessageIO channel, String message) {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         message = DiscordUtil.format(guild, channel, author, me, message);
         for (Map.Entry<String, String> entry : db.getKeys().entrySet()) {

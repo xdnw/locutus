@@ -3,6 +3,7 @@ package link.locutus.discord.commands.external.guild;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -42,7 +43,7 @@ public class ClearRoles extends Command {
         List<Future<?>> tasks = new ArrayList<>();
         if (args.get(0).equalsIgnoreCase("UNUSED")) {
             Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(guild.getRoles());
-            Guild guild = guild;
+            
             for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
                 if (guild.getMembersWithRoles(entry.getValue()).isEmpty()) {
                     tasks.add(RateLimitUtil.queue(entry.getValue().delete()));

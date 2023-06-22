@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -95,7 +96,7 @@ public class AllianceAttackTypeRanking extends Command {
 
         String title = " attacks of type: " + type.getName() + " (" + args.get(0) + ")";
         title = (flags.contains('t') ? "total" : "percent") + title;
-        builder.sort().name(DBAlliance::getName, MathMan::format).build(event, title);
+        builder.sort().name(DBAlliance::getName, MathMan::format).build(author, channel, fullCommandRaw, title);
         return null;
     }
 }

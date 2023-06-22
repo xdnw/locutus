@@ -71,16 +71,15 @@ public class Dm extends Command {
 
             String dmMsg = "content: ```" + body + "```";
 
-            DiscordUtil.createEmbedCommand(channel, embedTitle, dmMsg, "Next", pending);
+            channel.create().embed( embedTitle, dmMsg).commandButton(pending, "Next").send();
             return null;
         }
 
-        Message message = RateLimitUtil.complete(channel.sendMessage("Please wait..."));
-
+        channel.sendMessage("Please wait...");
         for (User mention : mentions) {
-            mention.openPrivateChannel().queue(channel -> RateLimitUtil.queue(channel.sendMessage(author.getAsMention() + " said: " + body + "\n\n(no reply)")));
+            mention.openPrivateChannel().queue(f -> RateLimitUtil.queue(f.sendMessage(author.getAsMention() + " said: " + body + "\n\n(no reply)")));
         }
-        RateLimitUtil.queue(channel.editMessageById(message.getIdLong(), "Sent " + mentions.size() + " messages"));
+        channel.sendMessage("Sent " + mentions.size() + " messages");
         return null;
     }
 }

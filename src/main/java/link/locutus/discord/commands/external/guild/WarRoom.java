@@ -2,6 +2,8 @@ package link.locutus.discord.commands.external.guild;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
@@ -82,7 +84,8 @@ public class WarRoom extends Command {
 
         String arg = args.get(0);
         if (arg.equalsIgnoreCase("close") || arg.equalsIgnoreCase("delete")) {
-            WarCategory.WarRoom room = warCat.getWarRoom(channel);
+            MessageChannel textChannel = channel instanceof DiscordChannelIO ? ((DiscordChannelIO) channel).getChannel() : null;
+            WarCategory.WarRoom room = warCat.getWarRoom((GuildMessageChannel) textChannel);
             if (room != null) {
                 room.delete("Closed by " + author.getName() + "#" + author.getDiscriminator());
                 return "Goodbye.";
@@ -97,13 +100,13 @@ public class WarRoom extends Command {
             StringBuilder response = new StringBuilder();
             Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(sheet, headerRow, f -> 3, 0.75, 1.75, true, true, false, f -> true, (dbNationDBNationEntry, s) -> response.append(s).append("\n"));
             if (response.length() != 0) {
-                DiscordUtil.sendMessage(channel, response.toString());
+                channel.send(response.toString());
                 if (!flags.contains('f')) {
                     return "Add `-f` to force create the channels anyway.";
                 }
             }
 
-            RateLimitUtil.queue(channel.sendMessage("Generating channels..."));
+            channel.sendMessage("Generating channels...");
 
             if (filterArg != null) {
                 Set<DBNation> nations = DiscordUtil.parseNations(guild, filterArg);
@@ -118,14 +121,14 @@ public class WarRoom extends Command {
                 DBNation target = entry.getKey();
                 Set<DBNation> attackers = entry.getValue();
 
-                WarCategory.WarRoom channel = createChannel(warCat, author, guild, s -> response.append(s).append("\n"), ping, addMember, addMessage, target, attackers);
+                WarCategory.WarRoom warChan = createChannel(warCat, author, guild, s -> response.append(s).append("\n"), ping, addMember, addMessage, target, attackers);
 
                 try {
                     if (args.get(1).length() > 1 && !args.get(1).equalsIgnoreCase("null")) {
-                        RateLimitUtil.queue(channel.getChannel().sendMessage(args.get(1)));
+                        RateLimitUtil.queue(warChan.getChannel().sendMessage(args.get(1)));
                     }
 
-                    channels.add(channel.getChannel());
+                    channels.add(warChan.getChannel());
                 } catch (Throwable e) {
                     e.printStackTrace();
                     response.append(e.getMessage());
@@ -146,9 +149,9 @@ public class WarRoom extends Command {
         }
 
         StringBuilder response = new StringBuilder();
-        WarCategory.WarRoom channel = createChannel(warCat, author, guild, s -> response.append(s).append("\n"), ping, addMember, addMessage, target, attackers);
+        WarCategory.WarRoom warChan = createChannel(warCat, author, guild, s -> response.append(s).append("\n"), ping, addMember, addMessage, target, attackers);
 
-        response.append(channel.getChannel().getAsMention());
+        response.append(warChan.getChannel().getAsMention());
 
         me.setMeta(NationMeta.INTERVIEW_WAR_ROOM, (byte) 1);
 

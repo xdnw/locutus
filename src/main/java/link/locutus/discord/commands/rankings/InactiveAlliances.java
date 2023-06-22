@@ -47,7 +47,7 @@ public class InactiveAlliances extends Command {
             nations = (Locutus.imp().getNationDB().getNations().values());
         } else {
             group = args.get(0);
-            Set<Integer> alliances = DiscordUtil.parseAlliances(DiscordUtil.getDefaultGuild(event), group);
+            Set<Integer> alliances = DiscordUtil.parseAlliances(guild, group);
             if (alliances == null || alliances.isEmpty()) {
                 return "Invalid aa/coalition: " + group;
             }

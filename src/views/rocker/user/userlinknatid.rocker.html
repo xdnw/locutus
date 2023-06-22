@@ -2,4 +2,4 @@
 @import link.locutus.discord.db.entities.DBNation
 
 @args(int nationId)
-@rocker.user.userlink.template(DiscordUtil.getUserIdByNationId(nationId), DiscordUtil.getUserByNationId(nationId), DBNation.byId(nationId))
+@rocker.user.userlink.template(DiscordUtil.getUserIdByNationId(nationId), DiscordUtil.getUserByNationId(nationId), DBNation.getById(nationId))

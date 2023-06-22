@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -40,7 +41,7 @@ public class NoteSheet extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) return usage(args.size(), 1, channel);
         Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
-        if (nations == null || nations.isEmpty()) return usage(args.size(), unkown, channel);
+        if (nations == null || nations.isEmpty()) return usage("Invalid nations: `" + args.get(0) + "`", channel);
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         if (db == null) return "Not in guild";

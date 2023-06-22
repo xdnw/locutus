@@ -58,8 +58,6 @@ public class Sudo extends Command implements Noformat {
             return "Unknown command: ``" + args.get(1) + "`" + "`";
         }
 
-        Guild guild = guild != null ? guild : null;
-
         DBNation nation;
         if (user == null) {
             Integer nationId = DiscordUtil.parseNationId(arg0);
@@ -79,29 +77,8 @@ public class Sudo extends Command implements Noformat {
         }
 
         User finalUser = user;
-        Message message = new DelegateMessage(event.getMessage()) {
-            @Nonnull
-            @Override
-            public String getContentRaw() {
-                return command;
-            }
-
-            @Nonnull
-            @Override
-            public User getAuthor() {
-                return finalUser == null ? author : finalUser;
-            }
-
-            @Nullable
-            @Override
-            public Member getMember() {
-                return getGuild().getMember(getAuthor());
-            }
-        };
-
-        MessageReceivedEvent finalEvent = new DelegateMessageEvent(guild != null ? guild : null, event.getResponseNumber(), message);
         DiscordUtil.withNation(nation, () -> {
-            Locutus.imp().getCommandManager().run(finalEvent, false, true);
+            Locutus.imp().getCommandManager().run(guild, channel, finalUser, command, false, true);
             return null;
         });
         return null;

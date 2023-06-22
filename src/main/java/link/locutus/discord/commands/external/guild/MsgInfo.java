@@ -2,10 +2,13 @@ package link.locutus.discord.commands.external.guild;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageReaction;
 import net.dv8tion.jda.api.entities.User;
@@ -15,6 +18,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class MsgInfo extends Command {
     public MsgInfo() {
@@ -35,7 +39,7 @@ public class MsgInfo extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         String arg = args.get(0);
         String[] split = arg.split("/");
-        if (!arg.startsWith("https://discord.com/channels/") || split.length < 3) return usage(args.size(), unkown, channel);
+        if (!arg.startsWith("https://discord.com/channels/") || split.length < 3) return usage(args.size(), 3, channel);
         Message message = DiscordUtil.getMessage(arg);
         if (message == null) if (args.size() > 1) return usage(args.size(), 0, 1, channel);
 
@@ -61,7 +65,7 @@ public class MsgInfo extends Command {
             }
         }
 
-        DiscordUtil.createEmbedCommand(channel, title, response.toString());
+        channel.create().embed(title, response.toString()).send();
         return null;
     }
 }

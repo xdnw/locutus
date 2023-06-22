@@ -82,7 +82,8 @@ public class NationLootRanking extends Command {
 
         String emoji = "Refresh";
         response.append("\n\nPress `").append(emoji).append("` to refresh");
-        DiscordUtil.createEmbedCommand(channel, title, response.toString(), emoji, DiscordUtil.trimContent(fullCommandRaw));
+        channel.create().embed(title, response.toString())
+                .commandButton(DiscordUtil.trimContent(fullCommandRaw), emoji).send();
 
         return null;
     }

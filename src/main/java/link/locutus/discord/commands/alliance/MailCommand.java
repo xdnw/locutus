@@ -6,6 +6,7 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
@@ -27,6 +28,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 public class MailCommand extends Command implements Noformat {
     public MailCommand() {
@@ -125,7 +128,8 @@ public class MailCommand extends Command implements Noformat {
                 String body = "subject: " + subject + "\n" +
                         "body: ```" + message + "```";
 
-                DiscordUtil.createEmbedCommand(channel, embedTitle, body, "Next", pending);
+                channel.create().embed(embedTitle, body)
+                                .commandButton(pending, "Next").send();
                 return null;
             }
 
@@ -133,18 +137,28 @@ public class MailCommand extends Command implements Noformat {
                 message += "\n\n<i>This message was sent by: " + author.getName() + "</i>";
             }
 
-            Message msg = RateLimitUtil.complete(channel.sendMessage("Sending to..."));
+            CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Sending to...");
+            IMessageBuilder msg = null;
             StringBuilder response = new StringBuilder();
             long start = System.currentTimeMillis();
             for (DBNation nation : nations) {
                 if (System.currentTimeMillis() - start > 10000) {
-                    RateLimitUtil.queue(channel.editMessageById(msg.getIdLong(), "Sending to " + nation.getNation()));
+                    try {
+                        msg = msgFuture.get();
+                        if (msg != null && msg.getId() > 0) {
+                            msg.clear().append("Sending to " + nation.getNation()).send();
+                        }
+                    } catch (InterruptedException | ExecutionException e) {
+                        e.printStackTrace();
+                    }
                     start = System.currentTimeMillis();
                 }
                 response.append(nation.sendMail(key, subject, message)).append("\n");
             }
 
-            RateLimitUtil.queue(channel.deleteMessageById(msg.getIdLong()));
+            if (msg != null && msg.getId() > 0) {
+                channel.delete(msg.getId());
+            }
             return response.toString();
         } catch (Throwable e) {
             e.printStackTrace();

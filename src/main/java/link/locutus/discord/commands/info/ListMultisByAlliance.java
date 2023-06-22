@@ -4,6 +4,7 @@ import com.google.api.client.util.Sets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
@@ -133,7 +134,7 @@ public class ListMultisByAlliance extends Command {
             response.append(nationUrl).append("\t").append(allianceUrl).append("\t").append(referredNations.containsKey(nationId)).append("\t").append(sharedWars).append("\t").append(sharedTrades).append("\t").append(sentBank).append("\t").append(sentBank || sharedTrades || sharedWars).append("\t").append(nation.getAgeDays()).append("\t").append(nation.getPosition()).append("\t").append(multiStr).append("\n");
         }
 
-        DiscordUtil.createEmbedCommand(channel, "Potential multis:", response.toString());
+        channel.create().embed("Potential multis:", response.toString()).send();
 
         return null;
     }

@@ -3,6 +3,7 @@ package link.locutus.discord.commands.info;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -77,7 +78,7 @@ public class CounterStats extends Command {
         String response = MathMan.format(chanceActive * 100) + "% for actives (" + totalActive + " wars)" + '\n' +
                 MathMan.format(chanceInactive * 100) + "% for inactives (" + totalInactive + " wars)";
 
-        DiscordUtil.createEmbedCommand(channel, title, response);
+        channel.create().embed(title, response).send();
         return null;
     }
 }

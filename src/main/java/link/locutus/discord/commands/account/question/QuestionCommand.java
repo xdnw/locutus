@@ -2,6 +2,7 @@ package link.locutus.discord.commands.account.question;
 
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
@@ -15,6 +16,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class QuestionCommand<T extends Question> extends Command {
@@ -59,7 +61,7 @@ public class QuestionCommand<T extends Question> extends Command {
             case 0:
                 break;
             default:
-                return usage(args.size(), unkown, channel);
+                return usage(args.size(), 0, 2, channel);
         }
 
         T question = questions[index];
@@ -67,7 +69,6 @@ public class QuestionCommand<T extends Question> extends Command {
         String body = null;
 
         while (question.isValidateOnInit() || input != null) {
-            GuildMessageChannel channel = channel;
             try {
                 if (question.validate(guild, author, me, sudoer, channel, input)) {
                     question = questions[++index];
@@ -89,15 +90,14 @@ public class QuestionCommand<T extends Question> extends Command {
         if (body == null) body = question.getContent();
         body = question.format(guild, author, me, channel, body);
 
-        List<String> reactions = new ArrayList<>();
         String[] options = question.getOptions();
         String cmdBase = Settings.commandPrefix(true) + "interview " + (index) + " " + author.getAsMention();
 
+        List<Map.Entry<String, String>> labelCommandList = new ArrayList<>();
         if (options.length == 0) {
             cmdBase += " Y";
             String emoji = "Next";
-            reactions.add(emoji);
-            reactions.add(cmdBase);
+            labelCommandList.add(Map.entry(emoji, cmdBase));
 
             body += "\n\nPress `" + emoji + "` to continue";
         } else {
@@ -106,12 +106,15 @@ public class QuestionCommand<T extends Question> extends Command {
                 if (option.length() == 1 && Character.isLetter(option.charAt(0))) {
                     emojo = "\uD83C" + ((char) ('\uDDE6' + (Character.toLowerCase(option.charAt(0)) - 'a')));
                 }
-                reactions.add(emojo);
-                reactions.add(cmdBase + " \"" + option + "\"");
+                labelCommandList.add(Map.entry(emojo, cmdBase + " \"" + option + "\""));
             }
         }
 
-        DiscordUtil.createEmbedCommand(channel, title, body, reactions.toArray(new String[0]));
+        IMessageBuilder msg = channel.create().embed(title, body);
+        for (Map.Entry<String, String> entry : labelCommandList) {
+            msg = msg.commandButton(entry.getValue(), entry.getKey());
+        }
+        msg.send();
 
 //        return "ping";
         return null;

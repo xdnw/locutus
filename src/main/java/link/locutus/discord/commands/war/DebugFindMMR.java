@@ -2,6 +2,7 @@ package link.locutus.discord.commands.war;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -24,7 +25,7 @@ public class DebugFindMMR extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 2) return usage(args.size(), 2, channel);
         String mmr = args.get(0);
-        if (mmr.length() != 4 && !MathMan.isInteger(mmr)) return usage(args.size(), unkown, channel);
+        if (mmr.length() != 4 && !MathMan.isInteger(mmr)) return usage("MMR must be 4 numbers, not `" + mmr + "`", channel);
 
         Integer cities = MathMan.parseInt(args.get(1));
         if (cities == null) return "Invalid city count: `" + args.get(1) + "`";

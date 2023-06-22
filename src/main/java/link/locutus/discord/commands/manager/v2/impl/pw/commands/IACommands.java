@@ -940,8 +940,8 @@ public class IACommands {
         List<String> full = new ArrayList<>();
         for (DBNation nation : nations) {
             try {
-                String subjectF = DiscordUtil.format(db.getGuild(), null, nation.getUser(), nation, subject);
-                String messageF = DiscordUtil.format(db.getGuild(), null, nation.getUser(), nation, message);
+                String subjectF = DiscordUtil.format(db.getGuild(), channel, nation.getUser(), nation, subject);
+                String messageF = DiscordUtil.format(db.getGuild(), channel, nation.getUser(), nation, message);
                 full.add(String.valueOf(nation.sendMail(key, subjectF, messageF)));
             } catch (Throwable e) {
                 e.printStackTrace();

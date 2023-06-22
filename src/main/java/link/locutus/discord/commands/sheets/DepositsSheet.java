@@ -3,6 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -30,6 +31,7 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import static link.locutus.discord.util.PnwUtil.convertedTotal;
@@ -67,7 +69,7 @@ public class DepositsSheet extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         GuildDB db = Locutus.imp().getGuildDB(guild);
 
-        Message message = RateLimitUtil.complete(channel().sendMessage("Please wait..."));
+        CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Please wait...");
 
         SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.DEPOSITS_SHEET);
 
@@ -125,7 +127,7 @@ public class DepositsSheet extends Command {
                 }
                 if (nations.isEmpty()) return "No members found";
             }
-        } else if (args.size() >= 1) {
+        } else {
             nations = (DiscordUtil.parseNations(guild, args.get(0)));
             if (args.size() == 2) {
                 Set<Integer> alliances = DiscordUtil.parseAlliances(guild, args.get(1));
@@ -133,8 +135,6 @@ public class DepositsSheet extends Command {
                 for (Integer alliance : alliances) tracked.add(alliance.longValue());
                 tracked = PnwUtil.expandCoalition(tracked);
             }
-        } else {
-            return usage(args.size(), unkown, channel);
         }
 
         double[] aaTotalPositive = ResourceType.getBuffer();
@@ -143,7 +143,11 @@ public class DepositsSheet extends Command {
         long last = System.currentTimeMillis();
         for (DBNation nation : nations) {
             if (System.currentTimeMillis() - last > 10000) {
-                RateLimitUtil.queue(channel().editMessageById(message.getIdLong(), "calculating for: " + nation.getNation()));
+                IMessageBuilder msg = msgFuture.get();
+                if (msg != null) {
+                    msg.clear();
+                    msg.append("calculating for: " + nation.getNation()).send();
+                }
                 last = System.currentTimeMillis();
             }
             Map<DepositType, double[]> deposits = nation.getDeposits(db, tracked, useTaxBase, useOffset, 0L, 0L);

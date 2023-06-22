@@ -11,6 +11,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -183,6 +185,7 @@ public class MilitaryRanking extends Command {
             }
         }
 
+        IMessageBuilder msg = channel.create();
         {
             List<List<Object>> values = sheet.getValues();
 
@@ -251,16 +254,16 @@ public class MilitaryRanking extends Command {
             DrawableWriter writer = DrawableWriterFactory.getInstance().get("image/png");
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             writer.write(plot, baos, 1400, 600);
-            RateLimitUtil.queue(channel.sendFile(baos.toByteArray(), ("img.png")));
+            msg.image("img.png", baos.toByteArray());
         }
 
         sheet.clear("A:Z");
         sheet.set(0, 0);
 
-        String msg = "> Each bar is segmented into four sections, from bottom to top: (soldiers, tanks, planes, ships)\n" +
-                "> Each alliance is grouped by sphere and color coded";
+        msg.append("> Each bar is segmented into four sections, from bottom to top: (soldiers, tanks, planes, ships)\n" +
+                "> Each alliance is grouped by sphere and color coded");
 
-        sheet.send(channel, null, msg).send();
+        sheet.attach(msg).send();
         return null;
     }
 }

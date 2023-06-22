@@ -3,6 +3,7 @@ package link.locutus.discord.commands.rankings;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Transaction2;
@@ -17,6 +18,7 @@ import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class ProlificOffshores extends Command {
 
@@ -72,7 +74,7 @@ public class ProlificOffshores extends Command {
                 .sort()
                 .nameKeys(f -> PnwUtil.getName(f, true))
                 .limit(10)
-                .build(event, "Prolific Offshores (" + days + " days)");
+                .build(author, channel, fullCommandRaw, "Prolific Offshores (" + days + " days)");
 
         return null;
     }

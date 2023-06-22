@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.account.question.questions;
 
 import link.locutus.discord.commands.account.question.Question;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.entities.DBNation;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
@@ -18,7 +19,7 @@ public enum MMRTutorial implements Question {
 
     DONE("That's all  for now. Check back later.", true) {
         @Override
-        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, GuildMessageChannel channel, String input) throws IOException {
+        public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             return false;
         }
     }

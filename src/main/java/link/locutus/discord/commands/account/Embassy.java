@@ -89,9 +89,9 @@ public class Embassy extends Command {
 
         String embassyName = aaName + "-" + aa;
 
-        TextChannel channel = RateLimitUtil.complete(category.createTextChannel(embassyName).setParent(category));
-        FACommands.updateEmbassyPerms(channel, role, author, true);
+        TextChannel embassyChan = RateLimitUtil.complete(category.createTextChannel(embassyName).setParent(category));
+        FACommands.updateEmbassyPerms(embassyChan, role, author, true);
 
-        return "Embassy: <#" + channel.getId() + ">";
+        return "Embassy: <#" + embassyChan.getId() + ">";
     }
 }

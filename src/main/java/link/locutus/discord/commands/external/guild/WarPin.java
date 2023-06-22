@@ -4,6 +4,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -12,6 +14,8 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
@@ -38,13 +42,14 @@ public class WarPin extends Command {
         WarCategory warChannels = db.getWarChannel();
         if (warChannels == null) return "War channels are not enabled.";
 
-        WarCategory.WarRoom warRoom = warChannels.getWarRoom(channel);
+        MessageChannel textChannel = channel instanceof DiscordChannelIO ? ((DiscordChannelIO) channel).getChannel() : null;
+        WarCategory.WarRoom warRoom = warChannels.getWarRoom((GuildMessageChannel) textChannel);
         if (warRoom == null) return "This command must be run in a war room.";
 
         IMessageBuilder message = warRoom.updatePin(true);
         if (message == null) return "No war pin found.";
-        TextChannel channel = warRoom.channel;
-        String url = DiscordUtil.getChannelUrl(channel) + "/" + message.getId();
+        TextChannel wChannel = warRoom.channel;
+        String url = DiscordUtil.getChannelUrl(wChannel) + "/" + message.getId();
         return "Updated: " + url;
     }
 }

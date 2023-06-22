@@ -50,7 +50,7 @@ public class UnitRanking extends Command {
             if (group.equals("*")) {
                 nations = (Locutus.imp().getNationDB().getNations().values());
             } else {
-                Set<Integer> alliances = DiscordUtil.parseAlliances(DiscordUtil.getDefaultGuild(event), group);
+                Set<Integer> alliances = DiscordUtil.parseAlliances(guild, group);
                 if (alliances == null || alliances.isEmpty()) {
                     return "Invalid aa/coalition: " + group;
                 }

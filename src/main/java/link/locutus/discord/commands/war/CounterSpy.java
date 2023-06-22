@@ -3,6 +3,8 @@ package link.locutus.discord.commands.war;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -27,6 +29,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 public class CounterSpy extends Command {
@@ -68,7 +71,7 @@ public class CounterSpy extends Command {
                 }
             }
         }
-        if (args.size() != 2 && args.size() != 3) return usage(args.size(), unkown, channel);
+        if (args.size() != 2 && args.size() != 3) return usage(args.size(), 2, 3, channel);
 
         DBNation enemy;
         if (args.get(0).startsWith("" + Settings.INSTANCE.PNW_URL() + "/nation/war/")) {
@@ -108,14 +111,14 @@ public class CounterSpy extends Command {
         if (args.size() == 3) {
             toCounter = DiscordUtil.parseNations(guild, args.get(2), false, true);
         } else {
-            if (me.getAlliance_id() == 0) return usage(args.size(), unkown, channel);
+            if (me.getAlliance_id() == 0) return usage("You are not in an alliance", channel);
             toCounter = Locutus.imp().getNationDB().getNations(Collections.singleton(me.getAlliance_id()));
         }
         toCounter.removeIf(n -> n.getSpies() == 0 || !n.isInSpyRange(enemy) || n.getActive_m() > TimeUnit.DAYS.toMinutes(2));
 
         List<Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>>> netDamage = new ArrayList<>();
 
-        Message msg = RateLimitUtil.complete(channel.sendMessage("Please wait..."));
+        CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Please wait...");
 
         try {
             Integer enemySpies = enemy.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE);
