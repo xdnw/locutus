@@ -1436,7 +1436,7 @@ public class IACommands {
     private String channelMemberInfo(Set<Integer> aaIds, Role memberRole, Member member) {
         DBNation nation = DiscordUtil.getNation(member.getUser());
 
-        StringBuilder response = new StringBuilder(member.getUser().getName() + "#" + member.getUser().getDiscriminator());
+        StringBuilder response = new StringBuilder(DiscordUtil.getFullUsername(member.getUser()));
         response.append(" | `" + member.getAsMention() + "`");
         if (nation != null) {
             response.append(" | N:" + nation.getNation());
@@ -1502,7 +1502,7 @@ public class IACommands {
     public String memberChannels(@Me Guild guild, Member member) {
         List<String> channels = guild.getTextChannels().stream().filter(f -> f.getMembers().contains(member)).map(f -> f.getAsMention()).collect(Collectors.toList());
         User user = member.getUser();
-        return user.getName() + "#" + user.getDiscriminator() + " has access to:\n" +
+        return DiscordUtil.getFullUsername(user) + " has access to:\n" +
                 StringMan.join(channels, "\n");
     }
 

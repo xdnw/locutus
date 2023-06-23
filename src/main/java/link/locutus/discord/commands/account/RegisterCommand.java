@@ -125,7 +125,7 @@ public class RegisterCommand extends Command {
                 if (nation.getUserId() != null) continue;
                 if (discordDb.getUserFromDiscordId(member.getIdLong()) != null) continue;
 
-                String fullDiscriminator = member.getUser().getName() + "#" + member.getUser().getDiscriminator();
+                String fullDiscriminator = DiscordUtil.getFullUsername(user);
                 PNWUser pnwUser = new PNWUser(nation.getNation_id(), member.getIdLong(), fullDiscriminator);
 
                 discordDb.addUser(pnwUser);
@@ -145,7 +145,7 @@ public class RegisterCommand extends Command {
     public String register(Guild guild, GuildDB db, User user, int nationId, boolean force) throws IOException {
         boolean notRegistered = DiscordUtil.getUserByNationId(nationId) == null;
 
-        String fullDiscriminator = user.getName() + "#" + user.getDiscriminator();
+        String fullDiscriminator = DiscordUtil.getFullUsername(user);
 
         String errorMsg = "1. Go to: <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/>\n" +
                 "2. Scroll down to where it says Discord Username:\n" +
@@ -165,7 +165,7 @@ public class RegisterCommand extends Command {
                         "3. Put your **DISCORD ID** `" + user.getIdLong() + "` in the field\n" +
                         "4. Click save\n" +
                         "5. Run the command " + CM.register.cmd.create(nationId + "").toSlashCommand() + " again";
-                checkId = true;
+                checkId = fullDiscriminator.contains("#");
             }
         }
 
@@ -179,7 +179,7 @@ public class RegisterCommand extends Command {
                 }
                 boolean success = true;
 
-                String userName = user.getName() + "#" + user.getDiscriminator();
+                String userName = DiscordUtil.getFullUsername(user);
                 if (checkId) {
                     userName = "" + user.getIdLong();
                 }

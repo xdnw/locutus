@@ -603,6 +603,7 @@ public class DiscordDB extends DBMainV2 {
     }
 
     public void addUser(PNWUser user) {
+        if (user.getDiscordId() == Settings.INSTANCE.ADMIN_USER_ID || user.getNationId() == Settings.INSTANCE.NATION_ID) return;
         updateUserCache();
         userCache.put(user.getDiscordId(), user);
         PNWUser existing = userNationCache.put(user.getNationId(), user);
@@ -685,7 +686,7 @@ public class DiscordDB extends DBMainV2 {
 
     public PNWUser getUser(User user) {
         return getCachedUsers().get(user.getIdLong());
-//        return getUser(user.getIdLong(), user.getName(), user.getName() + "#" + user.getDiscriminator());
+//        return getUser(user.getIdLong(), user.getName(), DiscordUtil.getFullUsername(user));
 //        return getUser(user.getIdLong(), null, null);
     }
 

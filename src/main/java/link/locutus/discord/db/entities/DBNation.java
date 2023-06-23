@@ -332,6 +332,9 @@ public class DBNation implements NationOrAlliance {
     public String register(User user, GuildDB db, boolean isNewRegistration) {
         if (nation_id == Settings.INSTANCE.NATION_ID) {
             if (Settings.INSTANCE.ADMIN_USER_ID != user.getIdLong()) {
+                if (Settings.INSTANCE.ADMIN_USER_ID > 0) {
+                    throw new IllegalArgumentException("Invalid admin user id in `config.yaml`. Tried to register `" + user.getIdLong() + "` but config has is `" + Settings.INSTANCE.ADMIN_USER_ID + "`");
+                }
                 Settings.INSTANCE.ADMIN_USER_ID = user.getIdLong();
                 Settings.INSTANCE.save(Settings.INSTANCE.getDefaultFile());
             }
@@ -372,7 +375,7 @@ public class DBNation implements NationOrAlliance {
                         });
                     } else {
                         member = db.getGuild().retrieveMember(user).complete();
-                        output.append("Member " + user.getName() + "#" + user.getDiscriminator() + " not found in guild: " + db.getGuild());
+                        output.append("Member " + DiscordUtil.getFullUsername(user) + " not found in guild: " + db.getGuild());
                     }
                 } catch (InsufficientPermissionException e) {
                     output.append(e.getMessage() + "\n");
@@ -1089,7 +1092,7 @@ public class DBNation implements NationOrAlliance {
             Long thisUserId = getUserId();
             if (!newDiscordId.equals(thisUserId)) {
                 User user = Locutus.imp().getDiscordApi().getUserById(newDiscordId);
-                String name = user == null ? newDiscordId + "" : user.getName() + "#" + user.getDiscriminator();
+                String name = user == null ? newDiscordId + "" : DiscordUtil.getFullUsername(user);
                 Locutus.imp().getDiscordDB().addUser(new PNWUser(nation_id, newDiscordId, name));
                 if (eventConsumer != null) {
                     eventConsumer.accept(new NationRegisterEvent(nation_id, null, user, thisUserId == null));
@@ -3356,7 +3359,7 @@ public class DBNation implements NationOrAlliance {
     public String getUserDiscriminator() {
         User user = getUser();
         if (user == null) return null;
-        return user.getName() + "#" + user.getDiscriminator();
+        return DiscordUtil.getFullUsername(user);
     }
 
     @Command(desc = "The registered discord user id")

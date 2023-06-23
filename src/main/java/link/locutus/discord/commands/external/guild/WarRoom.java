@@ -87,7 +87,7 @@ public class WarRoom extends Command {
             MessageChannel textChannel = channel instanceof DiscordChannelIO ? ((DiscordChannelIO) channel).getChannel() : null;
             WarCategory.WarRoom room = warCat.getWarRoom((GuildMessageChannel) textChannel);
             if (room != null) {
-                room.delete("Closed by " + author.getName() + "#" + author.getDiscriminator());
+                room.delete("Closed by " + DiscordUtil.getFullUsername(author));
                 return "Goodbye.";
             } else {
                 return "You are not in a war room!";

@@ -55,7 +55,7 @@ public class SyncWarRooms extends Command {
                             return "Updated " + textChannel.getAsMention();
                         case "delete":
                             String name = textChannel.getName();
-                            room.delete("Deleted by " + author.getName() + "#" + author.getDiscriminator());
+                            room.delete("Deleted by " + DiscordUtil.getFullUsername(author));
                             return "Deleted " + name;
                     }
 

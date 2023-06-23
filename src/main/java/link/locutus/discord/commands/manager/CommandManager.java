@@ -348,7 +348,7 @@ public class CommandManager {
         for (WarCategory.WarRoom other : rooms) {
             if (other == room || other.channel == null) continue;
 
-            String userPrefix = msgUser.getName() + "#" + msgUser.getDiscriminator();
+            String userPrefix = DiscordUtil.getFullUsername(msgUser);
             DBNation authorNation = DiscordUtil.getNation(msgUser);
             if (authorNation != null) {
                 userPrefix = guild.getName() + "|" + authorNation.getNation() + "/`" + userPrefix + "`";

@@ -35,7 +35,7 @@ public class PNWUser {
     public User getUser() {
         User user = Locutus.imp().getDiscordApi().getUserById(discordId);
         if (user != null && !discordName.contains("#")) {
-            discordName = user.getName() + "#" + user.getDiscriminator();
+            discordName = DiscordUtil.getFullUsername(user);
             Locutus.imp().getDiscordDB().addUser(this);
         }
         return user;
@@ -107,7 +107,7 @@ public class PNWUser {
     public String getDiscordName() {
         User user = Locutus.imp().getDiscordApi().getUserById(discordId);
         if (user != null) {
-            discordName = user.getName() + "#" + user.getDiscriminator();
+            discordName = DiscordUtil.getFullUsername(user);
         }
         return discordName;
     }

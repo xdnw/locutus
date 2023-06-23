@@ -39,7 +39,7 @@ public class InterviewMessage {
 
     public String getUsername() {
         User user = DiscordUtil.getUser(sender);
-        return user == null ? "<@" + sender + ">" : user.getName() + "#" + user.getDiscriminator();
+        return user == null ? "<@" + sender + ">" : DiscordUtil.getFullUsername(user);
     }
 
     public static JsonArray toJsonList(List<InterviewMessage> messages) {

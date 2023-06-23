@@ -100,7 +100,7 @@ public class AutoRole extends Command {
             User user = nation.getUser();
             if (user == null) return "User is not registered.";
             Member member = db.getGuild().getMember(user);
-            if (member == null) return "Member not found in guild: " + user.getName() + "#" + user.getDiscriminator();
+            if (member == null) return "Member not found in guild: " + DiscordUtil.getFullUsername(user);
             List<String> output = new ArrayList<>();
             Consumer<String> out = output::add;
             task.autoRole(member, out);

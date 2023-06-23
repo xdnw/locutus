@@ -406,7 +406,7 @@ public class DiscordCommands {
     @Command(desc = "Register your discord user with your Politics And War nation.")
     public String register(@Me GuildDB db, @Me User user, /* @Default("%user%")  */ DBNation nation) throws IOException {
         boolean notRegistered = DiscordUtil.getUserByNationId(nation.getNation_id()) == null;
-        String fullDiscriminator = user.getName() + "#" + user.getDiscriminator();
+        String fullDiscriminator = DiscordUtil.getFullUsername(user);
 
         String errorMsg = "1. Go to: <" + Settings.INSTANCE.PNW_URL() + "/nation/edit/>\n" +
                 "2. Scroll down to where it says Discord Username:\n" +
@@ -436,20 +436,20 @@ public class DiscordCommands {
         if (existingUser != null && existingUser.getNationId() != nation.getNation_id()) {
             if (existingUser.getDiscordId() != id) {
                 errorMsg = discordIdErrorMsg;
-                checkId = true;
+                checkId = fullDiscriminator.contains("#");
             }
         }
         Long existingUserId = nation.getUserId();
         if (existingUserId != null && existingUserId != id) {
             errorMsg = discordIdErrorMsg;
-            checkId = true;
+            checkId = fullDiscriminator.contains("#");
         }
         try {
             String pnwDiscordName = nation.fetchUsername();
             if (pnwDiscordName == null || pnwDiscordName.isEmpty()) {
                 return errorMsg;
             }
-            String userName = user.getName() + "#" + user.getDiscriminator();
+            String userName = DiscordUtil.getFullUsername(user);
             if (checkId) {
                 userName = "" + user.getIdLong();
             }
