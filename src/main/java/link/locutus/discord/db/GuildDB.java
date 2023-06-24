@@ -923,17 +923,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 e.printStackTrace();
             }
         };
-        // deprecated
-//        {
-//            String create = "CREATE TABLE IF NOT EXISTS `BANK_DEPOSIT` (`nationId` INT NOT NULL, `resource` INT NOT NULL, `amount` INT NOT NULL, `note` VARCHAR NOT NULL, PRIMARY KEY(nationId, resource, note))";
-//            try (Statement stmt = getConnection().createStatement()) {
-//                stmt.addBatch(create);
-//                stmt.executeBatch();
-//                stmt.clearBatch();
-//            } catch (SQLException e) {
-//                e.printStackTrace();
-//            }
-//        };
         {
             String create = "CREATE TABLE IF NOT EXISTS `LOANS` (`loan_id` INTEGER PRIMARY KEY AUTOINCREMENT, `server` BIGINT NOT NULL, `message`, `receiver` INT NOT NULL, `resources` BLOB NOT NULL, `due` BIGINT NOT NULL, `repaid` BIGINT NOT NULL)";
             try (Statement stmt = getConnection().createStatement()) {
@@ -944,6 +933,213 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 e.printStackTrace();
             }
         };
+        { // grants
+            // project_grants
+            //varchat Name
+            //long Project
+            //varchar NationFilter
+            //long EconRole
+            //long SelfRole
+            //int FromBracket
+            //boolean UseReceiverBracket
+            //int MaxTotal
+            //int MaxDay
+            //int MaxGranterDay
+            String projects = "CREATE TABLE IF NOT EXISTS `PROJECT_GRANTS` " +
+                    "(`grant_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "`name` VARCHAR NOT NULL, " +
+                    "`project` BIGINT NOT NULL, " +
+                    "`nation_filter` VARCHAR NOT NULL, " +
+                    "`econ_role` BIGINT NOT NULL, " +
+                    "`self_role` BIGINT NOT NULL, " +
+                    "`from_bracket` BIGINT NOT NULL, " +
+                    "`use_receiver_bracket` BOOLEAN NOT NULL, " +
+                    "`max_total` INT NOT NULL, " +
+                    "`max_day` INT NOT NULL, " +
+                    "`max_granter_day` INT NOT NULL)";
+
+            // city_grants
+            //int min_city
+            //int max_city
+            //varchar Name
+            //varchar NationFilter
+            //long EconRole
+            //long SelfRole
+            //int FromBracket
+            //boolean UseReceiverBracket
+            //int MaxTotal
+            //int MaxDay
+            //int MaxGranterDay
+            String cities = "CREATE TABLE IF NOT EXISTS `CITY_GRANTS` " +
+                    "(`grant_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "`min_city` INT NOT NULL, " +
+                    "`max_city` INT NOT NULL, " +
+                    "`name` VARCHAR NOT NULL, " +
+                    "`nation_filter` VARCHAR NOT NULL, " +
+                    "`econ_role` BIGINT NOT NULL, " +
+                    "`self_role` BIGINT NOT NULL, " +
+                    "`from_bracket` BIGINT NOT NULL, " +
+                    "`use_receiver_bracket` BOOLEAN NOT NULL, " +
+                    "`max_total` INT NOT NULL, " +
+                    "`max_day` INT NOT NULL, " +
+                    "`max_granter_day` INT NOT NULL)";
+
+            //
+            //city_warchest
+            //byte[] allowance_per_city
+            //varchar Name
+            //varchar NationFilter
+            //long track_days
+            //boolean sutract_expenditure
+            //long overdraw_percent_cents
+            //long EconRole
+            //long SelfRole
+            //int FromBracket
+            //boolean UseReceiverBracket
+            //int MaxTotal
+            //int MaxDay
+            //int MaxGranterDay
+            String warchest = "CREATE TABLE IF NOT EXISTS `CITY_WARCHEST` " +
+                    "(`grant_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "`allowance_per_city` BLOB NOT NULL, " +
+                    "`name` VARCHAR NOT NULL, " +
+                    "`nation_filter` VARCHAR NOT NULL, " +
+                    "`track_days` BIGINT NOT NULL, " +
+                    "`subtract_expenditure` BOOLEAN NOT NULL, " +
+                    "`overdraw_percent_cents` BIGINT NOT NULL, " +
+                    "`econ_role` BIGINT NOT NULL, " +
+                    "`self_role` BIGINT NOT NULL, " +
+                    "`from_bracket` BIGINT NOT NULL, " +
+                    "`use_receiver_bracket` BOOLEAN NOT NULL, " +
+                    "`max_total` INT NOT NULL, " +
+                    "`max_day` INT NOT NULL, " +
+                    "`max_granter_day` INT NOT NULL)";
+            //
+            //Grant template infra
+            //long level
+            //boolean onlyNewCities
+            //boolean track_days
+            //long require_n_offensives
+            //boolean allow_rebuild
+            //varchar Name
+            //varchar NationFilter
+            //long EconRole
+            //long SelfRole
+            //int FromBracket
+            //boolean UseReceiverBracket
+            //int MaxTotal
+            //int MaxDay
+            //int MaxGranterDay
+            String infra = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_INFRA` " +
+                    "(`grant_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "`level` BIGINT NOT NULL, " +
+                    "`only_new_cities` BOOLEAN NOT NULL, " +
+                    "`track_days` BOOLEAN NOT NULL, " +
+                    "`require_n_offensives` BIGINT NOT NULL, " +
+                    "`allow_rebuild` BOOLEAN NOT NULL, " +
+                    "`name` VARCHAR NOT NULL, " +
+                    "`nation_filter` VARCHAR NOT NULL, " +
+                    "`econ_role` BIGINT NOT NULL, " +
+                    "`self_role` BIGINT NOT NULL, " +
+                    "`from_bracket` BIGINT NOT NULL, " +
+                    "`use_receiver_bracket` BOOLEAN NOT NULL, " +
+                    "`max_total` INT NOT NULL, " +
+                    "`max_day` INT NOT NULL, " +
+                    "`max_granter_day` INT NOT NULL)";
+            //
+            //Grant template land
+            //long level
+            //boolean onlyNewCities
+            //varchar Name
+            //varchar NationFilter
+            //long EconRole
+            //long SelfRole
+            //int FromBracket
+            //boolean UseReceiverBracket
+            //int MaxTotal
+            //int MaxDay
+            //int MaxGranterDay
+            String land = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_LAND` " +
+                    "(`grant_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "`level` BIGINT NOT NULL, " +
+                    "`only_new_cities` BOOLEAN NOT NULL, " +
+                    "`name` VARCHAR NOT NULL, " +
+                    "`nation_filter` VARCHAR NOT NULL, " +
+                    "`econ_role` BIGINT NOT NULL, " +
+                    "`self_role` BIGINT NOT NULL, " +
+                    "`from_bracket` BIGINT NOT NULL, " +
+                    "`use_receiver_bracket` BOOLEAN NOT NULL, " +
+                    "`max_total` INT NOT NULL, " +
+                    "`max_day` INT NOT NULL, " +
+                    "`max_granter_day` INT NOT NULL)";
+            //
+            //Grant template build
+            //byte[] build
+            //boolean useOptimal
+            //long mmr
+            //long track_days
+            //boolean allow_switch_after_offensive
+            //varchar Name
+            //varchar NationFilter
+            //long EconRole
+            //long SelfRole
+            //int FromBracket
+            //boolean UseReceiverBracket
+            //int MaxTotal
+            //int MaxDay
+            //int MaxGranterDay
+            String build = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_BUILD` " +
+                    "(`grant_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "`build` BLOB NOT NULL, " +
+                    "`use_optimal` BOOLEAN NOT NULL, " +
+                    "`mmr` BIGINT NOT NULL, " +
+                    "`track_days` BIGINT NOT NULL, " +
+                    "`allow_switch_after_offensive` BOOLEAN NOT NULL, " +
+                    "`name` VARCHAR NOT NULL, " +
+                    "`nation_filter` VARCHAR NOT NULL, " +
+                    "`econ_role` BIGINT NOT NULL, " +
+                    "`self_role` BIGINT NOT NULL, " +
+                    "`from_bracket` BIGINT NOT NULL, " +
+                    "`use_receiver_bracket` BOOLEAN NOT NULL, " +
+                    "`max_total` INT NOT NULL, " +
+                    "`max_day` INT NOT NULL, " +
+                    "`max_granter_day` INT NOT NULL)";
+            //
+            //Grant template raws
+            //long days
+            //long overdraw_percent_cents
+            //varchar Name
+            //varchar NationFilter
+            //long EconRole
+            //long SelfRole
+            //int FromBracket
+            //boolean UseReceiverBracket
+            //int MaxTotal
+            //int MaxDay
+            //int MaxGranterDay
+
+            String raws = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_RAWS` " +
+                "(`grant_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "`days` BIGINT NOT NULL, " +
+                "`overdraw_percent_cents` BIGINT NOT NULL, " +
+                "`name` VARCHAR NOT NULL, " +
+                "`nation_filter` VARCHAR NOT NULL, " +
+                "`econ_role` BIGINT NOT NULL, " +
+                "`self_role` BIGINT NOT NULL, " +
+                "`from_bracket` BIGINT NOT NULL, " +
+                "`use_receiver_bracket` BOOLEAN NOT NULL, " +
+                "`max_total` INT NOT NULL, " +
+                "`max_day` INT NOT NULL, " +
+                "`max_granter_day` INT NOT NULL)";
+                executeStmt(projects);
+                executeStmt(cities);
+                executeStmt(warchest);
+                executeStmt(land);
+                executeStmt(infra);
+                executeStmt(build);
+                executeStmt(raws);
+        }
+
 
 //        {
 //            String create = "CREATE TABLE IF NOT EXISTS `BEIGE_TARGET_ALERTS` (`user` INT NOT NULL, `target`)";
