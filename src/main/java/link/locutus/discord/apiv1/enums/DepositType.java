@@ -16,7 +16,10 @@ public enum DepositType {
     BUILD(GRANT, "Go to <https://politicsandwar.com/city/improvements/bulk-import/> and import the desired build"),
     WARCHEST(GRANT, "Go to <https://politicsandwar.com/nation/military/> and purchase the desired units"),
 
+    RAWS(GRANT, "Raw resources for city consumption"),
+
     EXPIRE(GRANT, "Will be excluded from deposits after the specified time e.g. `#expire=60d`"),
+
     ;
 
     private final String description;

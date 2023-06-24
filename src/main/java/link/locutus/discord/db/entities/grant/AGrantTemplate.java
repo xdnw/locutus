@@ -1,9 +1,10 @@
 package link.locutus.discord.db.entities.grant;
 
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 
-public class AGrantTemplate {
+public abstract class AGrantTemplate {
     private final GuildDB db;
     // int id
     // varchar Name
@@ -84,4 +85,6 @@ public class AGrantTemplate {
     public int getMaxGranterDay() {
         return maxGranterDay;
     }
+
+    public abstract DepositType getType();
 }
