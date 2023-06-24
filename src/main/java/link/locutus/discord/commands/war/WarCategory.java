@@ -259,7 +259,7 @@ public class WarCategory {
 
         switch (attack.getAttack_type()) {
             case AIRSTRIKE_INFRA:
-                message = name1 + " issued " + attack.getAttack_type() + " INFRA against " + name2;
+                message = name1 + " issued " + attack.getAttack_type() + " against " + name2;
                 showCasualties = true;
                 showInfra = true;
                 showSuccess = true;
@@ -268,14 +268,14 @@ public class WarCategory {
             case AIRSTRIKE_TANK:
             case AIRSTRIKE_MONEY:
             case AIRSTRIKE_SHIP:
-                String typeStr = attack.getAttack_type() + " " + attack.getAttack_type().getUnits()[1].getName();
+                String typeStr = attack.getAttack_type() + "";
                 message = name1 + " issued " + typeStr + " against " + name2;
                 showCasualties = true;
                 showInfra = true;
                 showSuccess = true;
                 break;
             case AIRSTRIKE_AIRCRAFT:
-                message = name1 + " issued " + attack.getAttack_type() + " AIRCRAFT against " + name2;
+                message = name1 + " issued " + attack.getAttack_type() + " against " + name2;
                 showCasualties = true;
                 showInfra = true;
                 showSuccess = true;
