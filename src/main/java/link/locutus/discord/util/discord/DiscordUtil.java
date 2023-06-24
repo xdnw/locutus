@@ -94,7 +94,10 @@ public class DiscordUtil {
                 String idStr = content.substring(1, end);
                 content = content.substring(end + 1).trim();
                 if (content.length() > 0 && Character.isAlphabetic(content.charAt(0)) && MathMan.isInteger(idStr) && Long.parseLong(idStr) == Settings.INSTANCE.APPLICATION_ID) {
-                    content = Settings.commandPrefix(true) + content;
+                    String prefix = Settings.commandPrefix(true);
+                    if (!content.startsWith(prefix)) {
+                        content = prefix + content;
+                    }
                 }
             }
         }

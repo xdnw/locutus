@@ -195,7 +195,7 @@ public class CommandManager {
             return false;
         }
 
-        String content = command;
+        String content = DiscordUtil.trimContent(command);
         if (content.length() == 0) {
             return false;
         }
