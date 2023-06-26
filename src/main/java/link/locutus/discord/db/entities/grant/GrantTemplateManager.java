@@ -1,15 +1,23 @@
 package link.locutus.discord.db.entities.grant;
 
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.NationFilterString;
 
+import java.lang.reflect.InvocationTargetException;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class GrantTemplateManager {
     private final GuildDB db;
-    public Map<String, Set<AGrantTemplate>> templates = new ConcurrentHashMap<>();
+    public Map<String, AGrantTemplate> templates = new ConcurrentHashMap<>();
 
     public GrantTemplateManager(GuildDB db) {
         this.db = db;
@@ -222,76 +230,30 @@ public class GrantTemplateManager {
         db.executeStmt(raws);
     }
 
-    public void loadTemplates() {
-        // projects
-        {
-            // project_grants
-            //long Project
-            //varchat Name
-            //varchar NationFilter
-            //long EconRole
-            //long SelfRole
-            //int FromBracket
-            //boolean UseReceiverBracket
-            //int MaxTotal
-            //int MaxDay
-            //int MaxGranterDay
-            String query = "SELECT * FROM `GRANT_TEMPLATE_PROJECT`";
-        }
+    public void loadTemplates() throws SQLException, InvocationTargetException, InstantiationException, IllegalAccessException {
+        Map<String, AGrantTemplate> templates = new HashMap<>();
 
-        // cities
-        {
-            // city_grants
-            //int min_city
-            //int max_city
-            //varchar Name
-            //varchar NationFilter
-            //long EconRole
-            //long SelfRole
-            //int FromBracket
-            //boolean UseReceiverBracket
-            //int MaxTotal
-            //int MaxDay
-            //int MaxGranterDay
-        }
+        for (TemplateTypes type : TemplateTypes.values()) {
+            String query = "SELECT * FROM `" + type.getTable() + "`";
 
-        // warchest
-        {
-
-        }
-
-        // land
-        {
-
-        }
-
-        // infra
-        {
-
-        }
-
-        // build
-        {
-
-        }
-
-        // raws
-        {
-
+            try (PreparedStatement stmt = db.prepareQuery(query)) {
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        AGrantTemplate template = type.create(db, rs);
+                        templates.put(template.getName(), template);
+                    }
+                }
+            }
         }
     }
 
     public void saveTemplate(AGrantTemplate template) {
-        // build
-        // city
-        // infra
-        // land
-        // project
-        // raws
-        // warchest
-        switch (template.getType()) {
-
+        String query = template.createQuery();
+        try (PreparedStatement stmt = db.prepareQuery(query)) {
+            template.setValues(stmt);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
-
     }
 }
