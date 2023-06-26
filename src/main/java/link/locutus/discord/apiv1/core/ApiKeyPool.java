@@ -10,6 +10,10 @@ public class ApiKeyPool {
     private final List<ApiKey> apiKeyPool;
     private int nextIndex;
 
+    /**
+     * Creates a new ApiKeyPool with the given keys.
+     * @param keys The keys to use.
+     */
     public ApiKeyPool(Collection<ApiKey> keys) {
         this.apiKeyPool = new ArrayList<>(keys);
         this.nextIndex = 0;

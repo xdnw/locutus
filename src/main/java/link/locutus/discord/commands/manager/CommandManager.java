@@ -185,17 +185,16 @@ public class CommandManager {
         return modernized;
     }
 
-    public boolean run(Guild guild, IMessageIO channel, User author, String command, final boolean async, final boolean noPermMsg) {
+    public boolean run(Guild guild, IMessageIO channel, final User msgUser, String command, final boolean async, final boolean noPermMsg) {
 //        if (Settings.INSTANCE.ENABLED_COMPONENTS.TAG) {
 //            getTag().checkTag(event);
 //        }
 
-        User msgUser = author;
         if (msgUser.isSystem() || msgUser.isBot()) {
             return false;
         }
 
-        String content = DiscordUtil.trimContent(command);
+        String content = DiscordUtil.trimContent(command.trim());
         if (content.length() == 0) {
             return false;
         }
@@ -223,7 +222,7 @@ public class CommandManager {
         }
 
         // prioritize updating nations using commands
-        DBNation nation = DiscordUtil.getNation(author);
+        DBNation nation = DiscordUtil.getNation(msgUser);
         if (nation != null) {
             Locutus.imp().getNationDB().markNationDirty(nation.getNation_id());
         }
@@ -240,7 +239,7 @@ public class CommandManager {
 
         Runnable task = () -> {
             try {
-                String content1 = DiscordUtil.trimContent(content);
+                String content1 = content;
 
                 String arg0 = content1.indexOf(' ') != -1 ? content1.substring(0, content1.indexOf(' ')) : content1;
                 if (arg0.isEmpty() || arg0.charAt(0) != prefix1) {
@@ -253,8 +252,7 @@ public class CommandManager {
 
                 if (!cmd.checkPermission(guild, msgUser)) {
                     if (noPermMsg) {
-                        DBNation nation1 = DiscordUtil.getNation(msgUser);
-                        if (nation1 == null) {
+                        if (nation == null) {
                             channel.sendMessage("Please use " + CM.register.cmd.toSlashMention() + "");
                             return;
                         }
@@ -271,18 +269,21 @@ public class CommandManager {
                     return;
                 }
 
-                DBNation nation1 = DiscordUtil.getNation(msgUser);
-                if (nation1 != null && !(cmd instanceof RegisterCommand) && !(cmd instanceof Unregister) && !(cmd instanceof MeCommand) && !(cmd instanceof HelpCommand) && !(cmd instanceof Who) && !(cmd instanceof Embassy)) {
-                    if (Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.contains(nation1.getAlliance_id()) || Settings.INSTANCE.MODERATION.BANNED_NATIONS.contains(nation1.getNation_id()) || Settings.INSTANCE.MODERATION.BANNED_USERS.contains(msgUser.getIdLong()))
+                if (nation != null && !(cmd instanceof RegisterCommand) && !(cmd instanceof Unregister) && !(cmd instanceof MeCommand) && !(cmd instanceof HelpCommand) && !(cmd instanceof Who) && !(cmd instanceof Embassy)) {
+                    if (Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.contains(nation.getAlliance_id()) || Settings.INSTANCE.MODERATION.BANNED_NATIONS.contains(nation.getNation_id()) || Settings.INSTANCE.MODERATION.BANNED_USERS.contains(msgUser.getIdLong()))
                         return;
                 }
 
-                if (!(cmd instanceof Noformat)) {
-                    String formatted = DiscordUtil.format(guild, channel, msgUser, nation1, content1);
-                    if (!content1.equals(formatted)) {
-                        assert guild != null;
-                    }
-                    content1 = formatted;
+                System.out.println("Content 1: " + content1);
+
+                if (!(cmd instanceof Noformat) && nation != null) {
+                    try {
+                        String formatted = DiscordUtil.format(guild, channel, msgUser, nation, content1);
+                        if (!content1.equals(formatted)) {
+                            assert guild != null;
+                        }
+                        content1 = formatted;
+                    } catch (IllegalArgumentException ignore) {}
                 }
 
                 List<String> split = StringMan.split(content1, ' ');
@@ -294,8 +295,7 @@ public class CommandManager {
 
                 String result;
                 try {
-//                    DBNation me = DiscordUtil.getNation(finalEvent);
-                    result = cmd.onCommand(guild, channel, msgUser, nation1, content1, args);
+                    result = cmd.onCommand(guild, channel, msgUser, nation, content1, args);
                 } catch (Throwable e) { // IllegalArgumentException | UnsupportedOperationException |
                     e.printStackTrace();
                     result = e.getClass().getSimpleName() + ": " + e.getMessage();

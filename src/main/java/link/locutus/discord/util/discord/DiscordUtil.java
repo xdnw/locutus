@@ -485,7 +485,7 @@ public class DiscordUtil {
             end = tmp;
         }
         start = Math.max(1, start);
-        end = Math.min(50, end);
+        end = Math.min(70, end);
         return new AbstractMap.SimpleEntry<>(start, end);
     }
 
