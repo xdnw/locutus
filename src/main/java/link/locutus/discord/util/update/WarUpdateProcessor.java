@@ -852,7 +852,7 @@ public class WarUpdateProcessor {
                             escalatedWars.add(war);
                         }
                     }
-                    if (escalatedWars != null) {
+                    if (escalatedWars != null && escalatedWars.size() > 2) {
                         AlertUtil.forEachChannel(f -> true, GuildKey.ESCALATION_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                             @Override
                             public void accept(MessageChannel channel, GuildDB guildDB) {

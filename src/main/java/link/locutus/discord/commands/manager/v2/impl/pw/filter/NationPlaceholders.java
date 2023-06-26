@@ -158,7 +158,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
                         return obj.toString();
                     }
                 }
-                return placeholder;
+                return null;
             }
         });
     }
