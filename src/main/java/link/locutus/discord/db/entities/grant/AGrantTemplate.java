@@ -6,7 +6,10 @@ import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationFilterString;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.util.offshore.Grant;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 
 import java.sql.PreparedStatement;
@@ -30,9 +33,10 @@ public abstract class AGrantTemplate {
     private boolean useReceiverBracket;
     private int maxTotal;
     private int maxDay;
+    private int maxGranterTotal;
     private int maxGranterDay;
 
-    public AGrantTemplate(GuildDB db, int id, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay) {
+    public AGrantTemplate(GuildDB db, int id, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal) {
         this.db = db;
         this.id = id;
         this.name = name;
@@ -44,6 +48,49 @@ public abstract class AGrantTemplate {
         this.maxTotal = maxTotal;
         this.maxDay = maxDay;
         this.maxGranterDay = maxGranterDay;
+        this.maxGranterTotal = maxGranterTotal;
+    }
+
+    public abstract String toListString();
+
+    public List<Transaction2> getGrantedTotal() {
+        return getGranted(Long.MAX_VALUE);
+    }
+
+    public List<Transaction2> getGranted(long time) {
+        return getGranted(time, null);
+    }
+
+    public List<Transaction2> getGranted(long time, DBNation sender) {
+        // TODO
+    }
+
+    public List<Transaction2> getGrantedTotal(DBNation sender) {
+        return getGranted(Long.MAX_VALUE, sender);
+    }
+
+    public String toFullString(DBNation sender, DBNation receiver) {
+        // sender or receiver may be null
+    }
+
+    public boolean hasRole(Member author) {
+        List<Role> roles = author.getRoles();
+        for (Role role : roles) {
+            if (role.getIdLong() == econRole) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean hasSelfRole(Member author) {
+        List<Role> roles = author.getRoles();
+        for (Role role : roles) {
+            if (role.getIdLong() == selfRole) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public GuildDB getDb() {
@@ -88,6 +135,10 @@ public abstract class AGrantTemplate {
 
     public int getMaxGranterDay() {
         return maxGranterDay;
+    }
+
+    public int getMaxGranterTotal() {
+        return maxGranterTotal;
     }
 
     public abstract TemplateTypes getType();
@@ -154,6 +205,7 @@ public abstract class AGrantTemplate {
         list.add("max_total");
         list.add("max_day");
         list.add("max_granter_day");
+        list.add("max_granter_total");
         return list;
     }
 
@@ -186,7 +238,8 @@ public abstract class AGrantTemplate {
         stmt.setInt(7, this.getMaxTotal());
         stmt.setInt(8, this.getMaxDay());
         stmt.setInt(9, this.getMaxGranterDay());
+        stmt.setInt(10, this.getMaxGranterTotal());
     }
 
-    public abstract void setValues(PreparedStatement stmt);
+    public abstract void setValues(PreparedStatement stmt) throws SQLException;
 }

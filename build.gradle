@@ -363,7 +363,7 @@ task graphqlCodegenProductService(type: GraphQLCodegenGradleTask) {
 sourceSets {
     main {
         java {
-            srcDirs 'src'
+            srcDirs 'src/main/java'
             srcDirs "$buildDir/generated"
             srcDirs "$buildDir/generated-src"
         }

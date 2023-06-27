@@ -69,6 +69,7 @@ public enum TemplateTypes {
                 rs.getInt("max_total"),
                 rs.getInt("max_day"),
                 rs.getInt("max_granter_day"),
+                rs.getInt("max_granter_total"),
                 rs
         );
     }
