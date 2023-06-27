@@ -9,6 +9,9 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.grant.AGrantTemplate;
+import link.locutus.discord.db.entities.grant.GrantTemplateManager;
+import link.locutus.discord.db.entities.grant.TemplateTypes;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -16,12 +19,100 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
 import java.util.*;
 
 public class GrantCommands {
+
+    @Command(desc = "List all grant templates for the specified category")
+    @RolePermission(Roles.MEMBER)
+    public void templateList(@Me GuildDB db, @Me Guild guild, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io, @Default TemplateTypes category) {
+        GrantTemplateManager manager = db.getGrantTemplateManager();
+        Set<AGrantTemplate> templates = category == null ? manager.getTemplates() : manager.getTemplates(category);
+
+        if (templates.isEmpty()) {
+            io.send("No templates found for category: " + category + "\n" +
+            "Create one with TODO");
+            return;
+        }
+
+        boolean hasAdmin = Roles.ADMIN.has(author, guild);
+
+        List<AGrantTemplate> grantOthers = new ArrayList<>();
+        List<AGrantTemplate> grantSelf = new ArrayList<>();
+        List<AGrantTemplate> noAccess = new ArrayList<>();
+
+        for (AGrantTemplate template : templates) {
+            if (template.isEnabled() && (hasAdmin || template.hasRole(member))) {
+                grantOthers.add(template);
+            } else if (template.isEnabled() && template.hasSelfRole(member)) {
+                grantSelf.add(template);
+            } else {
+                noAccess.add(template);
+            }
+        }
+
+        StringBuilder result = new StringBuilder();
+        if (!grantOthers.isEmpty()) {
+            result.append("### Grant Others:\n");
+            for (AGrantTemplate template : grantOthers) {
+                result.append("- ").append(template.getName()).append(" - ").append(template.toListString()).append("\n");
+            }
+        }
+        if (!grantSelf.isEmpty()) {
+            result.append("### Grant Self:\n");
+            for (AGrantTemplate template : grantSelf) {
+                result.append("- ").append(template.getName()).append(" - ").append(template.toListString()).append("\n");
+            }
+        }
+        if (!noAccess.isEmpty()) {
+            result.append("### No Access:\n");
+            for (AGrantTemplate template : noAccess) {
+                result.append("- ").append(template.getName()).append(" - ").append(template.toListString()).append("\n");
+            }
+        }
+
+        io.send(result.toString());
+    }
+
+    @Command(desc = "Full information about a grant template")
+    @RolePermission(Roles.MEMBER)
+    public void templateInfo(@Me GuildDB db, @Me Guild guild, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io, AGrantTemplate template, @Default DBNation receiver) {
+        io.create().embed(template.getName(), template.toFullString());
+    }
+
+    // grant_template Delete
+
+    // grant_template disable
+
+    // grant_template enable
+
+    // grant_template send <template> <receiver> <partial> <expire>
+
+    // grant_template create project
+    // grant_template create city
+    // grant_template create infra
+    // grant_template create land
+    // grant_template create raws
+    // grant_template create warchest
+
+    // register all the require commands
+    // grant_template require __key__ AGrantTemplate [args]
+    // template.addRequirement(requirement)
+    // requirements are nation filters
+
+    // grant_template unrequire <filter>
+
+    // grant_template list
+    // grant_template info <template>
+
+
+
+
 
     /*
     // 1111111111111111111111111111111111111111111111111111111111111222222222222222222222222222222222222222

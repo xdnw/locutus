@@ -16,6 +16,7 @@ import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKeys;
@@ -51,6 +52,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -84,6 +86,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     private GuildHandler handler;
     private IACategory iaCat;
 
+    private GrantTemplateManager grantTemplateManager;
+
 
     private volatile boolean cachedRoleAliases = false;
     private final Map<Roles, Map<Long, Long>> roleToAccountToDiscord;
@@ -94,6 +98,23 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         this.guild = guild;
         System.out.println(guild + " | AA:" + StringMan.getString(getInfo("ALLIANCE_ID", false)));
         importLegacyRoles();
+    }
+
+    public GrantTemplateManager getGrantTemplateManager() {
+        if (grantTemplateManager == null) {
+            synchronized (this) {
+                if (grantTemplateManager == null) {
+                    grantTemplateManager = new GrantTemplateManager(this);
+                    try {
+                        grantTemplateManager.loadTemplates();
+                    } catch (SQLException | InvocationTargetException | InstantiationException |
+                             IllegalAccessException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        }
+        return grantTemplateManager;
     }
 
     private void importLegacyRoles() {

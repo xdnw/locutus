@@ -23,18 +23,15 @@ public class GrantTemplateManager {
         this.db = db;
     }
 
+    public Set<AGrantTemplate> getTemplates() {
+        return Set.copyOf(templates.values());
+    }
+
+    public Set<AGrantTemplate> getTemplates(TemplateTypes type) {
+        return Set.copyOf(templates.values().stream().filter(t -> t.getType() == type).toList());
+    }
+
     public void createTables() {
-        // project_grants
-        //long Project
-        //varchat Name
-        //varchar NationFilter
-        //long EconRole
-        //long SelfRole
-        //int FromBracket
-        //boolean UseReceiverBracket
-        //int MaxTotal
-        //int MaxDay
-        //int MaxGranterDay
         String projects = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_PROJECT` " +
                 "(`grant_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "`name` VARCHAR NOT NULL, " +
@@ -48,18 +45,6 @@ public class GrantTemplateManager {
                 "`max_day` INT NOT NULL, " +
                 "`max_granter_day` INT NOT NULL)";
 
-        // city_grants
-        //int min_city
-        //int max_city
-        //varchar Name
-        //varchar NationFilter
-        //long EconRole
-        //long SelfRole
-        //int FromBracket
-        //boolean UseReceiverBracket
-        //int MaxTotal
-        //int MaxDay
-        //int MaxGranterDay
         String cities = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_CITY` " +
                 "(`grant_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "`min_city` INT NOT NULL, " +
@@ -74,21 +59,6 @@ public class GrantTemplateManager {
                 "`max_day` INT NOT NULL, " +
                 "`max_granter_day` INT NOT NULL)";
 
-        //
-        //city_warchest
-        //byte[] allowance_per_city
-        //long track_days
-        //boolean sutract_expenditure
-        //long overdraw_percent_cents
-        //varchar Name
-        //varchar NationFilter
-        //long EconRole
-        //long SelfRole
-        //int FromBracket
-        //boolean UseReceiverBracket
-        //int MaxTotal
-        //int MaxDay
-        //int MaxGranterDay
         String warchest = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_WARCHEST` " +
                 "(`grant_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "`allowance_per_city` BLOB NOT NULL, " +
@@ -104,22 +74,6 @@ public class GrantTemplateManager {
                 "`max_total` INT NOT NULL, " +
                 "`max_day` INT NOT NULL, " +
                 "`max_granter_day` INT NOT NULL)";
-        //
-        //Grant template infra
-        //long level
-        //boolean onlyNewCities
-        //boolean track_days
-        //long require_n_offensives
-        //boolean allow_rebuild
-        //varchar Name
-        //varchar NationFilter
-        //long EconRole
-        //long SelfRole
-        //int FromBracket
-        //boolean UseReceiverBracket
-        //int MaxTotal
-        //int MaxDay
-        //int MaxGranterDay
         String infra = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_INFRA` " +
                 "(`grant_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "`level` BIGINT NOT NULL, " +
@@ -136,19 +90,6 @@ public class GrantTemplateManager {
                 "`max_total` INT NOT NULL, " +
                 "`max_day` INT NOT NULL, " +
                 "`max_granter_day` INT NOT NULL)";
-        //
-        //Grant template land
-        //long level
-        //boolean onlyNewCities
-        //varchar Name
-        //varchar NationFilter
-        //long EconRole
-        //long SelfRole
-        //int FromBracket
-        //boolean UseReceiverBracket
-        //int MaxTotal
-        //int MaxDay
-        //int MaxGranterDay
         String land = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_LAND` " +
                 "(`grant_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "`level` BIGINT NOT NULL, " +
@@ -162,22 +103,6 @@ public class GrantTemplateManager {
                 "`max_total` INT NOT NULL, " +
                 "`max_day` INT NOT NULL, " +
                 "`max_granter_day` INT NOT NULL)";
-        //
-        //Grant template build
-        //byte[] build
-        //boolean useOptimal
-        //long mmr
-        //long track_days
-        //boolean allow_switch_after_offensive
-        //varchar Name
-        //varchar NationFilter
-        //long EconRole
-        //long SelfRole
-        //int FromBracket
-        //boolean UseReceiverBracket
-        //int MaxTotal
-        //int MaxDay
-        //int MaxGranterDay
         String build = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_BUILD` " +
                 "(`grant_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "`build` BLOB NOT NULL, " +
@@ -194,20 +119,6 @@ public class GrantTemplateManager {
                 "`max_total` INT NOT NULL, " +
                 "`max_day` INT NOT NULL, " +
                 "`max_granter_day` INT NOT NULL)";
-        //
-        //Grant template raws
-        //long days
-        //long overdraw_percent_cents
-        //varchar Name
-        //varchar NationFilter
-        //long EconRole
-        //long SelfRole
-        //int FromBracket
-        //boolean UseReceiverBracket
-        //int MaxTotal
-        //int MaxDay
-        //int MaxGranterDay
-
         String raws = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_RAWS` " +
                 "(`grant_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "`days` BIGINT NOT NULL, " +
