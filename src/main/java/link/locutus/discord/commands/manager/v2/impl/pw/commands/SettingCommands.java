@@ -1,12 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -72,6 +67,7 @@ public class SettingCommands {
 
     @Command(desc = "Configure any alliance or guild settings")
     @RolePermission(any = true, value = {Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS})
+    @NoFormat
     public static String info(@Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me,
                            @Arg("The setting to change or view")
                            @Default GuildSetting key,

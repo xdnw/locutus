@@ -8,14 +8,7 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -799,7 +792,7 @@ public class IACommands {
         if (sender == null) {
             auth = me.getAuth();
         } else {
-            auth = sender.getAuth(null);
+            auth = sender.getAuth(true);
             GuildDB authDB = Locutus.imp().getGuildDB(sender.getAlliance_id());
             boolean hasPerms = (Roles.INTERNAL_AFFAIRS.hasOnRoot(author)) || (authDB != null && Roles.INTERNAL_AFFAIRS.has(author, authDB.getGuild()));
             if (!hasPerms) return "You do not have permission to reply to this message";
@@ -877,7 +870,9 @@ public class IACommands {
         return null;
     }
 
+
     @Command(desc = "Send in-game mail to a list of nations")
+    @NoFormat
     public String mail(@Me DBNation me, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO channel, @Me User author, Set<DBNation> nations, String subject, @TextArea String message, @Switch("f") boolean confirm, @Arg("Send from the api key registered to the guild") @Switch("l") boolean sendFromGuildAccount, @Arg("The api key to use to send the mail") @Switch("a") String apiKey) throws IOException {
         message = MarkupUtil.transformURLIntoLinks(message);
 
@@ -1236,6 +1231,7 @@ public class IACommands {
 
     @Command(desc = "Bulk send the result of a bot command to a list of nations")
     @RolePermission(value=Roles.ADMIN)
+    @NoFormat
     public String mailCommandOutput(NationPlaceholders placeholders, ValueStore store, @Me GuildDB db, @Me Guild guild, @Me User author, @Me IMessageIO channel,
                                     @Arg("Nations to mail command results to") Set<DBNation> nations,
                                     String subject,

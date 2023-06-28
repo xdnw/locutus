@@ -1156,7 +1156,7 @@ public class OffshoreInstance {
 //                        DBAlliancePosition position = nation.getAlliancePosition();
 //                        if (nation.getPositionEnum().id >= Rank.MEMBER.id || position != null && position.hasPermission(AlliancePermission.WITHDRAW_BANK)) {
 //                            try {
-//                                Auth nationAuth = nation.getAuth(null);
+//                                Auth nationAuth = nation.getAuth(true);
 //                                if (nationAuth != null) auth = nationAuth;
 //                            } catch (IllegalArgumentException ignore) {}
 //                        }

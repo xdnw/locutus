@@ -68,7 +68,7 @@ public class MailCommand extends Command implements Noformat {
                 if (fromStr != null) {
                     DBNation from = DiscordUtil.parseNation(fromStr);
                     if (from == null) throw new IllegalArgumentException("Invalid sender: " + fromStr);
-                    auth = from.getAuth(null);
+                    auth = from.getAuth(true);
                     GuildDB authDB = Locutus.imp().getGuildDB(from.getAlliance_id());
                     boolean hasPerms = (Roles.INTERNAL_AFFAIRS.hasOnRoot(author)) || (authDB != null && Roles.INTERNAL_AFFAIRS.has(author, authDB.getGuild()));
                     if (!hasPerms) return "You do not have permission to reply to this message.";

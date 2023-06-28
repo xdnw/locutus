@@ -7,6 +7,7 @@ import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveValidators;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
@@ -166,6 +167,7 @@ public class CommandManager2 {
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "unblockadeRequests", "unblockade_requests");
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "allyEnemySheets", "ally_enemy_sheets");
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "spySheets", "spy_sheets");
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "memberEconPanel", "member_econ");
         this.commands.registerMethod(new WarCommands(), List.of("war", "room"), "warRoomSheet", "from_sheet");
         this.commands.registerMethod(new UnsortedCommands(), List.of("alerts"), "loginNotifier", "login");
 
@@ -446,6 +448,16 @@ public class CommandManager2 {
                 LocalValueStore<Object> finalLocals = createLocals(existingLocals, null, null, null, null, io, argsAndCmd);
                 if (callable instanceof ParametricCallable parametric) {
                     handleCall(io, () -> {
+                        if (parametric.getAnnotations().stream().noneMatch(a -> a instanceof NoFormat)) {
+                            for (Map.Entry<String, String> entry : finalArguments.entrySet()) {
+                                String key = entry.getKey();
+                                String value = entry.getValue();
+                                if (value.contains("{") && value.contains("}")) {
+                                    value = getNationPlaceholders().format(finalLocals, value);
+                                    entry.setValue(value);
+                                }
+                            }
+                        }
                         Object[] parsed = parametric.parseArgumentMap(finalArguments, finalLocals, validators, permisser);
                         return parametric.call(null, finalLocals, parsed);
                     });

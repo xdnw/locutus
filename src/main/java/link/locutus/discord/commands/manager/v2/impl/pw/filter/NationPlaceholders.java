@@ -61,19 +61,6 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         return new NationAttribute<>(id, "", typeFunction.getKey(), typeFunction.getValue());
     }
 
-    public Map.Entry<Type, Function<DBNation, Object>> getTypeFunction(ValueStore<?> store, String id, boolean ignorePerms) {
-        Map.Entry<Type, Function<DBNation, Object>> typeFunction;
-        try {
-            typeFunction = getPlaceholderFunction(store, id);
-        } catch (CommandUsageException ignore) {
-            return null;
-        } catch (Exception ignore2) {
-            if (!ignorePerms) throw ignore2;
-            return null;
-        }
-        return typeFunction;
-    }
-
     public NationAttributeDouble getMetricDouble(ValueStore store, String id, boolean ignorePerms) {
         ParametricCallable cmd = get(getCmd(id));
         if (cmd == null) return null;
@@ -141,8 +128,12 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     }
 
     public String format(ValueStore<?> store, String arg) {
-        User author = store.getProvided(Key.of(User.class, Me.class));
         DBNation me = store.getProvided(Key.of(DBNation.class, Me.class));
+        User author = null;
+        try {
+            author = store.getProvided(Key.of(User.class, Me.class));
+        } catch (Exception ignore) {
+        }
 
         if (author != null && arg.contains("%user%")) {
             arg = arg.replace("%user%", author.getAsMention());
@@ -152,6 +143,9 @@ public class NationPlaceholders extends Placeholders<DBNation> {
             @Override
             public String apply(String placeholder) {
                 NationAttribute result = NationPlaceholders.this.getMetric(store, placeholder, false);
+                if (result == null && !placeholder.startsWith("get")) {
+                    result = NationPlaceholders.this.getMetric(store, "get" + placeholder, false);
+                }
                 if (result != null) {
                     Object obj = result.apply(me);
                     if (obj != null) {

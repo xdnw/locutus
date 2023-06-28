@@ -176,6 +176,7 @@ public class DiscordCommands {
             `{prefix}embed 'Some Title' 'My First Embed' '~{prefix}fun say Hello {nation}' '{prefix}fun say "Goodbye {nation}"'`""",
             aliases = {"card", "embed"})
     @RolePermission(Roles.INTERNAL_AFFAIRS)
+    @NoFormat
     public String card(@Me IMessageIO channel, String title, String body, @TextArea List<String> commands) {
         try {
             String emoji = "\ufe0f\u20e3";

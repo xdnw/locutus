@@ -753,7 +753,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public Auth getAuth() {
-        return getAuth(Roles.ADMIN);
+        return getAuth(true);
     }
 
     public double getStrongestOffEnemyOfScore(Predicate<Double> filter) {
@@ -835,7 +835,7 @@ public class DBNation implements NationOrAlliance {
         return false;
     }
 
-    public Auth getAuth(Roles role) {
+    public Auth getAuth(boolean throwError) {
         if (this.auth != null && !this.auth.isValid()) this.auth = null;
         if (this.auth != null) return auth;
         synchronized (this) {
@@ -859,16 +859,9 @@ public class DBNation implements NationOrAlliance {
                 if (pass != null) {
                     auth = new Auth(nation_id, pass.getKey(), pass.getValue());
                 }
-
-                if (role != null) {
-                    User user = getUser();
-                    if (user != null && role.hasOnRoot(user)) {
-                        return Locutus.imp().getRootAuth();
-                    }
-                }
             }
         }
-        if (auth == null) {
+        if (auth == null && throwError) {
             throw new IllegalArgumentException("Please authenticate using " + CM.credentials.login.cmd.toSlashMention() + "");
         }
         return auth;
@@ -2138,6 +2131,30 @@ public class DBNation implements NationOrAlliance {
 
     public ApiKeyPool.ApiKey getApiKey(boolean dummy) {
         return Locutus.imp().getDiscordDB().getApiKey(nation_id);
+    }
+
+    @Command(desc = "Check if the nation has all permissions")
+    public boolean hasAllPermission(Set<AlliancePermission> permissions) {
+        if (rank.id >= Rank.HEIR.id) return true;
+        if (permissions == null || permissions.isEmpty()) return true;
+        DBAlliancePosition position = getAlliancePosition();
+        if (position == null) return false;
+        for (AlliancePermission perm : permissions) {
+            if (!position.hasPermission(perm)) return false;
+        }
+        return true;
+    }
+
+    @Command(desc = "Check if the nation has any permissions")
+    public boolean hasAnyPermission(Set<AlliancePermission> permissions) {
+        if (rank.id >= Rank.HEIR.id) return true;
+        if (permissions == null || permissions.isEmpty()) return true;
+        DBAlliancePosition position = getAlliancePosition();
+        if (position == null) return false;
+        for (AlliancePermission perm : permissions) {
+            if (position.hasPermission(perm)) return true;
+        }
+        return false;
     }
 
     public String commend(boolean isCommend) throws IOException {
@@ -3477,6 +3494,12 @@ public class DBNation implements NationOrAlliance {
             }
         }
         return null;
+    }
+
+    @Command(desc = "Renamed to `cityurl`")
+    @Deprecated
+    public String city(int index) {
+        throw new IllegalArgumentException("Please use `cityurl` instead");
     }
 
     @Command(desc = "Get the city url by index")

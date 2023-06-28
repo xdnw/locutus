@@ -9,13 +9,7 @@ import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
@@ -275,6 +269,7 @@ public class AdminCommands {
     @Command(desc = "Send an announcement to multiple nations, with random variations for each receiver\n")
     @RolePermission(Roles.ADMIN)
     @HasApi
+    @NoFormat
     public String announce(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me IMessageIO currentChannel,
                            @Me User author,
                            NationList sendTo,
@@ -1151,7 +1146,7 @@ public class AdminCommands {
             DBNation nation = DiscordUtil.getNation(member.getUser());
             if (nation != null && (alliances.isEmpty() || alliances.contains(nation.getAlliance_id()))) {
                 try {
-                    Auth auth = nation.getAuth(null);
+                    Auth auth = nation.getAuth(true);
                     registered.put(nation, Rank.byId(nation.getPosition()));
                     try {
                         ApiKeyPool.ApiKey key = auth.fetchApiKey();

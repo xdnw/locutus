@@ -24,7 +24,7 @@ public class EditAllianceTask implements Callable<String> {
 
     public EditAllianceTask(DBNation account, Consumer<Map<String, String>> modifier) {
         this.allianceId = account.getAlliance_id();
-        this.auth = account.getAuth(null);
+        this.auth = account.getAuth(true);
         this.modifier = modifier;
     }
 
