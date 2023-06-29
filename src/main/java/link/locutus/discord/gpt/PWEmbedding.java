@@ -6,7 +6,6 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 public abstract class PWEmbedding<T> {
     private final EmbeddingType type;
     private final String id;
-
     private final T obj;
     private final boolean shouldSave;
 

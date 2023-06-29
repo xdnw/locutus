@@ -221,10 +221,6 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
 
         @Command(desc="Econ panel for members")
         public void memberEconPanel(@Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel) {
-            if (db.getCoalition(Coalition.ALLIES).isEmpty()) {
-                throw new IllegalArgumentException("No `" + Coalition.ALLIES.name() + "` coalition. See " + CM.coalition.create.cmd.toSlashMention());
-            }
-
             Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
             String title = "Econ Panel";
             String body = """
