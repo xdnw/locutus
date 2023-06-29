@@ -80,15 +80,56 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+/**
+ * The GuildDB class represents a Discord guild database for the Locutus Discord bot written in Java.
+ * It is specifically designed for the web browser nation simulation game Politics And War.
+ *
+ * Responsibilities:
+ * - Managing guild-specific settings and configurations.
+ * - Handling various transactions and balances related to nations, alliances, and banks.
+ * - Handling announcements, interviews, copy pastas, and permissions within the guild.
+ * - Managing war channels and coalitions.
+ *
+ * Relationship to other classes:
+ * The GuildDB class interacts with other classes such as Locutus, ApiKeyPool, GrantTemplateManager, AllianceList,
+ * DBAlliance, DBNation, CityBuildRange, Transaction2, OffshoreInstance, and more, to perform its functionalities
+ * within the Discord bot and the Politics And War game.
+ *
+ * Constructor Summary:
+ * - GuildDB(Guild guild): Constructs a GuildDB object for the specified Discord guild.
+ *
+ * Field Summary:
+ * - private final Guild guild: The Discord guild associated with the GuildDB.
+ * - private volatile IAutoRoleTask autoRoleTask: The automatic role task associated with the GuildDB.
+ * - private GuildHandler handler: The guild handler associated with the GuildDB.
+ * - private IACategory iaCat: The IACategory associated with the GuildDB.
+ * - private GrantTemplateManager grantTemplateManager: The grant template manager associated with the GuildDB.
+ * - private boolean cachedRoleAliases: Flag indicating if role aliases are cached.
+ * - private final Map<Roles,Map<Long,Long>> roleToAccountToDiscord: Mapping of roles to Discord account IDs.
+ * - private EventBus eventBus: The event bus associated with the GuildDB.
+ * - private WarCategory warChannel: The war channel associated with the GuildDB.
+ * - public boolean warChannelInit: Flag indicating if the war channel is initialized.
+ * - private Throwable warCatError: Error associated with the war category.
+ * - private final String description: Description of the GuildDB class.
+ * - private final Map<GuildSetting,Object> infoParsed: Parsed information associated with the GuildDB.
+ * - private final Object nullInstance: Null instance object.
+ * - private Map<Class,Integer> permissions: Permissions associated with the GuildDB.
+ * - private Map<String,Set<Long>> coalitions: Coalitions associated with the GuildDB.
+ *
+ * Example Usage:
+ * Guild guild = event.getGuild();
+ * GuildDB guildDB = new GuildDB(guild);
+ * guildDB.addBalance(tx_datetime, account, banker, "Transaction note", amount);
+ *
+ * Most Related:
+ * {@link Locutus} - The main Discord bot class that utilizes the GuildDB for guild-specific operations.
+ */
 public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     private final Guild guild;
     private volatile IAutoRoleTask autoRoleTask;
     private GuildHandler handler;
     private IACategory iaCat;
-
     private GrantTemplateManager grantTemplateManager;
-
-
     private volatile boolean cachedRoleAliases = false;
     private final Map<Roles, Map<Long, Long>> roleToAccountToDiscord;
 
