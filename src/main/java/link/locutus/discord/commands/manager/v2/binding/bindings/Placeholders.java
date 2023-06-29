@@ -5,10 +5,7 @@ import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
-import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
-import link.locutus.discord.commands.manager.v2.command.CommandCallable;
-import link.locutus.discord.commands.manager.v2.command.CommandGroup;
-import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -182,6 +179,19 @@ public class Placeholders<T> {
             e2.printStackTrace();
             return "";
         }
+    }
+
+    public Map.Entry<Type, Function<T, Object>> getTypeFunction(ValueStore<?> store, String id, boolean ignorePerms) {
+        Map.Entry<Type, Function<T, Object>> typeFunction;
+        try {
+            typeFunction = getPlaceholderFunction(store, id);
+        } catch (CommandUsageException ignore) {
+            return null;
+        } catch (Exception ignore2) {
+            if (!ignorePerms) throw ignore2;
+            return null;
+        }
+        return typeFunction;
     }
 
     public Map.Entry<Type, Function<T, Object>> getPlaceholderFunction(ValueStore store, String input) {

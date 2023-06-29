@@ -11,7 +11,6 @@ import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.web.commands.HtmlInput;
 import org.json.JSONObject;
 
@@ -59,8 +58,6 @@ public class ParametricCallable implements ICommand {
     }
 
     public ParametricCallable(CommandCallable parent, ValueStore store, Object object, Method method, Command definition) {
-
-
         this.parent = parent;
         this.object = object;
         this.method = method;
@@ -170,6 +167,10 @@ public class ParametricCallable implements ICommand {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    public List<Annotation> getAnnotations() {
+        return Arrays.asList(annotations);
     }
 
     public String getSlashMention() {

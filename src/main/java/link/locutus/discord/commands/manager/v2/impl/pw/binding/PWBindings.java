@@ -15,6 +15,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
@@ -380,7 +381,12 @@ public class PWBindings extends BindingHelper {
         return Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
     }
 
-    @Binding(examples = "{nation}", value = "See: <https://github.com/xdnw/locutus/wiki/Nation-Filters>")
+    @Binding
+    public AlliancePlaceholders aa_placeholders() {
+        return Locutus.imp().getCommandManager().getV2().getAlliancePlaceholders();
+    }
+
+    @Binding(examples = "{nation}", value = "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
     public NationPlaceholder placeholder(ValueStore store, PermissionHandler permisser, String input) {
         CommandManager2 v2 = Locutus.imp().getCommandManager().getV2();
         NationPlaceholders placeholders = v2.getNationPlaceholders();
@@ -922,7 +928,7 @@ public class PWBindings extends BindingHelper {
     @Binding
     @Me
     public Auth auth(@Me DBNation nation) {
-        return nation.getAuth(null);
+        return nation.getAuth(true);
     }
 
     @Binding(value = "The reason for a nation's loot being known")
@@ -971,6 +977,11 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "In-game permission in an alliance")
     public AlliancePermission alliancePermission(String name) {
         return emum(AlliancePermission.class, name);
+    }
+
+    @Binding(value = "A comma separated list of In-game permission in an alliance")
+    public Set<AlliancePermission> alliancePermissions(String input) {
+        return emumSet(AlliancePermission.class, input);
     }
 
     @Binding(value = "Locutus guild settings")
@@ -1099,7 +1110,7 @@ public class PWBindings extends BindingHelper {
         return StringMan.parseUpper(NationMeta.BeigeAlertRequiredStatus.class, input);
     }
 
-    @Binding(value = "A numeric nation attribute. See: <https://github.com/xdnw/locutus/wiki/Nation-Filters>", examples = {"score", "ships", "land"})
+    @Binding(value = "A numeric nation attribute. See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>", examples = {"score", "ships", "land"})
     public NationAttributeDouble nationMetricDouble(ValueStore store, String input) {
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
         NationAttributeDouble metric = placeholders.getMetricDouble(store, input);
@@ -1110,7 +1121,7 @@ public class PWBindings extends BindingHelper {
         return metric;
     }
 
-    @Binding(value = "A nation attribute. See: <https://github.com/xdnw/locutus/wiki/Nation-Filters>", examples = {"color", "war_policy", "continent"})
+    @Binding(value = "A nation attribute. See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>", examples = {"color", "war_policy", "continent"})
     public NationAttribute nationMetric(ValueStore store, String input) {
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
         NationAttribute metric = placeholders.getMetric(store, input, false);

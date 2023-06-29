@@ -21,7 +21,7 @@ public class EditNationTask implements Callable<String> {
     private final Auth auth;
 
     public EditNationTask(DBNation account, Consumer<Map<String, String>> modifier) {
-        this.auth = account.getAuth(null);
+        this.auth = account.getAuth(true);
         this.modifier = modifier;
     }
 

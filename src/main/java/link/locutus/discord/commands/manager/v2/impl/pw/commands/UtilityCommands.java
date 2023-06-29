@@ -6,12 +6,7 @@ import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -20,6 +15,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
@@ -1276,9 +1272,10 @@ public class UtilityCommands {
 
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON,Roles.FOREIGN_AFFAIRS}, any=true)
     @Command(desc = "Create a sheet of alliances with customized columns\n" +
-            "See <https://github.com/xdnw/locutus/wiki/Nation-Filters> for a list of placeholders")
+            "See <https://github.com/xdnw/locutus/wiki/nation_placeholders> for a list of placeholders")
     @WhitelistPermission
-    public String AllianceSheet(NationPlaceholders placeholders, ValueStore store, @Me Guild guild, @Me IMessageIO channel, @Me User author, @Me GuildDB db,
+    @NoFormat
+    public String AllianceSheet(NationPlaceholders placeholders, AlliancePlaceholders aaPlaceholders, ValueStore store, @Me Guild guild, @Me IMessageIO channel, @Me User author, @Me GuildDB db,
                                 @Arg("The nations to include in each alliance")
                                 Set<DBNation> nations,
                                 @Arg("The columns to use in the sheet")
@@ -1334,7 +1331,8 @@ public class UtilityCommands {
                     }
                 }
 
-                String formatted = placeholders.format(store, arg);
+                String formatted = aaPlaceholders.format(guild, dbAlliance, author, arg);
+                formatted = placeholders.format(guild, nation, author, formatted);
 
                 header.set(i, formatted);
             }
@@ -1351,7 +1349,8 @@ public class UtilityCommands {
 
     @RolePermission(value = {Roles.MILCOM, Roles.ECON, Roles.INTERNAL_AFFAIRS}, any=true)
     @Command(desc = "A sheet of nations stats with customizable columns\n" +
-            "See <https://github.com/xdnw/locutus/wiki/Nation-Filters> for a list of placeholders")
+            "See <https://github.com/xdnw/locutus/wiki/nation_placeholders> for a list of placeholders")
+    @NoFormat
     public static void NationSheet(ValueStore store, NationPlaceholders placeholders, @Me IMessageIO channel, @Me GuildDB db, Set<DBNation> nations,
                                    @Arg("A space separated list of columns to use in the sheet\n" +
                                            "Can include NationAttribute as placeholders in columns\n" +

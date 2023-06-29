@@ -15,16 +15,7 @@ import link.locutus.discord.commands.info.optimal.OptimalBuild;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.AllowDeleted;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -541,7 +532,7 @@ public class UnsortedCommands {
         discordDB.addApiKey(me.getNation_id(), key.getKey());
         discordDB.addUserPass2(me.getNation_id(), username, password);
         if (existingAuth != null) existingAuth.setValid(false);
-        Auth myAuth = me.getAuth(null);
+        Auth myAuth = me.getAuth(true);
         if (myAuth != null) myAuth.setValid(false);
 
         return "Login successful.";
@@ -1126,6 +1117,7 @@ public class UnsortedCommands {
 
     @Command(desc = "Save or paste a stored message")
     @RolePermission(Roles.MEMBER)
+    @NoFormat
     public String copyPasta(@Me IMessageIO io, @Me GuildDB db, @Me Guild guild, @Me Member member, @Me User author, @Me DBNation me,
                             @Arg("What to name the saved message")
                             @Default String key,

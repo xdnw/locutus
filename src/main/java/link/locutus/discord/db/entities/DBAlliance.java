@@ -253,21 +253,33 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public Auth getAuth(AlliancePermission... permissions) {
+        Set<AlliancePermission> permsSet = new HashSet<>(Arrays.asList(permissions));
+        GuildDB db = getGuildDB();
+
+        int preferNation = -1;
+        if (db != null) {
+            List<String> apiKeys = db.getOrNull(GuildKey.API_KEY);
+            if (apiKeys != null) {
+                for (String apiKey : apiKeys) {
+                    // get nation from key
+                    Integer nationId = Locutus.imp().getDiscordDB().getNationFromApiKey(apiKey);
+                    if (nationId == null) continue;
+                    DBNation gov = DBNation.getById(nationId);
+                    if (gov == null || gov.getVm_turns() > 0) continue;
+                    if (!gov.hasAllPermission(permsSet)) continue;
+                    Auth auth = gov.getAuth(false);
+                    if (auth != null && auth.isValid()) return auth;
+                }
+            }
+        }
+
         Set<DBNation> nations = getNations();
         for (DBNation gov : nations) {
             if (gov.getVm_turns() > 0 || gov.getPositionEnum().id <= Rank.APPLICANT.id) continue;
-            if (gov.getPositionEnum().id < Rank.HEIR.id) {
-                DBAlliancePosition position = gov.getAlliancePosition();
-                if (permissions != null && permissions.length > 0 && (position == null || !position.hasAllPermission(permissions))) {
-                    continue;
-                }
-            }
-            try {
-                Auth auth = gov.getAuth(null);
-                if (auth != null && auth.getAllianceId() == allianceId && auth.isValid()) {
-                    return auth;
-                }
-            } catch (IllegalArgumentException ignore) {
+            if (!gov.hasAllPermission(permsSet)) continue;
+            Auth auth = gov.getAuth(false);
+            if (auth != null && auth.getAllianceId() == allianceId && auth.isValid()) {
+                return auth;
             }
         }
         return null;
@@ -486,6 +498,8 @@ public class DBAlliance implements NationList, NationOrAlliance {
         result.setAlliance_id(allianceId);
         return result;
     }
+
+    @Command
     public Set<DBAlliance> getTreatiedAllies() {
         return getTreatiedAllies(true);
     }

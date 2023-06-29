@@ -23,24 +23,10 @@ public class PWGPTHandler {
     private final Map<EmbeddingType, Set<PWEmbedding>> embeddingTypeSetMap;
     private final CommandManager2 cmdManager;
 
-    /*
-    Pre processors
-     - Categorize as knowledge, request, command
-     */
-
-    /*
-    Post processors
-     */
-
     public PWGPTHandler(CommandManager2 manager) throws SQLException, ClassNotFoundException {
         this.cmdManager = manager;
         this.handler = new GptHandler();
         this.embeddingTypeSetMap = new ConcurrentHashMap<>();
-//        registerArgumentBindings("Command Argument");
-//        registerFormulaBindings("Formula");
-//        registerAcronymBindings("Acronym");
-//        registerPageSectionBindings("Wiki Page");
-//        registerTutorialBindings("Tutorial");
     }
 
     public GptHandler getHandler() {
@@ -51,6 +37,12 @@ public class PWGPTHandler {
         registerCommandEmbeddings();
         registerSettingEmbeddings();
         registerNationMetricBindings();
+
+//        registerArgumentBindings("Command Argument");
+//        registerFormulaBindings("Formula");
+//        registerAcronymBindings("Acronym");
+//        registerPageSectionBindings("Wiki Page");
+//        registerTutorialBindings("Tutorial");
     }
 
     private void registerCommandEmbeddings() {

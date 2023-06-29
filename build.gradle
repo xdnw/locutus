@@ -139,7 +139,7 @@ dependencies {
 
     jooqGenerator 'org.xerial:sqlite-jdbc:3.36.0.3'
 
-    implementation 'com.knuddels:jtokkit:0.4.0'
+    implementation 'com.knuddels:jtokkit:0.5.1'
     implementation("com.theokanning.openai-gpt3-java:client:0.12.0")
 
 }

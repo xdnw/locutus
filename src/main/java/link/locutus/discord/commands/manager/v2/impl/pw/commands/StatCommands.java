@@ -208,7 +208,7 @@ public class StatCommands {
         GroupedRankBuilder<Integer, DBAttack> nationAllianceGroup = new RankBuilder<>(parser.getAttacks())
                 .group((attack, map) -> {
                     // Group attacks into attacker and defender
-                    DBWar war = groupByAlliance || onlyRankCoalition1 ? wars.get(attack.getWar_id()) : null;
+                    DBWar war = wars.get(attack.getWar_id());
                     if (groupByAlliance) {
                         if (!onlyRankCoalition1 || parser.getIsPrimary().apply(war)) {
                             map.put(war.attacker_aa, attack);
@@ -1240,7 +1240,7 @@ public class StatCommands {
             "Prefix a column with `total:` to force a total")
     public String allianceNationsSheet(NationPlaceholders placeholders, ValueStore store, @Me IMessageIO channel, @Me User author, @Me Guild guild, @Me GuildDB db,
                                        Set<DBNation> nations,
-                                       @Arg("The columns to have. See: <https://github.com/xdnw/locutus/wiki/Nation-Filters>") List<String> columns,
+                                       @Arg("The columns to have. See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>") List<String> columns,
                                        @Switch("s") SpreadSheet sheet,
                                        @Arg("Use the sum of each nation's attributes instead of the average")
                                        @Switch("t") boolean useTotal, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants) throws IOException, GeneralSecurityException, IllegalAccessException, InvocationTargetException {

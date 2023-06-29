@@ -25,7 +25,7 @@ public class SyncMail extends Command {
 
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
-        new AlertMailTask(me.getAuth(null), channel.getIdLong()).run();
+        new AlertMailTask(me.getAuth(true), channel.getIdLong()).run();
         return "Done!";
     }
 }

@@ -31,6 +31,6 @@ public class SafekeepCommand extends Command {
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) return usage();
-        return me.getAuth(null).safekeep(PnwUtil.parseResources(args.get(0))) + "\nDone!";
+        return me.getAuth(true).safekeep(PnwUtil.parseResources(args.get(0))) + "\nDone!";
     }
 }

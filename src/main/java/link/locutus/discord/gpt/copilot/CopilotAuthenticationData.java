@@ -1,4 +1,4 @@
-package link.locutus.discord.commands.manager.v2.copilot;
+package link.locutus.discord.gpt.copilot;
 
 import java.util.Date;
 

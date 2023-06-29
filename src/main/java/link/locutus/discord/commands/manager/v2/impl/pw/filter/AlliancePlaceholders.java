@@ -1,6 +1,9 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 
+import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
@@ -8,8 +11,12 @@ import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.AllianceInstanceAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.AllianceInstanceAttributeDouble;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBNation;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.User;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -97,5 +104,55 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
             }
         }
         return result;
+    }
+
+    public AllianceInstanceAttribute getMetric(ValueStore<?> store, String id, boolean ignorePerms) {
+        Map.Entry<Type, Function<DBAlliance, Object>> typeFunction = getTypeFunction(store, id, ignorePerms);
+        if (typeFunction == null) return null;
+        return new AllianceInstanceAttribute<>(id, "", typeFunction.getKey(), typeFunction.getValue());
+    }
+
+    public String format(Guild guild, DBAlliance alliance, User user, String arg) {
+        LocalValueStore locals = new LocalValueStore<>(this.getStore());
+        if (alliance != null) {
+            locals.addProvider(Key.of(DBAlliance.class, Me.class), alliance);
+        }
+        if (user != null) {
+            locals.addProvider(Key.of(User.class, Me.class), user);
+        }
+        if (guild != null) {
+            locals.addProvider(Key.of(Guild.class, Me.class), guild);
+        }
+        return format(locals, arg);
+    }
+
+    public String format(ValueStore<?> store, String arg) {
+        DBAlliance me = store.getProvided(Key.of(DBAlliance.class, Me.class));
+        User author = null;
+        try {
+            author = store.getProvided(Key.of(User.class, Me.class));
+        } catch (Exception ignore) {
+        }
+
+        if (author != null && arg.contains("%user%")) {
+            arg = arg.replace("%user%", author.getAsMention());
+        }
+
+        return format(arg, 0, new Function<String, String>() {
+            @Override
+            public String apply(String placeholder) {
+                AllianceInstanceAttribute result = AlliancePlaceholders.this.getMetric(store, placeholder, false);
+                if (result == null && !placeholder.startsWith("get")) {
+                    result = AlliancePlaceholders.this.getMetric(store, "get" + placeholder, false);
+                }
+                if (result != null) {
+                    Object obj = result.apply(me);
+                    if (obj != null) {
+                        return obj.toString();
+                    }
+                }
+                return null;
+            }
+        });
     }
 }

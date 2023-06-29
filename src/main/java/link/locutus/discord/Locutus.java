@@ -403,7 +403,7 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public Auth getRootAuth() {
-        Auth auth = getNationDB().getNation(Settings.INSTANCE.NATION_ID).getAuth(null);
+        Auth auth = getNationDB().getNation(Settings.INSTANCE.NATION_ID).getAuth(true);
         if (auth != null) auth.setApiKey(Settings.INSTANCE.API_KEY_PRIMARY);
         return auth;
     }
@@ -842,7 +842,7 @@ public final class Locutus extends ListenerAdapter {
                 AlertUtil.error("Mail error", "Cannot check mail for " + section + "(nation=" + nationId + "): Unknown channel: " + channelId);
             }
             try {
-                Auth auth = nation.getAuth(null);
+                Auth auth = nation.getAuth(true);
                 AlertMailTask alertMailTask = new AlertMailTask(auth, channelId);
                 commandManager.getExecutor().scheduleWithFixedDelay(alertMailTask, 60, task.FETCH_INTERVAL_SECONDS, TimeUnit.SECONDS);
             } catch (IllegalArgumentException e) {

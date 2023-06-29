@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.politicsandwar.graphql.model.Trade;
+import link.locutus.discord.commands.bank.Offshore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -24,6 +26,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
+import org.kefirsf.bb.conf.If;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -186,7 +189,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             String title = "Blockade Target & Requests";
             String body = """
                     **Request your blockade broken**
-                    See e.g.: `/war blockade request diff: 3d note: some reason`
+                    See e.g.: """ + CM.war.blockade.request.cmd.create("3d", "some reason", null).toSlashCommand(true)+ """
                     Press `Low` if low on resources
                     Press `deposit` if you need to deposit
                     Press `broke` if you are out of resources
@@ -214,6 +217,51 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                     .commandButton(behavior, channelId, breakCmd, "break")
                     .commandButton(behavior, channelId, breakUnpowered, "unpowered")
                     .send();
+        }
+
+        @Command(desc="Econ panel for members")
+        public void memberEconPanel(@Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel) {
+            Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
+            String title = "Econ Panel";
+            String body = """
+                    Press `offshore` to send funds offshore
+                    Press `balance` to view your deposits
+                    Press `breakdown` to view your deposits breakdown
+                    Press `tax` to view your tax rate 
+                    Press `revenue` to check your revenue
+                    Press `optimal` to optimize your build (same mmr/infra)
+                    Press `price` to check the trade price
+                    Press `margin` to check the trade margin
+                    Press `profit` to check your trade profit
+                    """;
+
+            if (channelId != null) {
+                body += "\n\n> Results in <#" + channelId + ">";
+            }
+
+            CM.offshore.send send = CM.offshore.send.cmd.create(null, null, null);
+            CM.deposits.check deposits = CM.deposits.check.cmd.create("{nation_id}", null, null, null, null, null, null, null, null);
+            CM.deposits.check depositsBreakdown = CM.deposits.check.cmd.create("{nation_id}", null, null, null, null, "true", null, null, null);
+            CM.tax.info taxInfo = CM.tax.info.cmd.create("{nation_id}");
+            CM.nation.revenue revenue = CM.nation.revenue.cmd.create("{nation_id}", "true", null);
+            CM.city.optimalBuild optimalbuild = CM.city.optimalBuild.cmd.create("{city 1}", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+            CM.trade.price tradeprice = CM.trade.price.cmd.create();
+            CM.trade.margin trademargin = CM.trade.margin.cmd.create(null);
+            CM.trade.profit tradeprofit = CM.trade.profit.cmd.create("{nation_id}", "7d");
+
+            CommandBehavior behavior = CommandBehavior.UNDO_REACTION;
+            io.create().embed(title, body)
+                    .commandButton(behavior, channelId, send, "offshore")
+                    .commandButton(behavior, channelId, deposits, "balance")
+                    .commandButton(behavior, channelId, depositsBreakdown, "breakdown")
+                    .commandButton(behavior, channelId, taxInfo, "tax_info")
+                    .commandButton(behavior, channelId, revenue, "revenue")
+                    .commandButton(behavior, channelId, optimalbuild, "optimal")
+                    .commandButton(behavior, channelId, tradeprice, "price")
+                    .commandButton(behavior, channelId, trademargin, "margin")
+                    .commandButton(behavior, channelId, tradeprofit, "profit")
+                    .send();
+
         }
 
 

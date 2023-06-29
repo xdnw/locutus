@@ -1,4 +1,4 @@
-package link.locutus.discord.commands.manager.v2.copilot;
+package link.locutus.discord.gpt.copilot;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,6 +15,14 @@ public class FileDataStore implements IDataStore {
     public FileDataStore(String filePath)
     {
         _file = new File(filePath);
+        if (!_file.exists())
+        {
+            try {
+                _file.createNewFile();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     /// <summary>
