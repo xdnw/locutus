@@ -24,7 +24,7 @@ import java.util.function.Function;
 public abstract class AGrantTemplate {
 
     private final GuildDB db;
-    private int id;
+    private boolean enabled;
     private String name;
     private NationFilter nationFilter;
     private long econRole;
@@ -36,9 +36,9 @@ public abstract class AGrantTemplate {
     private int maxGranterTotal;
     private int maxGranterDay;
 
-    public AGrantTemplate(GuildDB db, int id, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal) {
+    public AGrantTemplate(GuildDB db, boolean enabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal) {
         this.db = db;
-        this.id = id;
+        this.enabled = enabled;
         this.name = name;
         this.nationFilter = nationFilter;
         this.econRole = econRole;
@@ -49,6 +49,10 @@ public abstract class AGrantTemplate {
         this.maxDay = maxDay;
         this.maxGranterDay = maxGranterDay;
         this.maxGranterTotal = maxGranterTotal;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
     }
 
     public abstract String toListString();
@@ -196,6 +200,7 @@ public abstract class AGrantTemplate {
 
     protected List<String> getQueryFieldsBase() {
         List<String> list = new ArrayList<>();
+        list.add("enabled");
         list.add("name");
         list.add("nation_filter");
         list.add("econ_role");
@@ -229,16 +234,17 @@ public abstract class AGrantTemplate {
     }
 
     protected void setValuesBase(PreparedStatement stmt) throws SQLException {
-        stmt.setString(1, this.getName());
-        stmt.setString(2, this.getNationFilter().getFilter());
-        stmt.setLong(3, this.getEconRoleId());
-        stmt.setLong(4, this.getSelfRoleId());
-        stmt.setLong(5, this.getFromBracket());
-        stmt.setBoolean(6, this.isUseReceiverBracket());
-        stmt.setInt(7, this.getMaxTotal());
-        stmt.setInt(8, this.getMaxDay());
-        stmt.setInt(9, this.getMaxGranterDay());
-        stmt.setInt(10, this.getMaxGranterTotal());
+        stmt.setBoolean(1, this.isEnabled());
+        stmt.setString(2, this.getName());
+        stmt.setString(3, this.getNationFilter().getFilter());
+        stmt.setLong(4, this.getEconRoleId());
+        stmt.setLong(5, this.getSelfRoleId());
+        stmt.setLong(6, this.getFromBracket());
+        stmt.setBoolean(7, this.isUseReceiverBracket());
+        stmt.setInt(8, this.getMaxTotal());
+        stmt.setInt(9, this.getMaxDay());
+        stmt.setInt(10, this.getMaxGranterDay());
+        stmt.setInt(11, this.getMaxGranterTotal());
     }
 
     public abstract void setValues(PreparedStatement stmt) throws SQLException;

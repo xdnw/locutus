@@ -33,8 +33,8 @@ public class GrantTemplateManager {
 
     public void createTables() {
         String projects = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_PROJECT` " +
-                "(`grant_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "`name` VARCHAR NOT NULL, " +
+                "(`enabled` INTEGER NOT NULL, " +
+                "`name` VARCHAR NOT NULL PRIMARY KEY, " +
                 "`project` BIGINT NOT NULL, " +
                 "`nation_filter` VARCHAR NOT NULL, " +
                 "`econ_role` BIGINT NOT NULL, " +
@@ -46,10 +46,10 @@ public class GrantTemplateManager {
                 "`max_granter_day` INT NOT NULL)";
 
         String cities = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_CITY` " +
-                "(`grant_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "(`enabled` INTEGER NOT NULL, " +
                 "`min_city` INT NOT NULL, " +
                 "`max_city` INT NOT NULL, " +
-                "`name` VARCHAR NOT NULL, " +
+                "`name` VARCHAR NOT NULL PRIMARY KEY, " +
                 "`nation_filter` VARCHAR NOT NULL, " +
                 "`econ_role` BIGINT NOT NULL, " +
                 "`self_role` BIGINT NOT NULL, " +
@@ -60,9 +60,9 @@ public class GrantTemplateManager {
                 "`max_granter_day` INT NOT NULL)";
 
         String warchest = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_WARCHEST` " +
-                "(`grant_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "(`enabled` INTEGER NOT NULL, " +
                 "`allowance_per_city` BLOB NOT NULL, " +
-                "`name` VARCHAR NOT NULL, " +
+                "`name` VARCHAR NOT NULL PRIMARY KEY, " +
                 "`nation_filter` VARCHAR NOT NULL, " +
                 "`track_days` BIGINT NOT NULL, " +
                 "`subtract_expenditure` BOOLEAN NOT NULL, " +
@@ -75,13 +75,13 @@ public class GrantTemplateManager {
                 "`max_day` INT NOT NULL, " +
                 "`max_granter_day` INT NOT NULL)";
         String infra = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_INFRA` " +
-                "(`grant_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "(`enabled` INTEGER NOT NULL, " +
                 "`level` BIGINT NOT NULL, " +
                 "`only_new_cities` BOOLEAN NOT NULL, " +
                 "`track_days` BOOLEAN NOT NULL, " +
                 "`require_n_offensives` BIGINT NOT NULL, " +
                 "`allow_rebuild` BOOLEAN NOT NULL, " +
-                "`name` VARCHAR NOT NULL, " +
+                "`name` VARCHAR NOT NULL PRIMARY KEY, " +
                 "`nation_filter` VARCHAR NOT NULL, " +
                 "`econ_role` BIGINT NOT NULL, " +
                 "`self_role` BIGINT NOT NULL, " +
@@ -91,10 +91,10 @@ public class GrantTemplateManager {
                 "`max_day` INT NOT NULL, " +
                 "`max_granter_day` INT NOT NULL)";
         String land = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_LAND` " +
-                "(`grant_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "(`enabled` INTEGER NOT NULL, " +
                 "`level` BIGINT NOT NULL, " +
                 "`only_new_cities` BOOLEAN NOT NULL, " +
-                "`name` VARCHAR NOT NULL, " +
+                "`name` VARCHAR NOT NULL PRIMARY KEY, " +
                 "`nation_filter` VARCHAR NOT NULL, " +
                 "`econ_role` BIGINT NOT NULL, " +
                 "`self_role` BIGINT NOT NULL, " +
@@ -104,13 +104,13 @@ public class GrantTemplateManager {
                 "`max_day` INT NOT NULL, " +
                 "`max_granter_day` INT NOT NULL)";
         String build = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_BUILD` " +
-                "(`grant_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "(`enabled` INTEGER NOT NULL, " +
                 "`build` BLOB NOT NULL, " +
                 "`use_optimal` BOOLEAN NOT NULL, " +
                 "`mmr` BIGINT NOT NULL, " +
                 "`track_days` BIGINT NOT NULL, " +
                 "`allow_switch_after_offensive` BOOLEAN NOT NULL, " +
-                "`name` VARCHAR NOT NULL, " +
+                "`name` VARCHAR NOT NULL PRIMARY KEY, " +
                 "`nation_filter` VARCHAR NOT NULL, " +
                 "`econ_role` BIGINT NOT NULL, " +
                 "`self_role` BIGINT NOT NULL, " +
@@ -120,10 +120,10 @@ public class GrantTemplateManager {
                 "`max_day` INT NOT NULL, " +
                 "`max_granter_day` INT NOT NULL)";
         String raws = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_RAWS` " +
-                "(`grant_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "(`enabled` INTEGER NOT NULL, " +
                 "`days` BIGINT NOT NULL, " +
                 "`overdraw_percent_cents` BIGINT NOT NULL, " +
-                "`name` VARCHAR NOT NULL, " +
+                "`name` VARCHAR NOT NULL PRIMARY KEY, " +
                 "`nation_filter` VARCHAR NOT NULL, " +
                 "`econ_role` BIGINT NOT NULL, " +
                 "`self_role` BIGINT NOT NULL, " +

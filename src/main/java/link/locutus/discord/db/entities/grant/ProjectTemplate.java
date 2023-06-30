@@ -14,8 +14,8 @@ import java.util.List;
 
 public class ProjectTemplate extends AGrantTemplate{
     private final Project project;
-    public ProjectTemplate(GuildDB db, int id, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
-        super(db, id, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal);
+    public ProjectTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal);
         this.project = Projects.values[rs.getInt("project")];
     }
 
@@ -48,6 +48,6 @@ public class ProjectTemplate extends AGrantTemplate{
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setInt(11, project.ordinal());
+        stmt.setInt(12, project.ordinal());
     }
 }

@@ -110,10 +110,6 @@ public class GrantCommands {
     // grant_template list
     // grant_template info <template>
 
-
-
-
-
     /*
     // 1111111111111111111111111111111111111111111111111111111111111222222222222222222222222222222222222222
             // #grant=533640709337514025 #expire=1680066316000 #land=2000 #city=12345678 #banker=1234567 #cash

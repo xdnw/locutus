@@ -16,8 +16,8 @@ public class InfraTemplate extends AGrantTemplate{
     private final long require_n_offensives;
     private final boolean allow_rebuild;
 
-    public InfraTemplate(GuildDB db, int id, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
-        super(db, id, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal);
+    public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal);
         this.level = rs.getLong("level");
         this.onlyNewCities = rs.getBoolean("only_new_cities");
         this.track_days = rs.getBoolean("track_days");
@@ -43,10 +43,10 @@ public class InfraTemplate extends AGrantTemplate{
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setLong(11, level);
-        stmt.setBoolean(12, onlyNewCities);
-        stmt.setBoolean(13, track_days);
-        stmt.setLong(14, require_n_offensives);
-        stmt.setBoolean(15, allow_rebuild);
+        stmt.setLong(12, level);
+        stmt.setBoolean(13, onlyNewCities);
+        stmt.setBoolean(14, track_days);
+        stmt.setLong(15, require_n_offensives);
+        stmt.setBoolean(16, allow_rebuild);
     }
 }

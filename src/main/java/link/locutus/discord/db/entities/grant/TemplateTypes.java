@@ -59,7 +59,7 @@ public enum TemplateTypes {
     public AGrantTemplate create(GuildDB db, ResultSet rs) throws SQLException, InvocationTargetException, InstantiationException, IllegalAccessException {
         return (AGrantTemplate) this.constructor.newInstance(
                 db,
-                rs.getInt("grant_id"),
+                rs.getBoolean("enabled"),
                 rs.getString("name"),
                 new NationFilterString(rs.getString("nation_filter"), db.getGuild()),
                 rs.getLong("econ_role"),

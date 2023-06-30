@@ -14,8 +14,8 @@ public class LandTemplate extends AGrantTemplate{
     //boolean onlyNewCities
     private final long level;
     private final boolean onlyNewCities;
-    public LandTemplate(GuildDB db, int id, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
-        super(db, id, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal);
+    public LandTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal);
         this.level = rs.getLong("level");
         this.onlyNewCities = rs.getBoolean("only_new_cities");
     }
@@ -35,7 +35,7 @@ public class LandTemplate extends AGrantTemplate{
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setLong(11, level);
-        stmt.setBoolean(12, onlyNewCities);
+        stmt.setLong(12, level);
+        stmt.setBoolean(13, onlyNewCities);
     }
 }

@@ -15,8 +15,8 @@ public class BuildTemplate extends AGrantTemplate{
     private final long mmr;
     private final long track_days;
     private final boolean allow_switch_after_offensive;
-    public BuildTemplate(GuildDB db, int id, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
-        super(db, id, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal);
+    public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal);
         this.build = rs.getBytes("build");
         this.useOptimal = rs.getBoolean("use_optimal");
         this.mmr = rs.getLong("mmr");
@@ -42,10 +42,10 @@ public class BuildTemplate extends AGrantTemplate{
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setBytes(11, build);
-        stmt.setBoolean(12, useOptimal);
-        stmt.setLong(13, mmr);
-        stmt.setLong(14, track_days);
-        stmt.setBoolean(15, allow_switch_after_offensive);
+        stmt.setBytes(12, build);
+        stmt.setBoolean(13, useOptimal);
+        stmt.setLong(14, mmr);
+        stmt.setLong(15, track_days);
+        stmt.setBoolean(16, allow_switch_after_offensive);
     }
 }

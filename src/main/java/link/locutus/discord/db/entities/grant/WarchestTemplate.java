@@ -15,8 +15,8 @@ public class WarchestTemplate extends AGrantTemplate{
     private final long trackDays;
     private final boolean subtractExpenditure;
     private final long overdrawPercentCents;
-    public WarchestTemplate(GuildDB db, int id, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
-        super(db, id, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal);
+    public WarchestTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal);
         this.allowancePerCity = ArrayUtil.toDoubleArray(rs.getBytes("allowance_per_city"));
         this.trackDays = rs.getLong("track_days");
         this.subtractExpenditure = rs.getBoolean("subtract_expenditure");
@@ -40,9 +40,9 @@ public class WarchestTemplate extends AGrantTemplate{
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setBytes(11, ArrayUtil.toByteArray(allowancePerCity));
-        stmt.setLong(12, trackDays);
-        stmt.setBoolean(13, subtractExpenditure);
-        stmt.setLong(14, overdrawPercentCents);
+        stmt.setBytes(12, ArrayUtil.toByteArray(allowancePerCity));
+        stmt.setLong(13, trackDays);
+        stmt.setBoolean(14, subtractExpenditure);
+        stmt.setLong(15, overdrawPercentCents);
     }
 }

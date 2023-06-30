@@ -14,8 +14,8 @@ public class RawsTemplate extends AGrantTemplate{
     //long overdraw_percent_cents
     private final long days;
     private final long overdrawPercentCents;
-    public RawsTemplate(GuildDB db, int id, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
-        super(db, id, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal);
+    public RawsTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal);
         this.days = rs.getLong("days");
         this.overdrawPercentCents = rs.getLong("overdraw_percent_cents");
     }
@@ -35,7 +35,7 @@ public class RawsTemplate extends AGrantTemplate{
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setLong(11, days);
-        stmt.setLong(12, overdrawPercentCents);
+        stmt.setLong(12, days);
+        stmt.setLong(13, overdrawPercentCents);
     }
 }
