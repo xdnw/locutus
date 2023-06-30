@@ -2,6 +2,7 @@ package link.locutus.discord.db.entities.grant;
 
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -151,18 +152,33 @@ public abstract class AGrantTemplate {
         List<Grant.Requirement> list = new ArrayList<>();
 
        // errors.computeIfAbsent(nation, f -> new ArrayList<>()).add("Nation was not found in guild");
-        list.add(new Grant.Requirement("Nation is not verified", false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Nation is not verified: " + CM.register.cmd.toSlashMention(), false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
                 User user = nation.getUser();
                 return user != null;
             }
         }));
-       // errors.computeIfAbsent(nation, f -> new ArrayList<>()).add("Nation is not verified: " + CM.register.cmd.toSlashMention() + "");
-
-//        grant.addRequirement(new Grant.Requirement("This guild is not part of an alliance", econGov, f -> alliance != null));
+        list.add(new Grant.Requirement("Nation is not a member of an alliance", false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation nation) {
+                return nation.getAlliance_id() == 0;
+            }
+        }));
 //                grant.addRequirement(new Grant.Requirement("Nation is not a member of an alliance", econGov, f -> f.getPosition() > 1));
+        list.add(new Grant.Requirement("Nation is not a member of an alliance", false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation nation) {
+                return nation.getPosition() > 1;
+            }
+        }));
 //                grant.addRequirement(new Grant.Requirement("Nation is in VM", econGov, f -> f.getVm_turns() == 0));
+        list.add(new Grant.Requirement("Nation is in VM", false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation nation) {
+                return nation.getVm_turns() == 0;
+            }
+        }));
 //                grant.addRequirement(new Grant.Requirement("Nation is not in the alliance: " + alliance, econGov, f -> alliance != null && f.getAlliance_id() == alliance.getAlliance_id()));
 //
 //                Role temp = Roles.TEMP.toRole(db.getGuild());
