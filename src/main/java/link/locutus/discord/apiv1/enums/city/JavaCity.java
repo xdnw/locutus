@@ -743,7 +743,10 @@ public class JavaCity {
 
         profit += income;
 
-        profit -= PnwUtil.convertedTotalNegative(ResourceType.FOOD, metrics.population * 0.001);
+        double basePopulation = getInfra() * 100;
+        double food = (Math.pow(basePopulation, 2)) / 125000000 + ((basePopulation) * (1 + Math.log(getAge()) / 15d) - basePopulation) / 850;
+
+        profit -= PnwUtil.convertedTotalNegative(ResourceType.FOOD, food);
 
         return profit;
     }
