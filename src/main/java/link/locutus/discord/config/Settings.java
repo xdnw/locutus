@@ -24,7 +24,7 @@ public class Settings extends Config {
     @Comment({"Override use V2"})
     @Ignore
     @Final
-    public static Set<String> WHITELISTED_IPS = new HashSet<>(Arrays.asList("210.1.206.1"));
+    public static Set<String> WHITELISTED_IPS = new HashSet<>(Arrays.asList("127.0.0.1"));
 
     @Ignore
     @Final

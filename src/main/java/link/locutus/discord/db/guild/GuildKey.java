@@ -412,7 +412,7 @@ public class GuildKey {
                     return false;
                 }
             }
-            return false;
+            return true;
         }
 
         @Override
@@ -577,8 +577,8 @@ public class GuildKey {
                     "To bulk move nations: " + CM.nation.set.taxbracketAuto.cmd.toSlashMention() + "\n" +
                     "In the form: \n" +
                     "```\n" +
-                    "#cities<10:1\n" +
-                    "#cities>=10:2" +
+                    "#cities<10:1234\n" +
+                    "#cities>=10:2345" +
                     "\n```\n" +
                     "All nation filters are supported (e.g. roles)\n" +
                     "Priority is first to last (so put defaults at the bottom)";
