@@ -23,6 +23,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.nation.NationRegisterEvent;
@@ -456,6 +457,23 @@ public class DBNation implements NationOrAlliance {
     }
     public boolean hasProject(Project project, boolean update) {
         return (this.projects & (1L << project.ordinal())) != 0;
+    }
+
+    @Command(desc = "If the nation has the treasure")
+    public boolean hasTreasure() {
+        return (Locutus.imp().getNationDB().getTreasure(nation_id) != null);
+    }
+
+    @Command(desc = "How many days the treasure is in said nation")
+    public long treasureDays() {
+
+        DBTreasure treasure = Locutus.imp().getNationDB().getTreasure(nation_id);
+
+        if(Locutus.imp().getNationDB().getTreasure(nation_id) != null)
+            return 0;
+
+        long difference = (System.currentTimeMillis() - treasure.getSpawnDate()) + (TimeUnit.DAYS.toMillis(60));
+        return TimeUnit.DAYS.toDays(difference);
     }
 
     public void setProject(Project project) {
