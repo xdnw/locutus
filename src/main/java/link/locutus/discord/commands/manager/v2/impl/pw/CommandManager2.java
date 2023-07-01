@@ -158,6 +158,8 @@ public class CommandManager2 {
 
         this.commands.registerMethod(new WarCommands(), List.of("sheets_milcom"), "convertDtCSpySheet", "convertdtcspysheet");
         this.commands.registerMethod(new WarCommands(), List.of("spy", "sheet"), "convertDtCSpySheet", "convertdtc");
+        this.commands.registerMethod(new WarCommands(), List.of("war", "find"), "findTreasureNations", "treasure");
+        this.commands.registerMethod(new WarCommands(), List.of("war", "find"), "findBountyNations", "bounty");
 
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "raid", "raid");
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "warWinning", "war_winning");
