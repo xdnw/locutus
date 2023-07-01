@@ -35,6 +35,10 @@ public class PageRequestQueue {
         }, 10, 10, TimeUnit.MILLISECONDS);
     }
 
+    public PriorityQueue<PageRequestTask<?>> getQueue() {
+        return queue;
+    }
+
     public void run() {
         PageRequestTask task;
         synchronized (queue) {

@@ -177,6 +177,7 @@ public class CommandManager2 {
 
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "wiki"), "dumpWiki", "save");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "conflicts"), "checkActiveConflicts", "check");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "queue"), "showFileQueue", "file");
 
         this.commands.registerMethod(new SettingCommands(), List.of("settings"), "delete", "delete");
         this.commands.registerMethod(new SettingCommands(), List.of("settings"), "sheets", "sheets");

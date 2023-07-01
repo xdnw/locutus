@@ -73,4 +73,6 @@ public enum PagePriority {
     MODIFY_TREATY_UNUSED,
 
     ;
+
+    public static final PagePriority[] values = values();
 }
