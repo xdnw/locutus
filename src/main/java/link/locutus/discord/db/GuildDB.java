@@ -97,6 +97,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     private void importLegacyRoles() {
+
         try {
             if (tableExists("ROLES")) {
                 // get records from ROLES

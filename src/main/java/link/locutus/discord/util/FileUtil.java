@@ -85,6 +85,10 @@ public final class FileUtil {
         return get(pageRequestQueue.submit(task, getPriority(priority)));
     }
 
+    public static PageRequestQueue getPageRequestQueue() {
+        return pageRequestQueue;
+    }
+
     public static byte[] readBytesFromUrl(int priority, String urlStr) {
         return submit(priority, () -> {
             try (InputStream is = new URL(urlStr).openStream()) {

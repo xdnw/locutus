@@ -41,6 +41,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
+import link.locutus.discord.util.io.PageRequestQueue;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -78,6 +79,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -91,6 +93,40 @@ public class AdminCommands {
     public String checkActiveConflicts() {
         WarUpdateProcessor.checkActiveConflicts();
         return "Done! (see console)";
+    }
+
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String showFileQueue() {
+        PageRequestQueue handler = FileUtil.getPageRequestQueue();
+        PriorityQueue<PageRequestQueue.PageRequestTask<?>> jQueue = handler.getQueue();
+
+        Map<PagePriority, Integer> pagePriorities = new HashMap<>();
+        int unknown = 0;
+        synchronized (jQueue) {
+            for (PageRequestQueue.PageRequestTask<?> task : jQueue) {
+                long priority = task.getPriority();
+                int ordinal = (int) (priority / Integer.MAX_VALUE);
+                if (ordinal >= PagePriority.values.length) unknown++;
+                else {
+                    PagePriority pagePriority = PagePriority.values[ordinal];
+                    pagePriorities.put(pagePriority, pagePriorities.getOrDefault(pagePriority, 0) + 1);
+                }
+            }
+        }
+        List<Map.Entry<PagePriority, Integer>> entries = new ArrayList<>(pagePriorities.entrySet());
+        // sort
+        entries.sort((o1, o2) -> o2.getValue() - o1.getValue());
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("File Queue:\n");
+        for (Map.Entry<PagePriority, Integer> entry : entries) {
+            sb.append(entry.getKey().name()).append(": ").append(entry.getValue()).append("\n");
+        }
+        if (unknown > 0) {
+            sb.append("Unknown: ").append(unknown).append("\n");
+        }
+        return sb.toString();
     }
 
     @Command

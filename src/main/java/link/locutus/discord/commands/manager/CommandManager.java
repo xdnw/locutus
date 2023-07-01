@@ -678,11 +678,9 @@ public class CommandManager {
         this.register(new HelpCommand(this));
         this.register(new GrantCmd(bankWith));
 
-
         this.register(new ProlificOffshores());
         this.register(new LargestBanks());
         this.register(new InactiveAlliances());
-
 
         this.register(new WarCostByDay());
         this.register(new WarCostRankingByDay());
