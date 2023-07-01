@@ -83,11 +83,16 @@ public class PermissionBinding extends BindingHelper {
             for (GuildDB otherDB : Locutus.imp().getGuildDatabases().values()) {
                 if (otherDB.isValidAlliance() && otherDB.isOffshore() && otherDB.getOrNull(GuildKey.PUBLIC_OFFSHORING) == Boolean.TRUE) {
                     Map.Entry<GuildDB, Integer> offshoreInfo = otherDB.getOffshoreDB();
-                    publicOffshores.add(PnwUtil.getMarkdownUrl(offshoreInfo.getValue(), true));
+                    String markdown = PnwUtil.getMarkdownUrl(offshoreInfo.getValue(), true);
+                    if (offshoreInfo.getValue() == Settings.INSTANCE.ALLIANCE_ID()) {
+                        markdown += " (Bot Owner)";
+                    }
+                    publicOffshores.add(markdown);
                 }
             }
             if (!publicOffshores.isEmpty()) {
                 response.append("\nPublic offshores:\n- ").append(String.join("\n- ", publicOffshores));
+                response.append("\n`note: do not offshore to these guilds if you do not trust them`");
             }
 
             throw new IllegalArgumentException(response.toString());
