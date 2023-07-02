@@ -3033,7 +3033,11 @@ public class BankCommands {
         boolean failedFetch = true;
         Map<Integer, TaxBracket> brackets;
         try {
-            brackets = db.getAllianceList().getTaxBrackets(false);
+            AllianceList alliances = db.getAllianceList();
+            if (alliances == null) {
+                return "Please register an alliance: " + CM.settings_default.registerAlliance.cmd.toSlashMention();
+            }
+            brackets = alliances.getTaxBrackets(false);
             failedFetch = false;
         } catch (IllegalArgumentException e) {
             brackets = new LinkedHashMap<>();
