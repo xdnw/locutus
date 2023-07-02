@@ -518,10 +518,7 @@ public class GuildHandler {
                 Integer amt = entry.getValue();
 
                 if (amt > 0) {
-                    if (building == Buildings.FACTORY && nation.getCities() < 10) {
-                        String msg = AutoAuditType.RAIDING_W_TANKS.message;
-                        AlertUtil.auditAlert(nation, AutoAuditType.RAIDING_W_TANKS, (f) -> " ```" + msg + "```" + "\n" + city.getUrl());
-                    } else if (building == Buildings.FARM && !nation.hasProject(Projects.MASS_IRRIGATION) && nation.getAvgLand() < 2000) {
+                    if (building == Buildings.FARM && !nation.hasProject(Projects.MASS_IRRIGATION) && nation.getAvgLand() < 2000) {
                         String msg = AutoAuditType.UNPROFITABLE_FARMS.message;
                         AlertUtil.auditAlert(nation, AutoAuditType.UNPROFITABLE_FARMS, (f) -> " ```" + msg + "```" + "\n" + city.getUrl());
                     } else if (building == Buildings.WIND_POWER && (amt > 1 || (city.infra <= 2000 || city.infra > 2250))) {
@@ -2321,7 +2318,7 @@ public class GuildHandler {
     }
 
     public void handleInactiveAudit() {
-        if (!GuildKey.MEMBER_AUDIT_ALERTS.has(db, true)) return;
+        if (!GuildKey.MEMBER_AUDIT_ALERTS.has(db, false)) return;
         Set<AutoAuditType> disabledAudits = db.getOrNull(GuildKey.DISABLED_MEMBER_AUDITS);
         if (disabledAudits != null && disabledAudits.contains(AutoAuditType.INACTIVE)) return;
 
