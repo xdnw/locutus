@@ -11,6 +11,7 @@ import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -287,5 +288,10 @@ public class DiscordBindings extends BindingHelper {
             throw new IllegalArgumentException("No command found for " + input);
         }
         return callable;
+    }
+
+    @Binding
+    public PermissionHandler permissionHandler() {
+        return Locutus.imp().getCommandManager().getV2().getPermisser();
     }
 }

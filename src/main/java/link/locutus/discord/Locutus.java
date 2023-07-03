@@ -685,7 +685,7 @@ public final class Locutus extends ListenerAdapter {
             }, Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS);
 
             addTaskSeconds(() -> {
-                runEventsAsync(nationDB::updateColoredNations);
+                runEventsAsync(nationDB::updateRecentNations);
             }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS);
 
             addTaskSeconds(() -> {

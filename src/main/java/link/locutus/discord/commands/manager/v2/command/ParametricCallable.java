@@ -10,8 +10,10 @@ import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.commands.HtmlInput;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.json.JSONObject;
 
 import java.lang.annotation.Annotation;
@@ -440,6 +442,106 @@ public class ParametricCallable implements ICommand {
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public String toBasicMarkdown(ValueStore store, PermissionHandler permisser, String prefix, boolean spoiler) {
+        StringBuilder result = new StringBuilder();
+        Map<String, String> permissionInfo = new LinkedHashMap<>();
+
+        Method method = getMethod();
+        for (Annotation permAnnotation : method.getDeclaredAnnotations()) {
+            Key<Object> permKey = Key.of(boolean.class, permAnnotation);
+            Parser parser = permisser.get(permKey);
+            if (parser != null) {
+                List<String> permValues = new ArrayList<>();
+
+                for (Method permMeth : permAnnotation.annotationType().getDeclaredMethods()) {
+                    Object def = permMeth.getDefaultValue();
+                    Object current = null;
+                    try {
+                        current = permMeth.invoke(permAnnotation);
+                    } catch (IllegalAccessException | InvocationTargetException e) {
+                        throw new RuntimeException(e);
+                    }
+                    if (!Objects.equals(def, current)) {
+                        permValues.add(permMeth.getName() + ": " + StringMan.getString(current));
+                    }
+                }
+
+                String title = permAnnotation.annotationType().getSimpleName() + "(" + String.join(", ", permValues) + ")";
+                String body = parser.getDescription();
+                permissionInfo.put(title, body);
+            }
+        }
+
+        if (permissionInfo.isEmpty()) {
+            result.append("`This command is public`\n\n");
+        }
+
+        if (simpleDesc().isEmpty()) {
+            result.append("`No description provided`\n\n");
+        } else {
+            result.append(simpleDesc() + "\n\n");
+        }
+
+        Set<String> duplicateDesc = new HashSet<>();
+        List<ParameterData> params = getUserParameters();
+        if (params.isEmpty()) {
+            result.append("`This command has no arguments`\n\n");
+        } else {
+            String typeUrlBase = "https://t.ly/maKT";
+
+            result.append("**Arguments:**\n\n");
+            for (ParameterData parameter : params) {
+                Parser<?> binding = parameter.getBinding();
+                String name = parameter.getName();
+                Key key = binding.getKey();
+                String desc = parameter.getDescription();
+                String defDesc = binding.getDescription();
+                if (desc == null || desc.isEmpty()) desc = defDesc;
+                else if (defDesc != null && !defDesc.isEmpty() && !Objects.equals(desc, defDesc)) {
+                    desc += "\n(" + defDesc + ")";
+                }
+                if (!duplicateDesc.add(desc)) {
+                    desc = null;
+                }
+
+                if (parameter.getDefaultValue() != null) {
+                    String defStr = parameter.getDefaultValueString();
+                    name = name + "=" + defStr;
+                }
+
+                String argFormat = parameter.isOptional() || parameter.isFlag() ? "[%s]" : "<%s>";
+                if (parameter.isFlag()) {
+                    name = "-" + parameter.getFlag() + " " + name;
+                }
+                argFormat = String.format(argFormat, name);
+
+                String keyName = StringEscapeUtils.escapeHtml4(key.toSimpleString().replace("[", "\\[").replace("]", "\\]"));
+                String typeLink = MarkupUtil.markdownUrl(keyName, typeUrlBase + "#" + MarkupUtil.pathName(key.toSimpleString()));
+                result.append("`" + argFormat + "`").append(" - ").append(typeLink);
+
+                result.append("\n\n");
+
+                if (desc != null && !desc.isEmpty()) {
+                    result.append("> " + desc.replaceAll("\n", "\n> ") + "\n\n");
+                }
+            }
+        }
+
+        if (!permissionInfo.isEmpty()) {
+            result.append("**Required Permissions:**\n\n");
+            for (Map.Entry<String, String> entry : permissionInfo.entrySet()) {
+                if (spoiler) {
+                    result.append(MarkupUtil.spoiler(entry.getKey(), MarkupUtil.markdownToHTML(entry.getValue())) + "\n");
+                } else {
+                    result.append("- `" + entry.getKey() + "`: ");
+                    result.append(entry.getValue() + "\n");
+                }
+            }
+        }
+        return result.toString();
     }
 
     public String toBasicHtml(ValueStore store) {

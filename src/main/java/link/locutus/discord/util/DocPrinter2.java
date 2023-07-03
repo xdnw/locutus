@@ -105,7 +105,6 @@ Message: `$who Rose -l`
     }
 
     public static String printCommands(CommandGroup group, ValueStore store, PermissionHandler permisser, String prefix, String header) throws InvocationTargetException, IllegalAccessException {
-        String typeUrlBase = "https://github.com/xdnw/locutus/wiki/Arguments";
         // Command name
         // Description
         // Arguments
@@ -126,85 +125,7 @@ Message: `$who Rose -l`
 
         for (ParametricCallable command : commands) {
             result.append("## ").append(prefix).append(command.getFullPath()).append("\n");
-
-            Map<String, String> permissionInfo = new LinkedHashMap<>();
-
-            Method method = command.getMethod();
-            for (Annotation permAnnotation : method.getDeclaredAnnotations()) {
-                Key<Object> permKey = Key.of(boolean.class, permAnnotation);
-                Parser parser = permisser.get(permKey);
-                if (parser != null) {
-                    List<String> permValues = new ArrayList<>();
-
-                    for (Method permMeth : permAnnotation.annotationType().getDeclaredMethods()) {
-                        Object def = permMeth.getDefaultValue();
-                        Object current = permMeth.invoke(permAnnotation);
-                        if (!Objects.equals(def, current)) {
-                            permValues.add(permMeth.getName() + ": " + StringMan.getString(current));
-                        }
-                    }
-
-                    String title = permAnnotation.annotationType().getSimpleName() + "(" + String.join(", ", permValues) + ")";
-                    String body = parser.getDescription();
-                    permissionInfo.put(title, body);
-                }
-            }
-
-            if (permissionInfo.isEmpty()) {
-                result.append("`This command is public`\n\n");
-            }
-
-            if (command.simpleDesc().isEmpty()) {
-                result.append("`No description provided`\n\n");
-            } else {
-                result.append(command.simpleDesc() + "\n\n");
-            }
-
-            List<ParameterData> params = command.getUserParameters();
-            if (params.isEmpty()) {
-                result.append("`This command has no arguments`\n\n");
-            } else {
-                result.append("**Arguments:**\n\n");
-                for (ParameterData parameter : params) {
-                    Parser<?> binding = parameter.getBinding();
-                    String name = parameter.getName();
-                    Key key = binding.getKey();
-                    String desc = parameter.getDescription();
-                    String defDesc = binding.getDescription();
-                    if (desc == null || desc.isEmpty()) desc = defDesc;
-                    else if (defDesc != null && !defDesc.isEmpty() && !Objects.equals(desc, defDesc)) {
-                        desc += "\n(" + defDesc + ")";
-                    }
-
-                    if (parameter.getDefaultValue() != null) {
-                        String defStr = parameter.getDefaultValueString();
-                        name = name + "=" + defStr;
-                    }
-
-                    String argFormat = parameter.isOptional() || parameter.isFlag() ? "[%s]" : "<%s>";
-                    if (parameter.isFlag()) {
-                        name = "-" + parameter.getFlag() + " " + name;
-                    }
-                    argFormat = String.format(argFormat, name);
-
-                    String keyName = StringEscapeUtils.escapeHtml4(key.toSimpleString().replace("[", "\\[").replace("]", "\\]"));
-                    String typeLink = MarkupUtil.markdownUrl(keyName, typeUrlBase + "#" + pathName(key.toSimpleString()));
-                    result.append("`" + argFormat + "`").append(" - ").append(typeLink);
-
-                    result.append("\n\n");
-
-                    if (desc != null && !desc.isEmpty()) {
-                        result.append("> " + desc.replaceAll("\n", "\n> ") + "\n\n");
-                    }
-                }
-            }
-
-            if (!permissionInfo.isEmpty()) {
-                result.append("**Required Permissions:**\n\n");
-                for (Map.Entry<String, String> entry : permissionInfo.entrySet()) {
-                    result.append(MarkupUtil.spoiler(entry.getKey(), MarkupUtil.markdownToHTML(entry.getValue())) + "\n");
-                }
-            }
+            result.append(command.toBasicMarkdown(store, permisser, prefix, true));
             result.append("\n---\n\n");
         }
 
@@ -214,10 +135,6 @@ Message: `$who Rose -l`
     public static String keyName(Key key) {
         String keyStr = key.toSimpleString();
         return keyStr.replace("[", "\\[").replace("]", "\\]").replaceAll("([<|, ])([a-zA-Z_0-9]+)([>|, ])", "$1[$2](#$2)$3");
-    }
-
-    public static String pathName(String string) {
-        return string.replace(" ", "-").replaceAll("[^a-zA-Z0-9_-]", "");
     }
 
     public static String printParsers(ValueStore store) {

@@ -1,6 +1,9 @@
 package link.locutus.discord.commands.manager.v2.command;
 
 
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,4 +22,6 @@ public interface ICommand extends CommandCallable {
         }
         return result;
     }
+
+    String toBasicMarkdown(ValueStore store, PermissionHandler permisser, String prefix, boolean spoiler);
 }

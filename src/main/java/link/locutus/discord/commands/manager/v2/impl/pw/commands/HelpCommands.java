@@ -7,10 +7,12 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
+import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.CommandEmbedding;
 import link.locutus.discord.gpt.EmbeddingType;
@@ -43,8 +45,15 @@ public class HelpCommands {
 //    }
 
     @Command
-    public String command(@Me IMessageIO io, ValueStore store, CommandCallable command) {
-        return command.desc(store);
+    public String command(@Me IMessageIO io, ValueStore store, PermissionHandler permisser, ICommand command) {
+        String body = command.toBasicMarkdown(store, permisser, "/", false);
+        // todo spoilers
+        String title = "/" + command.getFullPath();
+        if (body.length() > 4096) {
+            return "#" + title + "\n" + body;
+        }
+        io.create().embed(title, body).send();
+        return null;
     }
 
     @Command

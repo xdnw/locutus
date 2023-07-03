@@ -727,52 +727,32 @@ public class NationDB extends DBMainV2 {
     }
 
 
-    public Set<Integer> updateColoredNations(Consumer<Event> eventConsumer) {
-        List<String> colors = new ArrayList<>();
-        for (NationColor color : NationColor.values) {
-            if (color == NationColor.GRAY || color == NationColor.BEIGE) continue;
-            colors.add(color.name().toLowerCase(Locale.ROOT));
+    public Set<Integer> updateRecentNations(Consumer<Event> eventConsumer) {
+        // get the 1k most recent nations
+        List<DBNation> allNations = new ArrayList<>(this.getNationsMatching(f -> f.getVm_turns() == 0));
+        // sort by last active (desc)
+        allNations.sort(Comparator.comparingLong(DBNation::lastActiveMs).reversed());
+        // get the first 1k
+        allNations = allNations.subList(0, Math.min(1000, allNations.size()));
+        long diff;
+        if (allNations.isEmpty()) {
+            // 15m
+            diff = 15 * 60 * 1000;
+        } else {
+            // get most recent last active
+            long dateStart = allNations.get(0).lastActiveMs();
+            // get least
+            long dateEnd = allNations.get(allNations.size() - 1).lastActiveMs();
+            // get diff
+            diff = dateStart - dateEnd;
         }
+        // datestart = now - diff
+        long dateStart = System.currentTimeMillis() - diff;
 
-        Set<Integer> expected = new HashSet<>();
-        synchronized (nationsById) {
-            for (DBNation nation : nationsById.values()) {
-                if (!nation.isBeige() && !nation.isGray() && nation.getVm_turns() == 0) {
-                    expected.add(nation.getNation_id());
-                }
-            }
-        }
-
-        List<Nation> nations = Locutus.imp().getV3().fetchNations(r -> {
-            r.setColor(colors);
+        return updateNations(r -> {
             r.setVmode(false);
-        }, r -> {
-            r.id();
-            r.last_active();
-            r.alliance_id();
-            r.score();
-        });
-
-        Set<Integer> toUpdate = new HashSet<>();
-        for (Nation nation : nations) {
-            if (!expected.remove(nation.getId())) {
-                toUpdate.add(nation.getId());
-            }
-
-            DBNation existing = getNation(nation.getId());
-
-            if (existing == null // New nation
-                || existing.getAlliance_id() != nation.getAlliance_id() // New alliance id
-                || existing.lastActiveMs() + 2000 < nation.getLast_active().toEpochMilli() // Active
-                || Math.round(existing.getScore() * 100) != Math.round(nation.getScore() * 100)
-            ) {
-                toUpdate.add(nation.getId());
-            }
-        }
-        toUpdate.addAll(expected);
-
-        List<Integer> toUpdateList = new ArrayList<>(toUpdate);
-        return updateNations(toUpdateList, eventConsumer);
+            r.setActive_since(new Date(dateStart));
+        }, eventConsumer);
     }
 
     public List<Integer> getMostActiveNationIds(int amt) {

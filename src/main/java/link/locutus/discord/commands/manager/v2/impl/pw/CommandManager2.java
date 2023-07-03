@@ -205,9 +205,11 @@ public class CommandManager2 {
             }
         }
 
+        HelpCommands help = new HelpCommands();
+
+        this.commands.registerMethod(help, List.of("help"), "command", "command");
 
         if (pwgptHandler != null) {
-            HelpCommands help = new HelpCommands();
             this.commands.registerMethod(help, List.of("help"), "find_command", "find_command");
             this.commands.registerMethod(help, List.of("help"), "find_setting", "find_setting");
 

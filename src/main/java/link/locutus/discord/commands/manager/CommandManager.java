@@ -711,9 +711,7 @@ public class CommandManager {
         this.register(new AlertTrades());
         this.register(new Commend("commend", true));
         this.register(new Commend("denounce", false));
-
 //        this.register(new Setup());
-
         this.register(new UnsubTrade());
         this.register(new TradeSubscriptions());
         this.register(new BankAlerts());

@@ -1,5 +1,8 @@
 package link.locutus.discord.commands.manager.v2.command;
 
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
