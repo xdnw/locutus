@@ -259,6 +259,7 @@ public class CommandManager2 {
         this.commands.registerMethod(new FunCommands(), List.of("fun"), "stealBorgsCity", "stealborgscity");
 
         this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "audit"), "auditAlertOptOut", "optout");
+        this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "enemy"), "enemyAlertOptOut", "optout");
 
         StringBuilder output = new StringBuilder();
         this.commands.generatePojo("", output, 0);
