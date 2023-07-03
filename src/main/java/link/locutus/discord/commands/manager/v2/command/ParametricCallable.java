@@ -518,7 +518,8 @@ public class ParametricCallable implements ICommand {
                 }
                 argFormat = String.format(argFormat, name);
 
-                String keyName = StringEscapeUtils.escapeHtml4(key.toSimpleString().replace("[", "\\[").replace("]", "\\]"));
+                String keyName = key.toSimpleString();
+                if (spoiler) keyName = StringEscapeUtils.escapeHtml4(keyName.replace("[", "\\[").replace("]", "\\]"));
                 String typeLink = MarkupUtil.markdownUrl(keyName, typeUrlBase + "#" + MarkupUtil.pathName(key.toSimpleString()));
                 result.append("`" + argFormat + "`").append(" - ").append(typeLink);
 
