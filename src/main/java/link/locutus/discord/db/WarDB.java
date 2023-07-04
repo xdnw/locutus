@@ -62,7 +62,7 @@ public class WarDB extends DBMainV2 {
     private Map<Integer, Map<Integer, DBWar>> warsByAllianceId;
     private Map<Integer, Map<Integer, DBWar>> warsByNationId;
     private final Int2ObjectOpenHashMap<Object> attacksByWar = new Int2ObjectOpenHashMap<>();
-    private final ObjectArrayList<DBAttack> allAttacks2 = new ObjectArrayList<>();
+    private ObjectArrayList<DBAttack> allAttacks2 = new ObjectArrayList<>();
     public WarDB() throws SQLException {
         super(Settings.INSTANCE.DATABASE, "war");
         warsById = new Int2ObjectOpenHashMap<>();
@@ -292,24 +292,33 @@ public class WarDB extends DBMainV2 {
     }
 
     public void load() {
-        loadWars();
-        loadAttacks();
+        long start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(6);
+        loadWars(Math.min(Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS, 6));
+        loadAttacks(Math.min(Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS, 6));
+        Locutus.imp().getExecutor().submit(new Runnable() {
+            @Override
+            public void run() {
+                if (Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS > 6) {
+                    loadWars(Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS);
+                }
+                if (Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS > 6) {
+                    loadAttacks(Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS);
+                }
+            }
+        });
     }
 
-    public void loadWars() {
-        {
-            int days = Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS;
-            if (days != 0) {
-                long date = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
-                String whereClause = days > 0 ? " WHERE date > " + date : "";
-                query("SELECT * FROM wars" + whereClause, f -> {
-                }, (ThrowingConsumer<ResultSet>) rs -> {
-                    while (rs.next()) {
-                        DBWar war = create(rs);
-                        setWar(war);
-                    }
-                });
-            }
+    public void loadWars(int days) {
+        if (days != 0) {
+            long date = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
+            String whereClause = days > 0 ? " WHERE date > " + date : "";
+            query("SELECT * FROM wars" + whereClause, f -> {
+            }, (ThrowingConsumer<ResultSet>) rs -> {
+                while (rs.next()) {
+                    DBWar war = create(rs);
+                    setWar(war);
+                }
+            });
         }
 
         List<DBWar> wars = getWarByStatus(WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);
@@ -2022,23 +2031,24 @@ public class WarDB extends DBMainV2 {
         return getAttacksByWar(war);
     }
 
-    public Collection<DBAttack> loadAttacks() {
+    public Collection<DBAttack> loadAttacks(int days) {
         String whereClause;
-        if (Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS == 0) {
+        if (days == 0) {
             return allAttacks2;
-        } else if (Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS >= 0) {
-            long date = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS);
+        } else if (days >= 0) {
+            long date = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
             whereClause = " WHERE date > " + date;
         } else {
             whereClause = "";
         }
+        ObjectArrayList<DBAttack> tmp = new ObjectArrayList<>();
         try (PreparedStatement stmt= prepareQuery("select * FROM `attacks2`" + whereClause + " ORDER BY `war_attack_id` ASC")) {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    allAttacks2.add(createAttack(rs));
+                    tmp.add(createAttack(rs));
                 }
             }
-            return allAttacks2;
+            return allAttacks2 = tmp;
         } catch (SQLException e) {
             e.printStackTrace();
             return null;
@@ -2051,7 +2061,6 @@ public class WarDB extends DBMainV2 {
     }
 
     public List<DBAttack> getAttacks(Predicate<DBAttack> filter) {
-        int amt = 0;
         ObjectArrayList<DBAttack> list = new ObjectArrayList<>();
         synchronized (allAttacks2) {
             for (DBAttack attack : allAttacks2) {

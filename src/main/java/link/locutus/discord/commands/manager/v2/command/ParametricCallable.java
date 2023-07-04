@@ -64,7 +64,7 @@ public class ParametricCallable implements ICommand {
         this.object = object;
         this.method = method;
         this.returnType = method.getGenericReturnType();
-        this.annotations = method.getAnnotations();
+        this.annotations =  method.getAnnotations();
         method.setAccessible(true);
         this.valueFlags = new LinkedHashSet<>();
         this.provideFlags = new LinkedHashSet<>();
@@ -534,7 +534,7 @@ public class ParametricCallable implements ICommand {
         if (!permissionInfo.isEmpty()) {
             result.append("**Required Permissions:**\n\n");
             for (Map.Entry<String, String> entry : permissionInfo.entrySet()) {
-                if (spoiler) {
+                if (spoiler && false) {
                     result.append(MarkupUtil.spoiler(entry.getKey(), MarkupUtil.markdownToHTML(entry.getValue())) + "\n");
                 } else {
                     result.append("- `" + entry.getKey() + "`: ");

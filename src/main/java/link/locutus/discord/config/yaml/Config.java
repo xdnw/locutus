@@ -161,7 +161,7 @@ public class Config {
      * Any field or class with is not part of the config.
      */
     @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.FIELD, ElementType.TYPE})
+    @Target({ElementType.FIELD, ElementType.TYPE, ElementType.METHOD})
     public @interface Ignore {
 
     }

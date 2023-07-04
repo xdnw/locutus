@@ -2978,6 +2978,7 @@ public class DBNation implements NationOrAlliance {
             if (updateNewCities && cityObj.size() != cities) force = true;
             if (updateIfOutdated && estimateScore() != this.score) force = true;
             if (force) {
+                System.out.println("Fetch cities for " + getNation() + " | " + getNation_id());
                 Locutus.imp().getNationDB().updateCitiesOfNations(Collections.singleton(nation_id), true, Event::post);
                 cityObj = _getCitiesV3();
             }

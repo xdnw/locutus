@@ -9,9 +9,11 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.CommandGroup;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.config.yaml.Config;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
@@ -119,6 +121,15 @@ Message: `$who Rose -l`
 
 
         List<ParametricCallable> commands = new ArrayList<>(group.getParametricCallables(f -> true));
+        // has any @Ignore annotation
+        commands.removeIf(f -> f.getAnnotations().stream().anyMatch(a -> a.annotationType().equals(Config.Ignore.class)));
+        commands.removeIf(f -> {
+            // get RolePermission annotation f.getAnnotations()
+            RolePermission ann = f.getAnnotations().stream().filter(a -> a.annotationType().equals(RolePermission.class)).map(a -> (RolePermission) a).findFirst().orElse(null);
+            if (ann == null) return false;
+            if (ann.root()) return true;
+            return false;
+        });
         Collections.sort(commands, (o1, o2) -> o1.getFullPath().compareTo(o2.getFullPath()));
 
         result.append(header);
@@ -141,6 +152,15 @@ Message: `$who Rose -l`
         StringBuilder result = new StringBuilder();
 
         Map<Key, Parser> parsers = store.getParsers();
+        List<Map.Entry<Key, Parser>> parsersList = new ArrayList<>(parsers.entrySet());
+        // sort
+        parsersList.sort((o1, o2) -> {
+            // toString
+            String o1Str = o1.getKey().toSimpleString();
+            String o2Str = o2.getKey().toSimpleString();
+            return o1Str.compareTo(o2Str);
+        });
+
         for (Map.Entry<Key, Parser> entry : parsers.entrySet()) {
             Parser parser = entry.getValue();
             if (!parser.isConsumer(store)) continue;

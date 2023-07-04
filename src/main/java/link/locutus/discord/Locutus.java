@@ -125,8 +125,12 @@ public final class Locutus extends ListenerAdapter {
     private Locutus() throws SQLException, ClassNotFoundException, LoginException, InterruptedException, NoSuchMethodException {
         if (INSTANCE != null) throw new IllegalStateException("Already running.");
         INSTANCE = this;
+        long start = System.currentTimeMillis();
 
         this.proxyHandler = new ProxyHandler();
+
+        System.out.println("remove:|| proxyhandler " + (((-start)) + (start = System.currentTimeMillis())));
+
 
         if (Settings.INSTANCE.ROOT_SERVER <= 0) throw new IllegalStateException("Please set ROOT_SERVER in " + Settings.INSTANCE.getDefaultFile());
         if (Settings.INSTANCE.ROOT_COALITION_SERVER <= 0) Settings.INSTANCE.ROOT_COALITION_SERVER = Settings.INSTANCE.ROOT_SERVER;
@@ -145,17 +149,28 @@ public final class Locutus extends ListenerAdapter {
         this.logger = Logger.getLogger("LOCUTUS");
         this.eventBus = new AsyncEventBus("locutus", Runnable::run);
 
+        System.out.println("remove:|| eventbus " + (((-start)) + (start = System.currentTimeMillis())));
+
         this.executor = Executors.newCachedThreadPool();
 
+        System.out.println("remove:|| executor " + (((-start)) + (start = System.currentTimeMillis())));
         this.discordDB = new DiscordDB();
+        System.out.println("remove:|| discorddb " + (((-start)) + (start = System.currentTimeMillis())));
         this.nationDB = new NationDB();
+        System.out.println("remove:|| nationdb " + (((-start)) + (start = System.currentTimeMillis())));
         this.warDb = new WarDB();
+        System.out.println("remove:|| wardb " + (((-start)) + (start = System.currentTimeMillis())));
         this.stockDB = new StockDB();
+        System.out.println("remove:|| stockdb " + (((-start)) + (start = System.currentTimeMillis())));
         this.bankDb = new BankDB("bank");
+        System.out.println("remove:|| bankdb " + (((-start)) + (start = System.currentTimeMillis())));
         this.tradeManager = new TradeManager();
+        System.out.println("remove:|| trademanager " + (((-start)) + (start = System.currentTimeMillis())));
 
         this.commandManager = new CommandManager(this);
+        System.out.println("remove:|| commandmanager " + (((-start)) + (start = System.currentTimeMillis())));
         this.commandManager.registerCommands(discordDB);
+        System.out.println("remove:|| registercommands " + (((-start)) + (start = System.currentTimeMillis())));
         if (Settings.INSTANCE.BOT_TOKEN.isEmpty()) {
             throw new IllegalStateException("Please set BOT_TOKEN in " + Settings.INSTANCE.getDefaultFile());
         }
@@ -169,6 +184,7 @@ public final class Locutus extends ListenerAdapter {
             ApiKeyPool.ApiKey key = auth.fetchApiKey();
             Settings.INSTANCE.API_KEY_PRIMARY = key.getKey();
         }
+        System.out.println("remove:|| apikey " + (((-start)) + (start = System.currentTimeMillis())));
 
         if (Settings.INSTANCE.API_KEY_PRIMARY.isEmpty()) {
             throw new IllegalStateException("Please set API_KEY_PRIMARY or USERNAME/PASSWORD in " + Settings.INSTANCE.getDefaultFile());
@@ -181,12 +197,15 @@ public final class Locutus extends ListenerAdapter {
         }
         Settings.INSTANCE.NATION_ID = nationIdFromKey;
 
+        System.out.println("remove:|| nationid " + (((-start)) + (start = System.currentTimeMillis())));
+
         {
             PNWUser adminPnwUser = Locutus.imp().getDiscordDB().getUserFromNationId(Settings.INSTANCE.NATION_ID);
             if (adminPnwUser != null) {
                 Settings.INSTANCE.ADMIN_USER_ID = adminPnwUser.getDiscordId();
             }
         }
+        System.out.println("remove:|| adminuserid " + (((-start)) + (start = System.currentTimeMillis())));
 
         List<String> pool = new ArrayList<>();
         pool.addAll(Settings.INSTANCE.API_KEY_POOL);
@@ -195,18 +214,26 @@ public final class Locutus extends ListenerAdapter {
         }
 
         this.pnwApi = new PoliticsAndWarBuilder().addApiKeys(pool.toArray(new String[0])).setEnableCache(false).setTestServerMode(Settings.INSTANCE.TEST).build();
+        System.out.println("remove:|| pnwapi " + (((-start)) + (start = System.currentTimeMillis())));
         this.rootPnwApi = new PoliticsAndWarBuilder().addApiKeys(Settings.INSTANCE.API_KEY_PRIMARY).setEnableCache(false).setTestServerMode(Settings.INSTANCE.TEST).build();
+        System.out.println("remove:|| rootpnwapi " + (((-start)) + (start = System.currentTimeMillis())));
 
         ApiKeyPool v3Pool = ApiKeyPool.builder().addKey(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY,Settings.INSTANCE.ACCESS_KEY).build();
         this.v3 = new PoliticsAndWarV3(v3Pool);
+        System.out.println("remove:|| v3 " + (((-start)) + (start = System.currentTimeMillis())));
 
         if (Settings.INSTANCE.ENABLED_COMPONENTS.EVENTS) {
             this.registerEvents();
         }
 
+        System.out.println("remove:|| events " + (((-start)) + (start = System.currentTimeMillis())));
+
         this.nationDB.load();
+        System.out.println("remove:|| nationdbload " + (((-start)) + (start = System.currentTimeMillis())));
         this.warDb.load();
+        System.out.println("remove:|| wardbload " + (((-start)) + (start = System.currentTimeMillis())));
         this.tradeManager.load();
+        System.out.println("remove:|| trademanagerload " + (((-start)) + (start = System.currentTimeMillis())));
     }
 
     public ProxyHandler getProxyHandler() {

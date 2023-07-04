@@ -121,8 +121,7 @@ public class DBCity {
         buildings[Buildings.SUBWAY.ordinal()] = (byte) (int) cityV3.getSubway();
         buildings[Buildings.SUPERMARKET.ordinal()] = (byte) (int) cityV3.getSupermarket();
         buildings[Buildings.BANK.ordinal()] = (byte) (int) cityV3.getBank();
-        if (cityV3.getShopping_mall() != null) buildings[Buildings.MALL.ordinal()] = (byte) (int) cityV3.getShopping_mall();
-        else if (cityV3.getMall() != null) buildings[Buildings.MALL.ordinal()] = (byte) (int) cityV3.getMall();
+        buildings[Buildings.MALL.ordinal()] = (byte) (int) cityV3.getShopping_mall();
         buildings[Buildings.STADIUM.ordinal()] = (byte) (int) cityV3.getStadium();
         buildings[Buildings.GAS_REFINERY.ordinal()] = (byte) (int) cityV3.getOil_refinery();
         buildings[Buildings.ALUMINUM_REFINERY.ordinal()] = (byte) (int) cityV3.getAluminum_refinery();
