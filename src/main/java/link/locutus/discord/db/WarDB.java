@@ -298,10 +298,10 @@ public class WarDB extends DBMainV2 {
         Locutus.imp().getExecutor().submit(new Runnable() {
             @Override
             public void run() {
-                if (Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS > 6) {
+                if (Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS > 6 || Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS <= 0) {
                     loadWars(Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS);
                 }
-                if (Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS > 6) {
+                if (Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS > 6 || Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS <= 0) {
                     loadAttacks(Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS);
                 }
             }
