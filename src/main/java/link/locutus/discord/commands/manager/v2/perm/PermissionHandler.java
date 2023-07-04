@@ -14,7 +14,7 @@ public class PermissionHandler extends SimpleValueStore {
 
             boolean hasPerm = (Boolean) parser.apply(locals, null);
             if (!hasPerm) {
-                throw new IllegalCallerException("No permission.");
+                throw new IllegalCallerException("No permission for `" + parser.getKey().toSimpleString() + "`: `" + parser.getDescription() + "`");
             }
         }
     }

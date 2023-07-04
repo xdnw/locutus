@@ -383,10 +383,8 @@ public class ParametricCallable implements ICommand {
                     }
                     if (stack.hasNext() || !parameter.isOptional() || (parameter.getDefaultValue() != null && parameter.getDefaultValue().length != 0)) {
                         if (parameter.getBinding().isConsumer(stack.getStore()) && !stack.hasNext()) {
-                            String name = parameter.getType().getTypeName();
-                            String[] split = name.split("\\.");
-                            name = split[split.length - 1];
-                            throw new CommandUsageException(this, "Expected argument: <" + parameter.getName() + "> of type: " + name, help(locals), desc(locals));
+                            String name = parameter.getBinding().getKey().toSimpleString();
+                            throw new CommandUsageException(this, "Expected argument: <" + parameter.getName() + "> of type: " + name);
                         }
                         int originalRemaining = stack.remaining();
                         List<String> remaining = new ArrayList<>(stack.getRemainingArgs());
@@ -411,7 +409,7 @@ public class ParametricCallable implements ICommand {
             } catch (IllegalArgumentException e) {
                 e.printStackTrace();
                 String msg = "For `" + parameter.getName() + "`: " + e.getMessage();
-                throw new CommandUsageException(this, msg, help(locals), desc(locals));
+                throw new CommandUsageException(this, msg);
             }
             argumentMap.put(parameter, new AbstractMap.SimpleEntry<>(unparsed, value));
         }
@@ -438,7 +436,7 @@ public class ParametricCallable implements ICommand {
             return method.invoke(instance == null ? this.object : instance, paramVals);
         } catch (IllegalArgumentException e) {
             e.printStackTrace();
-            throw new CommandUsageException(this, e.getMessage(), help(store), desc(store));
+            throw new CommandUsageException(this, e.getMessage());
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
@@ -675,7 +673,7 @@ public class ParametricCallable implements ICommand {
                         String name = parameter.getType().getTypeName();
                         String[] split = name.split("\\.");
                         name = split[split.length - 1];
-                        throw new CommandUsageException(this, "Expected argument: <" + parameter.getName() + "> of type: " + name, help(locals), desc(locals));
+                        throw new CommandUsageException(this, "Expected argument: <" + parameter.getName() + "> of type: " + name);
                     }
                     ArgumentStack stack = new ArgumentStack(args, store, validators, permisser);
                     value = locals.get(parameter.getBinding().getKey()).apply(stack);
@@ -688,7 +686,7 @@ public class ParametricCallable implements ICommand {
             } catch (IllegalArgumentException e) {
                 e.printStackTrace();
                 String msg = "For `" + parameter.getName() + "`: " + e.getMessage();
-                throw new CommandUsageException(this, msg, help(locals), desc(locals));
+                throw new CommandUsageException(this, msg);
             }
             paramVals[i] = value;
         }

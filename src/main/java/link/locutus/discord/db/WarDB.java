@@ -293,8 +293,6 @@ public class WarDB extends DBMainV2 {
 
     public void load() {
         long start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(6);
-        loadWars(Math.max(Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS, 6));
-        loadAttacks(Math.max(Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS, 6));
         Locutus.imp().getExecutor().submit(new Runnable() {
             @Override
             public void run() {
@@ -306,6 +304,7 @@ public class WarDB extends DBMainV2 {
                 }
             }
         });
+        System.out.println("Loaded " + allAttacks2.size() + " attacks in " + (System.currentTimeMillis() - start) + "ms");
     }
 
     public void loadWars(int days) {
