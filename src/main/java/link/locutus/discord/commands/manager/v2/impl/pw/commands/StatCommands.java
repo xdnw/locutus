@@ -21,6 +21,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.rankings.WarCostAB;
 import link.locutus.discord.commands.rankings.builder.*;
@@ -1238,7 +1239,7 @@ public class StatCommands {
     @Command(desc = "Create a google sheet of nations, grouped by alliance, with the specified columns\n" +
             "Prefix a column with `avg:` to force an average\n" +
             "Prefix a column with `total:` to force a total")
-    public String allianceNationsSheet(NationPlaceholders placeholders, ValueStore store, @Me IMessageIO channel, @Me User author, @Me Guild guild, @Me GuildDB db,
+    public String allianceNationsSheet(NationPlaceholders placeholders, AlliancePlaceholders aaPlaceholders, ValueStore store, @Me IMessageIO channel, @Me User author, @Me Guild guild, @Me GuildDB db,
                                        Set<DBNation> nations,
                                        @Arg("The columns to have. See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>") List<String> columns,
                                        @Switch("s") SpreadSheet sheet,
@@ -1255,14 +1256,11 @@ public class StatCommands {
         List<String> header = (columns.stream().map(f -> f.replace("{", "").replace("}", "").replace("=", "")).collect(Collectors.toList()));
         sheet.setHeader(header);
 
-        List<SAllianceContainer> allianceList = Locutus.imp().getPnwApi().getAlliances().getAlliances();
-        Map<Integer, SAllianceContainer> alliances = allianceList.stream().collect(Collectors.toMap(f -> Integer.parseInt(f.getId()), f -> f));
 
         for (Map.Entry<Integer, Set<DBNation>> entry : natByAA.entrySet()) {
             Integer aaId = entry.getKey();
 
             DBAlliance alliance = DBAlliance.getOrCreate(aaId);
-            SAllianceContainer sAlliance = alliances.get(aaId);
 
             SimpleNationList list = new SimpleNationList(entry.getValue());
             DBNation total = list.getTotal();
@@ -1284,14 +1282,7 @@ public class StatCommands {
                         nation = total;
                     }
                     if (arg.contains("{") && arg.contains("}")) {
-                        if (sAlliance != null)
-                            for (Field field : SAllianceContainer.class.getDeclaredFields()) {
-                                String placeholder = "{" + field.getName() + "}";
-                                if (arg.contains(placeholder)) {
-                                    field.setAccessible(true);
-                                    arg = arg.replace(placeholder, field.get(sAlliance) + "");
-                                }
-                            }
+                        // todo replace with alliance placeholders format
 
                         for (Method method : DBAlliance.class.getDeclaredMethods()) {
                             if (method.getParameters().length != 0) continue;
@@ -1306,7 +1297,11 @@ public class StatCommands {
                         }
                     }
                     if (arg.contains("{") && arg.contains("}")) {
-                        arg = placeholders.format(store, arg);
+                        arg = aaPlaceholders.format(guild, alliance, author, arg);
+                        if (arg.contains("{") && arg.contains("}")) {
+                            arg = placeholders.format(store, arg);
+                        }
+
                     }
                 }
 

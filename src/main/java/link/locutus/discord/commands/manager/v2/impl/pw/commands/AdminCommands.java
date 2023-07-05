@@ -742,7 +742,7 @@ public class AdminCommands {
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
     public String rootApiUsageStats() {
-        PoliticsAndWarV2 api = Locutus.imp().getRootPnwApi();
+        PoliticsAndWarV2 api = Locutus.imp().getRootPnwApiV2();
         System.out.println(printApiStats(api));
         return "Done! (see console)";
     }
@@ -780,7 +780,7 @@ public class AdminCommands {
     @Command(desc = "Check if current api keys are valid")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String validateAPIKeys() {
-        Set<String> keys = Locutus.imp().getPnwApi().getApiKeyUsageStats().keySet();
+        Set<String> keys = Locutus.imp().getPnwApiV2().getApiKeyUsageStats().keySet();
         Map<String, String> failed = new LinkedHashMap<>();
         Map<String, ApiKeyDetails> success = new LinkedHashMap<>();
         for (String key : keys) {

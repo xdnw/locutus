@@ -305,9 +305,8 @@ public class CommandManager {
 //                    return;
                 }
                 if (result != null && !result.isEmpty()) {
-                    for (String key : Locutus.imp().getPnwApi().getApiKeyUsageStats().keySet()) {
-                        result = result.replaceAll(key, "");
-                    }
+                    result = result.replaceAll("(?i)" + Settings.INSTANCE.API_KEY_PRIMARY, "XXX");
+                    result = result.replaceAll("(?i)[\\[\\]\"\\n^:\\s,\\.](?=.*[A-Za-z])(?=.*\\d)[0-9A-F]{14,}(?=[\\[\\]\"\\n$:\\s,\\.]|$)", "XXX");
                     channel.send(result);
                 }
             } catch (Throwable e) {
