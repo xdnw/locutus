@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -65,9 +66,6 @@ public class AllianceSheet extends Command implements Noformat {
         Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
         if (nations.isEmpty()) return "No nations found for `" + args.get(0) + "`";
 
-        List<SAllianceContainer> allianceList = Locutus.imp().getPnwApi().getAlliances().getAlliances();
-
-        Map<Integer, SAllianceContainer> alliances = allianceList.stream().collect(Collectors.toMap(f -> Integer.parseInt(f.getId()), f -> f));
         Map<Integer, List<DBNation>> nationMap = new RankBuilder<>(nations).group(n -> n.getAlliance_id()).get();
 
         Map<Integer, DBNation> totals = new HashMap<>();
@@ -79,25 +77,16 @@ public class AllianceSheet extends Command implements Noformat {
 
         SpreadSheet sheet = SpreadSheet.create(Locutus.imp().getGuildDB(guild), SheetKeys.ALLIANCES_SHEET);
 
+        AlliancePlaceholders aaPlaceholders = Locutus.imp().getCommandManager().getV2().getAlliancePlaceholders();
         sheet.setHeader(header);
 
         for (Map.Entry<Integer, DBNation> entry : totals.entrySet()) {
-            SAllianceContainer alliance = alliances.get(entry.getKey());
-            if (alliance == null) continue;
-            DBAlliance dbAlliance = DBAlliance.getOrCreate(entry.getKey());
+            DBAlliance dbAlliance = DBAlliance.get(entry.getKey());
+            if (dbAlliance == null) continue;
 
             DBNation nation = entry.getValue();
             for (int i = 1; i < args.size(); i++) {
                 String arg = args.get(i);
-
-                // Format alliance id
-                for (Field field : SAllianceContainer.class.getDeclaredFields()) {
-                    String placeholder = "{" + field.getName() + "}";
-                    if (arg.contains(placeholder)) {
-                        field.setAccessible(true);
-                        arg = arg.replace(placeholder, field.get(alliance) + "");
-                    }
-                }
 
                 for (Field field : DBAlliance.class.getDeclaredFields()) {
                     String placeholder = "{" + field.getName() + "}";
@@ -106,8 +95,14 @@ public class AllianceSheet extends Command implements Noformat {
                         arg = arg.replace(placeholder, field.get(dbAlliance) + "");
                     }
                 }
+                String formatted = arg;
+                if (formatted.contains("{") && formatted.contains("}")) {
+                    formatted = aaPlaceholders.format(guild, dbAlliance, author, arg);
+                    if (formatted.contains("{") && formatted.contains("}")) {
+                        formatted = DiscordUtil.format(guild, channel, author, nation, arg);
+                    }
+                }
 
-                String formatted = DiscordUtil.format(guild, channel, author, nation, arg);
 
                 header.set(i - 1, formatted);
             }

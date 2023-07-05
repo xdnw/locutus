@@ -9,7 +9,7 @@ public enum AutoAuditType {
     HIGH_INFRA("As a low tier nation (<c5), the most profitable way to make money is to raid. " +
             "Building past 1700 infra while raiding is generally not cost effective as infra at that level is more expensive to replace when lost from war." +
             "It is only recommended to replace lost infra when you lose power or multiple military buildings, or do not have enough to sustain a military."),
-    RAIDING_W_TANKS("It is not recommended to raid with tanks as they are expensive and unable to loot money with any efficiency."),
+//    RAIDING_W_TANKS("It is not recommended to raid with tanks as they are expensive and unable to loot money with any efficiency."),
     UNPROFITABLE_FARMS("Your city has farms, which are not very profitable at your level. It is more profitable buying food from the trade page"),
 
     UNEVEN_INFRA("You bought uneven infra in <{city}> ({amount} infra) but only get a building slot every `50` infra.\n" +

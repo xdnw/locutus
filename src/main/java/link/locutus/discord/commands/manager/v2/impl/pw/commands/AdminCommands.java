@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -41,6 +42,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
+import link.locutus.discord.util.io.PageRequestQueue;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -78,6 +80,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -91,6 +94,40 @@ public class AdminCommands {
     public String checkActiveConflicts() {
         WarUpdateProcessor.checkActiveConflicts();
         return "Done! (see console)";
+    }
+
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String showFileQueue() {
+        PageRequestQueue handler = FileUtil.getPageRequestQueue();
+        PriorityQueue<PageRequestQueue.PageRequestTask<?>> jQueue = handler.getQueue();
+
+        Map<PagePriority, Integer> pagePriorities = new HashMap<>();
+        int unknown = 0;
+        synchronized (jQueue) {
+            for (PageRequestQueue.PageRequestTask<?> task : jQueue) {
+                long priority = task.getPriority();
+                int ordinal = (int) (priority / Integer.MAX_VALUE);
+                if (ordinal >= PagePriority.values.length) unknown++;
+                else {
+                    PagePriority pagePriority = PagePriority.values[ordinal];
+                    pagePriorities.put(pagePriority, pagePriorities.getOrDefault(pagePriority, 0) + 1);
+                }
+            }
+        }
+        List<Map.Entry<PagePriority, Integer>> entries = new ArrayList<>(pagePriorities.entrySet());
+        // sort
+        entries.sort((o1, o2) -> o2.getValue() - o1.getValue());
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("File Queue:\n");
+        for (Map.Entry<PagePriority, Integer> entry : entries) {
+            sb.append(entry.getKey().name()).append(": ").append(entry.getValue()).append("\n");
+        }
+        if (unknown > 0) {
+            sb.append("Unknown: ").append(unknown).append("\n");
+        }
+        return sb.toString();
     }
 
     @Command
@@ -705,7 +742,7 @@ public class AdminCommands {
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
     public String rootApiUsageStats() {
-        PoliticsAndWarV2 api = Locutus.imp().getRootPnwApi();
+        PoliticsAndWarV2 api = Locutus.imp().getRootPnwApiV2();
         System.out.println(printApiStats(api));
         return "Done! (see console)";
     }
@@ -743,7 +780,7 @@ public class AdminCommands {
     @Command(desc = "Check if current api keys are valid")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String validateAPIKeys() {
-        Set<String> keys = Locutus.imp().getPnwApi().getApiKeyUsageStats().keySet();
+        Set<String> keys = Locutus.imp().getPnwApiV2().getApiKeyUsageStats().keySet();
         Map<String, String> failed = new LinkedHashMap<>();
         Map<String, ApiKeyDetails> success = new LinkedHashMap<>();
         for (String key : keys) {
@@ -1075,6 +1112,9 @@ public class AdminCommands {
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncCities(NationDB db) throws IOException, ParseException {
+        StringBuilder result = new StringBuilder();
+        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
+
         List<Event> events = new ArrayList<>();
         db.updateAllCities(events::add);
         if (events.size() > 0) {
@@ -1082,7 +1122,49 @@ public class AdminCommands {
                 for (Event event : events) event.post();;
             });
         }
-        return "Updated all cities. " + events.size() + " changes detected";
+        result.append("events: " + events.size() + "\n");
+        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
+        result.append("Updated all cities. " + events.size() + " changes detected");
+        return result.toString();
+    }
+
+    @Command()
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String syncCitiesTest(NationDB db) throws IOException, ParseException {
+        StringBuilder result = new StringBuilder();
+        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
+
+        List<Event> events = new ArrayList<>();
+        db.updateCitiesV2(events::add);
+        if (events.size() > 0) {
+            Locutus.imp().getExecutor().submit(() -> {
+                for (Event event : events) event.post();;
+            });
+        }
+        result.append("events: " + events.size() + "\n");
+        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
+        result.append("Updated all cities. " + events.size() + " changes detected");
+        return result.toString();
+    }
+
+    @Command()
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String syncCitiesTest2(NationDB db, @Me DBNation me) throws IOException, ParseException {
+        Map<Integer, JavaCity> cities = me.getCityMap(true);
+        StringBuilder result = new StringBuilder();
+        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
+
+        List<Event> events = new ArrayList<>();
+        db.updateCitiesV2(events::add);
+        if (events.size() > 0) {
+            Locutus.imp().getExecutor().submit(() -> {
+                for (Event event : events) event.post();;
+            });
+        }
+        result.append("events: " + events.size() + "\n");
+        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
+        result.append("Updated all cities. " + events.size() + " changes detected");
+        return result.toString();
     }
 
 

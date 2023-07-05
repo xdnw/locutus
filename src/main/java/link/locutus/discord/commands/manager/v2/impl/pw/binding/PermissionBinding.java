@@ -83,11 +83,16 @@ public class PermissionBinding extends BindingHelper {
             for (GuildDB otherDB : Locutus.imp().getGuildDatabases().values()) {
                 if (otherDB.isValidAlliance() && otherDB.isOffshore() && otherDB.getOrNull(GuildKey.PUBLIC_OFFSHORING) == Boolean.TRUE) {
                     Map.Entry<GuildDB, Integer> offshoreInfo = otherDB.getOffshoreDB();
-                    publicOffshores.add(PnwUtil.getMarkdownUrl(offshoreInfo.getValue(), true));
+                    String markdown = PnwUtil.getMarkdownUrl(offshoreInfo.getValue(), true);
+                    if (offshoreInfo.getValue() == Settings.INSTANCE.ALLIANCE_ID()) {
+                        markdown += " (Bot Owner)";
+                    }
+                    publicOffshores.add(markdown);
                 }
             }
             if (!publicOffshores.isEmpty()) {
                 response.append("\nPublic offshores:\n- ").append(String.join("\n- ", publicOffshores));
+                response.append("\n`note: do not offshore to these guilds if you do not trust them`");
             }
 
             throw new IllegalArgumentException(response.toString());
@@ -179,10 +184,10 @@ public class PermissionBinding extends BindingHelper {
     }
 
     @Binding("Must have the provided Locutus roles on discord\n" +
-            "If `any` is set then you only need one of the roles instead of all\n" +
-            "If `root` is set you need the role on the Locutus server\n" +
-            "If `guild` is set you need the role in the guild matching that id\n" +
-            "If `alliance` is set you need the role in the guild for that alliance")
+            "If `any` requires ony of the roles instead of all\n" +
+            "If `root` requires the role on the Locutus server\n" +
+            "If `guild` requires the role in the guild matching that id\n" +
+            "If `alliance` requires the role in the guild for that alliance")
     @RolePermission
     public static boolean checkRole(@Me Guild guild, RolePermission perm, @Me User user) {
         return checkRole(guild, perm, user, null);

@@ -1,7 +1,9 @@
 package link.locutus.discord.util.battle.sim;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -96,20 +98,13 @@ public class SimulatedWarNode {
             case 1:
                 if (args[0].contains("/war=")) {
                     int warId = Integer.parseInt(args[0].split("=")[1].replaceAll("/", ""));
-
-                    War war = Locutus.imp().getPnwApi().getWar(warId);
+                    DBWar war = Locutus.imp().getWarDb().getWar(warId);
 
                     if (war == null) {
                         throw new IllegalArgumentException("Invalid war");
                     }
 
-                    List<WarContainer> warList = war.getWar();
-
-                    if (warList.size() != 1) {
-                        throw new IllegalArgumentException("War is empty");
-                    }
-                    WarContainer firstWar = warList.get(0);
-                    return new SimulatedWarNode(firstWar);
+                    return new SimulatedWarNode(war);
                 } else {
                     if (attacker == null) {
                         attacker = attackerDefault;
@@ -237,41 +232,46 @@ public class SimulatedWarNode {
         this.isAttacker = false;
     }
 
-    public SimulatedWarNode(WarContainer war) {
-        int aggId = Integer.parseInt(war.getAggressorId());
-        int defId = Integer.parseInt(war.getDefenderId());
+    public SimulatedWarNode(DBWar war) {
+        int aggId = war.attacker_id;
+        int defId = war.defender_id;
 
         aggressor = new WarNation(Locutus.imp().getNationDB().getNation(aggId));
         defender = new WarNation(Locutus.imp().getNationDB().getNation(defId));
 
-        aggressor.setResistance(Integer.parseInt(war.getAggressorResistance()));
-        defender.setResistance(Integer.parseInt(war.getDefenderResistance()));
+        List<DBAttack> attacks = war.getAttacks();
+        Map.Entry<Integer, Integer> resistance = war.getResistance(attacks);
 
-        aggressor.setActionPoints(Integer.parseInt(war.getAggressorMilitaryActionPoints()));
-        defender.setActionPoints(Integer.parseInt(war.getDefenderMilitaryActionPoints()));
+        aggressor.setResistance(resistance.getKey());
+        defender.setResistance(resistance.getValue());
 
-        setupWarType(WarType.parse(war.getWarType()));
+        Map.Entry<Integer, Integer> map = war.getMap(attacks);
+
+        aggressor.setActionPoints(map.getKey());
+        defender.setActionPoints(map.getValue());
+
+        setupWarType(war.getWarType());
         setupLootFactor();
 
-        String groundControl = war.getGroundControl();
-        String airSuperiority = war.getAirSuperiority();
-        String blockade = war.getBlockade();
+        int groundControl = war.getGroundControl();
+        int airSuperiority = war.getAirControl();
+        int blockade = war.getBlockader();
 
-        if (groundControl.equals(war.getAggressorId())) {
+        if (groundControl == war.attacker_id) {
             aggressor.setGroundControl(true);
-        } else if (groundControl.equals(war.getDefenderId())) {
+        } else if (groundControl == war.defender_id) {
             defender.setGroundControl(true);
         }
 
-        if (airSuperiority.equals(war.getAggressorId())) {
+        if (airSuperiority==(war.attacker_id)) {
             aggressor.setAirControl(true);
-        } else if (airSuperiority.equals(war.getDefenderId())) {
+        } else if (airSuperiority==(war.defender_id)) {
             defender.setAirControl(true);
         }
 
-        if (blockade.equals(war.getAggressorId())) {
+        if (blockade==(war.attacker_id)) {
             aggressor.setBlockade(true);
-        } else if (blockade.equals(war.getDefenderId())) {
+        } else if (blockade==(war.defender_id)) {
             defender.setBlockade(true);
         }
 

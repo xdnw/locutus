@@ -79,18 +79,16 @@ public class Counter extends Command {
             counter = Locutus.imp().getNationDB().getNation(counterId);
         } else {
             int warId = Integer.parseInt(arg0.split("=")[1].replaceAll("/", ""));
-            War war = Locutus.imp().getPnwApi().getWar(warId);
-
-            WarContainer first = war.getWar().get(0);
-            int counterId = Integer.parseInt(first.getAggressorId());
+            DBWar war = Locutus.imp().getWarDb().getWar(warId);
+            int counterId = war.getAttacker_id();
             counter = Locutus.imp().getNationDB().getNation(counterId);
 
             if (counter.getAlliance_id() == me.getAlliance_id() || (guild != null && Locutus.imp().getGuildDB(guild).getCoalition("allies").contains(counter.getAlliance_id()))) {
-                counterId = Integer.parseInt(first.getDefenderId());
+                counterId = (war.getDefender_id());
                 counter = Locutus.imp().getNationDB().getNation(counterId);
-                defenderId = Integer.parseInt(first.getAggressorId());
+                defenderId = (war.getAttacker_id());
             } else {
-                defenderId = Integer.parseInt(first.getDefenderId());
+                defenderId = (war.getDefender_id());
             }
         }
 

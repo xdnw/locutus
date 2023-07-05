@@ -110,12 +110,18 @@ public class AllianceList {
     }
 
     public List<BankDB.TaxDeposit> updateTaxes() {
+        return updateTaxes(null);
+    }
+
+
+    public List<BankDB.TaxDeposit> updateTaxes(Long startDate) {
         List<BankDB.TaxDeposit> deposits = new ArrayList<>();
         for (DBAlliance alliance : getAlliances()) {
-            deposits.addAll(alliance.updateTaxes());
+            deposits.addAll(alliance.updateTaxes(startDate));
         }
         return deposits;
     }
+
     public AllianceList subList(Set<Integer> aaIds) {
         Set<Integer> copy = new LinkedHashSet<>(ids);
         copy.retainAll(aaIds);

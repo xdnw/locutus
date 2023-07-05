@@ -13,6 +13,7 @@ import link.locutus.discord.event.Event;
 import link.locutus.discord.event.nation.NationRegisterEvent;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.offshore.EncryptionUtil;
 import com.google.api.client.util.Base64;
@@ -651,11 +652,20 @@ public class DiscordDB extends DBMainV2 {
     }
 
     public PNWUser getUserFromNationId(int nationId) {
+        if (nationId == Settings.INSTANCE.NATION_ID && nationId > 0) {
+            long userId = Settings.INSTANCE.ADMIN_USER_ID;
+            User user = Locutus.imp().getDiscordApi().getUserById(userId);
+            return new PNWUser(nationId, Settings.INSTANCE.ADMIN_USER_ID, user == null ? null : DiscordUtil.getFullUsername(user));
+        }
         updateUserCache();
         return userNationCache.get(nationId);
     }
 
     public PNWUser getUserFromDiscordId(long discordId) {
+        if (discordId == Settings.INSTANCE.ADMIN_USER_ID) {
+            User user = Locutus.imp().getDiscordApi().getUserById(discordId);
+            return new PNWUser(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.ADMIN_USER_ID, user == null ? null : DiscordUtil.getFullUsername(user));
+        }
         updateUserCache();
         return userCache.get(discordId);
     }

@@ -177,6 +177,8 @@ public class CommandManager2 {
 
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "wiki"), "dumpWiki", "save");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "conflicts"), "checkActiveConflicts", "check");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "queue"), "showFileQueue", "file");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncCitiesTest", "cities");
 
         this.commands.registerMethod(new SettingCommands(), List.of("settings"), "delete", "delete");
         this.commands.registerMethod(new SettingCommands(), List.of("settings"), "sheets", "sheets");
@@ -204,9 +206,11 @@ public class CommandManager2 {
             }
         }
 
+        HelpCommands help = new HelpCommands();
+
+        this.commands.registerMethod(help, List.of("help"), "command", "command");
 
         if (pwgptHandler != null) {
-            HelpCommands help = new HelpCommands();
             this.commands.registerMethod(help, List.of("help"), "find_command", "find_command");
             this.commands.registerMethod(help, List.of("help"), "find_setting", "find_setting");
 
@@ -256,6 +260,7 @@ public class CommandManager2 {
         this.commands.registerMethod(new FunCommands(), List.of("fun"), "stealBorgsCity", "stealborgscity");
 
         this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "audit"), "auditAlertOptOut", "optout");
+        this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "enemy"), "enemyAlertOptOut", "optout");
 
         StringBuilder output = new StringBuilder();
         this.commands.generatePojo("", output, 0);
@@ -407,16 +412,17 @@ public class CommandManager2 {
             LocalValueStore locals = createLocals(existingLocals, null, null, null, null, io, null);
 
             if (callable instanceof ParametricCallable parametric) {
-                try {
-                    ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
-                    handleCall(io, () -> {
+                ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
+                handleCall(io, () -> {
+                    try {
                         Map<ParameterData, Map.Entry<String, Object>> map = parametric.parseArgumentsToMap(stack);
                         Object[] parsed = parametric.argumentMapToArray(map);
                         return parametric.call(null, locals, parsed);
-                    });
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
+                    } catch (RuntimeException e) {
+                        e.printStackTrace();
+                        throw new CommandUsageException(callable, e.getMessage());
+                    }
+                });
             } else if (callable instanceof CommandGroup group) {
                 handleCall(io, group, locals);
             } else throw new IllegalArgumentException("Invalid command class " + callable.getClass());
@@ -448,18 +454,23 @@ public class CommandManager2 {
                 LocalValueStore<Object> finalLocals = createLocals(existingLocals, null, null, null, null, io, argsAndCmd);
                 if (callable instanceof ParametricCallable parametric) {
                     handleCall(io, () -> {
-                        if (parametric.getAnnotations().stream().noneMatch(a -> a instanceof NoFormat)) {
-                            for (Map.Entry<String, String> entry : finalArguments.entrySet()) {
-                                String key = entry.getKey();
-                                String value = entry.getValue();
-                                if (value.contains("{") && value.contains("}")) {
-                                    value = getNationPlaceholders().format(finalLocals, value);
-                                    entry.setValue(value);
+                        try {
+                            if (parametric.getAnnotations().stream().noneMatch(a -> a instanceof NoFormat)) {
+                                for (Map.Entry<String, String> entry : finalArguments.entrySet()) {
+                                    String key = entry.getKey();
+                                    String value = entry.getValue();
+                                    if (value.contains("{") && value.contains("}")) {
+                                        value = getNationPlaceholders().format(finalLocals, value);
+                                        entry.setValue(value);
+                                    }
                                 }
                             }
+                            Object[] parsed = parametric.parseArgumentMap(finalArguments, finalLocals, validators, permisser);
+                            return parametric.call(null, finalLocals, parsed);
+                        } catch (RuntimeException e) {
+                            e.printStackTrace();
+                            throw new CommandUsageException(callable, e.getMessage());
                         }
-                        Object[] parsed = parametric.parseArgumentMap(finalArguments, finalLocals, validators, permisser);
-                        return parametric.call(null, finalLocals, parsed);
                     });
                 } else if (callable instanceof CommandGroup group) {
                     handleCall(io, group, finalLocals);
@@ -483,15 +494,32 @@ public class CommandManager2 {
             }
         } catch (CommandUsageException e) {
             e.printStackTrace();
-            String title = e.getMessage();
             StringBuilder body = new StringBuilder();
-            if (e.getHelp() != null) {
-                body.append("`/").append(e.getHelp()).append("`");
+
+            if (e.getMessage().contains("`")) {
+                body.append("## Error:\n");
+                body.append(">>> " + e.getMessage() + "\n");
+            } else {
+                body.append("```ansi\n" + StringMan.ConsoleColors.RESET + StringMan.ConsoleColors.WHITE_BOLD + StringMan.ConsoleColors.RED_BACKGROUND);
+                body.append(e.getMessage());
+                body.append("```\n");
             }
-            if (e.getDescription() != null && !e.getDescription().isEmpty()) {
-                body.append("\n").append(e.getDescription());
+
+            body.append("## Usage:\n");
+            CommandCallable command = e.getCommand();
+            String title = "Error Running: /" + command.getFullPath(" ");
+            if (command instanceof ICommand icmd) {
+                body.append(icmd.toBasicMarkdown(store, permisser, "/", false));
+            } else {
+                String help = command.help(store);
+                String desc = command.desc(store);
+                if (help != null) {
+                    body.append("`/").append(help).append("`");
+                }
+                if (desc != null && !desc.isEmpty()) {
+                    body.append("\n").append(desc);
+                }
             }
-            if (title == null || title.isEmpty()) title = e.getClass().getSimpleName();
 
             io.create().embed(title, body.toString()).send();
         } catch (IllegalArgumentException e) {

@@ -50,4 +50,18 @@ public class PlayerSettingCommands {
         return "Opted out of audit alerts";
     }
 
+    @Command
+    public String enemyAlertOptOut(@Me GuildDB db, @Me User user, @Me Member member, @Me Guild guild) {
+        Role role = Roles.WAR_ALERT_OPT_OUT.toRole(guild);
+        if (role == null) {
+            role = RateLimitUtil.complete(guild.createRole().setName(Roles.WAR_ALERT_OPT_OUT.name()));
+            db.addRole(Roles.WAR_ALERT_OPT_OUT, role, 0);
+        }
+        if (member.getRoles().contains(role)) {
+            return "You are already opted out with the role for " + Roles.WAR_ALERT_OPT_OUT.name();
+        }
+        RateLimitUtil.complete(guild.addRoleToMember(member, role));
+        return "You have been opted out of " + Roles.WAR_ALERT_OPT_OUT.name() + " alerts";
+    }
+
 }

@@ -248,7 +248,7 @@ public class BankDB extends DBMainV3 {
     }
 
     public void updateBankRecsv2(int nationId, Consumer<Event> eventConsumer) {
-        PoliticsAndWarV2 api = Locutus.imp().getPnwApi();
+        PoliticsAndWarV2 api = Locutus.imp().getPnwApiV2();
         List<BankRecord> records = api.getBankRecords(nationId);
         saveBankRecsV2(records, eventConsumer);
     }

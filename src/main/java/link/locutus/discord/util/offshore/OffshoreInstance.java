@@ -28,7 +28,6 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.task.balance.BankWithTask;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -1439,22 +1438,8 @@ public class OffshoreInstance {
      *         }
      *         if (msg.isEmpty()) msg = "Unknown Error (Captcha?)";
      *         return Map.entry(TransferStatus.OTHER, msg);
-     * @param task
      * @return
      */
-
-    private Map.Entry<TransferStatus, String> categorize(BankWithTask task) {
-        try {
-            String msg = task.call();
-            return categorize(msg);
-        } catch (IndexOutOfBoundsException e) {
-            if (new Date().getMinutes() <= 1) {
-                return Map.entry(TransferStatus.OTHER, "Resources cannot be transferred during turn change");
-            }
-            e.printStackTrace();
-            return Map.entry(TransferStatus.OTHER, "Unspecified authentication error.");
-        }
-    }
 
     private Map.Entry<TransferStatus, String> categorize(String msg) {
         if (msg.contains("You successfully transferred funds from the alliance bank.")) {

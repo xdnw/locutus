@@ -233,6 +233,7 @@ public class PnwPusherHandler {
                     }
                 }
                 String msg = channelInfo.replace(pnwKey, "XXX");
+                msg = msg.replaceAll("(?i)[\\[\\]\"\\n^:\\s,\\.](?=.*[A-Za-z])(?=.*\\d)[0-9A-F]{14,}(?=[\\[\\]\"\\n$:\\s,\\.]|$)", "XXX");
                 throw new PnwPusherError(msg);
             } catch (IOException e) {
                 throw new RuntimeException(e);

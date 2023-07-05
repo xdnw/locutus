@@ -9,6 +9,9 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.AllowDeleted;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
+import link.locutus.discord.commands.manager.v2.command.CommandCallable;
+import link.locutus.discord.commands.manager.v2.command.ICommand;
+import link.locutus.discord.commands.manager.v2.command.ICommandGroup;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
@@ -76,6 +79,18 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class PWBindings extends BindingHelper {
+
+    @Binding(value = "A discord slash command reference for the bot")
+    public ICommand slashCommand(String input) {
+        List<String> split = StringMan.split(input, ' ');
+        CommandCallable command = Locutus.imp().getCommandManager().getV2().getCallable(split);
+        if (command == null) throw new IllegalArgumentException("No command found for `" + input + "`");
+        if (command instanceof ICommandGroup group) {
+            throw new IllegalArgumentException("Command `" + input + "` is a group, not an endpoint. Please specify a sub command");
+        }
+        if (!(command instanceof ICommand)) throw new IllegalArgumentException("Command `" + input + "` is not a command endpoint");
+        return (ICommand) command;
+    }
 
     @Binding(value = """
             A map of city ranges to a list of beige reasons for defeating an enemy in war
@@ -404,6 +419,8 @@ public class PWBindings extends BindingHelper {
         int rssRate = Integer.parseInt(split[1]);
         return new TaxRate(moneyRate, rssRate);
     }
+
+    @Binding(value = "", examples = {"Borg", "<@664156861033086987>", "Danzek", "189573", "https://politicsandwar.com/nation/id=189573"})
 
     public static NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuildOrTaxId(String input) {
         return nationOrAllianceOrGuildOrTaxId(null, input);

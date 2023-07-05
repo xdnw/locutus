@@ -145,36 +145,36 @@ public class BankCommands {
                                    Set<DBNation> nations,
                                    @Arg("A spreadsheet of nations and amounts to deposit\n" +
                                            "Columns must be named after the resource names")
-                                   @Default TransferSheet sheetAmounts,
+                                   @Switch("s") TransferSheet sheetAmounts,
                                    @Arg("Exact amount of resources to deposit (capped at resources on nation). Throws error if any of the other deposit modes are set")
-                                   @Default Map<ResourceType, Double> amount,
+                                   @Switch("a") Map<ResourceType, Double> amount,
                                    @Arg("Number of days of city raw resource consumption to keep\n" +
                                            "Recommended value: 5")
                                        @Range(min = 0)
-                                   @Default Double rawsDays,
+                                   @Switch("r") Double rawsDays,
                                    @Arg("Do not keep money above the daily login bonus") @Switch("d") boolean rawsNoDailyCash,
                                    @Arg("Do not keep any money") @Switch("c") boolean rawsNoCash,
 
                                    @Arg("Number of default warchests to keep per city\n" +
                                            "Recommended value: 1\n" +
                                            "Default warchest is is set via the settings command")
-                                   @Default Double keepWarchestFactor,
+                                   @Switch("wcf") Double keepWarchestFactor,
                                    @Arg("Amount of resources to keep per city")
-                                   @Default Map<ResourceType, Double> keepPerCity,
+                                   @Switch("pc") Map<ResourceType, Double> keepPerCity,
                                    @Arg("Amount of resources to keep in total")
-                                   @Default Map<ResourceType, Double> keepTotal,
+                                   @Switch("kt") Map<ResourceType, Double> keepTotal,
                                    @Arg("Keep resources for purchasing specific units")
-                                   @Default Map<MilitaryUnit, Long> unitResources,
+                                   @Switch("ur") Map<MilitaryUnit, Long> unitResources,
                                    @Arg("Note to add to the deposit")
-                                   @Default DepositType.DepositTypeInfo note,
+                                   @Switch("n") DepositType.DepositTypeInfo note,
                                    @Arg("The message to append to the mail or dm message")
-                                   @Default String customMessage,
+                                   @Switch("cm") String customMessage,
                                    @Arg("Send deposit urls to nations via in-game mail")
                                    @Switch("m") boolean mailResults,
                                    @Arg("Send deposit urls to nations in discord direct messages (dm)")
                                    @Switch("dm") boolean dm,
                                    @Arg("Deposit via the api")
-                                   @Switch("a") boolean useApi,
+                                   @Switch("u") boolean useApi,
                                    @Switch("f") boolean force) throws IOException, ExecutionException, InterruptedException, GeneralSecurityException {
         if (mailResults && !Roles.MAIL.has(author, db.getGuild())) {
             throw new IllegalArgumentException("No permission for `mailResults`. " + Roles.MAIL.toDiscordRoleNameElseInstructions(db.getGuild()));
@@ -3033,7 +3033,11 @@ public class BankCommands {
         boolean failedFetch = true;
         Map<Integer, TaxBracket> brackets;
         try {
-            brackets = db.getAllianceList().getTaxBrackets(false);
+            AllianceList alliances = db.getAllianceList();
+            if (alliances == null) {
+                return "Please register an alliance: " + CM.settings_default.registerAlliance.cmd.toSlashMention();
+            }
+            brackets = alliances.getTaxBrackets(false);
             failedFetch = false;
         } catch (IllegalArgumentException e) {
             brackets = new LinkedHashMap<>();

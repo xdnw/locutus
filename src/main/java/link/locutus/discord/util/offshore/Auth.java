@@ -3,9 +3,11 @@ package link.locutus.discord.util.offshore;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
+import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.PendingTreaty;
 import link.locutus.discord.db.entities.TaxBracket;
@@ -785,27 +787,26 @@ public class Auth {
         }
     }
 
-    private static String parse(String mine, ResourceType type, Map<ResourceType, Double> warchest) {
-        return "" + (long) Math.max(0, MathMan.parseDouble(mine) - warchest.getOrDefault(type, 0d));
+    private static String parse(double mine, ResourceType type, Map<ResourceType, Double> warchest) {
+        return "" + (long) Math.max(0, mine - warchest.getOrDefault(type, 0d));
     }
+
+
+
     public String safekeep(Map<ResourceType, Double> warchest) throws IOException {
         DBNation nation = getNation();
         int fromBank = nation.getAlliance_id();
-        AllianceMembersContainer me = Locutus.imp().getRootPnwApi().getAllianceMembers(fromBank).getNations().get(0);
-        Map<String, String> post = new HashMap<>();
+        ApiKeyPool.ApiKey key = getApiKey();
+        PoliticsAndWarV3 v3 = new PoliticsAndWarV3(ApiKeyPool.create(key));
 
-        post.put("depmoney", parse(me.getMoney(), ResourceType.MONEY, warchest));
-        post.put("depfood", parse(me.getFood(), ResourceType.FOOD, warchest));
-        post.put("depcoal", parse(me.getCoal(), ResourceType.COAL, warchest));
-        post.put("depoil", parse(me.getOil(), ResourceType.OIL, warchest));
-        post.put("depuranium", parse(me.getUranium(), ResourceType.URANIUM, warchest));
-        post.put("deplead", parse(me.getLead(), ResourceType.LEAD, warchest));
-        post.put("depiron", parse(me.getIron(), ResourceType.IRON, warchest));
-        post.put("depbauxite", parse(me.getBauxite(), ResourceType.BAUXITE, warchest));
-        post.put("depgasoline", parse(me.getGasoline(), ResourceType.GASOLINE, warchest));
-        post.put("depmunitions", parse(me.getMunitions(), ResourceType.MUNITIONS, warchest));
-        post.put("depsteel", parse(me.getSteel(), ResourceType.STEEL, warchest));
-        post.put("depaluminum", parse(me.getAluminum(), ResourceType.ALUMINUM, warchest));
+        Map<ResourceType, Double> stockpile = nation.getStockpile();
+        Map<String, String> post = new HashMap<>();
+        for (Map.Entry<ResourceType, Double> entry : stockpile.entrySet()) {
+            ResourceType type = entry.getKey();
+            double amount = entry.getValue();
+            if (type == ResourceType.CREDITS || amount <= 0) continue;
+            post.put("dep" + type.name().toLowerCase(), parse(amount, type, warchest));
+        }
         post.put("depnote", "");
         post.put("depsubmit", "Deposit");
 

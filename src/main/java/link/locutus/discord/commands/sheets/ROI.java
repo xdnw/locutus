@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
@@ -184,10 +185,12 @@ public class ROI extends Command {
             useSheet = nations.size() > 1;
         } else if (args.get(0).toLowerCase().contains("/city/")) {
             int cityId = Integer.parseInt(args.get(0).split("=")[1]);
-            City pnwCity = Locutus.imp().getPnwApi().getCity(cityId);
-            JavaCity from = new JavaCity(pnwCity);
-            int nationId = Integer.parseInt(pnwCity.getNationid());
+            Map.Entry<Integer, DBCity> cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
+            int nationId = cityEntry.getKey();
             DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
+            DBCity city = cityEntry.getValue();
+            city.update(true);
+            JavaCity from = city.toJavaCity(nation);
             roi(nation, Integer.MAX_VALUE, Integer.MAX_VALUE, from, days, roiMap, 500);
         } else {
             Collection<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));

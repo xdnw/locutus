@@ -526,19 +526,22 @@ public class NationUpdateProcessor {
                         }
                         if (!priority1.isEmpty()) {
                             String mentions = StringMan.join(priority1.stream().map(e -> e.getValue().getAsMention()).collect(Collectors.toList()), ",");
-                            msg.append("priority1: " + mentions + "(see pins to opt out)");
+                            msg.append("priority1: " + mentions);
                         }
                         if (!priority2.isEmpty()) {
                             String mentions = StringMan.join(priority2.stream().map(e -> e.getValue().getAsMention()).collect(Collectors.toList()), ",");
-                            msg.append("priority2: " + mentions + "(see pins to opt out)");
+                            msg.append("priority2: " + mentions);
                         }
                         if (!priority3.isEmpty()) {
                             String mentions = StringMan.join(priority3.stream().map(e -> e.getValue().getAsMention()).collect(Collectors.toList()), ",");
-                            msg.append("priority3: " + mentions + "(see pins to opt out)");
+                            msg.append("priority3: " + mentions);
                         }
                         if (!priority4.isEmpty()) {
                             String mentions = StringMan.join(priority4.stream().map(e -> e.getValue().getAsMention()).collect(Collectors.toList()), ",");
-                            msg.append("priority4: " + mentions + "(see pins to opt out)");
+                            msg.append("priority4: " + mentions);
+                        }
+                        if (!priority1.isEmpty() || !priority2.isEmpty() || !priority3.isEmpty() || !priority4.isEmpty()) {
+                            msg.append(" (see: " + CM.alerts.enemy.optout.cmd.toSlashMention() + " to opt out)");
                         }
                     } else if (mode.pingRole()) {
                         msg.append(bountyRole.getAsMention());

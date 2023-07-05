@@ -7,6 +7,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -77,19 +78,18 @@ public class CounterSpy extends Command {
         if (args.get(0).startsWith("" + Settings.INSTANCE.PNW_URL() + "/nation/war/")) {
             // war url
             int warId = Integer.parseInt(args.get(0).split("=")[1].replaceAll("/", ""));
-            War war = Locutus.imp().getPnwApi().getWar(warId);
+            DBWar war = Locutus.imp().getWarDb().getWar(warId);
 
-            WarContainer first = war.getWar().get(0);
-            int counterId = Integer.parseInt(first.getAggressorId());
+            int counterId = war.attacker_id;
             DBNation counter = Locutus.imp().getNationDB().getNation(counterId);
 
             int defenderId;
             if (counter.getAlliance_id() == me.getAlliance_id() || (guild != null && Locutus.imp().getGuildDB(guild).getAllies().contains(counter.getAlliance_id()))) {
-                counterId = Integer.parseInt(first.getDefenderId());
+                counterId = (war.defender_id);
                 counter = Locutus.imp().getNationDB().getNation(counterId);
-                defenderId = Integer.parseInt(first.getAggressorId());
+                defenderId = (war.attacker_id);
             } else {
-                defenderId = Integer.parseInt(first.getDefenderId());
+                defenderId = (war.defender_id);
             }
             enemy = counter;
         } else {

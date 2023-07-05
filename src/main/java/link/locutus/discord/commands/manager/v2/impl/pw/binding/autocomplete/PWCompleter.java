@@ -18,6 +18,7 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
+import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.NationDepositLimit;
@@ -59,13 +60,18 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class PWCompleter extends BindingHelper {
-
     @Autocomplete
     @Binding(types={CommandCallable.class})
     public List<String> command(String input) {
         List<ParametricCallable> options = new ArrayList<>(Locutus.imp().getCommandManager().getV2().getCommands().getParametricCallables(f -> true));
         List<String> optionsStr = options.stream().map(f -> f.getFullPath()).toList();
         return StringMan.getClosest(input, optionsStr, f -> f, OptionData.MAX_CHOICES, true);
+    }
+
+    @Autocomplete
+    @Binding(types={ICommand.class})
+    public List<String> commandEndpoint(String input) {
+        return command(input);
     }
     
     @Autocomplete

@@ -305,9 +305,8 @@ public class CommandManager {
 //                    return;
                 }
                 if (result != null && !result.isEmpty()) {
-                    for (String key : Locutus.imp().getPnwApi().getApiKeyUsageStats().keySet()) {
-                        result = result.replaceAll(key, "");
-                    }
+                    result = result.replaceAll("(?i)" + Settings.INSTANCE.API_KEY_PRIMARY, "XXX");
+                    result = result.replaceAll("(?i)[\\[\\]\"\\n^:\\s,\\.](?=.*[A-Za-z])(?=.*\\d)[0-9A-F]{14,}(?=[\\[\\]\"\\n$:\\s,\\.]|$)", "XXX");
                     channel.send(result);
                 }
             } catch (Throwable e) {
@@ -678,11 +677,9 @@ public class CommandManager {
         this.register(new HelpCommand(this));
         this.register(new GrantCmd(bankWith));
 
-
         this.register(new ProlificOffshores());
         this.register(new LargestBanks());
         this.register(new InactiveAlliances());
-
 
         this.register(new WarCostByDay());
         this.register(new WarCostRankingByDay());
@@ -713,9 +710,7 @@ public class CommandManager {
         this.register(new AlertTrades());
         this.register(new Commend("commend", true));
         this.register(new Commend("denounce", false));
-
 //        this.register(new Setup());
-
         this.register(new UnsubTrade());
         this.register(new TradeSubscriptions());
         this.register(new BankAlerts());

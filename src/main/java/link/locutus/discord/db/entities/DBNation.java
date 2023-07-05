@@ -23,6 +23,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.nation.NationRegisterEvent;
@@ -456,6 +457,23 @@ public class DBNation implements NationOrAlliance {
     }
     public boolean hasProject(Project project, boolean update) {
         return (this.projects & (1L << project.ordinal())) != 0;
+    }
+
+    @Command(desc = "If the nation has the treasure")
+    public boolean hasTreasure() {
+        return (Locutus.imp().getNationDB().getTreasure(nation_id) != null);
+    }
+
+    @Command(desc = "How many days the treasure is in said nation")
+    public long treasureDays() {
+
+        DBTreasure treasure = Locutus.imp().getNationDB().getTreasure(nation_id);
+
+        if(Locutus.imp().getNationDB().getTreasure(nation_id) != null)
+            return 0;
+
+        long difference = (System.currentTimeMillis() - treasure.getSpawnDate()) + (TimeUnit.DAYS.toMillis(60));
+        return TimeUnit.DAYS.toDays(difference);
     }
 
     public void setProject(Project project) {
@@ -2158,6 +2176,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public String commend(boolean isCommend) throws IOException {
+        ApiKeyPool.ApiKey key = getApiKey(true);
         String url = "https://politicsandwar.com/api/denouncements.php";
         Map<String, String> post = new HashMap<>();
 
@@ -2168,12 +2187,11 @@ public class DBNation implements NationOrAlliance {
         }
         post.put("account_id", Settings.INSTANCE.NATION_ID + "");
         post.put("target_id", getNation_id() + "");
-        String key = Locutus.imp().getRootPnwApi().getApiKeyUsageStats().entrySet().iterator().next().getKey();
-        post.put("api_key", key);
+        post.put("api_key", key.getKey());
         Locutus.imp().getRootAuth().readStringFromURL(PagePriority.COMMEND, url, post);
 
         String actionStr = isCommend ? "commended" : "denounced";
-        return "Borg has publicly " + actionStr +" the nation of " + getNation() + " led by " + getLeader()+ ".";
+        return "Borg has publicly " + actionStr + " the nation of " + getNation() + " led by " + getLeader() + ".";
     }
 
     /**
@@ -2960,6 +2978,7 @@ public class DBNation implements NationOrAlliance {
             if (updateNewCities && cityObj.size() != cities) force = true;
             if (updateIfOutdated && estimateScore() != this.score) force = true;
             if (force) {
+                System.out.println("Fetch cities for " + getNation() + " | " + getNation_id());
                 Locutus.imp().getNationDB().updateCitiesOfNations(Collections.singleton(nation_id), true, Event::post);
                 cityObj = _getCitiesV3();
             }
