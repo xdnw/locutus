@@ -148,7 +148,7 @@ public class CommandManager2 {
         // nap command  - UtilityCommands
 
         this.commands.registerCommandsWithMapping(CM.class, false, false);
-        this.commands.registerMethod(new TestCommands(), List.of("test"), "embed", "embed");
+        this.commands.registerMethod(new TestCommands(), List.of("test"), "model", "model");
         this.commands.registerMethod(new BankCommands(), List.of("tax"), "taxInfo", "info");
 
         this.commands.registerMethod(new BankCommands(), List.of("bank"), "depositResources", "deposit");
