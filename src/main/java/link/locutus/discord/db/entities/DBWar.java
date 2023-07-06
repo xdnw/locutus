@@ -41,6 +41,10 @@ public class DBWar {
     public NationInfo attacker_info;
     public NationInfo defender_info;
 
+    public int getTurnsLeft() {
+        return (int) (TimeUtil.getTurn() - TimeUtil.getTurn(date) + 60);
+    }
+
     public static class NationInfo {
         public NationColor color;
         public int cities;

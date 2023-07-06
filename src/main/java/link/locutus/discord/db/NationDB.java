@@ -938,7 +938,7 @@ public class NationDB extends DBMainV2 {
 
         List<SCityContainer> cities;
         try {
-            cities = Locutus.imp().getPnwApi().getAllCities().getAllCities();
+            cities = Locutus.imp().getPnwApiV2().getAllCities().getAllCities();
         } catch (IOException e) {
             e.printStackTrace();
             AlertUtil.error("Failed to fetch cities v2", e);
@@ -1560,7 +1560,7 @@ public class NationDB extends DBMainV2 {
 
     public void updateNationsV2(boolean includeVM, Consumer<Event> eventConsumer) {
         try {
-            List<SNationContainer> nations = Locutus.imp().getPnwApi().getNationsByScore(includeVM, 999999, -1).getNationsContainer();
+            List<SNationContainer> nations = Locutus.imp().getPnwApiV2().getNationsByScore(includeVM, 999999, -1).getNationsContainer();
 
             List<DBNation> toSave = new ArrayList<>();
             Set<Integer> expected = new LinkedHashSet<>(nations.size());
@@ -1714,17 +1714,33 @@ public class NationDB extends DBMainV2 {
         return fetched;
     }
 
-    public Set<Integer> updateAllNations(Consumer<Event> eventConsumer) {
-        return updateAllNations(f -> {}, eventConsumer);
+    public Set<Integer> updateNonVMNations(Consumer<Event> eventConsumer) {
+        Set<Integer> currentNations = new LinkedHashSet<>();
+        synchronized (nationsById) {
+            for (Map.Entry<Integer, DBNation> entry : nationsById.entrySet()) {
+                int id = entry.getKey();
+                DBNation nation = entry.getValue();
+                if (nation.getVm_turns() == 0) {
+                    currentNations.add(id);
+                }
+            }
+        }
+        Set<Integer> deleted = new HashSet<>();
+        Set<Integer> fetched = updateNations(f -> f.setVmode(false), eventConsumer);
+        for (int id : currentNations) {
+            if (!fetched.contains(id)) deleted.add(id);
+        }
+        deleteNations(deleted, eventConsumer);
+        return fetched;
     }
 
-    public Set<Integer> updateAllNations(Consumer<NationsQueryRequest> queryConsumer, Consumer<Event> eventConsumer) {
+    public Set<Integer> updateAllNations(Consumer<Event> eventConsumer) {
         Set<Integer> currentNations;
         synchronized (nationsById) {
             currentNations = new HashSet<>(nationsById.keySet());
         }
         Set<Integer> deleted = new HashSet<>();
-        Set<Integer> fetched = updateNations(queryConsumer, eventConsumer);
+        Set<Integer> fetched = updateNations(f -> {}, eventConsumer);
         for (int id : currentNations) {
             if (!fetched.contains(id)) deleted.add(id);
         }

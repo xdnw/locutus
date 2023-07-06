@@ -716,7 +716,7 @@ public final class Locutus extends ListenerAdapter {
             }, Settings.INSTANCE.TASKS.COLORED_NATIONS_SECONDS);
 
             addTaskSeconds(() -> {
-                runEventsAsync(events -> nationDB.updateNationsV2(false, events));
+                runEventsAsync(events -> nationDB.updateNonVMNations(events));
             }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS);
 
             addTaskSeconds(() -> {
@@ -736,7 +736,7 @@ public final class Locutus extends ListenerAdapter {
                 synchronized (warUpdateLock) {
                     System.out.println("Start update wars 1");
                     long start = System.currentTimeMillis();
-                    runEventsAsync(warDb::updateActiveWars);
+                    runEventsAsync(f -> warDb.updateActiveWars(f, false));
                     System.out.println("Update wars 1.1 took " + ( - start + (start = System.currentTimeMillis())));
                     runEventsAsync(warDb::updateAttacks);
                     System.out.println("Update wars 1.2 took " + ( - start + (start = System.currentTimeMillis())));
@@ -747,7 +747,7 @@ public final class Locutus extends ListenerAdapter {
                 synchronized (warUpdateLock) {
                     System.out.println("Start update wars");
                     long start1 = System.currentTimeMillis();
-                    runEventsAsync(warDb::updateAllWarsV2);
+                    runEventsAsync(warDb::updateAllWars);
                     runEventsAsync(warDb::updateAttacks);
                     long diff1 = System.currentTimeMillis() - start1;
                     {
@@ -824,7 +824,7 @@ public final class Locutus extends ListenerAdapter {
                 // Update all nations
 
                 {
-                    runEventsAsync(events -> nationDB.updateNationsV2(true, events));
+                    runEventsAsync(events -> nationDB.updateNonVMNations(events));
                 }
                 {
                     runEventsAsync(events -> nationDB.updateMostActiveNations(490, events));
@@ -898,11 +898,11 @@ public final class Locutus extends ListenerAdapter {
         return v3;
     }
 
-    public PoliticsAndWarV2 getPnwApi() {
+    public PoliticsAndWarV2 getPnwApiV2() {
         return pnwApi;
     }
 
-    public PoliticsAndWarV2 getRootPnwApi() {
+    public PoliticsAndWarV2 getRootPnwApiV2() {
         return rootPnwApi;
     }
 

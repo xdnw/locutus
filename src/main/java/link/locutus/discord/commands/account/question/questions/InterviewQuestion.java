@@ -12,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.NationMeta;
@@ -239,21 +240,17 @@ public enum InterviewQuestion implements Question {
             if ("\uD83D\uDEAB".equalsIgnoreCase(input)) return true;
 
             NationColor color = me.getColor();
-            Alliance alliance = Locutus.imp().getPnwApi().getAlliance(me.getAlliance_id());
-            if (!color.name().equalsIgnoreCase(alliance.getColor()) && color != NationColor.BEIGE) {
-                return color.name().equalsIgnoreCase(alliance.getColor());
+            DBAlliance alliance = me.getAlliance();
+            if (!color.equals(alliance.getColor()) && color != NationColor.BEIGE) {
+                return false;
             }
             return true;
         }
 
         @Override
         public String format(Guild guild, User author, DBNation me, IMessageIO channel, String message) {
-            try {
-                Alliance alliance = Locutus.imp().getPnwApi().getAlliance(me.getAlliance_id());
-                message = message.replace("{alliance.color}", alliance.getColor());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            DBAlliance alliance = me.getAlliance();
+            message = message.replace("{alliance.color}", alliance.getColor().name());
             return super.format(guild, author, me, channel, message);
         }
     },

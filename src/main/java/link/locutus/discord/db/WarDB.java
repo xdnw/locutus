@@ -1100,8 +1100,59 @@ public class WarDB extends DBMainV2 {
         });
     }
 
+    public boolean updateAllWars(Consumer<Event> eventConsumer) {
+        long start = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 61);
+        return updateWarsSince(eventConsumer, start);
+    }
+
+    public boolean updateWarsSince(Consumer<Event> eventConsumer, long date) {
+        Set<Integer> activeWarsToFetch = new LinkedHashSet<>(getWarsSince(date).keySet());
+        PoliticsAndWarV3 api = Locutus.imp().getV3();
+        List<War> wars = api.fetchWarsWithInfo(r -> {
+            r.setAfter(new Date(date));
+            r.setActive(false); // needs to be set otherwise inactive wars wont be fetched
+        });
+
+        if (wars.isEmpty()) {
+            AlertUtil.error("Failed to fetch wars", new Exception());
+            return false;
+        }
+
+        List<DBWar> dbWars = wars.stream().map(DBWar::new).collect(Collectors.toList());
+        updateWars(dbWars, eventConsumer);
+        int numActive = activeWarsToFetch.size();
+        for (DBWar war : dbWars) {
+            activeWarsToFetch.remove(war.getWarId());
+        }
+
+        if (activeWarsToFetch.size() > 0) {
+            int notDeleted = 0;
+            for (int warId : activeWarsToFetch) {
+                DBWar war = activeWars.getWar(warId);
+                if (war == null) {
+                    // no issue
+                    continue;
+                }
+                if (war.getNation(true) != null && war.getNation(false) != null) {
+                    notDeleted++;
+                }
+                DBWar copy = new DBWar(war);
+                war.status = WarStatus.EXPIRED;
+                activeWars.makeWarInactive(war);
+                saveWars(Collections.singleton(war));
+                if (eventConsumer != null) {
+                    eventConsumer.accept(new WarStatusChangeEvent(copy, war));
+                }
+            }
+            if (notDeleted > 0) {
+                AlertUtil.error("Unable to fetch " + notDeleted + "/" + numActive + " active wars:", new RuntimeException("Ignore if these wars correspond to deleted nations:\n" + StringMan.getString(activeWarsToFetch)));
+            }
+        }
+        return true;
+    }
+
     public boolean updateAllWarsV2(Consumer<Event> eventConsumer) throws IOException {
-        List<SWarContainer> wars = Locutus.imp().getPnwApi().getWarsByAmount(5000).getWars();
+        List<SWarContainer> wars = Locutus.imp().getPnwApiV2().getWarsByAmount(5000).getWars();
         List<DBWar> dbWars = new ArrayList<>();
         int minId = Integer.MAX_VALUE;
         int maxId = 0;
@@ -1133,15 +1184,20 @@ public class WarDB extends DBMainV2 {
 
         boolean result = updateWars(dbWars, eventConsumer);
         return result;
-
     }
 
-    public boolean updateActiveWars(Consumer<Event> eventConsumer) throws IOException {
+    public boolean updateActiveWars(Consumer<Event> eventConsumer, boolean useV2) throws IOException {
         if (activeWars.isEmpty()) {
-            return updateAllWarsV2(eventConsumer);
+            if (useV2) {
+                return updateAllWarsV2(eventConsumer);
+            } else {
+                return updateAllWars(eventConsumer);
+            }
         }
-        long start = System.currentTimeMillis();
+        return updateActiveWars2(eventConsumer);
+    }
 
+    public boolean updateActiveWars2(Consumer<Event> eventConsumer) throws IOException {
         int newWarsToFetch = 100;
         int numToUpdate = Math.min(999, PoliticsAndWarV3.WARS_PER_PAGE);
 
@@ -1796,7 +1852,7 @@ public class WarDB extends DBMainV2 {
             List<DBAttack> newAttacks;
             if (v2) {
                 try {
-                    List<WarAttacksContainer> attacksv2 = Locutus.imp().getPnwApi().getWarAttacksByMinWarAttackId(maxId).getWarAttacksContainers();
+                    List<WarAttacksContainer> attacksv2 = Locutus.imp().getPnwApiV2().getWarAttacksByMinWarAttackId(maxId).getWarAttacksContainers();
                     newAttacks = attacksv2.stream().map(DBAttack::new).filter(f -> !existingIds.contains(f.getWar_attack_id())).collect(Collectors.toList());
                 } catch (IOException e) {
                     throw new RuntimeException(e);

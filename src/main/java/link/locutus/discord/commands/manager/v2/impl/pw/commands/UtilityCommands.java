@@ -1291,9 +1291,6 @@ public class UtilityCommands {
             header.set(i, arg);
         }
 
-        List<SAllianceContainer> allianceList = Locutus.imp().getPnwApi().getAlliances().getAlliances();
-
-        Map<Integer, SAllianceContainer> alliances = allianceList.stream().collect(Collectors.toMap(f -> Integer.parseInt(f.getId()), f -> f));
         Map<Integer, List<DBNation>> nationMap = new RankBuilder<>(nations).group(n -> n.getAlliance_id()).get();
 
         Map<Integer, DBNation> totals = new HashMap<>();
@@ -1306,22 +1303,12 @@ public class UtilityCommands {
         sheet.setHeader(header);
 
         for (Map.Entry<Integer, DBNation> entry : totals.entrySet()) {
-            SAllianceContainer alliance = alliances.get(entry.getKey());
-            if (alliance == null) continue;
-            DBAlliance dbAlliance = DBAlliance.getOrCreate(entry.getKey());
+            DBAlliance dbAlliance = DBAlliance.get(entry.getKey());
+            if (dbAlliance == null) continue;
 
             DBNation nation = entry.getValue();
             for (int i = 0; i < columns.size(); i++) {
                 String arg = columns.get(i);
-
-                // Format alliance id
-                for (Field field : SAllianceContainer.class.getDeclaredFields()) {
-                    String placeholder = "{" + field.getName() + "}";
-                    if (arg.contains(placeholder)) {
-                        field.setAccessible(true);
-                        arg = arg.replace(placeholder, field.get(alliance) + "");
-                    }
-                }
 
                 for (Field field : DBAlliance.class.getDeclaredFields()) {
                     String placeholder = "{" + field.getName() + "}";
