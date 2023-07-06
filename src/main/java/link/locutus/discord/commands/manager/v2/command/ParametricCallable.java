@@ -10,8 +10,10 @@ import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.commands.HtmlInput;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.json.JSONObject;
 
 import java.lang.annotation.Annotation;
@@ -62,7 +64,7 @@ public class ParametricCallable implements ICommand {
         this.object = object;
         this.method = method;
         this.returnType = method.getGenericReturnType();
-        this.annotations = method.getAnnotations();
+        this.annotations =  method.getAnnotations();
         method.setAccessible(true);
         this.valueFlags = new LinkedHashSet<>();
         this.provideFlags = new LinkedHashSet<>();
@@ -381,10 +383,8 @@ public class ParametricCallable implements ICommand {
                     }
                     if (stack.hasNext() || !parameter.isOptional() || (parameter.getDefaultValue() != null && parameter.getDefaultValue().length != 0)) {
                         if (parameter.getBinding().isConsumer(stack.getStore()) && !stack.hasNext()) {
-                            String name = parameter.getType().getTypeName();
-                            String[] split = name.split("\\.");
-                            name = split[split.length - 1];
-                            throw new CommandUsageException(this, "Expected argument: <" + parameter.getName() + "> of type: " + name, help(locals), desc(locals));
+                            String name = parameter.getBinding().getKey().toSimpleString();
+                            throw new CommandUsageException(this, "Expected argument: <" + parameter.getName() + "> of type: " + name);
                         }
                         int originalRemaining = stack.remaining();
                         List<String> remaining = new ArrayList<>(stack.getRemainingArgs());
@@ -409,7 +409,7 @@ public class ParametricCallable implements ICommand {
             } catch (IllegalArgumentException e) {
                 e.printStackTrace();
                 String msg = "For `" + parameter.getName() + "`: " + e.getMessage();
-                throw new CommandUsageException(this, msg, help(locals), desc(locals));
+                throw new CommandUsageException(this, msg);
             }
             argumentMap.put(parameter, new AbstractMap.SimpleEntry<>(unparsed, value));
         }
@@ -436,10 +436,111 @@ public class ParametricCallable implements ICommand {
             return method.invoke(instance == null ? this.object : instance, paramVals);
         } catch (IllegalArgumentException e) {
             e.printStackTrace();
-            throw new CommandUsageException(this, e.getMessage(), help(store), desc(store));
+            throw new CommandUsageException(this, e.getMessage());
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public String toBasicMarkdown(ValueStore store, PermissionHandler permisser, String prefix, boolean spoiler) {
+        StringBuilder result = new StringBuilder();
+        Map<String, String> permissionInfo = new LinkedHashMap<>();
+
+        Method method = getMethod();
+        for (Annotation permAnnotation : method.getDeclaredAnnotations()) {
+            Key<Object> permKey = Key.of(boolean.class, permAnnotation);
+            Parser parser = permisser.get(permKey);
+            if (parser != null) {
+                List<String> permValues = new ArrayList<>();
+
+                for (Method permMeth : permAnnotation.annotationType().getDeclaredMethods()) {
+                    Object def = permMeth.getDefaultValue();
+                    Object current = null;
+                    try {
+                        current = permMeth.invoke(permAnnotation);
+                    } catch (IllegalAccessException | InvocationTargetException e) {
+                        throw new RuntimeException(e);
+                    }
+                    if (!Objects.equals(def, current)) {
+                        permValues.add(permMeth.getName() + ": " + StringMan.getString(current));
+                    }
+                }
+
+                String title = permAnnotation.annotationType().getSimpleName() + "(" + String.join(", ", permValues) + ")";
+                String body = parser.getDescription();
+                permissionInfo.put(title, body);
+            }
+        }
+
+        if (permissionInfo.isEmpty()) {
+            result.append("`This command is public`\n\n");
+        }
+
+        if (simpleDesc().isEmpty()) {
+            result.append("`No description provided`\n\n");
+        } else {
+            result.append(simpleDesc() + "\n\n");
+        }
+
+        Set<String> duplicateDesc = new HashSet<>();
+        List<ParameterData> params = getUserParameters();
+        if (params.isEmpty()) {
+            result.append("`This command has no arguments`\n\n");
+        } else {
+            String typeUrlBase = "https://t.ly/maKT";
+
+            result.append("**Arguments:**\n\n");
+            for (ParameterData parameter : params) {
+                Parser<?> binding = parameter.getBinding();
+                String name = parameter.getName();
+                Key key = binding.getKey();
+                String desc = parameter.getDescription();
+                String defDesc = binding.getDescription();
+                if (desc == null || desc.isEmpty()) desc = defDesc;
+                else if (defDesc != null && !defDesc.isEmpty() && !Objects.equals(desc, defDesc)) {
+                    desc += "\n(" + defDesc + ")";
+                }
+                if (!duplicateDesc.add(desc)) {
+                    desc = null;
+                }
+
+                if (parameter.getDefaultValue() != null) {
+                    String defStr = parameter.getDefaultValueString();
+                    name = name + "=" + defStr;
+                }
+
+                String argFormat = parameter.isOptional() || parameter.isFlag() ? "[%s]" : "<%s>";
+                if (parameter.isFlag()) {
+                    name = "-" + parameter.getFlag() + " " + name;
+                }
+                argFormat = String.format(argFormat, name);
+
+                String keyName = key.toSimpleString();
+                if (spoiler) keyName = StringEscapeUtils.escapeHtml4(keyName.replace("[", "\\[").replace("]", "\\]"));
+                String typeLink = MarkupUtil.markdownUrl(keyName, typeUrlBase + "#" + MarkupUtil.pathName(key.toSimpleString()));
+                result.append("`" + argFormat + "`").append(" - ").append(typeLink);
+
+                result.append("\n\n");
+
+                if (desc != null && !desc.isEmpty()) {
+                    result.append("> " + desc.replaceAll("\n", "\n> ") + "\n\n");
+                }
+            }
+        }
+
+        if (!permissionInfo.isEmpty()) {
+            result.append("**Required Permissions:**\n\n");
+            for (Map.Entry<String, String> entry : permissionInfo.entrySet()) {
+                if (spoiler && false) {
+                    result.append(MarkupUtil.spoiler(entry.getKey(), MarkupUtil.markdownToHTML(entry.getValue())) + "\n");
+                } else {
+                    result.append("- `" + entry.getKey() + "`: ");
+                    result.append(entry.getValue() + "\n");
+                }
+            }
+        }
+        return result.toString();
     }
 
     public String toBasicHtml(ValueStore store) {
@@ -572,7 +673,7 @@ public class ParametricCallable implements ICommand {
                         String name = parameter.getType().getTypeName();
                         String[] split = name.split("\\.");
                         name = split[split.length - 1];
-                        throw new CommandUsageException(this, "Expected argument: <" + parameter.getName() + "> of type: " + name, help(locals), desc(locals));
+                        throw new CommandUsageException(this, "Expected argument: <" + parameter.getName() + "> of type: " + name);
                     }
                     ArgumentStack stack = new ArgumentStack(args, store, validators, permisser);
                     value = locals.get(parameter.getBinding().getKey()).apply(stack);
@@ -585,7 +686,7 @@ public class ParametricCallable implements ICommand {
             } catch (IllegalArgumentException e) {
                 e.printStackTrace();
                 String msg = "For `" + parameter.getName() + "`: " + e.getMessage();
-                throw new CommandUsageException(this, msg, help(locals), desc(locals));
+                throw new CommandUsageException(this, msg);
             }
             paramVals[i] = value;
         }

@@ -7,8 +7,13 @@ import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.util.RateLimitUtil;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.interactions.InteractionHook;
+import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 
 public class TestCommands {
 
@@ -18,14 +23,7 @@ public class TestCommands {
     }
 
     @Command
-    public String embed(@Me IMessageIO io, int myInput) {
-        RateLimitUtil.queueWhenFree(new Runnable() {
-            @Override
-            public void run() {
-                io.send("Sending " + myInput);
-                io.create().embed("Titl e", "Body " + myInput).sendWhenFree();
-            }
-        });
-        return "Done 2!";
+    public String model() {
+        return "Hello world";
     }
 }

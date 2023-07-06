@@ -41,4 +41,6 @@ public interface IMessageIO {
     default CompletableFuture<IMessageBuilder> sendMessage(String s) {
         return send(s);
     }
+
+    CompletableFuture<IModalBuilder> send(IModalBuilder modal);
 }

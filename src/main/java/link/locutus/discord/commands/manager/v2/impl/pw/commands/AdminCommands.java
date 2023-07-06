@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -741,7 +742,7 @@ public class AdminCommands {
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
     public String rootApiUsageStats() {
-        PoliticsAndWarV2 api = Locutus.imp().getRootPnwApi();
+        PoliticsAndWarV2 api = Locutus.imp().getRootPnwApiV2();
         System.out.println(printApiStats(api));
         return "Done! (see console)";
     }
@@ -779,7 +780,7 @@ public class AdminCommands {
     @Command(desc = "Check if current api keys are valid")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String validateAPIKeys() {
-        Set<String> keys = Locutus.imp().getPnwApi().getApiKeyUsageStats().keySet();
+        Set<String> keys = Locutus.imp().getPnwApiV2().getApiKeyUsageStats().keySet();
         Map<String, String> failed = new LinkedHashMap<>();
         Map<String, ApiKeyDetails> success = new LinkedHashMap<>();
         for (String key : keys) {
@@ -1111,6 +1112,9 @@ public class AdminCommands {
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncCities(NationDB db) throws IOException, ParseException {
+        StringBuilder result = new StringBuilder();
+        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
+
         List<Event> events = new ArrayList<>();
         db.updateAllCities(events::add);
         if (events.size() > 0) {
@@ -1118,7 +1122,49 @@ public class AdminCommands {
                 for (Event event : events) event.post();;
             });
         }
-        return "Updated all cities. " + events.size() + " changes detected";
+        result.append("events: " + events.size() + "\n");
+        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
+        result.append("Updated all cities. " + events.size() + " changes detected");
+        return result.toString();
+    }
+
+    @Command()
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String syncCitiesTest(NationDB db) throws IOException, ParseException {
+        StringBuilder result = new StringBuilder();
+        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
+
+        List<Event> events = new ArrayList<>();
+        db.updateCitiesV2(events::add);
+        if (events.size() > 0) {
+            Locutus.imp().getExecutor().submit(() -> {
+                for (Event event : events) event.post();;
+            });
+        }
+        result.append("events: " + events.size() + "\n");
+        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
+        result.append("Updated all cities. " + events.size() + " changes detected");
+        return result.toString();
+    }
+
+    @Command()
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String syncCitiesTest2(NationDB db, @Me DBNation me) throws IOException, ParseException {
+        Map<Integer, JavaCity> cities = me.getCityMap(true);
+        StringBuilder result = new StringBuilder();
+        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
+
+        List<Event> events = new ArrayList<>();
+        db.updateCitiesV2(events::add);
+        if (events.size() > 0) {
+            Locutus.imp().getExecutor().submit(() -> {
+                for (Event event : events) event.post();;
+            });
+        }
+        result.append("events: " + events.size() + "\n");
+        result.append("Dirty cities: " + db.getDirtyCities().size() + "\n");
+        result.append("Updated all cities. " + events.size() + " changes detected");
+        return result.toString();
     }
 
 

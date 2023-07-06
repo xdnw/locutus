@@ -11,6 +11,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.json.CityBuild;
@@ -249,9 +250,12 @@ public class OptimalBuild extends Command {
                 return "Invalid city url: " + cityArg;
             }
             cityId = Integer.parseInt(cityArg.split("=")[1]);
-            City pnwCity = Locutus.imp().getPnwApi().getCity(cityId);
-            me = Locutus.imp().getNationDB().getNation(Integer.parseInt(pnwCity.getNationid()));
-            origin = new JavaCity(pnwCity);
+
+            Map.Entry<Integer, DBCity> cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
+            DBCity dbCity = cityEntry.getValue();
+            dbCity.update(true);
+            me = Locutus.imp().getNationDB().getNation(cityEntry.getKey());
+            origin = dbCity.toJavaCity(me);
 
             checkup(io, me, cityId, origin); // show help
 

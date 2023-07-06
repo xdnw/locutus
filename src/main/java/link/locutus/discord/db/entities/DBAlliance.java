@@ -1043,18 +1043,27 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public List<BankDB.TaxDeposit> updateTaxes() {
+        return updateTaxes(null);
+    }
+    public List<BankDB.TaxDeposit> updateTaxes(Long afterDate) {
         long oldestApiFetchDate = getDateCreated() - TimeUnit.HOURS.toMillis(2);
 
         GuildDB db = Locutus.imp().getGuildDBByAA(allianceId);
 
         PoliticsAndWarV3 api = getApi( AlliancePermission.TAX_BRACKETS);
-        if (api == null) return null;
+        if (api == null) {
+            System.out.println("Api is null");
+            return null;
+        }
 
         BankDB bankDb = Locutus.imp().getBankDB();
-        BankDB.TaxDeposit latestTaxRecord = bankDb.getLatestTaxDeposit(getAlliance_id());
+        if (afterDate == null) {
+            BankDB.TaxDeposit latestTaxRecord = bankDb.getLatestTaxDeposit(getAlliance_id());
 
-        long afterDate = oldestApiFetchDate;
-        if (latestTaxRecord != null) afterDate = latestTaxRecord.date;
+            afterDate = oldestApiFetchDate;
+            if (latestTaxRecord != null) afterDate = latestTaxRecord.date;
+
+        }
 
         List<Bankrec> bankRecs = api.fetchTaxRecsWithInfo(getAlliance_id(), afterDate);
 

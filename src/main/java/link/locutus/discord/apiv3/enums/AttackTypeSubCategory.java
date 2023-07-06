@@ -26,7 +26,7 @@ public enum AttackTypeSubCategory {
             "Note: Infra damage is the same regardless of munitions"),
     GROUND_TANKS_USED_UNNECESSARY("You performed a ground attack using tanks against an enemy with weak ground and no aircraft, but could have won an Immense Triumph using soldiers"),
     GROUND_NO_TANKS_MUNITIONS_USED_UNNECESSARY_INACTIVE("You performed a ground attack against an inactive enemy using munitions, but could have won and looted the same amount without it. https://cdn.discordapp.com/attachments/672286352959733779/716563558279806986/unknown.png"),
-    GROUND_TANKS_USED_UNNECESSARY_INACTIVE("You performed a ground attack against an inactive enemy using tanks, but could have won an Immense Triumph without tanks."),
+    GROUND_TANKS_USED_UNNECESSARY_INACTIVE("You performed a ground attack against an inactive enemy using tanks, when they had $0, but could have won an Immense Triumph without tanks."),
     AIRSTRIKE_SOLDIERS_NONE("You performed an airstrike against enemy soldiers when the enemy has none"),
     AIRSTRIKE_SOLDIERS_SHOULD_USE_GROUND("You performed an airstrike against enemy ground forces when:\n" +
             "- You already have vastly superior ground forces\n" +

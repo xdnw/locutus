@@ -113,7 +113,11 @@ public class SyncTaxes extends Command {
                             + "<" + updateTurnGraph(db, aaId) + ">";
                 }
                 case "auto": {
-                    List<BankDB.TaxDeposit> taxes = db.getAllianceList().updateTaxes();
+                    Long startDate = null;
+                    if (args.size() >= 2) {
+                        startDate = System.currentTimeMillis() - TimeUtil.timeToSec(args.get(1)) * 1000L;
+                    }
+                    List<BankDB.TaxDeposit> taxes = db.getAllianceList().updateTaxes(startDate);
                     return "Updated " + taxes.size() + " records.";
                 }
             }
