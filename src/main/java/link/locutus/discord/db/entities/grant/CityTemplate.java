@@ -3,6 +3,8 @@ package link.locutus.discord.db.entities.grant;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.offshore.Grant;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -40,5 +42,10 @@ public class CityTemplate extends AGrantTemplate{
     public void setValues(PreparedStatement stmt) throws SQLException {
         stmt.setInt(12, min_city);
         stmt.setInt(13, max_city);
+    }
+
+    @Override
+    public List<Grant.Requirement> getDefaultRequirements(DBNation sender) {
+        return super.getDefaultRequirements(sender);
     }
 }

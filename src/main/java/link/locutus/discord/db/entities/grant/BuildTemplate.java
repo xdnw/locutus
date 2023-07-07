@@ -3,6 +3,8 @@ package link.locutus.discord.db.entities.grant;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.offshore.Grant;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -52,5 +54,14 @@ public class BuildTemplate extends AGrantTemplate{
         stmt.setLong(14, mmr);
         stmt.setLong(15, track_days);
         stmt.setBoolean(16, allow_switch_after_offensive);
+    }
+
+    @Override
+    public List<Grant.Requirement> getDefaultRequirements(DBNation sender) {
+        return super.getDefaultRequirements(sender);
+
+        // for single:
+        // require city built in the past day
+        // require no build grant since the city
     }
 }
