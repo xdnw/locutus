@@ -3,6 +3,8 @@ package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
+import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -129,6 +131,12 @@ public class PWBindings extends BindingHelper {
         return emum(EnemyAlertChannelMode.class, input);
     }
 
+    @Binding
+    public Building getBuilding(String input) {
+        Building building = Buildings.get(input);
+        if (building == null) throw new IllegalArgumentException("No building found for `" + input + "`");
+        return building;
+    }
 
     @Binding("An string matching for a nation's military buildings (MMR)\n" +
             "In the form `505X` where `X` is any military building")

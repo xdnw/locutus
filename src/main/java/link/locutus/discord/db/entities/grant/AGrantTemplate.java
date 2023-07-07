@@ -9,18 +9,16 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationFilterString;
 import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.offshore.Grant;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 
+import java.util.*;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -204,6 +202,12 @@ public abstract class AGrantTemplate {
             }));
         }
         // check nation not received grant already
+        list.add(new Grant.Requirement("Nation has already received this grant", false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation nation) {
+                return db.getGrantTemplateManager().getRecordsByReceiver(nation.getId(), getName()).size() == 0;
+            }
+        }));
 
        // errors.computeIfAbsent(nation, f -> new ArrayList<>()).add("Nation was not found in guild");
         list.add(new Grant.Requirement("Nation is not verified: " + CM.register.cmd.toSlashMention(), false, new Function<DBNation, Boolean>() {
@@ -213,7 +217,7 @@ public abstract class AGrantTemplate {
                 return user != null;
             }
         }));
-        list.add(new Grant.Requirement("Nation is not a member of an alliance", false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Nation is not in an alliance", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
                 return nation.getAlliance_id() == 0;
@@ -234,11 +238,34 @@ public abstract class AGrantTemplate {
             }
         }));
 //                grant.addRequirement(new Grant.Requirement("Nation is not in the alliance: " + alliance, econGov, f -> alliance != null && f.getAlliance_id() == alliance.getAlliance_id()));
-//
-//                Role temp = Roles.TEMP.toRole(db.getGuild());
-//                grant.addRequirement(new Grant.Requirement("Nation not eligible for grants (has role: " + temp.getName() + ")", econStaff, f -> !member.getRoles().contains(temp)));
+        list.add(new Grant.Requirement("Nation is not in the alliance id: " + db.getAllianceIds(), false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation nation) {
+                return db.isAllianceId(nation.getAlliance_id());
+            }
+        }));
+
+
+        Set<Integer> blacklist = GuildKey.GRANT_TEMPLATE_BLACKLIST.get(db);
+
+        if(blacklist == null)
+            blacklist = Collections.emptySet();
+
+        Set<Integer> finalBlacklist = blacklist;
+        list.add(new Grant.Requirement("Nation is blacklisted", false, new Function<DBNation, Boolean>() {
+           @Override
+           public Boolean apply(DBNation dbNation) {
+               return !finalBlacklist.contains(dbNation.getId());
+           }
+       }));
 //
 //                grant.addRequirement(new Grant.Requirement("Nation is not active in past 24h", econStaff, f -> f.getActive_m() < 1440));
+        list.add(new Grant.Requirement("Nation is not active in past 24h", false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation nation) {
+                return nation.getActive_m() < 1440;
+            }
+        }));
 //                grant.addRequirement(new Grant.Requirement("Nation is not active in past 7d", econGov, f -> f.getActive_m() < 10000));
 //
 //                grant.addRequirement(new Grant.Requirement("Nation does not have 5 raids going", econStaff, f -> f.getCities() >= 10 || f.getOff() >= 5));
@@ -264,6 +291,12 @@ public abstract class AGrantTemplate {
 //                // TODO no disburse past 5 days during wartime
 //                // TODO 2d seniority and 5 won wars for initial 1.7k infra grants
 //                grant.addRequirement(new Grant.Requirement("Nation does not have 10d seniority", econStaff, f -> f.allianceSeniority() >= 10));
+        list.add(new Grant.Requirement("Nation does not have 10d seniority", false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation nation) {
+                return nation.allianceSeniority() >= 10;
+            }
+        }));
 
         return list;
     }
@@ -329,13 +362,5 @@ public abstract class AGrantTemplate {
 
     public Role getSelfRole() {
         return db.getGuild().getRoleById(selfRole);
-    }
-
-    public Grant createGrant(DBNation receiver, Map<ResourceType, Double> partial) {
-
-
-
-
-        return null;
     }
 }

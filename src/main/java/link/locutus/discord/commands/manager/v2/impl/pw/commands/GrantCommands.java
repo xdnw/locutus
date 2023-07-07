@@ -577,7 +577,11 @@ public class GrantCommands {
             return null;
         }
 
-        // todo send
+        // todo send (Ensure grant sending is atomic)
+        // Adds the template send record to the database
+        // Transfers the resources
+        // Prints the grant instructions
+        // Pings the receiver
 
         // return message
     }

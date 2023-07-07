@@ -283,6 +283,24 @@ public class GrantTemplateManager {
         return records;
     }
 
+    public List<GrantSendRecord> getRecordsByReceiver(int receiverId, String name) {
+        List<GrantSendRecord> records = new ArrayList<>();
+        String query = "SELECT * FROM `GRANTS_SENT` WHERE `receiver_id` = ? AND `grant` = ?";
+        try (PreparedStatement stmt = db.prepareQuery(query)) {
+            stmt.setInt(1, receiverId);
+            stmt.setString(2, name);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    records.add(new GrantSendRecord(rs));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return records;
+    }
+
     public List<GrantSendRecord> getRecordsByReceiver(int receiverId) {
         List<GrantSendRecord> records = new ArrayList<>();
         String query = "SELECT * FROM `GRANTS_SENT` WHERE `receiver_id` = ?";

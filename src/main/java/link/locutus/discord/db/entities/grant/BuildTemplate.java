@@ -3,6 +3,8 @@ package link.locutus.discord.db.entities.grant;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.offshore.Grant;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -54,8 +56,19 @@ public class BuildTemplate extends AGrantTemplate{
         stmt.setBoolean(16, allow_switch_after_offensive);
     }
 
+<<<<<<< HEAD
     //make build template command open to members
     //will check if member has bought a city recently
     //will also check if member has used a build grant for their new city to prevent abuse
     //should probly consider dm'ing the user to use the city build grant command once the city grant command is ran
+=======
+    @Override
+    public List<Grant.Requirement> getDefaultRequirements(DBNation sender) {
+        return super.getDefaultRequirements(sender);
+
+        // for single:
+        // require city built in the past day
+        // require no build grant since the city
+    }
+>>>>>>> 232e0e987fb600c10c95a34cd6675b2b8b6ac05e
 }
