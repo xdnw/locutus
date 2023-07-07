@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.offshore.Grant;
 
@@ -16,7 +17,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class CityTemplate extends AGrantTemplate{
 
@@ -56,8 +59,11 @@ public class CityTemplate extends AGrantTemplate{
     //add flags to enforce UP, AUP, MP, MD, or GSA for this template or the base template
     //add flags to the template database
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(DBNation sender) {
+    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver) {
         List<Grant.Requirement> list = super.getDefaultRequirements(sender);
+
+        int currentCities = receiver.getCities();
+        list.add(new Grant.Requirement("Nation has built a city, please run the grant command again", false, f -> f.getCities() == currentCities));
 
         list.add(new Grant.Requirement("Requires at least " + min_city + " cities", false, new Function<DBNation, Boolean>() {
             @Override
@@ -89,14 +95,24 @@ public class CityTemplate extends AGrantTemplate{
             }
         }));
 
-        // no city in past 10 days
-        list.add(new Grant.Requirement("Already received a grant for that city", false, new Function<DBNation, Boolean>() {
+        // no city grant in past 10 days
+        list.add(new Grant.Requirement("Already received a city grant in past 10 days", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
-                // get transactions matching #city
+                long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10);
+                List<GrantTemplateManager.GrantSendRecord> recordedGrants = getDb().getGrantTemplateManager().getRecordsByReceiver(receiver.getId());
+                List<GrantTemplateManager.GrantSendRecord> cityGrants = recordedGrants.stream().filter(f -> f.grant_type == TemplateTypes.CITY && f.date > cutoff).toList();
+                return cityGrants.isEmpty();
             }
         }));
-        // has not received a grant for this city
+
+        list.add(new Grant.Requirement("Already received a grant for a city", false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation nation) {
+                List<Transaction2> transactions = nation.getTransactions(-1);
+                return !Grant.hasGrantedCity(nation, transactions, currentCities + 1);
+            }
+        }));
 
         return list;
     }

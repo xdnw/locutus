@@ -149,7 +149,7 @@ public class GrantTemplateManager {
         String build = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_BUILD` " +
                 "(`enabled` INTEGER NOT NULL, " +
                 "`build` BLOB NOT NULL, " +
-                "`use_optimal` BOOLEAN NOT NULL, " +
+                "`only_new_cities` BOOLEAN NOT NULL, " +
                 "`mmr` BIGINT NOT NULL, " +
                 "`track_days` BIGINT NOT NULL, " +
                 "`allow_switch_after_offensive` BOOLEAN NOT NULL, " +

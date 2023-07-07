@@ -97,6 +97,11 @@ public class Grant {
         return this;
     }
 
+    public static int getMaxCityGranted(DBNation nation) {
+        // receiver.getTransactions(db, tracked, false, false, -1L, 0L);
+
+    }
+
     public static Set<Integer> getCityIdsBeforeDate(DBNation nation, long date) {
         Set<Integer> cities = new HashSet<>();
         long now = System.currentTimeMillis();
@@ -315,6 +320,13 @@ public class Grant {
         this.cities = new LinkedHashSet<>();
     }
 
+    /**
+     * Get the N city ids granted after a date
+     * @param nation
+     * @param date
+     * @param amt
+     * @return
+     */
     public static List<Integer> getNCityIdAfter(DBNation nation, long date, int amt) {
         List<DBCity> cities = new ArrayList<>(nation._getCitiesV3().values());
         cities.removeIf(f -> f.created < date);
@@ -322,6 +334,13 @@ public class Grant {
         return cities.subList(0, Math.min(cities.size(), amt)).stream().map(f -> f.id).toList();
     }
 
+    /**
+     * Get the city uds granted from a note
+     * @param nation
+     * @param note
+     * @param date
+     * @return
+     */
     public static Set<Integer> getCities(DBNation nation, String note, long date) {
         Map<String, String> parsed = PnwUtil.parseTransferHashNotes(note);
         String citiesStr = parsed.get("cities");

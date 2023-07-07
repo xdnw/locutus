@@ -13,19 +13,20 @@ import java.util.List;
 
 public class BuildTemplate extends AGrantTemplate{
     private final byte[] build;
-    private final boolean useOptimal;
-    private final long mmr;
+    private final boolean onlyNewCities;
+    private final int mmr;
     private final long track_days;
     private final boolean allow_switch_after_offensive;
+
     public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
-        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getBytes("build"), rs.getBoolean("use_optimal"), rs.getLong("mmr"), rs.getLong("track_days"), rs.getBoolean("allow_switch_after_offensive"));
+        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getBytes("build"), rs.getBoolean("only_new_cities"), rs.getInt("mmr"), rs.getLong("track_days"), rs.getBoolean("allow_switch_after_offensive"));
     }
 
     // create new constructor  with typed parameters instead of resultset
-    public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, byte[] build, boolean useOptimal, long mmr, long track_days, boolean allow_switch_after_offensive) {
+    public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, byte[] build, boolean onlyNewCities, int mmr, long track_days, boolean allow_switch_after_offensive) {
         super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal);
         this.build = build;
-        this.useOptimal = useOptimal;
+        this.onlyNewCities = onlyNewCities;
         this.mmr = mmr;
         this.track_days = track_days;
         this.allow_switch_after_offensive = allow_switch_after_offensive;
@@ -61,8 +62,18 @@ public class BuildTemplate extends AGrantTemplate{
     //will also check if member has used a build grant for their new city to prevent abuse
     //should probly consider dm'ing the user to use the city build grant command once the city grant command is ran
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(DBNation sender) {
-        return super.getDefaultRequirements(sender);
+    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver);
+        if (onlyNewCities) {
+            // require city built in past day
+
+            // require no build grants since city
+        }
+        // require no build grants in past track_days
+
+        // else require war in past track_days
+
+        // else require infra in past track_days (in all cities)
 
         // for single:
         // require city built in the past day

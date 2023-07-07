@@ -155,7 +155,7 @@ public abstract class AGrantTemplate {
 
     public abstract TemplateTypes getType();
 
-    public List<Grant.Requirement> getDefaultRequirements(DBNation sender) {
+    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver) {
         List<Grant.Requirement> list = new ArrayList<>();
 
         // check grant not disabled

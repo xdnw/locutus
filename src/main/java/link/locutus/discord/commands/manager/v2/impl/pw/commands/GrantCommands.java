@@ -47,13 +47,20 @@ public class GrantCommands {
 
     @Command(desc = "List all grant templates for the specified category")
     @RolePermission(Roles.MEMBER)
-    public void templateList(@Me GuildDB db, @Me Guild guild, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io, @Default TemplateTypes category) {
+    public void templateList(@Me GuildDB db, @Me Guild guild, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io, @Default TemplateTypes category, @Switch("d") boolean listDisabled) {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         Set<AGrantTemplate> templates = category == null ? manager.getTemplates() : manager.getTemplates(category);
+        if (!listDisabled) {
+            templates.removeIf(f -> !f.isEnabled());
+        }
 
         if (templates.isEmpty()) {
-            io.send("No templates found for category: " + category + "\n" +
-            "Create one with TODO");
+            String msg = "No templates found for category: " + category + "\n" +
+                    "Create one with TODO CM ref here";
+            if (!listDisabled) {
+                msg += "\nUse `-d listDisabled` to list disabled templates";
+            }
+            io.send(msg);
             return;
         }
 
@@ -190,7 +197,7 @@ public class GrantCommands {
     }
 
     // grant_template create build
-    // public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, byte[] build, boolean useOptimal, long mmr, long track_days, boolean allow_switch_after_offensive) {
+    // public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, byte[] build, boolean only_new_cities, long mmr, long track_days, boolean allow_switch_after_offensive) {
     @Command(desc = "Create a new build grant template")
     @RolePermission(Roles.ECON)
     public String templateCreateBuild(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
@@ -198,7 +205,7 @@ public class GrantCommands {
                                       NationFilter allowedRecipients,
                                       @Switch("c") CityBuild build,
                                       @Switch("m") MMRInt mmr,
-                                      @Switch("o") boolean useOptimal,
+                                      @Switch("o") boolean only_new_cities,
                                       @Switch("t") Integer trackDays,
                                       @Switch("a") boolean allowSwitchAfterOffensive,
                                       @Switch("e") Role econRole,
@@ -235,7 +242,7 @@ public class GrantCommands {
         }
         byte[] buildBytes = build == null ? null : new JavaCity(build).toBytes();
 
-        BuildTemplate template = new BuildTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, buildBytes, useOptimal, mmr.toNumber(), trackDays, allowSwitchAfterOffensive);
+        BuildTemplate template = new BuildTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, buildBytes, only_new_cities, mmr.toNumber(), trackDays, allowSwitchAfterOffensive);
 
         // confirmation
         if (!force) {
@@ -531,7 +538,7 @@ public class GrantCommands {
     public String templateSend(@Me GuildDB db, @Me Member selfMember, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
                                AGrantTemplate template,
                                DBNation receiver,
-                               @Switch("p") Map<ResourceType, Double> partial,
+                               @Switch("p") String customValue,
                                @Switch("e") @Timediff Long expire,
                                @Switch("f") boolean force) {
         Role econRole = template.getEconRole();
@@ -551,7 +558,7 @@ public class GrantCommands {
             }
         }
 
-        Grant grant = template.createGrant(receiver, partial);
+        Grant grant = template.createGrant(receiver, customValue);
         // Get the note
         String note = grant.getNote();
         // Get the amount
