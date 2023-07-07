@@ -22,6 +22,7 @@ public enum TemplateTypes {
 
     ;
 
+    public static TemplateTypes[] values = values();
     private final DepositType depositType;
     private final Constructor<? extends AGrantTemplate> constructor;
 

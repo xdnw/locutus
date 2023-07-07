@@ -20,7 +20,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public abstract class AGrantTemplate {
 
@@ -58,19 +60,29 @@ public abstract class AGrantTemplate {
 
     public abstract String toListString();
 
-    public List<Transaction2> getGrantedTotal() {
+    public List<GrantTemplateManager.GrantSendRecord> getGrantedTotal() {
         return getGranted(Long.MAX_VALUE);
     }
 
-    public List<Transaction2> getGranted(long time) {
+    public List<GrantTemplateManager.GrantSendRecord> getGranted(long time) {
         return getGranted(time, null);
     }
 
-    public List<Transaction2> getGranted(long time, DBNation sender) {
-        // TODO
+    public List<GrantTemplateManager.GrantSendRecord> getGranted(long time, DBNation sender) {
+        long cutoff = System.currentTimeMillis() - time;
+        List<GrantTemplateManager.GrantSendRecord> grants;
+        if (sender == null) {
+            grants = db.getGrantTemplateManager().getRecordsByGrant(getName());
+        } else {
+            grants = db.getGrantTemplateManager().getRecordsBySender(sender.getId(), getName());
+        }
+        if (time > 0) {
+            grants = grants.stream().filter(f -> f.date >= cutoff).collect(Collectors.toList());
+        }
+        return grants;
     }
 
-    public List<Transaction2> getGrantedTotal(DBNation sender) {
+    public List<GrantTemplateManager.GrantSendRecord> getGrantedTotal(DBNation sender) {
         return getGranted(Long.MAX_VALUE, sender);
     }
 
@@ -100,10 +112,6 @@ public abstract class AGrantTemplate {
 
     public GuildDB getDb() {
         return db;
-    }
-
-    public int getId() {
-        return id;
     }
 
     public String getName() {
@@ -148,8 +156,53 @@ public abstract class AGrantTemplate {
 
     public abstract TemplateTypes getType();
 
-    public List<Grant.Requirement> getDefaultRequirements() {
+    public List<Grant.Requirement> getDefaultRequirements(DBNation sender) {
         List<Grant.Requirement> list = new ArrayList<>();
+
+        // check grant not disabled
+        list.add(new Grant.Requirement("Grant is disabled. See TODO CM ref here: ", false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation nation) {
+                return AGrantTemplate.this.isEnabled();
+            }
+        }));
+
+        // check grant limits (limit total/day, limit granter total/day)
+        if (getMaxTotal() > 0) {
+            list.add(new Grant.Requirement("Grant limit reached: " + getMaxTotal() + " total grants", false, new Function<DBNation, Boolean>() {
+                @Override
+                public Boolean apply(DBNation nation) {
+                    return getGrantedTotal().size() < getMaxTotal();
+                }
+            }));
+        }
+        if (getMaxDay() > 0) {
+            list.add(new Grant.Requirement("Grant limit reached: " + getMaxDay() + " grants per day", false, new Function<DBNation, Boolean>() {
+                @Override
+                public Boolean apply(DBNation nation) {
+                    long oneDayMs = TimeUnit.DAYS.toMillis(1);
+                    return getGranted(oneDayMs).size() < getMaxDay();
+                }
+            }));
+        }
+        if (getMaxGranterTotal() > 0) {
+            list.add(new Grant.Requirement("Grant limit reached: " + getMaxGranterTotal() + " total grants send from " + sender.getName(), false, new Function<DBNation, Boolean>() {
+                @Override
+                public Boolean apply(DBNation nation) {
+                    return getGrantedTotal(sender).size() < getMaxGranterTotal();
+                }
+            }));
+        }
+        if (getMaxGranterDay() > 0) {
+            list.add(new Grant.Requirement("Grant limit reached: " + getMaxGranterDay() + " grants per day send from " + sender.getName(), false, new Function<DBNation, Boolean>() {
+                @Override
+                public Boolean apply(DBNation nation) {
+                    long oneDayMs = TimeUnit.DAYS.toMillis(1);
+                    return getGranted(oneDayMs, sender).size() < getMaxGranterDay();
+                }
+            }));
+        }
+        // check nation not received grant already
 
        // errors.computeIfAbsent(nation, f -> new ArrayList<>()).add("Nation was not found in guild");
         list.add(new Grant.Requirement("Nation is not verified: " + CM.register.cmd.toSlashMention(), false, new Function<DBNation, Boolean>() {
@@ -267,5 +320,13 @@ public abstract class AGrantTemplate {
 
     public void setEnabled(boolean value) {
         this.enabled = value;
+    }
+
+    public Role getEconRole() {
+        return db.getGuild().getRoleById(econRole);
+    }
+
+    public Role getSelfRole() {
+        return db.getGuild().getRoleById(selfRole);
     }
 }

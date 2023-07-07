@@ -528,22 +528,40 @@ public class GrantCommands {
     // grant_template send <template> <receiver> <partial> <expire>
     @Command
     @RolePermission(Roles.ECON)
-    public String templateSend(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
+    public String templateSend(@Me GuildDB db, @Me Member selfMember, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
                                AGrantTemplate template,
                                DBNation receiver,
                                @Switch("p") Map<ResourceType, Double> partial,
                                @Switch("e") @Timediff Long expire,
                                @Switch("f") boolean force) {
+        Role econRole = template.getEconRole();
+        if (econRole == null) {
+            throw new IllegalArgumentException("The template `" + template.getName() + "` does not have an `econRole` set. Please set one via " + template.getType().getCommandMention());
+        }
+        Role selfRole = template.getSelfRole();
+
+        boolean hasEconRole = selfMember.getRoles().contains(econRole);
+        if (!hasEconRole) {
+            if (receiver.getNation_id() != me.getNation_id() || selfRole == null) {
+                throw new IllegalArgumentException("You must have the role `" + econRole.getName() + "` to send grants to other nations");
+            }
+            // check has self role
+            if (!selfMember.getRoles().contains(selfRole)) {
+                throw new IllegalArgumentException("You must have the role `" + selfRole.getName() + "` to send grants to yourself");
+            }
+        }
 
         Grant grant = template.createGrant(receiver, partial);
         // Get the note
+        String note = grant.getNote();
         // Get the amount
+        double[] cost = grant.cost();
         // Get the instructions
+        String instructions = grant.getInstructions();
 
         List<Grant.Requirement> requirements = template.getDefaultRequirements();
         // TODO add these to default requirements
         // check grant not disabled
-        // check roles
         // check grant limits (limit total/day, limit granter total/day)
         // check nation not received grant already
 

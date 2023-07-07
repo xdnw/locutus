@@ -5,12 +5,15 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationFilterString;
+import link.locutus.discord.util.math.ArrayUtil;
 
 import java.lang.reflect.InvocationTargetException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,10 +29,6 @@ public class GrantTemplateManager {
      *  - Add the default grant requirements to each grant type
      *      (e.g. Project grant requires the nation to not already have the project, have a free slot, be on the correct policy)
      *
-     *  Tracking table
-     *  - Tracks which grants a user has sent (sender id, receiver id, grant type, amount, date)
-     *  - Avoids needing to parse the notes
-     *
      *  Ensure grant sending is atomic
      *
      *  Grant send command
@@ -44,9 +43,13 @@ public class GrantTemplateManager {
      *   - Warchest
      *   - Support for partial grants
      *
+     *  AGrantTemplate binding in PWBindings
+     *
      *  Nice to have:
      *   - Bank record note parsing to check if they already received a grant (e.g. already got an infra grant to X level)
      *   This will then support tracking transfers sent via `!grant` (due to the note)
+     *
+     *  Completions in PWCompleter for grant templates
      *
      *  Grant update command (low priority) - can just delete remake a grant in the meantime
      *      - Make the create commands modify an existing grant (and add a title/message to the confirmation dialog)
@@ -172,6 +175,16 @@ public class GrantTemplateManager {
                 "`max_total` INT NOT NULL, " +
                 "`max_day` INT NOT NULL, " +
                 "`max_granter_day` INT NOT NULL)";
+
+        // grants_sent (long sender id, long receiver id, String grant, int grant type, byte[] amount, long date)
+        String grants_sent = "CREATE TABLE IF NOT EXISTS `GRANTS_SENT` " +
+                "(`sender_id` BIGINT NOT NULL, " +
+                "`receiver_id` BIGINT NOT NULL, " +
+                "`grant` VARCHAR NOT NULL," +
+                "`grant_type` INT NOT NULL, " +
+                "`amount` BLOB NOT NULL, " +
+                "`date` BIGINT NOT NULL)";
+
         db.executeStmt(projects);
         db.executeStmt(cities);
         db.executeStmt(warchest);
@@ -179,6 +192,127 @@ public class GrantTemplateManager {
         db.executeStmt(infra);
         db.executeStmt(build);
         db.executeStmt(raws);
+
+        db.executeStmt(grants_sent);
+    }
+
+    public static class GrantSendRecord {
+        public final String grant;
+        public final int sender_id;
+        public final int receiver_id;
+        public final TemplateTypes grant_type;
+        public final double[] amount;
+        public final long date;
+
+        // constructor
+        public GrantSendRecord(String grant, int sender_id, int receiver_id, TemplateTypes grant_type, double[] amount, long date) {
+            this.grant = grant;
+            this.sender_id = sender_id;
+            this.receiver_id = receiver_id;
+            this.grant_type = grant_type;
+            this.amount = amount;
+            this.date = date;
+        }
+
+        public GrantSendRecord(ResultSet rs) throws SQLException {
+//            rs.getString("grant"),
+//                    rs.getInt("sender_id"),
+//                    rs.getInt("receiver_id"),
+//                    TemplateTypes.values()[rs.getInt("grant_type")],
+//                    (double[]) rs.getObject("amount"),
+//                    rs.getLong("date")
+                    this(
+                    rs.getString("grant"),
+                    rs.getInt("sender_id"),
+                    rs.getInt("receiver_id"),
+                    TemplateTypes.values[rs.getInt("grant_type")],
+                    ArrayUtil.toDoubleArray(rs.getBytes("amount")),
+                    rs.getLong("date"));
+        }
+    }
+
+    public List<GrantSendRecord> getRecordsByGrant(String grant) {
+        List<GrantSendRecord> records = new ArrayList<>();
+        String query = "SELECT * FROM `GRANTS_SENT` WHERE `grant` = ?";
+        try (PreparedStatement stmt = db.prepareQuery(query)) {
+            stmt.setString(1, grant);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    records.add(new GrantSendRecord(rs));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return records;
+    }
+
+    public List<GrantSendRecord> getRecordsBySender(int senderId) {
+        List<GrantSendRecord> records = new ArrayList<>();
+        String query = "SELECT * FROM `GRANTS_SENT` WHERE `sender_id` = ?";
+        try (PreparedStatement stmt = db.prepareQuery(query)) {
+            stmt.setInt(1, senderId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    records.add(new GrantSendRecord(rs));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return records;
+    }
+
+    public List<GrantSendRecord> getRecordsBySender(int senderId, String grant) {
+        List<GrantSendRecord> records = new ArrayList<>();
+        String query = "SELECT * FROM `GRANTS_SENT` WHERE `sender_id` = ? AND `grant` = ?";
+        try (PreparedStatement stmt = db.prepareQuery(query)) {
+            stmt.setInt(1, senderId);
+            stmt.setString(2, grant);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    records.add(new GrantSendRecord(rs));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return records;
+    }
+
+    public List<GrantSendRecord> getRecordsByReceiver(int receiverId) {
+        List<GrantSendRecord> records = new ArrayList<>();
+        String query = "SELECT * FROM `GRANTS_SENT` WHERE `receiver_id` = ?";
+        try (PreparedStatement stmt = db.prepareQuery(query)) {
+            stmt.setInt(1, receiverId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    records.add(new GrantSendRecord(rs));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return records;
+    }
+
+    public void saveGrantRecord(GrantSendRecord record) {
+        String query = "INSERT INTO `GRANTS_SENT` (`grant`, `sender_id`, `receiver_id`, `grant_type`, `amount`, `date`) VALUES (?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement stmt = db.prepareQuery(query)) {
+            stmt.setString(1, record.grant);
+            stmt.setInt(2, record.sender_id);
+            stmt.setInt(3, record.receiver_id);
+            stmt.setInt(4, record.grant_type.ordinal());
+            stmt.setObject(5, record.amount);
+            stmt.setLong(6, record.date);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     public void loadTemplates() throws SQLException, InvocationTargetException, InstantiationException, IllegalAccessException {
