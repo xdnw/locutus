@@ -351,6 +351,7 @@ public class GrantTemplateManager {
     }
 
     public void saveTemplate(AGrantTemplate template) {
+        templates.put(template.getName(), template);
         String query = template.createQuery();
         try (PreparedStatement stmt = db.prepareQuery(query)) {
             template.setValues(stmt);

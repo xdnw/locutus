@@ -455,6 +455,7 @@ public class DBNation implements NationOrAlliance {
     public boolean hasProject(Project project) {
         return hasProject(project, false);
     }
+
     public boolean hasProject(Project project, boolean update) {
         return (this.projects & (1L << project.ordinal())) != 0;
     }

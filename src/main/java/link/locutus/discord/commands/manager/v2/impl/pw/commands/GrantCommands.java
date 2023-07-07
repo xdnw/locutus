@@ -146,7 +146,7 @@ public class GrantCommands {
                                         String name,
                                         NationFilter allowedRecipients,
                                         Project project,
-                                        @Switch("e") Role econRone,
+                                        @Switch("e") Role econRole,
                                         @Switch("s") Role selfRole,
                                         @Switch("b")TaxBracket bracket,
                                         @Switch("r") boolean useReceiverBracket,
@@ -166,9 +166,9 @@ public class GrantCommands {
         if (manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)) != null) {
             throw new IllegalArgumentException("A template with that name already exists. See: TODO CM ref here");
         }
-        if (econRone == null) econRone = Roles.ECON_STAFF.toRole(db);
-        if (econRone == null) econRone = Roles.ECON.toRole(db);
-        if (econRone == null) {
+        if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
+        if (econRole == null) econRole = Roles.ECON.toRole(db);
+        if (econRole == null) {
             throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
         }
         if (selfRole == null) selfRole = Roles.ECON.toRole(db);
@@ -178,7 +178,7 @@ public class GrantCommands {
         if (bracket != null && useReceiverBracket) {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
-        ProjectTemplate template = new ProjectTemplate(db, false, name, allowedRecipients, econRone.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, project);
+        ProjectTemplate template = new ProjectTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, project);
 
         // confirmation
         if (!force) {
@@ -201,7 +201,7 @@ public class GrantCommands {
                                       @Switch("o") boolean useOptimal,
                                       @Switch("t") Integer trackDays,
                                       @Switch("a") boolean allowSwitchAfterOffensive,
-                                      @Switch("e") Role econRone,
+                                      @Switch("e") Role econRole,
                                       @Switch("s") Role selfRole,
                                       @Switch("b")TaxBracket bracket,
                                       @Switch("r") boolean useReceiverBracket,
@@ -221,9 +221,9 @@ public class GrantCommands {
         if (manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)) != null) {
             throw new IllegalArgumentException("A template with that name already exists. See: TODO CM ref here");
         }
-        if (econRone == null) econRone = Roles.ECON_STAFF.toRole(db);
-        if (econRone == null) econRone = Roles.ECON.toRole(db);
-        if (econRone == null) {
+        if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
+        if (econRole == null) econRole = Roles.ECON.toRole(db);
+        if (econRole == null) {
             throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
         }
         if (selfRole == null) selfRole = Roles.ECON.toRole(db);
@@ -235,7 +235,7 @@ public class GrantCommands {
         }
         byte[] buildBytes = build == null ? null : new JavaCity(build).toBytes();
 
-        BuildTemplate template = new BuildTemplate(db, false, name, allowedRecipients, econRone.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, buildBytes, useOptimal, mmr.toNumber(), trackDays, allowSwitchAfterOffensive);
+        BuildTemplate template = new BuildTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, buildBytes, useOptimal, mmr.toNumber(), trackDays, allowSwitchAfterOffensive);
 
         // confirmation
         if (!force) {
@@ -255,7 +255,7 @@ public class GrantCommands {
                                      NationFilter allowedRecipients,
                                      @Switch("c") Integer minCity,
                                      @Switch("m") Integer maxCity,
-                                     @Switch("e") Role econRone,
+                                     @Switch("e") Role econRole,
                                      @Switch("s") Role selfRole,
                                      @Switch("b")TaxBracket bracket,
                                      @Switch("r") boolean useReceiverBracket,
@@ -275,9 +275,9 @@ public class GrantCommands {
         if (manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)) != null) {
             throw new IllegalArgumentException("A template with that name already exists. See: TODO CM ref here");
         }
-        if (econRone == null) econRone = Roles.ECON_STAFF.toRole(db);
-        if (econRone == null) econRone = Roles.ECON.toRole(db);
-        if (econRone == null) {
+        if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
+        if (econRole == null) econRole = Roles.ECON.toRole(db);
+        if (econRole == null) {
             throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
         }
         if (selfRole == null) selfRole = Roles.ECON.toRole(db);
@@ -288,7 +288,7 @@ public class GrantCommands {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
 
-        CityTemplate template = new CityTemplate(db, false, name, allowedRecipients, econRone.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, minCity == null ? 0 : minCity, maxCity == null ? 0 : maxCity);
+        CityTemplate template = new CityTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, minCity == null ? 0 : minCity, maxCity == null ? 0 : maxCity);
 
         // confirmation
         if (!force) {
@@ -312,7 +312,7 @@ public class GrantCommands {
                                       @Switch("o") Integer requireNOffensives,
                                       @Switch("a") boolean allowRebuild,
 
-                                      @Switch("e") Role econRone,
+                                      @Switch("e") Role econRole,
                                       @Switch("s") Role selfRole,
                                       @Switch("b")TaxBracket bracket,
                                       @Switch("r") boolean useReceiverBracket,
@@ -333,9 +333,9 @@ public class GrantCommands {
         if (manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)) != null) {
             throw new IllegalArgumentException("A template with that name already exists. See: TODO CM ref here");
         }
-        if (econRone == null) econRone = Roles.ECON_STAFF.toRole(db);
-        if (econRone == null) econRone = Roles.ECON.toRole(db);
-        if (econRone == null) {
+        if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
+        if (econRole == null) econRole = Roles.ECON.toRole(db);
+        if (econRole == null) {
             throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
         }
         if (selfRole == null) selfRole = Roles.ECON.toRole(db);
@@ -346,7 +346,7 @@ public class GrantCommands {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
 
-        InfraTemplate template = new InfraTemplate(db, false, name, allowedRecipients, econRone.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, level == null ? 0 : level, onlyNewCities, trackDays, requireNOffensives == null ? 0 : requireNOffensives, allowRebuild);
+        InfraTemplate template = new InfraTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, level == null ? 0 : level, onlyNewCities, trackDays, requireNOffensives == null ? 0 : requireNOffensives, allowRebuild);
 
         // confirmation
         if (!force) {
@@ -367,7 +367,7 @@ public class GrantCommands {
                                      @Switch("l") Integer level,
                                      @Switch("n") boolean onlyNewCities,
 
-                                     @Switch("e") Role econRone,
+                                     @Switch("e") Role econRole,
                                      @Switch("s") Role selfRole,
                                      @Switch("b")TaxBracket bracket,
                                      @Switch("r") boolean useReceiverBracket,
@@ -388,9 +388,9 @@ public class GrantCommands {
         if (manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)) != null) {
             throw new IllegalArgumentException("A template with that name already exists. See: TODO CM ref here");
         }
-        if (econRone == null) econRone = Roles.ECON_STAFF.toRole(db);
-        if (econRone == null) econRone = Roles.ECON.toRole(db);
-        if (econRone == null) {
+        if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
+        if (econRole == null) econRole = Roles.ECON.toRole(db);
+        if (econRole == null) {
             throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
         }
         if (selfRole == null) selfRole = Roles.ECON.toRole(db);
@@ -401,7 +401,7 @@ public class GrantCommands {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
 
-        LandTemplate template = new LandTemplate(db, false, name, allowedRecipients, econRone.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, level == null ? 0 : level, onlyNewCities);
+        LandTemplate template = new LandTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, level == null ? 0 : level, onlyNewCities);
 
         // confirmation
         if (!force) {
@@ -422,7 +422,7 @@ public class GrantCommands {
                                      @Switch("d") long days,
                                      @Switch("o") long overdrawPercentCents,
 
-                                     @Switch("e") Role econRone,
+                                     @Switch("e") Role econRole,
                                      @Switch("s") Role selfRole,
                                      @Switch("b")TaxBracket bracket,
                                      @Switch("r") boolean useReceiverBracket,
@@ -443,9 +443,9 @@ public class GrantCommands {
         if (manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)) != null) {
             throw new IllegalArgumentException("A template with that name already exists. See: TODO CM ref here");
         }
-        if (econRone == null) econRone = Roles.ECON_STAFF.toRole(db);
-        if (econRone == null) econRone = Roles.ECON.toRole(db);
-        if (econRone == null) {
+        if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
+        if (econRole == null) econRole = Roles.ECON.toRole(db);
+        if (econRole == null) {
             throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
         }
         if (selfRole == null) selfRole = Roles.ECON.toRole(db);
@@ -456,7 +456,7 @@ public class GrantCommands {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
 
-        RawsTemplate template = new RawsTemplate(db, false, name, allowedRecipients, econRone.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, days, overdrawPercentCents);
+        RawsTemplate template = new RawsTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, days, overdrawPercentCents);
 
         // confirmation
         if (!force) {
@@ -479,7 +479,7 @@ public class GrantCommands {
                                          @Switch("s") boolean subtractExpenditure,
                                          @Switch("o") long overdrawPercentCents,
 
-                                         @Switch("e") Role econRone,
+                                         @Switch("e") Role econRole,
                                          @Switch("s") Role selfRole,
                                          @Switch("b")TaxBracket bracket,
                                          @Switch("r") boolean useReceiverBracket,
@@ -500,9 +500,9 @@ public class GrantCommands {
         if (manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)) != null) {
             throw new IllegalArgumentException("A template with that name already exists. See: TODO CM ref here");
         }
-        if (econRone == null) econRone = Roles.ECON_STAFF.toRole(db);
-        if (econRone == null) econRone = Roles.ECON.toRole(db);
-        if (econRone == null) {
+        if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
+        if (econRole == null) econRole = Roles.ECON.toRole(db);
+        if (econRole == null) {
             throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
         }
         if (selfRole == null) selfRole = Roles.ECON.toRole(db);
@@ -513,7 +513,7 @@ public class GrantCommands {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
 
-        WarchestTemplate template = new WarchestTemplate(db, false, name, allowedRecipients, econRone.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, allowancePerCity, trackDays, subtractExpenditure, overdrawPercentCents);
+        WarchestTemplate template = new WarchestTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, allowancePerCity, trackDays, subtractExpenditure, overdrawPercentCents);
 
         // confirmation
         if (!force) {

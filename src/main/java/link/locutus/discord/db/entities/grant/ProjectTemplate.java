@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.offshore.Grant;
 
 import java.sql.PreparedStatement;
@@ -39,8 +40,8 @@ public class ProjectTemplate extends AGrantTemplate{
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements() {
-        List<Grant.Requirement> list = super.getDefaultRequirements();
+    public List<Grant.Requirement> getDefaultRequirements(DBNation sender) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(sender);
         // already got project grant
         // already have project
         // dont have requirements
