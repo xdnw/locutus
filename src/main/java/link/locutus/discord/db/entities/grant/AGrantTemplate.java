@@ -264,4 +264,8 @@ public abstract class AGrantTemplate {
     }
 
     public abstract void setValues(PreparedStatement stmt) throws SQLException;
+
+    public void setEnabled(boolean value) {
+        this.enabled = value;
+    }
 }

@@ -1,16 +1,20 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.grant.AGrantTemplate;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
+import link.locutus.discord.db.entities.grant.ProjectTemplate;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
@@ -21,7 +25,9 @@ import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.*;
@@ -82,33 +88,122 @@ public class GrantCommands {
     @Command(desc = "Full information about a grant template")
     @RolePermission(Roles.MEMBER)
     public void templateInfo(@Me GuildDB db, @Me Guild guild, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io, AGrantTemplate template, @Default DBNation receiver) {
-        io.create().embed(template.getName(), template.toFullString());
+        io.create().embed(template.getName(), template.toFullString(me, receiver)).send();
     }
 
     // grant_template Delete
+    @Command(desc = "Delete a grant template")
+    @RolePermission(Roles.ECON)
+    public String templateDelete(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command, AGrantTemplate template, @Switch("f") boolean force) {
+        if (!force) {
+            String body = template.toFullString(me, null);
+            io.create().confirmation("Delete template: " + template.getName(), body.toString(), command).send();
+            return null;
+        }
+        db.getGrantTemplateManager().deleteTemplate(template);
+        return "The template: `" + template.getName() + "` has been deleted.";
+    }
 
     // grant_template disable
+    @Command(desc = "Set an active grant template as disabled")
+    @RolePermission(Roles.ECON)
+    public String templateDisable(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command, AGrantTemplate template, @Switch("f") boolean force) {
+        if (!template.isEnabled()) {
+            return "The template: `" + template.getName() + "` is already disabled.";
+        }
+        template.setEnabled(false);
+        db.getGrantTemplateManager().saveTemplate(template);
+        return "The template: `" + template.getName() + "` has been disabled.";
+    }
 
-    // grant_template enable
-
-    // grant_template send <template> <receiver> <partial> <expire>
+    @Command(desc = "Set a disabled grant template as enabled")
+    @RolePermission(Roles.ECON)
+    public String templateEnabled(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command, AGrantTemplate template, @Switch("f") boolean force) {
+        if (template.isEnabled()) {
+            return "The template: `" + template.getName() + "` is already enabled.";
+        }
+        template.setEnabled(true);
+        db.getGrantTemplateManager().saveTemplate(template);
+        return "The template: `" + template.getName() + "` has been enabled.";
+    }
 
     // grant_template create project
+    @Command(desc = "Create a new project grant template")
+    @RolePermission(Roles.ECON)
+    public String templateCreateProject(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
+                                        String name,
+                                        NationFilter allowedRecipients,
+                                        Project project,
+                                        @Switch("e") Role econRone,
+                                        @Switch("s") Role selfRole,
+                                        @Switch("b")TaxBracket bracket,
+                                        @Switch("r") boolean useReceiverBracket,
+                                        @Switch("mt") Integer maxTotal,
+                                        @Switch("md") Integer maxDay,
+                                        @Switch("mgd") Integer maxGranterDay,
+                                        @Switch("mgt") Integer maxGranterTotal,
+                                        @Switch("f") boolean force) {
+        name = name.toUpperCase(Locale.ROOT).trim();
+        // Ensure name is alphanumericalund
+        if (!name.matches("[A-Z0-9_-]+")) {
+            throw new IllegalArgumentException("The name must be alphanumericalunderscore, not `" + name + "`");
+        }
+        GrantTemplateManager manager = db.getGrantTemplateManager();
+        // check a template does not exist by that name
+        String finalName = name;
+        if (manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)) != null) {
+            throw new IllegalArgumentException("A template with that name already exists. See: TODO CM ref here");
+        }
+        if (econRone == null) econRone = Roles.ECON_STAFF.toRole(db);
+        if (econRone == null) econRone = Roles.ECON.toRole(db);
+        if (econRone == null) {
+            throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
+        }
+        if (selfRole == null) selfRole = Roles.ECON.toRole(db);
+        if (selfRole == null) {
+            throw new IllegalArgumentException("No `selfRole` found. Please provide one, or set a default ECON via " + CM.role.setAlias.cmd.toSlashMention());
+        }
+        if (bracket != null && useReceiverBracket) {
+            throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
+        }
+        ProjectTemplate template = new ProjectTemplate(db, false, name, allowedRecipients, econRone.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, project);
+
+        // confirmation
+        if (!force) {
+            io.create().embed("Create template: " + template.getName(), template.toFullString(me, null)).send();
+            return null;
+        }
+        manager.saveTemplate(template);
+        return "The template: `" + template.getName() + "` has been created. See: TODO CM ref here";
+    }
+
+    /*
+    Decisions
+
+
+     */
+
     // grant_template create city
     // grant_template create infra
     // grant_template create land
     // grant_template create raws
     // grant_template create warchest
 
+    // grant_template send <template> <receiver> <partial> <expire>
+
     // register all the require commands
     // grant_template require __key__ AGrantTemplate [args]
+
     // template.addRequirement(requirement)
     // requirements are nation filters
 
     // grant_template unrequire <filter>
 
-    // grant_template list
-    // grant_template info <template>
+
+    // ----------------- old stuff below, ignore it ----------- //
+
+
+
 
     /*
     // 1111111111111111111111111111111111111111111111111111111111111222222222222222222222222222222222222222

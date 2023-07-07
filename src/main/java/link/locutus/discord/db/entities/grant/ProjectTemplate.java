@@ -15,8 +15,18 @@ import java.util.List;
 public class ProjectTemplate extends AGrantTemplate{
     private final Project project;
     public ProjectTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
+        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, Projects.values[rs.getInt("project")]);
+    }
+
+    // create new constructor  with typed parameters instead of resultset
+    public ProjectTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, Project project) {
         super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal);
-        this.project = Projects.values[rs.getInt("project")];
+        this.project = project;
+    }
+
+    @Override
+    public String toListString() {
+
     }
 
     @Override

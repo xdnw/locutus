@@ -14,8 +14,33 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class GrantTemplateManager {
+    /**
+     * TODO
+     *  Default requirements
+     *  - Add the default grant requirements to AGrantTemplate
+     *      (e.g. Are they a member in the alliance, are they active, not in VM etc.)
+     *  - Add the default grant requirements to each grant type
+     *      (e.g. Project grant requires the nation to not already have the project, have a free slot, be on the correct policy)
+     *
+     *  Tracking table
+     *  - Tracks which grants a user has sent (sender id, receiver id, grant type, amount, date)
+     *  - Avoids needing to parse the notes
+     *
+     *  Grant create commands
+     *
+     *  Grant update command
+     *
+     *  Grant send command
+     *
+     *  Nice to have:
+     *   - Bank record note parsing to check if they already received a grant (e.g. already got an infra grant to X level)
+     *   This will then support tracking transfers sent via `!grant` (due to the note)
+     *
+     */
     private final GuildDB db;
     public Map<String, AGrantTemplate> templates = new ConcurrentHashMap<>();
 
@@ -28,7 +53,7 @@ public class GrantTemplateManager {
     }
 
     public Set<AGrantTemplate> getTemplates(TemplateTypes type) {
-        return Set.copyOf(templates.values().stream().filter(t -> t.getType() == type).toList());
+        return Set.copyOf(templates.values().stream().filter(t -> type == null || t.getType() == type).toList());
     }
 
     public void createTables() {
@@ -166,5 +191,9 @@ public class GrantTemplateManager {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+
+    public Set<AGrantTemplate> getTemplateMatching(Predicate<AGrantTemplate> predicate) {
+        return templates.values().stream().filter(predicate).collect(Collectors.toSet());
     }
 }
