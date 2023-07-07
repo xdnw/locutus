@@ -257,31 +257,6 @@ public abstract class AGrantTemplate {
                 return nation.getActive_m() < 1440;
             }
         }));
-//                grant.addRequirement(new Grant.Requirement("Nation is not active in past 7d", econGov, f -> f.getActive_m() < 10000));
-//
-//                grant.addRequirement(new Grant.Requirement("Nation does not have 5 raids going", econStaff, f -> f.getCities() >= 10 || f.getOff() >= 5));
-//
-//                if (nation.getNumWars() > 0) {
-//                    // require max barracks
-//                    grant.addRequirement(new Grant.Requirement("Nation does not have 5 barracks in each city (raiding)", econStaff, f -> f.getMMRBuildingStr().charAt(0) == '5'));
-//                }
-//
-//                if (nation.getCities() >= 10 && nation.getNumWars() == 0) {
-//                    // require 5 hangars
-//                    grant.addRequirement(new Grant.Requirement("Nation does not have 5 hangars in each city (peacetime)", econStaff, f -> f.getMMRBuildingStr().charAt(2) == '5'));
-//                    if (type == TemplateTypes.CITY || type == TemplateTypes.INFRA || type == TemplateTypes.LAND) {
-//                        grant.addRequirement(new Grant.Requirement("Nation does not have 0 factories in each city (peacetime)", econStaff, f -> f.getMMRBuildingStr().charAt(1) == '0'));
-//                        grant.addRequirement(new Grant.Requirement("Nation does not have max aircraft", econStaff, f -> f.getMMR().charAt(2) == '5'));
-//                    }
-//                }
-//
-//                if (type != TemplateTypes.WARCHEST) grant.addRequirement(new Grant.Requirement("Nation is beige", econStaff, f -> !f.isBeige()));
-//                grant.addRequirement(new Grant.Requirement("Nation is gray", econStaff, f -> !f.isGray()));
-//                grant.addRequirement(new Grant.RequiremenSNt("Nation is blockaded", econStaff, f -> !f.isBlockaded()));
-//
-//                // TODO no disburse past 5 days during wartime
-//                // TODO 2d seniority and 5 won wars for initial 1.7k infra grants
-//                grant.addRequirement(new Grant.Requirement("Nation does not have 10d seniority", econStaff, f -> f.allianceSeniority() >= 10));
         list.add(new Grant.Requirement("Nation does not have 10d seniority", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
