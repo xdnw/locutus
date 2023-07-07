@@ -1435,6 +1435,18 @@ public class DBNation implements NationOrAlliance {
         return soldiers * (munitions ? 1.75 : 1) + (tanks * 40) * (enemyAc ? 0.66 : 1);
     }
 
+    @Command(desc = "Get number of buildings")
+    public double getAvgBuilding(Buildings building) {
+        // TODO
+        long total = 0;
+        Map<Integer, DBCity> cities = _getCitiesV3();
+        for (Map.Entry<Integer, DBCity> entry : cities.entrySet()) {
+            DBCity city = entry.getValue();
+            total += city.get(building);
+        }
+        return total / (double) cities.size();
+    }
+
     public Integer updateSpies(PagePriority priority) {
         return updateSpies(priority, false);
     }
