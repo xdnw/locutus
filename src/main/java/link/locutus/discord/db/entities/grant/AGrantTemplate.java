@@ -220,7 +220,7 @@ public abstract class AGrantTemplate {
         list.add(new Grant.Requirement("Nation is not in an alliance", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                return nation.getAlliance_id() == 0;
+                return nation.getAlliance_id() != 0;
             }
         }));
 //                grant.addRequirement(new Grant.Requirement("Nation is not a member of an alliance", econGov, f -> f.getPosition() > 1));

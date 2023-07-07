@@ -51,7 +51,7 @@ public class BuildTemplate extends AGrantTemplate{
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
         stmt.setBytes(12, build);
-        stmt.setBoolean(13, useOptimal);
+        stmt.setBoolean(13, onlyNewCities);
         stmt.setLong(14, mmr);
         stmt.setLong(15, track_days);
         stmt.setBoolean(16, allow_switch_after_offensive);
@@ -65,7 +65,7 @@ public class BuildTemplate extends AGrantTemplate{
     public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver) {
         List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver);
         if (onlyNewCities) {
-            // require city built in past day
+            // require city built in past 6 days
 
             // require no build grants since city
         }
