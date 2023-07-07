@@ -3,6 +3,8 @@ package link.locutus.discord.db.entities.grant;
 import com.google.api.client.util.Sets;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
+import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -53,7 +55,6 @@ public class CityTemplate extends AGrantTemplate{
     }
 
 
-    //add flags to enforce UP, AUP, MP, MD, or GSA for this template or the base template
     //add flags to the template database
     @Override
     public List<Grant.Requirement> getDefaultRequirements(DBNation sender) {
@@ -78,6 +79,42 @@ public class CityTemplate extends AGrantTemplate{
             @Override
             public Boolean apply(DBNation receiver) {
                 return receiver.getCityTurns() <= 0;
+            }
+        }));
+
+        //c11 or higher and no UP
+        list.add(new Grant.Requirement("Requires the project: " + Projects.URBAN_PLANNING, true, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation receiver) {
+
+                if(receiver.getCities() < 11)
+                    return true;
+
+                return receiver.hasProject(Projects.URBAN_PLANNING);
+            }
+        }));
+
+        //c16 or higher and no AUP
+        list.add(new Grant.Requirement("Requires the project: " + Projects.ADVANCED_URBAN_PLANNING, true, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation receiver) {
+
+                if(receiver.getCities() < 16)
+                    return true;
+
+                return receiver.hasProject(Projects.ADVANCED_URBAN_PLANNING);
+            }
+        }));
+
+        //c21 or higher and no MP
+        list.add(new Grant.Requirement("Requires the project: " + Projects.METROPOLITAN_PLANNING, true, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation receiver) {
+
+                if(receiver.getCities() < 21)
+                    return true;
+
+                return receiver.hasProject(Projects.METROPOLITAN_PLANNING);
             }
         }));
 

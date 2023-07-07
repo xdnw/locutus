@@ -10,6 +10,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationFilterString;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.offshore.Grant;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -201,6 +202,7 @@ public abstract class AGrantTemplate {
                 }
             }));
         }
+
         // check nation not received grant already
         list.add(new Grant.Requirement("Nation has already received this grant", false, new Function<DBNation, Boolean>() {
             @Override
@@ -245,7 +247,6 @@ public abstract class AGrantTemplate {
             }
         }));
 
-
         Set<Integer> blacklist = GuildKey.GRANT_TEMPLATE_BLACKLIST.get(db);
 
         if(blacklist == null)
@@ -270,6 +271,21 @@ public abstract class AGrantTemplate {
             @Override
             public Boolean apply(DBNation nation) {
                 return nation.allianceSeniority() >= 10;
+            }
+        }));
+
+        list.add(new Grant.Requirement("Nation is close to being beiged", true, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation nation) {
+
+                return nation.minWarResistancePlusMap() < 30;
+            }
+        }));
+
+        list.add(new Grant.Requirement("Nation is blockaded", false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation nation) {
+                return !nation.isBlockaded();
             }
         }));
 

@@ -1,13 +1,18 @@
 package link.locutus.discord.db.entities.grant;
 
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.DomesticPolicy;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.offshore.Grant;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.function.Function;
 
 public class InfraTemplate extends AGrantTemplate{
     private final long level;
@@ -53,5 +58,29 @@ public class InfraTemplate extends AGrantTemplate{
         stmt.setBoolean(14, track_days);
         stmt.setLong(15, require_n_offensives);
         stmt.setBoolean(16, allow_rebuild);
+    }
+
+    @Override
+    public List<Grant.Requirement> getDefaultRequirements(DBNation sender) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(sender);
+
+        //no COCE
+        list.add(new Grant.Requirement("Requires the project: " + Projects.CENTER_FOR_CIVIL_ENGINEERING, true, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation receiver) {
+
+                return receiver.hasProject(Projects.CENTER_FOR_CIVIL_ENGINEERING);
+            }
+        }));
+
+        // require infra policy
+        list.add(new Grant.Requirement("Requires domestic policy to be " + DomesticPolicy.URBANIZATION, false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation receiver) {
+                return receiver.getDomesticPolicy() == DomesticPolicy.URBANIZATION;
+            }
+        }));
+
+        return list;
     }
 }
