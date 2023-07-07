@@ -30,15 +30,30 @@ public class GrantTemplateManager {
      *  - Tracks which grants a user has sent (sender id, receiver id, grant type, amount, date)
      *  - Avoids needing to parse the notes
      *
-     *  Grant create commands
-     *
-     *  Grant update command
+     *  Ensure grant sending is atomic
      *
      *  Grant send command
+     *  Priority support for:
+     *   - Projects
+     *   - Cities
+     *   - Land
+     *   - Infra
+     *  Low priority
+     *   - Builds
+     *   - Raws
+     *   - Warchest
+     *   - Support for partial grants
      *
      *  Nice to have:
      *   - Bank record note parsing to check if they already received a grant (e.g. already got an infra grant to X level)
      *   This will then support tracking transfers sent via `!grant` (due to the note)
+     *
+     *  Grant update command (low priority) - can just delete remake a grant in the meantime
+     *      - Make the create commands modify an existing grant (and add a title/message to the confirmation dialog)
+     *      - Needs checking to ensure the grant type is the same
+     *
+     *  Grant requirements
+     *   - Add command to add/remove custom requirements
      *
      */
     private final GuildDB db;
