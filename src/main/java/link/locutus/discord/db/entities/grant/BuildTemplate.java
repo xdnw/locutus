@@ -16,12 +16,17 @@ public class BuildTemplate extends AGrantTemplate{
     private final long track_days;
     private final boolean allow_switch_after_offensive;
     public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
+        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getBytes("build"), rs.getBoolean("use_optimal"), rs.getLong("mmr"), rs.getLong("track_days"), rs.getBoolean("allow_switch_after_offensive"));
+    }
+
+    // create new constructor  with typed parameters instead of resultset
+    public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, byte[] build, boolean useOptimal, long mmr, long track_days, boolean allow_switch_after_offensive) {
         super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal);
-        this.build = rs.getBytes("build");
-        this.useOptimal = rs.getBoolean("use_optimal");
-        this.mmr = rs.getLong("mmr");
-        this.track_days = rs.getLong("track_days");
-        this.allow_switch_after_offensive = rs.getBoolean("allow_switch_after_offensive");
+        this.build = build;
+        this.useOptimal = useOptimal;
+        this.mmr = mmr;
+        this.track_days = track_days;
+        this.allow_switch_after_offensive = allow_switch_after_offensive;
     }
 
     @Override

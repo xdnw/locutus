@@ -16,11 +16,16 @@ public class WarchestTemplate extends AGrantTemplate{
     private final boolean subtractExpenditure;
     private final long overdrawPercentCents;
     public WarchestTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
+        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, ArrayUtil.toDoubleArray(rs.getBytes("allowance_per_city")), rs.getLong("track_days"), rs.getBoolean("subtract_expenditure"), rs.getLong("overdraw_percent_cents"));
+    }
+
+    // create new constructor  with typed parameters instead of resultset
+    public WarchestTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, double[] allowancePerCity, long trackDays, boolean subtractExpenditure, long overdrawPercentCents) {
         super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal);
-        this.allowancePerCity = ArrayUtil.toDoubleArray(rs.getBytes("allowance_per_city"));
-        this.trackDays = rs.getLong("track_days");
-        this.subtractExpenditure = rs.getBoolean("subtract_expenditure");
-        this.overdrawPercentCents = rs.getLong("overdraw_percent_cents");
+        this.allowancePerCity = allowancePerCity;
+        this.trackDays = trackDays;
+        this.subtractExpenditure = subtractExpenditure;
+        this.overdrawPercentCents = overdrawPercentCents;
     }
 
     @Override

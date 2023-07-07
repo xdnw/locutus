@@ -35,6 +35,11 @@ public class MMRDouble {
         return new MMRDouble(mmr);
     }
 
+
+    public int toNumber() {
+        return (int) (Math.round(mmr[0]) * 1000 + Math.round(mmr[1]) * 100 + Math.round(mmr[2]) * 10 + Math.round(mmr[3]));
+    }
+
     public double get(MilitaryUnit unit) {
         MilitaryBuilding building = unit.getBuilding();
         if (building == null) return 0;

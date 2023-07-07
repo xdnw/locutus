@@ -15,9 +15,14 @@ public class LandTemplate extends AGrantTemplate{
     private final long level;
     private final boolean onlyNewCities;
     public LandTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
+        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("level"), rs.getBoolean("only_new_cities"));
+    }
+
+    // create new constructor  with typed parameters instead of resultset
+    public LandTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long level, boolean onlyNewCities) {
         super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal);
-        this.level = rs.getLong("level");
-        this.onlyNewCities = rs.getBoolean("only_new_cities");
+        this.level = level;
+        this.onlyNewCities = onlyNewCities;
     }
 
     @Override

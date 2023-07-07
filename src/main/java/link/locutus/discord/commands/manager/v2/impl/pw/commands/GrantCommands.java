@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -10,17 +11,27 @@ import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.MMRInt;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.grant.AGrantTemplate;
+import link.locutus.discord.db.entities.grant.BuildTemplate;
+import link.locutus.discord.db.entities.grant.CityTemplate;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
+import link.locutus.discord.db.entities.grant.InfraTemplate;
+import link.locutus.discord.db.entities.grant.LandTemplate;
 import link.locutus.discord.db.entities.grant.ProjectTemplate;
+import link.locutus.discord.db.entities.grant.RawsTemplate;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
+import link.locutus.discord.db.entities.grant.WarchestTemplate;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
@@ -118,7 +129,7 @@ public class GrantCommands {
 
     @Command(desc = "Set a disabled grant template as enabled")
     @RolePermission(Roles.ECON)
-    public String templateEnabled(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command, AGrantTemplate template, @Switch("f") boolean force) {
+    public String templateEnabled(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, AGrantTemplate template) {
         if (template.isEnabled()) {
             return "The template: `" + template.getName() + "` is already enabled.";
         }
@@ -128,6 +139,7 @@ public class GrantCommands {
     }
 
     // grant_template create project
+    // public ProjectTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, Project project) {
     @Command(desc = "Create a new project grant template")
     @RolePermission(Roles.ECON)
     public String templateCreateProject(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
@@ -170,26 +182,387 @@ public class GrantCommands {
 
         // confirmation
         if (!force) {
-            io.create().embed("Create template: " + template.getName(), template.toFullString(me, null)).send();
+            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null), command).send();
             return null;
         }
         manager.saveTemplate(template);
         return "The template: `" + template.getName() + "` has been created. See: TODO CM ref here";
     }
 
-    /*
-    Decisions
+    // grant_template create build
+    // public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, byte[] build, boolean useOptimal, long mmr, long track_days, boolean allow_switch_after_offensive) {
+    @Command(desc = "Create a new build grant template")
+    @RolePermission(Roles.ECON)
+    public String templateCreateBuild(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
+                                      String name,
+                                      NationFilter allowedRecipients,
+                                      @Switch("c") CityBuild build,
+                                      @Switch("m") MMRInt mmr,
+                                      @Switch("o") boolean useOptimal,
+                                      @Switch("t") Integer trackDays,
+                                      @Switch("a") boolean allowSwitchAfterOffensive,
+                                      @Switch("e") Role econRone,
+                                      @Switch("s") Role selfRole,
+                                      @Switch("b")TaxBracket bracket,
+                                      @Switch("r") boolean useReceiverBracket,
+                                      @Switch("mt") Integer maxTotal,
+                                      @Switch("md") Integer maxDay,
+                                      @Switch("mgd") Integer maxGranterDay,
+                                      @Switch("mgt") Integer maxGranterTotal,
+                                      @Switch("f") boolean force) {
+        name = name.toUpperCase(Locale.ROOT).trim();
+        // Ensure name is alphanumericalund
+        if (!name.matches("[A-Z0-9_-]+")) {
+            throw new IllegalArgumentException("The name must be alphanumericalunderscore, not `" + name + "`");
+        }
+        GrantTemplateManager manager = db.getGrantTemplateManager();
+        // check a template does not exist by that name
+        String finalName = name;
+        if (manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)) != null) {
+            throw new IllegalArgumentException("A template with that name already exists. See: TODO CM ref here");
+        }
+        if (econRone == null) econRone = Roles.ECON_STAFF.toRole(db);
+        if (econRone == null) econRone = Roles.ECON.toRole(db);
+        if (econRone == null) {
+            throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
+        }
+        if (selfRole == null) selfRole = Roles.ECON.toRole(db);
+        if (selfRole == null) {
+            throw new IllegalArgumentException("No `selfRole` found. Please provide one, or set a default ECON via " + CM.role.setAlias.cmd.toSlashMention());
+        }
+        if (bracket != null && useReceiverBracket) {
+            throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
+        }
+        byte[] buildBytes = build == null ? null : new JavaCity(build).toBytes();
 
+        BuildTemplate template = new BuildTemplate(db, false, name, allowedRecipients, econRone.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, buildBytes, useOptimal, mmr.toNumber(), trackDays, allowSwitchAfterOffensive);
 
-     */
+        // confirmation
+        if (!force) {
+            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null), command).send();
+            return null;
+        }
+        manager.saveTemplate(template);
+        return "The template: `" + template.getName() + "` has been created. See: TODO CM ref here";
+    }
 
     // grant_template create city
+    // public CityTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, int min_city, int max_city) {
+    @Command(desc = "Create a new city grant template")
+    @RolePermission(Roles.ECON)
+    public String templateCreateCity(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
+                                     String name,
+                                     NationFilter allowedRecipients,
+                                     @Switch("c") Integer minCity,
+                                     @Switch("m") Integer maxCity,
+                                     @Switch("e") Role econRone,
+                                     @Switch("s") Role selfRole,
+                                     @Switch("b")TaxBracket bracket,
+                                     @Switch("r") boolean useReceiverBracket,
+                                     @Switch("mt") Integer maxTotal,
+                                     @Switch("md") Integer maxDay,
+                                     @Switch("mgd") Integer maxGranterDay,
+                                     @Switch("mgt") Integer maxGranterTotal,
+                                     @Switch("f") boolean force) {
+        name = name.toUpperCase(Locale.ROOT).trim();
+        // Ensure name is alphanumericalund
+        if (!name.matches("[A-Z0-9_-]+")) {
+            throw new IllegalArgumentException("The name must be alphanumericalunderscore, not `" + name + "`");
+        }
+        GrantTemplateManager manager = db.getGrantTemplateManager();
+        // check a template does not exist by that name
+        String finalName = name;
+        if (manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)) != null) {
+            throw new IllegalArgumentException("A template with that name already exists. See: TODO CM ref here");
+        }
+        if (econRone == null) econRone = Roles.ECON_STAFF.toRole(db);
+        if (econRone == null) econRone = Roles.ECON.toRole(db);
+        if (econRone == null) {
+            throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
+        }
+        if (selfRole == null) selfRole = Roles.ECON.toRole(db);
+        if (selfRole == null) {
+            throw new IllegalArgumentException("No `selfRole` found. Please provide one, or set a default ECON via " + CM.role.setAlias.cmd.toSlashMention());
+        }
+        if (bracket != null && useReceiverBracket) {
+            throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
+        }
+
+        CityTemplate template = new CityTemplate(db, false, name, allowedRecipients, econRone.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, minCity == null ? 0 : minCity, maxCity == null ? 0 : maxCity);
+
+        // confirmation
+        if (!force) {
+            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null), command).send();
+            return null;
+        }
+        manager.saveTemplate(template);
+        return "The template: `" + template.getName() + "` has been created. See: TODO CM ref here";
+    }
+
     // grant_template create infra
+    // public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long level, boolean onlyNewCities, boolean track_days, long require_n_offensives, boolean allow_rebuild) {
+    @Command(desc = "Create a new infra grant template")
+    @RolePermission(Roles.ECON)
+    public String templateCreateInfra(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
+                                      String name,
+                                      NationFilter allowedRecipients,
+                                      @Switch("l") Integer level,
+                                      @Switch("n") boolean onlyNewCities,
+                                      @Switch("t") boolean trackDays,
+                                      @Switch("o") Integer requireNOffensives,
+                                      @Switch("a") boolean allowRebuild,
+
+                                      @Switch("e") Role econRone,
+                                      @Switch("s") Role selfRole,
+                                      @Switch("b")TaxBracket bracket,
+                                      @Switch("r") boolean useReceiverBracket,
+                                      @Switch("mt") Integer maxTotal,
+                                      @Switch("md") Integer maxDay,
+                                      @Switch("mgd") Integer maxGranterDay,
+                                      @Switch("mgt") Integer maxGranterTotal,
+
+                                      @Switch("f") boolean force) {
+        name = name.toUpperCase(Locale.ROOT).trim();
+        // Ensure name is alphanumericalund
+        if (!name.matches("[A-Z0-9_-]+")) {
+            throw new IllegalArgumentException("The name must be alphanumericalunderscore, not `" + name + "`");
+        }
+        GrantTemplateManager manager = db.getGrantTemplateManager();
+        // check a template does not exist by that name
+        String finalName = name;
+        if (manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)) != null) {
+            throw new IllegalArgumentException("A template with that name already exists. See: TODO CM ref here");
+        }
+        if (econRone == null) econRone = Roles.ECON_STAFF.toRole(db);
+        if (econRone == null) econRone = Roles.ECON.toRole(db);
+        if (econRone == null) {
+            throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
+        }
+        if (selfRole == null) selfRole = Roles.ECON.toRole(db);
+        if (selfRole == null) {
+            throw new IllegalArgumentException("No `selfRole` found. Please provide one, or set a default ECON via " + CM.role.setAlias.cmd.toSlashMention());
+        }
+        if (bracket != null && useReceiverBracket) {
+            throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
+        }
+
+        InfraTemplate template = new InfraTemplate(db, false, name, allowedRecipients, econRone.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, level == null ? 0 : level, onlyNewCities, trackDays, requireNOffensives == null ? 0 : requireNOffensives, allowRebuild);
+
+        // confirmation
+        if (!force) {
+            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null), command).send();
+            return null;
+        }
+        manager.saveTemplate(template);
+        return "The template: `" + template.getName() + "` has been created. See: TODO CM ref here";
+    }
+
     // grant_template create land
+    // public LandTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long level, boolean onlyNewCities) {
+    @Command(desc = "Create a new land grant template")
+    @RolePermission(Roles.ECON)
+    public String templateCreateLand(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
+                                     String name,
+                                     NationFilter allowedRecipients,
+                                     @Switch("l") Integer level,
+                                     @Switch("n") boolean onlyNewCities,
+
+                                     @Switch("e") Role econRone,
+                                     @Switch("s") Role selfRole,
+                                     @Switch("b")TaxBracket bracket,
+                                     @Switch("r") boolean useReceiverBracket,
+                                     @Switch("mt") Integer maxTotal,
+                                     @Switch("md") Integer maxDay,
+                                     @Switch("mgd") Integer maxGranterDay,
+                                     @Switch("mgt") Integer maxGranterTotal,
+
+                                     @Switch("f") boolean force) {
+        name = name.toUpperCase(Locale.ROOT).trim();
+        // Ensure name is alphanumericalund
+        if (!name.matches("[A-Z0-9_-]+")) {
+            throw new IllegalArgumentException("The name must be alphanumericalunderscore, not `" + name + "`");
+        }
+        GrantTemplateManager manager = db.getGrantTemplateManager();
+        // check a template does not exist by that name
+        String finalName = name;
+        if (manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)) != null) {
+            throw new IllegalArgumentException("A template with that name already exists. See: TODO CM ref here");
+        }
+        if (econRone == null) econRone = Roles.ECON_STAFF.toRole(db);
+        if (econRone == null) econRone = Roles.ECON.toRole(db);
+        if (econRone == null) {
+            throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
+        }
+        if (selfRole == null) selfRole = Roles.ECON.toRole(db);
+        if (selfRole == null) {
+            throw new IllegalArgumentException("No `selfRole` found. Please provide one, or set a default ECON via " + CM.role.setAlias.cmd.toSlashMention());
+        }
+        if (bracket != null && useReceiverBracket) {
+            throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
+        }
+
+        LandTemplate template = new LandTemplate(db, false, name, allowedRecipients, econRone.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, level == null ? 0 : level, onlyNewCities);
+
+        // confirmation
+        if (!force) {
+            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null), command).send();
+            return null;
+        }
+        manager.saveTemplate(template);
+        return "The template: `" + template.getName() + "` has been created. See: TODO CM ref here";
+    }
+
     // grant_template create raws
+    // public RawsTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long days, long overdrawPercentCents) {
+    @Command(desc = "Create a new raws grant template")
+    @RolePermission(Roles.ECON)
+    public String templateCreateRaws(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
+                                     String name,
+                                     NationFilter allowedRecipients,
+                                     @Switch("d") long days,
+                                     @Switch("o") long overdrawPercentCents,
+
+                                     @Switch("e") Role econRone,
+                                     @Switch("s") Role selfRole,
+                                     @Switch("b")TaxBracket bracket,
+                                     @Switch("r") boolean useReceiverBracket,
+                                     @Switch("mt") Integer maxTotal,
+                                     @Switch("md") Integer maxDay,
+                                     @Switch("mgd") Integer maxGranterDay,
+                                     @Switch("mgt") Integer maxGranterTotal,
+
+                                     @Switch("f") boolean force) {
+        name = name.toUpperCase(Locale.ROOT).trim();
+        // Ensure name is alphanumericalund
+        if (!name.matches("[A-Z0-9_-]+")) {
+            throw new IllegalArgumentException("The name must be alphanumericalunderscore, not `" + name + "`");
+        }
+        GrantTemplateManager manager = db.getGrantTemplateManager();
+        // check a template does not exist by that name
+        String finalName = name;
+        if (manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)) != null) {
+            throw new IllegalArgumentException("A template with that name already exists. See: TODO CM ref here");
+        }
+        if (econRone == null) econRone = Roles.ECON_STAFF.toRole(db);
+        if (econRone == null) econRone = Roles.ECON.toRole(db);
+        if (econRone == null) {
+            throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
+        }
+        if (selfRole == null) selfRole = Roles.ECON.toRole(db);
+        if (selfRole == null) {
+            throw new IllegalArgumentException("No `selfRole` found. Please provide one, or set a default ECON via " + CM.role.setAlias.cmd.toSlashMention());
+        }
+        if (bracket != null && useReceiverBracket) {
+            throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
+        }
+
+        RawsTemplate template = new RawsTemplate(db, false, name, allowedRecipients, econRone.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, days, overdrawPercentCents);
+
+        // confirmation
+        if (!force) {
+            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null), command).send();
+            return null;
+        }
+        manager.saveTemplate(template);
+        return "The template: `" + template.getName() + "` has been created. See: TODO CM ref here";
+    }
+
     // grant_template create warchest
+    // public WarchestTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, double[] allowancePerCity, long trackDays, boolean subtractExpenditure, long overdrawPercentCents) {
+    @Command(desc = "Create a new warchest grant template")
+    @RolePermission(Roles.ECON)
+    public String templateCreateWarchest(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
+                                         String name,
+                                         NationFilter allowedRecipients,
+                                         @Switch("a") double[] allowancePerCity,
+                                         @Switch("t") long trackDays,
+                                         @Switch("s") boolean subtractExpenditure,
+                                         @Switch("o") long overdrawPercentCents,
+
+                                         @Switch("e") Role econRone,
+                                         @Switch("s") Role selfRole,
+                                         @Switch("b")TaxBracket bracket,
+                                         @Switch("r") boolean useReceiverBracket,
+                                         @Switch("mt") Integer maxTotal,
+                                         @Switch("md") Integer maxDay,
+                                         @Switch("mgd") Integer maxGranterDay,
+                                         @Switch("mgt") Integer maxGranterTotal,
+
+                                         @Switch("f") boolean force) {
+        name = name.toUpperCase(Locale.ROOT).trim();
+        // Ensure name is alphanumericalund
+        if (!name.matches("[A-Z0-9_-]+")) {
+            throw new IllegalArgumentException("The name must be alphanumericalunderscore, not `" + name + "`");
+        }
+        GrantTemplateManager manager = db.getGrantTemplateManager();
+        // check a template does not exist by that name
+        String finalName = name;
+        if (manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)) != null) {
+            throw new IllegalArgumentException("A template with that name already exists. See: TODO CM ref here");
+        }
+        if (econRone == null) econRone = Roles.ECON_STAFF.toRole(db);
+        if (econRone == null) econRone = Roles.ECON.toRole(db);
+        if (econRone == null) {
+            throw new IllegalArgumentException("No `econRole` found. Please provide one, or set a default ECON_STAFF via " + CM.role.setAlias.cmd.toSlashMention());
+        }
+        if (selfRole == null) selfRole = Roles.ECON.toRole(db);
+        if (selfRole == null) {
+            throw new IllegalArgumentException("No `selfRole` found. Please provide one, or set a default ECON via " + CM.role.setAlias.cmd.toSlashMention());
+        }
+        if (bracket != null && useReceiverBracket) {
+            throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
+        }
+
+        WarchestTemplate template = new WarchestTemplate(db, false, name, allowedRecipients, econRone.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, allowancePerCity, trackDays, subtractExpenditure, overdrawPercentCents);
+
+        // confirmation
+        if (!force) {
+            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null), command).send();
+            return null;
+        }
+        manager.saveTemplate(template);
+        return "The template: `" + template.getName() + "` has been created. See: TODO CM ref here";
+    }
+
 
     // grant_template send <template> <receiver> <partial> <expire>
+    @Command
+    @RolePermission(Roles.ECON)
+    public String templateSend(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
+                               AGrantTemplate template,
+                               DBNation receiver,
+                               @Switch("p") Map<ResourceType, Double> partial,
+                               @Switch("e") @Timediff Long expire,
+                               @Switch("f") boolean force) {
+
+        Grant grant = template.createGrant(receiver, partial);
+        // Get the note
+        // Get the amount
+        // Get the instructions
+
+        List<Grant.Requirement> requirements = template.getDefaultRequirements();
+        // TODO add these to default requirements
+        // check grant not disabled
+        // check roles
+        // check grant limits (limit total/day, limit granter total/day)
+        // check nation not received grant already
+
+        // validate requirements
+
+        // TODO figure out how to handle partial
+        // example:
+        //
+
+        // confirmation
+        if (!force) {
+            io.create().confirmation("Send grant: " + grant.getName(), grant.toFullString(me, null), command).send();
+            return null;
+        }
+
+        // todo send
+
+        // return message
+    }
 
     // register all the require commands
     // grant_template require __key__ AGrantTemplate [args]
@@ -201,9 +574,6 @@ public class GrantCommands {
 
 
     // ----------------- old stuff below, ignore it ----------- //
-
-
-
 
     /*
     // 1111111111111111111111111111111111111111111111111111111111111222222222222222222222222222222222222222

@@ -17,12 +17,17 @@ public class InfraTemplate extends AGrantTemplate{
     private final boolean allow_rebuild;
 
     public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
+        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("level"), rs.getBoolean("only_new_cities"), rs.getBoolean("track_days"), rs.getLong("require_n_offensives"), rs.getBoolean("allow_rebuild"));
+    }
+
+    // create new constructor  with typed parameters instead of resultset
+    public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long level, boolean onlyNewCities, boolean track_days, long require_n_offensives, boolean allow_rebuild) {
         super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal);
-        this.level = rs.getLong("level");
-        this.onlyNewCities = rs.getBoolean("only_new_cities");
-        this.track_days = rs.getBoolean("track_days");
-        this.require_n_offensives = rs.getLong("require_n_offensives");
-        this.allow_rebuild = rs.getBoolean("allow_rebuild");
+        this.level = level;
+        this.onlyNewCities = onlyNewCities;
+        this.track_days = track_days;
+        this.require_n_offensives = require_n_offensives;
+        this.allow_rebuild = allow_rebuild;
     }
 
     @Override
