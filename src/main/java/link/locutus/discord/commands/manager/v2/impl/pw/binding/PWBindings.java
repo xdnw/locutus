@@ -420,8 +420,6 @@ public class PWBindings extends BindingHelper {
         return new TaxRate(moneyRate, rssRate);
     }
 
-    @Binding(value = "", examples = {"Borg", "<@664156861033086987>", "Danzek", "189573", "https://politicsandwar.com/nation/id=189573"})
-
     public static NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuildOrTaxId(String input) {
         return nationOrAllianceOrGuildOrTaxId(null, input);
     }

@@ -148,7 +148,7 @@ public class CommandManager2 {
         // nap command  - UtilityCommands
 
         this.commands.registerCommandsWithMapping(CM.class, false, false);
-        this.commands.registerMethod(new TestCommands(), List.of("test"), "embed", "embed");
+        this.commands.registerMethod(new TestCommands(), List.of("test"), "model", "model");
         this.commands.registerMethod(new BankCommands(), List.of("tax"), "taxInfo", "info");
 
         this.commands.registerMethod(new BankCommands(), List.of("bank"), "depositResources", "deposit");
@@ -158,6 +158,8 @@ public class CommandManager2 {
 
         this.commands.registerMethod(new WarCommands(), List.of("sheets_milcom"), "convertDtCSpySheet", "convertdtcspysheet");
         this.commands.registerMethod(new WarCommands(), List.of("spy", "sheet"), "convertDtCSpySheet", "convertdtc");
+        this.commands.registerMethod(new WarCommands(), List.of("war", "find"), "findTreasureNations", "treasure");
+        this.commands.registerMethod(new WarCommands(), List.of("war", "find"), "findBountyNations", "bounty");
 
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "raid", "raid");
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "warWinning", "war_winning");
