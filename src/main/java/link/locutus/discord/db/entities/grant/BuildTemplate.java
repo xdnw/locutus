@@ -53,4 +53,9 @@ public class BuildTemplate extends AGrantTemplate{
         stmt.setLong(15, track_days);
         stmt.setBoolean(16, allow_switch_after_offensive);
     }
+
+    //make build template command open to members
+    //will check if member has bought a city recently
+    //will also check if member has used a build grant for their new city to prevent abuse
+    //should probly consider dm'ing the user to use the city build grant command once the city grant command is ran
 }

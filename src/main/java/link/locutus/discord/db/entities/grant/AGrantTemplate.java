@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities.grant;
 
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
@@ -258,7 +259,7 @@ public abstract class AGrantTemplate {
 //
 //                if (type != TemplateTypes.WARCHEST) grant.addRequirement(new Grant.Requirement("Nation is beige", econStaff, f -> !f.isBeige()));
 //                grant.addRequirement(new Grant.Requirement("Nation is gray", econStaff, f -> !f.isGray()));
-//                grant.addRequirement(new Grant.Requirement("Nation is blockaded", econStaff, f -> !f.isBlockaded()));
+//                grant.addRequirement(new Grant.RequiremenSNt("Nation is blockaded", econStaff, f -> !f.isBlockaded()));
 //
 //                // TODO no disburse past 5 days during wartime
 //                // TODO 2d seniority and 5 won wars for initial 1.7k infra grants
@@ -328,5 +329,13 @@ public abstract class AGrantTemplate {
 
     public Role getSelfRole() {
         return db.getGuild().getRoleById(selfRole);
+    }
+
+    public Grant createGrant(DBNation receiver, Map<ResourceType, Double> partial) {
+
+
+
+
+        return null;
     }
 }
