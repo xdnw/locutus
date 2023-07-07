@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 public class CityTemplate extends AGrantTemplate{
+
     private final int min_city;
     private final int max_city;
     public CityTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
@@ -48,4 +49,7 @@ public class CityTemplate extends AGrantTemplate{
     public List<Grant.Requirement> getDefaultRequirements(DBNation sender) {
         return super.getDefaultRequirements(sender);
     }
+
+    //add flags to enforce UP, AUP, MP, MD, or GSA for this template or the base template
+    //add flags to the template database
 }
