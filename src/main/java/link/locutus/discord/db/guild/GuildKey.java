@@ -1899,6 +1899,72 @@ public class GuildKey {
 
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 
+    public static GuildSetting<Set<Integer>> GRANT_TEMPLATE_BLACKLIST = new GuildSetting<Set<Integer>>(GuildSettingCategory.BANK_ACCESS, Set.class, Integer.class) {
+
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ECON)
+        public String toggleGrants(@Me GuildDB db, DBNation nation) {
+
+            Set<Integer> blacklist = GRANT_TEMPLATE_BLACKLIST.getOrNull(db, false);
+
+            if(blacklist == null)
+                blacklist = new HashSet<>();
+
+            if(!blacklist.contains(nation.getId())) {
+                blacklist.add(nation.getId());
+                GRANT_TEMPLATE_BLACKLIST.set(db, blacklist);
+
+                return "Member has been added to the black list";
+            }
+            else {
+                blacklist.remove(nation.getId());
+                GRANT_TEMPLATE_BLACKLIST.set(db, blacklist);
+
+                return "Member has been removed from the black list";
+            }
+        }
+
+        @Override
+        public String help() {
+            return "The id of the member you want to add to the blacklist";
+        }
+
+        @Override
+        public Set<Integer> validate(GuildDB db, Set<Integer> nationIDs) {
+            for(int id : nationIDs) {
+              DBNation nation = DBNation.getById(id);
+
+              if(nation == null)
+                  throw new IllegalArgumentException("Nation does not exist");
+            }
+
+            return nationIDs;
+        }
+
+        @Override
+        public String toReadableString(Set<Integer> value) {
+
+            List<String> names = new ArrayList<>();
+
+            for (int id : value) {
+                DBNation nation = DBNation.getById(id);
+                // add name to list, or add the id if nation is null
+
+                if(nation == null)
+                    names.add(nation.getId() + "");
+                else
+                    names.add(nation.getName());
+            }
+
+            return String.join(",", names);
+        }
+
+        @Override
+        public String toString(Set<Integer> value) {
+            return StringMan.join(value, ",");
+        }
+    };
+
     static {
         // add by field names
         for (Field field : GuildKey.class.getFields()) {

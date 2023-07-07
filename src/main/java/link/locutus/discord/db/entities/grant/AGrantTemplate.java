@@ -9,18 +9,16 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationFilterString;
 import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.offshore.Grant;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 
+import java.util.*;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -246,9 +244,20 @@ public abstract class AGrantTemplate {
                 return db.isAllianceId(nation.getAlliance_id());
             }
         }));
-//
-//                Role temp = Roles.TEMP.toRole(db.getGuild());
-//                grant.addRequirement(new Grant.Requirement("Nation not eligible for grants (has role: " + temp.getName() + ")", econStaff, f -> !member.getRoles().contains(temp)));
+
+
+        Set<Integer> blacklist = GuildKey.GRANT_TEMPLATE_BLACKLIST.get(db);
+
+        if(blacklist == null)
+            blacklist = Collections.emptySet();
+
+        Set<Integer> finalBlacklist = blacklist;
+        list.add(new Grant.Requirement("Nation is blacklisted", false, new Function<DBNation, Boolean>() {
+           @Override
+           public Boolean apply(DBNation dbNation) {
+               return !finalBlacklist.contains(dbNation.getId());
+           }
+       }));
 //
 //                grant.addRequirement(new Grant.Requirement("Nation is not active in past 24h", econStaff, f -> f.getActive_m() < 1440));
         list.add(new Grant.Requirement("Nation is not active in past 24h", false, new Function<DBNation, Boolean>() {
@@ -328,13 +337,5 @@ public abstract class AGrantTemplate {
 
     public Role getSelfRole() {
         return db.getGuild().getRoleById(selfRole);
-    }
-
-    public Grant createGrant(DBNation receiver, Map<ResourceType, Double> partial) {
-
-
-
-
-        return null;
     }
 }

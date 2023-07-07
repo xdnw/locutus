@@ -52,6 +52,9 @@ public class CityTemplate extends AGrantTemplate{
         stmt.setInt(13, max_city);
     }
 
+
+    //add flags to enforce UP, AUP, MP, MD, or GSA for this template or the base template
+    //add flags to the template database
     @Override
     public List<Grant.Requirement> getDefaultRequirements(DBNation sender) {
         List<Grant.Requirement> list = super.getDefaultRequirements(sender);
@@ -97,7 +100,4 @@ public class CityTemplate extends AGrantTemplate{
 
         return list;
     }
-
-    //add flags to enforce UP, AUP, MP, MD, or GSA for this template or the base template
-    //add flags to the template database
 }
