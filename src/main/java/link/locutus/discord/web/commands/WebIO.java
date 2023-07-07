@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
 import link.locutus.discord.web.jooby.handler.IMessageOutput;
 import net.dv8tion.jda.api.utils.data.DataObject;
 
@@ -58,5 +59,10 @@ public class WebIO implements IMessageIO {
     @Override
     public long getIdLong() {
         return 0;
+    }
+
+    @Override
+    public CompletableFuture<IModalBuilder> send(IModalBuilder modal) {
+        throw new UnsupportedOperationException("Modals not implemented for web");
     }
 }

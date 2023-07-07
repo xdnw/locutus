@@ -6,13 +6,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-public abstract class AModalBuilder implements IModalBuilder {
+public class AModalBuilder implements IModalBuilder {
     private final IMessageIO parent;
-    private long id;
+    private String id;
     private String title;
     private List<TextInput> inputs = new ArrayList<>();
 
-    public AModalBuilder(IMessageIO io, String title) {
+    public AModalBuilder(IMessageIO io, String id, String title) {
         this.parent = io;
         this.title = title;
     }
@@ -36,7 +36,7 @@ public abstract class AModalBuilder implements IModalBuilder {
         return parent.send(this);
     }
 
-    public long getId() {
+    public String getId() {
         return id;
     }
 

@@ -1,18 +1,24 @@
 package link.locutus.discord.commands.manager.v2.impl.discord;
 
+import link.locutus.discord.commands.manager.v2.command.AModalBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.interactions.components.ActionRow;
+import net.dv8tion.jda.api.interactions.components.text.TextInput;
+import net.dv8tion.jda.api.interactions.modals.Modal;
 import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import net.dv8tion.jda.api.utils.messages.MessageEditData;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
@@ -141,5 +147,21 @@ public class DiscordChannelIO implements IMessageIO {
     @Override
     public long getIdLong() {
         return channel.getIdLong();
+    }
+
+    @Override
+    public CompletableFuture<IModalBuilder> send(IModalBuilder builder) {
+        AModalBuilder casted = (AModalBuilder) builder;
+        // id = command wishing to execute
+
+        // todo lookup
+        // modal id restrictions
+        // modal id length
+
+        String id = casted.getId();
+
+
+        send("Modal not supported");
+        return null;
     }
 }

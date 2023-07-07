@@ -675,7 +675,7 @@ public class SlashCommandManager extends ListenerAdapter {
 
             System.out.println("Path: " + path + " | values=" + combined);
 
-            DiscordHookIO io = new DiscordHookIO(hook);
+            DiscordHookIO io = new DiscordHookIO(hook, event);
             Guild guild = event.isFromGuild() ? event.getGuild() : null;
             Locutus.imp().getCommandManager().getV2().run(guild, channel, event.getUser(), null, io, path.replace("/", " "), combined, true);
             long end = System.currentTimeMillis();

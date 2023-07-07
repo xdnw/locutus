@@ -56,18 +56,24 @@ import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.invite.GuildInviteCreateEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberRoleAddEvent;
+import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
+import net.dv8tion.jda.api.interactions.components.Component;
 import net.dv8tion.jda.api.interactions.components.ItemComponent;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.interactions.modals.ModalInteraction;
+import net.dv8tion.jda.api.interactions.modals.ModalMapping;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.Compression;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
+import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
@@ -943,6 +949,30 @@ public final class Locutus extends ListenerAdapter {
     }
 
     @Override
+    public void onModalInteraction(@NotNull ModalInteractionEvent event) {
+        ModalInteraction interaction = event.getInteraction();
+        String id = event.getModalId();
+        InteractionHook hook = event.getHook();
+        List<ModalMapping> values = event.getValues();
+
+        Map<String, String> args = new HashMap<>();
+        args.put("", id);
+
+        for (ModalMapping value : values) {
+            Component.Type type = value.getType();
+            String valueId = value.getId();
+            String input = value.getAsString();
+            args.put(valueId, input);
+        }
+
+        event.editMessage(new MessageEditBuilder().set)
+
+        DiscordHookIO io = new DiscordHookIO(hook, event.getInteraction().replyComponents());
+
+
+    }
+
+    @Override
     public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
         try {
             Message message = event.getMessage();
@@ -961,7 +991,7 @@ public final class Locutus extends ListenerAdapter {
             Guild guild = event.isFromGuild() ? event.getGuild() : message.isFromGuild() ? message.getGuild() : null;
             MessageChannel channel = event.getChannel();
 
-            IMessageIO io = new DiscordHookIO(event.getHook());
+            IMessageIO io = new DiscordHookIO(event.getHook(), event);
 
             String id = button.getId();
             if (id == null) {

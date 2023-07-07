@@ -1,27 +1,41 @@
 package link.locutus.discord.commands.manager.v2.impl.discord;
 
+import link.locutus.discord.commands.manager.v2.command.AModalBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.interactions.Interaction;
 import net.dv8tion.jda.api.interactions.InteractionHook;
+import net.dv8tion.jda.api.interactions.callbacks.IModalCallback;
+import net.dv8tion.jda.api.interactions.components.ActionRow;
+import net.dv8tion.jda.api.interactions.components.text.TextInput;
+import net.dv8tion.jda.api.interactions.modals.Modal;
+import net.dv8tion.jda.api.requests.restaction.interactions.ModalCallbackAction;
 import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import net.dv8tion.jda.api.utils.messages.MessageEditData;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 public class DiscordHookIO implements IMessageIO {
     private final InteractionHook hook;
     private final Map<Long, IMessageBuilder> messageCache = new HashMap<>();
+    private final IModalCallback modalCallback;
 
-    public DiscordHookIO(InteractionHook hook) {
+    public DiscordHookIO(InteractionHook hook, IModalCallback modalCallback) {
         this.hook = hook;
+        this.modalCallback = modalCallback;
+    }
+
+    public IModalCallback getModalCallback() {
+        return modalCallback;
     }
 
     @Override
@@ -105,5 +119,15 @@ public class DiscordHookIO implements IMessageIO {
         Channel channel = interaction.getChannel();
         if (channel != null) return channel.getIdLong();
         return 0;
+    }
+
+    @Override
+    public CompletableFuture<IModalBuilder> send(IModalBuilder builder) {
+        AModalBuilder casted = (AModalBuilder) builder;
+        List<TextInput> inputs = casted.getInputs();
+        Modal modal = Modal.create(casted.getId(), casted.getTitle())
+                .addActionRows(ActionRow.partitionOf(inputs))
+                .build();
+        return RateLimitUtil.queue(modalCallback.replyModal(modal)).thenApply(f -> casted);
     }
 }
