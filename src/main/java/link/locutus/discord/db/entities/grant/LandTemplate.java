@@ -10,7 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
-public class LandTemplate extends AGrantTemplate{
+public class LandTemplate extends AGrantTemplate<Double>{
     //long level
     //boolean onlyNewCities
     private final long level;

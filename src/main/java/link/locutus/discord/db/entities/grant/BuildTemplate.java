@@ -4,6 +4,7 @@ import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.offshore.Grant;
 
 import java.sql.PreparedStatement;
@@ -11,7 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
-public class BuildTemplate extends AGrantTemplate{
+public class BuildTemplate extends AGrantTemplate<CityBuild> {
     private final byte[] build;
     private final boolean onlyNewCities;
     private final int mmr;

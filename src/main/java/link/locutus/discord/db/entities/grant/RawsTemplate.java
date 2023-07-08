@@ -9,7 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
-public class RawsTemplate extends AGrantTemplate{
+public class RawsTemplate extends AGrantTemplate<Integer>{
     //long days
     //long overdraw_percent_cents
     private final long days;

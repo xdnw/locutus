@@ -199,7 +199,7 @@ public class GrantTemplateManager {
     public void deleteTemplate(AGrantTemplate template) {
         // remove from map
         templates.remove(template.getName());
-        
+
         String table = template.getType().getTable();
         String name = template.getName();
         String sql = "DELETE FROM `" + table + "` WHERE `name` = ?";

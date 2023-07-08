@@ -17,7 +17,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.function.Function;
 
-public class InfraTemplate extends AGrantTemplate{
+public class InfraTemplate extends AGrantTemplate<Double>{
     private final long level;
     private final boolean onlyNewCities;
     private final boolean track_days;

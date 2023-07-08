@@ -1,9 +1,15 @@
 package link.locutus.discord.db.entities.grant;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -24,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public abstract class AGrantTemplate {
+public abstract class AGrantTemplate<T> {
 
     private final GuildDB db;
     private boolean enabled;
@@ -172,7 +178,7 @@ public abstract class AGrantTemplate {
 
     public abstract TemplateTypes getType();
 
-    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver) {
+    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver, T parsed) {
         List<Grant.Requirement> list = new ArrayList<>();
 
         // check grant not disabled
@@ -369,9 +375,9 @@ public abstract class AGrantTemplate {
         stmt.setInt(11, this.getMaxGranterTotal());
     }
 
-    public abstract double[] getCost(DBNation sender, DBNation receiver);
-    public abstract DepositType.DepositTypeInfo getDepositType();
-    public abstract String getInstructions(DBNation sender, DBNation receiver);
+    public abstract double[] getCost(DBNation sender, DBNation receiver, T parsed);
+    public abstract DepositType.DepositTypeInfo getDepositType(DBNation receiver, T parsed);
+    public abstract String getInstructions(DBNation sender, DBNation receiver, T parsed);
 
     public abstract void setValues(PreparedStatement stmt) throws SQLException;
 
@@ -387,8 +393,19 @@ public abstract class AGrantTemplate {
         return db.getGuild().getRoleById(selfRole);
     }
 
-    public Grant createGrant(DBNation sender, DBNation receiver, String customValue) {
-        Grant grant = new Grant(receiver, getDepositType());
+    public abstract Class<T> getParsedType();
+
+    public T parse(DBNation receiver, String value) {
+        if (value == null) return null;
+        CommandManager2 cmdManager = Locutus.imp().getCommandManager().getV2();
+        LocalValueStore store = new LocalValueStore<>(cmdManager.getStore());
+        store.addProvider(Key.of(DBNation.class, Me.class), receiver);
+        store.addProvider(Key.of(GuildDB.class, Me.class), db);
+        return (T) store.get(Key.of(getParsedType())).apply(store, value);
+    }
+
+    public Grant createGrant(DBNation sender, DBNation receiver, T customValue) {
+        Grant grant = new Grant(receiver, getDepositType(customValue));
         grant.setCost(f -> this.getCost(sender, receiver));
         grant.addRequirement(getDefaultRequirements(sender, receiver));
         // grant.addNote()

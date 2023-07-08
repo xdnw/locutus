@@ -3,6 +3,7 @@ package link.locutus.discord.db.entities.grant;
 import com.google.api.client.util.Sets;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
@@ -10,6 +11,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.offshore.Grant;
 import rocker.grant.cities;
 
@@ -24,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class CityTemplate extends AGrantTemplate{
+public class CityTemplate extends AGrantTemplate<Integer> {
 
     private final int min_city;
     private final int max_city;
@@ -58,16 +60,32 @@ public class CityTemplate extends AGrantTemplate{
     }
 
     @Override
+    public String getInstructions(DBNation sender, DBNation receiver, Integer parsed) {
+        return null;
+    }
+
+    @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
         stmt.setInt(12, min_city);
         stmt.setInt(13, max_city);
     }
 
-
     //add flags to the template database
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver) {
-        List<Grant.Requirement> list = super.getDefaultRequirements(sender);
+    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver, Integer amount) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, amount);
+
+        // amount cannot be <= 0
+        list.add(new Grant.Requirement("Amount must be greater than 0 not `" + amount + "`", false, f -> amount > 0));
+
+        // 0 - 10 (can buy up to 10 with amount)
+        // 10+ = 1 amount max
+        list.add(new Grant.Requirement("Cannot grant more 1 city at a time past city 10", false, f -> {
+            if(f.getCities() < 10)
+                return amount <= 10 - f.getCities();
+            else
+                return amount <= 1;
+        }));
 
         int currentCities = receiver.getCities();
         list.add(new Grant.Requirement("Nation has built a city, please run the grant command again", false, f -> f.getCities() == currentCities));
@@ -158,5 +176,22 @@ public class CityTemplate extends AGrantTemplate{
         }));
 
         return list;
+    }
+
+    @Override
+    public double[] getCost(DBNation sender, DBNation receiver, Integer amount) {
+        int cities = receiver.getCities();
+        double cost = PnwUtil.nextCityCost(receiver, amount);
+        return ResourceType.MONEY.toArray(cost);
+    }
+
+    @Override
+    public DepositType.DepositTypeInfo getDepositType(DBNation receiver, Integer amount) {
+        return DepositType.CITY.withAmount(receiver.getCities() + amount);
+    }
+
+    @Override
+    public Class<Integer> getParsedType() {
+        return Integer.class;
     }
 }

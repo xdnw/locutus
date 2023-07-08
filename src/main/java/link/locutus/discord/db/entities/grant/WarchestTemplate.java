@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities.grant;
 
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.PnwUtil;
@@ -10,8 +11,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 
-public class WarchestTemplate extends AGrantTemplate{
+public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> {
     private final double[] allowancePerCity;
     private final long trackDays;
     private final boolean subtractExpenditure;
