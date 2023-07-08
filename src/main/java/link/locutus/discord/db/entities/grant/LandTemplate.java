@@ -3,6 +3,7 @@ package link.locutus.discord.db.entities.grant;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 
 import java.sql.PreparedStatement;
@@ -52,5 +53,25 @@ public class LandTemplate extends AGrantTemplate<Double>{
     public void setValues(PreparedStatement stmt) throws SQLException {
         stmt.setLong(12, level);
         stmt.setBoolean(13, onlyNewCities);
+    }
+
+    @Override
+    public double[] getCost(DBNation sender, DBNation receiver, Double parsed) {
+
+    }
+
+    @Override
+    public DepositType.DepositTypeInfo getDepositType(DBNation receiver, Double parsed) {
+
+    }
+
+    @Override
+    public String getInstructions(DBNation sender, DBNation receiver, Double parsed) {
+
+    }
+
+    @Override
+    public Class<Double> getParsedType() {
+        return Double.class;
     }
 }

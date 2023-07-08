@@ -3,6 +3,7 @@ package link.locutus.discord.db.entities.grant;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -47,5 +48,25 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
     public void setValues(PreparedStatement stmt) throws SQLException {
         stmt.setLong(12, days);
         stmt.setLong(13, overdrawPercentCents);
+    }
+
+    @Override
+    public double[] getCost(DBNation sender, DBNation receiver, Integer parsed) {
+
+    }
+
+    @Override
+    public DepositType.DepositTypeInfo getDepositType(DBNation receiver, Integer parsed) {
+
+    }
+
+    @Override
+    public String getInstructions(DBNation sender, DBNation receiver, Integer parsed) {
+
+    }
+
+    @Override
+    public Class<Integer> getParsedType() {
+
     }
 }

@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
@@ -125,5 +126,25 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
         stmt.setInt(12, project.ordinal());
+    }
+
+    @Override
+    public double[] getCost(DBNation sender, DBNation receiver, Void parsed) {
+        return receiver.projectCost(project);
+    }
+
+    @Override
+    public DepositType.DepositTypeInfo getDepositType(DBNation receiver, Void parsed) {
+        return DepositType.PROJECT.withAmount(project.ordinal());
+    }
+
+    @Override
+    public String getInstructions(DBNation sender, DBNation receiver, Void parsed) {
+
+    }
+
+    @Override
+    public Class<Void> getParsedType() {
+        return Void.class;
     }
 }

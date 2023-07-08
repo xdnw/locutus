@@ -76,8 +76,12 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver) {
-        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver);
+    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver, Double amount) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, amount);
+
+        if (amount > level) {
+            throw new IllegalArgumentException("Amount cannot be greater than the template level `" + amount + ">" + level + "`");
+        }
 
         //no COCE
         list.add(new Grant.Requirement("Requires the project: " + Projects.CENTER_FOR_CIVIL_ENGINEERING, true, new Function<DBNation, Boolean>() {
@@ -97,5 +101,25 @@ public class InfraTemplate extends AGrantTemplate<Double>{
         }));
 
         return list;
+    }
+
+    @Override
+    public double[] getCost(DBNation sender, DBNation receiver, Double parsed) {
+
+    }
+
+    @Override
+    public DepositType.DepositTypeInfo getDepositType(DBNation receiver, Double parsed) {
+
+    }
+
+    @Override
+    public String getInstructions(DBNation sender, DBNation receiver, Double parsed) {
+
+    }
+
+    @Override
+    public Class<Double> getParsedType() {
+        return Double.class;
     }
 }
