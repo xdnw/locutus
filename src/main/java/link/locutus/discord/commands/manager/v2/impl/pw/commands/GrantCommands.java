@@ -608,8 +608,46 @@ public class GrantCommands {
         // Transfers the resources
         // Prints the grant instructions
         // Pings the receiver
+        //grabs offshore
+        OffshoreInstance offshore = db.getOffshore();
+        Map.Entry<OffshoreInstance.TransferStatus, String> status = offshore.transferFromAllianceDeposits(me, db, f -> f == me.getAlliance_id(), receiver, cost, note);
 
-        // return message
+        //in the case an unknown error occurs while sending the grant
+        if(status.getKey() == OffshoreInstance.TransferStatus.OTHER) {
+            Set<Integer> blacklist = GuildKey.GRANT_TEMPLATE_BLACKLIST.get(db);
+            if (blacklist == null) blacklist = new HashSet<>();
+            blacklist.add(receiver.getId());
+            GuildKey.GRANT_TEMPLATE_BLACKLIST.set(db, blacklist);
+
+            Role role = Roles.ECON.toRole(db);
+            String econGovMention = role == null ? "" : role.getAsMention();
+
+            throw new IllegalArgumentException(status.getValue() + econGovMention);
+        }
+
+
+        //saves grant record into the database
+        if(status.getKey() == OffshoreInstance.TransferStatus.SUCCESS){
+            GrantTemplateManager.GrantSendRecord record  = new GrantTemplateManager.GrantSendRecord(template.getName(), me.getId(), receiver.getId(), template.getType(), cost, System.currentTimeMillis());
+            db.getGrantTemplateManager().saveGrantRecord(record);
+        }
+
+        // setup String Builder
+        StringBuilder grantMessage = new StringBuilder();
+
+        //checks if receiver is null, if not then ping them
+        if(receiver.getUser() != null)
+            grantMessage.append(receiver.getUser().getAsMention());
+
+        //build a string consisting of the template name, status, and instructions
+        grantMessage.append("# " + template.getName());
+        grantMessage.append("");
+        grantMessage.append(status.toString());
+        grantMessage.append("");
+        grantMessage.append(instructions);
+
+        //return message
+        return grantMessage.toString();
     }
 
     // register all the require commands

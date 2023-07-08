@@ -1,15 +1,20 @@
 package link.locutus.discord.db.entities.grant;
 
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.DomesticPolicy;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.offshore.Grant;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.function.Function;
 
 public class LandTemplate extends AGrantTemplate<Double>{
     //long level
@@ -73,5 +78,50 @@ public class LandTemplate extends AGrantTemplate<Double>{
     @Override
     public Class<Double> getParsedType() {
         return Double.class;
+
+    }
+
+    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver, Double parsed) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, parsed);
+
+        //nation does not have ALA
+        list.add(new Grant.Requirement("Missing the project: " + Projects.ARABLE_LAND_AGENCY, true, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation receiver) {
+
+                return receiver.hasProject(Projects.ARABLE_LAND_AGENCY);
+            }
+        }));
+
+        //nation does not have AEC
+        list.add(new Grant.Requirement("Missing the project: " + Projects.ADVANCED_ENGINEERING_CORPS, true, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation receiver) {
+
+                return receiver.hasProject(Projects.ADVANCED_ENGINEERING_CORPS);
+            }
+        }));
+
+        list.add(new Grant.Requirement("Nation hasn't bought a city in the past 10 days", true, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation receiver) {
+
+                if(onlyNewCities)
+                    return receiver.getCitiesSince(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 120)) > 0;
+                else
+                    return true;
+            }
+        }));
+
+
+        // require land policy
+        list.add(new Grant.Requirement("Requires domestic policy to be " + DomesticPolicy.RAPID_EXPANSION, true, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation receiver) {
+                return receiver.getDomesticPolicy() != DomesticPolicy.RAPID_EXPANSION;
+            }
+        }));
+
+        return list;
     }
 }
