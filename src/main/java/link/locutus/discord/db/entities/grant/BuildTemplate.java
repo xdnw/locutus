@@ -4,12 +4,14 @@ import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.function.Function;
 
 public class BuildTemplate extends AGrantTemplate{
     private final byte[] build;
@@ -64,11 +66,33 @@ public class BuildTemplate extends AGrantTemplate{
     @Override
     public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver) {
         List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver);
-        if (onlyNewCities) {
-            // require city built in past 6 days
 
-            // require no build grants since city
+
+        if (onlyNewCities) {
+            list.add(new Grant.Requirement("Nation hasn't bought a city in the past 6 days", true, new Function<DBNation, Boolean>() {
+                @Override
+                public Boolean apply(DBNation receiver) {
+
+                    return receiver.getCitiesSince(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 72)) > 0;
+                }
+            }));
+
+            list.add(new Grant.Requirement("Nation has already received a new city build grant", true, new Function<DBNation, Boolean>() {
+                @Override
+                public Boolean apply(DBNation receiver) {
+
+                    List<GrantTemplateManager.GrantSendRecord> records = getDb().getGrantTemplateManager().getRecordsByReceiver(receiver.getId());
+
+                    for(GrantTemplateManager.GrantSendRecord record : records) {
+
+                        return receiver.getCitiesSince(record.date) == 0;
+                    }
+
+                    return true;
+                }
+            }));
         }
+
         // require no build grants in past track_days
 
         // else require war in past track_days
@@ -78,5 +102,8 @@ public class BuildTemplate extends AGrantTemplate{
         // for single:
         // require city built in the past day
         // require no build grant since the city
+
+
+        return list;
     }
 }

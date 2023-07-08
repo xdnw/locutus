@@ -6,6 +6,8 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
 
 import java.sql.PreparedStatement;
@@ -64,8 +66,39 @@ public class InfraTemplate extends AGrantTemplate{
     public List<Grant.Requirement> getDefaultRequirements(DBNation sender) {
         List<Grant.Requirement> list = super.getDefaultRequirements(sender);
 
-        //no COCE
-        list.add(new Grant.Requirement("Requires the project: " + Projects.CENTER_FOR_CIVIL_ENGINEERING, true, new Function<DBNation, Boolean>() {
+        //if nation is fighting an active nation this is stronger or has nuclear research facility or missile launch pad
+        list.add(new Grant.Requirement("Nation is fighting stronger nations or they have NRF/MLP", false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation receiver) {
+
+                List<DBWar> wars = receiver.getActiveWars();
+
+                for(DBWar war : wars) {
+
+                   DBNation opponent = war.getNation(!war.isAttacker(receiver));
+
+                   if(opponent.active_m() > 1440)
+                       continue;
+
+                   if(opponent.hasProject(Projects.NUCLEAR_RESEARCH_FACILITY) || opponent.hasProject(Projects.MISSILE_LAUNCH_PAD))
+                       return false;
+
+                   if(opponent.getGroundStrength(true, false) > receiver.getGroundStrength(true, false))
+                       return false;
+
+                    if(opponent.getAircraft() > receiver.getAircraft())
+                        return false;
+
+                    if(opponent.getShips() > receiver.getShips())
+                        return false;
+                }
+
+                return true;
+            }
+        }));
+
+        //nation does not have COCE
+        list.add(new Grant.Requirement("Missing the project: " + Projects.CENTER_FOR_CIVIL_ENGINEERING, true, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
 
@@ -73,11 +106,32 @@ public class InfraTemplate extends AGrantTemplate{
             }
         }));
 
+        //nation does not have AEC
+        list.add(new Grant.Requirement("Missing the project: " + Projects.ADVANCED_ENGINEERING_CORPS, true, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation receiver) {
+
+                return receiver.hasProject(Projects.ADVANCED_ENGINEERING_CORPS);
+            }
+        }));
+
+
         // require infra policy
         list.add(new Grant.Requirement("Requires domestic policy to be " + DomesticPolicy.URBANIZATION, false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
                 return receiver.getDomesticPolicy() == DomesticPolicy.URBANIZATION;
+            }
+        }));
+
+        list.add(new Grant.Requirement("Nation hasn't bought a city in the past 10 days", true, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation receiver) {
+
+                if(onlyNewCities)
+                    return receiver.getCitiesSince(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 120)) > 0;
+                else
+                    return true;
             }
         }));
 
