@@ -566,7 +566,7 @@ public class GrantCommands {
         // Get the instructions
         String instructions = grant.getInstructions();
 
-        List<Grant.Requirement> requirements = template.getDefaultRequirements();
+        List<Grant.Requirement> requirements = template.getDefaultRequirements(me, receiver);
         // TODO add these to default requirements
         // check grant not disabled
         // check grant limits (limit total/day, limit granter total/day)
