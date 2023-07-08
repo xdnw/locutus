@@ -33,7 +33,7 @@ public class ProjectTemplate extends AGrantTemplate{
 
     @Override
     public String toListString() {
-
+        return super.toListString() + " | " + project.name();
     }
 
     @Override

@@ -3,6 +3,7 @@ package link.locutus.discord.db.entities.grant;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.util.MathMan;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -28,6 +29,15 @@ public class LandTemplate extends AGrantTemplate{
     @Override
     public TemplateTypes getType() {
         return TemplateTypes.LAND;
+    }
+
+    @Override
+    public String toListString() {
+        StringBuilder result = new StringBuilder(super.toListString() + " | @" + MathMan.format(level));
+        if (onlyNewCities) {
+            result.append(" | new_cities=true");
+        }
+        return result.toString();
     }
 
     @Override

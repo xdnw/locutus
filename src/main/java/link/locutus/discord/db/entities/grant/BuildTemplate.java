@@ -33,6 +33,23 @@ public class BuildTemplate extends AGrantTemplate{
     }
 
     @Override
+    public String toListString() {
+        StringBuilder result = new StringBuilder(super.toListString());
+        if (mmr > 0) {
+            // format int to 4 digits with 0 padding (before the number)
+            String mmrString = String.format("%04d", mmr);
+            result.append(" | MMR=").append(mmrString);
+        }
+        if (onlyNewCities) {
+            result.append(" | new_cities=true");
+        }
+        if (allow_switch_after_offensive) {
+            result.append(" | damaged=allow");
+        }
+        return result.toString();
+    }
+
+    @Override
     public TemplateTypes getType() {
         return TemplateTypes.BUILD;
     }

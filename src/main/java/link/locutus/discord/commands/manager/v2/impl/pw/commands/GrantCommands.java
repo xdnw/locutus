@@ -84,19 +84,19 @@ public class GrantCommands {
         if (!grantOthers.isEmpty()) {
             result.append("### Grant Others:\n");
             for (AGrantTemplate template : grantOthers) {
-                result.append("- ").append(template.getName()).append(" - ").append(template.toListString()).append("\n");
+                result.append("- ").append(template.toListString()).append("\n");
             }
         }
         if (!grantSelf.isEmpty()) {
             result.append("### Grant Self:\n");
             for (AGrantTemplate template : grantSelf) {
-                result.append("- ").append(template.getName()).append(" - ").append(template.toListString()).append("\n");
+                result.append("- ").append(template.toListString()).append("\n");
             }
         }
         if (!noAccess.isEmpty()) {
             result.append("### No Access:\n");
             for (AGrantTemplate template : noAccess) {
-                result.append("- ").append(template.getName()).append(" - ").append(template.toListString()).append("\n");
+                result.append("- ").append(template.toListString()).append("\n");
             }
         }
 
@@ -583,6 +583,8 @@ public class GrantCommands {
             io.create().confirmation("Send grant: " + grant.getName(), grant.toFullString(me, null), command).send();
             return null;
         }
+
+        // TODO add handling of tax bracket account
 
         // todo send (Ensure grant sending is atomic)
         // Adds the template send record to the database

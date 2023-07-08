@@ -11,6 +11,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.offshore.Grant;
+import rocker.grant.cities;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -36,6 +37,11 @@ public class CityTemplate extends AGrantTemplate{
         super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal);
         this.min_city = min_city;
         this.max_city = max_city;
+    }
+
+    @Override
+    public String toListString() {
+        return super.toListString() + " | c" + min_city + "-" + max_city;
     }
 
     @Override

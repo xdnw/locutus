@@ -1437,7 +1437,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Get number of buildings")
-    public double getAvgBuilding(Buildings building) {
+    public double getAvgBuilding(Building building) {
         // TODO
         long total = 0;
         Map<Integer, DBCity> cities = _getCitiesV3();

@@ -6,7 +6,10 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.offshore.Grant;
+import net.dv8tion.jda.api.entities.Role;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -38,6 +41,18 @@ public class InfraTemplate extends AGrantTemplate{
     @Override
     public TemplateTypes getType() {
         return TemplateTypes.INFRA;
+    }
+
+    @Override
+    public String toListString() {
+        StringBuilder result = new StringBuilder(super.toListString() + " | @" + MathMan.format(level));
+        if (onlyNewCities) {
+            result.append(" | new_cities=true");
+        }
+        if (allow_rebuild) {
+            result.append(" | rebuild=true");
+        }
+        return result.toString();
     }
 
     @Override

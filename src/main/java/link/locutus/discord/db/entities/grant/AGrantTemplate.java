@@ -58,7 +58,23 @@ public abstract class AGrantTemplate {
         return enabled;
     }
 
-    public abstract String toListString();
+    public String toListString() {
+        StringBuilder result = new StringBuilder(getName() + " | " + getType());
+        String filterString = nationFilter.getFilter();
+        if (filterString.contains("#")) {
+            result.append(" | ");
+            result.append("" + filterString + "");
+        }
+
+        if (fromBracket > 0) {
+            if (filterString.contains("#")) result.append(",");
+            result.append("#tax_id=").append(fromBracket);
+        } else if (useReceiverBracket) {
+            if (result.length() > 0) result.append(",");
+            result.append("#tax_id=").append("receiver");
+        }
+        return result.toString();
+    }
 
     public List<GrantTemplateManager.GrantSendRecord> getGrantedTotal() {
         return getGranted(Long.MAX_VALUE);

@@ -3,6 +3,7 @@ package link.locutus.discord.db.entities.grant;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 
 import java.sql.PreparedStatement;
@@ -26,6 +27,19 @@ public class WarchestTemplate extends AGrantTemplate{
         this.trackDays = trackDays;
         this.subtractExpenditure = subtractExpenditure;
         this.overdrawPercentCents = overdrawPercentCents;
+    }
+
+    @Override
+    public String toListString() {
+        StringBuilder result = new StringBuilder(super.toListString());
+        if (subtractExpenditure) {
+            result.append(" | expenditure");
+        }
+        if (allowancePerCity != null) {
+            result.append(" | city=");
+            result.append(PnwUtil.resourcesToString(allowancePerCity));
+        }
+        return result.toString();
     }
 
     @Override

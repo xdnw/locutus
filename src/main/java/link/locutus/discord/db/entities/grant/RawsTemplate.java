@@ -26,6 +26,11 @@ public class RawsTemplate extends AGrantTemplate{
     }
 
     @Override
+    public String toListString() {
+        return super.toListString() + " | " + days + "d";
+    }
+
+    @Override
     public TemplateTypes getType() {
         return TemplateTypes.RAWS;
     }
