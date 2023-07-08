@@ -558,7 +558,7 @@ public class GrantCommands {
             }
         }
 
-        Grant grant = template.createGrant(receiver, customValue);
+        Grant grant = template.createGrant(me, receiver, customValue);
         // Get the note
         String note = grant.getNote();
         // Get the amount
@@ -566,13 +566,19 @@ public class GrantCommands {
         // Get the instructions
         String instructions = grant.getInstructions();
 
-        List<Grant.Requirement> requirements = template.getDefaultRequirements(me, receiver);
-        // TODO add these to default requirements
-        // check grant not disabled
-        // check grant limits (limit total/day, limit granter total/day)
-        // check nation not received grant already
-
         // validate requirements
+        List<Grant.Requirement> failedRequirements = new ArrayList<>();
+        List<Grant.Requirement> requirements = template.getDefaultRequirements(me, receiver);
+        boolean canOverride = Roles.ECON.has(selfMember);
+        for (Grant.Requirement requirement : grant.getRequirements()) {
+            if (!requirement.apply(receiver.asNation())) {
+                failedRequirements.add(requirement);
+                if (!requirement.canOverride()) continue;
+                else {
+                    return "Failed requirement: " + requirement.getMessage();
+                }
+            }
+        }
 
         // TODO figure out how to handle partial
         // example:
@@ -580,7 +586,18 @@ public class GrantCommands {
 
         // confirmation
         if (!force) {
-            io.create().confirmation("Send grant: " + grant.getName(), grant.toFullString(me, null), command).send();
+            // add failedRequirements to message
+            String title = "Send grant: " + template.getName();
+            StringBuilder body = new StringBuilder();
+            if (!failedRequirements.isEmpty()) {
+                body.append("### Failed requirements:\n");
+                for (Grant.Requirement requirement : failedRequirements) {
+                    body.append("- ").append(requirement.getMessage()).append("\n");
+                }
+                body.append("\n\n");
+            }
+            body.append(template.toFullString(me, receiver));
+            io.create().confirmation(title, body.toString(), command).send();
             return null;
         }
 

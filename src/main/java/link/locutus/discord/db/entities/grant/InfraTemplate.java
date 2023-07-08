@@ -76,8 +76,8 @@ public class InfraTemplate extends AGrantTemplate{
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(DBNation sender) {
-        List<Grant.Requirement> list = super.getDefaultRequirements(sender);
+    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver);
 
         //no COCE
         list.add(new Grant.Requirement("Requires the project: " + Projects.CENTER_FOR_CIVIL_ENGINEERING, true, new Function<DBNation, Boolean>() {

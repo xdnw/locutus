@@ -196,6 +196,21 @@ public class GrantTemplateManager {
         db.executeStmt(grants_sent);
     }
 
+    public void deleteTemplate(AGrantTemplate template) {
+        // remove from map
+        templates.remove(template.getName());
+        
+        String table = template.getType().getTable();
+        String name = template.getName();
+        String sql = "DELETE FROM `" + table + "` WHERE `name` = ?";
+        try (PreparedStatement stmt = db.prepareQuery(sql)) {
+            stmt.setString(1, name);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     public static class GrantSendRecord {
         public final String grant;
         public final int sender_id;

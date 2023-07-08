@@ -305,6 +305,18 @@ public abstract class AGrantTemplate {
             }
         }));
 
+        List<Transaction2> transfers = receiver.getTransactions(0L);
+        long latest = transfers.size() > 0 ? transfers.stream().mapToLong(Transaction2::getDate).max().getAsLong() : 0L;
+        // require no new transfers
+        list.add(new Grant.Requirement("Nation has received a transfer since attempting this grant, please try again", false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation nation) {
+                List<Transaction2> newTransfers = receiver.getTransactions(0L);
+                long newLatest = newTransfers.size() > 0 ? newTransfers.stream().mapToLong(Transaction2::getDate).max().getAsLong() : 0L;
+                return latest == newLatest;
+            }
+        }));
+
         return list;
     }
 
@@ -357,6 +369,10 @@ public abstract class AGrantTemplate {
         stmt.setInt(11, this.getMaxGranterTotal());
     }
 
+    public abstract double[] getCost(DBNation sender, DBNation receiver);
+    public abstract DepositType.DepositTypeInfo getDepositType();
+    public abstract String getInstructions(DBNation sender, DBNation receiver);
+
     public abstract void setValues(PreparedStatement stmt) throws SQLException;
 
     public void setEnabled(boolean value) {
@@ -369,5 +385,15 @@ public abstract class AGrantTemplate {
 
     public Role getSelfRole() {
         return db.getGuild().getRoleById(selfRole);
+    }
+
+    public Grant createGrant(DBNation sender, DBNation receiver, String customValue) {
+        Grant grant = new Grant(receiver, getDepositType());
+        grant.setCost(f -> this.getCost(sender, receiver));
+        grant.addRequirement(getDefaultRequirements(sender, receiver));
+        // grant.addNote()
+        grant.setInstructions(getInstructions(sender, receiver));
+
+        return grant;
     }
 }
