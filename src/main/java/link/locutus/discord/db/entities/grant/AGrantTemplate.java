@@ -17,6 +17,7 @@ import link.locutus.discord.db.entities.NationFilterString;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.offshore.Grant;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -108,8 +109,88 @@ public abstract class AGrantTemplate<T> {
         return getGranted(Long.MAX_VALUE, sender);
     }
 
-    public String toFullString(DBNation sender, DBNation receiver) {
+    public String toFullString(DBNation sender, DBNation receiver, T parsed) {
         // sender or receiver may be null
+        StringBuilder data = new StringBuilder();
+        if (!enabled) {
+            data.append("**disabled**\n");
+        }
+        data.append("### ").append(getName()).append("\n");
+        data.append("Allowed: `" + nationFilter.getFilter() + "`\n");
+        if (econRole > 0) {
+            Role role = getEconRole();
+            String roleStr = role == null ? "`<@&" + econRole + ">`" : role.getAsMention();
+            data.append("Granter Other: ").append(roleStr).append("\n");
+        }
+        if (selfRole > 0) {
+            Role role = getSelfRole();
+            String roleStr = role == null ? "`<@&" + selfRole + ">`" : role.getAsMention();
+            data.append("Grant Self: ").append(roleStr).append("\n");
+        }
+        if (fromBracket > 0) {
+            data.append("Tax account: `#").append(fromBracket).append("`\n");
+        }
+        if (useReceiverBracket) {
+            data.append("Tax account: `receiver`\n");
+        }
+        if (maxTotal > 0) {
+            data.append("Total: `").append(getGrantedTotal().size() + "/" + maxTotal).append("`\n");
+        }
+        if (maxDay > 0) {
+            data.append("Daily: `").append(getGranted(TimeUnit.DAYS.toMillis(1)).size() + "/" + maxDay).append("`\n");
+        }
+        if (maxGranterTotal > 0) {
+            data.append("Total(Granter): `");
+            if (sender != null) {
+                data.append(getGrantedTotal(sender).size() + "/");
+            }
+            data.append(maxGranterTotal).append("`\n");
+        }
+        if (maxGranterDay > 0) {
+            data.append("Daily(Granter): `");
+            if (sender != null) {
+                data.append(getGranted(TimeUnit.DAYS.toMillis(1), sender).size() + "/");
+            }
+            data.append(maxGranterDay).append("`\n");
+        }
+
+        // receiver markdown
+        if (sender != null && receiver != null) {
+            double[] cost = getCost(sender, receiver, parsed);
+            if (cost != null) {
+                data.append("Cost: `").append(PnwUtil.resourcesToString(cost)).append("`\n");
+            }
+            List<Grant.Requirement> requirements = getDefaultRequirements(sender, receiver, parsed);
+            Set<Grant.Requirement> failedFinal = new HashSet<>();
+            Set<Grant.Requirement> failedOverride = new HashSet<>();
+            for (Grant.Requirement requirement : requirements) {
+                if (!requirement.apply(receiver)) {
+                    boolean canOverride = requirement.canOverride();
+                    if (canOverride) {
+                        failedOverride.add(requirement);
+                    } else {
+                        failedFinal.add(requirement);
+                    }
+                }
+            }
+            if (!failedFinal.isEmpty()) {
+                data.append("Errors:\n");
+                for (Grant.Requirement requirement : failedFinal) {
+                    data.append("- " + requirement.getMessage()).append("\n");
+                }
+            }
+            if (!failedOverride.isEmpty()) {
+                data.append("Warnings:\n");
+                for (Grant.Requirement requirement : failedOverride) {
+                    data.append("- " + requirement.getMessage()).append("\n");
+                }
+            }
+            String instructions = this.getInstructions(sender, receiver, parsed);
+            if (instructions != null && !instructions.isEmpty()) {
+                data.append("Instructions:\n>>> ").append(instructions).append("\n");
+            }
+        }
+        return data.toString();
     }
 
     public boolean hasRole(Member author) {
@@ -405,11 +486,11 @@ public abstract class AGrantTemplate<T> {
     }
 
     public Grant createGrant(DBNation sender, DBNation receiver, T customValue) {
-        Grant grant = new Grant(receiver, getDepositType(customValue));
-        grant.setCost(f -> this.getCost(sender, receiver));
-        grant.addRequirement(getDefaultRequirements(sender, receiver));
+        Grant grant = new Grant(receiver, getDepositType(receiver, customValue));
+        grant.setCost(f -> this.getCost(sender, receiver, customValue));
+        grant.addRequirement(getDefaultRequirements(sender, receiver, customValue));
         // grant.addNote()
-        grant.setInstructions(getInstructions(sender, receiver));
+        grant.setInstructions(getInstructions(sender, receiver, customValue));
 
         return grant;
     }

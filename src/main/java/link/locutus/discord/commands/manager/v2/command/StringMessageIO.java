@@ -52,4 +52,9 @@ public class StringMessageIO implements IMessageIO {
     public long getIdLong() {
         return 0;
     }
+
+    @Override
+    public CompletableFuture<IModalBuilder> send(IModalBuilder modal) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
 }

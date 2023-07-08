@@ -85,9 +85,12 @@ public class BuildTemplate extends AGrantTemplate<CityBuild> {
     public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver, CityBuild build) {
         List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, build);
 
-        //TODO validate build is valid
-        //TODO validate build matches current infra level ??
-
+        if (build == null) {
+            // if build is null generate new optimal build
+        } else {
+            //TODO validate build is valid
+            //TODO validate build matches current infra level ??
+        }
 
         if (onlyNewCities) {
             list.add(new Grant.Requirement("Nation hasn't bought a city in the past 6 days", true, new Function<DBNation, Boolean>() {

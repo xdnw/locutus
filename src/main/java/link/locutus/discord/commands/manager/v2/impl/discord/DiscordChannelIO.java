@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.discord;
 
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Message;
@@ -136,6 +137,11 @@ public class DiscordChannelIO implements IMessageIO {
     public IMessageIO delete(long id) {
         RateLimitUtil.queue(channel.deleteMessageById(id));
         return this;
+    }
+
+    @Override
+    public CompletableFuture<IModalBuilder> send(IModalBuilder modal) {
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override

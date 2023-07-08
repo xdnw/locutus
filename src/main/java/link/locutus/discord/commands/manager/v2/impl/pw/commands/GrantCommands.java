@@ -105,8 +105,9 @@ public class GrantCommands {
 
     @Command(desc = "Full information about a grant template")
     @RolePermission(Roles.MEMBER)
-    public void templateInfo(@Me GuildDB db, @Me Guild guild, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io, AGrantTemplate template, @Default DBNation receiver) {
-        io.create().embed(template.getName(), template.toFullString(me, receiver)).send();
+    public void templateInfo(@Me GuildDB db, @Me Guild guild, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io, AGrantTemplate template, @Default DBNation receiver, @Default String value) {
+        if (receiver == null) receiver = me;
+        io.create().embed(template.getName(), template.toFullString(me, receiver, value)).send();
     }
 
     // grant_template Delete
@@ -568,7 +569,7 @@ public class GrantCommands {
 
         // validate requirements
         List<Grant.Requirement> failedRequirements = new ArrayList<>();
-        List<Grant.Requirement> requirements = template.getDefaultRequirements(me, receiver);
+        List<Grant.Requirement> requirements = template.getDefaultRequirements(me, receiver, customValue);
         boolean canOverride = Roles.ECON.has(selfMember);
         for (Grant.Requirement requirement : grant.getRequirements()) {
             if (!requirement.apply(receiver.asNation())) {
