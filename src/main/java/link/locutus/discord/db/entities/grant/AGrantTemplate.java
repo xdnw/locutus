@@ -45,6 +45,7 @@ public abstract class AGrantTemplate<T> {
     private int maxDay;
     private int maxGranterTotal;
     private int maxGranterDay;
+    private long dateCreated;
 
     public AGrantTemplate(GuildDB db, boolean enabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal) {
         this.db = db;

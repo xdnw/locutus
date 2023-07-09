@@ -1,11 +1,14 @@
 package link.locutus.discord.db.entities.grant;
 
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
@@ -15,16 +18,24 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 public class BuildTemplate extends AGrantTemplate<CityBuild> {
     private final byte[] build;
     private final boolean onlyNewCities;
     private final int mmr;
-    private final long track_days;
+    private final long allow_switch_after_days;
     private final boolean allow_switch_after_offensive;
+    private final boolean allow_switch_after_infra;
+    private final boolean allow_switch_after_land_or_project;
 
     public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
         this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getBytes("build"), rs.getBoolean("only_new_cities"), rs.getInt("mmr"), rs.getLong("track_days"), rs.getBoolean("allow_switch_after_offensive"));
@@ -82,6 +93,17 @@ public class BuildTemplate extends AGrantTemplate<CityBuild> {
         stmt.setBoolean(16, allow_switch_after_offensive);
     }
 
+    @Override
+    public CityBuild parse(DBNation receiver, String value) {
+        if (value == null) {
+            // get infra in last city
+
+            // generate
+        } else {
+            return super.parse(receiver, value);
+        }
+    }
+
     //make build template command open to members
     //will check if member has bought a city recently
     //will also check if member has used a build grant for their new city to prevent abuse
@@ -135,24 +157,78 @@ public class BuildTemplate extends AGrantTemplate<CityBuild> {
         return list;
     }
 
-    private Map<Integer, Long> getLastBuildGrantByCity(DBNation receiver) {
-        if (onlyNewCities) {
-            // must be built in past 10 days
-            // remove if they got a build grant already
-            // if allow_switch_after_offensive then allow if the city was damaged in war since
-            // or if they got an infra grant since
-        } else {
-            // remove if they got a build grant already in past track_days
-            // if allow_switch_after_offensive then allow if the city was damaged in war since
-            // if they got a build grant before the past track-days then require either
-            // - infra grant
-            // - land grant
-            // - city damages
-            // - project grant
+    private Set<Integer> getCitiesToGrantTo(DBNation receiver) {
+        Map<Integer, DBCity> cities = receiver._getCitiesV3();
+        Map<Integer, Long> createDate = new HashMap<>();
 
+        long buildDate = 0;
+        long infraDate = 0;
+        long projectOrLandDate = 0;
+        for (Map.Entry<Integer, DBCity> entry : cities.entrySet()) {
+            DBCity city = entry.getValue();
+            createDate.put(entry.getKey(), city.created);
         }
-        // TODO add an allowAll option
-        // TODO add repeatable flag to AGrantTemplate
+
+        long lastAttackDate = 0;
+        if (allow_switch_after_offensive) {
+            // get attacks where attacker
+            List<DBWar> wars = receiver.getWars();
+            wars.removeIf(f -> f.attacker_id != receiver.getId());
+            // sort wars date desc
+            Collections.sort(wars, (o1, o2) -> Long.compare(o2.date, o1.date));
+            outer:
+            for (DBWar war : wars) {
+                List<DBAttack> attacks = war.getAttacks();
+                // reverse attacks
+                Collections.reverse(attacks);
+                for (DBAttack attack : attacks) {
+                    if (attack.getAttacker_nation_id() != receiver.getId()) {
+                        lastAttackDate = attack.getDate();
+                        break outer;
+                    }
+                }
+            }
+        }
+
+        // get grants
+        for (GrantTemplateManager.GrantSendRecord record : getDb().getGrantTemplateManager().getRecordsByReceiver(receiver.getId())) {
+            // buildDate = Math.max(buildDate, record.date);
+            switch (record.grant_type) {
+                case BUILD:
+                    buildDate = Math.max(buildDate, record.date);
+                    break;
+                case INFRA:
+                    infraDate = Math.max(infraDate, record.date);
+                    break;
+                case PROJECT:
+                case LAND:
+                    projectOrLandDate = Math.max(projectOrLandDate, record.date);
+                    break;
+            }
+        }
+        Set<Integer> citiesToGrant = new HashSet<>();
+        long cutoff = onlyNewCities ? TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119) : 0;
+        for (Map.Entry<Integer, Long> entry : createDate.entrySet()) {
+            long date = entry.getValue();
+            if (date < cutoff) continue;
+            boolean allowGrant = true;
+            if (buildDate > date) {
+                allowGrant = false;
+                if (infraDate > buildDate && allow_switch_after_infra) {
+                    allowGrant = true;
+                }
+                if (projectOrLandDate > buildDate && allow_switch_after_land_or_project) {
+                    allowGrant = true;
+                }
+                if (lastAttackDate > date && allow_switch_after_offensive) {
+                    allowGrant = true;
+                }
+            }
+            if (allowGrant) {
+                citiesToGrant.add(entry.getKey());
+            }
+        }
+        return citiesToGrant;
     }
 
     @Override
