@@ -10,6 +10,7 @@ import link.locutus.discord.commands.manager.CommandManager;
 import link.locutus.discord.commands.manager.Noformat;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
@@ -956,7 +957,22 @@ public final class Locutus extends ListenerAdapter {
         List<ModalMapping> values = event.getValues();
 
         Map<String, String> args = new HashMap<>();
-        args.put("", id);
+
+        String[] pair = id.split(" ", 2);
+
+        UUID uuid = UUID.fromString(pair[0]);
+
+        args.put("", pair[1]);
+
+        Guild guild = event.isFromGuild() ? event.getGuild() : null;
+
+        try {
+            for (Map.Entry<String, String> entry : IModalBuilder.DEFAULT_VALUES.get(uuid).entrySet()) {
+                args.putIfAbsent(entry.getKey(), entry.getValue());
+            }
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
 
         for (ModalMapping value : values) {
             Component.Type type = value.getType();
@@ -965,11 +981,9 @@ public final class Locutus extends ListenerAdapter {
             args.put(valueId, input);
         }
 
-        event.editMessage(new MessageEditBuilder().set)
+        DiscordHookIO io = new DiscordHookIO(hook, null);
 
-        DiscordHookIO io = new DiscordHookIO(hook, event.getInteraction().replyComponents());
-
-
+        Locutus.imp().getCommandManager().getV2().run(guild, event.getChannel(), event.getUser(), null, io, pair[1], args, true);
     }
 
     @Override
