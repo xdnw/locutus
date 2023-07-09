@@ -1341,6 +1341,22 @@ public class PnwUtil {
         return result;
     }
 
+    public static Map<String, String> parseMap(String arg) {
+        arg = arg.trim();
+        if (!arg.contains(":") && !arg.contains("=")) arg = arg.replaceAll("[ ]+", ":");
+        arg = arg.replace(" ", "").replace('=', ':');
+
+        Type type = new TypeToken<Map<String, String>>() {}.getType();
+        if (arg.charAt(0) != '{' && arg.charAt(arg.length() - 1) != '}') {
+            arg = "{" + arg + "}";
+        }
+        Map<String, String> result = new Gson().fromJson(arg, type);
+        if (result.containsKey(null)) {
+            throw new IllegalArgumentException("Invalid type specified in map: `" + arg + "`");
+        }
+        return result;
+    }
+
     public static double[] capManuFromRaws(double[] revenue, double[] totalRss) {
         for (ResourceType type : ResourceType.values) {
             double amt = revenue[type.ordinal()];
