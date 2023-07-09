@@ -32,6 +32,7 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
         this.project = project;
     }
 
+
     @Override
     public String toListString() {
         return super.toListString() + " | " + project.name();
@@ -140,7 +141,7 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
 
     @Override
     public String getInstructions(DBNation sender, DBNation receiver, Void parsed) {
-
+        return "Go to: https://politicsandwar.com/nation/projects/\nAnd buy the project: " + project.name();
     }
 
     @Override

@@ -2,11 +2,15 @@ package link.locutus.discord.db.entities.grant;
 
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
 
@@ -14,6 +18,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 public class LandTemplate extends AGrantTemplate<Double>{
@@ -60,19 +65,60 @@ public class LandTemplate extends AGrantTemplate<Double>{
         stmt.setBoolean(13, onlyNewCities);
     }
 
+    public Map<Integer, Double> getTopCityLandGrant(DBNation receiver) {
+
+        List<Transaction2> transactions = receiver.getTransactions(0);
+
+        Map<Integer, Double> landGrants = Grant.getLandGrantedByCity(receiver, transactions);
+
+        if(landGrants != null)
+            return landGrants;
+
+        return null;
+    }
+
     @Override
     public double[] getCost(DBNation sender, DBNation receiver, Double parsed) {
 
+        long cost = 0;
+
+        if(onlyNewCities) {
+
+            long cutoff = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119);
+            for (Map.Entry<Integer, DBCity> entry : receiver._getCitiesV3().entrySet()) {
+                DBCity city = entry.getValue();
+                if (city.created > cutoff) {
+                    cost += receiver.landCost(city.land, parsed);
+                }
+            }
+
+            return ResourceType.MONEY.toArray(cost);
+        }
+
+
+        for (Map.Entry<Integer, DBCity> entry : receiver._getCitiesV3().entrySet()) {
+            DBCity city = entry.getValue();
+            cost += receiver.landCost(city.land, parsed);
+        }
+
+        return ResourceType.MONEY.toArray(cost);
     }
 
     @Override
     public DepositType.DepositTypeInfo getDepositType(DBNation receiver, Double parsed) {
-
+        return DepositType.LAND.withValue(parsed.longValue(), onlyNewCities ? 1 : receiver.getCities());
     }
 
     @Override
     public String getInstructions(DBNation sender, DBNation receiver, Double parsed) {
+        StringBuilder message = new StringBuilder();
+        message.append("**If you have VIP**");
+        message.append("Go to: https://politicsandwar.com/cities/mass-land-purchase/\nAnd enter: " + parsed);
+        message.append("");
+        message.append("**If you don't have VIP**");
+        message.append("Go to: https://politicsandwar.com/cities/\nAnd get each city to " + parsed + " land");
 
+        return  message.toString();
     }
 
     @Override

@@ -128,10 +128,10 @@ public class Grant {
         for (Transaction2 transaction : transactions) {
             if (transaction.note == null) continue;
             if (!transaction.note.toLowerCase().contains("#land")) continue;
-            String infraAmt = PnwUtil.parseTransferHashNotes(transaction.note).get("#land");
-            if (infraAmt != null) {
+            String landAmt = PnwUtil.parseTransferHashNotes(transaction.note).get("#land");
+            if (landAmt != null) {
                 try {
-                    double amt = Double.parseDouble(infraAmt);
+                    double amt = Double.parseDouble(landAmt);
 
                     Set<Integer> cities = getCities(nation, transaction.note, transaction.tx_datetime);
                     if (cities == null) {

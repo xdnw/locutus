@@ -2,9 +2,11 @@ package link.locutus.discord.db.entities.grant;
 
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -17,6 +19,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 public class InfraTemplate extends AGrantTemplate<Double>{
@@ -160,16 +163,45 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     @Override
     public double[] getCost(DBNation sender, DBNation receiver, Double parsed) {
 
+        long cost = 0;
+
+        if(onlyNewCities) {
+
+            long cutoff = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119);
+            for (Map.Entry<Integer, DBCity> entry : receiver._getCitiesV3().entrySet()) {
+                DBCity city = entry.getValue();
+                if (city.created > cutoff) {
+                    cost += receiver.infraCost(city.infra, parsed);
+                }
+            }
+
+            return ResourceType.MONEY.toArray(cost);
+        }
+
+        for (Map.Entry<Integer, DBCity> entry : receiver._getCitiesV3().entrySet()) {
+            DBCity city = entry.getValue();
+            cost += receiver.infraCost(city.infra, parsed);
+        }
+
+        return ResourceType.MONEY.toArray(cost);
     }
 
     @Override
     public DepositType.DepositTypeInfo getDepositType(DBNation receiver, Double parsed) {
-
+        return DepositType.INFRA.withValue(parsed.longValue(), onlyNewCities ? 1 : receiver.getCities());
     }
 
     @Override
     public String getInstructions(DBNation sender, DBNation receiver, Double parsed) {
 
+        StringBuilder message = new StringBuilder();
+        message.append("**If you have VIP**");
+        message.append("Go to: https://politicsandwar.com/cities/mass-infra-purchase/\nAnd enter: " + parsed);
+        message.append("");
+        message.append("**If you don't have VIP**");
+        message.append("Go to: https://politicsandwar.com/cities/\nAnd get each city to " + parsed + " infra");
+
+        return  message.toString();
     }
 
     @Override

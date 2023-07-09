@@ -60,11 +60,6 @@ public class CityTemplate extends AGrantTemplate<Integer> {
     }
 
     @Override
-    public String getInstructions(DBNation sender, DBNation receiver, Integer parsed) {
-        return null;
-    }
-
-    @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
         stmt.setInt(12, min_city);
         stmt.setInt(13, max_city);
@@ -193,5 +188,10 @@ public class CityTemplate extends AGrantTemplate<Integer> {
     @Override
     public Class<Integer> getParsedType() {
         return Integer.class;
+    }
+
+    @Override
+    public String getInstructions(DBNation sender, DBNation receiver, Integer parsed) {
+        return "Go to: https://politicsandwar.com/city/create/\nAnd buy city your next city";
     }
 }
