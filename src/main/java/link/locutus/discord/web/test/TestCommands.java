@@ -23,9 +23,6 @@ public class TestCommands {
     @Command
     public String modal(@Me IMessageIO io, ICommand command, List<String> arguments, @Default String defaults) {
         Map<String, String> args = defaults == null ? new HashMap<>() : PnwUtil.parseMap(defaults);
-
-        System.out.println("Modal command: " + command.getPrimaryCommandId() + " " + arguments + " " + args);
-
         io.modal().create(command, args, arguments).send();
         return null;
     }
