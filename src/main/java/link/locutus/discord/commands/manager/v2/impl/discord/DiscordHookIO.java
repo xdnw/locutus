@@ -124,6 +124,9 @@ public class DiscordHookIO implements IMessageIO {
 
     @Override
     public CompletableFuture<IModalBuilder> send(IModalBuilder builder) {
+        if (modalCallback == null) {
+            return DiscordChannelIO.send(this, builder);
+        }
         AModalBuilder casted = (AModalBuilder) builder;
         List<TextInput> inputs = casted.getInputs();
         if (casted.getId() == null) {

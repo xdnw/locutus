@@ -159,6 +159,10 @@ public class DiscordChannelIO implements IMessageIO {
 
     @Override
     public CompletableFuture<IModalBuilder> send(IModalBuilder builder) {
+        return send(this, builder);
+    }
+
+    public static CompletableFuture<IModalBuilder> send(IMessageIO io, IModalBuilder builder) {
         AModalBuilder record = (AModalBuilder) builder;
         UUID id = builder.getId();
         String defaultsStr = null;
@@ -179,7 +183,7 @@ public class DiscordChannelIO implements IMessageIO {
             argList.add(argName);
         }
         CM.modal.create cmRef = CM.modal.create.cmd.create(cmd, StringMan.join(argList, " "), defaultsStr);
-        create().embed("Form: `" + cmd + "`", cmRef.toSlashCommand(true))
+        io.create().embed("Form: `" + cmd + "`", cmRef.toSlashCommand(true))
                 .commandButton(cmRef, "Open")
                 .send();
         return CompletableFuture.completedFuture(builder);
