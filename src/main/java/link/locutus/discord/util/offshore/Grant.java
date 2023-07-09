@@ -97,11 +97,6 @@ public class Grant {
         return this;
     }
 
-    public static int getMaxCityGranted(DBNation nation) {
-        // receiver.getTransactions(db, tracked, false, false, -1L, 0L);
-
-    }
-
     public static Set<Integer> getCityIdsBeforeDate(DBNation nation, long date) {
         Set<Integer> cities = new HashSet<>();
         long now = System.currentTimeMillis();

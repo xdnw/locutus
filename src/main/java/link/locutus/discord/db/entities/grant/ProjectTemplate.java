@@ -47,8 +47,8 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver) {
-        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver);
+    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver, Void parsed) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, parsed);
 
         // has a timer
         list.add(new Grant.Requirement("Has a project timer", false, new Function<DBNation, Boolean>() {

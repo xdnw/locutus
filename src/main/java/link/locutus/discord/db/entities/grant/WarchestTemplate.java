@@ -4,6 +4,7 @@ import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 
@@ -65,5 +66,23 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
         stmt.setLong(13, trackDays);
         stmt.setBoolean(14, subtractExpenditure);
         stmt.setLong(15, overdrawPercentCents);
+    }
+    @Override
+    public double[] getCost(DBNation sender, DBNation receiver, Map<ResourceType, Double> parsed) {
+
+    }
+
+    @Override
+    public DepositType.DepositTypeInfo getDepositType(DBNation receiver, Map<ResourceType, Double> parsed) {
+
+    }
+
+    @Override
+    public String getInstructions(DBNation sender, DBNation receiver, Map<ResourceType, Double> parsed) {
+
+    }
+    @Override
+    public Class<Map<ResourceType, Double>> getParsedType() {
+
     }
 }

@@ -76,4 +76,8 @@ public enum TemplateTypes {
     }
 
 
+    public String getCommandMention() {
+        // TODO CM ref here
+        return null;
+    }
 }

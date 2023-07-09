@@ -115,7 +115,7 @@ public class GrantCommands {
     @RolePermission(Roles.ECON)
     public String templateDelete(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command, AGrantTemplate template, @Switch("f") boolean force) {
         if (!force) {
-            String body = template.toFullString(me, null);
+            String body = template.toFullString(me, null, null);
             io.create().confirmation("Delete template: " + template.getName(), body.toString(), command).send();
             return null;
         }
@@ -190,7 +190,7 @@ public class GrantCommands {
 
         // confirmation
         if (!force) {
-            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null), command).send();
+            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null, null), command).send();
             return null;
         }
         manager.saveTemplate(template);
@@ -247,7 +247,7 @@ public class GrantCommands {
 
         // confirmation
         if (!force) {
-            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null), command).send();
+            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null, null), command).send();
             return null;
         }
         manager.saveTemplate(template);
@@ -300,7 +300,7 @@ public class GrantCommands {
 
         // confirmation
         if (!force) {
-            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null), command).send();
+            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null, null), command).send();
             return null;
         }
         manager.saveTemplate(template);
@@ -358,7 +358,7 @@ public class GrantCommands {
 
         // confirmation
         if (!force) {
-            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null), command).send();
+            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null, null), command).send();
             return null;
         }
         manager.saveTemplate(template);
@@ -413,7 +413,7 @@ public class GrantCommands {
 
         // confirmation
         if (!force) {
-            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null), command).send();
+            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null, null), command).send();
             return null;
         }
         manager.saveTemplate(template);
@@ -468,7 +468,7 @@ public class GrantCommands {
 
         // confirmation
         if (!force) {
-            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null), command).send();
+            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null, null), command).send();
             return null;
         }
         manager.saveTemplate(template);
@@ -525,7 +525,7 @@ public class GrantCommands {
 
         // confirmation
         if (!force) {
-            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null), command).send();
+            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null, null), command).send();
             return null;
         }
         manager.saveTemplate(template);
@@ -540,7 +540,6 @@ public class GrantCommands {
                                AGrantTemplate template,
                                DBNation receiver,
                                @Switch("p") String customValue,
-                               @Switch("e") @Timediff Long expire,
                                @Switch("f") boolean force) {
         Role econRole = template.getEconRole();
         if (econRole == null) {
@@ -585,6 +584,11 @@ public class GrantCommands {
         // example:
         //
 
+        Object parsed = null;
+        if (customValue != null) {
+            parsed = template.parse(receiver, customValue);
+        }
+
         // confirmation
         if (!force) {
             // add failedRequirements to message
@@ -597,7 +601,7 @@ public class GrantCommands {
                 }
                 body.append("\n\n");
             }
-            body.append(template.toFullString(me, receiver));
+            body.append(template.toFullString(me, receiver, parsed));
             io.create().confirmation(title, body.toString(), command).send();
             return null;
         }
@@ -611,6 +615,7 @@ public class GrantCommands {
         // Pings the receiver
         //grabs offshore
         OffshoreInstance offshore = db.getOffshore();
+        // TODO handle tax bracket account deducation
         Map.Entry<OffshoreInstance.TransferStatus, String> status = offshore.transferFromAllianceDeposits(me, db, f -> f == me.getAlliance_id(), receiver, cost, note);
 
         //in the case an unknown error occurs while sending the grant
@@ -642,9 +647,9 @@ public class GrantCommands {
 
         //build a string consisting of the template name, status, and instructions
         grantMessage.append("# " + template.getName());
-        grantMessage.append("");
+        grantMessage.append("\n");
         grantMessage.append(status.toString());
-        grantMessage.append("");
+        grantMessage.append("\n");
         grantMessage.append(instructions);
 
         //return message
