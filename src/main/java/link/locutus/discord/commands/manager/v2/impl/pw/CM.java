@@ -574,13 +574,6 @@ public class CM {
                 return createArgs();
             }
         }
-        @AutoRegister(clazz=link.locutus.discord.web.test.TestCommands.class,method="embed")
-        public static class embed extends CommandRef {
-            public static final embed cmd = new embed();
-            public embed create(String myInput) {
-                return createArgs("myInput", myInput);
-            }
-        }
     }
     public static class settings_orbis_alerts{
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="ORBIS_OFFICER_MMR_CHANGE_ALERTS", field="ORBIS_OFFICER_MMR_CHANGE_ALERTS")
