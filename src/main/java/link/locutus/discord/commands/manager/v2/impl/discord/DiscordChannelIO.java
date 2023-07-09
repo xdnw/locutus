@@ -158,9 +158,6 @@ public class DiscordChannelIO implements IMessageIO {
         // modal id restrictions
         // modal id length
 
-        String id = casted.getId();
-
-
         send("Modal not supported");
         return null;
     }

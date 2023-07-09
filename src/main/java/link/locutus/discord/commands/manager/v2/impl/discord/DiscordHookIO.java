@@ -127,7 +127,7 @@ public class DiscordHookIO implements IMessageIO {
         AModalBuilder casted = (AModalBuilder) builder;
         List<TextInput> inputs = casted.getInputs();
         if (casted.getId() == null) {
-            casted.setId(UUID.randomUUID().toString());
+            casted.setId(UUID.randomUUID());
         }
         UUID id = casted.getId();
         String idPair = id + " " + casted.getTitle();

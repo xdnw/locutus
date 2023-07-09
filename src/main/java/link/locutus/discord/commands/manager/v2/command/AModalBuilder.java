@@ -41,6 +41,12 @@ public class AModalBuilder implements IModalBuilder {
         return id;
     }
 
+    @Override
+    public IModalBuilder setId(UUID id) {
+        this.id = id;
+        return this;
+    }
+
     public String getTitle() {
         return title;
     }

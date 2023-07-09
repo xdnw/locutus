@@ -104,6 +104,4 @@ public interface IModalBuilder {
         }
         return null;
     }
-
-    IModalBuilder setId(String string);
 }

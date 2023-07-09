@@ -15,7 +15,9 @@ public interface IMessageIO {
     IMessageBuilder create();
 
     @CheckReturnValue
-    IModalBuilder modal();
+    default IModalBuilder modal() {
+        return new AModalBuilder(this, null, null);
+    }
 
     default CompletableFuture<IMessageBuilder> send(String message) {
         return send(create().append(message));
