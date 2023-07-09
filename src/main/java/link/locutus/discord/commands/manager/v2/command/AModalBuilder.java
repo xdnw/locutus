@@ -4,11 +4,12 @@ import net.dv8tion.jda.api.interactions.components.text.TextInput;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 public class AModalBuilder implements IModalBuilder {
     private final IMessageIO parent;
-    private String id;
+    private UUID id;
     private String title;
     private List<TextInput> inputs = new ArrayList<>();
 
@@ -36,7 +37,7 @@ public class AModalBuilder implements IModalBuilder {
         return parent.send(this);
     }
 
-    public String getId() {
+    public UUID getId() {
         return id;
     }
 

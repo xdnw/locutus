@@ -22,6 +22,7 @@ import net.dv8tion.jda.api.utils.messages.MessageEditData;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 public class DiscordHookIO implements IMessageIO {
@@ -125,6 +126,9 @@ public class DiscordHookIO implements IMessageIO {
     public CompletableFuture<IModalBuilder> send(IModalBuilder builder) {
         AModalBuilder casted = (AModalBuilder) builder;
         List<TextInput> inputs = casted.getInputs();
+        if (casted.getId() == null) {
+            casted.setId(UUID.randomUUID().toString());
+        }
         Modal modal = Modal.create(casted.getId(), casted.getTitle())
                 .addActionRows(ActionRow.partitionOf(inputs))
                 .build();
