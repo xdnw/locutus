@@ -1,10 +1,15 @@
 package link.locutus.discord.commands.manager.v2.impl.discord;
 
+import com.google.gson.Gson;
 import link.locutus.discord.commands.manager.v2.command.AModalBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
@@ -17,10 +22,13 @@ import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import net.dv8tion.jda.api.utils.messages.MessageEditData;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
 
 public class DiscordChannelIO implements IMessageIO {
@@ -151,14 +159,29 @@ public class DiscordChannelIO implements IMessageIO {
 
     @Override
     public CompletableFuture<IModalBuilder> send(IModalBuilder builder) {
-        AModalBuilder casted = (AModalBuilder) builder;
-        // id = command wishing to execute
-
-        // todo lookup
-        // modal id restrictions
-        // modal id length
-
-        send("Modal not supported");
-        return null;
+        AModalBuilder record = (AModalBuilder) builder;
+        UUID id = builder.getId();
+        String defaultsStr = null;
+        try {
+            Map<String, String> defaults = IModalBuilder.DEFAULT_VALUES.get(id);
+            if (defaults != null && !defaultsStr.isEmpty()) {
+                // map to json google
+                defaultsStr = new Gson().toJson(defaults);
+                IModalBuilder.DEFAULT_VALUES.refresh(id);
+            }
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+        String cmd = builder.getTitle();
+        List<String> argList = new ArrayList<>();
+        for (TextInput input : record.getInputs()) {
+            String argName = input.getId();
+            argList.add(argName);
+        }
+        CM.modal.create cmRef = CM.modal.create.cmd.create(cmd, StringMan.join(argList, " "), defaultsStr);
+        create().embed("Form: `" + cmd + "`", cmRef.toSlashCommand(true))
+                .commandButton(cmRef, "Open")
+                .send();
+        return CompletableFuture.completedFuture(builder);
     }
 }

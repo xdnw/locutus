@@ -1052,7 +1052,6 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
         PoliticsAndWarV3 api = getApi( AlliancePermission.TAX_BRACKETS);
         if (api == null) {
-            System.out.println("Api is null");
             return null;
         }
 

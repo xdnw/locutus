@@ -47,6 +47,7 @@ public class AModalBuilder implements IModalBuilder {
         return this;
     }
 
+    @Override
     public String getTitle() {
         return title;
     }
