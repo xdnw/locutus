@@ -1222,6 +1222,97 @@ public class WarCommands {
         }
     }
 
+    @Command(desc = "Find nations that have a treasure")
+    @RolePermission(Roles.MEMBER)
+    public void findTreasureNations(@Me User Author, @Me DBNation me, @Me GuildDB guildDB, @Me IMessageIO channel, @Switch("r") boolean StrongerThan, @Switch("d") boolean FollowDNR, @Switch("n") @Default("5") Integer numResults) {
+
+        StringBuilder response = new StringBuilder("**Results for " + me.getNation() + "**:");
+        Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(f -> f.isInWarRange(me));
+        Function<DBNation, Boolean> canRaid = guildDB.getCanRaid();
+        Integer count = 0;
+
+        nations.removeIf(f -> f.getVm_turns() != 0);
+
+        if(FollowDNR)
+            nations.removeIf(f -> !canRaid.apply(f));
+
+        if(StrongerThan)
+            nations.removeIf(f -> f.getStrength() > me.getStrength());
+
+        Map<DBNation, DBTreasure> nationTreasures = nations.stream().collect(Collectors.toMap(n -> n, n -> Locutus.imp().getNationDB().getTreasure(n.getNation_id())));
+        nations.removeIf(f -> nationTreasures.get(f) == null);
+
+        Iterator<DBNation> iter = nations.iterator();
+        while (iter.hasNext()) {
+            DBNation nation = iter.next();
+            response.append("\n```")
+                    .append(String.format("%2s", nation.treasureDays())).append(" \uD83D\uDC8E ").append(" | ")
+                    .append(String.format("%2s", nation.getCities())).append(" \uD83C\uDFD9").append(" | ")
+                    .append(String.format("%6s", nation.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
+                    .append(String.format("%5s", nation.getTanks())).append(" \u2699").append(" | ")
+                    .append(String.format("%5s", nation.getAircraft())).append(" \u2708").append(" | ")
+                    .append(String.format("%4s", nation.getShips())).append(" \u26F5").append(" | ")
+                    .append(String.format("%1s", nation.getDef())).append(" \uD83D\uDEE1");
+
+            if(count >= numResults)
+                break;
+
+            count++;
+        }
+
+        if (count == 0) {
+            channel.send("No results. Please ping a target (advisor)");
+        } else {
+            channel.send(response.toString());
+        }
+    }
+
+    @Command(desc = "Find nations with high bounties")
+    @RolePermission(Roles.MEMBER)
+    public void findBountyNations(@Me User Author, @Me DBNation me, @Me GuildDB guildDB, @Me IMessageIO channel, @Switch("r") boolean StrongerThan, @Switch("d") boolean FollowDNR, @Switch("n") @Default("5") Integer numResults) {
+
+        StringBuilder response = new StringBuilder("**Results for " + me.getNation() + "**:");
+        Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(f -> f.isInWarRange(me));
+        Function<DBNation, Boolean> canRaid = guildDB.getCanRaid();
+        Integer count = 0;
+
+        nations.removeIf(f -> f.getVm_turns() != 0);
+
+        if(FollowDNR)
+            nations.removeIf(f -> !canRaid.apply(f));
+
+        if(StrongerThan)
+            nations.removeIf(f -> f.getStrength() > me.getStrength());
+
+        Map<DBNation, Set<DBBounty>> nationBounties = nations.stream().collect(Collectors.toMap(n -> n, n -> Locutus.imp().getWarDb().getBounties(n.getNation_id())));
+        nations.removeIf(f -> nationBounties.get(f).isEmpty());
+
+        Iterator<DBNation> iter = nations.iterator();
+        while (iter.hasNext()) {
+            DBNation nation = iter.next();
+            Set<DBBounty> bounties = nationBounties.get(nation);
+            Map<WarType, Long> bountySum = bounties.stream().collect(Collectors.groupingBy(DBBounty::getType, Collectors.summingLong(DBBounty::getAmount)));
+            response.append("\n```")
+                    .append(String.format("%6s", bountySum.toString())).append(" | ")
+                    .append(String.format("%2s", nation.getCities())).append(" \uD83C\uDFD9").append(" | ")
+                    .append(String.format("%6s", nation.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
+                    .append(String.format("%5s", nation.getTanks())).append(" \u2699").append(" | ")
+                    .append(String.format("%5s", nation.getAircraft())).append(" \u2708").append(" | ")
+                    .append(String.format("%4s", nation.getShips())).append(" \u26F5").append(" | ")
+                    .append(String.format("%1s", nation.getDef())).append(" \uD83D\uDEE1");
+
+            if(count >= numResults)
+                break;
+
+            count++;
+        }
+
+        if (count == 0) {
+            channel.send("No results. Please ping a target (advisor)");
+        } else {
+            channel.send(response.toString());
+        }
+    }
 
     @Command(desc = "Find a high infrastructure target\n" +
             "optional alliance and sorting (default: active nations, sorted by damage stimate).\n\t" +
@@ -3952,7 +4043,6 @@ public class WarCommands {
         int moved = warCat.sort();
         return "Done! Moved " + moved + " channels";
     }
-
 
     @RolePermission(value = Roles.MILCOM)
     @Command(desc = "Create a war room\n" +
