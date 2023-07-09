@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 public interface IModalBuilder {
     IModalBuilder addInput(TextInput input);
     UUID getId();
+
     IModalBuilder setId(UUID id);
     IModalBuilder setTitle(String title);
 

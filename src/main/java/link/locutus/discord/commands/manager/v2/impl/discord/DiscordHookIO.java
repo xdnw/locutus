@@ -129,7 +129,9 @@ public class DiscordHookIO implements IMessageIO {
         if (casted.getId() == null) {
             casted.setId(UUID.randomUUID().toString());
         }
-        Modal modal = Modal.create(casted.getId(), casted.getTitle())
+        UUID id = casted.getId();
+        String idPair = id + " " + casted.getTitle();
+        Modal modal = Modal.create(idPair, casted.getTitle())
                 .addActionRows(ActionRow.partitionOf(inputs))
                 .build();
         return RateLimitUtil.queue(modalCallback.replyModal(modal)).thenApply(f -> casted);
