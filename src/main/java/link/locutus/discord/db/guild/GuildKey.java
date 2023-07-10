@@ -1896,9 +1896,6 @@ public class GuildKey {
             throw new IllegalArgumentException("This guild is not an offshore. See: " + CM.offshore.add.cmd.toSlashMention());
         }
     }));
-
-    private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
-
     public static GuildSetting<Set<Integer>> GRANT_TEMPLATE_BLACKLIST = new GuildSetting<Set<Integer>>(GuildSettingCategory.BANK_ACCESS, Set.class, Integer.class) {
 
         @Command(descMethod = "help")
@@ -1932,10 +1929,10 @@ public class GuildKey {
         @Override
         public Set<Integer> validate(GuildDB db, Set<Integer> nationIDs) {
             for(int id : nationIDs) {
-              DBNation nation = DBNation.getById(id);
+                DBNation nation = DBNation.getById(id);
 
-              if(nation == null)
-                  throw new IllegalArgumentException("Nation does not exist");
+                if(nation == null)
+                    throw new IllegalArgumentException("Nation does not exist");
             }
 
             return nationIDs;
@@ -1964,6 +1961,8 @@ public class GuildKey {
             return StringMan.join(value, ",");
         }
     };
+
+    private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 
     static {
         // add by field names
