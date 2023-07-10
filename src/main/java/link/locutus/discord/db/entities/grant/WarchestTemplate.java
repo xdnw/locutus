@@ -69,20 +69,20 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
     }
     @Override
     public double[] getCost(DBNation sender, DBNation receiver, Map<ResourceType, Double> parsed) {
-
+        throw new UnsupportedOperationException("Not implemented yet");
     }
 
     @Override
     public DepositType.DepositTypeInfo getDepositType(DBNation receiver, Map<ResourceType, Double> parsed) {
-
+        throw new UnsupportedOperationException("Not implemented yet");
     }
 
     @Override
     public String getInstructions(DBNation sender, DBNation receiver, Map<ResourceType, Double> parsed) {
-
+        throw new UnsupportedOperationException("Not implemented yet");
     }
     @Override
     public Class<Map<ResourceType, Double>> getParsedType() {
-
+        throw new UnsupportedOperationException("Not implemented yet");
     }
 }
