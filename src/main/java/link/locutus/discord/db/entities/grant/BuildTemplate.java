@@ -214,22 +214,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         long lastAttackDate = 0;
         if (allow_switch_after_offensive) {
             // get attacks where attacker
-            List<DBWar> wars = receiver.getWars();
-            wars.removeIf(f -> f.attacker_id != receiver.getId());
-            // sort wars date desc
-            Collections.sort(wars, (o1, o2) -> Long.compare(o2.date, o1.date));
-            outer:
-            for (DBWar war : wars) {
-                List<DBAttack> attacks = war.getAttacks();
-                // reverse attacks
-                Collections.reverse(attacks);
-                for (DBAttack attack : attacks) {
-                    if (attack.getAttacker_nation_id() != receiver.getId()) {
-                        lastAttackDate = attack.getDate();
-                        break outer;
-                    }
-                }
-            }
+            lastAttackDate = getLatestAttackDate(receiver);
         }
 
         // get grants

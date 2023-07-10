@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities.grant;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -10,6 +11,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.PnwUtil;
@@ -418,6 +420,25 @@ public abstract class AGrantTemplate<T> {
         list.add("max_granter_total");
         list.add("date_created");
         return list;
+    }
+
+    public long getLatestAttackDate(DBNation receiver) {
+        List<DBWar> wars = receiver.getWars();
+        wars.removeIf(f -> f.attacker_id != receiver.getId());
+        // sort wars date desc
+        Collections.sort(wars, (o1, o2) -> Long.compare(o2.date, o1.date));
+        outer:
+        for (DBWar war : wars) {
+            List<DBAttack> attacks = war.getAttacks();
+            // reverse attacks
+            Collections.reverse(attacks);
+            for (DBAttack attack : attacks) {
+                if (attack.getAttacker_nation_id() != receiver.getId()) {
+                    return attack.getDate();
+                }
+            }
+        }
+        return 0;
     }
 
     public abstract List<String> getQueryFields();
