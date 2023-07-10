@@ -43,6 +43,8 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.grant.AGrantTemplate;
+import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
@@ -130,6 +132,15 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "A category for a grant template")
     public TemplateTypes GrantTemplate(String input) {
         return emum(TemplateTypes.class, input);
+    }
+
+    @Binding(value = "The name of a crated grant template")
+    public AGrantTemplate AGrantTemplate(@Me GuildDB db, String input) {
+        GrantTemplateManager manager = db.getGrantTemplateManager();
+        Set<AGrantTemplate> found = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(input));
+        if (found.isEmpty()) throw new IllegalArgumentException("No grant template found for `" + input + "`");
+        if (found.size() > 1) throw new IllegalArgumentException("Multiple grant templates found for `" + input + "`");
+        return found.iterator().next();
     }
 
     @Binding(value = "An alert mode for the ENEMY_ALERT_CHANNEL when enemies leave beige")
