@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities.grant;
 
+import com.google.gson.reflect.TypeToken;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -9,6 +10,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.entities.MMRInt;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
@@ -19,42 +21,53 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
-public class BuildTemplate extends AGrantTemplate<CityBuild> {
+public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     private final byte[] build;
     private final boolean onlyNewCities;
-    private final int mmr;
+    private final MMRInt mmr;
     private final long allow_switch_after_days;
     private final boolean allow_switch_after_offensive;
     private final boolean allow_switch_after_infra;
     private final boolean allow_switch_after_land_or_project;
 
     public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
-        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getBytes("build"), rs.getBoolean("only_new_cities"), rs.getInt("mmr"), rs.getLong("track_days"), rs.getBoolean("allow_switch_after_offensive"));
+        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getBytes("build"), rs.getBoolean("only_new_cities"),
+                rs.getInt("mmr"),
+                rs.getLong("allow_switch_after_days"),
+                rs.getBoolean("allow_switch_after_offensive"),
+                rs.getBoolean("allow_switch_after_infra"),
+                rs.getBoolean("allow_switch_after_land_or_project")
+        );
     }
 
     // create new constructor  with typed parameters instead of resultset
-    public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, byte[] build, boolean onlyNewCities, int mmr, long track_days, boolean allow_switch_after_offensive) {
+    public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, byte[] build, boolean onlyNewCities, int mmr,
+                         long allow_switch_after_days,
+                         boolean allow_switch_after_offensive,
+                         boolean allow_switch_after_infra,
+                         boolean allow_switch_after_land_or_project
+    ) {
         super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal);
         this.build = build;
         this.onlyNewCities = onlyNewCities;
-        this.mmr = mmr;
-        this.track_days = track_days;
+        this.mmr = mmr <= 0 ? null : MMRInt.fromString(String.format("%04d", mmr));
+        this.allow_switch_after_days = allow_switch_after_days;
         this.allow_switch_after_offensive = allow_switch_after_offensive;
+        this.allow_switch_after_infra = allow_switch_after_infra;
+        this.allow_switch_after_land_or_project = allow_switch_after_land_or_project;
     }
 
     @Override
     public String toListString() {
         StringBuilder result = new StringBuilder(super.toListString());
-        if (mmr > 0) {
+        if (mmr != null) {
             // format int to 4 digits with 0 padding (before the number)
             String mmrString = String.format("%04d", mmr);
             result.append(" | MMR=").append(mmrString);
@@ -88,20 +101,41 @@ public class BuildTemplate extends AGrantTemplate<CityBuild> {
     public void setValues(PreparedStatement stmt) throws SQLException {
         stmt.setBytes(12, build);
         stmt.setBoolean(13, onlyNewCities);
-        stmt.setLong(14, mmr);
-        stmt.setLong(15, track_days);
+        stmt.setLong(14, mmr.toNumber());
+        stmt.setLong(15, allow_switch_after_days);
         stmt.setBoolean(16, allow_switch_after_offensive);
+        stmt.setBoolean(16, allow_switch_after_infra);
+        stmt.setBoolean(17, allow_switch_after_land_or_project);
     }
 
     @Override
-    public CityBuild parse(DBNation receiver, String value) {
+    public Map<Integer, CityBuild> parse(DBNation receiver, String value) {
+        CityBuild build;
         if (value == null) {
             // get infra in last city
-
+            Map<Integer, DBCity> cities = receiver._getCitiesV3();
+            // get city with largest id key
+            int lastCity = Collections.max(cities.keySet());
+            JavaCity city = cities.get(lastCity).toJavaCity(receiver);
+            // mmr
+            if (mmr != null) {
+                city.setMMR(mmr);
+            }
+            city.zeroNonMilitary();
+            city.optimalBuild(receiver, 5000);
             // generate
+            build = city.toCityBuild();
         } else {
-            return super.parse(receiver, value);
+            build = parse(getDb(), receiver, value, CityBuild.class);
         }
+
+        Set<Integer> grantTo = getCitiesToGrantTo(receiver);
+        // return map of city and build
+        Map<Integer, CityBuild> map = new HashMap<>();
+        for (Integer city : grantTo) {
+            map.put(city, build);
+        }
+        return map;
     }
 
     //make build template command open to members
@@ -109,7 +143,7 @@ public class BuildTemplate extends AGrantTemplate<CityBuild> {
     //will also check if member has used a build grant for their new city to prevent abuse
     //should probly consider dm'ing the user to use the city build grant command once the city grant command is ran
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver, CityBuild build) {
+    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver, Map<Integer, CityBuild> build) {
         List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, build);
 
         if (build == null) {
@@ -232,29 +266,27 @@ public class BuildTemplate extends AGrantTemplate<CityBuild> {
     }
 
     @Override
-    public double[] getCost(DBNation sender, DBNation receiver, CityBuild build) {
+    public double[] getCost(DBNation sender, DBNation receiver, Map<Integer, CityBuild> builds) {
         int cities = receiver.getCities();
-        // todo get cost of build
-        JavaCity to = new JavaCity(build);
-        JavaCity from = new JavaCity(build);
-        Arrays.fill(from.getBuildings(), (byte) 0);
-        double[] cost = to.calculateCost(from);
-        if (onlyNewCities) {
-            // get cities in past 10 days
-            // multiply by cities since last city
-            receiver.getCitiesSince(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119));
-        } else {
-            // multiply by cities
-            cost = PnwUtil.multiply(cost, cities);
+
+        double[] cost = ResourceType.getBuffer();
+        Map<Integer, JavaCity> existing = receiver.getCityMap(true);
+        for (Map.Entry<Integer, JavaCity> entry : existing.entrySet()) {
+            JavaCity from = entry.getValue();
+            CityBuild build = builds.get(entry.getKey());
+            if (build == null) continue;
+            JavaCity to = new JavaCity(build);
+
+            to.calculateCost(from, cost, false, false);
         }
         return cost;
     }
 
     @Override
-    public DepositType.DepositTypeInfo getDepositType(DBNation receiver, CityBuild build) {
+    public DepositType.DepositTypeInfo getDepositType(DBNation receiver, Map<Integer, CityBuild> build) {
         int cities = 0;
         if (onlyNewCities) {
-            cities = 1;
+            cities = build.size();
         } else {
             cities = receiver.getCities();
         }
@@ -262,7 +294,7 @@ public class BuildTemplate extends AGrantTemplate<CityBuild> {
     }
 
     @Override
-    public String getInstructions(DBNation sender, DBNation receiver, CityBuild parsed) {
+    public String getInstructions(DBNation sender, DBNation receiver, Map<Integer, CityBuild> parsed) {
         StringBuilder instructions = new StringBuilder();
         if (onlyNewCities) {
 
@@ -276,7 +308,7 @@ public class BuildTemplate extends AGrantTemplate<CityBuild> {
     }
 
     @Override
-    public Class<CityBuild> getParsedType() {
-        return CityBuild.class;
+    public Class<Map<Integer, CityBuild>> getParsedType() {
+        return (Class<Map<Integer, CityBuild>>) TypeToken.getParameterized(Map.class, Integer.class, CityBuild.class).getRawType();
     }
 }

@@ -5,6 +5,7 @@ import link.locutus.discord.commands.info.optimal.CityBranch;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.MMRInt;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.MathMan;
@@ -144,6 +145,13 @@ public class JavaCity {
         double destroyedMin = Math.min(infra, Math.min(300, infra * 0.3 + 100));
         double destroyedMax = Math.min(infra, Math.max(Math.max(350, density * 3), infra * 0.8 + 150));
         return new AbstractMap.SimpleEntry<>((int) Math.round(destroyedMin), (int) Math.round(destroyedMax));
+    }
+
+    public void setMMR(MMRInt mmr) {
+        set(Buildings.BARRACKS, (int) Math.round(mmr.getBarracks()));
+        set(Buildings.FACTORY, (int) Math.round(mmr.getFactory()));
+        set(Buildings.HANGAR, (int) Math.round(mmr.getHangar()));
+        set(Buildings.DRYDOCK, (int) Math.round(mmr.getDrydock()));
     }
 
     public static class Metrics {
@@ -839,6 +847,10 @@ public class JavaCity {
     }
 
     public double[] calculateCost(JavaCity from, double[] buffer) {
+        return calculateCost(from, buffer, true, true);
+    }
+
+    public double[] calculateCost(JavaCity from, double[] buffer, boolean infra, boolean land) {
         for (int i = 0; i < buildings.length; i++) {
             int amtOther = from.buildings[i];
             int amt = buildings[i];
@@ -851,10 +863,10 @@ public class JavaCity {
             }
         }
 
-        if (this.getInfra() > from.getInfra()) {
+        if (infra && this.getInfra() > from.getInfra()) {
             buffer[ResourceType.MONEY.ordinal()] += PnwUtil.calculateInfra(from.getInfra(), getInfra());
         }
-        if (!Objects.equals(getLand(), from.getLand())) {
+        if (land && !Objects.equals(getLand(), from.getLand())) {
             buffer[ResourceType.MONEY.ordinal()] += PnwUtil.calculateLand(from.getLand(), getLand());
         }
         return buffer;

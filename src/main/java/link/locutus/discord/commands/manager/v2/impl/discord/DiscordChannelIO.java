@@ -153,11 +153,6 @@ public class DiscordChannelIO implements IMessageIO {
     }
 
     @Override
-    public CompletableFuture<IModalBuilder> send(IModalBuilder modal) {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
     public long getIdLong() {
         return channel.getIdLong();
     }

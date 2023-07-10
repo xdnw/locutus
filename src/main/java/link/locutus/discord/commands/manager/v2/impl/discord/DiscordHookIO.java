@@ -115,12 +115,6 @@ public class DiscordHookIO implements IMessageIO {
     }
 
     @Override
-    public CompletableFuture<IModalBuilder> send(IModalBuilder modal) {
-        // TODO send via modal hook
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    @Override
     public long getIdLong() {
         Interaction interaction = hook.getInteraction();
         Channel channel = interaction.getChannel();

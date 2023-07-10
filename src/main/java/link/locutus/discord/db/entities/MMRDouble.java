@@ -68,4 +68,20 @@ public class MMRDouble {
         if (isDouble) return StringMan.join(valueStr, "/");
         return StringMan.join(valueStr, "");
     }
+
+    public double getBarracks() {
+        return mmr[0];
+    }
+
+    public double getFactory() {
+        return mmr[1];
+    }
+
+    public double getHangar() {
+        return mmr[2];
+    }
+
+    public double getDrydock() {
+        return mmr[3];
+    }
 }

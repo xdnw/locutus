@@ -2,21 +2,16 @@ package link.locutus.discord.db.entities.grant;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
-import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.NationFilterString;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.offshore.Grant;
 import net.dv8tion.jda.api.entities.Member;
@@ -25,7 +20,6 @@ import net.dv8tion.jda.api.entities.User;
 
 import java.util.*;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -478,12 +472,16 @@ public abstract class AGrantTemplate<T> {
     public abstract Class<T> getParsedType();
 
     public T parse(DBNation receiver, String value) {
+        return (T) parse(db, receiver, value, getParsedType());
+    }
+
+    public static <K> K parse(GuildDB db, DBNation receiver, String value, Class<K> parsedType) {
         if (value == null) return null;
         CommandManager2 cmdManager = Locutus.imp().getCommandManager().getV2();
         LocalValueStore store = new LocalValueStore<>(cmdManager.getStore());
         store.addProvider(Key.of(DBNation.class, Me.class), receiver);
         store.addProvider(Key.of(GuildDB.class, Me.class), db);
-        return (T) store.get(Key.of(getParsedType())).apply(store, value);
+        return (K) store.get(Key.of(parsedType)).apply(store, value);
     }
 
     public Grant createGrant(DBNation sender, DBNation receiver, T customValue) {
