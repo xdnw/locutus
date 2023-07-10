@@ -584,6 +584,11 @@ public class GrantCommands {
             }
         }
 
+        for(int i = 0; i < cost.length; i ++) {
+            if(cost[i] < 0)
+                cost[i] = 0;
+        }
+
         // TODO figure out how to handle partial
         // example:
         //

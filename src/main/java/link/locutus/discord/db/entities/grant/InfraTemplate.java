@@ -178,6 +178,8 @@ public class InfraTemplate extends AGrantTemplate<Double>{
             return ResourceType.MONEY.toArray(cost);
         }
 
+        
+
         for (Map.Entry<Integer, DBCity> entry : receiver._getCitiesV3().entrySet()) {
             DBCity city = entry.getValue();
             cost += receiver.infraCost(city.infra, parsed);
