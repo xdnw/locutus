@@ -1,14 +1,20 @@
 package link.locutus.discord.db.entities.grant;
 
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.TimeUtil;
+import org.jooq.meta.derby.sys.Sys;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class RawsTemplate extends AGrantTemplate<Integer>{
     //long days
@@ -53,20 +59,55 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
     @Override
     public double[] getCost(DBNation sender, DBNation receiver, Integer parsed) {
 
+        long minDate = Long.MAX_VALUE;
+        long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
+        double[] revenue = receiver.getRevenue();
+        PnwUtil.multiply(revenue, 1.2);
+        ResourceType.ResourcesBuilder receivedBuilder = ResourceType.builder();
+        Map<ResourceType, Double> stockpile = receiver.getStockpile();
+        Map<ResourceType, Double> needed = receiver.getResourcesNeeded(stockpile, parsed, false);
+
+        //TODO also check transactions
+        for (GrantTemplateManager.GrantSendRecord record : getDb().getGrantTemplateManager().getRecordsByReceiver(receiver.getId())) {
+            if (record.grant_type == TemplateTypes.RAWS) {
+                if(record.date > cutoff) {
+
+                    minDate = Math.min(record.date, minDate);
+
+                    receivedBuilder.add(record.amount);
+                }
+            }
+        }
+
+        if (minDate != Long.MAX_VALUE) {
+            double[] totalReceived = receivedBuilder.build();
+            double[] revenueOverTime = PnwUtil.multiply(revenue, (TimeUtil.getTurn() - TimeUtil.getTimeFromTurn(minDate)) / 12d);
+            double[] expectedStockpile = ResourceType.subtract(totalReceived, revenueOverTime);
+
+            for (ResourceType type : ResourceType.values) {
+                double expected = expectedStockpile[type.ordinal()];
+                double actual = stockpile.getOrDefault(type, 0d);
+
+                if (needed.getOrDefault(type, 0D) > 0 && expected > actual)
+                    throw new IllegalArgumentException("The nation has already received a raw grant within the past " + days + " days");
+            }
+        }
+
+        return PnwUtil.resourcesToArray(needed);
     }
 
     @Override
     public DepositType.DepositTypeInfo getDepositType(DBNation receiver, Integer parsed) {
-
+        return DepositType.RAWS.withValue();
     }
 
     @Override
     public String getInstructions(DBNation sender, DBNation receiver, Integer parsed) {
-
+        return "Go to: https://politicsandwar.com/nation/revenue/\nAnd check your revenue to make sure it matches up with the resources sent";
     }
 
     @Override
     public Class<Integer> getParsedType() {
-
+        return  Integer.class;
     }
 }
