@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.db.entities.DBWar;
@@ -158,6 +159,15 @@ public class InfraTemplate extends AGrantTemplate<Double>{
         }));
 
         return list;
+    }
+
+    public Map<Integer, Map<Long, Double>> getTopCityInfraGrant(DBNation receiver) {
+
+        List<Transaction2> transactions = receiver.getTransactions(0);
+
+        Map<Integer, Map<Long, Double>> grants = Grant.getInfraGrantsByCityByDate(receiver, transactions);
+
+        return grants;
     }
 
     @Override

@@ -160,6 +160,7 @@ public class GrantTemplateManager {
                 "`allow_switch_after_offensive` BOOLEAN NOT NULL, " +
                 "`allow_switch_after_infra` BOOLEAN NOT NULL, " +
                 "`allow_switch_after_land_or_project` BOOLEAN NOT NULL, " +
+                "`allow_all` BOOLEAN NOT NULL, " +
                 "`date_created` BIGINT NOT NULL PRIMARY KEY, " +
                 "`name` VARCHAR NOT NULL PRIMARY KEY, " +
                 "`nation_filter` VARCHAR NOT NULL, " +

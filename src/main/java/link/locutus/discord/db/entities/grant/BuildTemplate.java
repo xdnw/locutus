@@ -36,6 +36,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     private final boolean allow_switch_after_offensive;
     private final boolean allow_switch_after_infra;
     private final boolean allow_switch_after_land_or_project;
+    private final boolean allow_all;
 
     public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
         this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), rs.getBytes("build"), rs.getBoolean("only_new_cities"),
@@ -43,7 +44,8 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                 rs.getLong("allow_switch_after_days"),
                 rs.getBoolean("allow_switch_after_offensive"),
                 rs.getBoolean("allow_switch_after_infra"),
-                rs.getBoolean("allow_switch_after_land_or_project")
+                rs.getBoolean("allow_switch_after_land_or_project"),
+                rs.getBoolean("allow_all")
         );
     }
 
@@ -52,7 +54,8 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                          long allow_switch_after_days,
                          boolean allow_switch_after_offensive,
                          boolean allow_switch_after_infra,
-                         boolean allow_switch_after_land_or_project
+                         boolean allow_switch_after_land_or_project,
+                         boolean allow_all
     ) {
         super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated);
         this.build = build;
@@ -62,6 +65,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         this.allow_switch_after_offensive = allow_switch_after_offensive;
         this.allow_switch_after_infra = allow_switch_after_infra;
         this.allow_switch_after_land_or_project = allow_switch_after_land_or_project;
+        this.allow_all = allow_all;
     }
 
     @Override
@@ -96,6 +100,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         list.add("allow_switch_after_offensive");
         list.add("allow_switch_after_infra");
         list.add("allow_switch_after_land_or_project");
+        list.add("allow_all");
         return list;
     }
 
@@ -108,6 +113,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         stmt.setBoolean(17, allow_switch_after_offensive);
         stmt.setBoolean(18, allow_switch_after_infra);
         stmt.setBoolean(19, allow_switch_after_land_or_project);
+        stmt.setBoolean(20, allow_all);
     }
 
     @Override

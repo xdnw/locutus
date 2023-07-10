@@ -71,10 +71,7 @@ public class LandTemplate extends AGrantTemplate<Double>{
 
         Map<Integer, Double> landGrants = Grant.getLandGrantedByCity(receiver, transactions);
 
-        if(landGrants != null)
-            return landGrants;
-
-        return null;
+        return landGrants;
     }
 
     @Override
