@@ -500,7 +500,7 @@ public class CommandManager2 {
             e.printStackTrace();
             StringBuilder body = new StringBuilder();
 
-            if (e.getMessage().contains("`")) {
+            if (e.getMessage().contains("`") || e.getMessage().contains("<#") || e.getMessage().contains("</") || e.getMessage().contains("<@")) {
                 body.append("## Error:\n");
                 body.append(">>> " + e.getMessage() + "\n");
             } else {
