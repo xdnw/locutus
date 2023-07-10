@@ -151,8 +151,10 @@ public class GrantTemplateManager {
                 "`build` BLOB NOT NULL, " +
                 "`only_new_cities` BOOLEAN NOT NULL, " +
                 "`mmr` BIGINT NOT NULL, " +
-                "`track_days` BIGINT NOT NULL, " +
+                "`allow_switch_after_days` BIGINT NOT NULL, " +
                 "`allow_switch_after_offensive` BOOLEAN NOT NULL, " +
+                "`allow_switch_after_infra` BOOLEAN NOT NULL, " +
+                "`allow_switch_after_land_or_project` BOOLEAN NOT NULL, " +
                 "`name` VARCHAR NOT NULL PRIMARY KEY, " +
                 "`nation_filter` VARCHAR NOT NULL, " +
                 "`econ_role` BIGINT NOT NULL, " +

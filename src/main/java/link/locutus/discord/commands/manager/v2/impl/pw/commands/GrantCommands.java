@@ -207,8 +207,10 @@ public class GrantCommands {
                                       @Switch("c") CityBuild build,
                                       @Switch("m") MMRInt mmr,
                                       @Switch("o") boolean only_new_cities,
-                                      @Switch("t") Integer trackDays,
+                                      @Switch("t") Integer allow_switch_after_days,
                                       @Switch("a") boolean allowSwitchAfterOffensive,
+                                      @Switch("i") boolean allow_switch_after_infra,
+                                      @Switch("lp") boolean allow_switch_after_land_or_project,
                                       @Switch("e") Role econRole,
                                       @Switch("s") Role selfRole,
                                       @Switch("b")TaxBracket bracket,
@@ -218,6 +220,7 @@ public class GrantCommands {
                                       @Switch("mgd") Integer maxGranterDay,
                                       @Switch("mgt") Integer maxGranterTotal,
                                       @Switch("f") boolean force) {
+
         name = name.toUpperCase(Locale.ROOT).trim();
         // Ensure name is alphanumericalund
         if (!name.matches("[A-Z0-9_-]+")) {
@@ -243,7 +246,8 @@ public class GrantCommands {
         }
         byte[] buildBytes = build == null ? null : new JavaCity(build).toBytes();
 
-        BuildTemplate template = new BuildTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, buildBytes, only_new_cities, mmr.toNumber(), trackDays, allowSwitchAfterOffensive);
+        BuildTemplate template = new BuildTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, buildBytes, only_new_cities, mmr.toNumber(),
+                allow_switch_after_days, allowSwitchAfterOffensive, allow_switch_after_infra, allow_switch_after_land_or_project);
 
         // confirmation
         if (!force) {
