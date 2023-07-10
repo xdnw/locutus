@@ -652,6 +652,10 @@ public class NationDB extends DBMainV2 {
     }
 
     public void updateTreaties(List<com.politicsandwar.graphql.model.Treaty> treatiesV3, Consumer<Event> eventConsumer, boolean deleteMissing) {
+        updateTreaties(treatiesV3, eventConsumer, deleteMissing ? f -> true : f -> deleteMissing);
+    }
+
+    public void updateTreaties(List<com.politicsandwar.graphql.model.Treaty> treatiesV3, Consumer<Event> eventConsumer, Predicate<Treaty> deleteMissing) {
         Map<Integer, Map<Integer, Treaty>> treatiesByAACopy = new HashMap<>();
         long turn = TimeUtil.getTurn();
         for (com.politicsandwar.graphql.model.Treaty treaty : treatiesV3) {
@@ -684,7 +688,7 @@ public class NationDB extends DBMainV2 {
                 int otherId = previous.getFromId() == aaId ? previous.getToId() : previous.getFromId();
 
                 if (current == null) {
-                    if (deleteMissing) toDelete.add(previous);
+                    if (deleteMissing.test(previous)) toDelete.add(previous);
                 } else {
                     synchronized (treatiesByAlliance) {
                         treatiesByAlliance.computeIfAbsent(aaId, f -> new Int2ObjectOpenHashMap<>()).put(otherId, current);
