@@ -29,15 +29,17 @@ public enum TemplateTypes {
     TemplateTypes(DepositType depositType, Class<? extends AGrantTemplate> implementation) {
         this.depositType = depositType;
         try {
+            // (GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs
             this.constructor = implementation.getConstructor(
                     GuildDB.class,
-                    int.class,
+                    boolean.class,
                     String.class,
                     NationFilter.class,
                     long.class,
                     long.class,
                     int.class,
                     boolean.class,
+                    int.class,
                     int.class,
                     int.class,
                     int.class,
