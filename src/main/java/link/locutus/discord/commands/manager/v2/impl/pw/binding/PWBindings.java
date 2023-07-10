@@ -43,6 +43,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.grant.TemplateTypes;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.AllianceList;
@@ -124,6 +125,11 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "A reason beiging and defeating an enemy in war")
     public BeigeReason BeigeReason(String input) {
         return emum(BeigeReason.class, input);
+    }
+
+    @Binding(value = "A category for a grant template")
+    public TemplateTypes GrantTemplate(String input) {
+        return emum(TemplateTypes.class, input);
     }
 
     @Binding(value = "An alert mode for the ENEMY_ALERT_CHANNEL when enemies leave beige")
