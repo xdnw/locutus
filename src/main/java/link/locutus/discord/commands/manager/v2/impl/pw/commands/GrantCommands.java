@@ -489,20 +489,18 @@ public class GrantCommands {
     public String templateCreateWarchest(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
                                          String name,
                                          NationFilter allowedRecipients,
-                                         @Switch("a") double[] allowancePerCity,
+                                         @Switch("a") Map<ResourceType, Double> allowancePerCity,
                                          @Switch("t") long trackDays,
                                          @Switch("s") boolean subtractExpenditure,
                                          @Switch("o") long overdrawPercentCents,
-
                                          @Switch("e") Role econRole,
                                          @Switch("s") Role selfRole,
-                                         @Switch("b")TaxBracket bracket,
+                                         @Switch("b") TaxBracket bracket,
                                          @Switch("r") boolean useReceiverBracket,
                                          @Switch("mt") Integer maxTotal,
                                          @Switch("md") Integer maxDay,
                                          @Switch("mgd") Integer maxGranterDay,
                                          @Switch("mgt") Integer maxGranterTotal,
-
                                          @Switch("f") boolean force) {
         name = name.toUpperCase(Locale.ROOT).trim();
         // Ensure name is alphanumericalund
@@ -528,7 +526,8 @@ public class GrantCommands {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
 
-        WarchestTemplate template = new WarchestTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), allowancePerCity, trackDays, subtractExpenditure, overdrawPercentCents);
+        double[] allowancePerCityArr = allowancePerCity == null ? null : PnwUtil.resourcesToArray(allowancePerCity);
+        WarchestTemplate template = new WarchestTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), allowancePerCityArr, trackDays, subtractExpenditure, overdrawPercentCents);
 
         // confirmation
         if (!force) {
