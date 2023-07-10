@@ -29,6 +29,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     private final boolean track_days;
     private final long require_n_offensives;
     private final boolean allow_rebuild;
+    private final boolean allowGrantDamaged;
 
     public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
         this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), rs.getLong("level"), rs.getBoolean("only_new_cities"), rs.getBoolean("track_days"), rs.getLong("require_n_offensives"), rs.getBoolean("allow_rebuild"));
@@ -42,6 +43,8 @@ public class InfraTemplate extends AGrantTemplate<Double>{
         this.track_days = track_days;
         this.require_n_offensives = require_n_offensives;
         this.allow_rebuild = allow_rebuild;
+        //TODO add allowGrantDamaged to the table
+        this.allowGrantDamaged = false;
     }
 
     @Override
@@ -173,26 +176,31 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     @Override
     public double[] getCost(DBNation sender, DBNation receiver, Double parsed) {
 
+        long latestAttackDate = getLatestAttackDate(receiver);
+        long cutoff = onlyNewCities ? TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119) : 0;
+        Map<Integer, Map<Long, Double>> topCity = getTopCityInfraGrant(receiver);
         long cost = 0;
-
-        if(onlyNewCities) {
-
-            long cutoff = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119);
-            for (Map.Entry<Integer, DBCity> entry : receiver._getCitiesV3().entrySet()) {
-                DBCity city = entry.getValue();
-                if (city.created > cutoff) {
-                    cost += receiver.infraCost(city.infra, parsed);
-                }
-            }
-
-            return ResourceType.MONEY.toArray(cost);
-        }
-
-        
 
         for (Map.Entry<Integer, DBCity> entry : receiver._getCitiesV3().entrySet()) {
             DBCity city = entry.getValue();
-            cost += receiver.infraCost(city.infra, parsed);
+
+            Map<Long, Double> cityGrantHistory = topCity.get(entry.getKey());
+
+            if (allowGrantDamaged) {
+                cityGrantHistory.entrySet().removeIf(f -> f.getKey() < latestAttackDate);
+            }
+
+            // get max Double from cityGrantHistory
+            double max = cityGrantHistory.values().stream().mapToDouble(f -> f).max().orElse(0);
+
+            if (max > city.infra)
+                throw new IllegalArgumentException("The city `" + entry.getKey() + "` has received a prior grant for " + max + " infra. The city only has " + city.infra + " infra currently. The last attack date is " + latestAttackDate + " allowGrantDamaged=" + allowGrantDamaged);
+
+            max = Math.max(city.infra, max);
+
+            if (city.created > cutoff) {
+                cost += receiver.infraCost(max, parsed);
+            }
         }
 
         return ResourceType.MONEY.toArray(cost);

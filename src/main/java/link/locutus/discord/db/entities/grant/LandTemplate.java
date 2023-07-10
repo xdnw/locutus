@@ -77,22 +77,9 @@ public class LandTemplate extends AGrantTemplate<Double>{
     @Override
     public double[] getCost(DBNation sender, DBNation receiver, Double parsed) {
 
+        long cutoff = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119);
         Map<Integer, Double> topCity = getTopCityLandGrant(receiver);
         long cost = 0;
-
-        if(onlyNewCities) {
-
-            long cutoff = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119);
-            for (Map.Entry<Integer, DBCity> entry : receiver._getCitiesV3().entrySet()) {
-                DBCity city = entry.getValue();
-                if (city.created > cutoff) {
-
-                    cost += receiver.landCost(Math.max(topCity.getOrDefault(entry.getKey(), 0D), city.land), parsed);
-                }
-            }
-
-            return ResourceType.MONEY.toArray(cost);
-        }
 
 
         for (Map.Entry<Integer, DBCity> entry : receiver._getCitiesV3().entrySet()) {
@@ -102,7 +89,9 @@ public class LandTemplate extends AGrantTemplate<Double>{
             if(land > city.land)
                 throw new IllegalArgumentException("The nation with the id: " + receiver.getId() + " has already received a land grant of " + land + " land and shouldn't get the land grant of " + parsed);
 
-            cost += receiver.landCost(Math.max(land, city.land), parsed);
+            if (city.created > cutoff) {
+                cost += receiver.landCost(Math.max(topCity.getOrDefault(entry.getKey(), 0D), city.land), parsed);
+            }
         }
 
         return ResourceType.MONEY.toArray(cost);
