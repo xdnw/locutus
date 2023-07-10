@@ -23,6 +23,18 @@ import java.util.stream.Collectors;
 public class GrantTemplateManager {
     /**
      * TODO
+     *
+     * TODO:
+     *  handling for "`track_days` BOOLEAN NOT NULL, " +
+     *                 "`require_n_offensives` BIGINT NOT NULL, " +
+     *                 "`allow_rebuild` BOOLEAN NOT NULL, " +
+*                 int infra grant
+ *  Note parsing for raws grant
+     *  Warchest grant is TODO
+     *  Info command shows example of recreating the grant with same settings
+     *  Full info command for each
+     *  Add default requirements for raws etc.
+     *
      *  Default requirements
      *  - Add the default grant requirements to AGrantTemplate
      *      (e.g. Are they a member in the alliance, are they active, not in VM etc.)
@@ -127,6 +139,7 @@ public class GrantTemplateManager {
                 "`track_days` BOOLEAN NOT NULL, " +
                 "`require_n_offensives` BIGINT NOT NULL, " +
                 "`allow_rebuild` BOOLEAN NOT NULL, " +
+                "`allow_grant_damaged` BOOLEAN NOT NULL, " +
                 "`date_created` BIGINT NOT NULL PRIMARY KEY, " +
                 "`name` VARCHAR NOT NULL PRIMARY KEY, " +
                 "`nation_filter` VARCHAR NOT NULL, " +

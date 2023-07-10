@@ -58,7 +58,7 @@ public class GrantCommands {
 
         if (templates.isEmpty()) {
             String msg = "No templates found for category: " + category + "\n" +
-                    "Create one with TODO CM ref here";
+                    "Create one with " + category.getCommandMention();
             if (!listDisabled) {
                 msg += "\nUse `-d listDisabled` to list disabled templates";
             }
@@ -173,8 +173,8 @@ public class GrantCommands {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
-        if (manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)) != null) {
-            throw new IllegalArgumentException("A template with that name already exists. See: TODO CM ref here");
+        if (!manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).isEmpty()) {
+            throw new IllegalArgumentException("A template with that name already exists. See: " + CM.grant_template.delete.cmd.toSlashMention());
         }
         if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
         if (econRole == null) econRole = Roles.ECON.toRole(db);
@@ -196,7 +196,10 @@ public class GrantCommands {
             return null;
         }
         manager.saveTemplate(template);
-        return "The template: `" + template.getName() + "` has been created. See: TODO CM ref here";
+        return "The template: `" + template.getName() + "` has been created. See:\n" +
+                "- " + CM.grant_template.enabled.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.delete.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.send.cmd.toSlashMention();
     }
 
     // grant_template create build
@@ -232,8 +235,8 @@ public class GrantCommands {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
-        if (manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)) != null) {
-            throw new IllegalArgumentException("A template with that name already exists. See: TODO CM ref here");
+        if (!manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).isEmpty()) {
+            throw new IllegalArgumentException("A template with that name already exists. See: " + CM.grant_template.delete.cmd.toSlashMention());
         }
         if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
         if (econRole == null) econRole = Roles.ECON.toRole(db);
@@ -258,7 +261,10 @@ public class GrantCommands {
             return null;
         }
         manager.saveTemplate(template);
-        return "The template: `" + template.getName() + "` has been created. See: TODO CM ref here";
+        return "The template: `" + template.getName() + "` has been created. See:\n" +
+                "- " + CM.grant_template.enabled.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.delete.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.send.cmd.toSlashMention();
     }
 
     // grant_template create city
@@ -287,8 +293,8 @@ public class GrantCommands {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
-        if (manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)) != null) {
-            throw new IllegalArgumentException("A template with that name already exists. See: TODO CM ref here");
+        if (!manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).isEmpty()) {
+            throw new IllegalArgumentException("A template with that name already exists. See: " + CM.grant_template.delete.cmd.toSlashMention());
         }
         if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
         if (econRole == null) econRole = Roles.ECON.toRole(db);
@@ -311,7 +317,10 @@ public class GrantCommands {
             return null;
         }
         manager.saveTemplate(template);
-        return "The template: `" + template.getName() + "` has been created. See: TODO CM ref here";
+        return "The template: `" + template.getName() + "` has been created. See:\n" +
+                "- " + CM.grant_template.enabled.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.delete.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.send.cmd.toSlashMention();
     }
 
     // grant_template create infra
@@ -345,8 +354,8 @@ public class GrantCommands {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
-        if (manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)) != null) {
-            throw new IllegalArgumentException("A template with that name already exists. See: TODO CM ref here");
+        if (!manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).isEmpty()) {
+            throw new IllegalArgumentException("A template with that name already exists. See: " + CM.grant_template.delete.cmd.toSlashMention());
         }
         if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
         if (econRole == null) econRole = Roles.ECON.toRole(db);
@@ -369,7 +378,10 @@ public class GrantCommands {
             return null;
         }
         manager.saveTemplate(template);
-        return "The template: `" + template.getName() + "` has been created. See: TODO CM ref here";
+        return "The template: `" + template.getName() + "` has been created. See:\n" +
+                "- " + CM.grant_template.enabled.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.delete.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.send.cmd.toSlashMention();
     }
 
     // grant_template create land
@@ -400,8 +412,8 @@ public class GrantCommands {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
-        if (manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)) != null) {
-            throw new IllegalArgumentException("A template with that name already exists. See: TODO CM ref here");
+        if (!manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).isEmpty()) {
+            throw new IllegalArgumentException("A template with that name already exists. See: " + CM.grant_template.delete.cmd.toSlashMention());
         }
         if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
         if (econRole == null) econRole = Roles.ECON.toRole(db);
@@ -424,7 +436,10 @@ public class GrantCommands {
             return null;
         }
         manager.saveTemplate(template);
-        return "The template: `" + template.getName() + "` has been created. See: TODO CM ref here";
+        return "The template: `" + template.getName() + "` has been created. See:\n" +
+                "- " + CM.grant_template.enabled.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.delete.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.send.cmd.toSlashMention();
     }
 
     // grant_template create raws
@@ -455,8 +470,8 @@ public class GrantCommands {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
-        if (manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)) != null) {
-            throw new IllegalArgumentException("A template with that name already exists. See: TODO CM ref here");
+        if (!manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).isEmpty()) {
+            throw new IllegalArgumentException("A template with that name already exists. See: " + CM.grant_template.delete.cmd.toSlashMention());
         }
         if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
         if (econRole == null) econRole = Roles.ECON.toRole(db);
@@ -479,7 +494,10 @@ public class GrantCommands {
             return null;
         }
         manager.saveTemplate(template);
-        return "The template: `" + template.getName() + "` has been created. See: TODO CM ref here";
+        return "The template: `" + template.getName() + "` has been created. See:\n" +
+                "- " + CM.grant_template.enabled.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.delete.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.send.cmd.toSlashMention();
     }
 
     // grant_template create warchest
@@ -510,8 +528,8 @@ public class GrantCommands {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
-        if (manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)) != null) {
-            throw new IllegalArgumentException("A template with that name already exists. See: TODO CM ref here");
+        if (!manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).isEmpty()) {
+            throw new IllegalArgumentException("A template with that name already exists. See: " + CM.grant_template.delete.cmd.toSlashMention());
         }
         if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
         if (econRole == null) econRole = Roles.ECON.toRole(db);
@@ -535,7 +553,10 @@ public class GrantCommands {
             return null;
         }
         manager.saveTemplate(template);
-        return "The template: `" + template.getName() + "` has been created. See: TODO CM ref here";
+        return "The template: `" + template.getName() + "` has been created. See:\n" +
+                "- " + CM.grant_template.enabled.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.delete.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.send.cmd.toSlashMention();
     }
 
 

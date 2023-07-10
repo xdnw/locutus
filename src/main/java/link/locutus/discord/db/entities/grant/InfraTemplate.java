@@ -32,19 +32,18 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     private final boolean allowGrantDamaged;
 
     public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
-        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), rs.getLong("level"), rs.getBoolean("only_new_cities"), rs.getBoolean("track_days"), rs.getLong("require_n_offensives"), rs.getBoolean("allow_rebuild"));
+        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), rs.getLong("level"), rs.getBoolean("only_new_cities"), rs.getBoolean("track_days"), rs.getLong("require_n_offensives"), rs.getBoolean("allow_rebuild"), rs.getBoolean("allow_grant_damaged"));
     }
 
     // create new constructor  with typed parameters instead of resultset
-    public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long level, boolean onlyNewCities, boolean track_days, long require_n_offensives, boolean allow_rebuild) {
+    public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long level, boolean onlyNewCities, boolean track_days, long require_n_offensives, boolean allow_rebuild, boolean allowGrantDamaged) {
         super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated);
         this.level = level;
         this.onlyNewCities = onlyNewCities;
         this.track_days = track_days;
         this.require_n_offensives = require_n_offensives;
         this.allow_rebuild = allow_rebuild;
-        //TODO add allowGrantDamaged to the table
-        this.allowGrantDamaged = false;
+        this.allowGrantDamaged = allowGrantDamaged;
     }
 
     @Override
@@ -72,6 +71,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
         list.add("track_days");
         list.add("require_n_offensives");
         list.add("allow_rebuild");
+        list.add("allow_grant_damaged");
         return list;
     }
 
@@ -82,6 +82,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
         stmt.setBoolean(15, track_days);
         stmt.setLong(16, require_n_offensives);
         stmt.setBoolean(17, allow_rebuild);
+        stmt.setBoolean(18, allowGrantDamaged);
     }
 
     @Override

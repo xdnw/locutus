@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities.grant;
 
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationFilterString;
@@ -78,8 +79,5 @@ public enum TemplateTypes {
     }
 
 
-    public String getCommandMention() {
-        // TODO CM ref here
-        return null;
-    }
+    public abstract CommandRef getCommandMention();
 }
