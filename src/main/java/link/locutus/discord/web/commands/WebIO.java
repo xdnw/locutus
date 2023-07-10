@@ -65,4 +65,9 @@ public class WebIO implements IMessageIO {
     public long getIdLong() {
         return 0;
     }
+
+    @Override
+    public CompletableFuture<IModalBuilder> send(IModalBuilder modal) {
+        throw new UnsupportedOperationException("Modals not implemented for web");
+    }
 }

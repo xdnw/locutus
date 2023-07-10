@@ -148,7 +148,7 @@ public class CommandManager2 {
         // nap command  - UtilityCommands
 
         this.commands.registerCommandsWithMapping(CM.class, false, false);
-        this.commands.registerMethod(new TestCommands(), List.of("test"), "model", "model");
+        this.commands.registerMethod(new TestCommands(), List.of("modal"), "modal", "create");
         this.commands.registerMethod(new BankCommands(), List.of("tax"), "taxInfo", "info");
 
         this.commands.registerMethod(new BankCommands(), List.of("bank"), "depositResources", "deposit");
@@ -421,8 +421,9 @@ public class CommandManager2 {
                         Object[] parsed = parametric.argumentMapToArray(map);
                         return parametric.call(null, locals, parsed);
                     } catch (RuntimeException e) {
-                        e.printStackTrace();
-                        throw new CommandUsageException(callable, e.getMessage());
+                        Throwable e2 = e;
+                        while (e2.getCause() != null && e2.getCause() != e2) e2 = e2.getCause();
+                        throw new CommandUsageException(callable, e2.getMessage());
                     }
                 });
             } else if (callable instanceof CommandGroup group) {
@@ -470,8 +471,9 @@ public class CommandManager2 {
                             Object[] parsed = parametric.parseArgumentMap(finalArguments, finalLocals, validators, permisser);
                             return parametric.call(null, finalLocals, parsed);
                         } catch (RuntimeException e) {
-                            e.printStackTrace();
-                            throw new CommandUsageException(callable, e.getMessage());
+                            Throwable e2 = e;
+                            while (e2.getCause() != null && e2.getCause() != e2) e2 = e2.getCause();
+                            throw new CommandUsageException(callable, e2.getMessage());
                         }
                     });
                 } else if (callable instanceof CommandGroup group) {
@@ -498,7 +500,7 @@ public class CommandManager2 {
             e.printStackTrace();
             StringBuilder body = new StringBuilder();
 
-            if (e.getMessage().contains("`")) {
+            if (e.getMessage().contains("`") || e.getMessage().contains("<#") || e.getMessage().contains("</") || e.getMessage().contains("<@")) {
                 body.append("## Error:\n");
                 body.append(">>> " + e.getMessage() + "\n");
             } else {

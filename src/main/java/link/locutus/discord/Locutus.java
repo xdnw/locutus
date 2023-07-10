@@ -2,6 +2,7 @@ package link.locutus.discord;
 
 import com.google.common.eventbus.AsyncEventBus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
@@ -10,6 +11,7 @@ import link.locutus.discord.commands.manager.CommandManager;
 import link.locutus.discord.commands.manager.Noformat;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
@@ -19,6 +21,7 @@ import link.locutus.discord.config.yaml.Config;
 import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.AllianceMetric;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DiscordMeta;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
@@ -56,18 +59,24 @@ import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.invite.GuildInviteCreateEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberRoleAddEvent;
+import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
+import net.dv8tion.jda.api.interactions.components.Component;
 import net.dv8tion.jda.api.interactions.components.ItemComponent;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.interactions.modals.ModalInteraction;
+import net.dv8tion.jda.api.interactions.modals.ModalMapping;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.Compression;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
+import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
@@ -943,6 +952,48 @@ public final class Locutus extends ListenerAdapter {
     }
 
     @Override
+    public void onModalInteraction(@NotNull ModalInteractionEvent event) {
+        try {
+            ModalInteraction interaction = event.getInteraction();
+            String id = event.getModalId();
+            InteractionHook hook = event.getHook();
+            List<ModalMapping> values = event.getValues();
+
+            Map<String, String> args = new HashMap<>();
+
+            String[] pair = id.split(" ", 2);
+
+            UUID uuid = UUID.fromString(pair[0]);
+
+            args.put("", pair[1]);
+
+            Guild guild = event.isFromGuild() ? event.getGuild() : null;
+
+            try {
+                for (Map.Entry<String, String> entry : IModalBuilder.DEFAULT_VALUES.get(uuid).entrySet()) {
+                    args.putIfAbsent(entry.getKey(), entry.getValue());
+                }
+            } catch (ExecutionException e) {
+                e.printStackTrace();
+            }
+
+            for (ModalMapping value : values) {
+                Component.Type type = value.getType();
+                String valueId = value.getId();
+                String input = value.getAsString();
+                args.put(valueId, input);
+            }
+
+            DiscordHookIO io = new DiscordHookIO(hook, null);
+
+            event.deferReply().queue();
+            Locutus.imp().getCommandManager().getV2().run(guild, event.getChannel(), event.getUser(), event.getMessage(), io, pair[1], args, true);
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
     public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
         try {
             Message message = event.getMessage();
@@ -961,7 +1012,7 @@ public final class Locutus extends ListenerAdapter {
             Guild guild = event.isFromGuild() ? event.getGuild() : message.isFromGuild() ? message.getGuild() : null;
             MessageChannel channel = event.getChannel();
 
-            IMessageIO io = new DiscordHookIO(event.getHook());
+            IMessageIO io = new DiscordHookIO(event.getHook(), event);
 
             String id = button.getId();
             if (id == null) {
@@ -1020,15 +1071,16 @@ public final class Locutus extends ListenerAdapter {
 
             System.out.println("ID 3 " + id + " " + behavior);
 
-//            event.deferReply(false).queue();
-            RateLimitUtil.queue(event.deferEdit());
+            if (!id.contains("modal create")) {
+                RateLimitUtil.queue(event.deferEdit());
+            }
 
             System.out.println("Id new " + id + " | " + behavior);
             if (id.startsWith(Settings.commandPrefix(true)) || id.startsWith(Settings.commandPrefix(false))) {
                 String[] split = id.split("\\r?\\n(?=[" + Settings.commandPrefix(false) + "|" + Settings.commandPrefix(true) + "|{])");
                 boolean success = false;
                 for (String cmd : split) {
-                    boolean result = handleCommandReaction(cmd, message, channel, user, true);
+                    boolean result = handleCommandReaction(cmd, message, io, user, true);
                     System.out.println("Handle " + cmd + " | " + result);
                     success |= result;
                 }
@@ -1153,7 +1205,7 @@ public final class Locutus extends ListenerAdapter {
         onMessageReact(message, user, emote, responseId, true);
     }
 
-    private boolean handleCommandReaction(String cmd, Message message, MessageChannel channel, User user, boolean async) {
+    private boolean handleCommandReaction(String cmd, Message message, IMessageIO io, User user, boolean async) {
         Command cmdObject = null;
         boolean legacy = cmd.charAt(0) == Settings.commandPrefix(true).charAt(0);
         if (legacy) {
@@ -1165,7 +1217,7 @@ public final class Locutus extends ListenerAdapter {
         }
         System.out.println("CMD1 " + cmd);
         if (!(cmdObject instanceof Noformat)) {
-            cmd = DiscordUtil.format(message.getGuild(), channel, user, DiscordUtil.getNation(user), cmd);
+            cmd = DiscordUtil.format(message.getGuild(), io, user, DiscordUtil.getNation(user), cmd);
         }
         Guild guild = message.isFromGuild() ? message.getGuild() : null;
 
@@ -1178,7 +1230,7 @@ public final class Locutus extends ListenerAdapter {
                 return false;
             }
         }
-        DiscordChannelIO io = new DiscordChannelIO(channel, () -> message);
+        System.out.println("Run " + io.getClass());
         commandManager.run(guild, io, user, cmd, async, false);
         return true;
     }
@@ -1237,10 +1289,12 @@ public final class Locutus extends ListenerAdapter {
         if (prefix) raw = raw.substring(1);
         boolean success = false;
 
+        DiscordChannelIO io = new DiscordChannelIO(channel, () -> message);
+
         String[] split = raw.split("\\r?\\n(?=[" + Settings.commandPrefix(false) + "|" + Settings.commandPrefix(true) + "|{])");
         System.out.println("Split " + StringMan.getString(split));
         for (String cmd : split) {
-            success |= handleCommandReaction(cmd, message, channel, user, async);
+            success |= handleCommandReaction(cmd, message, io, user, async);
         }
         if (success) {
             if (deleteMessage) {

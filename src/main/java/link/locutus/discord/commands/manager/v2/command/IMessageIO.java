@@ -12,7 +12,12 @@ public interface IMessageIO {
     IMessageBuilder getMessage();
 
     @CheckReturnValue
-    IMessageBuilder  create();
+    IMessageBuilder create();
+
+    @CheckReturnValue
+    default IModalBuilder modal() {
+        return new AModalBuilder(this, null, null);
+    }
 
     default CompletableFuture<IMessageBuilder> send(String message) {
         return send(create().append(message));

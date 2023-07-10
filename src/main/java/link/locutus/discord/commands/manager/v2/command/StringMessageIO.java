@@ -56,5 +56,6 @@ public class StringMessageIO implements IMessageIO {
     @Override
     public CompletableFuture<IModalBuilder> send(IModalBuilder modal) {
         throw new UnsupportedOperationException("Not supported yet.");
+        return null;
     }
 }

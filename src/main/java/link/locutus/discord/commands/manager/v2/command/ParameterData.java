@@ -148,7 +148,7 @@ public class ParameterData {
     }
 
     public String getDescription() {
-        if (this.desc != null) return desc;
+        if (this.desc != null && !desc.isEmpty()) return desc;
         if (binding != null && !binding.getDescription().isEmpty()) {
             return binding.getDescription();
         }
