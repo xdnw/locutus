@@ -1284,6 +1284,7 @@ public class PoliticsAndWarV3 {
         .treaty_type()
         .treaty_url()
         .approved()
+        .date()
         .turns_left();
     }
 
