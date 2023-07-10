@@ -643,11 +643,6 @@ public class GrantCommands {
         }
 
         ResourceType.ResourcesBuilder receivedBuilder = ResourceType.builder();
-        GrantTemplateManager.GrantSendRecord record = null;
-
-        long minDate = Long.MAX_VALUE;
-
-        double[] amount = record.amount;
 
         Map.Entry<OffshoreInstance.TransferStatus, String> status = offshore.transferFromNationAccountWithRoleChecks(
                 () -> accessType,

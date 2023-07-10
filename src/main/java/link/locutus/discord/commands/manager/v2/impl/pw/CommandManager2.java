@@ -148,6 +148,22 @@ public class CommandManager2 {
         // nap command  - UtilityCommands
 
         this.commands.registerCommandsWithMapping(CM.class, false, false);
+
+        GrantCommands grantCmds = new GrantCommands();
+        this.commands.registerMethod(grantCmds, List.of("grant_template"), "templateList", "list");
+        this.commands.registerMethod(grantCmds, List.of("grant_template"), "templateInfo", "info");
+        this.commands.registerMethod(grantCmds, List.of("grant_template"), "templateDelete", "delete");
+        this.commands.registerMethod(grantCmds, List.of("grant_template"), "templateDisable", "disable");
+        this.commands.registerMethod(grantCmds, List.of("grant_template"), "templateEnabled", "enabled");
+        this.commands.registerMethod(grantCmds, List.of("grant_template", "create"), "templateCreateProject", "project");
+        this.commands.registerMethod(grantCmds, List.of("grant_template", "create"), "templateCreateBuild", "build");
+        this.commands.registerMethod(grantCmds, List.of("grant_template", "create"), "templateCreateCity", "city");
+        this.commands.registerMethod(grantCmds, List.of("grant_template", "create"), "templateCreateInfra", "infra");
+        this.commands.registerMethod(grantCmds, List.of("grant_template", "create"), "templateCreateLand", "land");
+        this.commands.registerMethod(grantCmds, List.of("grant_template", "create"), "templateCreateRaws", "raws");
+        this.commands.registerMethod(grantCmds, List.of("grant_template", "create"), "templateCreateWarchest", "warchest");
+        this.commands.registerMethod(grantCmds, List.of("grant_template"), "templateSend", "send");
+
         this.commands.registerMethod(new TestCommands(), List.of("modal"), "modal", "create");
         this.commands.registerMethod(new BankCommands(), List.of("tax"), "taxInfo", "info");
 
