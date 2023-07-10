@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.apiv1.enums.AccessType;
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
@@ -544,7 +546,7 @@ public class GrantCommands {
                                AGrantTemplate template,
                                DBNation receiver,
                                @Switch("p") String customValue,
-                               @Switch("f") boolean force) {
+                               @Switch("f") boolean force) throws IOException {
         Role econRole = template.getEconRole();
         if (econRole == null) {
             throw new IllegalArgumentException("The template `" + template.getName() + "` does not have an `econRole` set. Please set one via " + template.getType().getCommandMention());
@@ -562,19 +564,16 @@ public class GrantCommands {
             }
         }
 
-        Grant grant = template.createGrant(me, receiver, customValue);
-        // Get the note
-        String note = grant.getNote();
-        // Get the amount
-        double[] cost = grant.cost();
-        // Get the instructions
-        String instructions = grant.getInstructions();
+        DepositType.DepositTypeInfo note = template.getDepositType(receiver, customValue);
+        double[] cost = template.getCost(me, receiver, customValue);
+        List<Grant.Requirement> requirements = template.getDefaultRequirements(me, receiver, customValue);
+        String instructions = template.getInstructions(me, receiver, customValue);
 
         // validate requirements
         List<Grant.Requirement> failedRequirements = new ArrayList<>();
-        List<Grant.Requirement> requirements = template.getDefaultRequirements(me, receiver, customValue);
+        requirements = template.getDefaultRequirements(me, receiver, customValue);
         boolean canOverride = Roles.ECON.has(selfMember);
-        for (Grant.Requirement requirement : grant.getRequirements()) {
+        for (Grant.Requirement requirement : requirements) {
             if (!requirement.apply(receiver.asNation())) {
                 failedRequirements.add(requirement);
                 if (!requirement.canOverride()) continue;
@@ -584,8 +583,8 @@ public class GrantCommands {
             }
         }
 
-        for(int i = 0; i < cost.length; i ++) {
-            if(cost[i] < 0)
+        for (int i = 0; i < cost.length; i++) {
+            if (cost[i] < 0)
                 cost[i] = 0;
         }
 
@@ -615,8 +614,6 @@ public class GrantCommands {
             return null;
         }
 
-        // TODO add handling of tax bracket account
-
         // todo send (Ensure grant sending is atomic)
         // Adds the template send record to the database
         // Transfers the resources
@@ -624,11 +621,53 @@ public class GrantCommands {
         // Pings the receiver
         //grabs offshore
         OffshoreInstance offshore = db.getOffshore();
-        // TODO handle tax bracket account deducation
-        Map.Entry<OffshoreInstance.TransferStatus, String> status = offshore.transferFromAllianceDeposits(me, db, f -> f == me.getAlliance_id(), receiver, cost, note);
+//        Map.Entry<OffshoreInstance.TransferStatus, String> status = offshore.transferFromAllianceDeposits(me, db, f -> f == me.getAlliance_id(), receiver, cost, note);
+        // public Map.Entry<TransferStatus, String> transferFromNationAccountWithRoleChecks(Supplier<Map<Long, AccessType>> allowedIdsGet,
+        // User banker,
+        // DBNation nationAccount,
+        // DBAlliance allianceAccount,
+        // TaxBracket taxAccount,
+        // GuildDB senderDB,
+        // Long senderChannel, NationOrAlliance receiver, double[] amount, DepositType.DepositTypeInfo depositType, Long expire, UUID grantToken, boolean convertCash, boolean requireConfirmation, boolean bypassChecks) throws IOException {
+
+        Map<Long, AccessType> accessType = new HashMap<>();
+        for (Long id : Roles.MEMBER.getAllowedAccounts(selfMember.getUser(), db)) {
+            accessType.put(id, AccessType.ECON);
+        }
+        TaxBracket taxAccount = template.getTaxAccount(db, receiver);
+        accessType.put(db.getIdLong(), AccessType.ECON);
+        if (template.getFromBracket() > 0) {
+            if (db.isAllianceId(receiver.getAlliance_id())) {
+                accessType.put((long) receiver.getAlliance_id(), AccessType.ECON);
+            }
+        }
+
+        ResourceType.ResourcesBuilder receivedBuilder = ResourceType.builder();
+        GrantTemplateManager.GrantSendRecord record = null;
+
+        long minDate = Long.MAX_VALUE;
+
+        double[] amount = record.amount;
+
+        Map.Entry<OffshoreInstance.TransferStatus, String> status = offshore.transferFromNationAccountWithRoleChecks(
+                () -> accessType,
+                selfMember.getUser(),
+                null,
+                null,
+                taxAccount,
+                db,
+                null,
+                receiver,
+                cost,
+                note,
+                null,
+                null,
+                false,
+                false,
+                false);
 
         //in the case an unknown error occurs while sending the grant
-        if(status.getKey() == OffshoreInstance.TransferStatus.OTHER) {
+        if (status.getKey() == OffshoreInstance.TransferStatus.OTHER) {
             Set<Integer> blacklist = GuildKey.GRANT_TEMPLATE_BLACKLIST.get(db);
             if (blacklist == null) blacklist = new HashSet<>();
             blacklist.add(receiver.getId());
@@ -642,8 +681,8 @@ public class GrantCommands {
 
 
         //saves grant record into the database
-        if(status.getKey() == OffshoreInstance.TransferStatus.SUCCESS){
-            GrantTemplateManager.GrantSendRecord record  = new GrantTemplateManager.GrantSendRecord(template.getName(), me.getId(), receiver.getId(), template.getType(), cost, System.currentTimeMillis());
+        if (status.getKey() == OffshoreInstance.TransferStatus.SUCCESS) {
+            GrantTemplateManager.GrantSendRecord record = new GrantTemplateManager.GrantSendRecord(template.getName(), me.getId(), receiver.getId(), template.getType(), cost, System.currentTimeMillis());
             db.getGrantTemplateManager().saveGrantRecord(record);
         }
 
@@ -651,7 +690,7 @@ public class GrantCommands {
         StringBuilder grantMessage = new StringBuilder();
 
         //checks if receiver is null, if not then ping them
-        if(receiver.getUser() != null)
+        if (receiver.getUser() != null)
             grantMessage.append(receiver.getUser().getAsMention());
 
         //build a string consisting of the template name, status, and instructions
