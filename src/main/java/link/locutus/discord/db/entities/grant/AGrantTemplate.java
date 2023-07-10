@@ -9,12 +9,15 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -520,5 +523,15 @@ public abstract class AGrantTemplate<T> {
         grant.setInstructions(getInstructions(sender, receiver, customValue));
 
         return grant;
+    }
+
+    public TaxBracket getTaxAccount(GuildDB db, DBNation receiver) {
+        if (useReceiverBracket || fromBracket == receiver.getTax_id()) {
+            return receiver.getTaxBracket();
+        }
+        if (this.fromBracket > 0) {
+            return PWBindings.bracket(db, "#tax_id=" + fromBracket);
+        }
+        return null;
     }
 }

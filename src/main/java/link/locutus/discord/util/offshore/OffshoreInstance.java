@@ -31,6 +31,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.web.jooby.BankRequestHandler;
 import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.entities.Member;
@@ -63,6 +64,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class OffshoreInstance {
@@ -463,6 +465,16 @@ public class OffshoreInstance {
     }
 
     public Map.Entry<TransferStatus, String> transferFromNationAccountWithRoleChecks(User banker, DBNation nationAccount, DBAlliance allianceAccount, TaxBracket taxAccount, GuildDB senderDB, Long senderChannel, NationOrAlliance receiver, double[] amount, DepositType.DepositTypeInfo depositType, Long expire, UUID grantToken, boolean convertCash, boolean requireConfirmation, boolean bypassChecks) throws IOException {
+        Supplier<Map<Long, AccessType>> allowedIdsGet = ArrayUtil.memorize(new Supplier<Map<Long, AccessType>>() {
+            @Override
+            public Map<Long, AccessType> get() {
+               return senderDB.getAllowedBankAccountsOrThrow(banker, receiver, senderChannel);
+            }
+        });
+        return transferFromNationAccountWithRoleChecks(allowedIdsGet, banker, nationAccount, allianceAccount, taxAccount, senderDB, senderChannel, receiver, amount, depositType, expire, grantToken, convertCash, requireConfirmation, bypassChecks);
+    }
+
+    public Map.Entry<TransferStatus, String> transferFromNationAccountWithRoleChecks(Supplier<Map<Long, AccessType>> allowedIdsGet, User banker, DBNation nationAccount, DBAlliance allianceAccount, TaxBracket taxAccount, GuildDB senderDB, Long senderChannel, NationOrAlliance receiver, double[] amount, DepositType.DepositTypeInfo depositType, Long expire, UUID grantToken, boolean convertCash, boolean requireConfirmation, boolean bypassChecks) throws IOException {
         if (!TimeUtil.checkTurnChange()) return Map.entry(TransferStatus.TURN_CHANGE, "You cannot transfer close to turn change");
 
         if (nationAccount != null) nationAccount = new DBNation(nationAccount); // Copy to avoid external mutation
@@ -534,7 +546,7 @@ public class OffshoreInstance {
 
         Map<Long, AccessType> allowedIds;
         try {
-            allowedIds = senderDB.getAllowedBankAccountsOrThrow(banker, receiver, senderChannel);
+            allowedIds = allowedIdsGet.get();
         } catch (IllegalArgumentException e) {
             return Map.entry(TransferStatus.AUTHORIZATION, e.getMessage());
         }
