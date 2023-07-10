@@ -41,7 +41,7 @@ public abstract class AGrantTemplate<T> {
     private int maxGranterDay;
     private long dateCreated;
 
-    public AGrantTemplate(GuildDB db, boolean enabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal) {
+    public AGrantTemplate(GuildDB db, boolean enabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated) {
         this.db = db;
         this.enabled = enabled;
         this.name = name;
@@ -54,6 +54,7 @@ public abstract class AGrantTemplate<T> {
         this.maxDay = maxDay;
         this.maxGranterDay = maxGranterDay;
         this.maxGranterTotal = maxGranterTotal;
+        this.dateCreated = dateCreated;
     }
 
     public boolean isEnabled() {
@@ -415,6 +416,7 @@ public abstract class AGrantTemplate<T> {
         list.add("max_day");
         list.add("max_granter_day");
         list.add("max_granter_total");
+        list.add("date_created");
         return list;
     }
 
@@ -449,6 +451,11 @@ public abstract class AGrantTemplate<T> {
         stmt.setInt(9, this.getMaxDay());
         stmt.setInt(10, this.getMaxGranterDay());
         stmt.setInt(11, this.getMaxGranterTotal());
+        stmt.setLong(12, this.getDateCreated());
+    }
+
+    public long getDateCreated() {
+        return dateCreated;
     }
 
     public abstract double[] getCost(DBNation sender, DBNation receiver, T parsed);

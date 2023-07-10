@@ -77,6 +77,7 @@ public class GrantTemplateManager {
     public void createTables() {
         String projects = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_PROJECT` " +
                 "(`enabled` INTEGER NOT NULL, " +
+                "`date_created` BIGINT NOT NULL PRIMARY KEY, " +
                 "`name` VARCHAR NOT NULL PRIMARY KEY, " +
                 "`project` BIGINT NOT NULL, " +
                 "`nation_filter` VARCHAR NOT NULL, " +
@@ -92,6 +93,7 @@ public class GrantTemplateManager {
                 "(`enabled` INTEGER NOT NULL, " +
                 "`min_city` INT NOT NULL, " +
                 "`max_city` INT NOT NULL, " +
+                "`date_created` BIGINT NOT NULL PRIMARY KEY, " +
                 "`name` VARCHAR NOT NULL PRIMARY KEY, " +
                 "`nation_filter` VARCHAR NOT NULL, " +
                 "`econ_role` BIGINT NOT NULL, " +
@@ -105,6 +107,7 @@ public class GrantTemplateManager {
         String warchest = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_WARCHEST` " +
                 "(`enabled` INTEGER NOT NULL, " +
                 "`allowance_per_city` BLOB NOT NULL, " +
+                "`date_created` BIGINT NOT NULL PRIMARY KEY, " +
                 "`name` VARCHAR NOT NULL PRIMARY KEY, " +
                 "`nation_filter` VARCHAR NOT NULL, " +
                 "`track_days` BIGINT NOT NULL, " +
@@ -124,6 +127,7 @@ public class GrantTemplateManager {
                 "`track_days` BOOLEAN NOT NULL, " +
                 "`require_n_offensives` BIGINT NOT NULL, " +
                 "`allow_rebuild` BOOLEAN NOT NULL, " +
+                "`date_created` BIGINT NOT NULL PRIMARY KEY, " +
                 "`name` VARCHAR NOT NULL PRIMARY KEY, " +
                 "`nation_filter` VARCHAR NOT NULL, " +
                 "`econ_role` BIGINT NOT NULL, " +
@@ -137,6 +141,7 @@ public class GrantTemplateManager {
                 "(`enabled` INTEGER NOT NULL, " +
                 "`level` BIGINT NOT NULL, " +
                 "`only_new_cities` BOOLEAN NOT NULL, " +
+                "`date_created` BIGINT NOT NULL PRIMARY KEY, " +
                 "`name` VARCHAR NOT NULL PRIMARY KEY, " +
                 "`nation_filter` VARCHAR NOT NULL, " +
                 "`econ_role` BIGINT NOT NULL, " +
@@ -155,6 +160,7 @@ public class GrantTemplateManager {
                 "`allow_switch_after_offensive` BOOLEAN NOT NULL, " +
                 "`allow_switch_after_infra` BOOLEAN NOT NULL, " +
                 "`allow_switch_after_land_or_project` BOOLEAN NOT NULL, " +
+                "`date_created` BIGINT NOT NULL PRIMARY KEY, " +
                 "`name` VARCHAR NOT NULL PRIMARY KEY, " +
                 "`nation_filter` VARCHAR NOT NULL, " +
                 "`econ_role` BIGINT NOT NULL, " +
@@ -168,6 +174,7 @@ public class GrantTemplateManager {
                 "(`enabled` INTEGER NOT NULL, " +
                 "`days` BIGINT NOT NULL, " +
                 "`overdraw_percent_cents` BIGINT NOT NULL, " +
+                "`date_created` BIGINT NOT NULL PRIMARY KEY, " +
                 "`name` VARCHAR NOT NULL PRIMARY KEY, " +
                 "`nation_filter` VARCHAR NOT NULL, " +
                 "`econ_role` BIGINT NOT NULL, " +

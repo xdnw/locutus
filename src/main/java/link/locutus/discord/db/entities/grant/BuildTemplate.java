@@ -38,7 +38,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     private final boolean allow_switch_after_land_or_project;
 
     public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
-        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getBytes("build"), rs.getBoolean("only_new_cities"),
+        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), rs.getBytes("build"), rs.getBoolean("only_new_cities"),
                 rs.getInt("mmr"),
                 rs.getLong("allow_switch_after_days"),
                 rs.getBoolean("allow_switch_after_offensive"),
@@ -48,13 +48,13 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     }
 
     // create new constructor  with typed parameters instead of resultset
-    public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, byte[] build, boolean onlyNewCities, int mmr,
+    public BuildTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, byte[] build, boolean onlyNewCities, int mmr,
                          long allow_switch_after_days,
                          boolean allow_switch_after_offensive,
                          boolean allow_switch_after_infra,
                          boolean allow_switch_after_land_or_project
     ) {
-        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal);
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated);
         this.build = build;
         this.onlyNewCities = onlyNewCities;
         this.mmr = mmr <= 0 ? null : MMRInt.fromString(String.format("%04d", mmr));
@@ -90,22 +90,24 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     public List<String> getQueryFields() {
         List<String> list = getQueryFieldsBase();
         list.add("build");
-        list.add("use_optimal");
+        list.add("only_new_cities");
         list.add("mmr");
-        list.add("track_days");
+        list.add("allow_switch_after_days");
         list.add("allow_switch_after_offensive");
+        list.add("allow_switch_after_infra");
+        list.add("allow_switch_after_land_or_project");
         return list;
     }
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setBytes(12, build);
-        stmt.setBoolean(13, onlyNewCities);
-        stmt.setLong(14, mmr.toNumber());
-        stmt.setLong(15, allow_switch_after_days);
-        stmt.setBoolean(16, allow_switch_after_offensive);
-        stmt.setBoolean(16, allow_switch_after_infra);
-        stmt.setBoolean(17, allow_switch_after_land_or_project);
+        stmt.setBytes(13, build);
+        stmt.setBoolean(14, onlyNewCities);
+        stmt.setLong(15, mmr.toNumber());
+        stmt.setLong(16, allow_switch_after_days);
+        stmt.setBoolean(17, allow_switch_after_offensive);
+        stmt.setBoolean(18, allow_switch_after_infra);
+        stmt.setBoolean(19, allow_switch_after_land_or_project);
     }
 
     @Override
