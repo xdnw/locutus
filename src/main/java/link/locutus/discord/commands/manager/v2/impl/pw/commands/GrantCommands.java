@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
@@ -107,9 +108,15 @@ public class GrantCommands {
 
     @Command(desc = "Full information about a grant template")
     @RolePermission(Roles.MEMBER)
-    public void templateInfo(@Me GuildDB db, @Me Guild guild, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io, AGrantTemplate template, @Default DBNation receiver, @Default String value) {
+    public String templateInfo(@Me GuildDB db, @Me JSONObject command, @Me Guild guild, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io, AGrantTemplate template, @Default DBNation receiver, @Default String value, @Switch("e") boolean showEdit) {
         if (receiver == null) receiver = me;
-        io.create().embed(template.getName(), template.toFullString(me, receiver, value)).send();
+        if (showEdit) {
+            return "### Edit Command\n`" + template.getCommandString() + "`";
+        }
+        JSONObject editJson = command.put("showEdit", "true");
+        io.create().embed(template.getName(), template.toFullString(me, receiver, value))
+                .commandButton(editJson, "Edit").send();
+        return null;
     }
 
     // grant_template Delete
@@ -173,9 +180,6 @@ public class GrantCommands {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
-        if (!manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).isEmpty()) {
-            throw new IllegalArgumentException("A template with that name already exists. See: " + CM.grant_template.delete.cmd.toSlashMention());
-        }
         if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
         if (econRole == null) econRole = Roles.ECON.toRole(db);
         if (econRole == null) {
@@ -189,10 +193,20 @@ public class GrantCommands {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
         ProjectTemplate template = new ProjectTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), project);
-
+        AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
+        if (existing != null && existing.getType() != template.getType()) {
+            throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
+        }
         // confirmation
         if (!force) {
-            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null, null), command).send();
+            String body = template.toFullString(me, null, null);
+            if (existing != null) {
+                body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
+                        "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
+                        "\n\n" + body;
+            }
+            String prefix = existing != null ? "Overwrite " : "Create ";
+            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send();
             return null;
         }
         manager.saveTemplate(template);
@@ -235,9 +249,6 @@ public class GrantCommands {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
-        if (!manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).isEmpty()) {
-            throw new IllegalArgumentException("A template with that name already exists. See: " + CM.grant_template.delete.cmd.toSlashMention());
-        }
         if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
         if (econRole == null) econRole = Roles.ECON.toRole(db);
         if (econRole == null) {
@@ -254,10 +265,20 @@ public class GrantCommands {
 
         BuildTemplate template = new BuildTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), buildBytes, only_new_cities, mmr.toNumber(),
                 allow_after_days, allow_after_offensive, allow_after_infra, allow_after_land_or_project, allow_all);
-
+        AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
+        if (existing != null && existing.getType() != template.getType()) {
+            throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
+        }
         // confirmation
         if (!force) {
-            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null, null), command).send();
+            String body = template.toFullString(me, null, null);
+            if (existing != null) {
+                body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
+                        "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
+                        "\n\n" + body;
+            }
+            String prefix = existing != null ? "Overwrite " : "Create ";
+            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send();
             return null;
         }
         manager.saveTemplate(template);
@@ -293,9 +314,6 @@ public class GrantCommands {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
-        if (!manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).isEmpty()) {
-            throw new IllegalArgumentException("A template with that name already exists. See: " + CM.grant_template.delete.cmd.toSlashMention());
-        }
         if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
         if (econRole == null) econRole = Roles.ECON.toRole(db);
         if (econRole == null) {
@@ -310,10 +328,20 @@ public class GrantCommands {
         }
 
         CityTemplate template = new CityTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), minCity == null ? 0 : minCity, maxCity == null ? 0 : maxCity);
-
+        AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
+        if (existing != null && existing.getType() != template.getType()) {
+            throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
+        }
         // confirmation
         if (!force) {
-            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null, null), command).send();
+            String body = template.toFullString(me, null, null);
+            if (existing != null) {
+                body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
+                        "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
+                        "\n\n" + body;
+            }
+            String prefix = existing != null ? "Overwrite " : "Create ";
+            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send();
             return null;
         }
         manager.saveTemplate(template);
@@ -353,9 +381,6 @@ public class GrantCommands {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
-        if (!manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).isEmpty()) {
-            throw new IllegalArgumentException("A template with that name already exists. See: " + CM.grant_template.delete.cmd.toSlashMention());
-        }
         if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
         if (econRole == null) econRole = Roles.ECON.toRole(db);
         if (econRole == null) {
@@ -386,10 +411,20 @@ public class GrantCommands {
                 onlyNewCities,
                 requireNOffensives == null ? 0 : requireNOffensives,
                 allowRebuild);
-
+        AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
+        if (existing != null && existing.getType() != template.getType()) {
+            throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
+        }
         // confirmation
         if (!force) {
-            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null, null), command).send();
+            String body = template.toFullString(me, null, null);
+            if (existing != null) {
+                body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
+                        "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
+                        "\n\n" + body;
+            }
+            String prefix = existing != null ? "Overwrite " : "Create ";
+            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send();
             return null;
         }
         manager.saveTemplate(template);
@@ -427,9 +462,6 @@ public class GrantCommands {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
-        if (!manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).isEmpty()) {
-            throw new IllegalArgumentException("A template with that name already exists. See: " + CM.grant_template.delete.cmd.toSlashMention());
-        }
         if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
         if (econRole == null) econRole = Roles.ECON.toRole(db);
         if (econRole == null) {
@@ -444,10 +476,20 @@ public class GrantCommands {
         }
 
         LandTemplate template = new LandTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), level == null ? 0 : level, onlyNewCities);
-
+        AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
+        if (existing != null && existing.getType() != template.getType()) {
+            throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
+        }
         // confirmation
         if (!force) {
-            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null, null), command).send();
+            String body = template.toFullString(me, null, null);
+            if (existing != null) {
+                body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
+                        "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
+                        "\n\n" + body;
+            }
+            String prefix = existing != null ? "Overwrite " : "Create ";
+            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send();
             return null;
         }
         manager.saveTemplate(template);
@@ -486,9 +528,6 @@ public class GrantCommands {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
-        if (!manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).isEmpty()) {
-            throw new IllegalArgumentException("A template with that name already exists. See: " + CM.grant_template.delete.cmd.toSlashMention());
-        }
         if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
         if (econRole == null) econRole = Roles.ECON.toRole(db);
         if (econRole == null) {
@@ -503,10 +542,20 @@ public class GrantCommands {
         }
 
         RawsTemplate template = new RawsTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), days, overdrawPercent);
-
+        AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
+        if (existing != null && existing.getType() != template.getType()) {
+            throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
+        }
         // confirmation
         if (!force) {
-            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null, null), command).send();
+            String body = template.toFullString(me, null, null);
+            if (existing != null) {
+                body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
+                        "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
+                        "\n\n" + body;
+            }
+            String prefix = existing != null ? "Overwrite " : "Create ";
+            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send();
             return null;
         }
         manager.saveTemplate(template);
@@ -544,9 +593,6 @@ public class GrantCommands {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
-        if (!manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).isEmpty()) {
-            throw new IllegalArgumentException("A template with that name already exists. See: " + CM.grant_template.delete.cmd.toSlashMention());
-        }
         if (econRole == null) econRole = Roles.ECON_STAFF.toRole(db);
         if (econRole == null) econRole = Roles.ECON.toRole(db);
         if (econRole == null) {
@@ -563,10 +609,25 @@ public class GrantCommands {
         double[] allowancePerCityArr = allowancePerCity == null ? null : PnwUtil.resourcesToArray(allowancePerCity);
         WarchestTemplate template = new WarchestTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), allowancePerCityArr, trackDays, subtractExpenditure, overdrawPercentCents);
 
+        AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
+        if (existing != null && existing.getType() != template.getType()) {
+            throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
+        }
+
         // confirmation
         if (!force) {
-            io.create().confirmation("Create template: " + template.getName(), template.toFullString(me, null, null), command).send();
+            String body = template.toFullString(me, null, null);
+            if (existing != null) {
+                body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
+                        "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
+                        "\n\n" + body;
+            }
+            String prefix = existing != null ? "Overwrite " : "Create ";
+            io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send();
             return null;
+        }
+        if (existing != null) {
+            manager.deleteTemplate(existing);
         }
         manager.saveTemplate(template);
         return "The template: `" + template.getName() + "` has been created. See:\n" +
