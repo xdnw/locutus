@@ -189,6 +189,19 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     }
 
     @Override
+    public Double parse(DBNation receiver, String value) {
+        Double result = super.parse(receiver, value);
+        if (result == null) result = (double) level;
+        if (result > level) {
+            throw new IllegalArgumentException("Amount cannot be greater than the template level `" + result + ">" + level + "`");
+        }
+        if (result <= 10) {
+            throw new IllegalArgumentException("Amount cannot be less than 10");
+        }
+        return result;
+    }
+
+    @Override
     public double[] getCost(DBNation sender, DBNation receiver, Double parsed) {
 
         long latestAttackDate = getLatestAttackDate(receiver, require_n_offensives);

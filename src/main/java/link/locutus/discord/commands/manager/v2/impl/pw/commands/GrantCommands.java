@@ -613,7 +613,7 @@ public class GrantCommands {
         for (Grant.Requirement requirement : requirements) {
             if (!requirement.apply(receiver.asNation())) {
                 failedRequirements.add(requirement);
-                if (!requirement.canOverride()) continue;
+                if (requirement.canOverride() && canOverride) continue;
                 else {
                     return "Failed requirement: " + requirement.getMessage();
                 }
@@ -651,21 +651,7 @@ public class GrantCommands {
             return null;
         }
 
-        // todo send (Ensure grant sending is atomic)
-        // Adds the template send record to the database
-        // Transfers the resources
-        // Prints the grant instructions
-        // Pings the receiver
-        //grabs offshore
         OffshoreInstance offshore = db.getOffshore();
-//        Map.Entry<OffshoreInstance.TransferStatus, String> status = offshore.transferFromAllianceDeposits(me, db, f -> f == me.getAlliance_id(), receiver, cost, note);
-        // public Map.Entry<TransferStatus, String> transferFromNationAccountWithRoleChecks(Supplier<Map<Long, AccessType>> allowedIdsGet,
-        // User banker,
-        // DBNation nationAccount,
-        // DBAlliance allianceAccount,
-        // TaxBracket taxAccount,
-        // GuildDB senderDB,
-        // Long senderChannel, NationOrAlliance receiver, double[] amount, DepositType.DepositTypeInfo depositType, Long expire, UUID grantToken, boolean convertCash, boolean requireConfirmation, boolean bypassChecks) throws IOException {
 
         Map<Long, AccessType> accessType = new HashMap<>();
         for (Long id : Roles.MEMBER.getAllowedAccounts(selfMember.getUser(), db)) {
@@ -679,43 +665,50 @@ public class GrantCommands {
             }
         }
 
-        ResourceType.ResourcesBuilder receivedBuilder = ResourceType.builder();
+        Map.Entry<OffshoreInstance.TransferStatus, String> status;
+        synchronized (OffshoreInstance.BANK_LOCK) {
+            for (Grant.Requirement requirement : requirements) {
+                if (requirement.canOverride()) continue;
+                if (!requirement.apply(receiver.asNation())) {
+                    return "Failed requirement (2): " + requirement.getMessage();
+                }
+            }
+            status = offshore.transferFromNationAccountWithRoleChecks(
+                    () -> accessType,
+                    selfMember.getUser(),
+                    null,
+                    null,
+                    taxAccount,
+                    db,
+                    null,
+                    receiver,
+                    cost,
+                    note,
+                    null,
+                    null,
+                    false,
+                    false,
+                    false);
 
-        Map.Entry<OffshoreInstance.TransferStatus, String> status = offshore.transferFromNationAccountWithRoleChecks(
-                () -> accessType,
-                selfMember.getUser(),
-                null,
-                null,
-                taxAccount,
-                db,
-                null,
-                receiver,
-                cost,
-                note,
-                null,
-                null,
-                false,
-                false,
-                false);
+            //in the case an unknown error occurs while sending the grant
+            if (status.getKey() == OffshoreInstance.TransferStatus.OTHER) {
+                Set<Integer> blacklist = GuildKey.GRANT_TEMPLATE_BLACKLIST.get(db);
+                if (blacklist == null) blacklist = new HashSet<>();
+                blacklist.add(receiver.getId());
+                GuildKey.GRANT_TEMPLATE_BLACKLIST.set(db, blacklist);
 
-        //in the case an unknown error occurs while sending the grant
-        if (status.getKey() == OffshoreInstance.TransferStatus.OTHER) {
-            Set<Integer> blacklist = GuildKey.GRANT_TEMPLATE_BLACKLIST.get(db);
-            if (blacklist == null) blacklist = new HashSet<>();
-            blacklist.add(receiver.getId());
-            GuildKey.GRANT_TEMPLATE_BLACKLIST.set(db, blacklist);
+                Role role = Roles.ECON.toRole(db);
+                String econGovMention = role == null ? "" : role.getAsMention();
 
-            Role role = Roles.ECON.toRole(db);
-            String econGovMention = role == null ? "" : role.getAsMention();
-
-            throw new IllegalArgumentException(status.getValue() + econGovMention);
-        }
+                throw new IllegalArgumentException(status.getValue() + econGovMention);
+            }
 
 
-        //saves grant record into the database
-        if (status.getKey() == OffshoreInstance.TransferStatus.SUCCESS) {
-            GrantTemplateManager.GrantSendRecord record = new GrantTemplateManager.GrantSendRecord(template.getName(), me.getId(), receiver.getId(), template.getType(), cost, System.currentTimeMillis());
-            db.getGrantTemplateManager().saveGrantRecord(record);
+            //saves grant record into the database
+            if (status.getKey() == OffshoreInstance.TransferStatus.SUCCESS) {
+                GrantTemplateManager.GrantSendRecord record = new GrantTemplateManager.GrantSendRecord(template.getName(), me.getId(), receiver.getId(), template.getType(), cost, System.currentTimeMillis());
+                db.getGrantTemplateManager().saveGrantRecord(record);
+            }
         }
 
         // setup String Builder

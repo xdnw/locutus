@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import org.jooq.meta.derby.sys.Sys;
@@ -97,13 +98,19 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
         Map<ResourceType, Double> stockpile = receiver.getStockpile();
         Map<ResourceType, Double> needed = receiver.getResourcesNeeded(stockpile, parsed, false);
 
-        //TODO also check transactions
+        for (Transaction2 record : receiver.getTransactions()) {
+            if(record.tx_datetime > cutoff && record.note != null && record.sender_id == receiver.getId()) {
+                Map<String, String> notes = PnwUtil.parseTransferHashNotes(record.note);
+                if (notes.containsKey("#raws") || notes.containsKey("#tax")) {
+                    minDate = Math.min(record.tx_datetime, minDate);
+                    receivedBuilder.add(record.resources);
+                }
+            }
+        }
         for (GrantTemplateManager.GrantSendRecord record : getDb().getGrantTemplateManager().getRecordsByReceiver(receiver.getId())) {
             if (record.grant_type == TemplateTypes.RAWS) {
                 if(record.date > cutoff) {
-
                     minDate = Math.min(record.date, minDate);
-
                     receivedBuilder.add(record.amount);
                 }
             }
@@ -124,6 +131,19 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
         }
 
         return PnwUtil.resourcesToArray(needed);
+    }
+
+    @Override
+    public Integer parse(DBNation receiver, String value) {
+        Integer result = super.parse(receiver, value);
+        if (result == null) result = Math.toIntExact(days);
+        if (result > days) {
+            throw new IllegalArgumentException("Amount cannot be greater than the template days `" + result + ">" + days + "`");
+        }
+        if (result < 1) {
+            throw new IllegalArgumentException("Amount cannot be less than 1");
+        }
+        return result;
     }
 
     @Override
