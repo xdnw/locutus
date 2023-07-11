@@ -9,6 +9,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -18,6 +19,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -74,6 +76,20 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
             @Override
             public Boolean apply(DBNation nation) {
                 return nation.getProjectTurns() <= 0;
+            }
+        }));
+        // received project already
+        list.add(new Grant.Requirement("Received project " + project + " already", false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation nation) {
+                String findNote = "#project=" + project.name().toLowerCase();
+                String findNotr2 = "#project=" + project.ordinal();
+                for (Transaction2 transaction : nation.getTransactions()) {
+                    if (transaction.note == null) continue;
+                    String noteLower = transaction.note.toLowerCase();
+                    if (noteLower.contains(findNote) || noteLower.contains(findNotr2)) return false;
+                }
+                return true;
             }
         }));
 
