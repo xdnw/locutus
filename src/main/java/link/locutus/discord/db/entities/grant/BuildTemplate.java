@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBCity;
@@ -84,6 +85,14 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         message.append("Allow All: " + allow_all);
 
         return message.toString();
+    }
+
+    @Override
+    public String getCommandString(String name, String allowedRecipients, String build, String mmr, String only_new_cities, String allow_after_days, String allow_after_offensive, String allow_after_infra, String allow_all, String allow_after_land_or_project, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String force) {
+
+        String sRole = selfRole != null ? getSelfRole().getAsMention() : null;
+
+        return CM.grant_template.create.build.cmd.create(name, allowedRecipients, build, mmr, only_new_cities, allow_after_days, allow_after_offensive, allow_after_infra, allow_all, allow_after_land_or_project, econRole, sRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, null).toString();
     }
 
     @Override
