@@ -33,6 +33,16 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
     }
 
     @Override
+    public String toFullString2(DBNation sender, DBNation receiver,  Integer parsed) {
+
+        StringBuilder message = new StringBuilder();
+        message.append("Days: " + days);
+        message.append("Overdraw Percentage: " + overdrawPercentCents);
+
+        return message.toString();
+    }
+
+    @Override
     public String toListString() {
         return super.toListString() + " | " + days + "d";
     }

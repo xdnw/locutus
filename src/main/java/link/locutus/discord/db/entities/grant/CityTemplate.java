@@ -4,8 +4,10 @@ import com.google.api.client.util.Sets;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -30,6 +32,7 @@ public class CityTemplate extends AGrantTemplate<Integer> {
 
     private final int min_city;
     private final int max_city;
+
     public CityTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
         this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), rs.getInt("min_city"), rs.getInt("max_city"));
     }
@@ -63,6 +66,24 @@ public class CityTemplate extends AGrantTemplate<Integer> {
     public void setValues(PreparedStatement stmt) throws SQLException {
         stmt.setInt(13, min_city);
         stmt.setInt(14, max_city);
+    }
+
+    @Override
+    public String getCommandString(String name, String allowedRecipients, String build, String mmr, String only_new_cities, String allow_after_days, String allow_after_offensive, String allow_after_infra, String allow_all, String allow_after_land_or_project, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String force) {
+
+        String sRole = selfRole != null ? selfRole : null;
+
+        return CM.grant_template.create.city.cmd.create(name, allowedRecipients,  min_city + "", max_city + "", econRole, sRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, null).toString();
+    }
+
+    @Override
+    public String toFullString2(DBNation sender, DBNation receiver,  Integer parsed) {
+
+        StringBuilder message = new StringBuilder();
+        message.append("Min City: " + min_city);
+        message.append("Max City: " + max_city);
+
+        return message.toString();
     }
 
     //add flags to the template database

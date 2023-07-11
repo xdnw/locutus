@@ -4,6 +4,7 @@ import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBCity;
@@ -83,6 +84,28 @@ public class InfraTemplate extends AGrantTemplate<Double>{
         stmt.setLong(16, require_n_offensives);
         stmt.setBoolean(17, allow_rebuild);
         stmt.setBoolean(18, allowGrantDamaged);
+    }
+
+    @Override
+    public String toFullString2(DBNation sender, DBNation receiver,  Double parsed) {
+
+        StringBuilder message = new StringBuilder();
+        message.append("level: " + level);
+        message.append("Only New Cities: " + onlyNewCities);
+        message.append("Track Days: " + track_days);
+        message.append("Require No Offensives: " + require_n_offensives);
+        message.append("Allow Rebuild: " + allow_rebuild);
+        message.append("Allow Grant While Damaged: " + allowGrantDamaged);
+
+        return message.toString();
+    }
+
+    @Override
+    public String getCommandString(String name, String allowedRecipients, String build, String mmr, String only_new_cities, String allow_after_days, String allow_after_offensive, String allow_after_infra, String allow_all, String allow_after_land_or_project, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String force) {
+
+        String sRole = selfRole != null ? selfRole : null;
+
+        return CM.grant_template.create.infra.cmd.create(name, allowedRecipients, level + "", only_new_cities, track_days + "", require_n_offensives + "", allow_rebuild + "", econRole, sRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, null).toString();
     }
 
     @Override
