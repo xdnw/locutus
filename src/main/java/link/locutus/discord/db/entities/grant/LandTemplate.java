@@ -65,6 +65,19 @@ public class LandTemplate extends AGrantTemplate<Double>{
         stmt.setBoolean(14, onlyNewCities);
     }
 
+    @Override
+    public Double parse(DBNation receiver, String value) {
+        Double result = super.parse(receiver, value);
+        if (result == null) result = (double) level;
+        if (result > level) {
+            throw new IllegalArgumentException("Amount cannot be greater than the template level `" + result + ">" + level + "`");
+        }
+        if (result <= 10) {
+            throw new IllegalArgumentException("Amount cannot be less than 10");
+        }
+        return result;
+    }
+
     public Map<Integer, Double> getTopCityLandGrant(DBNation receiver) {
 
         List<Transaction2> transactions = receiver.getTransactions(0);

@@ -17,8 +17,6 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class RawsTemplate extends AGrantTemplate<Integer>{
-    //long days
-    //long overdraw_percent_cents
     private final long days;
     private final long overdrawPercentCents;
     public RawsTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
@@ -48,6 +46,19 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
         list.add("days");
         list.add("overdraw_percent_cents");
         return list;
+    }
+
+    @Override
+    public Integer parse(DBNation receiver, String value) {
+        Integer result = super.parse(receiver, value);
+        if (result == null) result = Math.toIntExact(days);
+        if (result > days) {
+            throw new IllegalArgumentException("Amount cannot be greater than the template days `" + result + ">" + days + "`");
+        }
+        if (result < 1) {
+            throw new IllegalArgumentException("Amount cannot be less than 1");
+        }
+        return result;
     }
 
     @Override

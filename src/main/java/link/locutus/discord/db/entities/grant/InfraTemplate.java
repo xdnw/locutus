@@ -4,6 +4,7 @@ import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBCity;
@@ -44,6 +45,19 @@ public class InfraTemplate extends AGrantTemplate<Double>{
         this.require_n_offensives = require_n_offensives;
         this.allow_rebuild = allow_rebuild;
         this.allowGrantDamaged = allowGrantDamaged;
+    }
+
+    @Override
+    public Double parse(DBNation receiver, String value) {
+        Double result = super.parse(receiver, value);
+        if (result == null) result = (double) level;
+        if (result > level) {
+            throw new IllegalArgumentException("Amount cannot be greater than the template level `" + result + ">" + level + "`");
+        }
+        if (result <= 10) {
+            throw new IllegalArgumentException("Amount cannot be less than 10");
+        }
+        return result;
     }
 
     @Override

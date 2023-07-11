@@ -118,6 +118,14 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
     }
 
     @Override
+    public Void parse(DBNation receiver, String value) {
+        if (value != null && !value.isEmpty()) {
+            throw new UnsupportedOperationException("Project grants do not support any additional arguments");
+        }
+        return null;
+    }
+
+    @Override
     public List<String> getQueryFields() {
         List<String> list = getQueryFieldsBase();
         list.add("project");
