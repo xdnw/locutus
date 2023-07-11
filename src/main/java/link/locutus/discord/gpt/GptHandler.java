@@ -126,19 +126,23 @@ public class GptHandler {
     public int getEmbeddingTokenSize(String text) {
         return embeddingEncoder.encode(text).size();
     }
-    
+
+    public void checkThrowModeration(List<Moderation> moderations, String text) {
+        for (Moderation result : moderations) {
+            if (result.isFlagged()) {
+                String message = "Your submission has been flagged as inappropriate:\n" +
+                        "```json\n" + result.toString() + "\n```\n" +
+                        "The content submitted:\n" +
+                        "```json\n" + text.replaceAll("```", "\\`\\`\\`") + "\n```";
+                throw new IllegalArgumentException(message);
+            }
+        }
+    }
+
     private double[] getEmbeddingApi(String text, boolean checkModeration) {
         if (checkModeration) {
             List<Moderation> modResult = checkModeration(text);
-            for (Moderation result : modResult) {
-                if (result.isFlagged()) {
-                    String message = "Your submission has been flagged as inappropriate:\n" +
-                            "```json\n" + result.toString() + "\n```\n" +
-                            "The content submitted:\n" +
-                            "```json\n" + text.replaceAll("```", "\\`\\`\\`") + "\n```";
-                    throw new IllegalArgumentException(message);
-                }
-            }
+            checkThrowModeration(modResult, text);
         }
         EmbeddingRequest request = EmbeddingRequest.builder()
                 .model("text-embedding-ada-002")

@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.theokanning.openai.moderation.Moderation;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
@@ -13,6 +14,8 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholder
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.gpt.GptHandler;
+import link.locutus.discord.gpt.PWGPTHandler;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
@@ -124,6 +127,14 @@ public class DiscordCommands {
         msg = DiscordUtil.trimContent(msg);
         msg = msg.replace("@", "@\u200B");
         msg = msg.replace("&", "&\u200B");
+
+        PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+        if (gpt != null) {
+            GptHandler handler = gpt.getHandler();
+            List<Moderation> result = handler.checkModeration(msg);
+            handler.checkThrowModeration(result, "<redacted>");
+        }
+
         msg = msg + "\n\n- " + author.getAsMention();
 
         msg = placeholders.format(store, msg);
