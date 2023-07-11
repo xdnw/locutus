@@ -454,12 +454,18 @@ public abstract class AGrantTemplate<T> {
     }
 
     public long getLatestAttackDate(DBNation receiver) {
+        return getLatestAttackDate(receiver, 0);
+    }
+
+    public long getLatestAttackDate(DBNation receiver, int requireNOffensives) {
         List<DBWar> wars = receiver.getWars();
         wars.removeIf(f -> f.attacker_id != receiver.getId());
         // sort wars date desc
         Collections.sort(wars, (o1, o2) -> Long.compare(o2.date, o1.date));
+        int nOffensives = 0;
         outer:
-        for (DBWar war : wars) {
+        for (int offensiveI = requireNOffensives; offensiveI < wars.size(); offensiveI++) {
+            DBWar war = wars.get(offensiveI);
             List<DBAttack> attacks = war.getAttacks();
             // reverse attacks
             Collections.reverse(attacks);

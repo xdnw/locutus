@@ -210,6 +210,7 @@ public class CityTemplate extends AGrantTemplate<Integer> {
 
     @Override
     public String getInstructions(DBNation sender, DBNation receiver, Integer parsed) {
-        return "Go to: https://politicsandwar.com/city/create/\nAnd buy city your next city";
+        return "Go to: https://politicsandwar.com/city/create/\n" +
+                "And buy city your next city";
     }
 }

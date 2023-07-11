@@ -27,15 +27,15 @@ import java.util.function.Function;
 public class InfraTemplate extends AGrantTemplate<Double>{
     private final long level;
     private final boolean onlyNewCities;
-    private final long require_n_offensives;
+    private final int require_n_offensives;
     private final boolean allow_rebuild;
 
     public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
-        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), rs.getLong("level"), rs.getBoolean("only_new_cities"), rs.getLong("require_n_offensives"), rs.getBoolean("allow_rebuild"));
+        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), rs.getLong("level"), rs.getBoolean("only_new_cities"), rs.getInt("require_n_offensives"), rs.getBoolean("allow_rebuild"));
     }
 
     // create new constructor  with typed parameters instead of resultset
-    public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long level, boolean onlyNewCities, long require_n_offensives, boolean allow_rebuild) {
+    public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long level, boolean onlyNewCities, int require_n_offensives, boolean allow_rebuild) {
         super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated);
         this.level = level;
         this.onlyNewCities = onlyNewCities;
@@ -191,7 +191,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     @Override
     public double[] getCost(DBNation sender, DBNation receiver, Double parsed) {
 
-        long latestAttackDate = getLatestAttackDate(receiver);
+        long latestAttackDate = getLatestAttackDate(receiver, require_n_offensives);
         long cutoff = onlyNewCities ? TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119) : 0;
         Map<Integer, Map<Long, Double>> topCity = getTopCityInfraGrant(receiver);
         long cost = 0;
