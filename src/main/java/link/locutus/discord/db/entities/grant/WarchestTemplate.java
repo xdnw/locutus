@@ -34,7 +34,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
     }
 
     @Override
-    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String force) {
+    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal) {
         return CM.grant_template.create.warchest.cmd.create(name,
                 allowedRecipients,
                 allowancePerCity == null ? null : PnwUtil.resourcesToString(allowancePerCity),

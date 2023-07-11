@@ -88,8 +88,17 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     }
 
     @Override
-    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String force) {
-        return CM.grant_template.create.build.cmd.create(name, allowedRecipients, build, mmr, only_new_cities, allow_after_days, allow_after_offensive, allow_after_infra, allow_all, allow_after_land_or_project, econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, null).toString();
+    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal) {
+        return CM.grant_template.create.build.cmd.create(name, allowedRecipients,
+                build != null ? JavaCity.fromBytes(build).toJson() : null,
+                String.format("%04d", mmr),
+                onlyNewCities ? "true" : null,
+                allow_switch_after_days >0 ? allow_switch_after_days + "" : null,
+                allow_switch_after_offensive ? "true" : null,
+                allow_switch_after_infra ? "true" : null,
+                allow_all ? "true" : null,
+                allow_switch_after_land_or_project ? "true" : null,
+                econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, null).toString();
     }
 
     @Override

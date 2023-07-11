@@ -77,11 +77,9 @@ public class LandTemplate extends AGrantTemplate<Double>{
     }
 
     @Override
-    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String force) {
-
-        String sRole = selfRole != null ? getSelfRole().getAsMention() : null;
-
-        return CM.grant_template.create.land.cmd.create(name, allowedRecipients, level + "", only_new_cities, econRole, sRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, null).toString();
+    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal) {
+        return CM.grant_template.create.land.cmd.create(name, allowedRecipients, level + "",
+                onlyNewCities ? "true" : null, econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, null).toString();
     }
 
     public Map<Integer, Double> getTopCityLandGrant(DBNation receiver) {
