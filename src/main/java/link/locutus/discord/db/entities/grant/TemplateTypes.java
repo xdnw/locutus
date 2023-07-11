@@ -2,6 +2,7 @@ package link.locutus.discord.db.entities.grant;
 
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationFilterString;
@@ -13,13 +14,48 @@ import java.sql.SQLException;
 import java.util.Map;
 
 public enum TemplateTypes {
-    CITY(DepositType.CITY, CityTemplate.class),
-    PROJECT(DepositType.PROJECT, ProjectTemplate.class),
-    INFRA(DepositType.INFRA, InfraTemplate.class),
-    LAND(DepositType.LAND, LandTemplate.class),
-    BUILD(DepositType.BUILD, BuildTemplate.class),
-    WARCHEST(DepositType.WARCHEST, WarchestTemplate.class),
-    RAWS(DepositType.RAWS, RawsTemplate.class),
+    CITY(DepositType.CITY, CityTemplate.class) {
+        @Override
+        public CommandRef getCommandMention() {
+            return CM.grant_template.create.city.cmd;
+        }
+    },
+    PROJECT(DepositType.PROJECT, ProjectTemplate.class) {
+        @Override
+        public CommandRef getCommandMention() {
+            return CM.grant_template.create.project.cmd;
+        }
+    },
+    INFRA(DepositType.INFRA, InfraTemplate.class) {
+        @Override
+        public CommandRef getCommandMention() {
+            return CM.grant_template.create.infra.cmd;
+        }
+    },
+    LAND(DepositType.LAND, LandTemplate.class) {
+        @Override
+        public CommandRef getCommandMention() {
+            return CM.grant_template.create.land.cmd;
+        }
+    },
+    BUILD(DepositType.BUILD, BuildTemplate.class) {
+        @Override
+        public CommandRef getCommandMention() {
+            return CM.grant_template.create.build.cmd;
+        }
+    },
+    WARCHEST(DepositType.WARCHEST, WarchestTemplate.class) {
+        @Override
+        public CommandRef getCommandMention() {
+            return CM.grant_template.create.warchest.cmd;
+        }
+    },
+    RAWS(DepositType.RAWS, RawsTemplate.class) {
+        @Override
+        public CommandRef getCommandMention() {
+            return CM.grant_template.create.raws.cmd;
+        }
+    },
 
     ;
 

@@ -68,6 +68,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
         if (overdrawPercentCents > 0) {
             result.append("overdraw percent: " + (overdrawPercentCents / 100d) + "%");
         }
+        return result.toString();
     }
 
     @Override
