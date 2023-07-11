@@ -3,36 +3,29 @@ package link.locutus.discord.gpt;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
-import com.knuddels.jtokkit.api.EncodingType;
 import com.knuddels.jtokkit.api.ModelType;
 import com.theokanning.openai.OpenAiService;
 import com.theokanning.openai.embedding.Embedding;
 import com.theokanning.openai.embedding.EmbeddingRequest;
 import com.theokanning.openai.embedding.EmbeddingResult;
-import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import com.theokanning.openai.moderation.Moderation;
+import com.theokanning.openai.moderation.ModerationRequest;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GptDB;
 import link.locutus.discord.util.FileUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.annotation.Nullable;
-import javax.validation.constraints.Null;
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -54,14 +47,55 @@ public class GptHandler {
         this.chatEncoder = registry.getEncodingForModel(ModelType.GPT_3_5_TURBO);
 
         this.service = new OpenAiService(Settings.INSTANCE.OPENAI_API_KEY, Duration.ofSeconds(50));
+
     }
 
-    public JSONObject checkModeration(String input) throws IOException {
+    public List<Moderation> checkModeration(String input) {
+        return service.createModeration(ModerationRequest.builder().input(input).build()).getResults();
+    }
+
+    public List<ModerationResult> checkModerationList(List<String> inputs) throws IOException {
+        List<ModerationResult> results = new ArrayList<>();
+        JSONObject response = checkModeration(inputs);
+        if (response.has("error")) {
+            ModerationResult errorResult = new ModerationResult();
+            errorResult.setError(true);
+            errorResult.setMessage(response.getString("error"));
+            results.add(errorResult);
+        } else {
+            JSONArray resultsArray = response.getJSONArray("results");
+            for (int i = 0; i < resultsArray.length(); i++) {
+                JSONObject resultObject = resultsArray.getJSONObject(i);
+                ModerationResult result = new ModerationResult();
+                result.setFlagged(resultObject.getBoolean("flagged"));
+                if (result.isFlagged()) {
+                    JSONObject categoriesObject = resultObject.getJSONObject("categories");
+                    Set<String> flaggedCategories = new HashSet<>();
+                    for (String category : categoriesObject.keySet()) {
+                        if (categoriesObject.getBoolean(category)) {
+                            flaggedCategories.add(category);
+                        }
+                    }
+                    result.setFlaggedCategories(flaggedCategories);
+                    JSONObject categoryScoresObject = resultObject.getJSONObject("category_scores");
+                    Map<String, Double> categoryScores = new HashMap<>();
+                    for (String category : categoryScoresObject.keySet()) {
+                        categoryScores.put(category, categoryScoresObject.getDouble(category));
+                    }
+                    result.setScores(categoryScores);
+                }
+                results.add(result);
+            }
+        }
+        return results;
+    }
+
+    public JSONObject checkModeration(List<String> inputs) throws IOException {
         String url = "https://api.openai.com/v1/moderations";
         String apiKey = Settings.INSTANCE.OPENAI_API_KEY;
 
-        Map<String, String> arguments = new HashMap<>();
-        arguments.put("input", input);
+        Map<String, List<String>> arguments = new HashMap<>();
+        arguments.put("input", inputs);
 
         Consumer<HttpURLConnection> apply = connection -> {
             connection.setRequestProperty("Authorization", "Bearer " + apiKey);
@@ -93,7 +127,19 @@ public class GptHandler {
         return embeddingEncoder.encode(text).size();
     }
     
-    private double[] getEmbeddingApi(String text) {
+    private double[] getEmbeddingApi(String text, boolean checkModeration) {
+        if (checkModeration) {
+            List<Moderation> modResult = checkModeration(text);
+            for (Moderation result : modResult) {
+                if (result.isFlagged()) {
+                    String message = "Your submission has been flagged as inappropriate:\n" +
+                            "```json\n" + result.toString() + "\n```\n" +
+                            "The content submitted:\n" +
+                            "```json\n" + text.replaceAll("```", "\\`\\`\\`") + "\n```";
+                    throw new IllegalArgumentException(message);
+                }
+            }
+        }
         EmbeddingRequest request = EmbeddingRequest.builder()
                 .model("text-embedding-ada-002")
                 .input(List.of(text))
@@ -123,7 +169,7 @@ public class GptHandler {
         double[] existing = this.db.getEmbedding(text);
         if (existing == null) {
             System.out.println("Fetch embedding: " + text);
-            existing = getEmbeddingApi(text);
+            existing = getEmbeddingApi(text, type >= 0);
             db.setEmbedding(type, id, text, existing, saveContent);
         }
         return existing;

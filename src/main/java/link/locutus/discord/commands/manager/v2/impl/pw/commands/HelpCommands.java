@@ -16,6 +16,7 @@ import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.CommandEmbedding;
 import link.locutus.discord.gpt.EmbeddingType;
+import link.locutus.discord.gpt.ModerationResult;
 import link.locutus.discord.gpt.PWEmbedding;
 import link.locutus.discord.gpt.PWGPTHandler;
 import link.locutus.discord.gpt.SettingEmbedding;
@@ -46,9 +47,21 @@ public class HelpCommands {
 //    }
 
     @Command
-    public String moderation_check(String input) throws IOException {
-        JSONObject result = getGPT().getHandler().checkModeration(input);
-        return result.toString();
+    public void moderation_check(@Me IMessageIO io, String input) throws IOException {
+        List<String> inputs = List.of(input);
+        List<ModerationResult> results = getGPT().getHandler().checkModerationList(inputs);
+        IMessageBuilder msg = io.create();
+        for (ModerationResult result : results) {
+            msg.append("Flagged: " + result.isFlagged() + "\n");
+            if (result.isFlagged()) {
+                msg.append("Flagged categories: " + result.getFlaggedCategories() + "\n");
+                System.out.println("Category scores: " + result.getScores());
+            }
+            if (result.isError()) {
+                msg.append("Error message: " + result.getMessage() + "\n");
+            }
+        }
+        msg.send();
     }
 
     @Command
