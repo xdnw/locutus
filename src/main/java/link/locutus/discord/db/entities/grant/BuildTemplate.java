@@ -283,6 +283,9 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                 if (lastAttackDate > date && allow_switch_after_offensive) {
                     allowGrant = true;
                 }
+                if (allow_all) {
+                    allowGrant = true;
+                }
             }
             if (allowGrant) {
                 citiesToGrant.add(entry.getKey());
@@ -293,8 +296,6 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
 
     @Override
     public double[] getCost(DBNation sender, DBNation receiver, Map<Integer, CityBuild> builds) {
-        int cities = receiver.getCities();
-
         double[] cost = ResourceType.getBuffer();
         Map<Integer, JavaCity> existing = receiver.getCityMap(true);
         for (Map.Entry<Integer, JavaCity> entry : existing.entrySet()) {
@@ -322,10 +323,18 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     @Override
     public String getInstructions(DBNation sender, DBNation receiver, Map<Integer, CityBuild> parsed) {
         StringBuilder instructions = new StringBuilder();
-        if (onlyNewCities) {
-
-        } else {
+        if (parsed.size() == 1) {
+            int id = parsed.keySet().iterator().next();
+            instructions.append("Go to <https://politicsandwar.com/city/improvements/import/id=" + id + "> and import the build:\n");
+        } else if (parsed.size() == receiver.getCities()) {
             instructions.append("Go to <https://politicsandwar.com/city/improvements/bulk-import/> and import the build:\n");
+        } else {
+            Set<Integer> ids = parsed.keySet();
+            instructions.append("Go to <https://politicsandwar.com/city/improvements/import/id=> with the following city ids:\n");
+            for (int id : ids) {
+                instructions.append("- ").append(id).append("\n");
+            }
+            instructions.append("and import the build:\n");
         }
         instructions.append("```json\n");
         instructions.append(parsed.toString());
