@@ -1171,8 +1171,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="templateCreateRaws")
             public static class raws extends CommandRef {
                 public static final raws cmd = new raws();
-                public raws create(String name, String allowedRecipients, String days, String overdrawPercentCents, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String force) {
-                    return createArgs("name", name, "allowedRecipients", allowedRecipients, "days", days, "overdrawPercentCents", overdrawPercentCents, "econRole", econRole, "selfRole", selfRole, "bracket", bracket, "useReceiverBracket", useReceiverBracket, "maxTotal", maxTotal, "maxDay", maxDay, "maxGranterDay", maxGranterDay, "maxGranterTotal", maxGranterTotal, "force", force);
+                public raws create(String name, String allowedRecipients, String days, String overdrawPercent, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String force) {
+                    return createArgs("name", name, "allowedRecipients", allowedRecipients, "days", days, "overdrawPercent", overdrawPercent, "econRole", econRole, "selfRole", selfRole, "bracket", bracket, "useReceiverBracket", useReceiverBracket, "maxTotal", maxTotal, "maxDay", maxDay, "maxGranterDay", maxGranterDay, "maxGranterTotal", maxGranterTotal, "force", force);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="templateCreateWarchest")
@@ -1207,8 +1207,8 @@ public class CM {
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="templateInfo")
         public static class info extends CommandRef {
             public static final info cmd = new info();
-            public info create(String template, String receiver, String value) {
-                return createArgs("template", template, "receiver", receiver, "value", value);
+            public info create(String template, String receiver, String value, String showEdit) {
+                return createArgs("template", template, "receiver", receiver, "value", value, "showEdit", showEdit);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="templateList")

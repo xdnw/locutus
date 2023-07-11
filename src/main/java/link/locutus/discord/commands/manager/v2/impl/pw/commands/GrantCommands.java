@@ -52,7 +52,7 @@ public class GrantCommands {
     @RolePermission(Roles.MEMBER)
     public void templateList(@Me GuildDB db, @Me Guild guild, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io, @Default TemplateTypes category, @Switch("d") boolean listDisabled) {
         GrantTemplateManager manager = db.getGrantTemplateManager();
-        Set<AGrantTemplate> templates = category == null ? manager.getTemplates() : manager.getTemplates(category);
+        Set<AGrantTemplate> templates = new HashSet<>(category == null ? manager.getTemplates() : manager.getTemplates(category));
         if (!listDisabled) {
             templates.removeIf(f -> !f.isEnabled());
         }

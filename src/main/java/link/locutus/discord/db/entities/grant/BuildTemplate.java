@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
+import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
@@ -183,6 +184,12 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
             JavaCity jc = new JavaCity(build);
             if (jc.getRequiredInfra() > maxInfra) {
                 throw new IllegalArgumentException("Build requires more infra than the receiver has: " + jc.getRequiredInfra() + " > " + maxInfra);
+            }
+            // ensure no buildings are negative
+            for (Building building : Buildings.values()) {
+                if (jc.get(building) < 0) {
+                    throw new IllegalArgumentException("Build has negative " + building.name() + " buildings");
+                }
             }
             // no more than 2 power plants
             if (jc.get(Buildings.NUCLEAR_POWER) > 2) {
