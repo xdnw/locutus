@@ -71,6 +71,24 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     }
 
     @Override
+    public String toFullString2(DBNation sender, DBNation receiver,  Map<Integer, CityBuild> parsed) {
+
+        StringBuilder message = new StringBuilder();
+
+        if(build != null)
+            message.append("build: " + new JavaCity().fromBytes(build).toJson());
+
+        message.append("Only New Cities: " + onlyNewCities);
+        message.append("MMR: " + String.format("%04d", mmr));
+        message.append("Allow Switch After Days: " + allow_switch_after_days);
+        message.append("Allow Switch After Offensive: " + allow_switch_after_offensive);
+        message.append("Allow Switch After Infra: " + allow_switch_after_infra);
+        message.append("Allow All: " + allow_all);
+
+        return message.toString();
+    }
+
+    @Override
     public String toListString() {
         StringBuilder result = new StringBuilder(super.toListString());
         if (mmr != null) {

@@ -4,6 +4,7 @@ import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -30,6 +31,23 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
     public ProjectTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, Project project) {
         super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated);
         this.project = project;
+    }
+
+    @Override
+    public String toFullString2(DBNation sender, DBNation receiver,  Void parsed) {
+
+        StringBuilder message = new StringBuilder();
+        message.append("Project: " + project);
+
+        return message.toString();
+    }
+
+    @Override
+    public String getCommandString(String name, String allowedRecipients, String build, String mmr, String only_new_cities, String allow_after_days, String allow_after_offensive, String allow_after_infra, String allow_all, String allow_after_land_or_project, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String force) {
+
+        String sRole = selfRole != null ? getSelfRole().getAsMention() : null;
+
+        return CM.grant_template.create.project.cmd.create(name, allowedRecipients, project + "", econRole, sRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, null).toString();
     }
 
 

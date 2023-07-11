@@ -4,6 +4,7 @@ import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBCity;
@@ -76,6 +77,22 @@ public class LandTemplate extends AGrantTemplate<Double>{
             throw new IllegalArgumentException("Amount cannot be less than 10");
         }
         return result;
+    }
+    public String toFullString2(DBNation sender, DBNation receiver,  Double parsed) {
+
+        StringBuilder message = new StringBuilder();
+        message.append("level: " + level);
+        message.append("Only New Cities: " + onlyNewCities);
+
+        return message.toString();
+    }
+
+    @Override
+    public String getCommandString(String name, String allowedRecipients, String build, String mmr, String only_new_cities, String allow_after_days, String allow_after_offensive, String allow_after_infra, String allow_all, String allow_after_land_or_project, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String force) {
+
+        String sRole = selfRole != null ? getSelfRole().getAsMention() : null;
+
+        return CM.grant_template.create.land.cmd.create(name, allowedRecipients, level + "", only_new_cities, econRole, sRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, null).toString();
     }
 
     public Map<Integer, Double> getTopCityLandGrant(DBNation receiver) {
@@ -173,6 +190,7 @@ public class LandTemplate extends AGrantTemplate<Double>{
                 return receiver.getDomesticPolicy() != DomesticPolicy.RAPID_EXPANSION;
             }
         }));
+
 
         return list;
     }

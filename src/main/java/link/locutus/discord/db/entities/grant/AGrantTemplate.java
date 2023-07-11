@@ -113,6 +113,8 @@ public abstract class AGrantTemplate<T> {
 
     public abstract String toFullString2(DBNation sender, DBNation receiver, T parsed);
 
+    public abstract String getCommandString(String name, String allowedRecipients, String build, String mmr, String only_new_cities, String allow_after_days, String allow_after_offensive, String allow_after_infra, String allow_all, String allow_after_land_or_project, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String force);
+
     public String toFullString(DBNation sender, DBNation receiver, T parsed) {
         // sender or receiver may be null
         StringBuilder data = new StringBuilder();
