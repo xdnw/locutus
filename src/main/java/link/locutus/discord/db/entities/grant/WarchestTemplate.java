@@ -2,6 +2,7 @@ package link.locutus.discord.db.entities.grant;
 
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -30,6 +31,25 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
         this.trackDays = trackDays;
         this.subtractExpenditure = subtractExpenditure;
         this.overdrawPercentCents = overdrawPercentCents;
+    }
+
+    @Override
+    public String getCommandString(String name, String allowedRecipients, String build, String mmr, String only_new_cities, String allow_after_days, String allow_after_offensive, String allow_after_infra, String allow_all, String allow_after_land_or_project, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String force) {
+        return CM.grant_template.create.warchest.cmd.create(name,
+                allowedRecipients,
+                allowancePerCity == null ? null : PnwUtil.resourcesToString(allowancePerCity),
+                trackDays <= 0 ? null : trackDays + "",
+                subtractExpenditure ? "true" : null,
+                overdrawPercentCents <= 0 ? null : overdrawPercentCents + "",
+                econRole,
+                selfRole,
+                bracket,
+                useReceiverBracket,
+                maxTotal,
+                maxDay,
+                maxGranterDay,
+                maxGranterTotal,
+                null).toSlashCommand();
     }
 
     @Override
