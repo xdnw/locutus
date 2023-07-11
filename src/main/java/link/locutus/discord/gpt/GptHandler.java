@@ -169,7 +169,7 @@ public class GptHandler {
         double[] existing = this.db.getEmbedding(text);
         if (existing == null) {
             System.out.println("Fetch embedding: " + text);
-            existing = getEmbeddingApi(text, type >= 0);
+            existing = getEmbeddingApi(text, type < 0);
             db.setEmbedding(type, id, text, existing, saveContent);
         }
         return existing;

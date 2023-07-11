@@ -108,6 +108,8 @@ public class HelpCommands {
                 msg.append("\n");
             }
             msg.send();
+        } catch (IllegalArgumentException e) {
+            io.send(e.getMessage());
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -141,6 +143,8 @@ public class HelpCommands {
                 msg.append("\n");
             }
             msg.send();
+        } catch (IllegalArgumentException e) {
+            io.send(e.getMessage());
         } catch (Throwable e) {
             e.printStackTrace();
         }
