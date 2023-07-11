@@ -298,7 +298,7 @@ public class NationUpdateProcessor {
             activeMinute = (activeMinute / 60_000) * 60_000;
             Locutus.imp().getNationDB().setSpyActivity(nation.getNation_id(), nation.getProjectBitMask(), nation.getSpies(), activeMinute, nation.getWarPolicy());
 
-            if (previous.active_m() > 240 && Settings.INSTANCE.TASKS.AUTO_FETCH_UID) {
+            if (previous.active_m() > 360 && Settings.INSTANCE.TASKS.AUTO_FETCH_UID) {
                 Locutus.imp().getExecutor().submit(new CaughtRunnable() {
                     @Override
                     public void runUnsafe() throws Exception {
@@ -317,9 +317,6 @@ public class NationUpdateProcessor {
         Locutus.imp().getExecutor().submit(() -> {
             int rerollId = current.isReroll(true);
             if (rerollId > 0) {
-                ZonedDateTime yesterday = ZonedDateTime.now(ZoneOffset.UTC).minusDays(1);
-
-
                 String title = "Detected reroll: " + current.getNation();
                 StringBuilder body = new StringBuilder(current.getNationUrlMarkup(true));
                 if (rerollId != current.getNation_id()) {

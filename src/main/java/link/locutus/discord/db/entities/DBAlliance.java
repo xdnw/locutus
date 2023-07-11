@@ -534,7 +534,9 @@ public class DBAlliance implements NationList, NationOrAlliance {
             PoliticsAndWarV3 api = getApi(AlliancePermission.MANAGE_TREATIES);
             if (api != null) {
                 List<com.politicsandwar.graphql.model.Treaty> treaties = api.fetchTreaties(allianceId);
-                Locutus.imp().getNationDB().updateTreaties(treaties, Event::post, true);
+                Locutus.imp().getNationDB().updateTreaties(treaties, Event::post, f -> {
+                    return f.getFromId() == allianceId || f.getToId() == allianceId;
+                });
                 Map<Integer, Treaty> result = new HashMap<>();
                 for (com.politicsandwar.graphql.model.Treaty v3 : treaties) {
                     Treaty treaty = new Treaty(v3);

@@ -238,6 +238,14 @@ public class WarCommands {
 
         StringBuilder response = new StringBuilder();
 
+        GuildDB myDB = Locutus.imp().getGuildDBByAA(me.getAlliance_id());
+        if (myDB == null) {
+            return "Your alliance: " + me.getAllianceName() + " has no guild registered with this bot.";
+        }
+        if (myDB != db) {
+            return "You are not in the same guild as your alliance: " + myDB.getGuild().toString() + " != " + db.getGuild().toString();
+        }
+
         for (DBNation target : targets) {
 
             long turns = target.isBeige() ? target.getBeigeTurns() : target.getVm_turns();
@@ -250,9 +258,11 @@ public class WarCommands {
                 continue;
             }
 
+
             Locutus.imp().getNationDB().addBeigeReminder(target, me);
             response.append("Added beige reminder for " + target.getNationUrl() + " (in " + diffStr + " OR " + turns + " turns)\n");
             try {
+
                 LeavingBeigeAlert.testBeigeAlert(db, target, me, null, true, false, false, false);
             } catch (IllegalArgumentException e) {
                 response.append("- " + e.getMessage() + ": <" + target.getNationUrl() + ">)\n");

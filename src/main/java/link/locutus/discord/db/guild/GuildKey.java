@@ -1654,7 +1654,7 @@ public class GuildKey {
                     "alliance1:#channel\n" +
                     "```\n";
         }
-    }.setupRequirements(f -> f.requiresCoalition(Coalition.OFFSHORE).requiresOffshore().requireValidAlliance());
+    }.setupRequirements(f -> f.requiresCoalition(Coalition.OFFSHORE).requiresOffshore());
     public static GuildSetting<MessageChannel> GRANT_REQUEST_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO) {
         @NoFormat
         @Command(descMethod = "help")
