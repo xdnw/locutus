@@ -45,24 +45,6 @@ public class CityTemplate extends AGrantTemplate<Integer> {
     }
 
     @Override
-    public Integer parse(DBNation receiver, String value) {
-        Integer result = super.parse(receiver, value);
-        if (result == null) result = 1;
-        int currentCities = receiver.getCities();
-        int maxToGrant = currentCities < 10 ? 10 - currentCities : 1;
-        if (result > maxToGrant) {
-            throw new IllegalArgumentException("Cannot grant more than " + maxToGrant + " cities");
-        }
-        if (result <= 0) {
-            throw new IllegalArgumentException("Must grant at least 1 city");
-        }
-        if (currentCities + result > max_city) {
-            throw new IllegalArgumentException("Cannot grant more than " + max_city + " cities");
-        }
-        return result;
-    }
-
-    @Override
     public String toListString() {
         return super.toListString() + " | c" + min_city + "-" + max_city;
     }

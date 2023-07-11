@@ -12,7 +12,6 @@ import link.locutus.discord.util.math.ArrayUtil;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -97,41 +96,6 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
         list.add("subtract_expenditure");
         list.add("overdraw_percent_cents");
         return list;
-    }
-
-    public Map<ResourceType, Double> getWarchestPerCity(DBNation nation) {
-        Map<ResourceType, Double> result = this.getWarchestPerCity(nation);
-        if (result == null || result.isEmpty()) {
-            result = getDb().getPerCityWarchest(nation);
-        }
-        return result;
-    }
-
-    @Override
-    public Map<ResourceType, Double> parse(DBNation receiver, String value) {
-        Map<ResourceType, Double> result = super.parse(receiver, value);
-        Map<ResourceType, Double> perCityMax = getWarchestPerCity(receiver);
-        if (result == null) {
-            result = new LinkedHashMap<>(perCityMax);
-        } else {
-            for (Map.Entry<ResourceType, Double> entry : result.entrySet()) {
-                ResourceType resource = entry.getKey();
-                Double amount = entry.getValue();
-                // if negative
-                if (amount < 0) {
-                    throw new IllegalArgumentException("Negative amount for " + resource + " in " + value);
-                }
-                // if greater than perCityMax
-                if (amount > perCityMax.get(resource)) {
-                    throw new IllegalArgumentException("Amount for " + resource + " in " + value + " is greater than per city max of " + perCityMax.get(resource));
-                }
-                if (resource == ResourceType.CREDITS) {
-                    throw new IllegalArgumentException("Credits are not allowed in warchest grants");
-                }
-            }
-        }
-
-        return result;
     }
 
     @Override

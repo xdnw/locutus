@@ -5,7 +5,6 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
@@ -89,6 +88,14 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     }
 
     @Override
+    public String getCommandString(String name, String allowedRecipients, String build, String mmr, String only_new_cities, String allow_after_days, String allow_after_offensive, String allow_after_infra, String allow_all, String allow_after_land_or_project, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String force) {
+
+        String sRole = selfRole != null ? getSelfRole().getAsMention() : null;
+
+        return CM.grant_template.create.build.cmd.create(name, allowedRecipients, build, mmr, only_new_cities, allow_after_days, allow_after_offensive, allow_after_infra, allow_all, allow_after_land_or_project, econRole, sRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, null).toString();
+    }
+
+    @Override
     public String toListString() {
         StringBuilder result = new StringBuilder(super.toListString());
         if (mmr != null) {
@@ -156,47 +163,8 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         } else {
             build = parse(getDb(), receiver, value, CityBuild.class);
         }
+
         Set<Integer> grantTo = getCitiesToGrantTo(receiver);
-
-        // get max infra
-        double maxInfra = 0;
-        for (Map.Entry<Integer, DBCity> entry : receiver._getCitiesV3().entrySet()) {
-            maxInfra = Math.max(maxInfra, entry.getValue().infra);
-        }
-        // ensure build matches infra level
-        {
-            JavaCity jc = new JavaCity(build);
-            if (jc.getRequiredInfra() > maxInfra) {
-                throw new IllegalArgumentException("Build requires more infra than the receiver has: " + jc.getRequiredInfra() + " > " + maxInfra);
-            }
-            // no more than 2 power plants
-            if (jc.get(Buildings.NUCLEAR_POWER) > 2) {
-                throw new IllegalArgumentException("Build has more than 2 nuclear power plants");
-            }
-            if (jc.get(Buildings.WIND_POWER) > 2) {
-                throw new IllegalArgumentException("Build has more than 2 wind power plants");
-            }
-            if (jc.get(Buildings.COAL_MINE) > 8) {
-                throw new IllegalArgumentException("Build has more than 8 coal mines");
-            }
-            if (jc.get(Buildings.OIL_POWER) > 8) {
-                throw new IllegalArgumentException("Build has more than 8 oil power");
-            }
-            // 5,5,5,3 max military buildings
-            if (jc.get(Buildings.BARRACKS) > 5) {
-                throw new IllegalArgumentException("Build has more than 5 barracks");
-            }
-            if (jc.get(Buildings.FACTORY) > 5) {
-                throw new IllegalArgumentException("Build has more than 5 factories");
-            }
-            if (jc.get(Buildings.HANGAR) > 5) {
-                throw new IllegalArgumentException("Build has more than 5 hangars");
-            }
-            if (jc.get(Buildings.DRYDOCK) > 3) {
-                throw new IllegalArgumentException("Build has more than 3 drydocks");
-            }
-        }
-
         // return map of city and build
         Map<Integer, CityBuild> map = new HashMap<>();
         for (Integer city : grantTo) {

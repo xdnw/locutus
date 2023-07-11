@@ -199,12 +199,10 @@ public abstract class AGrantTemplate<T> {
             }
         }
 
-        data.append("\n").append(getCommandString());
+        data.append("\n").append(getCreateString());
 
         return data.toString();
     }
-
-    public abstract String getCommandString();
 
     public boolean hasRole(Member author) {
         List<Role> roles = author.getRoles();

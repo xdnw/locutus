@@ -6,7 +6,6 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import org.jooq.meta.derby.sys.Sys;
@@ -19,6 +18,8 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class RawsTemplate extends AGrantTemplate<Integer>{
+    //long days
+    //long overdraw_percent_cents
     private final long days;
     private final long overdrawPercentCents;
     public RawsTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
@@ -78,19 +79,6 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
     }
 
     @Override
-    public Integer parse(DBNation receiver, String value) {
-        Integer result = super.parse(receiver, value);
-        if (result == null) result = Math.toIntExact(days);
-        if (result > days) {
-            throw new IllegalArgumentException("Amount cannot be greater than the template days `" + result + ">" + days + "`");
-        }
-        if (result < 1) {
-            throw new IllegalArgumentException("Amount cannot be less than 1");
-        }
-        return result;
-    }
-
-    @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
         stmt.setLong(13, days);
         stmt.setLong(14, overdrawPercentCents);
@@ -108,16 +96,6 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
         Map<ResourceType, Double> needed = receiver.getResourcesNeeded(stockpile, parsed, false);
 
         //TODO also check transactions
-        for (Transaction2 record : receiver.getTransactions()) {
-            if(record.tx_datetime > cutoff && record.note != null && record.sender_id == receiver.getId()) {
-                Map<String, String> notes = PnwUtil.parseTransferHashNotes(record.note);
-                if (notes.containsKey("#raws") || notes.containsKey("#tax")) {
-                    minDate = Math.min(record.tx_datetime, minDate);
-                    receivedBuilder.add(record.resources);
-                }
-            }
-        }
-
         for (GrantTemplateManager.GrantSendRecord record : getDb().getGrantTemplateManager().getRecordsByReceiver(receiver.getId())) {
             if (record.grant_type == TemplateTypes.RAWS) {
                 if(record.date > cutoff) {
