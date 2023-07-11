@@ -14,22 +14,30 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GptDB;
+import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
+import org.json.JSONObject;
 
 import javax.annotation.Nullable;
 import javax.validation.constraints.Null;
+import java.io.IOException;
 import java.lang.reflect.Method;
+import java.net.HttpURLConnection;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 public class GptHandler {
     public final GptDB db;
@@ -46,6 +54,27 @@ public class GptHandler {
         this.chatEncoder = registry.getEncodingForModel(ModelType.GPT_3_5_TURBO);
 
         this.service = new OpenAiService(Settings.INSTANCE.OPENAI_API_KEY, Duration.ofSeconds(50));
+    }
+
+    public JSONObject checkModeration(String input) throws IOException {
+        String url = "https://api.openai.com/v1/moderations";
+        String apiKey = Settings.INSTANCE.OPENAI_API_KEY;
+
+        Map<String, String> arguments = new HashMap<>();
+        arguments.put("input", input);
+
+        Consumer<HttpURLConnection> apply = connection -> {
+            connection.setRequestProperty("Authorization", "Bearer " + apiKey);
+            connection.setRequestProperty("Content-Type", "application/json");
+        };
+
+        JSONObject argsJs = new JSONObject(arguments);
+        byte[] dataBinary = argsJs.toString().getBytes(StandardCharsets.UTF_8);
+
+        CompletableFuture<String> result = FileUtil.readStringFromURL(1, url, dataBinary,  FileUtil.RequestType.POST, null, apply);
+        String jsonStr = FileUtil.get(result);
+        // parse to JSONObject (org.json)
+        return new JSONObject(jsonStr);
     }
 
     public OpenAiService getService() {

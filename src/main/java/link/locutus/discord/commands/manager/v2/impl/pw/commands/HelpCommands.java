@@ -21,6 +21,7 @@ import link.locutus.discord.gpt.PWGPTHandler;
 import link.locutus.discord.gpt.SettingEmbedding;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,6 +44,12 @@ public class HelpCommands {
 //    public void find_placeholders(@Me IMessageIO io, ValueStore store, String query, @Range(min = 1, max = 25) @Default("3") int num_results) {
 //
 //    }
+
+    @Command
+    public String moderation_check(String input) throws IOException {
+        JSONObject result = getGPT().getHandler().checkModeration(input);
+        return result.toString();
+    }
 
     @Command
     public String command(@Me IMessageIO io, ValueStore store, PermissionHandler permisser, ICommand command) {

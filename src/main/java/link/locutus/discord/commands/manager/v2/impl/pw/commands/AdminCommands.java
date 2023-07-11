@@ -89,6 +89,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class AdminCommands {
+
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
     public String checkActiveConflicts() {
