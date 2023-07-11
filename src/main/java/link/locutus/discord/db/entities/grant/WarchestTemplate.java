@@ -54,6 +54,24 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
     }
 
     @Override
+    public String toFullString2(DBNation sender, DBNation receiver, Map<ResourceType, Double> parsed) {
+        StringBuilder result = new StringBuilder();
+        // add the fields as "key: value"
+        if (allowancePerCity != null) {
+            result.append("allowance per city: " + PnwUtil.resourcesToString(allowancePerCity));
+        }
+        if (trackDays > 0) {
+            result.append("track days: " + trackDays);
+        }
+        if (subtractExpenditure) {
+            result.append("subtract expenditure: true");
+        }
+        if (overdrawPercentCents > 0) {
+            result.append("overdraw percent: " + (overdrawPercentCents / 100d) + "%");
+        }
+    }
+
+    @Override
     public String toListString() {
         StringBuilder result = new StringBuilder(super.toListString());
         if (subtractExpenditure) {
