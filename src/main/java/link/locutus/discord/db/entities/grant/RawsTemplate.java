@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import org.jooq.meta.derby.sys.Sys;
@@ -89,6 +90,16 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
         Map<ResourceType, Double> needed = receiver.getResourcesNeeded(stockpile, parsed, false);
 
         //TODO also check transactions
+        for (Transaction2 record : receiver.getTransactions()) {
+            if(record.tx_datetime > cutoff && record.note != null && record.sender_id == receiver.getId()) {
+                Map<String, String> notes = PnwUtil.parseTransferHashNotes(record.note);
+                if (notes.containsKey("#raws") || notes.containsKey("#tax")) {
+                    minDate = Math.min(record.tx_datetime, minDate);
+                    receivedBuilder.add(record.resources);
+                }
+            }
+        }
+
         for (GrantTemplateManager.GrantSendRecord record : getDb().getGrantTemplateManager().getRecordsByReceiver(receiver.getId())) {
             if (record.grant_type == TemplateTypes.RAWS) {
                 if(record.date > cutoff) {
