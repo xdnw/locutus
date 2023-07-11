@@ -27,24 +27,20 @@ import java.util.function.Function;
 public class InfraTemplate extends AGrantTemplate<Double>{
     private final long level;
     private final boolean onlyNewCities;
-    private final boolean track_days;
     private final long require_n_offensives;
     private final boolean allow_rebuild;
-    private final boolean allowGrantDamaged;
 
     public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
-        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), rs.getLong("level"), rs.getBoolean("only_new_cities"), rs.getBoolean("track_days"), rs.getLong("require_n_offensives"), rs.getBoolean("allow_rebuild"), rs.getBoolean("allow_grant_damaged"));
+        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), rs.getLong("level"), rs.getBoolean("only_new_cities"), rs.getLong("require_n_offensives"), rs.getBoolean("allow_rebuild"));
     }
 
     // create new constructor  with typed parameters instead of resultset
-    public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long level, boolean onlyNewCities, boolean track_days, long require_n_offensives, boolean allow_rebuild, boolean allowGrantDamaged) {
+    public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long level, boolean onlyNewCities, long require_n_offensives, boolean allow_rebuild) {
         super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated);
         this.level = level;
         this.onlyNewCities = onlyNewCities;
-        this.track_days = track_days;
         this.require_n_offensives = require_n_offensives;
         this.allow_rebuild = allow_rebuild;
-        this.allowGrantDamaged = allowGrantDamaged;
     }
 
     @Override
@@ -69,7 +65,6 @@ public class InfraTemplate extends AGrantTemplate<Double>{
         List<String> list = getQueryFieldsBase();
         list.add("level");
         list.add("only_new_cities");
-        list.add("track_days");
         list.add("require_n_offensives");
         list.add("allow_rebuild");
         list.add("allow_grant_damaged");
@@ -80,10 +75,8 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     public void setValues(PreparedStatement stmt) throws SQLException {
         stmt.setLong(13, level);
         stmt.setBoolean(14, onlyNewCities);
-        stmt.setBoolean(15, track_days);
-        stmt.setLong(16, require_n_offensives);
-        stmt.setBoolean(17, allow_rebuild);
-        stmt.setBoolean(18, allowGrantDamaged);
+        stmt.setLong(15, require_n_offensives);
+        stmt.setBoolean(16, allow_rebuild);
     }
 
     @Override
@@ -92,20 +85,15 @@ public class InfraTemplate extends AGrantTemplate<Double>{
         StringBuilder message = new StringBuilder();
         message.append("level: " + level);
         message.append("Only New Cities: " + onlyNewCities);
-        message.append("Track Days: " + track_days);
         message.append("Require No Offensives: " + require_n_offensives);
         message.append("Allow Rebuild: " + allow_rebuild);
-        message.append("Allow Grant While Damaged: " + allowGrantDamaged);
 
         return message.toString();
     }
 
     @Override
     public String getCommandString(String name, String allowedRecipients, String build, String mmr, String only_new_cities, String allow_after_days, String allow_after_offensive, String allow_after_infra, String allow_all, String allow_after_land_or_project, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String force) {
-
-        String sRole = selfRole != null ? selfRole : null;
-
-        return CM.grant_template.create.infra.cmd.create(name, allowedRecipients, level + "", only_new_cities, track_days + "", require_n_offensives + "", allow_rebuild + "", econRole, sRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, null).toString();
+        return CM.grant_template.create.infra.cmd.create(name, allowedRecipients, level + "", only_new_cities, require_n_offensives + "", allow_rebuild + "", econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, null).toString();
     }
 
     @Override
@@ -210,7 +198,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
 
             Map<Long, Double> cityGrantHistory = topCity.get(entry.getKey());
 
-            if (allowGrantDamaged) {
+            if (allow_rebuild) {
                 cityGrantHistory.entrySet().removeIf(f -> f.getKey() < latestAttackDate);
             }
 
@@ -218,7 +206,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
             double max = cityGrantHistory.values().stream().mapToDouble(f -> f).max().orElse(0);
 
             if (max > city.infra)
-                throw new IllegalArgumentException("The city `" + entry.getKey() + "` has received a prior grant for " + max + " infra. The city only has " + city.infra + " infra currently. The last attack date is " + latestAttackDate + " allowGrantDamaged=" + allowGrantDamaged);
+                throw new IllegalArgumentException("The city `" + entry.getKey() + "` has received a prior grant for " + max + " infra. The city only has " + city.infra + " infra currently. The last attack date is " + latestAttackDate + " allow_rebuild=" + allow_rebuild);
 
             max = Math.max(city.infra, max);
 

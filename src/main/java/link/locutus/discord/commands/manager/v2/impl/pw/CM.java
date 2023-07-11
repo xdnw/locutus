@@ -1150,8 +1150,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="templateCreateInfra")
             public static class infra extends CommandRef {
                 public static final infra cmd = new infra();
-                public infra create(String name, String allowedRecipients, String level, String onlyNewCities, String trackDays, String requireNOffensives, String allowRebuild, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String force) {
-                    return createArgs("name", name, "allowedRecipients", allowedRecipients, "level", level, "onlyNewCities", onlyNewCities, "trackDays", trackDays, "requireNOffensives", requireNOffensives, "allowRebuild", allowRebuild, "econRole", econRole, "selfRole", selfRole, "bracket", bracket, "useReceiverBracket", useReceiverBracket, "maxTotal", maxTotal, "maxDay", maxDay, "maxGranterDay", maxGranterDay, "maxGranterTotal", maxGranterTotal, "force", force);
+                public infra create(String name, String allowedRecipients, String level, String onlyNewCities, String requireNOffensives, String allowRebuild, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String force) {
+                    return createArgs("name", name, "allowedRecipients", allowedRecipients, "level", level, "onlyNewCities", onlyNewCities, "requireNOffensives", requireNOffensives, "allowRebuild", allowRebuild, "econRole", econRole, "selfRole", selfRole, "bracket", bracket, "useReceiverBracket", useReceiverBracket, "maxTotal", maxTotal, "maxDay", maxDay, "maxGranterDay", maxGranterDay, "maxGranterTotal", maxGranterTotal, "force", force);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="templateCreateLand")

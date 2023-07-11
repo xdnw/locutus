@@ -332,7 +332,6 @@ public class GrantCommands {
                                       NationFilter allowedRecipients,
                                       @Switch("l") Integer level,
                                       @Switch("n") boolean onlyNewCities,
-                                      @Switch("t") boolean trackDays,
                                       @Switch("o") Integer requireNOffensives,
                                       @Switch("a") boolean allowRebuild,
 
@@ -370,7 +369,23 @@ public class GrantCommands {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
 
-        InfraTemplate template = new InfraTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), level == null ? 0 : level, onlyNewCities, trackDays, requireNOffensives == null ? 0 : requireNOffensives, allowRebuild);
+        InfraTemplate template = new InfraTemplate(db,
+                false,
+                name,
+                allowedRecipients,
+                econRole.getIdLong(),
+                selfRole.getIdLong(),
+                bracket == null ? 0 : bracket.getId(),
+                useReceiverBracket,
+                maxTotal == null ? 0 : maxTotal,
+                maxDay == null ? 0 : maxDay,
+                maxGranterDay == null ? 0 : maxGranterDay,
+                maxGranterTotal == null ? 0 : maxGranterTotal,
+                System.currentTimeMillis(),
+                level == null ? 0 : level,
+                onlyNewCities,
+                requireNOffensives == null ? 0 : requireNOffensives,
+                allowRebuild);
 
         // confirmation
         if (!force) {

@@ -136,10 +136,8 @@ public class GrantTemplateManager {
                 "(`enabled` INTEGER NOT NULL, " +
                 "`level` BIGINT NOT NULL, " +
                 "`only_new_cities` BOOLEAN NOT NULL, " +
-                "`track_days` BOOLEAN NOT NULL, " +
                 "`require_n_offensives` BIGINT NOT NULL, " +
                 "`allow_rebuild` BOOLEAN NOT NULL, " +
-                "`allow_grant_damaged` BOOLEAN NOT NULL, " +
                 "`date_created` BIGINT NOT NULL PRIMARY KEY, " +
                 "`name` VARCHAR NOT NULL PRIMARY KEY, " +
                 "`nation_filter` VARCHAR NOT NULL, " +
