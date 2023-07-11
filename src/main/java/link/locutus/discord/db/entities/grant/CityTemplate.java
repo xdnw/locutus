@@ -77,7 +77,7 @@ public class CityTemplate extends AGrantTemplate<Integer> {
     }
 
     @Override
-    public String toFullString2(DBNation sender, DBNation receiver,  Integer parsed) {
+    public String toInfoString(DBNation sender, DBNation receiver,  Integer parsed) {
 
         StringBuilder message = new StringBuilder();
         message.append("Min City: " + min_city);

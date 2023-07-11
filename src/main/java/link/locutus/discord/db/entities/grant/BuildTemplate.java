@@ -70,7 +70,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     }
 
     @Override
-    public String toFullString2(DBNation sender, DBNation receiver,  Map<Integer, CityBuild> parsed) {
+    public String toInfoString(DBNation sender, DBNation receiver,  Map<Integer, CityBuild> parsed) {
 
         StringBuilder message = new StringBuilder();
 

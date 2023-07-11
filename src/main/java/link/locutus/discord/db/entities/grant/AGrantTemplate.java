@@ -111,7 +111,7 @@ public abstract class AGrantTemplate<T> {
         return getGranted(Long.MAX_VALUE, sender);
     }
 
-    public abstract String toFullString2(DBNation sender, DBNation receiver, T parsed);
+    protected abstract String toInfoString(DBNation sender, DBNation receiver, T parsed);
 
     public abstract String getCommandString(String name, String allowedRecipients, String build, String mmr, String only_new_cities, String allow_after_days, String allow_after_offensive, String allow_after_infra, String allow_all, String allow_after_land_or_project, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String force);
 
@@ -160,7 +160,7 @@ public abstract class AGrantTemplate<T> {
             data.append(maxGranterDay).append("`\n");
         }
 
-        data.append(toFullString2(sender, receiver, parsed));
+        data.append(toInfoString(sender, receiver, parsed));
 
         // receiver markdown
         if (sender != null && receiver != null) {
@@ -198,8 +198,6 @@ public abstract class AGrantTemplate<T> {
                 data.append("Instructions:\n>>> ").append(instructions).append("\n");
             }
         }
-
-        data.append("\n").append(getCreateString());
 
         return data.toString();
     }

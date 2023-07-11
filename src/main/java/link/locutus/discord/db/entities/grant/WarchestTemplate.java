@@ -53,7 +53,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
     }
 
     @Override
-    public String toFullString2(DBNation sender, DBNation receiver, Map<ResourceType, Double> parsed) {
+    public String toInfoString(DBNation sender, DBNation receiver, Map<ResourceType, Double> parsed) {
         StringBuilder result = new StringBuilder();
         // add the fields as "key: value"
         if (allowancePerCity != null) {

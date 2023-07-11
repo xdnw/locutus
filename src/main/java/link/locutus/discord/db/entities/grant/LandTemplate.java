@@ -67,7 +67,7 @@ public class LandTemplate extends AGrantTemplate<Double>{
     }
 
     @Override
-    public String toFullString2(DBNation sender, DBNation receiver,  Double parsed) {
+    public String toInfoString(DBNation sender, DBNation receiver,  Double parsed) {
 
         StringBuilder message = new StringBuilder();
         message.append("level: " + level);
