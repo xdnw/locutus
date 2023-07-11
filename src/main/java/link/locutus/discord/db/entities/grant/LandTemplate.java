@@ -23,8 +23,6 @@ import java.util.Map;
 import java.util.function.Function;
 
 public class LandTemplate extends AGrantTemplate<Double>{
-    //long level
-    //boolean onlyNewCities
     private final long level;
     private final boolean onlyNewCities;
     public LandTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {

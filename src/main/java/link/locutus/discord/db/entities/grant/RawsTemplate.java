@@ -21,7 +21,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
     //long days
     //long overdraw_percent_cents
     private final long days;
-    private final long overdrawPercentCents;
+    private final long overdrawPercent;
     public RawsTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
         this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), rs.getLong("days"), rs.getLong("overdraw_percent_cents"));
     }
@@ -30,7 +30,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
     public RawsTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long days, long overdrawPercentCents) {
         super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated);
         this.days = days;
-        this.overdrawPercentCents = overdrawPercentCents;
+        this.overdrawPercent = overdrawPercentCents;
     }
 
     @Override
@@ -38,7 +38,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
         return CM.grant_template.create.raws.cmd.create(name,
                 allowedRecipients,
                 days + "",
-                overdrawPercentCents <= 0 ? null : overdrawPercentCents + "",
+                overdrawPercent <= 0 ? null : overdrawPercent + "",
                 econRole,
                 selfRole,
                 bracket,
@@ -55,7 +55,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
 
         StringBuilder message = new StringBuilder();
         message.append("Days: " + days);
-        message.append("Overdraw Percentage: " + overdrawPercentCents);
+        message.append("Overdraw Percentage: " + overdrawPercent);
 
         return message.toString();
     }
@@ -81,7 +81,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
         stmt.setLong(13, days);
-        stmt.setLong(14, overdrawPercentCents);
+        stmt.setLong(14, overdrawPercent);
     }
 
     @Override
@@ -90,7 +90,9 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
         long minDate = Long.MAX_VALUE;
         long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
         double[] revenue = receiver.getRevenue();
-        PnwUtil.multiply(revenue, 1.2);
+        if (overdrawPercent > 0) {
+            PnwUtil.multiply(revenue, 1 + (overdrawPercent / 100d));
+        }
         ResourceType.ResourcesBuilder receivedBuilder = ResourceType.builder();
         Map<ResourceType, Double> stockpile = receiver.getStockpile();
         Map<ResourceType, Double> needed = receiver.getResourcesNeeded(stockpile, parsed, false);

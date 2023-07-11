@@ -464,8 +464,8 @@ public class GrantCommands {
     public String templateCreateRaws(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
                                      String name,
                                      NationFilter allowedRecipients,
-                                     @Switch("d") long days,
-                                     @Switch("o") long overdrawPercentCents,
+                                     long days,
+                                     @Switch("o") Long overdrawPercent,
 
                                      @Switch("e") Role econRole,
                                      @Switch("s") Role selfRole,
@@ -477,6 +477,7 @@ public class GrantCommands {
                                      @Switch("mgt") Integer maxGranterTotal,
 
                                      @Switch("f") boolean force) {
+        if (overdrawPercent == null) overdrawPercent = 20L;
         name = name.toUpperCase(Locale.ROOT).trim();
         // Ensure name is alphanumericalund
         if (!name.matches("[A-Z0-9_-]+")) {
@@ -501,7 +502,7 @@ public class GrantCommands {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
 
-        RawsTemplate template = new RawsTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), days, overdrawPercentCents);
+        RawsTemplate template = new RawsTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), days, overdrawPercent);
 
         // confirmation
         if (!force) {

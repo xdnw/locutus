@@ -35,10 +35,8 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
 
     @Override
     public String toInfoString(DBNation sender, DBNation receiver,  Void parsed) {
-
         StringBuilder message = new StringBuilder();
         message.append("Project: " + project);
-
         return message.toString();
     }
 
@@ -110,7 +108,7 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
         list.add(new Grant.Requirement("Project requires at most " + project.maxCities() + " cities", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                return nation.getCities() <= project.maxCities();
+                return project.maxCities() <= 0 || nation.getCities() <= project.maxCities();
             }
         }));
 
@@ -118,7 +116,7 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
         list.add(new Grant.Requirement("Project requires at least " + project.maxCities() + " cities", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                return nation.getCities() >= project.requiredCities();
+                return project.requiredCities() <= 0 || nation.getCities() >= project.requiredCities();
             }
         }));
 
