@@ -134,7 +134,7 @@ public class PWBindings extends BindingHelper {
         return emum(TemplateTypes.class, input);
     }
 
-    @Binding(value = "The name of a crated grant template")
+    @Binding(value = "The name of a created grant template")
     public AGrantTemplate AGrantTemplate(@Me GuildDB db, String input) {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         Set<AGrantTemplate> found = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(input));

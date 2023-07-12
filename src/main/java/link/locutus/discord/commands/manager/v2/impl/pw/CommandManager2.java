@@ -154,7 +154,7 @@ public class CommandManager2 {
         this.commands.registerMethod(grantCmds, List.of("grant_template"), "templateInfo", "info");
         this.commands.registerMethod(grantCmds, List.of("grant_template"), "templateDelete", "delete");
         this.commands.registerMethod(grantCmds, List.of("grant_template"), "templateDisable", "disable");
-        this.commands.registerMethod(grantCmds, List.of("grant_template"), "templateEnabled", "enabled");
+        this.commands.registerMethod(grantCmds, List.of("grant_template"), "templateEnabled", "enable");
         this.commands.registerMethod(grantCmds, List.of("grant_template", "create"), "templateCreateProject", "project");
         this.commands.registerMethod(grantCmds, List.of("grant_template", "create"), "templateCreateBuild", "build");
         this.commands.registerMethod(grantCmds, List.of("grant_template", "create"), "templateCreateCity", "city");

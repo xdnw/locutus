@@ -1198,9 +1198,9 @@ public class CM {
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="templateEnabled")
-        public static class enabled extends CommandRef {
-            public static final enabled cmd = new enabled();
-            public enabled create(String template) {
+        public static class enable extends CommandRef {
+            public static final enable cmd = new enable();
+            public enable create(String template) {
                 return createArgs("template", template);
             }
         }

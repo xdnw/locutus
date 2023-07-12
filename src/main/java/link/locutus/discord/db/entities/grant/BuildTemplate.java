@@ -174,6 +174,14 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
 
         Set<Integer> grantTo = getCitiesToGrantTo(receiver);
 
+        if (grantTo.isEmpty()) {
+            String message = "No eligable cities to grant to. Ensure you have not already received a build grant";
+            if (onlyNewCities) {
+                message += " and that you have built a city in the past 10 days";
+            }
+            throw new IllegalArgumentException(message);
+        }
+
         // get max infra
         double maxInfra = 0;
         for (Map.Entry<Integer, DBCity> entry : receiver._getCitiesV3().entrySet()) {
@@ -226,55 +234,35 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         return map;
     }
 
-    //make build template command open to members
-    //will check if member has bought a city recently
-    //will also check if member has used a build grant for their new city to prevent abuse
-    //should probly consider dm'ing the user to use the city build grant command once the city grant command is ran
     @Override
     public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver, Map<Integer, CityBuild> build) {
         List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, build);
 
-        if (build == null) {
-            // if build is null generate new optimal build
-        } else {
-            //TODO validate build is valid
-            //TODO validate build matches current infra level ??
-        }
-
         if (onlyNewCities) {
-            list.add(new Grant.Requirement("Nation hasn't bought a city in the past 6 days", true, new Function<DBNation, Boolean>() {
+            list.add(new Grant.Requirement("Nation hasn't bought a city in the past 10 days", true, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation receiver) {
 
-                    return receiver.getCitiesSince(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 72)) > 0;
-                }
-            }));
-
-            list.add(new Grant.Requirement("Nation has already received a new city build grant", true, new Function<DBNation, Boolean>() {
-                @Override
-                public Boolean apply(DBNation receiver) {
-
-                    List<GrantTemplateManager.GrantSendRecord> records = getDb().getGrantTemplateManager().getRecordsByReceiver(receiver.getId());
-
-                    for(GrantTemplateManager.GrantSendRecord record : records) {
-
-                        return receiver.getCitiesSince(record.date) == 0;
-                    }
-
-                    return true;
+                    return receiver.getCitiesSince(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119)) > 0;
                 }
             }));
         }
 
-        // require no build grants in past track_days
+        list.add(new Grant.Requirement("Nation has already received a new city build grant", true, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation receiver) {
 
-        // else require war in past track_days
+                List<GrantTemplateManager.GrantSendRecord> records = getDb().getGrantTemplateManager().getRecordsByReceiver(receiver.getId());
 
-        // else require infra in past track_days (in all cities)
+                for(GrantTemplateManager.GrantSendRecord record : records) {
+                    if (receiver.getCitiesSince(record.date) == 0) {
+                        return false;
+                    }
+                }
 
-        // for single:
-        // require city built in the past day
-        // require no build grant since the city
+                return true;
+            }
+        }));
 
         return list;
     }
