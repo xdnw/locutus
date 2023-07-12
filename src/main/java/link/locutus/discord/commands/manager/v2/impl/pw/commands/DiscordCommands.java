@@ -15,7 +15,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.gpt.GptHandler;
-import link.locutus.discord.gpt.PWGPTHandler;
+import link.locutus.discord.gpt.pwembed.PWGPTHandler;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;

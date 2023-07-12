@@ -1,4 +1,4 @@
-package link.locutus.discord.gpt;
+package link.locutus.discord.gpt.imps;
 
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;

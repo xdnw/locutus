@@ -1,9 +1,10 @@
-package link.locutus.discord.gpt;
+package link.locutus.discord.gpt.pwembed;
 
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
-import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
+import link.locutus.discord.gpt.imps.EmbeddingType;
+import link.locutus.discord.gpt.GptHandler;
 import link.locutus.discord.util.StringMan;
 
 public class NationMetricEmbedding extends PWEmbedding<NationAttribute> {

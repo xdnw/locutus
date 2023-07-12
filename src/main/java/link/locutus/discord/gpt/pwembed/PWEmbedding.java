@@ -1,7 +1,9 @@
-package link.locutus.discord.gpt;
+package link.locutus.discord.gpt.pwembed;
 
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.gpt.imps.EmbeddingType;
+import link.locutus.discord.gpt.GptHandler;
 
 public abstract class PWEmbedding<T> {
     private final EmbeddingType type;

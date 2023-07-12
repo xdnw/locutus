@@ -1,4 +1,4 @@
-package link.locutus.discord.gpt;
+package link.locutus.discord.gpt.imps;
 
 public enum EmbeddingType {
     Command,

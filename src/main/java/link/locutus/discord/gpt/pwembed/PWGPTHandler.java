@@ -1,4 +1,4 @@
-package link.locutus.discord.gpt;
+package link.locutus.discord.gpt.pwembed;
 
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
@@ -6,6 +6,8 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.gpt.imps.EmbeddingType;
+import link.locutus.discord.gpt.GptHandler;
 import link.locutus.discord.util.math.ArrayUtil;
 
 import java.lang.reflect.Method;

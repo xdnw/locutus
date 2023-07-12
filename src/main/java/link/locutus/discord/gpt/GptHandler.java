@@ -6,12 +6,11 @@ import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
 import com.knuddels.jtokkit.api.ModelType;
 import com.theokanning.openai.OpenAiService;
-import com.theokanning.openai.embedding.Embedding;
-import com.theokanning.openai.embedding.EmbeddingRequest;
-import com.theokanning.openai.embedding.EmbeddingResult;
 import com.theokanning.openai.moderation.Moderation;
 import com.theokanning.openai.moderation.ModerationRequest;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.gpt.imps.AdaEmbedding;
+import link.locutus.discord.gpt.imps.GPTSummarizer;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import org.json.JSONArray;
@@ -49,7 +48,7 @@ public class GptHandler {
 
         this.platform = Platform.detectPlatform("pytorch");
 
-        this.summarizer = new GPTSummarizer(registry, service)
+        this.summarizer = new GPTSummarizer(registry, service);
     }
 
     public List<Moderation> checkModeration(String input) {

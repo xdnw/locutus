@@ -1,4 +1,4 @@
-package link.locutus.discord.gpt;
+package link.locutus.discord.gpt.imps;
 
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
@@ -7,11 +7,13 @@ import com.theokanning.openai.OpenAiService;
 import com.theokanning.openai.completion.CompletionChoice;
 import com.theokanning.openai.completion.CompletionRequest;
 import com.theokanning.openai.completion.CompletionResult;
+import link.locutus.discord.gpt.GPTUtil;
+import link.locutus.discord.gpt.ISummarizer;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class GPTSummarizer implements ISummarizer{
+public class GPTSummarizer implements ISummarizer {
     private final EncodingRegistry registry;
     private final OpenAiService service;
     private final String prompt;
@@ -30,12 +32,12 @@ public class GPTSummarizer implements ISummarizer{
                 Concise summary:""";
         this.model = ModelType.GPT_3_5_TURBO;
         this.chatEncoder = registry.getEncodingForModel(model);
-        this.promptTokens = GPTUtil.getTokens(prompt, model);
+        this.promptTokens = GPTUtil.getTokens(prompt.replace("{query}", ""), model);
     }
 
     @Override
     public String summarize(String text) {
-        int cap = 4096 - 1;
+        int cap = 4096 - 4;
         int remaining = cap - promptTokens;
         List<String> summaries = new ArrayList<>();
         for (String chunk : GPTUtil.getChunks(text, model, remaining)) {

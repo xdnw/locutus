@@ -1,4 +1,4 @@
-package link.locutus.discord.gpt;
+package link.locutus.discord.gpt.imps;
 
 import ai.djl.MalformedModelException;
 import ai.djl.huggingface.translator.TextEmbeddingTranslatorFactory;

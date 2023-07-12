@@ -7,11 +7,10 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.gpt.GptHandler;
-import link.locutus.discord.gpt.PWGPTHandler;
+import link.locutus.discord.gpt.pwembed.PWGPTHandler;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.List;
 import java.util.Set;
