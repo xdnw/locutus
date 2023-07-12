@@ -54,6 +54,10 @@ repositories {
         dirs 'libs'
     }
     gradlePluginPortal()
+
+    maven { url 'https://jitpack.io' }
+    maven { url 'https://raw.github.com/AcaiSoftware/chatgpt-java/repository/' }
+    maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
 }
 
 compileJava.options.compilerArgs.add '-parameters'
@@ -141,6 +145,24 @@ dependencies {
 
     implementation 'com.knuddels:jtokkit:0.5.1'
     implementation("com.theokanning.openai-gpt3-java:client:0.12.0")
+
+    implementation 'com.github.javaparser:javaparser-symbol-solver-core:3.25.3'
+    implementation 'com.github.javaparser:javaparser-core:3.25.3'
+    implementation 'com.knuddels:jtokkit:0.5.1'
+    // https://mvnrepository.com/artifact/org.tensorflow/tensorflow
+    implementation 'org.tensorflow:tensorflow:1.15.0'
+//    implementation 'org.apache.commons:commons-lang3:3.12.0'
+    // https://mvnrepository.com/artifact/org.apache.commons/commons-text
+//    implementation 'org.apache.commons:commons-text:1.10.0'
+    implementation 'gg.acai:chatgpt-java:1.0.2'
+//    implementation "org.apache.logging.log4j:log4j-slf4j-impl:2.17.1"
+    implementation platform("ai.djl:bom:0.22.1")
+    implementation "ai.djl:api:0.22.1"
+    runtimeOnly "ai.djl.pytorch:pytorch-engine:0.22.1"
+    runtimeOnly "ai.djl.pytorch:pytorch-model-zoo:0.22.1"
+    implementation "ai.djl.huggingface:tokenizers:0.22.1"
+    runtimeOnly 'ai.djl.pytorch:pytorch-native-cu118:2.0.0:win-x86_64'
+    runtimeOnly 'ai.djl.pytorch:pytorch-jni:2.0.0-0.22.1'
 
 }
 
