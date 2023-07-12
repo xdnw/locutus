@@ -285,7 +285,7 @@ public abstract class AGrantTemplate<T> {
         List<Grant.Requirement> list = new ArrayList<>();
 
         // check grant not disabled
-        list.add(new Grant.Requirement("Grant is disabled. See: " + CM.grant_template.enabled.cmd.toSlashMention(), false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Grant is disabled. See: " + CM.grant_template.enable.cmd.toSlashMention(), false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
                 return AGrantTemplate.this.isEnabled();

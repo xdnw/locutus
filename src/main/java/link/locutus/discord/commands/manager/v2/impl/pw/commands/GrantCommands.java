@@ -211,7 +211,7 @@ public class GrantCommands {
         }
         manager.saveTemplate(template);
         return "The template: `" + template.getName() + "` has been created. See:\n" +
-                "- " + CM.grant_template.enabled.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.enable.cmd.toSlashMention() + "\n" +
                 "- " + CM.grant_template.delete.cmd.toSlashMention() + "\n" +
                 "- " + CM.grant_template.send.cmd.toSlashMention();
     }
@@ -283,7 +283,7 @@ public class GrantCommands {
         }
         manager.saveTemplate(template);
         return "The template: `" + template.getName() + "` has been created. See:\n" +
-                "- " + CM.grant_template.enabled.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.enable.cmd.toSlashMention() + "\n" +
                 "- " + CM.grant_template.delete.cmd.toSlashMention() + "\n" +
                 "- " + CM.grant_template.send.cmd.toSlashMention();
     }
@@ -346,7 +346,7 @@ public class GrantCommands {
         }
         manager.saveTemplate(template);
         return "The template: `" + template.getName() + "` has been created. See:\n" +
-                "- " + CM.grant_template.enabled.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.enable.cmd.toSlashMention() + "\n" +
                 "- " + CM.grant_template.delete.cmd.toSlashMention() + "\n" +
                 "- " + CM.grant_template.send.cmd.toSlashMention();
     }
@@ -429,7 +429,7 @@ public class GrantCommands {
         }
         manager.saveTemplate(template);
         return "The template: `" + template.getName() + "` has been created. See:\n" +
-                "- " + CM.grant_template.enabled.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.enable.cmd.toSlashMention() + "\n" +
                 "- " + CM.grant_template.delete.cmd.toSlashMention() + "\n" +
                 "- " + CM.grant_template.send.cmd.toSlashMention();
     }
@@ -494,7 +494,7 @@ public class GrantCommands {
         }
         manager.saveTemplate(template);
         return "The template: `" + template.getName() + "` has been created. See:\n" +
-                "- " + CM.grant_template.enabled.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.enable.cmd.toSlashMention() + "\n" +
                 "- " + CM.grant_template.delete.cmd.toSlashMention() + "\n" +
                 "- " + CM.grant_template.send.cmd.toSlashMention();
     }
@@ -560,7 +560,7 @@ public class GrantCommands {
         }
         manager.saveTemplate(template);
         return "The template: `" + template.getName() + "` has been created. See:\n" +
-                "- " + CM.grant_template.enabled.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.enable.cmd.toSlashMention() + "\n" +
                 "- " + CM.grant_template.delete.cmd.toSlashMention() + "\n" +
                 "- " + CM.grant_template.send.cmd.toSlashMention();
     }
@@ -631,7 +631,7 @@ public class GrantCommands {
         }
         manager.saveTemplate(template);
         return "The template: `" + template.getName() + "` has been created. See:\n" +
-                "- " + CM.grant_template.enabled.cmd.toSlashMention() + "\n" +
+                "- " + CM.grant_template.enable.cmd.toSlashMention() + "\n" +
                 "- " + CM.grant_template.delete.cmd.toSlashMention() + "\n" +
                 "- " + CM.grant_template.send.cmd.toSlashMention();
     }
