@@ -11,12 +11,12 @@ import java.math.BigInteger;
 import java.util.List;
 
 public interface IEmbeddingDatabase {
-    public double[] getEmbedding(long hash);
-    public double[] getEmbedding(String content);
+    public float[] getEmbedding(long hash);
+    public float[] getEmbedding(String content);
     public long getHash(long type, String id);
-    public double[] getEmbedding(int type, String id);
+    public float[] getEmbedding(int type, String id);
 
-    public void setEmbedding(int type, @Nullable String id2, String content, double[] value, boolean saveContent);
+    public void setEmbedding(int type, @Nullable String id2, String content, float[] value, boolean saveContent);
     public void addEmbedding(long hash, long type, String id, byte[] data);
-    public double[] fetchEmbedding(String text);
+    public float[] fetchEmbedding(String text);
 }

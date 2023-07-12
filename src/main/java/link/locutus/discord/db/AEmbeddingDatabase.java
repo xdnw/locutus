@@ -11,6 +11,7 @@ import javax.annotation.Nullable;
 import java.io.Closeable;
 import java.math.BigInteger;
 import java.sql.SQLException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingDatabase, Closeable {
     private Long2ObjectOpenHashMap<byte[]> embeddingsByContentHash = new Long2ObjectOpenHashMap<>();
@@ -44,7 +45,7 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
     }
 
     private void loadEmbeddings() {
-        ctx().select().from("embeddings").fetch().forEach(r -> {
+        ctx().select().from("embeddings_2").fetch().forEach(r -> {
             long hash = r.get("hash", Long.class);
             long type = r.get("type", Long.class);
             String id = r.get("id", String.class);
@@ -58,13 +59,6 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
             if (!id.isEmpty() && type >= 0) {
                 embeddingInfoByIdTypeHash.put(idTypeHash, info);
             }
-
-            /*
-             private Long2ObjectOpenHashMap<byte[]> embeddingsByContentHash = new Long2ObjectOpenHashMap<>();
-    private Long2ObjectOpenHashMap<EmbeddingInfo> embeddingInfoByContentHash = new Long2ObjectOpenHashMap<>();
-    private Long2ObjectOpenHashMap<EmbeddingInfo> embeddingInfoByIdTypeHash = new Long2ObjectOpenHashMap<>();
-    private Long2ObjectOpenHashMap<String> hashContent = new Long2ObjectOpenHashMap<>();
-             */
         });
     }
 
@@ -79,7 +73,7 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
     @Override
     public void createTables() {
         // embeddings
-        ctx().createTableIfNotExists("embeddings")
+        ctx().createTableIfNotExists("embeddings_2")
                 .column("hash", SQLDataType.BIGINT.notNull())
                 .column("type", SQLDataType.BIGINT.notNull())
                 .column("id", SQLDataType.VARCHAR.notNull())
@@ -93,14 +87,47 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
                 .column("content", SQLDataType.VARCHAR.notNull())
                 .primaryKey("hash")
                 .execute();
+
+        // if table `embeddings` exists
+        try {
+            if (getConnection().getMetaData().getTables(null, null, "embeddings", null).next()) {
+                AtomicInteger inserted = new AtomicInteger();
+                // iterate over all rows
+                ctx().select().from("embeddings").fetch().forEach(r -> {
+                    // get hash
+                    long hash = r.get("hash", Long.class);
+                    // get type
+                    long type = r.get("type", Long.class);
+                    // get id
+                    String id = r.get("id", String.class);
+                    // get data
+                    byte[] data = r.get("data", byte[].class);
+                    double[] vectors = ArrayUtil.toDoubleArray(data);
+                    float[] downCast = new float[vectors.length];
+                    for (int i = 0; i < vectors.length; i++) {
+                        downCast[i] = (float) vectors[i];
+                    }
+                    byte[] downCastBytes = ArrayUtil.toByteArray(downCast);
+                    addEmbedding(hash, type, id, downCastBytes);
+                    inserted.incrementAndGet();
+                });
+                if (inserted.get() > 0) {
+                    System.out.println("Inserted " + inserted.get() + " embeddings");
+                    // drop old table
+                    ctx().dropTableIfExists("embeddings").execute();
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
-    public double[] getEmbedding(long hash) {
+    public float[] getEmbedding(long hash) {
         byte[] data = embeddingsByContentHash.get(hash);
-        return data == null ? null : ArrayUtil.toDoubleArray(data);
+        return data == null ? null : ArrayUtil.toFloatArray(data);
     }
 
-    public double[] getEmbedding(String content) {
+    public float[] getEmbedding(String content) {
         return getEmbedding(getHash(content));
     }
 
@@ -108,19 +135,19 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
         return getHash(type + ":" + id);
     }
 
-    public double[] getEmbedding(int type, String id) {
+    public float[] getEmbedding(int type, String id) {
         long typeIdHash = getHash(type, id);
         EmbeddingInfo existing = embeddingInfoByIdTypeHash.get(typeIdHash);
         if (existing != null) {
             byte[] data = embeddingsByContentHash.get(existing.contentHash);
             if (data != null) {
-                return ArrayUtil.toDoubleArray(data);
+                return ArrayUtil.toFloatArray(data);
             }
         }
         return null;
     }
 
-    public void setEmbedding(int type, @Nullable String id2, String content, double[] value, boolean saveContent) {
+    public void setEmbedding(int type, @Nullable String id2, String content, float[] value, boolean saveContent) {
         long contentHash = getHash(content);
 
         EmbeddingInfo info;
@@ -174,7 +201,7 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
 
     private void updateEmbedding(long contentHash, int type, String id) {
         if (id == null) id = "";
-        ctx().execute("UPDATE `embeddings` SET `type` = ?, `id` = ? WHERE `hash` = ?", type, id, contentHash);
+        ctx().execute("UPDATE `embeddings_2` SET `type` = ?, `id` = ? WHERE `hash` = ?", type, id, contentHash);
     }
 
     private void addContent(long hash, String content) {
@@ -189,6 +216,6 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
 //
     public synchronized void addEmbedding(long hash, long type, String id, byte[] data) {
         if (id == null) id = "";
-        ctx().execute("INSERT OR REPLACE INTO `embeddings` (`hash`, `type`, `id`, `data`) VALUES (?, ?, ?, ?)", hash, type, id, data);
+        ctx().execute("INSERT OR REPLACE INTO `embeddings_2` (`hash`, `type`, `id`, `data`) VALUES (?, ?, ?, ?)", hash, type, id, data);
     }
 }

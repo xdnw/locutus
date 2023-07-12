@@ -72,7 +72,7 @@ public class PWGPTHandler {
     private void registerEmbedding(PWEmbedding embedding, boolean forceDownload, String prefix) {
         embeddingTypeSetMap.computeIfAbsent(embedding.getType(), k -> new HashSet<>()).add(embedding);
         if (embedding.getId() != null && !forceDownload) {
-            double[] existing = handler.getExistingEmbedding(embedding.getType().ordinal(), embedding.getId());
+            float[] existing = handler.getExistingEmbedding(embedding.getType().ordinal(), embedding.getId());
             if (existing != null) {
                 return;
             }
@@ -82,7 +82,7 @@ public class PWGPTHandler {
     }
 
     public List<Map.Entry<PWEmbedding, Double>> getClosest(ValueStore store, String input, int top, Set<EmbeddingType> allowedTypes) {
-        double[] compareTo = handler.getEmbedding(input);
+        float[] compareTo = handler.getEmbedding(input);
 
         List<Map.Entry<PWEmbedding, Double>> closest = new ArrayList<>();
 
@@ -102,7 +102,7 @@ public class PWGPTHandler {
                 }
                 System.out.println("has permission " + other.getId());
 
-                double[] cmdEmbed = handler.getExistingEmbedding(other.getType().ordinal(), other.getId());
+                float[] cmdEmbed = handler.getExistingEmbedding(other.getType().ordinal(), other.getId());
                 if (cmdEmbed == null) {
                     System.out.println("No embedding for " + other.getId());
                     continue;

@@ -2,9 +2,11 @@ package link.locutus.discord.gpt;
 
 import ai.djl.MalformedModelException;
 import ai.djl.huggingface.translator.TextEmbeddingTranslatorFactory;
+import ai.djl.inference.Predictor;
 import ai.djl.repository.zoo.Criteria;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import ai.djl.repository.zoo.ZooModel;
+import ai.djl.translate.TranslateException;
 import ai.djl.util.Platform;
 import link.locutus.discord.db.AEmbeddingDatabase;
 
@@ -15,6 +17,7 @@ public class MiniEmbedding extends AEmbeddingDatabase {
     private final Platform platform;
     private final Criteria<String, float[]> criteria;
     private final ZooModel<String, float[]> model;
+    private final Predictor<String, float[]> predictor;
 
     public MiniEmbedding(Platform platform) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
         super("minilm");
@@ -26,13 +29,18 @@ public class MiniEmbedding extends AEmbeddingDatabase {
                 .optTranslatorFactory(new TextEmbeddingTranslatorFactory())
                 .build();
         this.model = criteria.loadModel();
+        predictor = model.newPredictor();
 
     }
 
 
     @Override
-    public double[] fetchEmbedding(String text) {
-        float[] res = predictor.predict(text);
+    public float[] fetchEmbedding(String text) {
+        try {
+            return predictor.predict(text);
+        } catch (TranslateException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

@@ -46,6 +46,19 @@ public class ArrayUtil {
         }
         return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
     }
+
+    public static double cosineSimilarity(float[] vectorA, float[] vectorB) {
+        double dotProduct = 0.0;
+        double normA = 0.0;
+        double normB = 0.0;
+        for (int i = 0; i < vectorA.length; i++) {
+            dotProduct += vectorA[i] * vectorB[i];
+            normA += Math.pow(vectorA[i], 2);
+            normB += Math.pow(vectorB[i], 2);
+        }
+        return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
+
     private static <T> void getSubsets(List<T> superSet, int k, int idx, Set<T> current, List<Set<T>> solution) {
         //successful stop clause
         if (current.size() == k) {
@@ -291,6 +304,19 @@ public class ArrayUtil {
         return out.toByteArray();
     }
 
+    public static byte[] toByteArray(float[] array) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        DataOutputStream dout = new DataOutputStream(out);
+        for (float f : array) {
+            try {
+                dout.writeFloat(f);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return out.toByteArray();
+    }
+
     public static long[] toLongArray(byte[] array) {
         DataInputStream is = new DataInputStream(new ByteArrayInputStream(array));
         int len = array.length / 8;
@@ -312,6 +338,20 @@ public class ArrayUtil {
         for (int i = 0; i < len; i++) {
             try {
                 result[i] = is.readDouble();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return result;
+    }
+
+    public static float[] toFloatArray(byte[] array) {
+        DataInputStream is = new DataInputStream(new ByteArrayInputStream(array));
+        int len = array.length / 4;
+        float[] result = new float[len];
+        for (int i = 0; i < len; i++) {
+            try {
+                result[i] = is.readFloat();
             } catch (IOException e) {
                 e.printStackTrace();
             }

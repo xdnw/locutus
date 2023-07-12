@@ -48,6 +48,8 @@ public class GptHandler {
         this.chatEncoder = registry.getEncodingForModel(ModelType.GPT_3_5_TURBO);
 
         this.platform = Platform.detectPlatform("pytorch");
+
+        this.summarizer = new GPTSummarizer(registry, service)
     }
 
     public List<Moderation> checkModeration(String input) {
@@ -123,10 +125,6 @@ public class GptHandler {
         return chatEncoder.encode(text).size();
     }
 
-    public int getEmbeddingTokenSize(String text) {
-        return embeddingDatabase.getEmbeddingTokenSize(text);
-    }
-
     public void checkThrowModeration(List<Moderation> moderations, String text) {
         for (Moderation result : moderations) {
             if (result.isFlagged()) {
@@ -139,7 +137,7 @@ public class GptHandler {
         }
     }
 
-    private double[] getEmbeddingApi(String text, boolean checkModeration) {
+    private float[] getEmbeddingApi(String text, boolean checkModeration) {
         if (checkModeration) {
             List<Moderation> modResult = checkModeration(text);
             checkThrowModeration(modResult, text);
@@ -147,16 +145,16 @@ public class GptHandler {
         return embeddingDatabase.fetchEmbedding(text);
     }
 
-    public double[] getExistingEmbedding(int type, String text) {
+    public float[] getExistingEmbedding(int type, String text) {
         return this.embeddingDatabase.getEmbedding(type, text);
     }
 
-    public double[] getEmbedding(String text) {
+    public float[] getEmbedding(String text) {
         return getEmbedding(-1, null, text, false);
     }
 
-    public double[] getEmbedding(int type, @Nullable String id, String text, boolean saveContent) {
-        double[] existing = this.embeddingDatabase.getEmbedding(text);
+    public float[] getEmbedding(int type, @Nullable String id, String text, boolean saveContent) {
+        float[] existing = this.embeddingDatabase.getEmbedding(text);
         if (existing == null) {
             System.out.println("Fetch embedding: " + text);
             existing = getEmbeddingApi(text, type < 0);
