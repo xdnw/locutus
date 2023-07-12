@@ -1,5 +1,6 @@
 package link.locutus.discord.gpt;
 
+import ai.djl.util.Platform;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
@@ -11,7 +12,6 @@ import com.theokanning.openai.embedding.EmbeddingResult;
 import com.theokanning.openai.moderation.Moderation;
 import com.theokanning.openai.moderation.ModerationRequest;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.GptDB;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import org.json.JSONArray;
@@ -33,21 +33,21 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public class GptHandler {
-    public final GptDB db;
-    private final Encoding embeddingEncoder;
+    public final IEmbeddingDatabase embeddingDatabase;
     private final Encoding chatEncoder;
     private final EncodingRegistry registry;
     private final OpenAiService service;
+    private final Platform platform;
 
     public GptHandler() throws SQLException, ClassNotFoundException {
-        this.db = new GptDB();
         this.registry = Encodings.newDefaultEncodingRegistry();
-
-        this.embeddingEncoder = registry.getEncodingForModel(ModelType.TEXT_EMBEDDING_ADA_002);
-        this.chatEncoder = registry.getEncodingForModel(ModelType.GPT_3_5_TURBO);
-
         this.service = new OpenAiService(Settings.INSTANCE.OPENAI_API_KEY, Duration.ofSeconds(50));
 
+        this.embeddingDatabase = new AdaEmbedding(registry, service);
+
+        this.chatEncoder = registry.getEncodingForModel(ModelType.GPT_3_5_TURBO);
+
+        this.platform = Platform.detectPlatform("pytorch");
     }
 
     public List<Moderation> checkModeration(String input) {
@@ -124,7 +124,7 @@ public class GptHandler {
     }
 
     public int getEmbeddingTokenSize(String text) {
-        return embeddingEncoder.encode(text).size();
+        return embeddingDatabase.getEmbeddingTokenSize(text);
     }
 
     public void checkThrowModeration(List<Moderation> moderations, String text) {
@@ -144,25 +144,11 @@ public class GptHandler {
             List<Moderation> modResult = checkModeration(text);
             checkThrowModeration(modResult, text);
         }
-        EmbeddingRequest request = EmbeddingRequest.builder()
-                .model("text-embedding-ada-002")
-                .input(List.of(text))
-                .build();
-        EmbeddingResult embedResult = service.createEmbeddings(request);
-        List<Embedding> data = embedResult.getData();
-        if (data.size() != 1) {
-            throw new RuntimeException("Expected 1 embedding, got " + data.size());
-        }
-        List<Double> result = data.get(0).getEmbedding();
-        double[] target = new double[result.size()];
-        for (int i = 0; i < target.length; i++) {
-            target[i] = result.get(i);
-        }
-        return target;
+        return embeddingDatabase.fetchEmbedding(text);
     }
 
-    public double[] getExistingEmbedding(int type, String id) {
-        return this.db.getEmbedding(type, id);
+    public double[] getExistingEmbedding(int type, String text) {
+        return this.embeddingDatabase.getEmbedding(type, text);
     }
 
     public double[] getEmbedding(String text) {
@@ -170,11 +156,11 @@ public class GptHandler {
     }
 
     public double[] getEmbedding(int type, @Nullable String id, String text, boolean saveContent) {
-        double[] existing = this.db.getEmbedding(text);
+        double[] existing = this.embeddingDatabase.getEmbedding(text);
         if (existing == null) {
             System.out.println("Fetch embedding: " + text);
             existing = getEmbeddingApi(text, type < 0);
-            db.setEmbedding(type, id, text, existing, saveContent);
+            embeddingDatabase.setEmbedding(type, id, text, existing, saveContent);
         }
         return existing;
     }

@@ -2,15 +2,17 @@ package link.locutus.discord.db;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.gpt.IEmbeddingDatabase;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
 import org.jooq.impl.SQLDataType;
 
 import javax.annotation.Nullable;
+import java.io.Closeable;
 import java.math.BigInteger;
 import java.sql.SQLException;
 
-public class GptDB extends DBMainV3 {
+public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingDatabase, Closeable {
     private Long2ObjectOpenHashMap<byte[]> embeddingsByContentHash = new Long2ObjectOpenHashMap<>();
     private Long2ObjectOpenHashMap<EmbeddingInfo> embeddingInfoByContentHash = new Long2ObjectOpenHashMap<>();
     private Long2ObjectOpenHashMap<EmbeddingInfo> embeddingInfoByIdTypeHash = new Long2ObjectOpenHashMap<>();
@@ -35,8 +37,8 @@ public class GptDB extends DBMainV3 {
         }
     }
 
-    public GptDB() throws SQLException, ClassNotFoundException {
-        super(Settings.INSTANCE.DATABASE, "gpt", false);
+    public AEmbeddingDatabase(String name) throws SQLException, ClassNotFoundException {
+        super(Settings.INSTANCE.DATABASE, name, false);
         loadEmbeddings();
         loadContent();
     }
@@ -189,7 +191,4 @@ public class GptDB extends DBMainV3 {
         if (id == null) id = "";
         ctx().execute("INSERT OR REPLACE INTO `embeddings` (`hash`, `type`, `id`, `data`) VALUES (?, ?, ?, ?)", hash, type, id, data);
     }
-
-
-
 }
