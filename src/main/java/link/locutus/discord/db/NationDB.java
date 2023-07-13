@@ -103,7 +103,7 @@ public class NationDB extends DBMainV2 {
         int treaties = loadTreaties();
         LOGGER.info("Loaded " + treaties + " treaties");
 
-        importLegacyNationLoot();
+        importLegacyNationLoot(true);
 
         markDirtyIncorrectNations(true, true);
 
@@ -2933,9 +2933,9 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    private void importLegacyNationLoot() throws SQLException {
+    private void importLegacyNationLoot(boolean fromAttacks) throws SQLException {
+        List<LootEntry> lootInfoList = new ArrayList<>();
         if (tableExists("NATION_LOOT")) {
-            List<LootEntry> lootInfoList = new ArrayList<>();
 
             try (PreparedStatement stmt = prepareQuery("select * FROM NATION_LOOT WHERE id IN (SELECT nation_id FROM NATIONS2)")) {
                 try (ResultSet rs = stmt.executeQuery()) {
@@ -2955,18 +2955,20 @@ public class NationDB extends DBMainV2 {
                 }
             }
 
-            Map<Integer, Map.Entry<Long, double[]>> nationLoot = Locutus.imp().getWarDb().getNationLootFromAttacksLegacy();
-            for (Map.Entry<Integer, Map.Entry<Long, double[]>> entry : nationLoot.entrySet()) {
-                int nationId = entry.getKey();
-                long date = entry.getValue().getKey();
-                double[] loot = entry.getValue().getValue();
-                NationLootType type = NationLootType.WAR_LOSS;
-                lootInfoList.add(new LootEntry(nationId, loot, date, type));
-            }
-
-            saveNationLoot(lootInfoList);
-
             getDb().drop("NATION_LOOT");
+        }
+
+        Map<Integer, Map.Entry<Long, double[]>> nationLoot = Locutus.imp().getWarDb().getNationLootFromAttacksLegacy();
+        for (Map.Entry<Integer, Map.Entry<Long, double[]>> entry : nationLoot.entrySet()) {
+            int nationId = entry.getKey();
+            long date = entry.getValue().getKey();
+            double[] loot = entry.getValue().getValue();
+            NationLootType type = NationLootType.WAR_LOSS;
+            lootInfoList.add(new LootEntry(nationId, loot, date, type));
+        }
+        
+        if (!lootInfoList.isEmpty()) {
+            saveNationLoot(lootInfoList);
         }
     }
 
