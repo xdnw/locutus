@@ -20,6 +20,17 @@ public class ModerationResult {
         this.flaggedCategories = new HashSet<>();
     }
 
+    @Override
+    public String toString() {
+        return "ModerationResult{" +
+                "flagged=" + flagged +
+                ", error=" + error +
+                ", message='" + message + '\'' +
+                ", scores=" + scores +
+                ", flaggedCategories=" + flaggedCategories +
+                '}';
+    }
+
     public boolean isFlagged() {
         return flagged;
     }

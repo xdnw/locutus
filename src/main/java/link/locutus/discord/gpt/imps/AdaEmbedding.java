@@ -29,7 +29,7 @@ public class AdaEmbedding extends AEmbeddingDatabase {
     }
 
     @Override
-    public double[] fetchEmbedding(String text) {
+    public float[] fetchEmbedding(String text) {
         EmbeddingRequest request = EmbeddingRequest.builder()
                 .model("text-embedding-ada-002")
                 .input(List.of(text))
@@ -40,9 +40,9 @@ public class AdaEmbedding extends AEmbeddingDatabase {
             throw new RuntimeException("Expected 1 embedding, got " + data.size());
         }
         List<Double> result = data.get(0).getEmbedding();
-        double[] target = new double[result.size()];
+        float[] target = new float[result.size()];
         for (int i = 0; i < target.length; i++) {
-            target[i] = result.get(i);
+            target[i] = result.get(i).floatValue();
         }
         return target;
     }

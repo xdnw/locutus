@@ -32,22 +32,36 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 public class GptHandler {
-    public final IEmbeddingDatabase embeddingDatabase;
     private final Encoding chatEncoder;
     private final EncodingRegistry registry;
     private final OpenAiService service;
     private final Platform platform;
 
+    //
+    public final IEmbeddingDatabase embeddingDatabase;
+    private final ISummarizer summarizer;
+    private final IModerator moderator;
+
     public GptHandler() throws SQLException, ClassNotFoundException {
         this.registry = Encodings.newDefaultEncodingRegistry();
         this.service = new OpenAiService(Settings.INSTANCE.OPENAI_API_KEY, Duration.ofSeconds(50));
 
-        this.embeddingDatabase = new AdaEmbedding(registry, service);
-
         this.chatEncoder = registry.getEncodingForModel(ModelType.GPT_3_5_TURBO);
 
         this.platform = Platform.detectPlatform("pytorch");
+
+
         this.summarizer = new GPTSummarizer(registry, service);
+        this.embeddingDatabase = new AdaEmbedding(registry, service);
+        this.moderator = new GPTModerator(service);
+    }
+
+    public IModerator getModerator() {
+        return moderator;
+    }
+
+    public ISummarizer getSummarizer() {
+        return summarizer;
     }
 
     public OpenAiService getService() {
@@ -62,22 +76,10 @@ public class GptHandler {
         return chatEncoder.encode(text).size();
     }
 
-    public void checkThrowModeration(List<Moderation> moderations, String text) {
-        for (Moderation result : moderations) {
-            if (result.isFlagged()) {
-                String message = "Your submission has been flagged as inappropriate:\n" +
-                        "```json\n" + result.toString() + "\n```\n" +
-                        "The content submitted:\n" +
-                        "```json\n" + text.replaceAll("```", "\\`\\`\\`") + "\n```";
-                throw new IllegalArgumentException(message);
-            }
-        }
-    }
-
     private float[] getEmbeddingApi(String text, boolean checkModeration) {
         if (checkModeration) {
-            List<Moderation> modResult = checkModeration(text);
-            checkThrowModeration(modResult, text);
+            List<ModerationResult> modResult = moderator.moderate(text);
+            GPTUtil.checkThrowModeration(modResult, text);
         }
         return embeddingDatabase.fetchEmbedding(text);
     }

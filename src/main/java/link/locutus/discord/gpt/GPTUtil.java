@@ -12,8 +12,32 @@ import java.util.List;
 
 public class GPTUtil {
 
-    public static float[] average(List<float[]> input, List<Double> weighting) {
-        // see https://github.com/openai/openai-cookbook/blob/main/examples/Embedding_long_inputs.ipynb
+//    public static float[] average(List<float[]> input, List<Double> weighting) {
+//        // see https://github.com/openai/openai-cookbook/blob/main/examples/Embedding_long_inputs.ipynb
+//    }
+
+    public static void checkThrowModeration2(List<Moderation> moderations, String text) {
+        for (Moderation result : moderations) {
+            if (result.isFlagged()) {
+                String message = "Your submission has been flagged as inappropriate:\n" +
+                        "```json\n" + result.toString() + "\n```\n" +
+                        "The content submitted:\n" +
+                        "```json\n" + text.replaceAll("```", "\\`\\`\\`") + "\n```";
+                throw new IllegalArgumentException(message);
+            }
+        }
+    }
+
+    public static void checkThrowModeration(List<ModerationResult> moderations, String text) {
+        for (ModerationResult result : moderations) {
+            if (result.isFlagged()) {
+                String message = "Your submission has been flagged as inappropriate:\n" +
+                        "```json\n" + result.toString() + "\n```\n" +
+                        "The content submitted:\n" +
+                        "```json\n" + text.replaceAll("```", "\\`\\`\\`") + "\n```";
+                throw new IllegalArgumentException(message);
+            }
+        }
     }
 
     public static int getTokens(String input, ModelType type) {

@@ -47,7 +47,7 @@ public class HelpCommands {
     @Command
     public void moderation_check(@Me IMessageIO io, String input) throws IOException {
         List<String> inputs = List.of(input);
-        List<ModerationResult> results = getGPT().getHandler().checkModerationList(inputs);
+        List<ModerationResult> results = getGPT().getHandler().getModerator().moderate(inputs);
         IMessageBuilder msg = io.create();
         for (ModerationResult result : results) {
             msg.append("Flagged: " + result.isFlagged() + "\n");

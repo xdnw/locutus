@@ -6,7 +6,9 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.GptHandler;
+import link.locutus.discord.gpt.ModerationResult;
 import link.locutus.discord.gpt.pwembed.PWGPTHandler;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -37,8 +39,8 @@ public class Say extends Command {
         PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
         if (gpt != null) {
             GptHandler handler = gpt.getHandler();
-            List<Moderation> result = handler.checkModeration(msg);
-            handler.checkThrowModeration(result, "<redacted>");
+            List<ModerationResult> result = handler.getModerator().moderate(msg);
+            GPTUtil.checkThrowModeration(result, "<redacted>");
         }
 
         return DiscordUtil.format(guild, channel, author, me, msg.substring(5) + "\n\n- " + author.getAsMention());

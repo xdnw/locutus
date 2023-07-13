@@ -30,9 +30,7 @@ public class MiniEmbedding extends AEmbeddingDatabase {
                 .build();
         this.model = criteria.loadModel();
         predictor = model.newPredictor();
-
     }
-
 
     @Override
     public float[] fetchEmbedding(String text) {

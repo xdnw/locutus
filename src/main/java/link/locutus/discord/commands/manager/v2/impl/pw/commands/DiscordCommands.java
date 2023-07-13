@@ -14,7 +14,9 @@ import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholder
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.GptHandler;
+import link.locutus.discord.gpt.ModerationResult;
 import link.locutus.discord.gpt.pwembed.PWGPTHandler;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
@@ -131,8 +133,8 @@ public class DiscordCommands {
         PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
         if (gpt != null) {
             GptHandler handler = gpt.getHandler();
-            List<Moderation> result = handler.checkModeration(msg);
-            handler.checkThrowModeration(result, "<redacted>");
+            List<ModerationResult> result = handler.getModerator().moderate(msg);
+            GPTUtil.checkThrowModeration(result, "<redacted>");
         }
 
         msg = msg + "\n\n- " + author.getAsMention();
