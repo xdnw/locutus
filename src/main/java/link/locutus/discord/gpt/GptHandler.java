@@ -11,12 +11,15 @@ import com.theokanning.openai.moderation.ModerationRequest;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.gpt.imps.AdaEmbedding;
 import link.locutus.discord.gpt.imps.GPTSummarizer;
+import link.locutus.discord.gpt.imps.ProcessSummarizer;
+import link.locutus.discord.gpt.imps.ProcessText2Text;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.annotation.Nullable;
+import java.io.File;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
@@ -41,6 +44,7 @@ public class GptHandler {
     public final IEmbeddingDatabase embeddingDatabase;
     private final ISummarizer summarizer;
     private final IModerator moderator;
+    private final ProcessText2Text text2text;
 
     public GptHandler() throws SQLException, ClassNotFoundException {
         this.registry = Encodings.newDefaultEncodingRegistry();
@@ -50,10 +54,26 @@ public class GptHandler {
 
         this.platform = Platform.detectPlatform("pytorch");
 
-
-        this.summarizer = new GPTSummarizer(registry, service);
-        this.embeddingDatabase = new AdaEmbedding(registry, service);
         this.moderator = new GPTModerator(service);
+        this.embeddingDatabase = new AdaEmbedding(registry, service);
+        // TODO change ^ that to mini
+
+        File gpt4freePath = new File("../gpt4free/mymain.py");
+        File venvExe = new File("../gpt4free/venv/Scripts/python.exe");
+        // ensure files exist
+        if (!gpt4freePath.exists()) {
+            throw new RuntimeException("gpt4free not found: " + gpt4freePath.getAbsolutePath());
+        }
+        if (!venvExe.exists()) {
+            throw new RuntimeException("venv not found: " + venvExe.getAbsolutePath());
+        }
+
+        this.summarizer = new ProcessSummarizer(venvExe, gpt4freePath);
+        this.text2text = new ProcessText2Text(venvExe, gpt4freePath);
+    }
+
+    public ProcessText2Text getText2text() {
+        return text2text;
     }
 
     public IModerator getModerator() {

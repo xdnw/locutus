@@ -229,6 +229,7 @@ public class CommandManager2 {
             this.commands.registerMethod(help, List.of("help"), "find_setting", "find_setting");
 
             this.commands.registerMethod(help, List.of("help"), "moderation_check", "moderation_check");
+            this.commands.registerMethod(help, List.of("help"), "query", "query");
 
             pwgptHandler.registerDefaults();
         }

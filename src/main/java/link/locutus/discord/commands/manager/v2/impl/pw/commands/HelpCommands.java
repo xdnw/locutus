@@ -12,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.pwembed.CommandEmbedding;
 import link.locutus.discord.gpt.imps.EmbeddingType;
@@ -19,6 +20,7 @@ import link.locutus.discord.gpt.ModerationResult;
 import link.locutus.discord.gpt.pwembed.PWEmbedding;
 import link.locutus.discord.gpt.pwembed.PWGPTHandler;
 import link.locutus.discord.gpt.pwembed.SettingEmbedding;
+import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
 import java.util.List;
@@ -43,6 +45,12 @@ public class HelpCommands {
 //    public void find_placeholders(@Me IMessageIO io, ValueStore store, String query, @Range(min = 1, max = 25) @Default("3") int num_results) {
 //
 //    }
+
+    @Command
+    public String query(ValueStore store, @Me GuildDB db, @Me User user, @Me IMessageIO io, String input) throws IOException {
+        String result = getGPT().generateSolution(store, db, user, input);
+        return result;
+    }
 
     @Command
     public void moderation_check(@Me IMessageIO io, String input) throws IOException {

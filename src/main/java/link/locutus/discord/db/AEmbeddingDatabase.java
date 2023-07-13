@@ -10,6 +10,7 @@ import org.jooq.impl.SQLDataType;
 import javax.annotation.Nullable;
 import java.io.Closeable;
 import java.math.BigInteger;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -71,7 +72,7 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
     }
 
     @Override
-    public void createTables() {
+    public synchronized void createTables() {
         // embeddings
         ctx().createTableIfNotExists("embeddings_2")
                 .column("hash", SQLDataType.BIGINT.notNull())
@@ -90,32 +91,34 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
 
         // if table `embeddings` exists
         try {
-            if (getConnection().getMetaData().getTables(null, null, "embeddings", null).next()) {
-                AtomicInteger inserted = new AtomicInteger();
-                // iterate over all rows
-                ctx().select().from("embeddings").fetch().forEach(r -> {
-                    // get hash
-                    long hash = r.get("hash", Long.class);
-                    // get type
-                    long type = r.get("type", Long.class);
-                    // get id
-                    String id = r.get("id", String.class);
-                    // get data
-                    byte[] data = r.get("data", byte[].class);
-                    double[] vectors = ArrayUtil.toDoubleArray(data);
-                    float[] downCast = new float[vectors.length];
-                    for (int i = 0; i < vectors.length; i++) {
-                        downCast[i] = (float) vectors[i];
-                    }
-                    byte[] downCastBytes = ArrayUtil.toByteArray(downCast);
-                    addEmbedding(hash, type, id, downCastBytes);
-                    inserted.incrementAndGet();
-                });
-                if (inserted.get() > 0) {
-                    System.out.println("Inserted " + inserted.get() + " embeddings");
-                    // drop old table
-                    ctx().dropTableIfExists("embeddings").execute();
+            AtomicInteger inserted = new AtomicInteger();
+            try (ResultSet query = getConnection().getMetaData().getTables(null, null, "embeddings", null)) {
+                if (query.next()) {
+                    // iterate over all rows
+                    ctx().select().from("embeddings").fetch().forEach(r -> {
+                        // get hash
+                        long hash = r.get("hash", Long.class);
+                        // get type
+                        long type = r.get("type", Long.class);
+                        // get id
+                        String id = r.get("id", String.class);
+                        // get data
+                        byte[] data = r.get("data", byte[].class);
+                        double[] vectors = ArrayUtil.toDoubleArray(data);
+                        float[] downCast = new float[vectors.length];
+                        for (int i = 0; i < vectors.length; i++) {
+                            downCast[i] = (float) vectors[i];
+                        }
+                        byte[] downCastBytes = ArrayUtil.toByteArray(downCast);
+                        addEmbedding(hash, type, id, downCastBytes);
+                        inserted.incrementAndGet();
+                    });
                 }
+            }
+            if (inserted.get() > 0) {
+                System.out.println("Inserted " + inserted.get() + " embeddings");
+                // drop old table
+                ctx().dropTableIfExists("embeddings").execute();
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -169,12 +172,14 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
                 }
                 return;
             }
-            // delete from database
-            ctx().execute("DELETE FROM `embeddings` WHERE `hash` = ?", info.contentHash);
+            synchronized (this) {
+                // delete from database
+                ctx().execute("DELETE FROM `embeddings` WHERE `hash` = ?", info.contentHash);
 
-            // delete content if exists
-            if (hashContent.remove(info.contentHash) != null) {
-                ctx().execute("DELETE FROM `content` WHERE `hash` = ?", info.contentHash);
+                // delete content if exists
+                if (hashContent.remove(info.contentHash) != null) {
+                    ctx().execute("DELETE FROM `content` WHERE `hash` = ?", info.contentHash);
+                }
             }
 
             System.out.println("Delete different embedding");
@@ -199,12 +204,12 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
         }
     }
 
-    private void updateEmbedding(long contentHash, int type, String id) {
+    private synchronized void updateEmbedding(long contentHash, int type, String id) {
         if (id == null) id = "";
         ctx().execute("UPDATE `embeddings_2` SET `type` = ?, `id` = ? WHERE `hash` = ?", type, id, contentHash);
     }
 
-    private void addContent(long hash, String content) {
+    private synchronized void addContent(long hash, String content) {
         ctx().execute("INSERT OR IGNORE INTO `content` (`hash`, `content`) VALUES (?, ?)", hash, content);
     }
 
