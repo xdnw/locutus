@@ -4,6 +4,8 @@ import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
 import com.knuddels.jtokkit.api.ModelType;
+import com.theokanning.openai.moderation.Moderation;
+import com.theokanning.openai.moderation.ModerationRequest;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,7 +15,7 @@ public class GPTUtil {
     public static float[] average(List<float[]> input, List<Double> weighting) {
         // see https://github.com/openai/openai-cookbook/blob/main/examples/Embedding_long_inputs.ipynb
     }
-    
+
     public static int getTokens(String input, ModelType type) {
         EncodingRegistry registry = Encodings.newDefaultEncodingRegistry();
         Encoding enc = registry.getEncodingForModel(type);

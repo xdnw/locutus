@@ -48,8 +48,9 @@ public class GPTSummarizer implements ISummarizer {
     }
 
     public String summarizeChunk(String chunk) {
+        String full = prompt.replace("{query}", chunk);
         CompletionRequest completionRequest = CompletionRequest.builder()
-                .prompt(chunk)
+                .prompt(full)
                 .model(this.model.getName())
                 .echo(false)
                 .build();

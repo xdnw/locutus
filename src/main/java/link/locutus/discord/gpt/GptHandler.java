@@ -47,69 +47,7 @@ public class GptHandler {
         this.chatEncoder = registry.getEncodingForModel(ModelType.GPT_3_5_TURBO);
 
         this.platform = Platform.detectPlatform("pytorch");
-
         this.summarizer = new GPTSummarizer(registry, service);
-    }
-
-    public List<Moderation> checkModeration(String input) {
-        return service.createModeration(ModerationRequest.builder().input(input).build()).getResults();
-    }
-
-    public List<ModerationResult> checkModerationList(List<String> inputs) throws IOException {
-        List<ModerationResult> results = new ArrayList<>();
-        JSONObject response = checkModeration(inputs);
-        if (response.has("error")) {
-            ModerationResult errorResult = new ModerationResult();
-            errorResult.setError(true);
-            errorResult.setMessage(response.getString("error"));
-            results.add(errorResult);
-        } else {
-            JSONArray resultsArray = response.getJSONArray("results");
-            for (int i = 0; i < resultsArray.length(); i++) {
-                JSONObject resultObject = resultsArray.getJSONObject(i);
-                ModerationResult result = new ModerationResult();
-                result.setFlagged(resultObject.getBoolean("flagged"));
-                if (result.isFlagged()) {
-                    JSONObject categoriesObject = resultObject.getJSONObject("categories");
-                    Set<String> flaggedCategories = new HashSet<>();
-                    for (String category : categoriesObject.keySet()) {
-                        if (categoriesObject.getBoolean(category)) {
-                            flaggedCategories.add(category);
-                        }
-                    }
-                    result.setFlaggedCategories(flaggedCategories);
-                    JSONObject categoryScoresObject = resultObject.getJSONObject("category_scores");
-                    Map<String, Double> categoryScores = new HashMap<>();
-                    for (String category : categoryScoresObject.keySet()) {
-                        categoryScores.put(category, categoryScoresObject.getDouble(category));
-                    }
-                    result.setScores(categoryScores);
-                }
-                results.add(result);
-            }
-        }
-        return results;
-    }
-
-    public JSONObject checkModeration(List<String> inputs) throws IOException {
-        String url = "https://api.openai.com/v1/moderations";
-        String apiKey = Settings.INSTANCE.OPENAI_API_KEY;
-
-        Map<String, List<String>> arguments = new HashMap<>();
-        arguments.put("input", inputs);
-
-        Consumer<HttpURLConnection> apply = connection -> {
-            connection.setRequestProperty("Authorization", "Bearer " + apiKey);
-            connection.setRequestProperty("Content-Type", "application/json");
-        };
-
-        JSONObject argsJs = new JSONObject(arguments);
-        byte[] dataBinary = argsJs.toString().getBytes(StandardCharsets.UTF_8);
-
-        CompletableFuture<String> result = FileUtil.readStringFromURL(1, url, dataBinary,  FileUtil.RequestType.POST, null, apply);
-        String jsonStr = FileUtil.get(result);
-        // parse to JSONObject (org.json)
-        return new JSONObject(jsonStr);
     }
 
     public OpenAiService getService() {
