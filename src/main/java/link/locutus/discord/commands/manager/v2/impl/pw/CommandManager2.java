@@ -529,7 +529,7 @@ public class CommandManager2 {
             CommandCallable command = e.getCommand();
             String title = "Error Running: /" + command.getFullPath(" ");
             if (command instanceof ICommand icmd) {
-                body.append(icmd.toBasicMarkdown(store, permisser, "/", false));
+                body.append(icmd.toBasicMarkdown(store, permisser, "/", false, true));
             } else {
                 String help = command.help(store);
                 String desc = command.desc(store);

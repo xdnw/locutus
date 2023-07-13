@@ -21,7 +21,7 @@ public class SettingEmbedding extends PWEmbedding<GuildSetting> {
     }
 
     @Override
-    public String getContent() {
+    public String getSummary() {
         return getObj().help();
     }
 

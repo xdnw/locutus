@@ -32,7 +32,11 @@ public abstract class PWEmbedding<T> {
 
     public abstract String apply(String query, GptHandler handler);
 
-    public abstract String getContent();
+    public abstract String getSummary();
+
+    public String getFull() {
+        return getSummary();
+    }
 
     public boolean shouldSaveConent() {
         return shouldSave;

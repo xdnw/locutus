@@ -18,7 +18,7 @@ public class NationMetricEmbedding extends PWEmbedding<NationAttribute> {
     }
 
     @Override
-    public String getContent() {
+    public String getSummary() {
         return StringMan.classNameToSimple(getObj().getType().toString()) + " " + getObj().getDesc().replaceAll("\n", " ");
     }
 

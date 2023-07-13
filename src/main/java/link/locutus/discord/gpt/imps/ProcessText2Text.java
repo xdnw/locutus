@@ -46,6 +46,7 @@ public class ProcessText2Text implements IText2Text{
         String result = StringMan.join(lines, "\n");
         if (result.contains("result:")) {
             result = result.substring(result.indexOf("result:") + 7);
+            result = result.replace("\\n", "\n");
             return result;
         } else {
             System.err.println(result);

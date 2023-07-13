@@ -136,7 +136,7 @@ Message: `$who Rose -l`
 
         for (ParametricCallable command : commands) {
             result.append("## ").append(prefix).append(command.getFullPath()).append("\n");
-            result.append(command.toBasicMarkdown(store, permisser, prefix, true));
+            result.append(command.toBasicMarkdown(store, permisser, prefix, true, true));
             result.append("\n---\n\n");
         }
 

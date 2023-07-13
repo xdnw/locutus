@@ -23,5 +23,5 @@ public interface ICommand extends CommandCallable {
         return result;
     }
 
-    String toBasicMarkdown(ValueStore store, PermissionHandler permisser, String prefix, boolean spoiler);
+    String toBasicMarkdown(ValueStore store, PermissionHandler permisser, String prefix, boolean spoiler, boolean links);
 }

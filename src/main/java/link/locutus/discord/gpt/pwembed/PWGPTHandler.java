@@ -63,22 +63,23 @@ public class PWGPTHandler {
 
         // get prompt
         String prompt = """
-               You are `Locutus` a discord bot assistant of a player who is the leader of a nation in the game Politics And War. 
-               Use the information below and your own knowledge to respond. 
+               You are `Locutus` a discord bot for providing documentation to a player who is the leader of a nation in the game Politics And War. 
+               Locutus wiki: <https://github.com/xdnw/locutus/wiki/Commands>
+               Use the information to reply with comprehensive documentation including appropriate syntax.
                
                Player conversation:
                ```
                {user_input}
                ```
                
-               Top results from searching the game database:
+               Top results from searching the game database (might not be relevant):
                {search_results}""";
 
         // 2000
         int promptLength = prompt.replace("{user_input}", "").replace("{search_results}", "").length();
         int userInputLength = userInput.length();
 
-        int max = 2000;
+        int max = 2000 - 31;
         int remaining = max - promptLength - userInputLength;
 
         if (store == null) {
@@ -90,11 +91,12 @@ public class PWGPTHandler {
 
         // get the closest results
         List<String> embeddings = new ArrayList<>();
-        HashSet<EmbeddingType> allowedTypes = new HashSet<>(Arrays.asList(EmbeddingType.values()));
+        Set<EmbeddingType> allowedTypes = new HashSet<>(Arrays.asList(EmbeddingType.values()));
         List<Map.Entry<PWEmbedding, Double>> closest = this.getClosest(store, userInput, 50, allowedTypes);
         for (Map.Entry<PWEmbedding, Double> entry : closest) {
             PWEmbedding embedding = entry.getKey();
-            String text = embedding.getType() + "." + embedding.getId() + "=" + embedding.getContent();
+            String text = embedding.getType() + "." + embedding.getId() + "=" + embedding.getFull();
+            text = text.replace("\n\n", "\n");
             if (text.length() + 1 > remaining) continue;
             embeddings.add(text);
             remaining -= text.length() + 1;
@@ -102,11 +104,15 @@ public class PWGPTHandler {
 
         String formatted = prompt.replace("{user_input}", userInput).replace("{search_results}", String.join("\n", embeddings));
 
-        System.out.println("Prompt\n```\n" + formatted + "\n```");
+        System.out.println("Prompt\n\n" + formatted + "\n");
 
-        String result = this.handler.getText2text().generate(formatted);
-
-        return result;
+        try {
+            String result = this.handler.getText2text().generate(formatted);
+            return result;
+        } catch (Throwable e) {
+            e.printStackTrace();
+            return "Error (see console)";
+        }
     }
 
     private void registerCommandEmbeddings() {
@@ -141,7 +147,7 @@ public class PWGPTHandler {
                 return;
             }
         }
-        String full = prefix + embedding.getType().name() + " " + embedding.getId() + ": " + embedding.getContent();
+        String full = prefix + embedding.getType().name() + " " + embedding.getId() + ": " + embedding.getSummary();
         handler.getEmbedding(embedding.getType().ordinal(), embedding.getId(), full, embedding.shouldSaveConent());
     }
 

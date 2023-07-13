@@ -1,5 +1,6 @@
 package link.locutus.discord.gpt.pwembed;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
@@ -18,13 +19,18 @@ public class CommandEmbedding extends PWEmbedding<ParametricCallable> {
     }
 
     @Override
-    public String getContent() {
+    public String getSummary() {
         return getObj().simpleDesc();
     }
 
     @Override
+    public String getFull() {
+        ValueStore<Object> store = Locutus.imp().getCommandManager().getV2().getStore();
+        return getObj().toBasicMarkdown(store, null, "/", false, false);//simpleDesc();
+    }
+
+    @Override
     public boolean hasPermission(ValueStore store, CommandManager2 manager) {
-//        return getObj().hasPermission(store, manager.getPermisser());
-        return true;
+        return getObj().hasPermission(store, manager.getPermisser());
     }
 }

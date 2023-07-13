@@ -443,38 +443,39 @@ public class ParametricCallable implements ICommand {
     }
 
     @Override
-    public String toBasicMarkdown(ValueStore store, PermissionHandler permisser, String prefix, boolean spoiler) {
+    public String toBasicMarkdown(ValueStore store, PermissionHandler permisser, String prefix, boolean spoiler, boolean links) {
         StringBuilder result = new StringBuilder();
         Map<String, String> permissionInfo = new LinkedHashMap<>();
 
         Method method = getMethod();
-        for (Annotation permAnnotation : method.getDeclaredAnnotations()) {
-            Key<Object> permKey = Key.of(boolean.class, permAnnotation);
-            Parser parser = permisser.get(permKey);
-            if (parser != null) {
-                List<String> permValues = new ArrayList<>();
+        if (permisser != null) {
+            for (Annotation permAnnotation : method.getDeclaredAnnotations()) {
+                Key<Object> permKey = Key.of(boolean.class, permAnnotation);
+                Parser parser = permisser.get(permKey);
+                if (parser != null) {
+                    List<String> permValues = new ArrayList<>();
 
-                for (Method permMeth : permAnnotation.annotationType().getDeclaredMethods()) {
-                    Object def = permMeth.getDefaultValue();
-                    Object current = null;
-                    try {
-                        current = permMeth.invoke(permAnnotation);
-                    } catch (IllegalAccessException | InvocationTargetException e) {
-                        throw new RuntimeException(e);
+                    for (Method permMeth : permAnnotation.annotationType().getDeclaredMethods()) {
+                        Object def = permMeth.getDefaultValue();
+                        Object current = null;
+                        try {
+                            current = permMeth.invoke(permAnnotation);
+                        } catch (IllegalAccessException | InvocationTargetException e) {
+                            throw new RuntimeException(e);
+                        }
+                        if (!Objects.equals(def, current)) {
+                            permValues.add(permMeth.getName() + ": " + StringMan.getString(current));
+                        }
                     }
-                    if (!Objects.equals(def, current)) {
-                        permValues.add(permMeth.getName() + ": " + StringMan.getString(current));
-                    }
+
+                    String title = permAnnotation.annotationType().getSimpleName() + "(" + String.join(", ", permValues) + ")";
+                    String body = parser.getDescription();
+                    permissionInfo.put(title, body);
                 }
-
-                String title = permAnnotation.annotationType().getSimpleName() + "(" + String.join(", ", permValues) + ")";
-                String body = parser.getDescription();
-                permissionInfo.put(title, body);
             }
-        }
-
-        if (permissionInfo.isEmpty()) {
-            result.append("`This command is public`\n\n");
+            if (permissionInfo.isEmpty()) {
+                result.append("`This command is public`\n\n");
+            }
         }
 
         if (simpleDesc().isEmpty()) {
@@ -518,8 +519,12 @@ public class ParametricCallable implements ICommand {
 
                 String keyName = key.toSimpleString();
                 if (spoiler) keyName = StringEscapeUtils.escapeHtml4(keyName.replace("[", "\\[").replace("]", "\\]"));
-                String typeLink = MarkupUtil.markdownUrl(keyName, typeUrlBase + "#" + MarkupUtil.pathName(key.toSimpleString()));
-                result.append("`" + argFormat + "`").append(" - ").append(typeLink);
+                if (links) {
+                    String typeLink = MarkupUtil.markdownUrl(keyName, typeUrlBase + "#" + MarkupUtil.pathName(key.toSimpleString()));
+                    result.append("`" + argFormat + "`").append(" - ").append(typeLink);
+                } else {
+                    result.append("`" + argFormat + "`").append(" - ").append(keyName);
+                }
 
                 result.append("\n\n");
 

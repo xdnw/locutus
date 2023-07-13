@@ -72,7 +72,7 @@ public class HelpCommands {
 
     @Command
     public String command(@Me IMessageIO io, ValueStore store, PermissionHandler permisser, ICommand command) {
-        String body = command.toBasicMarkdown(store, permisser, "/", false);
+        String body = command.toBasicMarkdown(store, permisser, "/", false, true);
         // todo spoilers
         String title = "/" + command.getFullPath();
         if (body.length() > 4096) {
