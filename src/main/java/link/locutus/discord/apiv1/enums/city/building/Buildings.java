@@ -31,7 +31,7 @@ import static link.locutus.discord.apiv1.enums.ResourceType.URANIUM;
 public class Buildings {
     public final static PowerBuilding COAL_POWER = new BuildingBuilder("impCoalpower").cost(MONEY, 5000).pollution(8).upkeep(MONEY, 1200).power(COAL, 1.2d, 100, 500);
     public final static PowerBuilding OIL_POWER = new BuildingBuilder("impOilpower").cost(MONEY, 7000).pollution(6).upkeep(MONEY, 1800).power(OIL, 1.2d, 100, 500);
-    public final static PowerBuilding NUCLEAR_POWER = new BuildingBuilder("impNuclearpower").cost(MONEY, 500000).upkeep(MONEY, 10500).cost(STEEL, 100).power(URANIUM, 1.2d, 1000, 2000);
+    public final static PowerBuilding NUCLEAR_POWER = new BuildingBuilder("impNuclearpower").cost(MONEY, 500000).upkeep(MONEY, 10500).cost(STEEL, 100).power(URANIUM, 2.4d, 1000, 2000);
     public final static PowerBuilding WIND_POWER = new BuildingBuilder("impWindpower").cost(MONEY, 30000).cost(ALUMINUM, 25).upkeep(MONEY, 500).power(null, 0, 250, 250);
     public final static ResourceBuilding COAL_MINE = new BuildingBuilder("impCoalmine").cost(MONEY, 1000).pollution(12).upkeep(MONEY, 400).cap(10).resource(COAL).continents(NORTH_AMERICA, EUROPE, AUSTRALIA, ANTARCTICA);
     public final static ResourceBuilding OIL_WELL = new BuildingBuilder("impOilwell").cost(MONEY, 1500).pollution(12).upkeep(MONEY, 600).cap(10).resource(OIL).continents(SOUTH_AMERICA, AFRICA, ASIA, ANTARCTICA);
