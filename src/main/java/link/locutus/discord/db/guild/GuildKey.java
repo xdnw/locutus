@@ -115,53 +115,55 @@ public class GuildKey {
                 if (ownerNation == null || ownerNation.getAlliance_id() != aaId || ownerNation.getPosition() < Rank.LEADER.id) {
                     Set<String> inviteCodes = new HashSet<>();
                     boolean isValid = Roles.ADMIN.hasOnRoot(owner.getUser());
-                    try {
+                    if (!isValid) {
                         try {
-                            List<Invite> invites = RateLimitUtil.complete(db.getGuild().retrieveInvites());
-                            for (Invite invite : invites) {
-                                String inviteCode = invite.getCode();
-                                inviteCodes.add(inviteCode);
-                            }
-                        } catch (InsufficientPermissionException ignore) {
-                        }
-
-                        if (!inviteCodes.isEmpty() && alliance.getDiscord_link() != null && !alliance.getDiscord_link().isEmpty()) {
-                            for (String code : inviteCodes) {
-                                if (alliance.getDiscord_link().contains(code)) {
-                                    isValid = true;
-                                    break;
+                            try {
+                                List<Invite> invites = RateLimitUtil.complete(db.getGuild().retrieveInvites());
+                                for (Invite invite : invites) {
+                                    String inviteCode = invite.getCode();
+                                    inviteCodes.add(inviteCode);
                                 }
+                            } catch (Throwable ignore) {
                             }
-                        }
 
-                        if (!isValid) {
-                            String url = Settings.INSTANCE.PNW_URL() + "/alliance/id=" + aaId;
-                            String content = FileUtil.readStringFromURL(PagePriority.ALLIANCE_ID_AUTH_CODE.ordinal(), url);
-                            String idStr = db.getGuild().getId();
-
-                            if (!content.contains(idStr)) {
-                                for (String inviteCode : inviteCodes) {
-                                    if (content.contains(inviteCode)) {
+                            if (!inviteCodes.isEmpty() && alliance.getDiscord_link() != null && !alliance.getDiscord_link().isEmpty()) {
+                                for (String code : inviteCodes) {
+                                    if (alliance.getDiscord_link().contains(code)) {
                                         isValid = true;
                                         break;
                                     }
                                 }
-                            } else {
-                                isValid = true;
                             }
-                        }
 
-                        if (!isValid) {
-                            String msg = "1. Go to: <" + Settings.INSTANCE.PNW_URL() + "/alliance/edit/id=" + aaId + ">\n" +
-                                    "2. Scroll down to where it says Alliance Description:\n" +
-                                    "3. Put your guild id `" + db.getIdLong() + "` somewhere in the text\n" +
-                                    "4. Click save\n" +
-                                    "5. Run the command " + getCommandObj(aaIds) + " again\n" +
-                                    "(note: you can remove the id after setup)";
-                            throw new IllegalArgumentException(msg);
+                            if (!isValid) {
+                                String url = Settings.INSTANCE.PNW_URL() + "/alliance/id=" + aaId;
+                                String content = FileUtil.readStringFromURL(PagePriority.ALLIANCE_ID_AUTH_CODE.ordinal(), url);
+                                String idStr = db.getGuild().getId();
+
+                                if (!content.contains(idStr)) {
+                                    for (String inviteCode : inviteCodes) {
+                                        if (content.contains(inviteCode)) {
+                                            isValid = true;
+                                            break;
+                                        }
+                                    }
+                                } else {
+                                    isValid = true;
+                                }
+                            }
+
+                            if (!isValid) {
+                                String msg = "1. Go to: <" + Settings.INSTANCE.PNW_URL() + "/alliance/edit/id=" + aaId + ">\n" +
+                                        "2. Scroll down to where it says Alliance Description:\n" +
+                                        "3. Put your guild id `" + db.getIdLong() + "` somewhere in the text\n" +
+                                        "4. Click save\n" +
+                                        "5. Run the command " + getCommandObj(aaIds) + " again\n" +
+                                        "(note: you can remove the id after setup)";
+                                throw new IllegalArgumentException(msg);
+                            }
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
                         }
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
                     }
                 }
 

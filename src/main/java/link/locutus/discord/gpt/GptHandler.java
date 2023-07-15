@@ -58,7 +58,7 @@ public class GptHandler {
         this.embeddingDatabase = new AdaEmbedding(registry, service);
         // TODO change ^ that to mini
 
-        File gpt4freePath = new File("../gpt4free/gpt3_5_turbo.py");
+        File gpt4freePath = new File("../gpt4free/my_project/gpt3_5_turbo.py");
         File venvExe = new File("../gpt4free/venv/Scripts/python.exe");
         // ensure files exist
         if (!gpt4freePath.exists()) {

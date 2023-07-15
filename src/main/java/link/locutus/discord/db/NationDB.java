@@ -2958,17 +2958,19 @@ public class NationDB extends DBMainV2 {
             getDb().drop("NATION_LOOT");
         }
 
-        Map<Integer, Map.Entry<Long, double[]>> nationLoot = Locutus.imp().getWarDb().getNationLootFromAttacksLegacy();
-        for (Map.Entry<Integer, Map.Entry<Long, double[]>> entry : nationLoot.entrySet()) {
-            int nationId = entry.getKey();
-            long date = entry.getValue().getKey();
-            double[] loot = entry.getValue().getValue();
-            NationLootType type = NationLootType.WAR_LOSS;
-            lootInfoList.add(new LootEntry(nationId, loot, date, type));
-        }
-        
-        if (!lootInfoList.isEmpty()) {
-            saveNationLoot(lootInfoList);
+        if (fromAttacks) {
+            Map<Integer, Map.Entry<Long, double[]>> nationLoot = Locutus.imp().getWarDb().getNationLootFromAttacksLegacy();
+            for (Map.Entry<Integer, Map.Entry<Long, double[]>> entry : nationLoot.entrySet()) {
+                int nationId = entry.getKey();
+                long date = entry.getValue().getKey();
+                double[] loot = entry.getValue().getValue();
+                NationLootType type = NationLootType.WAR_LOSS;
+                lootInfoList.add(new LootEntry(nationId, loot, date, type));
+            }
+
+            if (!lootInfoList.isEmpty()) {
+                saveNationLoot(lootInfoList);
+            }
         }
     }
 

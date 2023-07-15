@@ -45,6 +45,7 @@ public class GPTUtil {
         Encoding enc = registry.getEncodingForModel(type);
         return enc.encode(input).size();
     }
+
     public static List<String> getChunks(String input, ModelType type, int tokenSizeCap) {
         List<String> result = new ArrayList<>();
 
