@@ -23,6 +23,15 @@ public class MarkupUtil {
         return String.format("[%s](%s)", name, url);
     }
 
+    public static String stripImageReferences(String markdown) {
+        Pattern pattern = Pattern.compile("\\[.*?]:\\s.*?(\\r?\\n|$)");
+        return pattern.matcher(markdown).replaceAll("");
+    }
+
+    public static String removeImages(String markdown) {
+        return markdown.replaceAll("!\\[.*?]\\(.*?\\)", "").replaceAll("!\\[.*?]\\[\\]", "");
+    }
+
     public static String htmlUrl(String name, String url) {
         return String.format("<a href=\"%s\">%s</a>", url, name);
     }

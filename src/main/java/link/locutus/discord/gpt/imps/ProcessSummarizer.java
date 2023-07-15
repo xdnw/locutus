@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 
-public abstract class ProcessSummarizer implements ISummarizer {
+public class ProcessSummarizer implements ISummarizer {
     private final File file;
     private final String prompt;
     private final int promptTokens;
