@@ -505,11 +505,27 @@ public class DiscordUtil {
         return rolesByCity;
     }
 
+    public static Map<Integer, Set<Role>> getAARolesIncDuplicates(Collection<Role> roles) {
+        Map<Integer, Set<Role>> allianceRoles = new HashMap<>();
+        for (Role role : roles) {
+            if (role.getName().startsWith("AA ")) {
+                String[] split = role.getName().split(" ");
+                if (split.length < 2) continue;
+                String idStr = split[1];
+                if (!MathMan.isInteger(idStr)) continue;
+                int id = Integer.parseInt(idStr);
+                allianceRoles.computeIfAbsent(id, f -> new HashSet<>()).add(role);
+            }
+        }
+        return allianceRoles;
+    }
+
     public static Map<Integer, Role> getAARoles(Collection<Role> roles) {
         Map<Integer, Role> allianceRoles = null;
         for (Role role : roles) {
             if (role.getName().startsWith("AA ")) {
                 String[] split = role.getName().split(" ");
+                if (split.length < 2) continue;
                 String idStr = split[1];
                 if (!MathMan.isInteger(idStr)) continue;
                 int id = Integer.parseInt(idStr);

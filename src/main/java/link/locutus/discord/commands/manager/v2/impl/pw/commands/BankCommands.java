@@ -176,17 +176,8 @@ public class BankCommands {
                                    @Arg("Deposit via the api")
                                    @Switch("u") boolean useApi,
                                    @Switch("f") boolean force) throws IOException, ExecutionException, InterruptedException, GeneralSecurityException {
-        if (mailResults && !Roles.MAIL.has(author, db.getGuild())) {
-            throw new IllegalArgumentException("No permission for `mailResults`. " + Roles.MAIL.toDiscordRoleNameElseInstructions(db.getGuild()));
-        }
-        if (dm && !Roles.MAIL.hasOnRoot(author)) {
-            throw new IllegalArgumentException("No permission for `dm`. " + Roles.MAIL.toDiscordRoleNameElseInstructions(db.getGuild()));
-        }
         if (customMessage != null && !dm && !mailResults) {
             throw new IllegalArgumentException("Cannot specify `customMessage` without specifying `dm` or `mailResults`");
-        }
-        if (useApi && !Roles.ECON.has(author, db.getGuild())) {
-            throw new IllegalArgumentException("No permission for `useApi`. " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
         }
         if (amount != null && (rawsDays != null || keepWarchestFactor != null || keepPerCity != null || keepTotal != null || unitResources != null)) {
             throw new IllegalArgumentException("Cannot specify `amount` to deposit with other deposit modes.");
@@ -200,7 +191,19 @@ public class BankCommands {
         if (sheetAmounts != null && (rawsDays != null || keepWarchestFactor != null || keepPerCity != null || keepTotal != null || unitResources != null)) {
             throw new IllegalArgumentException("Cannot specify `sheetAmounts` to deposit with other deposit modes.");
         }
+        if (nations.isEmpty()) return "No nations found";
 
+        boolean isOther = nations.size() > 1 || me.getNation_id() != nations.iterator().next().getNation_id();
+
+        if (mailResults && !Roles.MAIL.has(author, db.getGuild()) && isOther) {
+            throw new IllegalArgumentException("No permission for `mailResults`. " + Roles.MAIL.toDiscordRoleNameElseInstructions(db.getGuild()));
+        }
+        if (dm && !Roles.MAIL.hasOnRoot(author) && isOther) {
+            throw new IllegalArgumentException("No permission for `dm`. " + Roles.MAIL.toDiscordRoleNameElseInstructions(db.getGuild()));
+        }
+        if (useApi && isOther && !Roles.ECON.has(author, db.getGuild())) {
+            throw new IllegalArgumentException("No permission for `useApi`. " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
+        }
         Set<Long> allowed = Roles.ECON_STAFF.getAllowedAccounts(author, db);
         Map<DBNation, OffshoreInstance.TransferStatus> statuses = new LinkedHashMap<>();
         Map<DBNation, double[]> toKeepMap = new LinkedHashMap<>();
@@ -1689,7 +1692,7 @@ public class BankCommands {
                                @Arg("Do NOT include loans") @Switch("l") boolean noLoans,
                                  @Arg("Do NOT include grants") @Switch("g") boolean noGrants,
                                  @Arg("Do NOT include deposits") @Switch("d") boolean noDeposits,
-                                 @Arg("Include past depositors") @Switch("p") boolean includePastDepositors,
+                                 @Arg("Include past depositors") @Switch("p") Set<Integer> includePastDepositors,
                                @Switch("f") boolean force
 
     ) throws GeneralSecurityException, IOException {
@@ -1723,17 +1726,17 @@ public class BankCommands {
             Set<Integer> aaIds = db.getAllianceIds();
             if (!aaIds.isEmpty()) {
                 nations = new LinkedHashSet<>(Locutus.imp().getNationDB().getNations(aaIds));
-                if (!includePastDepositors) nations.removeIf(n -> n.getPosition() <= 1);
+                if (includePastDepositors == null || includePastDepositors.isEmpty()) nations.removeIf(n -> n.getPosition() <= 1);
 
-                if (includePastDepositors) {
-                    Set<Integer> ids = Locutus.imp().getBankDB().getReceiverNationIdFromAllianceReceivers(aaIds);
+                if (includePastDepositors != null && !includePastDepositors.isEmpty()) {
+                    Set<Integer> ids = Locutus.imp().getBankDB().getReceiverNationIdFromAllianceReceivers(includePastDepositors);
                     for (int id : ids) {
                         DBNation nation = Locutus.imp().getNationDB().getNation(id);
                         if (nation != null) nations.add(nation);
                     }
                 }
             } else {
-                if (includePastDepositors) {
+                if (includePastDepositors != null && !includePastDepositors.isEmpty()) {
                     throw new IllegalArgumentException("usePastDepositors is only implemented for alliances (ping borg)");
                 }
                 Role role = Roles.MEMBER.toRole(guild);
@@ -1749,7 +1752,7 @@ public class BankCommands {
                 if (nations.isEmpty()) return "No members found";
 
             }
-        } else if (includePastDepositors) {
+        } else if (includePastDepositors != null && !includePastDepositors.isEmpty()) {
             throw new IllegalArgumentException("usePastDepositors cannot be set when nations are provided");
         }
         Set<Long> tracked = null;

@@ -300,7 +300,7 @@ public class OffshoreInstance {
     }
 
     public synchronized Map<ResourceType, Double> getDeposits(long guildId, boolean force) {
-        if (!guildDBCached.getCoalitionRaw(Coalition.OFFSHORING).contains(guildId)) {
+        if (!getGuildDB().getCoalitionRaw(Coalition.OFFSHORING).contains(guildId)) {
             throw new IllegalArgumentException("Guild " + guildId + " is not offshoring with " + getGuildDB().getGuild());
         }
         List<Transaction2> toProcess = getTransactionsGuild(guildId, force);

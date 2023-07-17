@@ -101,6 +101,8 @@ public class AutoRoleTask implements IAutoRoleTask {
             for (Role cityRole : cityRoles) {
                 System.out.println("- " + cityRole.getName());
             }
+        } else {
+            System.out.println("No city roles: " + guild.getIdLong());
         }
 
         fetchTaxRoles(true);
