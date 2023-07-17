@@ -10,15 +10,15 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public interface IAutoRoleTask {
-    void autoRoleCities(Member member, Supplier<DBNation> nationSup, Consumer<String> output, Consumer<Future> tasks);
+    AutoRoleInfo autoRoleCities(Member member, DBNation nation);
 
-    void updateTaxRoles(Map<DBNation, TaxBracket> brackets);
+    AutoRoleInfo updateTaxRoles(Map<DBNation, TaxBracket> brackets);
 
-    void updateTaxRole(Member member, TaxBracket bracket);
+    AutoRoleInfo updateTaxRole(Member member, TaxBracket bracket);
 
-    void autoRoleAll(Consumer<String> output);
+    AutoRoleInfo autoRoleAll(boolean confirm);
 
-    void autoRole(Member member, Consumer<String> output);
+    AutoRoleInfo autoRole(Member member, DBNation nation, boolean confirm);
 
-    void syncDB();
+    String syncDB();
 }

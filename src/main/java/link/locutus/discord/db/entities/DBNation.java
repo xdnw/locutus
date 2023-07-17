@@ -41,6 +41,7 @@ import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.MailTask;
 import link.locutus.discord.util.task.multi.GetUid;
+import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.jooby.handler.CommandResult;
 import com.google.gson.JsonObject;
@@ -371,9 +372,8 @@ public class DBNation implements NationOrAlliance {
                     if (member != null) {
                         RateLimitUtil.complete(db.getGuild().addRoleToMember(user, role));
                         output.append("You have been assigned the role: " + role.getName());
-                        db.getAutoRoleTask().autoRole(member, s -> {
-                            output.append("\n").append(s);
-                        });
+                        AutoRoleInfo task = db.getAutoRoleTask().autoRole(member, this, true);
+                        output.append("\n" + task.getChangesAndErrorMessage());
                     } else {
                         member = db.getGuild().retrieveMember(user).complete();
                         output.append("Member " + DiscordUtil.getFullUsername(user) + " not found in guild: " + db.getGuild());

@@ -76,16 +76,6 @@ public class ExchangeCommands {
         return help;
     }
 
-    @Command(desc = "Autorole members for an exchange")
-    @RolePermission(guild = StockDB.ROOT_GUILD)
-    public String autoRole(@Me GuildDB db, @Me Guild guildl, @Me Member member, @Me DBNation me, StockDB stockDB, @Me Exchange exchange) {
-        exchange.autoRole(member);
-        exchange.autoRole();
-        StringBuilder response = new StringBuilder();
-        db.getAutoRoleTask().autoRole(member, f -> response.append(f).append("\n"));
-        return response.toString().trim();
-    }
-
     @Command(desc = "Destroy an exchange")
     @RolePermission(guild = StockDB.ROOT_GUILD)
     public String drop(@Me Guild guild, @Me IMessageIO io, @Me DBNation me, @Me JSONObject command, StockDB db, @Me Exchange exchange, @Switch("f") boolean force) {

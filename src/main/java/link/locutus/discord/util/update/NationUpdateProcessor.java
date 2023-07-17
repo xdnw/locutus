@@ -685,7 +685,7 @@ public class NationUpdateProcessor {
 
                 if (db.getOrNull(GuildKey.AUTONICK) == GuildDB.AutoNickOption.NATION) {
                     try {
-                        db.getAutoRoleTask().autoRole(member, System.out::println);
+                        db.getAutoRoleTask().autoRole(member, event.getCurrent(), true);
                     } catch (Throwable e) {
                         e.printStackTrace();
                     }
@@ -706,7 +706,7 @@ public class NationUpdateProcessor {
 
                 if (db.getOrNull(GuildKey.AUTONICK) == GuildDB.AutoNickOption.LEADER) {
                     try {
-                        db.getAutoRoleTask().autoRole(member, System.out::println);
+                        db.getAutoRoleTask().autoRole(member, event.getCurrent(), true);
                     } catch (Throwable e) {
                         e.printStackTrace();
                     }

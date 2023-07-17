@@ -414,17 +414,14 @@ public class GuildHandler {
     public void onCityCreate(CityCreateEvent event) {
         DBNation nation = event.getNation();
         if (nation != null) {
-
             // Auto role
             User user = nation.getUser();
             if (user != null) {
                 Member member = guild.getMember(user);
                 if (member != null) {
-                    db.getAutoRoleTask().autoRoleCities(member, () -> nation, ignore1 -> {}, ignore2 -> {});
+                    db.getAutoRoleTask().autoRoleCities(member, nation);
                 }
             }
-
-
         }
     }
 

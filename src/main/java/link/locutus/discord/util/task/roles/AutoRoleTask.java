@@ -12,6 +12,7 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -31,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -38,6 +40,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -46,9 +49,7 @@ import java.util.stream.Collectors;
 public class AutoRoleTask implements IAutoRoleTask {
     private final Guild guild;
     private int position;
-
     private Map<Integer, Role> allianceRoles;
-
     private Role registeredRole;
     private final GuildDB db;
     private GuildDB.AutoNickOption setNickname;
@@ -69,6 +70,14 @@ public class AutoRoleTask implements IAutoRoleTask {
         syncDB();
     }
 
+    public boolean isMember(Member member, DBNation nation) {
+        Set<Integer> aaIds = GuildKey.ALLIANCE_ID.getOrNull(db);
+        if (aaIds == null || aaIds.isEmpty()) {
+            return db.getAllies(false).contains(nation.getAlliance_id()) && nation.getPositionEnum().id >= Rank.MEMBER.id;
+        }
+        return (nation != null && aaIds.contains(nation.getAlliance_id()) && nation.getPositionEnum().id >= Rank.MEMBER.id);
+    }
+
     public void setAllianceMask(GuildDB.AutoRoleOption value) {
         this.setAllianceMask = value == null ? GuildDB.AutoRoleOption.FALSE : value;
     }
@@ -77,31 +86,25 @@ public class AutoRoleTask implements IAutoRoleTask {
         this.setNickname = value == null ? GuildDB.AutoNickOption.FALSE : value;
     }
 
-    public synchronized void syncDB() {
+    public synchronized String syncDB() {
+        Map<String, String> info = new LinkedHashMap<>();
+
         GuildDB.AutoNickOption nickOpt = db.getOrNull(GuildKey.AUTONICK);
         if (nickOpt != null) {
             setNickname(nickOpt);
         }
 
-        GuildDB.AutoRoleOption roleOpt = db.getOrNull(GuildKey.AUTOROLE);
+        GuildDB.AutoRoleOption roleOpt = db.getOrNull(GuildKey.AUTOROLE_ALLIANCES);
         if (roleOpt != null) {
-            try {
-                setAllianceMask(roleOpt);
-            } catch (IllegalArgumentException e) {}
+            setAllianceMask(roleOpt);
         }
+
         initRegisteredRole = false;
-        List<Role> roles = guild.getRoles();
+        List<Role> roles = db.getGuild().getRoles();
         this.allianceRoles = new ConcurrentHashMap<>(DiscordUtil.getAARoles(roles));
         this.cityRoleMap = new ConcurrentHashMap<>(DiscordUtil.getCityRoles(roles));
         this.cityRoles = new HashSet<>();
         for (Set<Role> value : cityRoleMap.values()) cityRoles.addAll(value);
-
-        if (!cityRoles.isEmpty()) {
-            System.out.println("City roles: " + guild.getIdLong());
-            for (Role cityRole : cityRoles) {
-                System.out.println("- " + cityRole.getName());
-            }
-        }
 
         fetchTaxRoles(true);
 
@@ -137,10 +140,57 @@ public class AutoRoleTask implements IAutoRoleTask {
             Function<Integer, Boolean> previousAllowed = allowedAAs;
             allowedAAs = f -> previousAllowed.apply(f) || masked.contains(f);
         }
+        registeredRole = Roles.REGISTERED.toRole(guild);
+
+        info.put(GuildKey.AUTONICK.name(), setNickname + "");
+        info.put(GuildKey.AUTOROLE_ALLIANCES.name(), setAllianceMask + "");
+        info.put(GuildKey.AUTOROLE_ALLIANCE_RANK.name(), autoRoleRank == null ? "Member" : autoRoleRank.name());
+        info.put(GuildKey.AUTOROLE_TOP_X.name(), allowedAAs == null ? "All" : "Top " + topX);
+        if (!masked.isEmpty()) {
+            info.put("Masked Alliances", masked.stream().map(f -> PnwUtil.getName(f, true)).collect(Collectors.joining("\n")));
+        }
+        info.put(GuildKey.AUTOROLE_ALLY_GOV.name() + " (for coalition servers)", autoRoleAllyGov + "");
+        if (allianceRoles.isEmpty()) {
+            info.put("Found Alliance Roles", "None (Roles are generated based on settings)");
+        } else {
+            // join by markdown list
+            List<String> aaNamesList = allianceRoles.entrySet().stream().map(f -> f.getKey() + " -> " + f.getValue().getName()).toList();
+            String listStr = "- " + String.join("\n- ", aaNamesList);
+            info.put("Found Alliance Roles", listStr);
+        }
+        info.put(Roles.REGISTERED.name(), registeredRole == null ? "None" : registeredRole.getName());
+        if (cityRoles.isEmpty()) {
+            info.put("Found City Roles", "None (Make one e.g. `c10-20` or `c21+`)");
+        } else {
+            // join by markdown list
+            List<String> cityNamesList = cityRoles.stream().map(Role::getName).toList();
+            info.put("Found City Roles", String.join("\n", cityNamesList));
+        }
+        if (taxRoles.isEmpty()) {
+            info.put("Found Tax Roles", "None (Make one e.g. `25/25`)");
+        } else {
+            // join by markdown list
+            List<String> taxNamesList = taxRoles.entrySet().stream().map(f -> f.getKey().getKey() + "/" + f.getKey().getValue() + " -> " + f.getValue().getName()).toList();
+            info.put("Found Tax Roles", String.join("\n", taxNamesList));
+        }
+
+        StringBuilder result = new StringBuilder();
+        for (Map.Entry<String, String> entry : info.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
+            if (value.contains("\n")) {
+                result.append(key).append(":\n").append(value).append("\n");
+            } else {
+                result.append(key).append(": ").append(value).append("\n");
+            }
+        }
+        result.append("\n");
+        result.append("\nSetting Info: " + CM.settings.info.cmd.toSlashMention());
+        result.append("\nRole Info: " + CM.role.setAlias.cmd.toSlashMention());
+        return result.toString();
     }
 
-    public void autoRoleAllies(Consumer<String> output, Set<Member> members) {
-        if (output == null) output = f -> {};
+    public void autoRoleAllies(AutoRoleInfo info, Set<Member> members) {
         if (!members.isEmpty()) {
             DiscordDB discordDb = Locutus.imp().getDiscordDB();
 
@@ -220,21 +270,21 @@ public class AutoRoleTask implements IAutoRoleTask {
                                 if (memberRole != null) {
                                     memberRoles.computeIfAbsent(member, f -> new ArrayList<>()).add(memberRole);
                                     if (!roles.contains(memberRole)) {
-                                        tasks.add(RateLimitUtil.queue(guild.addRoleToMember(member, memberRole)));
+                                        info.addRoleToMember(member, memberRole);
                                     }
                                 }
                                 for (int i = 0; i < allyDiscordRoles.length; i++) {
                                     Role allyRole = allyDiscordRoles[i];
                                     Role thisRole = thisDiscordRoles[i];
                                     if (allyRole == null || thisRole == null) {
-                                        if (thisRole != null) output.accept("Role not registered " + thisRole.getName());
+//                                        if (thisRole != null) output.accept("Role not registered " + thisRole.getName());
                                         continue;
                                     }
 
                                     if (allyRoles.contains(allyRole)) {
                                         memberRoles.computeIfAbsent(member, f -> new ArrayList<>()).add(thisRole);
                                         if (!roles.contains(thisRole)) {
-                                            tasks.add(RateLimitUtil.queue(guild.addRoleToMember(member, thisRole)));
+                                            info.addRoleToMember(member, thisRole);
                                         }
                                     }
                                 }
@@ -253,20 +303,20 @@ public class AutoRoleTask implements IAutoRoleTask {
                             if (allies.contains(nation.getAlliance_id()) && nation.getPosition() > 1) {
                                 isMember = true;
                                 if (!roles.contains(memberRole)) {
-                                    tasks.add(RateLimitUtil.queue(guild.addRoleToMember(member, memberRole)));
+                                    info.addRoleToMember(member, memberRole);
                                 }
                             }
                         }
                     }
                     if (!isMember && roles.contains(memberRole)) {
-                        tasks.add(RateLimitUtil.queue(guild.removeRoleFromMember(member, memberRole)));
+                        info.removeRoleFromMember(member, memberRole);
                     }
 
                     List<Role> allowed = memberRoles.getOrDefault(member, new ArrayList<>());
 
                     for (Role role : thisDiscordRoles) {
                         if (roles.contains(role) && !allowed.contains(role)) {
-                            tasks.add(RateLimitUtil.queue(guild.removeRoleFromMember(member, role)));
+                            info.removeRoleFromMember(member, role);
                         }
                     }
                 }
@@ -284,20 +334,24 @@ public class AutoRoleTask implements IAutoRoleTask {
     }
 
     @Override
-    public synchronized void autoRoleAll(Consumer<String> output) {
-        syncDB();
-        if (setNickname == GuildDB.AutoNickOption.FALSE && setAllianceMask == GuildDB.AutoRoleOption.FALSE) return;
-
-        ArrayDeque<Future> tasks = new ArrayDeque<>();
+    public synchronized AutoRoleInfo autoRoleAll(boolean confirm) {
+        String syncDbResult = syncDB();
+        AutoRoleInfo info = new AutoRoleInfo(db, syncDbResult);
 
         List<Member> members = guild.getMembers();
 
         Map<Integer, Role> existantAllianceRoles = new HashMap<>(allianceRoles);
 
+        Set<Integer> memberAllianceIds = new HashSet<>();
+        int requiredRank = autoRoleRank == null ? Rank.MEMBER.id : autoRoleRank.id;
         for (int i = 0; i < members.size(); i++) {
             Member member = members.get(i);
+            DBNation nation = DiscordUtil.getNation(member.getIdLong());
+            if (nation != null && nation.getPositionEnum().id >= requiredRank) {
+                memberAllianceIds.add(nation.getAlliance_id());
+            }
             try {
-                autoRole(member, true, output, f -> tasks.add(f));
+                autoRole(info, member, nation, true);
             } catch (Throwable e) {
                 e.printStackTrace();
                 throw e;
@@ -305,53 +359,32 @@ public class AutoRoleTask implements IAutoRoleTask {
         }
         if (autoRoleAllyGov) {
             HashSet<Member> memberSet = new HashSet<>(members);
-            autoRoleAllies(output, memberSet);
-        }
-        while (!tasks.isEmpty()) {
-            try {
-                tasks.poll().get();
-            } catch (InterruptedException | ExecutionException e) {
-                e.printStackTrace();
-            } catch (Throwable e) {
-                e.printStackTrace();
-                throw e;
-            }
+            autoRoleAllies(info, memberSet);
         }
 
         for (Map.Entry<Integer, Role> entry : existantAllianceRoles.entrySet()) {
             Role role = entry.getValue();
             List<Member> withRole = guild.getMembersWithRoles(role);
-            if (withRole.isEmpty()) {
+            if (!memberAllianceIds.contains(entry.getKey()) && withRole.isEmpty()) {
                 allianceRoles.remove(entry.getKey());
-                tasks.add(RateLimitUtil.queue(role.delete()));
+                RateLimitUtil.queue(role.delete());
             }
         }
-        while (!tasks.isEmpty()) {
-            try {
-                tasks.poll().get();
-            } catch (InterruptedException | ExecutionException e) {
-                e.printStackTrace();
-            }
-        }
+        return info;
     }
 
     private boolean initRegisteredRole = false;
     private Map<Integer, Integer> nationAACache = new HashMap<>();
 
     @Override
-    public synchronized void autoRole(Member member, Consumer<String> output) {
-        autoRole(member, false, output, f -> {});
+    public synchronized AutoRoleInfo autoRole(Member member, DBNation nation, boolean confirm) {
+        AutoRoleInfo info = new AutoRoleInfo(db, "");
+        autoRole(info, member, nation, false);
+        return info;
     }
 
-    public synchronized void autoNick(boolean autoAll, Member member, Consumer<String> output, Consumer<Future> tasks, Supplier<PNWUser> pnwUserSup, Supplier<DBNation> nationSup) {
-        PNWUser pnwUser = pnwUserSup.get();
-        if (pnwUser == null) {
-            output.accept(member.getEffectiveName() + " has the registered role, but no DB entry has been found.");
-            return;
-        }
-        DBNation nation = nationSup.get();
+    public synchronized void autoNick(AutoRoleInfo info, boolean autoAll, Member member, DBNation nation) {
         if (nation == null) {
-            output.accept(member.getEffectiveName() + " is registered, but no nation entry has been found");
             return;
         }
         String leaderOrNation;
@@ -384,76 +417,54 @@ public class AutoRoleTask implements IAutoRoleTask {
             }
         }
         if (setName) {
-            output.accept("Set " + member.getEffectiveName() + "  to " + name);
-            try {
-                tasks.accept(RateLimitUtil.queue(member.modifyNickname(name)));
-            } catch (HierarchyException ignore) {
-                output.accept(member.getEffectiveName() + " " + ignore.getMessage());
-            }
-        } else if (!autoAll) {
-            output.accept(member.getEffectiveName() + " already matches their ingame nation");
+            info.modifyNickname(member, name);
         }
     }
 
-    public synchronized void autoRole(Member member, boolean autoAll, Consumer<String> output, Consumer<Future> tasks) {
-        if (setNickname == GuildDB.AutoNickOption.FALSE && setAllianceMask == GuildDB.AutoRoleOption.FALSE) {
-            return;
-        }
-        if (allianceRoles.isEmpty()) syncDB();
-        {
-            initRegisteredRole = true;
-            this.registeredRole = Roles.REGISTERED.toRole(guild);
-        }
+    public synchronized void autoRole(AutoRoleInfo info, Member member, DBNation nation, boolean autoAll) {
+        initRegisteredRole = true;
+        this.registeredRole = Roles.REGISTERED.toRole(guild);
 
         try {
         User user = member.getUser();
         List<Role> roles = member.getRoles();
-        Supplier<PNWUser> pnwUserSup = ArrayUtil.memorize(() -> Locutus.imp().getDiscordDB().getUser(user));
-        Supplier<DBNation> nationSup = ArrayUtil.memorize(() -> {
-            PNWUser pnwUser = pnwUserSup.get();
-            if (pnwUser == null) return null;
-            return Locutus.imp().getNationDB().getNation(pnwUser.getNationId());
-        });
 
-        boolean isRegistered = registeredRole != null && roles.contains(registeredRole);
+        boolean hasRegisteredRole = registeredRole != null && roles.contains(registeredRole);
 
-        if (!isRegistered && registeredRole != null) {
-            if (nationSup.get() != null) {
-                RateLimitUtil.complete(guild.addRoleToMember(user, registeredRole));
-                isRegistered = true;
+        if (!hasRegisteredRole && registeredRole != null) {
+            if (nation != null) {
+                info.addRoleToMember(member, registeredRole);
             }
         }
-        if (!isRegistered && !autoAll) {
+        if (nation != null) {
             if (registeredRole == null) {
-                output.accept("No registered role exists. Please create one on discord, then use " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), null, null, null) + "");
+                info.logError(member, "No registered role exists. Please create one on discord, then use " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), null, null, null) + "");
             } else {
-                output.accept(member.getEffectiveName() + " is NOT registered");
+                info.logError(member, "Not registered. See: " + CM.register.cmd.toSlashMention());
             }
         }
 
         if (!autoAll && this.autoRoleAllyGov) {
-            autoRoleAllies(output, Collections.singleton(member));
+            autoRoleAllies(info, Collections.singleton(member));
         }
 
         if (setAllianceMask != null && setAllianceMask != GuildDB.AutoRoleOption.FALSE) {
-            autoRoleAlliance(member, isRegistered, pnwUserSup, nationSup, autoAll, output, tasks);
+            autoRoleAlliance(info, member, nation, autoAll);
         }
 
-        if (isRegistered) {
-            autoRoleCities(member, nationSup, output, tasks);
+        if (nation != null) {
+            autoRoleCities(info, member, nation);
         }
 
-        if (setNickname != null && setNickname != GuildDB.AutoNickOption.FALSE && member.getNickname() == null && isRegistered) {
-            autoNick(autoAll, member, output, tasks, pnwUserSup, nationSup);
-            PNWUser pnwUser = pnwUserSup.get();
+        if (setNickname != null && setNickname != GuildDB.AutoNickOption.FALSE && member.getNickname() == null && nation != null) {
+            autoNick(info, autoAll, member, nation);
         } else if (!autoAll && (setNickname == null || setNickname == GuildDB.AutoNickOption.FALSE)) {
-            output.accept("Auto nickname is disabled");
+            info.logError(member, "Auto nickname is disabled");
         }
 
         } catch (Throwable e) {
             e.printStackTrace();
-            output.accept("Failed for " + member.getEffectiveName() + ": " + e.getClass().getSimpleName() + " | " + e.getMessage());
-//            e.printStackTrace();
+            info.logError(member, "Failed: " + e.getClass().getSimpleName() + " | " + e.getMessage());
         }
     }
 
@@ -475,16 +486,16 @@ public class AutoRoleTask implements IAutoRoleTask {
         return tmp;
     }
 
-    public void updateTaxRoles(Map<DBNation, TaxBracket> brackets) {
+    public void updateTaxRoles(AutoRoleInfo info, Map<DBNation, TaxBracket> brackets) {
         fetchTaxRoles(true);
         for (Member member : guild.getMembers()) {
             DBNation nation = DiscordUtil.getNation(member.getIdLong());
             TaxBracket bracket = nation != null ? brackets.get(nation) : null;
-            updateTaxRole(member, bracket);
+            updateTaxRole(info, member, bracket);
         }
     }
 
-    public void updateTaxRole(Member member, TaxBracket bracket) {
+    public void updateTaxRole(AutoRoleInfo info, Member member, TaxBracket bracket) {
         Map<Map.Entry<Integer, Integer>, Role> tmpTaxRoles = fetchTaxRoles(false);
         Role expectedRole = null;
         if (bracket != null) {
@@ -497,168 +508,128 @@ public class AutoRoleTask implements IAutoRoleTask {
         for (Map.Entry<Map.Entry<Integer, Integer>, Role> entry : tmpTaxRoles.entrySet()) {
             Role taxRole = entry.getValue();
             if (!taxRole.equals(expectedRole) && roles.contains(taxRole)) {
-                RateLimitUtil.queue(guild.removeRoleFromMember(member, taxRole));
+                info.removeRoleFromMember(member, taxRole);
             }
         }
         if (expectedRole != null && !roles.contains(expectedRole)) {
-            RateLimitUtil.queue(guild.addRoleToMember(member, expectedRole));
+            info.addRoleToMember(member, expectedRole);
         }
     }
 
-    public void autoRoleAlliance(Member member, boolean isRegistered, Supplier<PNWUser> pnwUserSup, Supplier<DBNation> nationSup, boolean autoAll, Consumer<String> output, Consumer<Future> tasks) {
-        if (isRegistered) {
-            PNWUser pnwUser = pnwUserSup.get();
-            if (pnwUser != null) {
-                DBNation nation = nationSup.get();
-                if (nation != null) {
-                    if (!allianceRoles.isEmpty() && position == -1) {
-                        position = allianceRoles.values().iterator().next().getPosition();
-                    }
-
-                    int alliance_id = nation.getAlliance_id();
-                    if (nation.getPosition() < autoRoleRank.id || !allowedAAs.apply(alliance_id)) {
-                        alliance_id = 0;
-                    }
-
-                    Integer currentAARole = nationAACache.get(nation.getNation_id());
-                    if (currentAARole != null && currentAARole.equals(alliance_id) && autoAll) {
-                        return;
-                    } else {
-                        nationAACache.put(nation.getNation_id(), alliance_id);
-                    }
-
-                    Role role = allianceRoles.get(alliance_id);
-                    if (role == null && alliance_id != 0) {
-                        role = createRole(position, guild, alliance_id, nation.getAllianceName());
-                        if (role != null) {
-                            allianceRoles.put(alliance_id, role);
-                        }
-                    }
-
-                    Map<Integer, Role> myRoles = DiscordUtil.getAARoles(member.getRoles());
-
-                    if (myRoles.size() == 1 && role != null && myRoles.get(alliance_id) == role) {
-                        return;
-                    }
-                    if (alliance_id == 0) {
-                        for (Map.Entry<Integer, Role> entry : myRoles.entrySet()) {
-                            tasks.accept(RateLimitUtil.queue(guild.removeRoleFromMember(member, entry.getValue())));
-                        }
-                        return;
-                    }
-                    for (Map.Entry<Integer, Role> entry : myRoles.entrySet()) {
-                        if (entry.getValue().getIdLong() != role.getIdLong()) {
-                            if (!autoAll)
-                                output.accept("Remove " + entry.getValue().getName() + " to " + member.getEffectiveName());
-                            tasks.accept(RateLimitUtil.queue(guild.removeRoleFromMember(member, entry.getValue())));
-                        }
-                    }
-                    if (!myRoles.containsKey(alliance_id)) {
-                        if (!autoAll)
-                            output.accept("Add " + role.getName() + " to " + member.getEffectiveName());
-                        tasks.accept(RateLimitUtil.queue(guild.addRoleToMember(member, role)));
-                    }
-                } else {
-                    if (!autoAll) output.accept("No nation found for " + pnwUser.getNationId());
-                }
-            } else isRegistered = false;
-        }
-        if (!isRegistered && !autoAll) {
-            PNWUser pnwUser = pnwUserSup.get();
-            if (pnwUser == null) {
-                Map<Integer, Role> memberAARoles = DiscordUtil.getAARoles(member.getRoles());
-                if (!memberAARoles.isEmpty()) {
-                    for (Map.Entry<Integer, Role> entry : memberAARoles.entrySet()) {
-                        output.accept("Remove " + entry.getValue().getName() + " from " + member.getEffectiveName());
-                        tasks.accept(RateLimitUtil.queue(guild.removeRoleFromMember(member, entry.getValue())));
-                    }
-                }
+    public void autoRoleAlliance(AutoRoleInfo info, Member member, DBNation nation, boolean autoAll) {
+        if (nation != null) {
+            if (!allianceRoles.isEmpty() && position == -1) {
+                position = allianceRoles.values().iterator().next().getPosition();
             }
-        }
-    }
 
-    public void autoRoleCities(Member member, Supplier<DBNation> nationSup, Consumer<String> output, Consumer<Future> tasks) {
-        if (cityRoles.isEmpty()) return;
-        Role memberRole = Roles.MEMBER.toRole(member.getGuild());
-        Set<Integer> allianceIds = db.getAllianceIds();
-        if (!allianceIds.isEmpty() || memberRole != null) {
-            DBNation nation = nationSup.get();
-            if (nation == null) {
+            int alliance_id = nation.getAlliance_id();
+            if (nation.getPosition() < autoRoleRank.id || !allowedAAs.apply(alliance_id)) {
+                alliance_id = 0;
+            }
+
+            Integer currentAARole = nationAACache.get(nation.getNation_id());
+            if (currentAARole != null && currentAARole.equals(alliance_id) && autoAll) {
+                return;
+            } else {
+                nationAACache.put(nation.getNation_id(), alliance_id);
+            }
+
+            Map<Integer, Role> myRoles = DiscordUtil.getAARoles(member.getRoles());
+
+            if (alliance_id == 0) {
+                for (Map.Entry<Integer, Role> entry : myRoles.entrySet()) {
+                    info.removeRoleFromMember(member, entry.getValue());
+                }
                 return;
             }
-            Set<Role> allowed;
-            if (((!allianceIds.contains(nation.getAlliance_id()) || nation.getPosition() <= 1)) ||
-                    (allianceIds.isEmpty() && (memberRole == null || !member.getRoles().contains(memberRole)))) {
-                allowed = new HashSet<>();
-            } else {
-                allowed = new HashSet<>(cityRoleMap.getOrDefault(nation.getCities(), new HashSet<>()));
+
+            Role role = allianceRoles.get(alliance_id);
+
+            for (Map.Entry<Integer, Role> entry : myRoles.entrySet()) {
+                if (entry.getKey() != alliance_id) {
+                    info.removeRoleFromMember(member, entry.getValue());
+                }
             }
-            List<Role> roles = new ArrayList<>(member.getRoles());
-            for (Role role : roles) {
+            if (!myRoles.containsKey(alliance_id)) {
+                if (role == null) {
+                    String roleName = "AA " + alliance_id + " " + nation.getAllianceName();
+                    List<Role> roles = guild.getRolesByName(roleName, false);
+                    if (roles.size() == 1) role = roles.get(0);
+                    if (role == null) {
+                        AutoRoleInfo.RoleOrCreate roleAdd = info.createRole(null, roleName, position, info.supplyColor(alliance_id, allianceRoles.values()));
+                        info.addRoleToMember(member, roleAdd);
+                    }
+                }
+                if (role != null) {
+                    info.addRoleToMember(member, role);
+                } else {
+                    // (position, guild, alliance_id, nation.getAllianceName())
+
+
+                }
+            }
+        }
+        if (nation == null) {
+            Map<Integer, Role> memberAARoles = DiscordUtil.getAARoles(member.getRoles());
+            if (!memberAARoles.isEmpty()) {
+                for (Map.Entry<Integer, Role> entry : memberAARoles.entrySet()) {
+                    info.removeRoleFromMember(member, entry.getValue());
+                }
+            }
+        }
+    }
+
+    @Override
+    public AutoRoleInfo autoRoleCities(Member member, DBNation nation) {
+        AutoRoleInfo info = new AutoRoleInfo(db, "");
+        autoRoleCities(info, member, nation);
+        info.execute();
+        return info;
+    }
+
+    @Override
+    public AutoRoleInfo updateTaxRoles(Map<DBNation, TaxBracket> brackets) {
+        AutoRoleInfo info = new AutoRoleInfo(db, "");
+        updateTaxRoles(info, brackets);
+        info.execute();
+        return info;
+    }
+
+    @Override
+    public AutoRoleInfo updateTaxRole(Member member, TaxBracket bracket) {
+        AutoRoleInfo info = new AutoRoleInfo(db, "");
+        updateTaxRole(info, member, bracket);
+        info.execute();
+        return info;
+    }
+
+    public void autoRoleCities(AutoRoleInfo info, Member member, DBNation nation) {
+        if (nation == null) {
+            return;
+        }
+        if (cityRoles.isEmpty()) return;
+        if (isMember(member, nation)) {
+            Set<Role> allowed = new HashSet<>(cityRoleMap.getOrDefault(nation.getCities(), new HashSet<>()));
+            for (Role role : cityRoles) {
                 if (allowed.contains(role)) {
                     allowed.remove(role);
                     continue;
                 }
                 Map.Entry<Integer, Integer> cityRole = DiscordUtil.getCityRange(role.getName());
                 if (cityRole == null) continue;
-
-                output.accept("Remove " + role.getName() + " from " + member.getEffectiveName());
-                tasks.accept(RateLimitUtil.queue(guild.removeRoleFromMember(member, role)));
+                info.removeRoleFromMember(member, role);
             }
 
             for (Role role : allowed) {
-                output.accept("Add " + role.getName() + " to " + member.getEffectiveName());
-                tasks.accept(RateLimitUtil.queue(guild.addRoleToMember(member, role)));
+                info.addRoleToMember(member, role);
             }
-        }
-    }
-
-    public Role createRole(int position, Guild guild, int allianceId, String allianceName) {
-        Random random = new Random(allianceId);
-        Color color = null;
-        double maxDiff = 0;
-        for (int i = 0; i < 100; i++) {
-            int nextInt = random.nextInt(0xffffff + 1);
-            String colorCode = String.format("#%06x", nextInt);
-            Color nextColor = Color.decode(colorCode);
-
-            if (CIEDE2000.calculateDeltaE(BG, nextColor) < 12) continue;
-
-            double minDiff = Double.MAX_VALUE;
-            for (Role role : allianceRoles.values()) {
-                Color otherColor = role.getColor();
-                if (otherColor != null) {
-                    minDiff = Math.min(minDiff, CIEDE2000.calculateDeltaE(nextColor, otherColor));
+        } else {
+            List<Role> memberRoles = member.getRoles();
+            for (Role role : cityRoles) {
+                if (memberRoles.contains(role)) {
+                    info.removeRoleFromMember(member, role);
                 }
             }
-            if (minDiff > maxDiff) {
-                maxDiff = minDiff;
-                color = nextColor;
-            }
-            if (minDiff > 12) break;
         }
-
-        String roleName = "AA " + allianceId + " " + allianceName;
-        Role role = RateLimitUtil.complete(guild.createRole()
-                .setName(roleName)
-                .setColor(color)
-                .setMentionable(false)
-                .setHoisted(true)
-                );
-
-        if (role == null) {
-            List<Role> roles = guild.getRolesByName(roleName, false);
-            if (roles.size() == 1) role = roles.get(0);
-            else {
-                throw new IllegalStateException("Could not create role: " + roleName);
-            }
-        }
-
-        if (position != -1) {
-            RateLimitUtil.complete(guild.modifyRolePositions().selectPosition(role).moveTo(position));
-        }
-        return role;
     }
-
-    private static Color BG = Color.decode("#36393E");
 }

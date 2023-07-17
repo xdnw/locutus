@@ -176,17 +176,8 @@ public class BankCommands {
                                    @Arg("Deposit via the api")
                                    @Switch("u") boolean useApi,
                                    @Switch("f") boolean force) throws IOException, ExecutionException, InterruptedException, GeneralSecurityException {
-        if (mailResults && !Roles.MAIL.has(author, db.getGuild())) {
-            throw new IllegalArgumentException("No permission for `mailResults`. " + Roles.MAIL.toDiscordRoleNameElseInstructions(db.getGuild()));
-        }
-        if (dm && !Roles.MAIL.hasOnRoot(author)) {
-            throw new IllegalArgumentException("No permission for `dm`. " + Roles.MAIL.toDiscordRoleNameElseInstructions(db.getGuild()));
-        }
         if (customMessage != null && !dm && !mailResults) {
             throw new IllegalArgumentException("Cannot specify `customMessage` without specifying `dm` or `mailResults`");
-        }
-        if (useApi && !Roles.ECON.has(author, db.getGuild())) {
-            throw new IllegalArgumentException("No permission for `useApi`. " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
         }
         if (amount != null && (rawsDays != null || keepWarchestFactor != null || keepPerCity != null || keepTotal != null || unitResources != null)) {
             throw new IllegalArgumentException("Cannot specify `amount` to deposit with other deposit modes.");
@@ -200,7 +191,19 @@ public class BankCommands {
         if (sheetAmounts != null && (rawsDays != null || keepWarchestFactor != null || keepPerCity != null || keepTotal != null || unitResources != null)) {
             throw new IllegalArgumentException("Cannot specify `sheetAmounts` to deposit with other deposit modes.");
         }
+        if (nations.isEmpty()) return "No nations found";
 
+        boolean isOther = nations.size() > 1 || me.getNation_id() != nations.iterator().next().getNation_id();
+
+        if (mailResults && !Roles.MAIL.has(author, db.getGuild()) && isOther) {
+            throw new IllegalArgumentException("No permission for `mailResults`. " + Roles.MAIL.toDiscordRoleNameElseInstructions(db.getGuild()));
+        }
+        if (dm && !Roles.MAIL.hasOnRoot(author) && isOther) {
+            throw new IllegalArgumentException("No permission for `dm`. " + Roles.MAIL.toDiscordRoleNameElseInstructions(db.getGuild()));
+        }
+        if (useApi && isOther && !Roles.ECON.has(author, db.getGuild())) {
+            throw new IllegalArgumentException("No permission for `useApi`. " + Roles.ECON.toDiscordRoleNameElseInstructions(db.getGuild()));
+        }
         Set<Long> allowed = Roles.ECON_STAFF.getAllowedAccounts(author, db);
         Map<DBNation, OffshoreInstance.TransferStatus> statuses = new LinkedHashMap<>();
         Map<DBNation, double[]> toKeepMap = new LinkedHashMap<>();

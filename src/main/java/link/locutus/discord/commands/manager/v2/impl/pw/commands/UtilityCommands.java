@@ -44,9 +44,9 @@ import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.offshore.test.IAChannel;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.nation.MultiReport;
+import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.util.task.roles.IAutoRoleTask;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
-import link.locutus.discord.apiv1.domains.subdomains.SAllianceContainer;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -1187,39 +1187,23 @@ public class UtilityCommands {
 
     @Command(desc = "Auto rank users on discord")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String autoroleall(@Me User author, @Me GuildDB db, @Me IMessageIO channel) {
+    public static String autoroleall(@Me User author, @Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command, @Switch("f") boolean force) {
         IAutoRoleTask task = db.getAutoRoleTask();
         task.syncDB();
 
-        StringBuilder response = new StringBuilder();
-
-        Function<Long, Boolean> func = new Function<Long, Boolean>() {
-            @Override
-            public Boolean apply(Long i) {
-                task.autoRoleAll(new Consumer<String>() {
-                    private boolean messaged = false;
-                    @Override
-                    public void accept(String s) {
-                        if (messaged) return;
-                        messaged = true;
-                        channel.send(s);
-                    }
-                });
-                return true;
-            }
-        };
-        if (Roles.ADMIN.hasOnRoot(author) || true) {
+        AutoRoleInfo result = task.autoRoleAll(false);
+        if (force) {
             channel.send("Please wait...");
-            func.apply(0L);
-        } else if (Roles.INTERNAL_AFFAIRS.has(author, db.getGuild())) {
-            String taskId = getClass().getSimpleName() + "." + db.getGuild().getId();
-            Boolean result = TimeUtil.runTurnTask(taskId, func);
-            if (result != Boolean.TRUE) return "Task already ran this turn";
-        } else {
-            return "No permission";
+            result.execute();
+            return result.getChangesAndErrorMessage();
         }
 
+        String body = "`note: Results may differ if settings or users change`\n" +
+                result.getSyncDbResult() + "\n------\n" + result.toString();
+        IMessageBuilder msg = channel.create().confirmation("Auto role all", body, command);
+
         if (db.hasAlliance()) {
+            StringBuilder response = new StringBuilder();
             for (Map.Entry<Member, GuildDB.UnmaskedReason> entry : db.getMaskedNonMembers().entrySet()) {
                 User user = entry.getKey().getUser();
                 response.append("`" + DiscordUtil.getFullUsername(user) + "`" + "`<@" + user.getIdLong() + ">`");
@@ -1232,42 +1216,32 @@ public class UtilityCommands {
                 response.append("- ").append(entry.getValue());
                 response.append("\n");
             }
+            if (response.length() > 0) {
+                msg.append(response.toString());
+            }
         }
 
-        if (db.getOrNull(GuildKey.AUTOROLE) == null) {
-            response.append("\n- AutoRole disabled. To enable it use: " + GuildKey.AUTOROLE.getCommandMention() + "");
-        }
-        else response.append("\n- AutoRole Mode: ").append(db.getOrNull(GuildKey.AUTOROLE) + "");
-        if (db.getOrNull(GuildKey.AUTONICK) == null) {
-            response.append("\n- AutoNick disabled. To enable it use: " + GuildKey.AUTONICK.getCommandMention() + "");
-        }
-        else response.append("\n- AutoNick Mode: ").append(db.getOrNull(GuildKey.AUTONICK) + "");
-        if (Roles.REGISTERED.toRole(db) == null) response.append("\n- Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null, null).toSlashCommand() + "");
-        return response.toString();
+        msg.send();
+        return null;
     }
 
     @Command(desc = "Auto rank users on discord")
-    public String autorole(@Me GuildDB db, @Me IMessageIO channel, Member member) {
+    public static String autorole(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command, Member member, @Switch("f") boolean force) {
         IAutoRoleTask task = db.getAutoRoleTask();
         task.syncDB();
 
         DBNation nation = DiscordUtil.getNation(member.getUser());
-        Consumer<String> out = channel::send;
-        if (nation == null) out.accept("That nation isn't registered: " + CM.register.cmd.toSlashMention() + "");
-        task.autoRole(member, out);
-
-        StringBuilder response = new StringBuilder("Done!");
-
-        if (db.getOrNull(GuildKey.AUTOROLE) == null) {
-            response.append("\n- AutoRole disabled. To enable it use: " + GuildKey.AUTOROLE.getCommandMention() + "");
+        if (nation == null) return "That nation isn't registered: " + CM.register.cmd.toSlashMention();
+        AutoRoleInfo result = task.autoRole(member, nation, force);
+        if (force) {
+            result.execute();
+            return result.getChangesAndErrorMessage();
         }
-        else response.append("\n- AutoRole Mode: ").append((Object) db.getOrNull(GuildKey.AUTOROLE));
-        if (db.getOrNull(GuildKey.AUTONICK) == null) {
-            response.append("\n- AutoNick disabled. To enable it use: " + GuildKey.AUTONICK.getCommandMention() + "");
-        }
-        else response.append("\n- AutoNick Mode: ").append((Object) db.getOrNull(GuildKey.AUTONICK));
-        if (Roles.REGISTERED.toRole(db) == null) response.append("\n- Please set a registered role: " + CM.role.setAlias.cmd.create(Roles.REGISTERED.name(), "", null, null).toSlashCommand() + "");
-        return response.toString();
+
+        String body = "`note: Results may differ if settings or users change`\n" +
+                result.getSyncDbResult() + "\n------\n" + result.toString();
+        channel.create().confirmation("Auto role " + nation.getNation(), body, command).send();
+        return null;
     }
 
     @RolePermission(value = {Roles.MILCOM, Roles.INTERNAL_AFFAIRS,Roles.ECON,Roles.FOREIGN_AFFAIRS}, any=true)
