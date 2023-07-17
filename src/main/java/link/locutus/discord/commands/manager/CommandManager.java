@@ -306,7 +306,7 @@ public class CommandManager {
                 }
                 if (result != null && !result.isEmpty()) {
                     result = result.replaceAll("(?i)" + Settings.INSTANCE.API_KEY_PRIMARY, "XXX");
-                    result = result.replaceAll("(?i)(?<=^|[^A-Fa-f0-9])(?:[0-9a-f]{2}){7,}(?=[^A-Fa-f0-9]|$)", "XXX");
+//                    result = result.replaceAll("(?i)(?<=^|[^A-Fa-f0-9])(?:[0-9a-f]{2}){7,}(?=[^A-Fa-f0-9]|$)", "XXX");
                     channel.send(result);
                 }
             } catch (Throwable e) {

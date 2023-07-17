@@ -1692,7 +1692,7 @@ public class BankCommands {
                                @Arg("Do NOT include loans") @Switch("l") boolean noLoans,
                                  @Arg("Do NOT include grants") @Switch("g") boolean noGrants,
                                  @Arg("Do NOT include deposits") @Switch("d") boolean noDeposits,
-                                 @Arg("Include past depositors") @Switch("p") boolean includePastDepositors,
+                                 @Arg("Include past depositors") @Switch("p") Set<Integer> includePastDepositors,
                                @Switch("f") boolean force
 
     ) throws GeneralSecurityException, IOException {
@@ -1726,17 +1726,17 @@ public class BankCommands {
             Set<Integer> aaIds = db.getAllianceIds();
             if (!aaIds.isEmpty()) {
                 nations = new LinkedHashSet<>(Locutus.imp().getNationDB().getNations(aaIds));
-                if (!includePastDepositors) nations.removeIf(n -> n.getPosition() <= 1);
+                if (includePastDepositors == null || includePastDepositors.isEmpty()) nations.removeIf(n -> n.getPosition() <= 1);
 
-                if (includePastDepositors) {
-                    Set<Integer> ids = Locutus.imp().getBankDB().getReceiverNationIdFromAllianceReceivers(aaIds);
+                if (includePastDepositors != null && !includePastDepositors.isEmpty()) {
+                    Set<Integer> ids = Locutus.imp().getBankDB().getReceiverNationIdFromAllianceReceivers(includePastDepositors);
                     for (int id : ids) {
                         DBNation nation = Locutus.imp().getNationDB().getNation(id);
                         if (nation != null) nations.add(nation);
                     }
                 }
             } else {
-                if (includePastDepositors) {
+                if (includePastDepositors != null && !includePastDepositors.isEmpty()) {
                     throw new IllegalArgumentException("usePastDepositors is only implemented for alliances (ping borg)");
                 }
                 Role role = Roles.MEMBER.toRole(guild);
@@ -1752,7 +1752,7 @@ public class BankCommands {
                 if (nations.isEmpty()) return "No members found";
 
             }
-        } else if (includePastDepositors) {
+        } else if (includePastDepositors != null && !includePastDepositors.isEmpty()) {
             throw new IllegalArgumentException("usePastDepositors cannot be set when nations are provided");
         }
         Set<Long> tracked = null;

@@ -1690,7 +1690,6 @@ public class WarDB extends DBMainV2 {
             Map<ResourceType, Double> loot = attack.getLoot();
             Double pct;
             if (loot == null) {
-                loot = Collections.emptyMap();
                 pct = 1d;
             } else {
                 pct = attack.getLootPercent();
@@ -1833,6 +1832,7 @@ public class WarDB extends DBMainV2 {
         }
 
         List<DBAttack> dbAttacks = new ArrayList<>();
+        List<DBAttack> newAttacks;
         Set<DBWar> warsToSave = new LinkedHashSet<>();
         List<DBAttack> dirtyCities = new ArrayList<>();
 
@@ -1849,7 +1849,6 @@ public class WarDB extends DBMainV2 {
                 }
             }
 
-            List<DBAttack> newAttacks;
             if (v2) {
                 try {
                     List<WarAttacksContainer> attacksv2 = Locutus.imp().getPnwApiV2().getWarAttacksByMinWarAttackId(maxId).getWarAttacksContainers();
@@ -2034,7 +2033,7 @@ public class WarDB extends DBMainV2 {
         }
 
         { // add to db
-            saveAttacks(dbAttacks);
+            saveAttacks(newAttacks);
         }
 
         if (runAlerts && eventConsumer != null) {

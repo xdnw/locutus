@@ -1,6 +1,7 @@
 package link.locutus.discord.db;
 
 import link.locutus.discord.db.entities.DBComment;
+import link.locutus.discord.db.entities.DBTopic;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
@@ -17,11 +18,16 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.net.URLConnection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -42,6 +48,8 @@ public class ForumDB extends DBMain {
     public boolean update() {
         try {
             List<DBComment> comments = updateAndGetNewComments();
+            if (guild == null) return true;
+
             List<Category> purgeCategories = new ArrayList<>();
             for (DBComment comment : comments) {
 
@@ -105,6 +113,113 @@ public class ForumDB extends DBMain {
                 e.printStackTrace();
             }
         };
+        {
+            String nations = "CREATE TABLE IF NOT EXISTS `FORUM_TOPICS` (`topic_id` INT PRIMARY KEY, `section_id` INT NOT NULL, `topic_name` VARCHAR NOT NULL, `topic_urlname` VARCHAR NOT NULL, `section_name` VARCHAR NOT NULL, `section_urlname` VARCHAR NOT NULL, `timestamp` BIGINT NOT NULL, `poster_id` INT NOT NULL, `poster_name` VARCHAR NOT NULL)";
+            try (Statement stmt = getConnection().createStatement()) {
+                stmt.addBatch(nations);
+                stmt.executeBatch();
+                stmt.clearBatch();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        };
+    }
+
+    public void addTopic(DBTopic topic) throws SQLException {
+        String sql = "INSERT INTO `FORUM_TOPICS` (`topic_id`, `section_id`, `topic_name`, `topic_urlname`, `section_name`, `section_urlname`, `timestamp`, `poster_id`, `poster_name`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
+            stmt.setInt(1, topic.topic_id);
+            stmt.setInt(2, topic.section_id);
+            stmt.setString(3, topic.topic_name);
+            stmt.setString(4, topic.topic_urlname);
+            stmt.setString(5, topic.section_name);
+            stmt.setString(6, topic.section_urlname);
+            stmt.setLong(7, topic.timestamp);
+            stmt.setInt(8, topic.poster_id);
+            stmt.setString(9, topic.poster_name);
+            stmt.execute();
+        }
+    }
+
+    private static String get(String requestURL) throws IOException {
+        URL website = new URL(requestURL);
+        URLConnection connection = website.openConnection();
+        try (BufferedReader in = new BufferedReader(
+                new InputStreamReader(connection.getInputStream()))) {
+
+            StringBuilder response = new StringBuilder();
+            String inputLine;
+
+            while ((inputLine = in.readLine()) != null) {
+                response.append(inputLine);
+            }
+            return response.toString();
+        }
+    }
+
+    public void scrapeTopic(int section_id, String section_name) throws SQLException, IOException {
+        String baseUrl = "https://forum.politicsandwar.com/index.php?/forum/" + section_id + "-" + section_name + "/";
+        int page = 1;
+        while (true) {
+            String url = baseUrl + "page/" + page + "/";
+
+            String content = get(url);
+            Document html = Jsoup.parse(content);
+            // get every ipsType_break ipsContained
+            Elements elems = html.select(".ipsType_break.ipsContained");
+            for (Element elem : elems) {
+                // get href
+                Elements a = elem.select("a");
+                String topicUrl = a.attr("href");
+                String topicName = a.text();
+                int topic_id = Integer.parseInt(topicUrl.split("topic/")[1].split("-")[0]);
+
+                String topicUrlName = topicUrl.split("topic/")[1].split("-", 2)[1].split("/")[0];
+
+                // get date
+                Elements date = elem.select("time");
+                String dateStr = date.attr("datetime");
+                // to milliseconds
+                long timestamp = Instant.parse(dateStr).toEpochMilli();
+
+                // get poster id and name (611 and prefontaine)
+                Elements poster = elem.select("a[href^='https://forum.politicsandwar.com/index.php?/profile/']");
+                String posterName = poster.text();
+                String posterUrl = poster.attr("href");
+                int posterId = Integer.parseInt(posterUrl.split("profile/")[1].split("-")[0]);
+
+                // public DBTopic(int topic_id, int section_id, String topic_name, String topic_urlname, String section_name, String section_urlname, long timestamp, int poster_id, String poster_name) {
+
+                System.out.println("Saving: " + topicName);
+                DBTopic topic = new DBTopic(topic_id, section_id, topicName, topicUrlName, section_name, section_name, timestamp, posterId, posterName);
+                addTopic(topic);
+            }
+
+            // get highest data-page
+            Elements pages = html.select("li.ipsPagination_page");
+            // if exists
+            if (pages.size() > 0) {
+                // get last page
+                Element lastPage = pages.get(pages.size() - 1);
+                // get href
+                String href = lastPage.select("a").attr("href");
+                // get page number
+                int highestPage = Integer.parseInt(href.split("page/")[1].split("/")[0]);
+                if (highestPage > page) {
+                    page++;
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+    }
+
+    public static void main(String[] args) throws SQLException, ClassNotFoundException, IOException {
+        ForumDB db = new ForumDB(null);
+
+        db.scrapeTopic(42, "alliance-affairs");
     }
 
     public List<DBComment> updateAndGetNewComments() throws IOException {

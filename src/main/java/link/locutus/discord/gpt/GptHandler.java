@@ -58,18 +58,18 @@ public class GptHandler {
         this.embeddingDatabase = new AdaEmbedding(registry, service);
         // TODO change ^ that to mini
 
-        File gpt3freePath = new File("../gpt4free/gpt3_5_turbo.py");
+        File gpt4freePath = new File("../gpt4free/my_project/gpt3_5_turbo.py");
         File venvExe = new File("../gpt4free/venv/Scripts/python.exe");
         // ensure files exist
-        if (!gpt3freePath.exists()) {
-            throw new RuntimeException("gpt4free not found: " + gpt3freePath.getAbsolutePath());
+        if (!gpt4freePath.exists()) {
+            throw new RuntimeException("gpt4free not found: " + gpt4freePath.getAbsolutePath());
         }
         if (!venvExe.exists()) {
             throw new RuntimeException("venv not found: " + venvExe.getAbsolutePath());
         }
 
-        this.summarizer = new ProcessSummarizer(venvExe, gpt3freePath, ModelType.GPT_3_5_TURBO, 8192);
-        this.text2text = new ProcessText2Text(venvExe, gpt3freePath);
+        this.summarizer = new ProcessSummarizer(venvExe, gpt4freePath, ModelType.GPT_3_5_TURBO, 8192);
+        this.text2text = new ProcessText2Text(venvExe, gpt4freePath);
     }
 
     public ProcessText2Text getText2text() {

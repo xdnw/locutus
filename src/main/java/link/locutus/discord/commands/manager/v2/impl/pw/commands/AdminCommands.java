@@ -350,7 +350,8 @@ public class AdminCommands {
             }
         }
 
-        List<String> replacementLines = Arrays.asList(replacements.split("\n"));
+        List<String> replacementLines = Arrays.asList(replacements.split("(?<!\\\\\\\\)\\\\n|\\\\\\\\n"));
+        System.out.println(replacementLines);
 
         Random random = seed == null ? new Random() : new Random(seed);
 

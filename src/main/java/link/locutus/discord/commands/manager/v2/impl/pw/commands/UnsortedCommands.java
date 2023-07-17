@@ -619,7 +619,7 @@ public class UnsortedCommands {
                     }
                     return "Cleared unused Alliance roles!";
                 }
-                case ALLIANCE: {
+                case UNREGISTERED: {
                     Set<Integer> aaIds = db.getAllianceIds();
 
                     Role memberRole = Roles.MEMBER.toRole(guild);
@@ -638,10 +638,12 @@ public class UnsortedCommands {
                     response.append("\nDone!");
                     return response.toString();
                 }
-                case UNREGISTERED: {
-                    Map<Integer, Role> aaRoles = DiscordUtil.getAARoles(guild.getRoles());
-                    for (Map.Entry<Integer, Role> entry : aaRoles.entrySet()) {
-                        tasks.add(RateLimitUtil.queue(entry.getValue().delete()));
+                case ALLIANCE: {
+                    Map<Integer, Set<Role>> aaRoles = DiscordUtil.getAARolesIncDuplicates(guild.getRoles());
+                    for (Map.Entry<Integer, Set<Role>> entry : aaRoles.entrySet()) {
+                        for (Role role : entry.getValue()) {
+                            tasks.add(RateLimitUtil.queue(role.delete()));
+                        }
                     }
                     return "Cleared all AA roles!";
                 }

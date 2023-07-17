@@ -326,6 +326,7 @@ public class MathMan {
             input = input.replace(",", "");
         }
         try {
+            if (input.isEmpty()) return null;
             switch (Character.toLowerCase(input.charAt(input.length() - 1))) {
                 default:
                     return Double.parseDouble(input);

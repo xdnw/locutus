@@ -182,7 +182,7 @@ public class StringMan {
         for (int i = 0; i < replacements.size(); i++) {
             String replacement = replacements.get(i);
             String[] split = replacement.split("\\|");
-            if (split.length < 2) throw new IllegalArgumentException("Term `" + split[0] + "` has no replacement options");
+            if (split.length < 2) throw new IllegalArgumentException("Term `" + split[0] + "` has no replacement options " + " | `" + replacement + "`  (" + StringMan.getString(split) + ")");
             String search = split[0];
             if (search.isEmpty()) throw new IllegalArgumentException("Search term " + i + " is empty");
             if (announcement.indexOf(search) <= 0) throw new IllegalArgumentException("No match found for `" + search + "`");

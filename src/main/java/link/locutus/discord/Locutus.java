@@ -73,6 +73,7 @@ import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.modals.ModalInteraction;
 import net.dv8tion.jda.api.interactions.modals.ModalMapping;
 import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.dv8tion.jda.api.utils.ChunkingFilter;
 import net.dv8tion.jda.api.utils.Compression;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
@@ -282,6 +283,7 @@ public final class Locutus extends ListenerAdapter {
                 builder.addEventListeners(this);
             }
             builder
+                    .setChunkingFilter(ChunkingFilter.ALL)
                     .setBulkDeleteSplittingEnabled(true)
                     .setCompression(Compression.ZLIB)
                     .setMemberCachePolicy(MemberCachePolicy.ALL);
