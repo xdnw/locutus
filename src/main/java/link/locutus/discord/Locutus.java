@@ -945,7 +945,8 @@ public final class Locutus extends ListenerAdapter {
             Guild guild = event.getGuild();
             GuildDB db = getGuildDB(guild);
 
-            db.getAutoRoleTask().autoRole(event.getMember(), s -> {});
+            DBNation nation = DiscordUtil.getNation(event.getUser());
+            db.getAutoRoleTask().autoRole(event.getMember(), nation, true);
             db.getHandler().onGuildMemberJoin(event);
 
             eventBus.post(event);

@@ -203,6 +203,11 @@ public class AutoRoleInfo {
                 e.printStackTrace();
             }
         }
+
+        this.createMap.clear();
+        this.addRoles.clear();
+        this.removeRoles.clear();
+        this.nickSet.clear();
     }
 
     public void logError(Member member, String error) {
