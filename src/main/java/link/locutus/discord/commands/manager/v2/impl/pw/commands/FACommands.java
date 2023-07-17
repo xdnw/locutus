@@ -292,12 +292,12 @@ public class FACommands {
         Role role = aaRoles.get(nation.getAlliance_id());
         if (role == null) {
             db.addCoalition(nation.getAlliance_id(), Coalition.MASKEDALLIANCES);
-            GuildDB.AutoRoleOption autoRoleValue = db.getOrNull(GuildKey.AUTOROLE);
+            GuildDB.AutoRoleOption autoRoleValue = db.getOrNull(GuildKey.AUTOROLE_ALLIANCES);
             if (autoRoleValue == null || autoRoleValue == GuildDB.AutoRoleOption.FALSE) {
-                return "AutoRole is disabled. See " + GuildKey.AUTOROLE.getCommandMention() + "";
+                return "AutoRole is disabled. See " + GuildKey.AUTOROLE_ALLIANCES.getCommandMention() + "";
             }
             db.getAutoRoleTask().syncDB();
-            db.getAutoRoleTask().autoRole(member, f -> {});
+            db.getAutoRoleTask().autoRole(member, nation, true);
             aaRoles = DiscordUtil.getAARoles(guild.getRoles());
             role = aaRoles.get(nation.getAlliance_id());
             if (role == null) {

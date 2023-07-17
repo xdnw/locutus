@@ -9,6 +9,7 @@ import com.theokanning.openai.moderation.ModerationRequest;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 public class GPTUtil {
 
@@ -47,18 +48,20 @@ public class GPTUtil {
     }
 
     public static List<String> getChunks(String input, ModelType type, int tokenSizeCap) {
+        EncodingRegistry registry = Encodings.newDefaultEncodingRegistry();
+        Encoding enc = registry.getEncodingForModel(type);
+        return getChunks(input, tokenSizeCap, s -> enc.encode(s).size());
+    }
+
+    public static List<String> getChunks(String input, int tokenSizeCap, Function<String, Integer> getSize) {
         List<String> result = new ArrayList<>();
 
         String[] lines = input.split("[\r\n]+|\\.\\s");
 
-        // get tokenizer
-        EncodingRegistry registry = Encodings.newDefaultEncodingRegistry();
-        Encoding enc = registry.getEncodingForModel(type);
-
         // get the tokens count for each line
         List<Integer> tokensCount = new ArrayList<>();
         for (String line : lines) {
-            int size = enc.encode(line).size();
+            int size = getSize.apply(line);
             if (size > tokenSizeCap) {
                 throw new IllegalArgumentException("Line exceeds token limit of " + tokenSizeCap);
             }

@@ -68,7 +68,7 @@ public class GptHandler {
             throw new RuntimeException("venv not found: " + venvExe.getAbsolutePath());
         }
 
-        this.summarizer = new ProcessSummarizer(venvExe, gpt4freePath);
+        this.summarizer = new ProcessSummarizer(venvExe, gpt4freePath, ModelType.GPT_3_5_TURBO, 8192);
         this.text2text = new ProcessText2Text(venvExe, gpt4freePath);
     }
 

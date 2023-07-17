@@ -580,8 +580,7 @@ public final class Locutus extends ListenerAdapter {
                     Member member = guild.getMember(discordUser);
                     if (member != null) {
                         try {
-                            db.getAutoRoleTask().autoRole(member, s -> {
-                            });
+                            db.getAutoRoleTask().autoRole(member, nation, true);
                         } catch (Throwable e) {
                             e.printStackTrace();
                         }

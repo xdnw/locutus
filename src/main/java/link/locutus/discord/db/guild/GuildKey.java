@@ -1001,12 +1001,12 @@ public class GuildKey {
                     "See also: " + CM.role.clearNicks.cmd.toSlashMention();
         }
     };
-    public static GuildSetting<GuildDB.AutoRoleOption> AUTOROLE = new GuildEnumSetting<GuildDB.AutoRoleOption>(GuildSettingCategory.ROLE, GuildDB.AutoRoleOption.class) {
+    public static GuildSetting<GuildDB.AutoRoleOption> AUTOROLE_ALLIANCES = new GuildEnumSetting<GuildDB.AutoRoleOption>(GuildSettingCategory.ROLE, GuildDB.AutoRoleOption.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
         public String AUTOROLE(@Me GuildDB db, @Me User user, GuildDB.AutoRoleOption mode) {
-            return AUTOROLE.setAndValidate(db, user, mode);
+            return AUTOROLE_ALLIANCES.setAndValidate(db, user, mode);
         }
 
         @Override
@@ -1030,7 +1030,7 @@ public class GuildKey {
         public String help() {
             return "The ingame rank required to get an alliance role. (default: member) Options: " + StringMan.getString(Rank.values());
         }
-    }.setupRequirements(f -> f.requires(AUTOROLE));
+    }.setupRequirements(f -> f.requires(AUTOROLE_ALLIANCES));
     public static GuildSetting<Integer> AUTOROLE_TOP_X = new GuildIntegerSetting(GuildSettingCategory.ROLE) {
         @NoFormat
         @Command(descMethod = "help")
@@ -1042,7 +1042,7 @@ public class GuildKey {
         public String help() {
             return "The number of top alliances to provide roles for, defaults to `0`";
         }
-    }.setupRequirements(f -> f.requires(AUTOROLE));
+    }.setupRequirements(f -> f.requires(AUTOROLE_ALLIANCES));
     public static GuildSetting<Integer> DO_NOT_RAID_TOP_X = new GuildIntegerSetting(GuildSettingCategory.FOREIGN_AFFAIRS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -1069,7 +1069,7 @@ public class GuildKey {
         public String help() {
             return "Whether to give gov/member roles to allies (this is intended for coalition servers), `true` or `false`";
         }
-    }.setupRequirements(f -> f.requires(AUTOROLE).requiresCoalition(Coalition.ALLIES).requiresNot(ALLIANCE_ID));
+    }.setupRequirements(f -> f.requires(AUTOROLE_ALLIANCES).requiresCoalition(Coalition.ALLIES).requiresNot(ALLIANCE_ID));
     public static GuildSetting<Set<Roles>> AUTOROLE_ALLY_ROLES = new GuildEnumSetSetting<Roles>(GuildSettingCategory.ROLE, Roles.class) {
         @NoFormat
         @Command(descMethod = "help")

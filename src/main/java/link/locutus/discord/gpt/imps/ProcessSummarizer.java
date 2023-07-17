@@ -22,8 +22,9 @@ public class ProcessSummarizer implements ISummarizer {
     private final int promptTokens;
     private final ModelType model;
     private final File venvExe;
+    private final int tokenCap;
 
-    public ProcessSummarizer(File venvExe, File file) {
+    public ProcessSummarizer(File venvExe, File file, ModelType model, int tokenCap) {
         this.venvExe = venvExe;
         this.file = file;
         this.prompt = """
@@ -32,15 +33,21 @@ public class ProcessSummarizer implements ISummarizer {
                 {query}
                 
                 Concise summary:""";
-        this.model = ModelType.GPT_4;
-        this.promptTokens = GPTUtil.getTokens(prompt.replace("{query}", ""), model);
+        this.model = model;
+        String queryLess = prompt.replace("{query}", "");
+        this.promptTokens = queryLess.isEmpty() ? 0 : getSize(queryLess);
+        this.tokenCap = tokenCap;
     }
+
+    public int getSize(String text) {
+        return GPTUtil.getTokens(text, model);
+    }
+
     @Override
     public String summarize(String text) {
-        int cap = 4096 - 4;
-        int remaining = cap - promptTokens;
+        int remaining = tokenCap - promptTokens;
         List<String> summaries = new ArrayList<>();
-        for (String chunk : GPTUtil.getChunks(text, model, remaining)) {
+        for (String chunk : GPTUtil.getChunks(text, remaining, this::getSize)) {
             String result = summarizeChunk(chunk);
             summaries.add(result);
         }

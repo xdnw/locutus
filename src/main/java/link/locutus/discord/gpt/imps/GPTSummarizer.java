@@ -25,11 +25,14 @@ public class GPTSummarizer implements ISummarizer {
         this.registry = registry;
         this.service = service;
         this.prompt = """
-                Write a concise summary which preserves syntax, equations, arguments and constraints of the following:
+                You will be provided text from a user guide for the game Politics And War. 
+                Take the information and organize it into dot points of factual knowledge (start each line with `- `). Do not make anything up. 
+                Preserve syntax, formulas and precision.
                 
+                Text:
                 {query}
                 
-                Concise summary:""";
+                Fact summary:""";
         this.model = ModelType.GPT_3_5_TURBO;
         this.chatEncoder = registry.getEncodingForModel(model);
         this.promptTokens = GPTUtil.getTokens(prompt.replace("{query}", ""), model);

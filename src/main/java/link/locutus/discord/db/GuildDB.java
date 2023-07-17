@@ -985,6 +985,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             } catch (SQLException e) {
                 e.printStackTrace();
             }
+            {
+                // Rename AUTOROLE to AUTOROLE_ALLIANCES in `key`
+                String updateKey = "UPDATE INFO SET key = 'AUTOROLE_ALLIANCES' WHERE key = 'AUTOROLE'";
+                executeStmt(updateKey);
+            }
+
         };
         {
             String create = "CREATE TABLE IF NOT EXISTS `LOANS` (`loan_id` INTEGER PRIMARY KEY AUTOINCREMENT, `server` BIGINT NOT NULL, `message`, `receiver` INT NOT NULL, `resources` BLOB NOT NULL, `due` BIGINT NOT NULL, `repaid` BIGINT NOT NULL)";
@@ -2526,8 +2532,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public enum AutoRoleOption {
         FALSE("No roles given"),
-        ALL("Roles for the alliance"),
-        ALLIES("Roles for allies (e.g. if a coalition server)"),
+        ALL("Alliance roles created for all (see: `AUTOROLE_TOP_X`)"),
+        ALLIES("Alliance roles created for allies (see: `allies` coalition)"),
         ;
 
         private final String description;
