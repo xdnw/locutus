@@ -2368,10 +2368,10 @@ public class CM {
                 return createArgs("mode", mode);
             }
         }
-        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="AUTOROLE", field="AUTOROLE")
-        public static class AUTOROLE extends CommandRef {
-            public static final AUTOROLE cmd = new AUTOROLE();
-            public AUTOROLE create(String mode) {
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="AUTOROLE_ALLIANCES", field="AUTOROLE_ALLIANCES")
+        public static class AUTOROLE_ALLIANCES extends CommandRef {
+            public static final AUTOROLE_ALLIANCES cmd = new AUTOROLE_ALLIANCES();
+            public AUTOROLE_ALLIANCES create(String mode) {
                 return createArgs("mode", mode);
             }
         }

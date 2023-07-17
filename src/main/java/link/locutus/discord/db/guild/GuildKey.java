@@ -1005,7 +1005,7 @@ public class GuildKey {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String AUTOROLE(@Me GuildDB db, @Me User user, GuildDB.AutoRoleOption mode) {
+        public String AUTOROLE_ALLIANCES(@Me GuildDB db, @Me User user, GuildDB.AutoRoleOption mode) {
             return AUTOROLE_ALLIANCES.setAndValidate(db, user, mode);
         }
 

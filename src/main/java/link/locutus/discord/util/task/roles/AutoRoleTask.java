@@ -611,6 +611,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         if (cityRoles.isEmpty()) return;
         if (isMember(member, nation)) {
             Set<Role> allowed = new HashSet<>(cityRoleMap.getOrDefault(nation.getCities(), new HashSet<>()));
+            List<Role> memberRoles = member.getRoles();
             for (Role role : cityRoles) {
                 if (allowed.contains(role)) {
                     allowed.remove(role);
@@ -618,11 +619,15 @@ public class AutoRoleTask implements IAutoRoleTask {
                 }
                 Map.Entry<Integer, Integer> cityRole = DiscordUtil.getCityRange(role.getName());
                 if (cityRole == null) continue;
-                info.removeRoleFromMember(member, role);
+                if (memberRoles.contains(role)) {
+                    info.removeRoleFromMember(member, role);
+                }
             }
 
             for (Role role : allowed) {
-                info.addRoleToMember(member, role);
+                if (!memberRoles.contains(role)) {
+                    info.addRoleToMember(member, role);
+                }
             }
         } else {
             List<Role> memberRoles = member.getRoles();
