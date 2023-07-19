@@ -40,6 +40,7 @@ import link.locutus.discord.util.scheduler.CaughtTask;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.task.ia.MapFullTask;
 import link.locutus.discord.util.task.mail.AlertMailTask;
+import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.util.update.*;
 import link.locutus.discord.web.jooby.WebRoot;
@@ -580,7 +581,8 @@ public final class Locutus extends ListenerAdapter {
                     Member member = guild.getMember(discordUser);
                     if (member != null) {
                         try {
-                            db.getAutoRoleTask().autoRole(member, nation, true);
+                            AutoRoleInfo task = db.getAutoRoleTask().autoRole(member, nation);
+                            task.execute();
                         } catch (Throwable e) {
                             e.printStackTrace();
                         }
@@ -946,7 +948,8 @@ public final class Locutus extends ListenerAdapter {
             GuildDB db = getGuildDB(guild);
 
             DBNation nation = DiscordUtil.getNation(event.getUser());
-            db.getAutoRoleTask().autoRole(event.getMember(), nation, true);
+            AutoRoleInfo task = db.getAutoRoleTask().autoRole(event.getMember(), nation);
+            task.execute();
             db.getHandler().onGuildMemberJoin(event);
 
             eventBus.post(event);
@@ -1069,6 +1072,10 @@ public final class Locutus extends ListenerAdapter {
                 } else {
                     behavior = CommandBehavior.DELETE_MESSAGE;
                 }
+            }
+
+            if (behavior == CommandBehavior.DELETE_MESSAGE) {
+                io.setMessageDeleted();
             }
 
             System.out.println("ID 3 " + id + " " + behavior);

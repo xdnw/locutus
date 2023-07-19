@@ -372,7 +372,8 @@ public class DBNation implements NationOrAlliance {
                     if (member != null) {
                         RateLimitUtil.complete(db.getGuild().addRoleToMember(user, role));
                         output.append("You have been assigned the role: " + role.getName());
-                        AutoRoleInfo task = db.getAutoRoleTask().autoRole(member, this, true);
+                        AutoRoleInfo task = db.getAutoRoleTask().autoRole(member, this);
+                        task.execute();
                         output.append("\n" + task.getChangesAndErrorMessage());
                     } else {
                         member = db.getGuild().retrieveMember(user).complete();

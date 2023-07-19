@@ -957,7 +957,7 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Check how many projects slots a nation has", aliases = {"ProjectSlots", "ProjectSlot", "projects"})
-    public String ProjectSlots(DBNation nation) {
+    public static String ProjectSlots(DBNation nation) {
         Set<Project> projects = nation.getProjects();
         Map<ResourceType, Double> value = new HashMap<>();
         for (Project project : projects) {
@@ -1191,7 +1191,7 @@ public class UtilityCommands {
         IAutoRoleTask task = db.getAutoRoleTask();
         task.syncDB();
 
-        AutoRoleInfo result = task.autoRoleAll(false);
+        AutoRoleInfo result = task.autoRoleAll();
         if (force) {
             channel.send("Please wait...");
             result.execute();
@@ -1232,7 +1232,7 @@ public class UtilityCommands {
 
         DBNation nation = DiscordUtil.getNation(member.getUser());
         if (nation == null) return "That nation isn't registered: " + CM.register.cmd.toSlashMention();
-        AutoRoleInfo result = task.autoRole(member, nation, force);
+        AutoRoleInfo result = task.autoRole(member, nation);
         if (force) {
             result.execute();
             return result.getChangesAndErrorMessage();

@@ -16,9 +16,9 @@ public interface IAutoRoleTask {
 
     AutoRoleInfo updateTaxRole(Member member, TaxBracket bracket);
 
-    AutoRoleInfo autoRoleAll(boolean confirm);
+    AutoRoleInfo autoRoleAll();
 
-    AutoRoleInfo autoRole(Member member, DBNation nation, boolean confirm);
+    AutoRoleInfo autoRole(Member member, DBNation nation);
 
     String syncDB();
 }

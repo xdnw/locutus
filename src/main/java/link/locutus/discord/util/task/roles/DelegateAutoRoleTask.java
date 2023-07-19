@@ -26,13 +26,13 @@ public class DelegateAutoRoleTask implements IAutoRoleTask {
     }
 
     @Override
-    public AutoRoleInfo autoRoleAll(boolean confirm) {
-        return task.autoRoleAll(confirm);
+    public AutoRoleInfo autoRoleAll() {
+        return task.autoRoleAll();
     }
 
     @Override
-    public AutoRoleInfo autoRole(Member member, DBNation nation, boolean confirm) {
-        return task.autoRole(member, nation, confirm);
+    public AutoRoleInfo autoRole(Member member, DBNation nation) {
+        return task.autoRole(member, nation);
     }
 
     @Override

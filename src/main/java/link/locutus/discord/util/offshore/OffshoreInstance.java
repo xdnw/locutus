@@ -482,7 +482,7 @@ public class OffshoreInstance {
         if (receiver.isAlliance() && !receiver.asAlliance().exists()) {
             return Map.entry(TransferStatus.INVALID_DESTINATION, "Alliance: " + receiver.getUrl() + " has no receivable nations");
         }
-        if (!receiver.isNation() && depositType.getType() != DepositType.IGNORE && nationAccount == null) {
+        if (!receiver.isNation() && !depositType.isIgnored() && nationAccount == null) {
             return Map.entry(TransferStatus.INVALID_NOTE, "Please use `" + DepositType.IGNORE + "` as the depositType when transferring to alliances");
         }
 
@@ -608,7 +608,7 @@ public class OffshoreInstance {
 
         double[] myDeposits = null;
         if (nationAccount != null) {
-            if (depositType.getType() != DepositType.DEPOSIT) {
+            if (depositType.getType() != DepositType.DEPOSIT || depositType.isIgnored()) {
                 allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                 if (allowedIds.isEmpty()) {
                     return Map.entry(TransferStatus.AUTHORIZATION, "You are only authorized " + DepositType.DEPOSIT + " but attempted to do " + depositType);
@@ -625,7 +625,7 @@ public class OffshoreInstance {
 
             if (!receiver.isNation() || nationAccount.getNation_id() != receiver.asNation().getNation_id()) {
                 isInternalTransfer = true;
-                if (depositType.getType() == DepositType.IGNORE) {
+                if (depositType.isIgnored()) {
                     return Map.entry(TransferStatus.INVALID_NOTE, "Please use `" + DepositType.DEPOSIT + "` as the depositType when transferring to another nation");
                 }
             }
@@ -718,7 +718,6 @@ public class OffshoreInstance {
                     reqMsg.append(msg + "\n");
                 }
             }
-
         }
 
         if (requireConfirmation) {
@@ -776,7 +775,7 @@ public class OffshoreInstance {
             }
             if (nationAccount != null) {
                 body.append("- Nation Account: " + nationAccount.getNationUrlMarkup(true) + "\n");
-            } else if (depositType.getType() == DepositType.IGNORE) {
+            } else if (depositType.isIgnored()) {
                 body.append("- Will NOT deduct from a nation deposits\n");
             } else {
                 body.append("- Will deduct from receiver's deposits\n");

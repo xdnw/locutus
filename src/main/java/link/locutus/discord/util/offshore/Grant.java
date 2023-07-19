@@ -412,7 +412,6 @@ public class Grant {
 
     public String getNote() {
         Set<String> finalNotes = new HashSet<>();
-        finalNotes.add("#grant");
         finalNotes.addAll(notes);
         finalNotes.add(type.toString() + (amount == null || amount.equalsIgnoreCase("0") ? "" : "=" + amount));
         if (!cities.isEmpty()) {

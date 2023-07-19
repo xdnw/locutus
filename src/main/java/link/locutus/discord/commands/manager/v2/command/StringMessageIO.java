@@ -32,6 +32,11 @@ public class StringMessageIO implements IMessageIO {
     }
 
     @Override
+    public void setMessageDeleted() {
+
+    }
+
+    @Override
     public CompletableFuture<IMessageBuilder> send(IMessageBuilder builder) {
         messages.put(builder.getId(), ((StringMessageBuilder) builder).build());
         return CompletableFuture.completedFuture(builder);

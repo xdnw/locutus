@@ -335,7 +335,7 @@ public class AutoRoleTask implements IAutoRoleTask {
     }
 
     @Override
-    public synchronized AutoRoleInfo autoRoleAll(boolean confirm) {
+    public synchronized AutoRoleInfo autoRoleAll() {
         String syncDbResult = syncDB();
         AutoRoleInfo info = new AutoRoleInfo(db, syncDbResult);
 
@@ -378,7 +378,7 @@ public class AutoRoleTask implements IAutoRoleTask {
     private Map<Integer, Integer> nationAACache = new HashMap<>();
 
     @Override
-    public synchronized AutoRoleInfo autoRole(Member member, DBNation nation, boolean confirm) {
+    public synchronized AutoRoleInfo autoRole(Member member, DBNation nation) {
         AutoRoleInfo info = new AutoRoleInfo(db, "");
         autoRole(info, member, nation, false);
         return info;
@@ -427,7 +427,6 @@ public class AutoRoleTask implements IAutoRoleTask {
         this.registeredRole = Roles.REGISTERED.toRole(guild);
 
         try {
-        User user = member.getUser();
         List<Role> roles = member.getRoles();
 
         boolean hasRegisteredRole = registeredRole != null && roles.contains(registeredRole);
@@ -612,21 +611,14 @@ public class AutoRoleTask implements IAutoRoleTask {
         if (isMember(member, nation)) {
             Set<Role> allowed = new HashSet<>(cityRoleMap.getOrDefault(nation.getCities(), new HashSet<>()));
             List<Role> memberRoles = member.getRoles();
-            for (Role role : cityRoles) {
-                if (allowed.contains(role)) {
-                    allowed.remove(role);
-                    continue;
-                }
-                Map.Entry<Integer, Integer> cityRole = DiscordUtil.getCityRange(role.getName());
-                if (cityRole == null) continue;
-                if (memberRoles.contains(role)) {
-                    info.removeRoleFromMember(member, role);
-                }
-            }
-
             for (Role role : allowed) {
                 if (!memberRoles.contains(role)) {
                     info.addRoleToMember(member, role);
+                }
+            }
+            for (Role role : cityRoles) {
+                if (memberRoles.contains(role) && !allowed.contains(role)) {
+                    info.removeRoleFromMember(member, role);
                 }
             }
         } else {

@@ -375,8 +375,12 @@ public abstract class GuildSetting<T> {
     }
 
     public GuildSetting<T> requiresNot(GuildSetting setting) {
+        return requiresNot(setting, true);
+    }
+
+    public GuildSetting<T> requiresNot(GuildSetting setting, boolean checkDelegate) {
         requiresFunction.add((db, throwError) -> {
-            if (setting.getOrNull(db) != null) {
+            if (setting.getOrNull(db, checkDelegate) != null) {
                 throw new IllegalArgumentException("Cannot be used with " + setting.name() + " set. Unset via " + CM.settings.info.cmd.toSlashMention());
             }
             return true;

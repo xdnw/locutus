@@ -55,22 +55,34 @@ public enum DepositType {
     }
 
     public DepositTypeInfo withValue(long amount, long city) {
-        return new DepositTypeInfo(this, amount, city);
+        return new DepositTypeInfo(this, amount, city, false);
     }
+
+    public DepositTypeInfo withValue(long amount, long city, boolean ignore) {
+        return new DepositTypeInfo(this, amount, city, ignore);
+    }
+
 
     public static class DepositTypeInfo {
         public final DepositType type;
         public final long amount;
         public final long city;
+        public boolean ignore;
 
-        public DepositTypeInfo(DepositType type, long amount, long city) {
+        public DepositTypeInfo(DepositType type, long amount, long city, boolean ignore) {
             this.type = type;
             this.amount = amount;
             this.city = city;
+            this.ignore = ignore;
         }
 
         public DepositTypeInfo(DepositType type) {
-            this(type, 0, 0);
+            this(type, 0, 0, false);
+        }
+
+        public DepositTypeInfo ignore(boolean value) {
+            this.ignore = value;
+            return this;
         }
 
         public DepositType getType() {
@@ -92,6 +104,13 @@ public enum DepositType {
                     if (result.contains("=")) {
                         throw new IllegalArgumentException("Deposit type " + type.name() + " already has a value");
                     }
+                    if (result.contains("#ignore")) {
+                        String typeName = type.name().toLowerCase(Locale.ROOT);
+                        result = result.replace(typeName, typeName + "=" + accountId);
+                    } else {
+                        result += "=" + accountId;
+                    }
+                } else if (result.contains("#ignore")) {
                     result += "=" + accountId;
                 } else {
                     result = "#" + type.parent.name().toLowerCase(Locale.ROOT) + "=" + accountId + " " + result;
@@ -109,7 +128,14 @@ public enum DepositType {
             if (city != 0) {
                 note += " #city=" + city;
             }
-            return note;
+            if (ignore) {
+                note += " #ignore";
+            }
+            return note.trim();
+        }
+
+        public boolean isIgnored() {
+            return ignore || type == IGNORE;
         }
     }
 }
