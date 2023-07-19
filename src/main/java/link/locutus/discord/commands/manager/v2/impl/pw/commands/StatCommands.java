@@ -1239,6 +1239,7 @@ public class StatCommands {
     @Command(desc = "Create a google sheet of nations, grouped by alliance, with the specified columns\n" +
             "Prefix a column with `avg:` to force an average\n" +
             "Prefix a column with `total:` to force a total")
+    @NoFormat
     public String allianceNationsSheet(NationPlaceholders placeholders, AlliancePlaceholders aaPlaceholders, ValueStore store, @Me IMessageIO channel, @Me User author, @Me Guild guild, @Me GuildDB db,
                                        Set<DBNation> nations,
                                        @Arg("The columns to have. See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>") List<String> columns,
@@ -1263,8 +1264,6 @@ public class StatCommands {
             DBAlliance alliance = DBAlliance.getOrCreate(aaId);
 
             SimpleNationList list = new SimpleNationList(entry.getValue());
-            DBNation total = list.getTotal();
-            DBNation average = list.getAverage();
 
             for (int i = 0; i < columns.size(); i++) {
                 String arg = columns.get(i);
@@ -1273,13 +1272,13 @@ public class StatCommands {
                 } else if (arg.equalsIgnoreCase("{alliance}")) {
                     arg = alliance.getName() + "";
                 } else {
-                    DBNation nation = useTotal ? total : average;
+                    boolean total = true;
                     if (arg.startsWith("avg:")) {
                         arg = arg.substring(4);
-                        nation = average;
+                        total = false;
                     } else if (arg.startsWith("total:")) {
                         arg = arg.substring(6);
-                        nation = total;
+                        total = true;
                     }
                     if (arg.contains("{") && arg.contains("}")) {
                         // todo replace with alliance placeholders format
@@ -1299,7 +1298,20 @@ public class StatCommands {
                     if (arg.contains("{") && arg.contains("}")) {
                         arg = aaPlaceholders.format(guild, alliance, author, arg);
                         if (arg.contains("{") && arg.contains("}")) {
-                            arg = placeholders.format(store, arg);
+                            NationAttributeDouble metric = placeholders.getMetricDouble(store, arg.substring(1, arg.length() - 1));
+                            if (metric == null) {
+                                throw new IllegalAccessException("Unknown metric: `" + arg + "`");
+                            }
+                            double totalValue = 0;
+                            int count = 0;
+                            for (DBNation nation : list.getNations()) {
+                                totalValue += metric.apply(nation);
+                                count++;
+                            }
+                            if (!total) {
+                                totalValue /= count;
+                            }
+                            arg = totalValue + "";
                         }
 
                     }

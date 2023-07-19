@@ -77,7 +77,8 @@ public class GrantCmd extends Command {
                 "Add `-o` to only send what funds they are missing for a grant\n" +
                 "Add `-m` to multiply the grant per city\n" +
                 "Use `tax_id:1234` to specify tax account\n" +
-                "Use `-t` to specify receiver's tax account";
+                "Use `-t` to specify receiver's tax account\n" +
+                "Add `#ignore` to ignore";
     }
 
     @Override
@@ -94,6 +95,7 @@ public class GrantCmd extends Command {
         }
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
 
+        boolean ignore = false;
         DBNation nationAccount = null;
         DBAlliance allianceAccount = null;
         DBAlliance offshoreAccount = null;
@@ -128,6 +130,11 @@ public class GrantCmd extends Command {
 
         for (Iterator<String> iter = args.iterator(); iter.hasNext(); ) {
             String arg = iter.next().toLowerCase();
+            if (arg.equalsIgnoreCase("#ignore")) {
+                iter.remove();
+                ignore = true;
+                continue;
+            }
             if (arg.startsWith("-expire") || arg.startsWith("-e") || arg.startsWith("#expire")) {
                 expire = TimeUtil.timeToSec(arg.split("[:=]", 2)[1]) * 1000L;
                 iter.remove();
@@ -195,7 +202,7 @@ public class GrantCmd extends Command {
                 row.add(nation.getCities());
                 row.add(nation.getAvg_infra());
                 try {
-                    Grant grant = generateGrant(typeArg, guildDb, nation, num, flags, false);
+                    Grant grant = generateGrant(typeArg, guildDb, nation, num, flags, false, ignore);
                     row.add(grant.getInstructions());
                     row.add(PnwUtil.convertedTotal(grant.cost()));
                     row.add(PnwUtil.resourcesToString(grant.cost()));
@@ -219,7 +226,7 @@ public class GrantCmd extends Command {
             return null;
         }
 
-        Grant grant = generateGrant(typeArg, guildDb, me, num, flags, true);
+        Grant grant = generateGrant(typeArg, guildDb, me, num, flags, true, ignore);
 
         Member member = null;
 
@@ -280,7 +287,7 @@ public class GrantCmd extends Command {
         return null;
     }
 
-    public Grant generateGrant(String arg, GuildDB guildDb, DBNation me, double amt, Set<Character> flags, boolean single) throws IOException, ExecutionException, InterruptedException {
+    public Grant generateGrant(String arg, GuildDB guildDb, DBNation me, double amt, Set<Character> flags, boolean single, boolean ignore) throws IOException, ExecutionException, InterruptedException {
         Grant grant;
 
         boolean existing = flags.contains('o');
@@ -313,31 +320,31 @@ public class GrantCmd extends Command {
             if (numBuy <= 0) throw new IllegalArgumentException("Already has " + currentCity + " cities");
 
 
-            grant = new Grant(me, DepositType.CITY.withAmount(currentCity + numBuy));
+            grant = new Grant(me, DepositType.CITY.withAmount(currentCity + numBuy).ignore(ignore));
             grant.setAmount(amt);
             grant.addCity(me.getCities());
             grant.setInstructions(grantCity(me, numBuy, resources, force));
         } else if (arg.equalsIgnoreCase("infra")) {
             // city id
             // amt
-            grant = new Grant(me, DepositType.INFRA.withValue((int) amt, -1));
+            grant = new Grant(me, DepositType.INFRA.withValue((int) amt, -1).ignore(ignore));
             grant.setAmount(amt);
             grant.setInstructions(grantInfra(me, (int) amt, resources, force, single));
             grant.setAllCities();
         } else if (arg.equalsIgnoreCase("land")) {
-            grant = new Grant(me, DepositType.LAND.withValue((int) amt, -1));
+            grant = new Grant(me, DepositType.LAND.withValue((int) amt, -1).ignore(ignore));
             grant.setAmount((int) amt);
             grant.setInstructions(grantLand(me, (int) amt, resources, force));
             grant.setAllCities();
         } else if (arg.contains("mmrbuy=")) {
             MMRDouble mmr = MMRDouble.fromString(arg.split("=")[1]);
-            grant = new Grant(me, DepositType.WARCHEST.withValue());
+            grant = new Grant(me, DepositType.WARCHEST.withValue().ignore(ignore));
             grant.setAmount(amt);
             grant.setInstructions(grantMMRBuy(me, mmr, (int) amt, resources, force));
             grant.setAllCities();
         } else if (arg.contains("mmr=")) {
             MMRDouble mmr = MMRDouble.fromString(arg.split("=")[1]);
-            grant = new Grant(me, DepositType.WARCHEST.withValue());
+            grant = new Grant(me, DepositType.WARCHEST.withValue().ignore(ignore));
             grant.setAmount(amt);
             grant.setInstructions(grantMMR(me, mmr, (int) amt, resources, force));
             grant.setAllCities();
@@ -370,7 +377,7 @@ public class GrantCmd extends Command {
                     }
                     from = Collections.singletonMap(citiesAmt, found);
                 }
-                grant = new Grant(me, DepositType.BUILD.withValue(pair, citiesAmt));
+                grant = new Grant(me, DepositType.BUILD.withValue(pair, citiesAmt).ignore(ignore));
 
                 for (Map.Entry<Integer, JavaCity> entry : from.entrySet()) {
                     if (noInfra) entry.getValue().setInfra(city.getInfra());
@@ -382,7 +389,7 @@ public class GrantCmd extends Command {
                 grant.setInstructions(city.instructions(from, buffer));
                 resources = PnwUtil.resourcesToMap(buffer);
             } else {
-                grant = new Grant(me, DepositType.GRANT.withValue());
+                grant = new Grant(me, DepositType.GRANT.withValue().ignore(ignore));
                 grant.setInstructions("transfer resources");
                 resources = PnwUtil.parseResources(arg);
             }
@@ -407,7 +414,7 @@ public class GrantCmd extends Command {
                     else resources.put(entry.getKey(), required);
                 }
             }
-            grant = new Grant(me, DepositType.WARCHEST.withValue());
+            grant = new Grant(me, DepositType.WARCHEST.withValue().ignore(ignore));
             grant.setInstructions("warchest");
         } else {
             Project project = Projects.get(arg);
@@ -451,7 +458,7 @@ public class GrantCmd extends Command {
                 }
 
                 resources = PnwUtil.resourcesToMap(unit.getCost((int) amt));
-                grant = new Grant(me, DepositType.WARCHEST.withValue());
+                grant = new Grant(me, DepositType.WARCHEST.withValue().ignore(ignore));
                 grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/military/" + unit.getName() + "/> and purchase " + (int) amt + " " + unit.getName());
             } else {
                 if (me.projectSlots() <= me.getNumProjects() && !flags.contains('f')) {
@@ -476,7 +483,7 @@ public class GrantCmd extends Command {
                     resources = PnwUtil.multiply(resources, factor);
                 }
 
-                grant = new Grant(me, DepositType.PROJECT.withAmount(project.ordinal()));
+                grant = new Grant(me, DepositType.PROJECT.withAmount(project.ordinal()).ignore(ignore));
                 grant.setInstructions("Go to <" + Settings.INSTANCE.PNW_URL() + "/nation/projects/> and purchase " + project.name());
             }
         }
@@ -497,7 +504,6 @@ public class GrantCmd extends Command {
                     }
                 }
             }
-
         }
 
         Map<ResourceType, Double> finalResources = resources;

@@ -33,7 +33,7 @@ import java.util.function.Supplier;
 
 public class DiscordChannelIO implements IMessageIO {
     private final MessageChannel channel;
-    private final Supplier<Message> userMessage;
+    private Supplier<Message> userMessage;
 
     public DiscordChannelIO(MessageChannel channel, Supplier<Message> userMessage) {
         this.channel = channel;
@@ -54,6 +54,11 @@ public class DiscordChannelIO implements IMessageIO {
 
     public Message getUserMessage() {
         return userMessage != null ? userMessage.get() : null;
+    }
+
+    @Override
+    public void setMessageDeleted() {
+        userMessage = null;
     }
 
     @Override

@@ -828,10 +828,22 @@ public class NationDB extends DBMainV2 {
     }
 
     private Set<Integer> updateNationsById(List<Integer> ids, Consumer<Event> eventConsumer) {
+        if (ids.isEmpty()) return new HashSet<>();
+
         List<Integer> idsFinal = new ArrayList<>(ids);
         Collections.sort(idsFinal);
-        Set<Integer> fetched = updateNations(r -> r.setId(idsFinal), eventConsumer);
-        if (fetched.isEmpty()) {
+        Set<Integer> fetched;
+        if (idsFinal.size() > 500) {
+            fetched = new LinkedHashSet<>();
+            for (int i = 0; i < idsFinal.size(); i += 500) {
+                int end = Math.min(i + 500, idsFinal.size());
+                List<Integer> toFetch = idsFinal.subList(i, end);
+                fetched.addAll(updateNationsById(toFetch, eventConsumer));
+            }
+        } else {
+            fetched = updateNations(r -> r.setId(idsFinal), eventConsumer);
+        }
+        if (ids.size() >= 500 && fetched.isEmpty()) {
             System.out.println("No nations fetched");
             return fetched;
         }
@@ -1693,14 +1705,7 @@ public class NationDB extends DBMainV2 {
 
     public Set<Integer> updateNewNationsById(Consumer<Event> eventConsumer) {
         List<Integer> newIds = getNewNationIds(500, new HashSet<>());
-        Collections.sort(newIds);
-        Set<Integer> fetched = updateNations(r -> r.setId(newIds), eventConsumer);
-        Set<Integer> deleted = new HashSet<>();
-        for (int id : newIds) {
-            if (!fetched.contains(id) && getNation(id) != null) deleted.add(id);
-        }
-        if (!deleted.isEmpty()) deleteNations(deleted, eventConsumer);
-        return fetched;
+        return updateNationsById(newIds, eventConsumer);
     }
 
     public Set<Integer> updateNewNationsByDate(long minDate, Consumer<Event> eventConsumer) {
@@ -1734,7 +1739,9 @@ public class NationDB extends DBMainV2 {
         for (int id : currentNations) {
             if (!fetched.contains(id)) deleted.add(id);
         }
-        deleteNations(deleted, eventConsumer);
+        for (int id : deleted) {
+            markNationDirty(id);;
+        }
         return fetched;
     }
 
@@ -1748,7 +1755,10 @@ public class NationDB extends DBMainV2 {
         for (int id : currentNations) {
             if (!fetched.contains(id)) deleted.add(id);
         }
-        deleteNations(deleted, eventConsumer);
+        for (int id : deleted) {
+            markNationDirty(id);
+        }
+//        deleteNations(deleted, eventConsumer);
         return fetched;
     }
 

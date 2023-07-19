@@ -125,6 +125,7 @@ public class DiscordCommands {
     }
 
     @Command(desc = "Have the bot say the provided message, with placeholders replaced.")
+    @NoFormat
     public String say(NationPlaceholders placeholders, ValueStore store, @Me GuildDB db, @Me Guild guild, @Me IMessageIO channel, @Me User author, @Me DBNation me, @TextArea String msg) {
         msg = DiscordUtil.trimContent(msg);
         msg = msg.replace("@", "@\u200B");
@@ -216,6 +217,7 @@ public class DiscordCommands {
     }
 
     @Command(desc = "Create a channel with name in a specified category and ping the specified roles upon creation.")
+    @NoFormat
     public String channel(NationPlaceholders placeholders, ValueStore store, @Me GuildDB db, @Me JSONObject command, @Me User author, @Me Guild guild, @Me IMessageIO output, @Me DBNation nation,
                           String channelName, Category category, @Default String copypasta,
                           @Switch("i") boolean addInternalAffairsRole,

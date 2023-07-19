@@ -23,6 +23,8 @@ public interface IMessageIO {
         return send(create().append(message));
     }
 
+    void setMessageDeleted();
+
     CompletableFuture<IMessageBuilder> send(IMessageBuilder builder);
 
     IMessageIO update(IMessageBuilder builder, long id);

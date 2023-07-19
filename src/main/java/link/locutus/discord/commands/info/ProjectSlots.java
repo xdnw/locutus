@@ -4,6 +4,7 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -35,14 +36,6 @@ public class ProjectSlots extends Command {
         if (args.size() != 1) return usage(args.size(), 1, channel);
         DBNation nation = DiscordUtil.parseNation(args.get(0));
         if (nation == null) return "Invalid nation: `" + args.get(0) + "`";
-
-
-        Set<Project> projects = nation.getProjects();
-        double value = 0;
-        for (Project project : projects) {
-            value += PnwUtil.convertedTotal(project.cost());
-        }
-
-        return nation.getNation() + " has " + projects.size() + "/" + nation.projectSlots() + " worth $" + MathMan.format(value);
+        return UtilityCommands.ProjectSlots(nation);
     }
 }

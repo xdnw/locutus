@@ -1069,7 +1069,7 @@ public class GuildKey {
         public String help() {
             return "Whether to give gov/member roles to allies (this is intended for coalition servers), `true` or `false`";
         }
-    }.setupRequirements(f -> f.requires(AUTOROLE_ALLIANCES).requiresCoalition(Coalition.ALLIES).requiresNot(ALLIANCE_ID));
+    }.setupRequirements(f -> f.requiresCoalition(Coalition.ALLIES).requiresNot(ALLIANCE_ID, false));
     public static GuildSetting<Set<Roles>> AUTOROLE_ALLY_ROLES = new GuildEnumSetSetting<Roles>(GuildSettingCategory.ROLE, Roles.class) {
         @NoFormat
         @Command(descMethod = "help")
@@ -1087,7 +1087,7 @@ public class GuildKey {
             return "List of roles to autorole from ally servers\n" +
                     "(this is intended for coalition servers to give gov roles to allies)";
         }
-    }.setupRequirements(f -> f.requires(AUTOROLE_ALLY_GOV).requiresCoalition(Coalition.ALLIES).requiresNot(ALLIANCE_ID));
+    }.setupRequirements(f -> f.requires(AUTOROLE_ALLY_GOV).requiresCoalition(Coalition.ALLIES).requiresNot(ALLIANCE_ID, false));
     public static GuildSetting<Boolean> ENABLE_WAR_ROOMS = new GuildBooleanSetting(GuildSettingCategory.WAR_ROOM) {
         @NoFormat
         @Command(descMethod = "help")
@@ -1107,7 +1107,12 @@ public class GuildKey {
             return "If war rooms should be enabled (i.e. auto generate a channel for wars against active nations)\n" +
                     "Note: Defensive war channels must be enabled to have auto war room creation";
         }
-    }.setupRequirements(f -> f.requires(ALLIANCE_ID));
+    }.setupRequirements(f -> f.requireFunction(new Consumer<GuildDB>() {
+        @Override
+        public void accept(GuildDB db) {
+            db.getOrThrow(ALLIANCE_ID);
+        }
+    }));
     public static GuildSetting<Guild> WAR_SERVER = new GuildSetting<Guild>(GuildSettingCategory.WAR_ROOM, Guild.class) {
         @NoFormat
         @Command(descMethod = "help")

@@ -8,6 +8,7 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.Channel;
+import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.interactions.Interaction;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.callbacks.IModalCallback;
@@ -29,10 +30,16 @@ public class DiscordHookIO implements IMessageIO {
     private final InteractionHook hook;
     private final Map<Long, IMessageBuilder> messageCache = new HashMap<>();
     private final IModalCallback modalCallback;
+    private boolean originalDeleted;
 
     public DiscordHookIO(InteractionHook hook, IModalCallback modalCallback) {
         this.hook = hook;
         this.modalCallback = modalCallback;
+    }
+
+    @Override
+    public void setMessageDeleted() {
+        this.originalDeleted = true;
     }
 
     public IModalCallback getModalCallback() {
@@ -42,7 +49,12 @@ public class DiscordHookIO implements IMessageIO {
     @Override
     @Deprecated
     public IMessageBuilder getMessage() {
-        return new DiscordMessageBuilder(this, RateLimitUtil.complete(hook.retrieveOriginal()));
+        if (originalDeleted) return null;
+        try {
+            return new DiscordMessageBuilder(this, RateLimitUtil.complete(hook.retrieveOriginal()));
+        } catch (ErrorResponseException ignore) {
+            return null;
+        }
     }
 
     @Override

@@ -34,6 +34,7 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
@@ -685,7 +686,8 @@ public class NationUpdateProcessor {
 
                 if (db.getOrNull(GuildKey.AUTONICK) == GuildDB.AutoNickOption.NATION) {
                     try {
-                        db.getAutoRoleTask().autoRole(member, event.getCurrent(), true);
+                        AutoRoleInfo task = db.getAutoRoleTask().autoRole(member, event.getCurrent());
+                        task.execute();
                     } catch (Throwable e) {
                         e.printStackTrace();
                     }
@@ -706,7 +708,8 @@ public class NationUpdateProcessor {
 
                 if (db.getOrNull(GuildKey.AUTONICK) == GuildDB.AutoNickOption.LEADER) {
                     try {
-                        db.getAutoRoleTask().autoRole(member, event.getCurrent(), true);
+                        AutoRoleInfo task = db.getAutoRoleTask().autoRole(member, event.getCurrent());
+                        task.execute();
                     } catch (Throwable e) {
                         e.printStackTrace();
                     }

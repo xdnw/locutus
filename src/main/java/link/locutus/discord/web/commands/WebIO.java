@@ -30,6 +30,11 @@ public class WebIO implements IMessageIO {
     }
 
     @Override
+    public void setMessageDeleted() {
+
+    }
+
+    @Override
     public CompletableFuture<IMessageBuilder> send(IMessageBuilder builder) {
         DataObject obj = ((WebMessage) builder).build();
         sse.sendEvent(obj.toString());

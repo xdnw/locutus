@@ -294,8 +294,10 @@ public class PWBindings extends BindingHelper {
         }
         if (json != null && !json.isBlank()) {
             CityBuild build2 = CityBuild.of(json, true);
-            json = build2.toString().replace("}", "") + "," + build.toString().replace("{", "");
-            build = CityBuild.of(json, true);
+            if (build != null) {
+                json = build2.toString().replace("}", "") + "," + build.toString().replace("{", "");
+                build = CityBuild.of(json, true);
+            }
         }
         return build;
     }
@@ -320,7 +322,12 @@ public class PWBindings extends BindingHelper {
         DepositType type = null;
         long value = 0;
         long city = 0;
+        boolean ignore = false;
         for (String arg : input.split(" ")) {
+            if (arg.equalsIgnoreCase("#ignore")) {
+                ignore = true;
+                continue;
+            }
             if (arg.startsWith("#")) arg = arg.substring(1);
             String[] split = arg.split("[=|:]");
             String key = split[0];
@@ -342,15 +349,17 @@ public class PWBindings extends BindingHelper {
             }
         }
         if (type == null) {
-            throw new IllegalArgumentException("Invalid deposit type (empty): `" + input + "`");
+            if (ignore) {
+                type = DepositType.IGNORE;
+            } else {
+                throw new IllegalArgumentException("Invalid deposit type (empty): `" + input + "`");
+            }
         }
         if (type == DepositType.CITY) {
             value = city;
             city = 0;
         }
-        return new DepositType.DepositTypeInfo(type, value, city);
-
-
+        return new DepositType.DepositTypeInfo(type, value, city, ignore);
     }
 
     @Binding(value = "A range of city counts (inclusive)", examples = {"c1-10", "c11+"})
@@ -380,7 +389,11 @@ public class PWBindings extends BindingHelper {
                 nation = DiscordUtil.getNation(selfUser);
             }
             if (nation == null) {
-                throw new IllegalArgumentException("No such nation: `" + input + "`");
+                String error = "No such nation: `" + input + "`";
+                if (input.contains(",")) {
+                    throw new IllegalArgumentException(error + " (Multiple nations are not accepted for this argument)");
+                }
+                throw new IllegalArgumentException(error);
             }
         }
         return nation;

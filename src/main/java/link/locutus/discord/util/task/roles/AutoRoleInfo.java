@@ -97,7 +97,10 @@ public class AutoRoleInfo {
                 response.append("- ").append(entry.getKey().getEffectiveName()).append(" -> ").append(String.join(", ", entry.getValue())).append("\n");
             }
         }
-        return success.toString();
+        if (response.isEmpty()) {
+            response.append("No changes");
+        }
+        return response.toString();
     }
 
     public RoleOrCreate createRole(Role role, String roleName, int position, Supplier<Color> color) {

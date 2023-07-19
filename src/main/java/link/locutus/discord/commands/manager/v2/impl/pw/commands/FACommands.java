@@ -23,6 +23,7 @@ import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.TreatyType;
+import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
@@ -297,7 +298,8 @@ public class FACommands {
                 return "AutoRole is disabled. See " + GuildKey.AUTOROLE_ALLIANCES.getCommandMention() + "";
             }
             db.getAutoRoleTask().syncDB();
-            db.getAutoRoleTask().autoRole(member, nation, true);
+            AutoRoleInfo task = db.getAutoRoleTask().autoRole(member, nation);
+            task.execute();
             aaRoles = DiscordUtil.getAARoles(guild.getRoles());
             role = aaRoles.get(nation.getAlliance_id());
             if (role == null) {

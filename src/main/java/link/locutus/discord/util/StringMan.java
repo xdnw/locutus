@@ -681,7 +681,7 @@ public class StringMan {
 
     public static <T extends Enum>  List<Map.Entry<String, String>> autocompleteCommaEnum(Class<T> type, String input, Function<String, T> parse, int maxResults) {
         List<T> options = Arrays.asList(type.getEnumConstants());
-        Function<T, String> keyFunc = T::toString;
+        Function<T, String> keyFunc = T::name;
         Function<T, String> valueFunc = keyFunc;
         return autocompleteComma(input, options, parse, keyFunc, valueFunc, maxResults);
     }
