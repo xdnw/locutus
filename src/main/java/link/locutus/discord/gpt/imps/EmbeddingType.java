@@ -2,6 +2,7 @@ package link.locutus.discord.gpt.imps;
 
 public enum EmbeddingType {
     Command,
+
     Configuration,
 
     Argument,
@@ -15,4 +16,6 @@ public enum EmbeddingType {
     Example,
 
     Intent,
+
+    User_Input,
 }

@@ -5,30 +5,38 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.db.guild.GuildSetting;
+import link.locutus.discord.gpt.imps.EmbeddingAdapter;
 import link.locutus.discord.gpt.imps.EmbeddingType;
-import link.locutus.discord.gpt.GptHandler;
 import net.dv8tion.jda.api.entities.User;
 
-public class SettingEmbedding extends PWEmbedding<GuildSetting> {
-    public SettingEmbedding(GuildSetting obj) {
-        super(EmbeddingType.Configuration, obj.name().replace("_", " "), obj, false);
+import java.util.Set;
+
+public class SettingEmbeddingAdapter extends PWAdapter<GuildSetting> {
+    public SettingEmbeddingAdapter(EmbeddingSource source, Set<GuildSetting> objects) {
+        super(source, objects);
     }
 
     @Override
-    public String apply(String query, GptHandler handler) {
+    public EmbeddingType getType() {
+        return EmbeddingType.Configuration;
+    }
+
+    @Override
+    public String getDescription(GuildSetting obj) {
+        return obj.help();
+    }
+
+    @Override
+    public String getExpanded(GuildSetting obj) {
         return null;
     }
 
     @Override
-    public String getSummary() {
-        return getObj().help();
-    }
-
-    @Override
-    public boolean hasPermission(ValueStore store, CommandManager2 manager) {
+    public boolean hasPermission(GuildSetting obj, ValueStore store, CommandManager2 manager) {
         GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class));
         User author = (User) store.getProvided(Key.of(User.class, Me.class));
-        return getObj().hasPermission(db, author, null);
+        return obj.hasPermission(db, author, null);
     }
 }

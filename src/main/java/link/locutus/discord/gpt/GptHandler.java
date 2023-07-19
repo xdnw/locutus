@@ -8,13 +8,19 @@ import com.knuddels.jtokkit.api.ModelType;
 import com.theokanning.openai.OpenAiService;
 import com.theokanning.openai.moderation.Moderation;
 import com.theokanning.openai.moderation.ModerationRequest;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.imps.AdaEmbedding;
 import link.locutus.discord.gpt.imps.GPTSummarizer;
 import link.locutus.discord.gpt.imps.ProcessSummarizer;
 import link.locutus.discord.gpt.imps.ProcessText2Text;
 import link.locutus.discord.util.FileUtil;
-import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.ThrowingConsumer;
+import org.apache.commons.lang3.ArrayUtils;
+import org.eclipse.jetty.util.ArrayUtil;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -33,6 +39,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Stream;
+
+import static com.pusher.client.util.internal.Preconditions.checkArgument;
+import static com.pusher.client.util.internal.Preconditions.checkNotNull;
 
 public class GptHandler {
     private final Encoding chatEncoder;
@@ -88,38 +99,67 @@ public class GptHandler {
         return service;
     }
 
-    public double getSimilarity(String a, String b) {
-        return ArrayUtil.cosineSimilarity(getEmbedding(a), getEmbedding(b));
+    public IEmbeddingDatabase getEmbeddings() {
+        return embeddingDatabase;
     }
 
     public int getChatTokenSize(String text) {
         return chatEncoder.encode(text).size();
     }
 
-    private float[] getEmbeddingApi(String text, boolean checkModeration) {
-        if (checkModeration) {
-            List<ModerationResult> modResult = moderator.moderate(text);
-            GPTUtil.checkThrowModeration(modResult, text);
+    public void checkModeration(String text) {
+        List<ModerationResult> modResult = moderator.moderate(text);
+        GPTUtil.checkThrowModeration(modResult, text);
+    }
+
+    /**
+     * Register all your embedding descriptions for a source
+     * @param source the source to register under
+     * @param descriptions the descriptions to register (moderated)
+     * @param expandedDescriptions the expanded descriptions to register (may be null)
+     * @param moderate if the descriptions should be moderated
+     * @param deleteMissing if embeddings in the source not included will be deleted
+     * @return the ids of the embeddings
+     */
+    public List<Long> registerEmbeddings(EmbeddingSource source, List<String> descriptions, List<String> expandedDescriptions, boolean moderate, boolean deleteMissing) {
+        checkArgument(descriptions.size() == expandedDescriptions.size(), "descriptions and expandedDescriptions must be the same size");
+        // create a stream Map.Entry<String, String> from descriptions and expandedDescriptions
+        Map<String, String> map = new HashMap<>();
+        for (int i = 0; i < descriptions.size(); i++) {
+            map.put(descriptions.get(i), expandedDescriptions.get(i));
         }
-        return embeddingDatabase.fetchEmbedding(text);
+        return registerEmbeddings(source, map.entrySet().stream(), moderate, deleteMissing);
     }
 
-    public float[] getExistingEmbedding(int type, String text) {
-        return this.embeddingDatabase.getEmbedding(type, text);
-    }
+    public <T> List<Long> registerEmbeddings(EmbeddingSource source, Stream<Map.Entry<String, String>> descriptionAndExpandedStream, boolean moderate, boolean deleteMissing) {
 
-    public float[] getEmbedding(String text) {
-        return getEmbedding(-1, null, text, false);
-    }
+        checkNotNull(source, "source must not be null");
+        ThrowingConsumer<String> moderateFunc = moderate ? this::checkModeration : null;
 
-    public float[] getEmbedding(int type, @Nullable String id, String text, boolean saveContent) {
-        float[] existing = this.embeddingDatabase.getEmbedding(text);
-        if (existing == null) {
-            System.out.println("Fetch embedding: " + text);
-            existing = getEmbeddingApi(text, type < 0);
-            embeddingDatabase.setEmbedding(type, id, text, existing, saveContent);
+        Set<String> duplicateCheck = new HashSet<>();
+
+        Set<Long> hashesSet = new LongLinkedOpenHashSet();
+        // iterate over descriptionAndExpandedStream
+        descriptionAndExpandedStream.forEach(new Consumer<Map.Entry<String, String>>() {
+            @Override
+            public void accept(Map.Entry<String, String> entry) {
+                String description = entry.getKey();
+                String expandedDescription = entry.getValue();
+
+                long hash = embeddingDatabase.getHash(description);
+                if (!hashesSet.add(hash)) {
+                    throw new IllegalArgumentException("duplicate hash: " + hash + " for description: ```\n" + description + "\n```");
+                }
+                float[] vector = embeddingDatabase.getOrCreateEmbedding(hash, description, () -> expandedDescription, source, true, moderateFunc);
+            }
+        });
+        if (deleteMissing) {
+            embeddingDatabase.registerHashes(source, hashesSet, deleteMissing);
         }
-        return existing;
+        return new LongArrayList(hashesSet);
     }
 
+    public float[] getEmbedding(EmbeddingSource source, String text) {
+        return embeddingDatabase.getEmbedding(source, text, this::checkModeration);
+    }
 }

@@ -2,18 +2,22 @@ package link.locutus.discord.db;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.ints.IntSet;
-import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2LongOpenCustomHashMap;
+import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.longs.LongArraySet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.longs.LongSet;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
+import link.locutus.discord.gpt.imps.EmbeddingInfo;
+import link.locutus.discord.gpt.imps.EmbeddingType;
+import link.locutus.discord.gpt.pwembed.PWAdapter;
+import link.locutus.discord.gpt.pwembed.PWGPTHandler;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import org.jetbrains.annotations.Nullable;
 import org.jooq.Record;
@@ -21,36 +25,36 @@ import org.jooq.impl.SQLDataType;
 
 import java.io.Closeable;
 import java.math.BigInteger;
-import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiConsumer;
+import java.util.function.BiPredicate;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static graphql.com.google.common.base.Preconditions.checkArgument;
 import static graphql.com.google.common.base.Preconditions.checkNotNull;
 
 public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingDatabase, Closeable {
 
     private final Long2ObjectOpenHashMap<float[]> vectors = new Long2ObjectOpenHashMap<>();
-    private Map<Integer, Set<Long>> hashesBySource = new Int2ObjectOpenHashMap<>();
-
+    private Map<Integer, Set<Long>> textHashBySource = new Int2ObjectOpenHashMap<>();
+    private Map<Integer, Map<Long, Long>> expandedTextHashBySource = new Int2ObjectOpenHashMap<>();
     private Map<Long, Set<EmbeddingSource>> embeddingSourcesByGuild = new ConcurrentHashMap<>();
 
-    /*
-    PW binding needs to register all the commands/settings etc.
-    then it deletes the missing sources
-     */
-
+    @Override
     public void registerHashes(EmbeddingSource source, Set<Long> hashes, boolean deleteAbsent) {
         checkNotNull(source);
         if (hashes.isEmpty()) {
@@ -59,10 +63,10 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
             }
             return;
         }
-        Set<Long> existing = hashesBySource.get(source);
+        Set<Long> existing = textHashBySource.get(source);
         if (existing == null) {
             existing = new LongOpenHashSet();
-            hashesBySource.put(source.source_id, existing);
+            textHashBySource.put(source.source_id, existing);
             for (long hash : hashes) {
                 existing.add(hash);
                 saveVectorSources(hash, source.source_id);
@@ -119,15 +123,49 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
 
     private void createExpandedTextTable() {
         ctx().createTableIfNotExists("expanded_text")
-                .column("hash", SQLDataType.BIGINT.notNull())
+                .column("embedding_hash", SQLDataType.BIGINT.notNull())
+                .column("body_hash", SQLDataType.BIGINT.notNull())
                 .column("source_id", SQLDataType.BIGINT.notNull())
                 .column("body", SQLDataType.VARCHAR.notNull())
-                .primaryKey("hash", "source_id")
+                .primaryKey("embedding_hash", "source_id")
                 .execute();
     }
 
-    public synchronized void saveExpandedText(int source_id, long hash, String body) {
-        ctx().execute("INSERT INTO expanded_text (source_id, hash, body) VALUES (?, ?, ?)", source_id, hash, body);
+    public synchronized boolean saveExpandedText(long embedding_hash, int source_id, String body) {
+        long body_hash = getHash(body);
+        Map<Long, Long> hashesBySource = expandedTextHashBySource.computeIfAbsent(source_id, k -> new Long2LongOpenHashMap());
+        // if changed
+        Long existing = hashesBySource.get(embedding_hash);
+        if (existing == null || existing != body_hash) {
+            hashesBySource.put(embedding_hash, body_hash);
+            ctx().execute("INSERT OR REPLACE INTO expanded_text (embedding_hash, body_hash, source_id, body) VALUES (?, ?, ?, ?)", embedding_hash, body_hash, source_id, body);
+            return true;
+        }
+        return false;
+    }
+
+    public boolean hasExpandedText(int source_id, long embedding_hash) {
+        Map<Long, Long> hashesBySource = expandedTextHashBySource.get(source_id);
+        if (hashesBySource == null) {
+            return false;
+        }
+        return hashesBySource.containsKey(embedding_hash);
+    }
+
+    public String getText(long hash) {
+        return ctx().selectFrom("vector_text").where("hash = ?", hash).fetchOne("description", String.class);
+    }
+
+    public String getExpandedText(int source_id, long embedding_hash) {
+        Map<Long, Long> hashesBySource = expandedTextHashBySource.get(source_id);
+        if (hashesBySource == null) {
+            return null;
+        }
+        Long body_hash = hashesBySource.get(embedding_hash);
+        if (body_hash == null) {
+            return null;
+        }
+        return ctx().selectFrom("expanded_text").where("embedding_hash = ? AND source_id = ?", embedding_hash, source_id).fetchOne("body", String.class);
     }
 
     private void createVectorSourcesTable() {
@@ -139,7 +177,7 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
     }
 
     public synchronized void saveVectorSources(long hash, int source_id) {
-        hashesBySource.computeIfAbsent(source_id, k -> new LongOpenHashSet()).add(hash);
+        textHashBySource.computeIfAbsent(source_id, k -> new LongOpenHashSet()).add(hash);
         ctx().execute("INSERT INTO vector_sources (source_id, hash) VALUES (?, ?)", source_id, hash);
     }
 
@@ -208,10 +246,10 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
         ctx().select().from("vector_sources").fetch().forEach(r -> {
             long hash = r.get("hash", Long.class);
             int source_id = r.get("source_id", Integer.class);
-            Set<Long> hashes = hashesBySource.get(source_id);
+            Set<Long> hashes = textHashBySource.get(source_id);
             if (hashes == null) {
                 hashes = new LongOpenHashSet();
-                hashesBySource.put(source_id, hashes);
+                textHashBySource.put(source_id, hashes);
             }
             hashes.add(hash);
         });
@@ -251,6 +289,21 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
         loadHashesBySource();
 
         loadSources();
+
+        loadExpandedTextMeta();
+    }
+
+    public void loadExpandedTextMeta() {
+//        expandedTextHashBySource
+        ctx().select().from("expanded_text").fetch().forEach(r -> {
+//            .column("embedding_hash", SQLDataType.BIGINT.notNull())
+//                    .column("body_hash", SQLDataType.BIGINT.notNull())
+            long embedding_hash = r.get("embedding_hash", Long.class);
+            long body_hash = r.get("body_hash", Long.class);
+            int source_id = r.get("source_id", Integer.class);
+            Map<Long, Long> hashes = expandedTextHashBySource.computeIfAbsent(source_id, k -> new Long2LongOpenHashMap());
+            hashes.put(embedding_hash, body_hash);
+        });
     }
 
     public AEmbeddingDatabase(String name) throws SQLException, ClassNotFoundException {
@@ -258,9 +311,25 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
         createTables();
     }
 
+    @Override
     public float[] getEmbedding(long hash) {
         float[] vector = vectors.get(hash);
         return vector == null ? null : vector;
+    }
+
+    @Override
+    public void deleteSource(EmbeddingSource source) {
+        // delete from expanded_text and sources and vector_sources
+        int source_id = source.source_id;
+        ctx().execute("DELETE FROM expanded_text WHERE source_id = ?", source_id);
+        ctx().execute("DELETE FROM sources WHERE source_id = ?", source_id);
+        ctx().execute("DELETE FROM vector_sources WHERE source_id = ?", source_id);
+
+        embeddingSourcesByGuild.getOrDefault(source.guild_id, Collections.emptySet()).remove(source);
+        // textHashBySource
+        textHashBySource.remove(source_id);
+        // expandedTextHashBySource
+        expandedTextHashBySource.remove(source_id);
     }
 
     @Override
@@ -269,39 +338,50 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
     }
 
     @Override
-    public float[] getOrCreateEmbedding(String content, EmbeddingSource source) {
-        long hash = getHash(content);
-        float[] existing = getEmbedding(hash);
+    public float[] getOrCreateEmbedding(long embeddingHash, String embeddingText, Supplier<String> fullContent, EmbeddingSource source, boolean save, ThrowingConsumer<String> moderate) {
+        float[] existing = getEmbedding(embeddingHash);
         if (existing == null) {
+            if (moderate != null) {
+                moderate.accept(embeddingText);
+            }
             // fetch embedding
-            existing = fetchEmbedding(content);
+            existing = fetchEmbedding(embeddingText);
             // store
-            saveVector(hash, existing);
+            if (save) {
+                saveVector(embeddingHash, existing);
+            }
         }
-        Set<Long> hashes = hashesBySource.get(source.source_id);
-        if (hashes == null || !hashes.contains(hash)) {
-            saveVectorSources(hash, source.source_id);
+        if (save) {
+            Set<Long> hashes = textHashBySource.get(source.source_id);
+            if (hashes == null || !hashes.contains(embeddingHash)) {
+                saveVectorSources(embeddingHash, source.source_id);
+                saveVectorText(embeddingHash, embeddingText);
+            }
+            if (fullContent != null) {
+                String full = fullContent.get();
+                if (full != null) {
+                    saveExpandedText(embeddingHash, source.source_id, full);
+                }
+            }
         }
         return existing;
     }
 
-    public static long getHash(String data) {
+    @Override
+    public long getHash(String data) {
         BigInteger value = StringMan.hash_fnv1a_64(data.getBytes());
         value = value.add(BigInteger.valueOf(Long.MIN_VALUE));
         return value.longValueExact();
     }
 
-    public void iterateVectors(Set<EmbeddingSource> allowedSources, TriConsumer<Integer, Long, float[]> source_hash_vector_consumer) {
-        Set<Integer> sources = new IntOpenHashSet();
-        for (EmbeddingSource allowedSource : allowedSources) {
-            sources.add(allowedSource.source_id);
-        }
-        for (int source_id : sources) {
-            Set<Long> hashes = hashesBySource.get(source_id);
+    @Override
+    public void iterateVectors(Set<EmbeddingSource> allowedSources, TriConsumer<EmbeddingSource, Long, float[]> source_hash_vector_consumer) {
+        for (EmbeddingSource source : allowedSources) {
+            Set<Long> hashes = textHashBySource.get(source.source_id);
             if (hashes != null && !hashes.isEmpty()) {
                 for (long hash : hashes) {
                     float[] vector = vectors.get(hash);
-                    source_hash_vector_consumer.consume(source_id, hash, vector);
+                    source_hash_vector_consumer.consume(source, hash, vector);
                 }
             }
         }
@@ -322,6 +402,12 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
         return result;
     }
 
+    @Override
+    public int countVectors(EmbeddingSource existing) {
+        Set<Long> hashes = textHashBySource.get(existing.source_id);
+        return hashes == null ? 0 : hashes.size();
+    }
+
     public Set<EmbeddingSource> getSources(Predicate<Long> guildPredicateOrNull, Predicate<EmbeddingSource> sourcePredicate) {
         Set<EmbeddingSource> result = new LinkedHashSet<>();
         for (Map.Entry<Long, Set<EmbeddingSource>> entry : embeddingSourcesByGuild.entrySet()) {
@@ -334,5 +420,42 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
             }
         }
         return result;
+    }
+
+    @Override
+    public float[] getEmbedding(EmbeddingSource source, String text, ThrowingConsumer<String> moderate) {
+        long hash = getHash(text);
+        return getOrCreateEmbedding(hash, text, null, source, true, moderate);
+    }
+
+    @Override
+    public List<EmbeddingInfo> getClosest(EmbeddingSource inputSource, String input, int top, Set<EmbeddingSource> allowedTypes, BiPredicate<EmbeddingSource, Long> sourceHashPredicate, ThrowingConsumer<String> moderate) {
+        checkArgument(top > 0, "top must be > 0");
+        Queue<EmbeddingInfo> largest = new PriorityQueue<>(top, new Comparator<EmbeddingInfo>() {
+            @Override
+            public int compare(EmbeddingInfo o1, EmbeddingInfo o2) {
+                return Double.compare(o2.distance, o1.distance);
+            }
+        });
+
+        float[] compareTo = getEmbedding(inputSource, input, moderate);
+
+        for (EmbeddingSource source : allowedTypes) {
+            Set<Long> hashes = textHashBySource.get(source.source_id);
+            for (long hash : hashes) {
+                if (!sourceHashPredicate.test(source, hash)) continue;
+                float[] vector = vectors.get(hash);
+                double diff = ArrayUtil.cosineSimilarity(vector, compareTo);
+
+                if (largest.size() < top || largest.peek().distance < diff) {
+                    if (largest.size() == top)
+                        largest.remove();
+                    EmbeddingInfo result = new EmbeddingInfo(hash, vector, source, diff);
+                    largest.add(result);
+                }
+            }
+        }
+
+        return new ArrayList<>(largest);
     }
 }
