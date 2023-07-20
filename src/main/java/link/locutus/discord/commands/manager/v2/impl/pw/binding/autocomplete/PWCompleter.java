@@ -96,6 +96,7 @@ public class PWCompleter extends BindingHelper {
     @Binding(types={DBAlliancePosition.class})
     public List<Map.Entry<String, String>> DBAlliancePosition(@Me GuildDB db, String input) {
         AllianceList alliances = db.getAllianceList();
+        if (alliances == null || alliances.isEmpty()) return null;
         List<DBAlliancePosition> options = new ArrayList<>(alliances.getPositions());
         options.add(DBAlliancePosition.REMOVE);
         options.add(DBAlliancePosition.APPLICANT);
@@ -183,6 +184,7 @@ public class PWCompleter extends BindingHelper {
     @Binding(types={NationOrAllianceOrGuildOrTaxid.class})
     public List<Map.Entry<String, String>> NationOrAllianceOrGuildOrTaxid(String input, @Me GuildDB db, @Me User user) {
         if (input.isEmpty()) return null;
+        AllianceList aaList = db.getAllianceList();
 
         List<NationOrAllianceOrGuildOrTaxid> options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
         options.addAll(Locutus.imp().getNationDB().getAlliances());
@@ -194,12 +196,14 @@ public class PWCompleter extends BindingHelper {
                 }
             }
         }
-        for (Map.Entry<Integer, TaxBracket> entry : db.getAllianceList().getTaxBrackets(true).entrySet()) {
-            TaxBracket bracket = entry.getValue();
-            if (bracket.getName().isEmpty()) {
-                bracket.setName("tax_id:" + bracket.taxId);
+        if (aaList != null) {
+            for (Map.Entry<Integer, TaxBracket> entry : aaList.getTaxBrackets(true).entrySet()) {
+                TaxBracket bracket = entry.getValue();
+                if (bracket.getName().isEmpty()) {
+                    bracket.setName("tax_id:" + bracket.taxId);
+                }
+                options.add(bracket);
             }
-            options.add(bracket);
         }
 
         options = StringMan.getClosest(input, options, NationOrAllianceOrGuildOrTaxid::getName, OptionData.MAX_CHOICES, true, true);

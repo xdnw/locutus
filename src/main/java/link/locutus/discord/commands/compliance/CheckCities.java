@@ -14,6 +14,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -108,7 +109,11 @@ public class CheckCities extends Command {
         StringBuilder output = new StringBuilder();
 
         boolean individual = flags.contains('f') || nations.size() == 1;
-        IACheckup checkup = new IACheckup(db, db.getAllianceList().subList(aaIds), false);
+        AllianceList aaList = db.getAllianceList();
+        if (aaList == null) {
+            return "Guild is not registered to an alliance. See: " + GuildKey.ALLIANCE_ID.getCommandMention();
+        }
+        IACheckup checkup = new IACheckup(db, aaList.subList(aaIds), false);
 
         boolean mail = flags.contains('m');
         ApiKeyPool keys = mail ? db.getMailKey() : null;

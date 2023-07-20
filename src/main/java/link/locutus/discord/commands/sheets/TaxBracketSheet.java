@@ -10,7 +10,9 @@ import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -70,7 +72,9 @@ public class TaxBracketSheet extends Command {
         boolean failedFetch = true;
         Map<Integer, TaxBracket> brackets;
         try {
-            brackets = db.getAllianceList().getTaxBrackets(false);
+            AllianceList aaList = db.getAllianceList();
+            if (aaList == null) throw new IllegalArgumentException("No alliance registered to guild. See: " + GuildKey.ALLIANCE_ID.getCommandMention());
+            brackets = aaList.getTaxBrackets(false);
             failedFetch = false;
         } catch (IllegalArgumentException e) {
             brackets = new LinkedHashMap<>();

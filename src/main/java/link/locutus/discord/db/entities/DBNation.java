@@ -2386,7 +2386,7 @@ public class DBNation implements NationOrAlliance {
 
         double base = 10;
         base += projects * Projects.getScore();
-        base += (cities - 1) * 75;
+        base += (cities - 1) * 100;
         base += infra / 40d;
         for (MilitaryUnit unit : MilitaryUnit.values) {
             int amt;
@@ -4091,7 +4091,7 @@ public class DBNation implements NationOrAlliance {
         System.out.println("base " + base);
         base += getNumProjects() * Projects.getScore();
         System.out.println("projects " + base);
-        base += (cities - 1) * 75;
+        base += (cities - 1) * 100;
         System.out.println("cities " + base);
         base += getInfra() / 40d;
         System.out.println("infra " + base);
@@ -4109,18 +4109,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public double estimateScore(double infra) {
-        double base = 10;
-        base += getNumProjects() * Projects.getScore();
-        base += (cities - 1) * 75;
-        base += infra / 40d;
-        for (MilitaryUnit unit : MilitaryUnit.values) {
-            int amt = getUnits(unit);
-            if (amt > 0) {
-                base += unit.getScore(amt);
-            } else if (unit == MilitaryUnit.NUKE) {
-            }
-        }
-        return base;
+        return estimateScore(null, infra, null, null);
     }
 
     public Map<ResourceType, Double> checkExcessResources(GuildDB db) throws IOException {
@@ -4903,7 +4892,14 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Maximum offensive war slots")
     public int getMaxOff() {
-        return hasProject(Projects.PIRATE_ECONOMY) ? 6 : 5;
+        int slots = 5;
+        if (hasProject(Projects.PIRATE_ECONOMY)) {
+            slots++;
+        }
+        if (hasProject(Projects.ADVANCED_PIRATE_ECONOMY)) {
+            slots++;
+        }
+        return slots;
     }
 
     public void setEspionageFull(boolean value) {
@@ -5018,23 +5014,37 @@ public class DBNation implements NationOrAlliance {
      */
     @Command(desc = "The modifier for loot given when they are defeated in war")
     public double lootModifier() {
+        double value = 1;
         if (getWarPolicy() == WarPolicy.TURTLE) {
-            return 1.2;
+            value += 0.2;
         } else if (getWarPolicy() == WarPolicy.MONEYBAGS) {
-            return 0.6;
+            value -= 0.4;
         } else if (getWarPolicy() == WarPolicy.GUARDIAN) {
-            return 1.2;
+            value += 0.2;
         }
-        return 1;
+        return value;
     }
 
     @Command(desc = "The modifier for loot given when they defeat an enemy in war")
-    public double looterModifier() {
-        return switch (getWarPolicy()) {
-            case PIRATE -> 1.4;
-            case ATTRITION ->  0.8;
-            default -> 1;
-        };
+    public double looterModifier(boolean isGround) {
+        double modifier = 1;
+        if (getWarPolicy() == WarPolicy.PIRATE) {
+            modifier += 0.4;
+        } else if (getWarPolicy() == WarPolicy.ATTRITION) {
+            modifier -= 0.2;
+        }
+        if (hasProject(Projects.ADVANCED_PIRATE_ECONOMY)) {
+            if (isGround) {
+                modifier += 0.05;
+            }
+            modifier += 0.1;
+        }
+        if (hasProject(Projects.PIRATE_ECONOMY)) {
+            if (isGround) {
+                modifier += 0.05;
+            }
+        }
+        return modifier;
     }
 
     /*

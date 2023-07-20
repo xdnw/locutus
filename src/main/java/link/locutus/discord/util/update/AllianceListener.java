@@ -11,6 +11,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.alliance.AllianceCreateEvent;
 import link.locutus.discord.event.game.TurnChangeEvent;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -40,8 +41,10 @@ public class AllianceListener {
         { // update internal taxrates
             for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
                 if (db.isDelegateServer()) continue;
+                AllianceList aaList = db.getAllianceList();
+                if (aaList == null) continue;
 
-                Set<DBNation> nations = db.getAllianceList().getNations(DBNation::isTaxable);
+                Set<DBNation> nations = aaList.getNations(DBNation::isTaxable);
                 if (nations.isEmpty()) continue;
 
                 Map<NationFilter, TaxRate> internal = GuildKey.REQUIRED_INTERNAL_TAXRATE.getOrNull(db, false);

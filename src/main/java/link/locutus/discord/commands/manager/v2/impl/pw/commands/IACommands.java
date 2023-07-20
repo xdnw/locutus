@@ -85,6 +85,7 @@ public class IACommands {
     @Command(desc = "Generate a sheet of nations and their day change\n" +
             "Nations not in an alliance registered to this guild can only show the public day change estimate based on unit purchases")
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
+    @IsAlliance
     public void dayChangeSheet(@Me IMessageIO io, @Me GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKeys.NATION_SHEET);

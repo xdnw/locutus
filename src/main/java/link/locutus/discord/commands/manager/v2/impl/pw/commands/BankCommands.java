@@ -894,6 +894,9 @@ public class BankCommands {
         Set<DBNation> nations = new HashSet<>(nationList.getNations());
 
         AllianceList allianceList = db.getAllianceList();
+        if (allianceList == null) {
+            throw new IllegalArgumentException("This guild is not registered to an alliance. See: " + GuildKey.ALLIANCE_ID.getCommandMention());
+        }
         for (DBNation nation : nations) {
             if (!allianceList.contains(nation.getAlliance())) {
                 throw new IllegalArgumentException("This guild is registered to: " + StringMan.getString(allianceList.getIds()) +
@@ -1188,6 +1191,9 @@ public class BankCommands {
                                 @Arg("Include days of potential revenue toward warchest resources")@Switch("r") Integer includeRevenueDays,
                                 @Switch("f") boolean forceUpdate) throws IOException, GeneralSecurityException {
         AllianceList alliance = db.getAllianceList();
+        if (alliance == null) {
+            throw new IllegalArgumentException("This guild is not registered to an alliance. See: " + GuildKey.ALLIANCE_ID.getCommandMention());
+        }
         Map<DBNation, Map<ResourceType, Double>> stockpiles = alliance.getMemberStockpile();
 
         List<String> errors = new ArrayList<>();
@@ -1885,6 +1891,7 @@ public class BankCommands {
     @Command(desc = "Set nation's internal taxrate\n" +
             "See also: `{prefix}nation set taxbracket` and `{prefix}settings key:TAX_BASE`")
     @RolePermission(value = Roles.ECON)
+    @IsAlliance
     public String setInternalTaxRate(@Me GuildDB db, Set<DBNation> nations, TaxRate taxRate) {
         if (taxRate.money < -1 || taxRate.money > 100 || taxRate.resources < -1 || taxRate.resources > 100) throw new IllegalArgumentException("Invalid taxrate: " + taxRate);
 

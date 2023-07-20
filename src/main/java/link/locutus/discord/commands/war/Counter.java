@@ -136,7 +136,7 @@ public class Counter extends Command {
         }
 
         pool.removeIf(nation -> nation.getScore() < scoreMin || nation.getScore() > scoreMax);
-        pool.removeIf(nation -> nation.getOff() >= (nation.hasProject(Projects.PIRATE_ECONOMY) ? 6 : 5) && !flags.contains('o'));
+        pool.removeIf(nation -> nation.getOff() >= (nation.getMaxOff()) && !flags.contains('o'));
         pool.removeIf(nation -> nation.getNation_id() == defenderId);
         DBNation finalCounter = counter;
         pool.removeIf(nation -> nation.getAlliance_id() == finalCounter.getAlliance_id());
