@@ -53,9 +53,7 @@ public class GrantCommands {
     public void templateList(@Me GuildDB db, @Me Guild guild, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io, @Default TemplateTypes category, @Switch("d") boolean listDisabled) {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         Set<AGrantTemplate> templates = new HashSet<>(category == null ? manager.getTemplates() : manager.getTemplates(category));
-        if (!listDisabled) {
-            templates.removeIf(f -> !f.isEnabled());
-        }
+        int numDisabled = templates.stream().mapToInt(t -> t.isEnabled() ? 0 : 1).sum();
 
         if (templates.isEmpty()) {
             String msg = "No templates found for category: " + category + "\n" +
@@ -71,6 +69,7 @@ public class GrantCommands {
 
         List<AGrantTemplate> grantOthers = new ArrayList<>();
         List<AGrantTemplate> grantSelf = new ArrayList<>();
+        List<AGrantTemplate> disabled = new ArrayList<>();
         List<AGrantTemplate> noAccess = new ArrayList<>();
 
         for (AGrantTemplate template : templates) {
@@ -78,6 +77,8 @@ public class GrantCommands {
                 grantOthers.add(template);
             } else if (template.isEnabled() && template.hasSelfRole(member)) {
                 grantSelf.add(template);
+            } else if (!template.isEnabled() && (template.hasRole(member) || template.hasSelfRole(member))) {
+                disabled.add(template);
             } else {
                 noAccess.add(template);
             }
@@ -93,6 +94,12 @@ public class GrantCommands {
         if (!grantSelf.isEmpty()) {
             result.append("### Grant Self:\n");
             for (AGrantTemplate template : grantSelf) {
+                result.append("- ").append(template.toListString()).append("\n");
+            }
+        }
+        if (!disabled.isEmpty()) {
+            result.append("### Disabled:\n");
+            for (AGrantTemplate template : disabled) {
                 result.append("- ").append(template.toListString()).append("\n");
             }
         }
@@ -295,8 +302,8 @@ public class GrantCommands {
     public String templateCreateCity(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
                                      String name,
                                      NationFilter allowedRecipients,
-                                     @Switch("c") Integer minCity,
-                                     @Switch("m") Integer maxCity,
+                                     Integer minCity,
+                                     Integer maxCity,
                                      @Switch("e") Role econRole,
                                      @Switch("s") Role selfRole,
                                      @Switch("b")TaxBracket bracket,
@@ -358,7 +365,7 @@ public class GrantCommands {
     public String templateCreateInfra(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
                                       String name,
                                       NationFilter allowedRecipients,
-                                      @Switch("l") Integer level,
+                                      Integer level,
                                       @Switch("n") boolean onlyNewCities,
                                       @Switch("o") Integer requireNOffensives,
                                       @Switch("a") boolean allowRebuild,
@@ -441,7 +448,7 @@ public class GrantCommands {
     public String templateCreateLand(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
                                      String name,
                                      NationFilter allowedRecipients,
-                                     @Switch("l") Integer level,
+                                     Integer level,
                                      @Switch("n") boolean onlyNewCities,
 
                                      @Switch("e") Role econRole,
