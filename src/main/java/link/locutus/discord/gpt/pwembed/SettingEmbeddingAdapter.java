@@ -29,7 +29,7 @@ public class SettingEmbeddingAdapter extends PWAdapter<GuildSetting> {
     }
 
     @Override
-    public String getExpanded(GuildSetting obj) {
+    public String getExpanded(EmbeddingSource source, GuildSetting obj) {
         return null;
     }
 

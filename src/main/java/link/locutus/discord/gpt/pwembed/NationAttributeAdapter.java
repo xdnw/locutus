@@ -30,7 +30,7 @@ public class NationAttributeAdapter extends PWAdapter<NationAttribute> {
     }
 
     @Override
-    public String getExpanded(NationAttribute obj) {
+    public String getExpanded(EmbeddingSource source, NationAttribute obj) {
         return null;
     }
 }

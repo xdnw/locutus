@@ -30,7 +30,7 @@ public class CommandEmbeddingAdapter extends PWAdapter<ParametricCallable> {
     }
 
     @Override
-    public String getExpanded(ParametricCallable obj) {
+    public String getExpanded(EmbeddingSource source, ParametricCallable obj) {
         return null;
     }
 }

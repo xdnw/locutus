@@ -12,10 +12,8 @@ import java.util.Map;
 
 public class DatabaseAdapter implements IEmbeddingAdapter<Long> {
     private final IEmbeddingDatabase database;
-    private final EmbeddingSource source;
 
-    public DatabaseAdapter(IEmbeddingDatabase database, EmbeddingSource source) {
-        this.source = source;
+    public DatabaseAdapter(IEmbeddingDatabase database) {
         this.database = database;
     }
 
@@ -37,7 +35,7 @@ public class DatabaseAdapter implements IEmbeddingAdapter<Long> {
     }
 
     @Override
-    public String getExpanded(Long hash) {
+    public String getExpanded(EmbeddingSource source, Long hash) {
         return database.getExpandedText(source.source_id, hash);
     }
 

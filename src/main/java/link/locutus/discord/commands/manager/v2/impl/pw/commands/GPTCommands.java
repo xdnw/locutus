@@ -6,10 +6,12 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.EmbeddingSource;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.gpt.pwembed.PWGPTHandler;
 import link.locutus.discord.gpt.test.ExtractText;
 import link.locutus.discord.user.Roles;
@@ -20,6 +22,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -36,7 +39,7 @@ public class GPTCommands {
 
     @Command
     @RolePermission(value = Roles.INTERNAL_AFFAIRS, root = true)
-    public String generate_factsheet(@Me GuildDB db, @Me IMessageIO io, JSONObject command, String googleDocumentUrl, String document_description, @Switch("f") boolean confirm) throws GeneralSecurityException, IOException {
+    public synchronized String generate_factsheet(@Me GuildDB db, @Me IMessageIO io, JSONObject command, String googleDocumentUrl, String document_description, @Switch("s") SpreadSheet sheet, @Switch("f") boolean confirm) throws GeneralSecurityException, IOException {
         // to markdown
         String baseUrl = "https://docs.google.com/document/d/";
         if (!googleDocumentUrl.startsWith(baseUrl)) {
@@ -62,10 +65,38 @@ public class GPTCommands {
             return "Document has too many lines (`" + lines.length + "`). Max lines is " + maxLines;
         }
 
-        gpt.convertDocument(markdown, document_description);
+        if (!confirm) {
+            String title = "Generate factsheet?";
+            StringBuilder body = new StringBuilder();
+            body.append("This will generate a factsheet with the following parameters:\n");
+            body.append("Document description: `").append(document_description).append("`\n");
+            body.append("Input lines: `").append(lines.length).append("`\n");
 
+            IMessageBuilder msg = io.create();
+            msg.file("input.md", markdown);
+            msg.confirmation(title, body.toString(), command).send();
+            return null;
+        }
 
-        String filename = bindingName + ".md";
+        List<String> converted = gpt.convertDocument(markdown, document_description);
+
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKeys.ANSWER_SHEET);
+        }
+
+        // set values in sheet
+        List<String> header = new ArrayList<>(Arrays.asList("description"));
+        sheet.addRow(header);
+        for (String line : converted) {
+            header.set(0, line);
+            sheet.addRow(header);
+        }
+
+        sheet.clear("A:Z");
+        sheet.set(0, 0);
+
+        sheet.attach(io.create(), null, false, 0).send();
+        return null;
     }
 
     @Command
@@ -163,11 +194,11 @@ public class GPTCommands {
         }
 
         if (source == null) {
-            source = gpt.getHandler().getEmbeddings().getOrCreateSource(name, db.getIdLong());
+            source = gpt.getHandler().getEmbeddings().getOrCreateSource(document_description, db.getIdLong());
         }
 
         List<Long> embeddings = gpt.getHandler().registerEmbeddings(source, descriptions, fullTexts, true, true);
 
-        return "Registered " + embeddings.size() + " embeddings for `" + name + "` See: TODO CM ref";
+        return "Registered " + embeddings.size() + " embeddings for `" + document_description + "` See: TODO CM ref";
     }
 }

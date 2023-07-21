@@ -408,6 +408,11 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
         return hashes == null ? 0 : hashes.size();
     }
 
+    @Override
+    public EmbeddingSource getSource(String name, long guild_id) {
+        return this.embeddingSourcesByGuild.getOrDefault(guild_id, Collections.emptySet()).stream().filter(s -> s.source_name.equals(name)).findAny().orElse(null);
+    }
+
     public Set<EmbeddingSource> getSources(Predicate<Long> guildPredicateOrNull, Predicate<EmbeddingSource> sourcePredicate) {
         Set<EmbeddingSource> result = new LinkedHashSet<>();
         for (Map.Entry<Long, Set<EmbeddingSource>> entry : embeddingSourcesByGuild.entrySet()) {

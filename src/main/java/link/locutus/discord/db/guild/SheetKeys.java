@@ -47,6 +47,6 @@ public enum SheetKeys {
     PRIORITY_ENEMY_SHEET,
     ALLY_SHEET,
     UNDERUTILIZED_ALLY_SHEET,
-
     DEPOSIT_SHEET,
+    ANSWER_SHEET
 }

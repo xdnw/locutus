@@ -235,7 +235,6 @@ public class PWGPTHandler {
     }
 
     public List<String> convertDocument(String markdown, String documentDescription) {
-        
-
+        throw new UnsupportedOperationException("Not implemented");
     }
 }

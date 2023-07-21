@@ -41,9 +41,6 @@ public abstract class EmbeddingAdapter<T> implements IEmbeddingAdapter<T> {
         return hashesByObject.get(obj);
     }
 
-    public abstract String getDescription(T obj);
-    public abstract String getExpanded(T obj);
-
     public T getObject(long hash) {
         return objectsByHash.get(hash);
     }
@@ -58,7 +55,7 @@ public abstract class EmbeddingAdapter<T> implements IEmbeddingAdapter<T> {
                 values.stream().map(new Function<T, Map.Entry<String, String>>() {
             @Override
             public Map.Entry<String, String> apply(T t) {
-                return getDescriptionAndExpandedPair(t);
+                return getDescriptionAndExpandedPair(source, t);
             }
         }), moderate, true);
 
