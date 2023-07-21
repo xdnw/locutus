@@ -53,6 +53,12 @@ public class AlertUtil {
                 if (channel == null) {
                     continue;
                 }
+                if (channel instanceof GuildMessageChannel guildChan) {
+                    Guild guild = guildChan.getGuild();
+                    if (guild.getIdLong() != guildDB.getIdLong()) {
+                        guildDB = Locutus.imp().getGuildDB(guild);
+                    }
+                }
                 channelConsumer.accept(channel, guildDB);
             } catch (InsufficientPermissionException e) {
                 guildDB.deleteInfo(key);

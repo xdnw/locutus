@@ -1198,6 +1198,7 @@ public class UnsortedCommands {
 
     @Command(desc = "Generate an audit report of a list of nations")
     @RolePermission(Roles.MEMBER)
+    @IsAlliance
     public String checkCities(@Me GuildDB db, @Me IMessageIO channel, @Me Guild guild, @Me User author, @Me DBNation me,
                               @Arg("Nations to audit")
                               NationList nationList,

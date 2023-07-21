@@ -446,6 +446,16 @@ public enum AllianceMetric {
         }
     },
 
+    GROUND_PCT(true) {
+        @Override
+        public double apply(DBAlliance alliance) {
+            DBNation total = alliance.getMembersTotal();
+            double tankPct = (double) total.getTanks() / (total.getCities() * Buildings.FACTORY.cap(f -> false) * Buildings.FACTORY.max());
+            double soldierPct = (double) total.getSoldiers() / (total.getCities() * Buildings.BARRACKS.cap(f -> false) * Buildings.BARRACKS.max());
+            return (tankPct + soldierPct) / 2d;
+        }
+    },
+
     ;
 
     public static synchronized void updateLegacy() {

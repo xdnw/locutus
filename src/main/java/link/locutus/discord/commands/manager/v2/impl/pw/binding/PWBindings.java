@@ -1209,7 +1209,11 @@ public class PWBindings extends BindingHelper {
                 return new TaxBracket(taxId, nation.getAlliance_id(), "", -1, -1, 0L);
             }
         }
-        Map<Integer, TaxBracket> brackets = db.getAllianceList().getTaxBrackets(true);
+        AllianceList allianceList = db.getAllianceList();
+        if (allianceList == null) {
+            throw new IllegalArgumentException("No alliance registered. See: " + GuildKey.ALLIANCE_ID.getCommandMention());
+        }
+        Map<Integer, TaxBracket> brackets = allianceList.getTaxBrackets(true);
         if (input.matches("[0-9]+/[0-9]+")) {
             String[] split = input.split("/");
             int moneyRate = Integer.parseInt(split[0]);

@@ -47,6 +47,7 @@ import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.EditAllianceTask;
+import link.locutus.discord.util.update.AllianceListener;
 import link.locutus.discord.util.update.NationUpdateProcessor;
 import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -89,6 +90,12 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class AdminCommands {
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String runMilitarizationAlerts() {
+        AllianceListener.runMilitarizationAlerts();
+        return "Done! (see console)";
+    }
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)

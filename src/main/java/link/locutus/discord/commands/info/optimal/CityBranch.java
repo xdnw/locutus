@@ -112,7 +112,16 @@ public class CityBranch implements BiConsumer<Map.Entry<JavaCity, Integer>, Prio
             }
         }
 
-        int maxCommerce = hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER) ? 115 : 100;
+        int maxCommerce;
+        if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
+            if (hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE)) {
+                maxCommerce = 125;
+            } else {
+                maxCommerce = 115;
+            }
+        } else {
+            maxCommerce = 100;
+        }
         for (int i = minBuilding; i < maxBuilding; i++) {
             Building building = Buildings.get(i);
             if (!building.canBuild(continent)) continue;

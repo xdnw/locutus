@@ -3,6 +3,12 @@ type Query {
   treasures: [Treasure]
   colors: [Color]
   game_info: GameInfo
+  top_trade_info: TopTradeInfo
+  nation_resource_stats(
+    before: DateTime
+    after: DateTime
+    orderBy: [QueryNationResourceStatsOrderByOrderByClause!]
+  ): [NationResourceStat]
   nations(
     id: [Int]
     min_id: [Int]
@@ -26,6 +32,7 @@ type Query {
     discord: [String]
     discord_id: [String]
     tax_id: [Int]
+    continent: [Continents]
     orderBy: [QueryNationsOrderByOrderByClause!]
 
     # Limits number of fetched items. Maximum allowed value: 500.
@@ -40,14 +47,14 @@ type Query {
     color: [String]
     orderBy: [QueryAlliancesOrderByOrderByClause!]
 
-    # Limits number of fetched items. Maximum allowed value: 100.
+    # Limits number of fetched items. Maximum allowed value: 500.
     first: Int = 10
 
     # The offset from which items are returned.
     page: Int
   ): AlliancePaginator
   tradeprices(
-    # Limits number of fetched items. Maximum allowed value: 300.
+    # Limits number of fetched items. Maximum allowed value: 500.
     first: Int = 30
 
     # The offset from which items are returned.
@@ -254,6 +261,18 @@ type Query {
     # The offset from which items are returned.
     page: Int
   ): ActivityStatPaginator
+  banned_nations(
+    nation_id: [Int]
+    leader_name: [String]
+    nation_name: [String]
+    orderBy: [QueryBannedNationsOrderByOrderByClause!]
+
+    # Limits number of fetched items. Maximum allowed value: 500.
+    first: Int = 50
+
+    # The offset from which items are returned.
+    page: Int
+  ): BannedNationPaginator
 }
 
 type ApiKeyDetails {
@@ -268,6 +287,12 @@ type ApiKeyDetails {
 
   # Max requests per day the key is allowed (generally 2,000 for non-VIP nations and 15,000 for VIP nations)
   max_requests: Int
+
+  # List of permissions the API Key has
+  permissions: ApiKeyPermissions
+
+  # Bitwise value of permissions
+  permission_bits: Int
 }
 
 type Nation {
@@ -390,6 +415,9 @@ type Nation {
 
   # Number of nukes the nation bought today, this field will return null unless you are this nation
   nukes_today: Int
+
+  # Number of spies the nation bought today, this field will return null unless you are this nation
+  spies_today: Int
 
   # The Discord username of the nation
   discord: String
@@ -767,6 +795,7 @@ type Nation {
 
   # Whether or not the nation has the Resource Production Center project
   resource_production_center: Boolean
+  @deprecated(reason: "Use activity_center instead")
 
   # Whether or not the nation has the Metropolitan Planning project
   metropolitan_planning: Boolean
@@ -776,6 +805,27 @@ type Nation {
 
   # Whether or not the nation has the Fallout Shelter project
   fallout_shelter: Boolean
+
+  # Whether or not the nation has the Activity Center project
+  activity_center: Boolean
+
+  # Whether or not the nation has the Bureau of Domestic Affairs project
+  bureau_of_domestic_affairs: Boolean
+
+  # Whether or not the nation has the Advanced Pirate Economy project
+  advanced_pirate_economy: Boolean
+
+  # Whether or not the nation has the Mars Landing project
+  mars_landing: Boolean
+
+  # Whether or not the nation has the Surveillance Network project
+  surveillance_network: Boolean
+
+  # Date when the nation built the Moon Landing project.
+  moon_landing_date: DateTimeAuto
+
+  # Date when the nation built the Mars Landing project.
+  mars_landing_date: DateTimeAuto
 
   # How many wars the nation has won
   wars_won: Int
@@ -848,6 +898,12 @@ type Nation {
 
   # Whether or not the nation has VIP
   vip: Boolean
+  commendations: Int
+  denouncements: Int
+  economic_policy: EconomicPolicy
+  social_policy: SocialPolicy
+  government_type: GovernmentType
+  credits_redeemed_this_month: Int
 }
 
 enum AlliancePositionEnum {
@@ -1639,16 +1695,16 @@ type War {
   def_mun_used: Float
 
   # How much aluminum the attacker has used
-  att_alum_used: Int
+  att_alum_used: Float
 
   # How much aluminum the defender has used
-  def_alum_used: Int
+  def_alum_used: Float
 
   # How much steel the attacker has used
-  att_steel_used: Int
+  att_steel_used: Float
 
   # How much steel the defender has used
-  def_steel_used: Int
+  def_steel_used: Float
 
   # How much infrastructure the attacker has destroyed
   att_infra_destroyed: Float
@@ -1662,29 +1718,29 @@ type War {
   # How much money the defender has looted
   def_money_looted: Float
 
-  # How many soldiers the attacker has killed
-  att_soldiers_killed: Int
+  # How many soldiers the defender has lost
+  def_soldiers_lost: Int
 
-  # How many soldiers the defender has killed
-  def_soldiers_killed: Int
+  # How many soldiers the attacker has lost
+  att_soldiers_lost: Int
 
-  # How many tanks the attacker has destroyed
-  att_tanks_killed: Int
+  # How many tanks the defender has lost
+  def_tanks_lost: Int
 
-  # How many tanks the defender has destroyed
-  def_tanks_killed: Int
+  # How many tanks the attacker has lost
+  att_tanks_lost: Int
 
-  # How many aircraft the attacker has destroyed
-  att_aircraft_killed: Int
+  # How many aircraft the defender has lost
+  def_aircraft_lost: Int
 
-  # How many aircraft the defender has destroyed
-  def_aircraft_killed: Int
+  # How many aircraft the attacker has lost
+  att_aircraft_lost: Int
 
-  # How many ships the attacker has destroyed
-  att_ships_killed: Int
+  # How many ships the defender has lost
+  def_ships_lost: Int
 
-  # How many ships the defender has destroyed
-  def_ships_killed: Int
+  # How many ships the attacker has lost
+  att_ships_lost: Int
 
   # How many missiles the attacker has launched
   att_missiles_used: Int
@@ -1703,6 +1759,30 @@ type War {
 
   # The value of infrastructure destroyed by the defender
   def_infra_destroyed_value: Float
+
+  # How many soldiers the attacker has killed [deprecated]
+  att_soldiers_killed: Int @deprecated(reason: "Use def_soldiers_lost instead")
+
+  # How many soldiers the defender has killed [deprecated]
+  def_soldiers_killed: Int @deprecated(reason: "Use att_soldiers_lost instead")
+
+  # How many tanks the attacker has killed [deprecated]
+  att_tanks_killed: Int @deprecated(reason: "Use def_tanks_lost instead")
+
+  # How many tanks the defender has killed [deprecated]
+  def_tanks_killed: Int @deprecated(reason: "Use att_tanks_lost instead")
+
+  # How many aircraft the attacker has killed [deprecated]
+  att_aircraft_killed: Int @deprecated(reason: "Use def_aircraft_lost instead")
+
+  # How many aircraft the defender has killed [deprecated]
+  def_aircraft_killed: Int @deprecated(reason: "Use att_aircraft_lost instead")
+
+  # How many ships the attacker has killed [deprecated]
+  att_ships_killed: Int @deprecated(reason: "Use def_ships_lost instead")
+
+  # How many ships the defender has killed [deprecated]
+  def_ships_killed: Int @deprecated(reason: "Use att_ships_lost instead")
 }
 
 enum WarType {
@@ -1810,7 +1890,10 @@ type WarAttack {
   loot_info: String
 
   # Resistance eliminated by the attack
-  resistance_eliminated: Int
+  resistance_eliminated: Int @deprecated(reason: "Use resistance_lost instead.")
+
+  # The amount of resistance which was lost in the attack
+  resistance_lost: Int
 
   # How much infrastructure was in the city prior to the attack
   city_infra_before: Float
@@ -1832,6 +1915,132 @@ type WarAttack {
 
   # How many aircraft the attacker destroyed in the attack using tanks (only applies to ground attacks when the attacker has ground control, otherwise 0)
   aircraft_killed_by_tanks: Int
+
+  # The amount of money destroyed in the attack
+  money_destroyed: Float
+
+  # How much aluminum was recovered via the military salvage project
+  military_salvage_aluminum: Float
+
+  # How much steel was recovered via the military salvage project
+  military_salvage_steel: Float
+
+  # How many soldiers were sent in the attack
+  att_soldiers_used: Int
+
+  # How many soldiers the attacker lost in the attack
+  att_soldiers_lost: Int
+
+  # How many soldiers were defending in the attack
+  def_soldiers_used: Int
+
+  # How many soldiers the defender lost in the attack
+  def_soldiers_lost: Int
+
+  # How many tanks were sent in the attack
+  att_tanks_used: Int
+
+  # How many tanks the attacker lost in the attack
+  att_tanks_lost: Int
+
+  # How many tanks were defending in the attack
+  def_tanks_used: Int
+
+  # How many tanks the defender lost in the attack
+  def_tanks_lost: Int
+
+  # How many aircraft were sent in the attack
+  att_aircraft_used: Int
+
+  # How many aircraft the attacker lost in the attack
+  att_aircraft_lost: Int
+
+  # How many aircraft were defending in the attack
+  def_aircraft_used: Int
+
+  # How many aircraft the defender lost in the attack
+  def_aircraft_lost: Int
+
+  # How many ships were sent on the attack
+  att_ships_used: Int
+
+  # How many ships the attacker lost in the attack
+  att_ships_lost: Int
+
+  # How many ships were defending in the attack
+  def_ships_used: Int
+
+  # How many ships the defender lost in the attack
+  def_ships_lost: Int
+
+  # How many soldiers were sent on the attack
+  att_missiles_used: Int
+
+  # How many missiles the attacker lost in the attack
+  att_missiles_lost: Int
+
+  # How many missiles the defender used in the attack
+  def_missiles_used: Int
+
+  # How many missiles the defender lost in the attack
+  def_missiles_lost: Int
+
+  # How many nukes the attacker used in the attack
+  att_nukes_used: Int
+
+  # How many missiles the attacker lost in the attack
+  att_nukes_lost: Int
+
+  # How many nukes the defender used in the attack
+  def_nukes_used: Int
+
+  # How many nukes the defender lost in the attack
+  def_nukes_lost: Int
+
+  # A string of text saying which improvements were destroyed.
+  improvements_destroyed: [String]
+
+  # Percentage of the total infrastructure that was destroyed in the city
+  infra_destroyed_percentage: Float
+
+  # Infrastructure of the city before the attack
+  cities_infra_before: [CityInfraDamage]
+
+  # Total money looted in the attack
+  money_looted: Float
+
+  # Total coal looted in the attack
+  coal_looted: Int
+
+  # Total oil looted in the attack
+  oil_looted: Int
+
+  # Total uranium looted in the attack
+  uranium_looted: Int
+
+  # Total iron looted in the attack
+  iron_looted: Int
+
+  # Total bauxite looted in the attack
+  bauxite_looted: Int
+
+  # Total lead looted in the attack
+  lead_looted: Int
+
+  # Total gasoline looted in the attack
+  gasoline_looted: Int
+
+  # Total munitions looted in the attack
+  munitions_looted: Int
+
+  # Total steeel looted in the attack
+  steel_looted: Int
+
+  # Total aluminum looted in the attack
+  aluminum_looted: Int
+
+  # Total food looted in the attack
+  food_looted: Int
 }
 
 enum AttackType {
@@ -1851,6 +2060,14 @@ enum AttackType {
   PEACE
   VICTORY
   ALLIANCELOOT
+}
+
+type CityInfraDamage {
+  # ID of the city that was damaged
+  id: Int
+
+  # Infrastructure of the city before it was attacked
+  infrastructure: Float
 }
 
 enum WarPolicy {
@@ -2451,6 +2668,83 @@ type BBPlayer {
   birthday: Int
 }
 
+enum EconomicPolicy {
+  EXTREME_LEFT
+  FAR_LEFT
+  LEFT
+  MODERATE
+  RIGHT
+  FAR_RIGHT
+  EXTREME_RIGHT
+}
+
+enum SocialPolicy {
+  ANARCHIST
+  LIBERTARIAN
+  LIBERAL
+  MODERATE
+  CONSERVATIVE
+  AUTHORITARIAN
+  FASCIST
+}
+
+enum GovernmentType {
+  ABSOLUTE_MONARCHY
+  ANARCHY
+  ARISTOCRACY
+  BANANA_REPUBLIC
+  COMMUNIST_DEMOCRACY
+  COMMUNIST_DICTATORSHIP
+  COMMUNIST_MONARCHY
+  COMMUNIST_REPUBLIC
+  COMMUNIST_THEOCRACY
+  CONSTITUTIONAL_MONARCHY
+  CONSTITUTIONAL_REPUBLIC
+  DEMARCHY
+  DEMOCRACY
+  DEMOCRATIC_REPUBLIC
+  DICTATORSHIP
+  FEDERAL_REPUBLIC
+  MONARCHY
+  NOOCRACY
+  OLIGARCHY
+  PARLIAMENTARY_DEMOCRACY
+  PARLIAMENTARY_REPUBLIC
+  PEOPLES_REPUBLIC
+  REPUBLIC
+  SOCIAL_DEMOCRACY
+  SOCIALIST_DICTATORSHIP
+  SOCIALIST_REPUBLIC
+  SOCIALIST_THEOCRACY
+  STRATOCRACY
+  TECHNOCRACY
+  THEOCRACY
+  THEOCRATIC_DEMOCRACY
+  THEOCRATIC_DICTATORSHIP
+  THEOCRATIC_REPUBLIC
+}
+
+type ApiKeyPermissions {
+  nation_view_resources: Boolean
+  nation_deposit_to_bank: Boolean
+  nation_military_buys: Boolean
+  nation_see_reset_timers: Boolean
+  nation_see_spies: Boolean
+  nation_view_trades: Boolean
+  nation_accept_trade: Boolean
+  nation_send_message: Boolean
+  alliance_view_bank: Boolean
+  alliance_withdraw_bank: Boolean
+  alliance_change_permissions: Boolean
+  alliance_see_spies: Boolean
+  alliance_see_reset_timers: Boolean
+  alliance_tax_brackets: Boolean
+  alliance_accept_applicants: Boolean
+  alliance_remove_members: Boolean
+  alliance_manage_treaties: Boolean
+  alliance_promote_self_to_leader: Boolean
+}
+
 type Color {
   # The color itself ('white', 'green', etc.)
   color: String
@@ -2496,6 +2790,118 @@ type Radiation {
   antarctica: Float
 }
 
+type TopTradeInfo {
+  # The current market index of the resource
+  market_index: Int
+  resources(resource: [Resources]): [TopTradeResourceInfo]
+}
+
+enum Resources {
+  FOOD
+  COAL
+  OIL
+  URANIUM
+  LEAD
+  IRON
+  BAUXITE
+  GASOLINE
+  MUNITIONS
+  STEEL
+  ALUMINUM
+  CREDIT
+}
+
+type TopTradeResourceInfo {
+  # The name of the resource
+  resource: String
+
+  # The average price of the resource
+  average_price: Int
+
+  # The highest PPU buy offer on the market at the moment
+  best_buy_offer: Trade
+
+  # The lowest PPU sell offer on the market at the moment
+  best_sell_offer: Trade
+}
+
+# Order by clause for Query.nation_resource_stats.orderBy.
+input QueryNationResourceStatsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryNationResourceStatsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+# Allowed column names for Query.nation_resource_stats.orderBy.
+enum QueryNationResourceStatsOrderByColumn {
+  DATE
+  MONEY
+  FOOD
+  STEEL
+  ALUMINUM
+  GASOLINE
+  MUNITIONS
+  URANIUM
+  COAL
+  OIL
+  IRON
+  BAUXITE
+  LEAD
+}
+
+type NationResourceStat {
+  # Date the stat was taken
+  date: DateTimeAuto
+
+  # Total money in the game
+  money: String
+
+  # Total food in the game
+  food: String
+
+  # Total steel in the game
+  steel: String
+
+  # Total aluminum in the game
+  aluminum: String
+
+  # Total gasoline in the game
+  gasoline: String
+
+  # Total munitions in the game
+  munitions: String
+
+  # Total uranium in the game
+  uranium: String
+
+  # Total coal in the game
+  coal: String
+
+  # Total oil in the game
+  oil: String
+
+  # Total iron in the game
+  iron: String
+
+  # Total bauxite in the game
+  bauxite: String
+
+  # Total lead in the game
+  lead: String
+}
+
+enum Continents {
+  AFRICA
+  ANTARCTICA
+  ASIA
+  AUSTRALIA
+  EUROPE
+  NORTH_AMERICA
+  SOUTH_AMERICA
+}
+
 # Order by clause for Query.nations.orderBy.
 input QueryNationsOrderByOrderByClause {
   # The column that is used for ordering.
@@ -2505,17 +2911,34 @@ input QueryNationsOrderByOrderByClause {
   order: SortOrder!
 }
 
-# Allowed column names for Query.nations.orderBy.
 enum QueryNationsOrderByColumn {
   ID
   DATE
   SOLDIERS
+  SOLDIERS_LOST
+  SOLDIER_KILLS
   TANKS
+  TANKS_LOST
+  TANK_KILLS
   AIRCRAFT
+  AIRCRAFT_LOST
+  AIRCRAFT_KILLS
   SHIPS
+  SHIPS_LOST
+  SHIP_KILLS
   MISSILES
+  MISSILES_LAUNCHED
+  MISSILES_EATEN
   NUKES
+  NUKES_LAUNCHED
+  NUKES_EATEN
   CITIES
+  SCORE
+  GDP
+  POPULATION
+  APPROVAL_RATING
+  INFRA_DESTROYED
+  INFRA_LOST
 }
 
 # A paginated list of Nation items.
@@ -3166,6 +3589,36 @@ type ActivityStat {
   active_1_month: Int
 }
 
+# Order by clause for Query.banned_nations.orderBy.
+input QueryBannedNationsOrderByOrderByClause {
+  # The column that is used for ordering.
+  column: QueryBannedNationsOrderByColumn!
+
+  # The direction that is used for ordering.
+  order: SortOrder!
+}
+
+enum QueryBannedNationsOrderByColumn {
+  NATION_ID
+  DATE
+}
+
+# A paginated list of BannedNation items.
+type BannedNationPaginator {
+  # Pagination information about the list of items.
+  paginatorInfo: PaginatorInfo!
+
+  # A list of BannedNation items.
+  data: [BannedNation!]!
+}
+
+type BannedNation {
+  nation_id: Int
+  reason: String
+  date: DateTimeAuto
+  days_left: Int
+}
+
 type Mutation {
   bankDeposit(
     money: Float = 0.0
@@ -3220,6 +3673,62 @@ type Mutation {
     money_tax_rate: Int
     resource_tax_rate: Int
   ): TaxBracket!
+  acceptPersonalTrade(id: Int!, offer_amount: Int): Trade!
+  declinePersonalTrade(id: Int!): Trade
+  assignAlliancePosition(
+    id: Int!
+    default_position: DefaultAlliancePosition
+    position_id: Int
+  ): AlliancePosition
+  createAlliancePosition(
+    name: String!
+    level: Int!
+    view_bank: Boolean = false
+    withdraw_bank: Boolean = false
+    change_permissions: Boolean = false
+    see_spies: Boolean = false
+    see_reset_timers: Boolean = false
+    tax_brackets: Boolean = false
+    post_announcements: Boolean = false
+    manage_announcements: Boolean = false
+    accept_applicants: Boolean = false
+    remove_members: Boolean = false
+    edit_alliance_info: Boolean = false
+    manage_treaties: Boolean = false
+    manage_market_share: Boolean = false
+    manage_embargoes: Boolean = false
+    promote_self_to_leader: Boolean = false
+  ): AlliancePosition!
+  deleteAlliancePosition(id: Int!): AlliancePosition!
+  editAlliancePosition(
+    id: Int!
+    name: String
+    level: Int
+    view_bank: Boolean
+    withdraw_bank: Boolean
+    change_permissions: Boolean
+    see_spies: Boolean
+    see_reset_timers: Boolean
+    tax_brackets: Boolean
+    post_announcements: Boolean
+    manage_announcements: Boolean
+    accept_applicants: Boolean
+    remove_members: Boolean
+    edit_alliance_info: Boolean
+    manage_treaties: Boolean
+    manage_market_share: Boolean
+    manage_embargoes: Boolean
+    promote_self_to_leader: Boolean
+  ): AlliancePosition!
+}
+
+enum DefaultAlliancePosition {
+  REMOVE
+  APPLICANT
+  MEMBER
+  OFFICER
+  HEIR
+  LEADER
 }
 
 # A datetime and timezone string in ISO 8601 format `YYYY-MM-DDTHH:MM:SS+00:00`, e.g. `2020-04-20T13:53:12+00:00`.

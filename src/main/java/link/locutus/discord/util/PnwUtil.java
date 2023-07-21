@@ -1249,6 +1249,9 @@ public class PnwUtil {
     }
 
     public static double getOdds(double attStrength, double defStrength, int success) {
+        attStrength = Math.pow(attStrength, 0.75);
+        defStrength = Math.pow(defStrength, 0.75);
+
         double a1 = attStrength * 0.4;
         double a2 = attStrength;
         double b1 = defStrength * 0.4;

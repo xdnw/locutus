@@ -13,6 +13,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -117,7 +118,11 @@ public class SyncTaxes extends Command {
                     if (args.size() >= 2) {
                         startDate = System.currentTimeMillis() - TimeUtil.timeToSec(args.get(1)) * 1000L;
                     }
-                    List<BankDB.TaxDeposit> taxes = db.getAllianceList().updateTaxes(startDate);
+                    AllianceList aaList = db.getAllianceList();
+                    if (aaList == null) {
+                        return "No alliance registered to this guild. See " + GuildKey.ALLIANCE_ID.getCommandMention();
+                    }
+                    List<BankDB.TaxDeposit> taxes = aaList.updateTaxes(startDate);
                     return "Updated " + taxes.size() + " records.";
                 }
             }

@@ -191,6 +191,7 @@ public class CommandManager2 {
 
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "wiki"), "dumpWiki", "save");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "conflicts"), "checkActiveConflicts", "check");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "alliance"), "runMilitarizationAlerts", "military_alerts");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "queue"), "showFileQueue", "file");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncCitiesTest", "cities");
 
@@ -488,7 +489,6 @@ public class CommandManager2 {
                         } catch (RuntimeException e) {
                             Throwable e2 = e;
                             while (e2.getCause() != null && e2.getCause() != e2) e2 = e2.getCause();
-                            e2.printStackTrace();
                             throw new CommandUsageException(callable, e2.getMessage());
                         }
                     });
@@ -499,6 +499,7 @@ public class CommandManager2 {
                     throw new IllegalArgumentException("Invalid command class " + callable.getClass());
                 }
             } catch (Throwable e) {
+
                 e.printStackTrace();
             }
         };
@@ -508,49 +509,53 @@ public class CommandManager2 {
 
     private void handleCall(IMessageIO io, Supplier<Object> call) {
         try {
-            Object result = call.get();
-            if (result != null) {
-                io.create().append(result.toString()).send();
-            }
-        } catch (CommandUsageException e) {
-            e.printStackTrace();
-            StringBuilder body = new StringBuilder();
-
-            if (e.getMessage() != null && (e.getMessage().contains("`") || e.getMessage().contains("<#") || e.getMessage().contains("</") || e.getMessage().contains("<@"))) {
-                body.append("## Error:\n");
-                body.append(">>> " + e.getMessage() + "\n");
-            } else {
-                body.append("```ansi\n" + StringMan.ConsoleColors.RESET + StringMan.ConsoleColors.WHITE_BOLD + StringMan.ConsoleColors.RED_BACKGROUND);
-                body.append(e.getMessage());
-                body.append("```\n");
-            }
-
-            body.append("## Usage:\n");
-            CommandCallable command = e.getCommand();
-            String title = "Error Running: /" + command.getFullPath(" ");
-            if (command instanceof ICommand icmd) {
-                body.append(icmd.toBasicMarkdown(store, permisser, "/", false, true));
-            } else {
-                String help = command.help(store);
-                String desc = command.desc(store);
-                if (help != null) {
-                    body.append("`/").append(help).append("`");
+            try {
+                Object result = call.get();
+                if (result != null) {
+                    io.create().append(result.toString()).send();
                 }
-                if (desc != null && !desc.isEmpty()) {
-                    body.append("\n").append(desc);
-                }
-            }
+            } catch (CommandUsageException e) {
+                StringBuilder body = new StringBuilder();
 
-            io.create().embed(title, body.toString()).send();
-        } catch (IllegalArgumentException e) {
-            e.printStackTrace();
-            io.create().append(e.getMessage()).send();
+                if (e.getMessage() != null && (e.getMessage().contains("`") || e.getMessage().contains("<#") || e.getMessage().contains("</") || e.getMessage().contains("<@"))) {
+                    body.append("## Error:\n");
+                    body.append(">>> " + e.getMessage() + "\n");
+                } else {
+                    body.append("```ansi\n" + StringMan.ConsoleColors.RESET + StringMan.ConsoleColors.WHITE_BOLD + StringMan.ConsoleColors.RED_BACKGROUND);
+                    body.append(e.getMessage());
+                    body.append("```\n");
+                }
+
+                body.append("## Usage:\n");
+                CommandCallable command = e.getCommand();
+                String title = "Error Running: /" + command.getFullPath(" ");
+                if (command instanceof ICommand icmd) {
+                    body.append(icmd.toBasicMarkdown(store, permisser, "/", false, true));
+                } else {
+                    String help = command.help(store);
+                    String desc = command.desc(store);
+                    if (help != null) {
+                        body.append("`/").append(help).append("`");
+                    }
+                    if (desc != null && !desc.isEmpty()) {
+                        body.append("\n").append(desc);
+                    }
+                }
+
+                System.out.println("Create title " + title + " | " + body.toString());
+                io.create().embed(title, body.toString()).send();
+            } catch (IllegalArgumentException e) {
+                e.printStackTrace();
+                io.create().append(e.getMessage()).send();
+            } catch (Throwable e) {
+                Throwable root = e;
+                while (root.getCause() != null) root = root.getCause();
+
+                root.printStackTrace();
+                io.create().append("Error: " + root.getMessage()).send();
+            }
         } catch (Throwable e) {
-            Throwable root = e;
-            while (root.getCause() != null) root = root.getCause();
-
-            root.printStackTrace();
-            io.create().append("Error: " + root.getMessage()).send();
+            e.printStackTrace();
         }
     }
 

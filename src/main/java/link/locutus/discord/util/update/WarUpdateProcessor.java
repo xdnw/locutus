@@ -301,10 +301,14 @@ public class WarUpdateProcessor {
         Map<Integer, Set<GuildHandler>> offGuildsByAA = new HashMap<>();
 
         for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
-            if (!db.isValidAlliance() && !db.isWhitelisted() && !db.isOwnerActive() || db.isDelegateServer()) continue;
-
             MessageChannel defChan = db.getOrNull(GuildKey.DEFENSE_WAR_CHANNEL, false);
             MessageChannel offChan = db.getOrNull(GuildKey.OFFENSIVE_WAR_CHANNEL, false);
+
+            if (defChan == null && offChan == null) continue;
+
+            if (!db.isValidAlliance()) {
+                if (!db.isWhitelisted() || !db.isOwnerActive()) continue;
+            }
 
             GuildHandler handler = db.getHandler();
 

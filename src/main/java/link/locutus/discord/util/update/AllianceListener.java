@@ -1,33 +1,61 @@
 package link.locutus.discord.util.update;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.AllianceMeta;
+import link.locutus.discord.db.entities.AllianceMetric;
+import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.alliance.AllianceCreateEvent;
 import link.locutus.discord.event.game.TurnChangeEvent;
+import link.locutus.discord.pnw.AllianceList;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import com.google.common.eventbus.Subscribe;
 import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.util.scheduler.CaughtTask;
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 
 public class AllianceListener {
+
+    public AllianceListener() {
+        Locutus.imp().addTaskSeconds(new CaughtTask() {
+            @Override
+            public void runUnsafe() throws Exception {
+                runMilitarizationAlerts();
+            }
+        }, 15);
+    }
     @Subscribe
     public void onTurnChange(TurnChangeEvent event) {
 
@@ -40,8 +68,10 @@ public class AllianceListener {
         { // update internal taxrates
             for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
                 if (db.isDelegateServer()) continue;
+                AllianceList aaList = db.getAllianceList();
+                if (aaList == null) continue;
 
-                Set<DBNation> nations = db.getAllianceList().getNations(DBNation::isTaxable);
+                Set<DBNation> nations = aaList.getNations(DBNation::isTaxable);
                 if (nations.isEmpty()) continue;
 
                 Map<NationFilter, TaxRate> internal = GuildKey.REQUIRED_INTERNAL_TAXRATE.getOrNull(db, false);
@@ -87,6 +117,145 @@ public class AllianceListener {
                 }
             }
         }
+    }
+
+    public static void runMilitarizationAlerts() {
+
+        double thresholdFivedays = 0.05;
+        double thresholdDaily = 0.1;
+        double thresholdTurnly = 0.2;
+
+        double thresholdMin = 0.4;
+
+        Map<Integer, Double> milPreviousMap = new HashMap<>();
+        Map<Integer, Double> milNowMap = new HashMap<>();
+        Map<Integer, Long> milDateMap = new HashMap<>();
+
+        Map<DBAlliance, Integer> alertAlliances = new LinkedHashMap<>();
+
+        long now = System.currentTimeMillis();
+
+        // get top 80 alliance
+        Map<Integer, List<DBNation>> nationsByAA = Locutus.imp().getNationDB().getNationsByAlliance(false, true, true, true);
+        int rank = 0;
+        for (Map.Entry<Integer, List<DBNation>> entry : nationsByAA.entrySet()) {
+            rank++;
+            if (rank > 80) break;
+            int allianceId = entry.getKey();
+            List<DBNation> nations = entry.getValue();
+
+            // get previous militarization
+            DBAlliance alliance = DBAlliance.getOrCreate(allianceId);
+            ByteBuffer milBuf = alliance.getMeta(AllianceMeta.GROUND_MILITARIZATION);
+            ByteBuffer milDateBuf = alliance.getMeta(AllianceMeta.GROUND_MILITARIZATION_DATE);
+
+            int count = 0;
+            double groundPctTotal = 0;
+
+            // get current militarization
+            for (DBNation nation : nations) {
+                // skip < c10
+                if (nation.getCities() < 10) continue;
+                groundPctTotal += (nation.getSoldierPct() + nation.getTankPct()) / 2d;
+                count++;
+            }
+
+            double groundPctAvg = groundPctTotal / count;
+
+            if (milBuf == null) {
+                alliance.setMeta(AllianceMeta.GROUND_MILITARIZATION_DATE, 0L);
+                alliance.setMeta(AllianceMeta.GROUND_MILITARIZATION, groundPctAvg);
+                continue;
+            }
+
+            double previousMil = milBuf.getDouble();
+            long previousMilDate = milDateBuf.remaining() == 4 ? milDateBuf.getInt() : milDateBuf.getLong();
+
+            double milGain = groundPctAvg - previousMil;
+            if (milGain < thresholdFivedays) continue;
+
+            long timeSinceLastAlert = now - previousMilDate;
+
+            milPreviousMap.put(allianceId, previousMil);
+            milNowMap.put(allianceId, groundPctAvg);
+            milDateMap.put(allianceId, previousMilDate);
+
+            if (
+                    milGain >= thresholdFivedays && timeSinceLastAlert > TimeUnit.DAYS.toMillis(5) ||
+                    milGain >= thresholdDaily && timeSinceLastAlert > TimeUnit.DAYS.toMillis(1) ||
+                    milGain >= thresholdTurnly && timeSinceLastAlert > TimeUnit.HOURS.toMillis(2)
+            ) {
+                if (groundPctAvg >= thresholdMin) {
+                    alertAlliances.put(alliance, rank);
+                }
+
+                // set meta
+                alliance.setMeta(AllianceMeta.GROUND_MILITARIZATION_DATE, now);
+                alliance.setMeta(AllianceMeta.GROUND_MILITARIZATION, groundPctAvg);
+
+
+            } else {
+                if (groundPctAvg < previousMil) {
+//                    alliance.setMeta(AllianceMeta.GROUND_MILITARIZATION_DATE, now);
+                    alliance.setMeta(AllianceMeta.GROUND_MILITARIZATION, groundPctAvg);
+                }
+                continue;
+            }
+
+
+        }
+
+        if (alertAlliances.isEmpty()) return;
+
+        AlertUtil.forEachChannel(f -> true, GuildKey.AA_GROUND_UNIT_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+            @Override
+            public void accept(MessageChannel channel, GuildDB db) {
+                // get alert role
+                Role role = Roles.GROUND_MILITARIZE_ROLE.toRole(db);
+
+                String title = "Ground Militarization Alert";
+                StringBuilder body = new StringBuilder();
+
+                Integer topX = GuildKey.AA_GROUND_TOP_X.getOrNull(db);
+                Set<Integer> groundCoalition = db.getCoalition(Coalition.GROUND_ALERTS);
+
+                BiPredicate<DBAlliance, Integer> allowed = (alliance, rank) -> {
+                    boolean isGroundCoalition = groundCoalition.contains(alliance.getAlliance_id());
+                    boolean isTopX = topX != null && rank <= topX;
+                    // return true if either is true or topX is null and groundCoalition is empty
+                    return (isGroundCoalition || isTopX) || (topX == null && groundCoalition.isEmpty());
+                };
+
+                Set<Integer> allowedIds = new HashSet<>();
+                for (Map.Entry<DBAlliance, Integer> entry : alertAlliances.entrySet()) {
+                    DBAlliance alliance = entry.getKey();
+                    int rank = entry.getValue();
+                    if (!allowed.test(alliance, rank)) continue;
+                    allowedIds.add(alliance.getAlliance_id());
+
+                    String previousMilStr = MathMan.format(milPreviousMap.get(alliance.getAlliance_id()) * 100);
+                    String nowMilStr = MathMan.format(milNowMap.get(alliance.getAlliance_id()) * 100);
+                    long date = milDateMap.get(alliance.getAlliance_id());
+                    String dateStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, now - date);
+
+                    body.append("- #" + rank + " " + alliance.getMarkdownUrl() + ": `" + previousMilStr + "%` -> `" + nowMilStr + "%` (" + dateStr + ")\n");
+                }
+                if (allowedIds.isEmpty()) return;
+
+                body.append("\n**Press `graph` for 7d ground graph.**");
+
+                CM.alliance.stats.metricsByTurn graphCmd = CM.alliance.stats.metricsByTurn.cmd.create(AllianceMetric.GROUND_PCT.name(), StringMan.join(allowedIds, ","), "7d");
+                IMessageBuilder msg = new DiscordChannelIO(channel).create()
+                        .embed(title, body.toString())
+                        .commandButton(CommandBehavior.UNDO_REACTION, graphCmd, "graph");
+
+                if (role != null) {
+                    msg.append(role.getAsMention());
+                }
+
+                msg.send();
+            }
+        });
     }
 
 

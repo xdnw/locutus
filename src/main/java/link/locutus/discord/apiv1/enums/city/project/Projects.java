@@ -293,29 +293,66 @@ public class Projects {
             .requiredProjects(() -> new Project[]{RESEARCH_AND_DEVELOPMENT_CENTER, CLINICAL_RESEARCH_CENTER})
             .build();
 
-    /*
-        Metropolitan Planning
-          Requirement: City 21 or higher, Urban Planning, Advanced Urban Planning.
-          Effect: Reduces City costs by $150,000,000 per city, stacks with UP and AUP.
+    // Bureau of Domestic Affairs:
+    //$20,000,000, 100,000 Food, 10,000 Aluminum, 10,000 Gasoline, 10,000 Steel, 10,000 Oil, 10,000 Coal, 10,000 Iron.
+    //Requires Government Support Agency.
+    //
+    //Reduces the timer for changing Domestic Policies to 1 turn.
+    public static final Project BUREAU_OF_DOMESTIC_AFFAIRS = new Builder("bureau_of_domestic_affairs", 33)
+            .cost(MONEY, 20_000_000)
+            .cost(FOOD, 100_000)
+            .cost(ALUMINUM, 10_000)
+            .cost(GASOLINE, 10_000)
+            .cost(STEEL, 10_000)
+            .cost(OIL, 10_000)
+            .cost(COAL, 10_000)
+            .cost(IRON, 10_000)
+            .requiredProjects(() -> new Project[]{GOVERNMENT_SUPPORT_AGENCY})
+            .build();
+    //
+    //
+    //Added Advanced Pirate Economy:
+    //$50,000,000, 20,000 Aluminum, 40,000 Munitions, 20,000 Gasoline
+    //Requires Pirate Economy and that the nation has won or lost 100 combined wars.
+    //Adds an additional offensive war slot, 5% more loot from ground attacks, and a 1.1x modifier to loot from defeating a nation and the defeated nation’s alliance bank.
+    //Pirate Economy now provides a 5% bonus to loot from ground attacks.
+    public static final Project ADVANCED_PIRATE_ECONOMY = new Builder("advanced_pirate_economy", 34)
+            .cost(MONEY, 50_000_000)
+            .cost(ALUMINUM, 20_000)
+            .cost(MUNITIONS, 40_000)
+            .cost(GASOLINE, 20_000)
+            .requiredProjects(() -> new Project[]{PIRATE_ECONOMY})
+            .otherRequirements(f -> f.getWars_won() + f.getWars_lost() >= 100)
+            .build();
 
-    Military Salvage
+    //
+    //Added Mars Landing:
+    //$200,000,000, 20,000 Oil, 20,000 Aluminum, 20,000 Munitions, 20,000 Steel, 20,000 Gasoline, 20,000 Uranium
+    //Requires Space Program and Moon Landing.
+    //Similar to Moon Landing, provides a unique achievement to the first player to build it as well as one to every other player who builds it. All players who complete it will be tracked on a leaderboard like the Moon Landing project. Nations will also gain a daily boost to their approval rating.
+    public static final Project MARS_LANDING = new Builder("mars_landing", 36)
+            .cost(MONEY, 200_000_000)
+            .cost(OIL, 20_000)
+            .cost(ALUMINUM, 20_000)
+            .cost(MUNITIONS, 20_000)
+            .cost(STEEL, 20_000)
+            .cost(GASOLINE, 20_000)
+            .cost(URANIUM, 20_000)
+            .requiredProjects(() -> new Project[]{SPACE_PROGRAM, MOON_LANDING})
+            .build();
 
-          Effect: When you declare an attack and are victorious, recover 5% of lost steel/aluminum from units in that attack.
-
-    Fallout Shelter
-
-          Requirement: Research and Development Center, Clinical Research Center
-          Effect:
-          -Reduces damage from nuclear missiles by 10%.
-          -Reduces fall-out length in a city by 25%
-          -Maximum radiation impact on food is 90% (can always produce 10% of food)
-          Cost:
-          Cash: $25,000,000
-          Food: 100,000
-          Lead: 10,000
-          Steel: 10,000
-          Aluminum: 10,000
-     */
+    //
+    //Added Surveillance Network:
+    //$300,000,000, 20,000 Aluminum, 20,000 Steel, 10,000 Uranium
+    //Requires Intelligence Agency and Advanced Urban Planning.
+    //Spy attacks against your nation are 10% less likely to succeed and the attacker is 10% more likely to be identified.
+    public static final Project SURVEILLANCE_NETWORK = new Builder("surveillance_network", 35)
+            .cost(MONEY, 300_000_000)
+            .cost(ALUMINUM, 20_000)
+            .cost(STEEL, 20_000)
+            .cost(URANIUM, 10_000)
+            .requiredProjects(() -> new Project[]{INTELLIGENCE_AGENCY, ADVANCED_URBAN_PLANNING})
+            .build();
 
     public static int getScore() {
         return 20;

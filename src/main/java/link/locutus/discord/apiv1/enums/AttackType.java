@@ -182,7 +182,6 @@ public enum AttackType {
         Map<MilitaryUnit, Map.Entry<Integer, Integer>> attackerCasualties = new HashMap<>();
         Map<MilitaryUnit, Map.Entry<Integer, Integer>> defenderCasualties = new HashMap<>();
 
-        double lootFactor = (1 + (attacker.looterModifier() - 1) + (defender.lootModifier() - 1)) * (type.lootModifier());
         double infraFactor = (1 + (attacker.infraAttackModifier(this) - 1) + (defender.infraDefendModifier(this) - 1)) * (type.infraModifier());
         double defModifier = attacker.isBlitzkrieg() ? 1.1 : 1;
         double attModifier = defFortified ? 1.33 : 1;
@@ -240,6 +239,7 @@ public enum AttackType {
             }
             case GROUND -> {
                 if (victory != SuccessType.UTTER_FAILURE) {
+                    double lootFactor = (1 + (attacker.looterModifier(true) - 1) + (defender.lootModifier() - 1)) * (type.lootModifier());
                     double soldiersStoleMoney = attacker.getSoldiers() * 1.1;
                     double tankStoleMoney = attacker.getTanks() * 25.15;
                     double minStolen = (soldiersStoleMoney + tankStoleMoney) * victory.ordinal() * 0.8 * lootFactor;

@@ -48,7 +48,7 @@ public class PoliticsAndWarV3 {
     public static int CITIES_PER_PAGE = 500;
     public static int TREATIES_PER_PAGE = 1000;
     public static int BANKRECS_PER_PAGE = 1000;
-    public static int ALLIANCES_PER_PAGE = 100;
+    public static int ALLIANCES_PER_PAGE = 500;
     public static int ATTACKS_PER_PAGE = 1000;
     public static int WARS_PER_PAGE = 1000;
     public static int TRADES_PER_PAGE = 1000;
