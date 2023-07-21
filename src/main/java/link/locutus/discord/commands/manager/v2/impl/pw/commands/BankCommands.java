@@ -2306,18 +2306,23 @@ public class BankCommands {
         }
         OffshoreInstance offshore = db.getOffshore();
         if (offshore == null) return "No offshore is set";
-        if (offshore.getGuildDB() != db) return "Please run in the offshore server";
+        if (!alliance.isNation() && offshore.getGuildDB() != db) return "Please run in the offshore server";
         Set<Long> coalition = offshore.getGuildDB().getCoalitionRaw(Coalition.FROZEN_FUNDS);
         if (alliance.isAlliance()) {
             if (coalition.contains((long) alliance.getAlliance_id())) return "Please use `!removecoalition FROZEN_FUNDS " +  alliance.getAlliance_id() + "`";
             GuildDB otherDb = alliance.asAlliance().getGuildDB();
             if (otherDb != null && coalition.contains(otherDb.getIdLong()))return "Please use `!removecoalition FROZEN_FUNDS " + otherDb.getIdLong() + "`";
-        } else {
+        } else if (alliance.isGuild()) {
             if (coalition.contains((long) alliance.getIdLong())) return "Please use `!removecoalition FROZEN_FUNDS " +  alliance.getIdLong() + "`";
             for (int aaId : alliance.asGuild().getAllianceIds(true)) {
                 if (coalition.contains((long) aaId))return "Please use `!removecoalition FROZEN_FUNDS " + aaId + "`";
             }
-
+        } else if (alliance.isNation()){
+            Long removed = offshore.disabledNations.remove(alliance.getId());
+            if (removed == null) {
+                return "No transfers are locked for " + alliance.getQualifiedName();
+            }
+            return "Enabled transfers for " + alliance.getQualifiedName();
         }
         if (alliance.isGuild()) {
             offshore.disabledGuilds.remove(alliance.asGuild().getIdLong());
