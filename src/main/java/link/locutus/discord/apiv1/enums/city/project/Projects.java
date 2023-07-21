@@ -326,18 +326,6 @@ public class Projects {
             .build();
 
     //
-    //Added Surveillance Network:
-    //$300,000,000, 20,000 Aluminum, 20,000 Steel, 10,000 Uranium
-    //Requires Intelligence Agency and Advanced Urban Planning.
-    //Spy attacks against your nation are 10% less likely to succeed and the attacker is 10% more likely to be identified.
-    public static final Project SURVEILLANCE_NETWORK = new Builder("surveillance_network", 35)
-            .cost(MONEY, 300_000_000)
-            .cost(ALUMINUM, 20_000)
-            .cost(STEEL, 20_000)
-            .cost(URANIUM, 10_000)
-            .requiredProjects(() -> new Project[]{INTELLIGENCE_AGENCY, ADVANCED_URBAN_PLANNING})
-            .build();
-    //
     //Added Mars Landing:
     //$200,000,000, 20,000 Oil, 20,000 Aluminum, 20,000 Munitions, 20,000 Steel, 20,000 Gasoline, 20,000 Uranium
     //Requires Space Program and Moon Landing.
@@ -351,6 +339,19 @@ public class Projects {
             .cost(GASOLINE, 20_000)
             .cost(URANIUM, 20_000)
             .requiredProjects(() -> new Project[]{SPACE_PROGRAM, MOON_LANDING})
+            .build();
+
+    //
+    //Added Surveillance Network:
+    //$300,000,000, 20,000 Aluminum, 20,000 Steel, 10,000 Uranium
+    //Requires Intelligence Agency and Advanced Urban Planning.
+    //Spy attacks against your nation are 10% less likely to succeed and the attacker is 10% more likely to be identified.
+    public static final Project SURVEILLANCE_NETWORK = new Builder("surveillance_network", 35)
+            .cost(MONEY, 300_000_000)
+            .cost(ALUMINUM, 20_000)
+            .cost(STEEL, 20_000)
+            .cost(URANIUM, 10_000)
+            .requiredProjects(() -> new Project[]{INTELLIGENCE_AGENCY, ADVANCED_URBAN_PLANNING})
             .build();
 
     public static int getScore() {

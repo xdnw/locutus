@@ -143,6 +143,8 @@ public enum Roles {
     TREASURE_ALERT_OPT_OUT(35, "Does not receive treasure alerts (even with the treasure alert role)", GuildKey.TREASURE_ALERT_CHANNEL, "TREASURE_ALERTS_OPT_OUT"),
 
     ENEMY_BEIGE_ALERT_AUDITOR(36, "Role to receive pings when an enemy gets beiged", GuildKey.ENEMY_BEIGED_ALERT_VIOLATIONS),
+
+    GROUND_MILITARIZE_ROLE(37, "Role to receive pings when alliances militarize", GuildKey.AA_GROUND_UNIT_ALERTS),
     ;
 
 

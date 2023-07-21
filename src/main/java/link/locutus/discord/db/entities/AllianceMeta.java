@@ -15,6 +15,10 @@ public enum AllianceMeta {
 
     BANK_UPDATE_INDEX,
 
+    GROUND_MILITARIZATION,
+    GROUND_MILITARIZATION_DATE,
+
+
     ;
 
     public static AllianceMeta[] values = values();

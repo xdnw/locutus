@@ -190,6 +190,20 @@ public class JavaCity {
                 if (amt == 0) continue;
                 commerce += amt * ((CommerceBuilding) building).commerce();
             }
+            int maxCommerce;
+            if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
+                if (hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE)) {
+                    maxCommerce = 125;
+                } else {
+                    maxCommerce = 115;
+                }
+            } else {
+                maxCommerce = 100;
+            }
+            if (commerce > maxCommerce) {
+                commerce = maxCommerce;
+            }
+
             pollution = Math.max(0, pollution);
 
             double basePopulation = city.getInfra() * 100;
@@ -347,6 +361,10 @@ public class JavaCity {
         for (Map.Entry<Integer, JavaCity> entry : fromMap.entrySet()) {
             JavaCity from = entry.getValue();
             total = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, total, this.calculateCost(from));
+            // remove negatives
+            for (int i = 0; i < total.length; i++) {
+                total[i] = Math.max(0, total[i]);
+            }
             if (getLand() != null && getLand() > from.getLand()) {
                 landPurchases.put(entry.getKey(), getLand());
             }
@@ -732,17 +750,6 @@ public class JavaCity {
         // if any commerce buildings
 
         int commerce = powered ? getMetrics(hasProject).commerce : 0;
-        if (commerce > 100) {
-            if (hasProject.test(Projects.INTERNATIONAL_TRADE_CENTER)) {
-                if (hasProject.test(Projects.TELECOMMUNICATIONS_SATELLITE)) {
-                    commerce = Math.min(125, metrics.commerce + 2);
-                } else {
-                    commerce = Math.min(115, metrics.commerce);
-                }
-            } else {
-                commerce = Math.min(100, metrics.commerce);
-            }
-        }
 
         double newPlayerBonus = numCities < 10 ? Math.max(1, (200d - ((numCities - 1) * 10d)) * 0.01) : 1;
 

@@ -306,7 +306,7 @@ public class OptimalBuild extends Command {
             baseRadiation = Locutus.imp().getTradeManager().getGlobalRadiation(continent) + Locutus.imp().getTradeManager().getGlobalRadiation();
         }
 
-        if (origin.getInfra() > 3600) {
+        if (origin.getInfra() > 4000) {
             return "Too much infrastructure.";
         }
 

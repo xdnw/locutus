@@ -2572,7 +2572,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Decimal ratio of soldiers a nation has out of their maximum (between 0 and 1)")
     public double getSoldierPct() {
-        return getSoldiers() / (double) (Math.max(1, Buildings.BARRACKS.max() * Buildings.BARRACKS.cap(this::hasProject) *getCities()));
+        return getSoldiers() / (double) (Math.max(1, Buildings.BARRACKS.max() * Buildings.BARRACKS.cap(this::hasProject) * getCities()));
     }
 
     @Command(desc = "Decimal ratio of ships a nation has out of their maximum (between 0 and 1)")

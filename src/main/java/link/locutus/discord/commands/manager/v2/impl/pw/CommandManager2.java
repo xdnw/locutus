@@ -191,6 +191,7 @@ public class CommandManager2 {
 
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "wiki"), "dumpWiki", "save");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "conflicts"), "checkActiveConflicts", "check");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "alliance"), "runMilitarizationAlerts", "military_alerts");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "queue"), "showFileQueue", "file");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncCitiesTest", "cities");
 

@@ -718,7 +718,13 @@ public class GuildKey {
         public String help() {
             return "The #channel to receive alerts for defensive wars";
         }
-    }.setupRequirements(f -> f.requiresAllies().requireActiveGuild());
+    }.setupRequirements(f -> f.requiresAllies().requireActiveGuild().requireValidAlliance().requireFunction(new Consumer<GuildDB>() {
+        @Override
+        public void accept(GuildDB guildDB) {
+
+            // if ((!db.isValidAlliance() && !db.isWhitelisted() && !db.isOwnerActive()) || db.isDelegateServer()) continue;
+        }
+    }));
     public static GuildSetting<Boolean> SHOW_ALLY_DEFENSIVE_WARS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -766,7 +772,7 @@ public class GuildKey {
         public String help() {
             return "The #channel to receive alerts for offensive wars";
         }
-    }.setupRequirements(f -> f.requiresAllies().requireActiveGuild());
+    }.setupRequirements(f -> f.requiresAllies().requireActiveGuild().requireValidAlliance());
     public static GuildSetting<Boolean> SHOW_ALLY_OFFENSIVE_WARS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -1968,6 +1974,70 @@ public class GuildKey {
             return StringMan.join(value, ",");
         }
     };
+
+    //AA_GROUND_UNIT_ALERTS - MessageChannel
+    public static GuildSetting<MessageChannel> AA_GROUND_UNIT_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String AA_GROUND_UNIT_ALERTS(@Me GuildDB db, @Me User user, MessageChannel channel) {
+            return AA_GROUND_UNIT_ALERTS.setAndValidate(db, user, channel);
+        }
+        @Override
+        public String help() {
+            return "The channel to send alerts when alliance ground units increase by 10% or more.\n" +
+                    "See also: `AA_GROUND_TOP_X` and coalition: `GROUND_ALERTS`";
+        }
+    }.setupRequirements(f -> f.requires(ALLIANCE_ID).requireValidAlliance());
+    // AA_GROUND_TOP_X (min = 1, max = 80)
+    public static GuildSetting<Integer> AA_GROUND_TOP_X = new GuildIntegerSetting(GuildSettingCategory.ORBIS_ALERTS) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String AA_GROUND_TOP_X(@Me GuildDB db, @Me User user, int topX) {
+            return AA_GROUND_TOP_X.setAndValidate(db, user, topX);
+        }
+
+        @Override
+        public Integer validate(GuildDB db, Integer value) {
+            // ensure >= 1 and <= 80
+            if (value < 1 || value > 80)
+                throw new IllegalArgumentException("Must be between 1 and 80, not `" + value + "`");
+            return super.validate(db, value);
+        }
+
+        @Override
+        public String help() {
+            return "Only do alliance ground unit alerts for the top X alliances (by active member score)";
+        }
+    }.setupRequirements(f -> f.requires(AA_GROUND_UNIT_ALERTS).requireValidAlliance());
+
+    //AA_GROUND_THRESHOLD - Double (min=0, max=100, default: 40)
+//    public static GuildSetting<Double> AA_GROUND_THRESHOLD = new GuildDoubleSetting(GuildSettingCategory.ORBIS_ALERTS) {
+//        @NoFormat
+//        @Command(descMethod = "help")
+//        @RolePermission(Roles.ADMIN)
+//        public String AA_GROUND_THRESHOLD(@Me GuildDB db, @Me User user, double threshold) {
+//            return AA_GROUND_THRESHOLD.setAndValidate(db, user, threshold);
+//        }
+//        @Override
+//        public String help() {
+//            return "The minimum threshold percent for the average ground buildings or units for an alliance to trigger an alert";
+//        }
+//    }.setupRequirements(f -> f.requires(ALLIANCE_ID).requireValidAlliance());
+//    //AA_GROUND_FILTER - NationFilter
+//    public static GuildSetting<NationFilter> AA_GROUND_FILTER = new GuildNationFilterSetting(GuildSettingCategory.ORBIS_ALERTS) {
+//        @NoFormat
+//        @Command(descMethod = "help")
+//        @RolePermission(Roles.ADMIN)
+//        public String AA_GROUND_FILTER(@Me GuildDB db, @Me User user, NationFilter filter) {
+//            return AA_GROUND_FILTER.setAndValidate(db, user, filter);
+//        }
+//        @Override
+//        public String help() {
+//            return "The nation filter to limit which nations to calculate the average ground buildings or units for an alliance to trigger an alert";
+//        }
+//    }.setupRequirements(f -> f.requires(ALLIANCE_ID).requireValidAlliance());
 
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 
