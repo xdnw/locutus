@@ -21,6 +21,7 @@ import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import org.jetbrains.annotations.Nullable;
 import org.jooq.Record;
+import org.jooq.exception.DataAccessException;
 import org.jooq.impl.SQLDataType;
 
 import java.io.Closeable;
@@ -223,14 +224,16 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
     }
 
     private void importLegacyDate() {
-        ctx().select().from("embeddings_2").fetch().forEach(r -> {
-            long hash = r.get("hash", Long.class);
-            byte[] data = r.get("data", byte[].class);
-            String id = r.get("id", String.class);
-            ctx().execute("INSERT INTO vectors (hash, data) VALUES (?, ?)", hash, data);
-            ctx().execute("INSERT INTO vector_text (hash, description) VALUES (?, ?)", hash, id);
-        });
-        ctx().dropTableIfExists("embeddings_2").execute();
+        try {
+            ctx().select().from("embeddings_2").fetch().forEach(r -> {
+                long hash = r.get("hash", Long.class);
+                byte[] data = r.get("data", byte[].class);
+                String id = r.get("id", String.class);
+                ctx().execute("INSERT INTO vectors (hash, data) VALUES (?, ?)", hash, data);
+                ctx().execute("INSERT INTO vector_text (hash, description) VALUES (?, ?)", hash, id);
+            });
+            ctx().dropTableIfExists("embeddings_2").execute();
+        } catch (DataAccessException ignore) {}
     }
 
     public void loadVectors() {
