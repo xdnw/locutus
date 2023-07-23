@@ -1,12 +1,10 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
-import it.unimi.dsi.fastutil.io.FastByteArrayInputStream;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors.*;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.io.BitBuffer;
-import link.locutus.discord.util.io.BitOutputStream;
 
-import java.io.ByteArrayInputStream;
 import java.nio.ByteBuffer;
 
 public class AttackCursor {
@@ -14,7 +12,11 @@ public class AttackCursor {
     private final BitBuffer buffer;
     private DBWar war;
 
-   private GroundCursor groundCursor = new GroundCursor();
+    private GroundCursor groundCursor = new GroundCursor();
+    private AirSoldierCursor airSoldierCursor = new AirSoldierCursor();
+    private AirTankCursor airTankCursor = new AirTankCursor();
+    private DogfightCursor dogfightCursor = new DogfightCursor();
+    private NavalCursor navalCursor = new NavalCursor();
 
     public AttackCursor() {
         this.buffer = new BitBuffer(ByteBuffer.wrap(new byte[SIZE]));
@@ -30,13 +32,12 @@ public class AttackCursor {
                 groundCursor.load(war, buffer);
                 return groundCursor;
             }
-            case VICTORY -> {
-            }
-            case FORTIFY -> {
-            }
-            case A_LOOT -> {
+            case NAVAL -> {
+                this.navalCursor.load(war, buffer);
+                return navalCursor;
             }
             case AIRSTRIKE_INFRA -> {
+                this
             }
             case AIRSTRIKE_SOLDIER -> {
             }
@@ -48,7 +49,11 @@ public class AttackCursor {
             }
             case AIRSTRIKE_AIRCRAFT -> {
             }
-            case NAVAL -> {
+            case VICTORY -> {
+            }
+            case FORTIFY -> {
+            }
+            case A_LOOT -> {
             }
             case PEACE -> {
             }
