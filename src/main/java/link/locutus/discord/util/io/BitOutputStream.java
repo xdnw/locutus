@@ -2,6 +2,7 @@ package link.locutus.discord.util.io;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Arrays;
 
 public class BitOutputStream {
 
@@ -11,6 +12,11 @@ public class BitOutputStream {
 
     public BitOutputStream(OutputStream out) {
         this.out = out;
+    }
+
+    public void clear() {
+        Arrays.fill(this.buffer, false);
+        this.count = 0;
     }
 
     public void write(boolean x) throws IOException {

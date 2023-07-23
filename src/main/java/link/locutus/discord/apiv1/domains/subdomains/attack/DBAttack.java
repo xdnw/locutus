@@ -1,6 +1,7 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack;
 
 import com.politicsandwar.graphql.model.WarAttack;
+import it.unimi.dsi.fastutil.bytes.Byte2IntArrayMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.WarAttacksContainer;
 import link.locutus.discord.config.Settings;
@@ -24,34 +25,35 @@ import java.util.regex.Pattern;
 import static link.locutus.discord.util.TimeUtil.YYYY_MM_DD_HH_MM_SS;
 
 public class DBAttack {
-    private int war_attack_id;
-    private long date;
-    private int war_id;
-    private int attacker_nation_id;
-    private int defender_nation_id;
-    private AttackType attack_type;
-    private int victor;
-    private int success;
-    private int attcas1;
-    private int attcas2;
-    private int defcas1;
-    private int defcas2;
-    private int defcas3;
-    private double infra_destroyed;
-    private int improvements_destroyed;
-    private double money_looted;
-    public double[] loot;
-    private int looted;
-    private double lootPercent;
-    private double city_infra_before;
-    private double infra_destroyed_value;
-    private double att_gas_used;
-    private double att_mun_used;
-    private double def_gas_used;
-    private double def_mun_used;
+    private WarAttackSerializer serializer;
+    private byte[] data;
+//    private int war_attack_id;
+//    private long date;
+//    private int war_id;
+//    private int attacker_nation_id;
+//    private int defender_nation_id;
 
-    public double infraPercent_cached;
-    public int city_cached;
+//    private AttackType attack_type;
+//    private int success;
+
+//    private Map<Byte, Integer> units_killed;// = new Byte2IntArrayMap();
+
+//    private double infra_destroyed;
+//    private int improvements_destroyed;
+
+//    public ResourceType.IResourceArray resources_looted;
+//    private double lootPercent;
+
+//    private int city_infra_before_cents;
+//    private long infra_destroyed_value_cents;
+
+//    private short att_gas_used_cents;
+//    private short att_mun_used_cents;
+//    private short def_gas_used_cents;
+//    private short def_mun_used_cents;
+//
+//    public double infraPercent_cached;
+//    public int city_cached;
 
     public DBAttack() {}
 
@@ -63,7 +65,6 @@ public class DBAttack {
         this.setAttacker_nation_id(attacker_nation_id);
         this.setDefender_nation_id(defender_nation_id);
         this.setAttack_type(attack_type);
-        this.setVictor(victor);
         this.setSuccess(success);
         this.setAttcas1(attcas1);
         this.setAttcas2(attcas2);
@@ -129,10 +130,6 @@ public class DBAttack {
         return PnwUtil.resourcesToMap(loot);
     }
 
-    public int getLoser() {
-        return getVictor() == getDefender_nation_id() ? getAttacker_nation_id() : getVictor() == getAttacker_nation_id() ? getDefender_nation_id() : 0;
-    }
-
     public double[] parseLootLegacy(String note) {
         if (getAttack_type() == AttackType.A_LOOT) {
             setLoot(new double[ResourceType.values.length]);
@@ -143,14 +140,13 @@ public class DBAttack {
             String looterStr = note.split(" looted [0-9]+\\.[0-9]+% of ")[0];
             for (Map.Entry<Integer, DBNation> entry : Locutus.imp().getNationDB().getNations().entrySet()) {
                 if (entry.getValue().getNation().equals(looterStr)) {
-                    setVictor(entry.getValue().getNation_id());
                     break;
                 }
             }
         } else if (getAttack_type() == AttackType.VICTORY) {
             setLoot(new double[ResourceType.values.length]);
             setLoot(parseNationLoot(note, loot));
-            setLooted(getVictor() == getAttacker_nation_id() ? getDefender_nation_id() : getAttacker_nation_id());
+            setLooted(getAttacker_nation_id());
             setLootPercent(0.1);
 
             String end = "% of the infrastructure in each of their cities.";
@@ -508,14 +504,6 @@ public class DBAttack {
 
     public void setAttack_type(AttackType attack_type) {
         this.attack_type = attack_type;
-    }
-
-    public int getVictor() {
-        return victor;
-    }
-
-    public void setVictor(int victor) {
-        this.victor = victor;
     }
 
     public int getSuccess() {

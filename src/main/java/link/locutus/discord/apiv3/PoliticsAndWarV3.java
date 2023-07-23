@@ -434,10 +434,13 @@ public class PoliticsAndWarV3 {
             p.type();
             p.victor();
             p.success();
-            p.attcas1();
-            p.attcas2();
-            p.defcas1();
-            p.defcas2();
+//            p.attcas1();
+//            p.attcas2();
+//            p.defcas1();
+//            p.defcas2();
+
+
+
             p.aircraft_killed_by_tanks();
             p.infra_destroyed();
             p.improvements_lost();
