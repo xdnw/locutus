@@ -291,6 +291,9 @@ public final class Locutus extends ListenerAdapter {
             if (Settings.INSTANCE.DISCORD.INTENTS.GUILD_MEMBERS) {
                 builder.enableIntents(GatewayIntent.GUILD_MEMBERS);
             }
+            if (Settings.INSTANCE.DISCORD.INTENTS.MESSAGE_CONTENT) {
+                builder.enableIntents(GatewayIntent.MESSAGE_CONTENT);
+            }
             if (Settings.INSTANCE.DISCORD.INTENTS.GUILD_PRESENCES) {
                 builder.enableIntents(GatewayIntent.GUILD_PRESENCES);
             }
@@ -380,30 +383,30 @@ public final class Locutus extends ListenerAdapter {
             }
 
             // load members
-            {
-                Deque<Guild> queue = new ArrayDeque<>(jda.getGuilds());
-                Runnable[] queueFunc = new Runnable[1];
-                queueFunc[0] = new Runnable() {
-                    @Override
-                    public void run() {
-                        Guild guild = queue.poll();
-                        if (guild == null) {
-                            System.out.println("Done loading guild members");
-                            return;
-                        }
-                        if (guild.getMembers().size() >= 249) {
-                            guild.loadMembers().onSuccess(f -> {
-                                System.out.println("Loaded " + f.size() + " members for " + guild);
-                                queueFunc[0].run();
-                            }).onError(f -> {
-                                System.out.println("Failed to load members for " + guild);
-                                queueFunc[0].run();
-                            });
-                        }
-                    }
-                };
-                queueFunc[0].run();
-            }
+//            {
+//                Deque<Guild> queue = new ArrayDeque<>(jda.getGuilds());
+//                Runnable[] queueFunc = new Runnable[1];
+//                queueFunc[0] = new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        Guild guild = queue.poll();
+//                        if (guild == null) {
+//                            System.out.println("Done loading guild members");
+//                            return;
+//                        }
+//                        if (guild.getMembers().size() >= 249) {
+//                            guild.loadMembers().onSuccess(f -> {
+//                                System.out.println("Loaded " + f.size() + " members for " + guild);
+//                                queueFunc[0].run();
+//                            }).onError(f -> {
+//                                System.out.println("Failed to load members for " + guild);
+//                                queueFunc[0].run();
+//                            });
+//                        }
+//                    }
+//                };
+//                queueFunc[0].run();
+//            }
         }
 
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB && (Settings.INSTANCE.WEB.PORT_HTTP > 0 || Settings.INSTANCE.WEB.PORT_HTTPS > 0)) {

@@ -703,7 +703,7 @@ public class GuildKey {
 
         @Override
         public String help() {
-            return "Map roles that can be assigned (or removed). See `" + CM.self.create.cmd.toSlashMention() + "` " + CM.role.removeAssignableRole.cmd.toSlashMention() + " " + CM.role.add.cmd.toSlashMention() + " " + CM.role.remove.cmd.toSlashMention();
+            return "Map roles that can be assigned (or removed). See " + CM.self.create.cmd.toSlashMention() + " " + CM.role.removeAssignableRole.cmd.toSlashMention() + " " + CM.role.add.cmd.toSlashMention() + " " + CM.role.remove.cmd.toSlashMention();
         }
     };
     public static GuildSetting<MessageChannel> DEFENSE_WAR_CHANNEL = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
@@ -1988,7 +1988,7 @@ public class GuildKey {
             return "The channel to send alerts when alliance ground units increase by 10% or more.\n" +
                     "See also: `AA_GROUND_TOP_X` and coalition: `GROUND_ALERTS`";
         }
-    }.setupRequirements(f -> f.requires(ALLIANCE_ID).requireValidAlliance());
+    }.setupRequirements(f -> f.requireActiveGuild());
     // AA_GROUND_TOP_X (min = 1, max = 80)
     public static GuildSetting<Integer> AA_GROUND_TOP_X = new GuildIntegerSetting(GuildSettingCategory.ORBIS_ALERTS) {
         @NoFormat
@@ -2010,7 +2010,7 @@ public class GuildKey {
         public String help() {
             return "Only do alliance ground unit alerts for the top X alliances (by active member score)";
         }
-    }.setupRequirements(f -> f.requires(AA_GROUND_UNIT_ALERTS).requireValidAlliance());
+    }.setupRequirements(f -> f.requireActiveGuild());
 
     //AA_GROUND_THRESHOLD - Double (min=0, max=100, default: 40)
 //    public static GuildSetting<Double> AA_GROUND_THRESHOLD = new GuildDoubleSetting(GuildSettingCategory.ORBIS_ALERTS) {

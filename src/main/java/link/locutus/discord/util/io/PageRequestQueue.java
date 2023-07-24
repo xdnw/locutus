@@ -14,39 +14,44 @@ public class PageRequestQueue {
 
     private final ScheduledExecutorService service;
     // field of priority queue
-    private int millisecondsPerPage;
     private PriorityQueue<PageRequestTask<?>> queue;
+    private final Object lock = new Object();
 
-    private long lastRun = 0;
-
-    public PageRequestQueue(int millisecondsPerPage) {
+    public PageRequestQueue(int threads) {
         // ScheduledExecutorService service
-        this.service = Executors.newScheduledThreadPool(1);
-        this.millisecondsPerPage = millisecondsPerPage;
         this.queue = new PriorityQueue<>(Comparator.comparingLong(PageRequestTask::getPriority));
-        service.scheduleWithFixedDelay(() -> {
-            long now = System.currentTimeMillis();
-            if (now - lastRun < millisecondsPerPage) return;
-            try {
-                PageRequestQueue.this.run();
-            } catch (Throwable e) {
-                e.printStackTrace();
-            }
-        }, 10, 10, TimeUnit.MILLISECONDS);
+        this.service = Executors.newScheduledThreadPool(threads);
+
+
+
+        for (int i = 0; i < threads; i++) {
+            service.submit(() -> {
+                while (true) {
+                    PageRequestTask<?> task;
+                    synchronized (lock) {
+                        while (queue.isEmpty()) {
+                            try {
+                                lock.wait();
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                                return;
+                            }
+                        }
+                        task = queue.poll();
+                    }
+                    run(task);
+                }
+            });
+        }
     }
 
     public PriorityQueue<PageRequestTask<?>> getQueue() {
         return queue;
     }
 
-    public void run() {
-        PageRequestTask task;
-        synchronized (queue) {
-            task = queue.poll();
-        }
+    public void run(PageRequestTask task) {
         if (task != null) {
             try {
-                lastRun = System.currentTimeMillis();
                 Supplier supplier = task.getTask();
                 task.complete(supplier.get());
             } catch (Throwable e) {
@@ -62,10 +67,18 @@ public class PageRequestQueue {
         }
     }
 
+    public void run() {
+        PageRequestTask task;
+        synchronized (queue) {
+            task = queue.poll();
+        }
+    }
+
     public <T> PageRequestTask<T> submit(Supplier<T> task, long priority) {
         PageRequestTask<T> request = new PageRequestTask<T>(task, priority);
-        synchronized (queue) {
+        synchronized (lock) {
             queue.add(request);
+            lock.notifyAll();
         }
         return request;
     }
