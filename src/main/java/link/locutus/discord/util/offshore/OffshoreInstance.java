@@ -640,6 +640,7 @@ public class OffshoreInstance {
                     }
                 }
 
+                if (!depositType.isIgnored())
                 {
                     myDeposits = nationAccount.getNetDeposits(senderDB, !ignoreGrants, requireConfirmation ? -1 : 0L);
                     double[] myDepositsNormalized = PnwUtil.normalize(myDeposits);
@@ -921,68 +922,67 @@ public class OffshoreInstance {
         for (ResourceType type : ResourceType.values) if (amount[type.ordinal()] < 0) return Map.entry(TransferStatus.NOTHING_WITHDRAWN, "You cannot withdraw negative " + type);
         if (!hasAmount) return Map.entry(TransferStatus.NOTHING_WITHDRAWN, "You did not withdraw anything.");
 
-        if (banker != null) {
-            boolean isAdmin = false;
-            User user = banker.getUser();
-            if (user != null) {
-                isAdmin = Roles.ADMIN.has(user, senderDB.getGuild());
-            }
-            String append = "#banker=" + banker.getNation_id();
-            // getBankTransactionsWithNote
-            if (note == null || note.isEmpty()) {
-                note = append;
-            } else {
-                note += " " + append;
-            }
-
-            if (!isAdmin) {
-                Double withdrawLimit = senderDB.getHandler().getWithdrawLimit(banker.getNation_id());
-                if (withdrawLimit != null) {
-                    long cutoff = System.currentTimeMillis();
-                    Long interval = senderDB.getOrNull(GuildKey.BANKER_WITHDRAW_LIMIT_INTERVAL);
-                    if (interval != null) {
-                        cutoff -= interval;
-                    } else {
-                        cutoff -= TimeUnit.DAYS.toMillis(1);
-                    }
-
-                    List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsByNote(append, cutoff);
-                    double total = 0;
-                    for (Transaction2 transaction : transactions) {
-                        total += transaction.convertedTotal();
-                    }
-                    if (total > withdrawLimit) {
-                        MessageChannel alertChannel = senderDB.getOrNull(GuildKey.WITHDRAW_ALERT_CHANNEL);
-                        if (alertChannel != null) {
-                            StringBuilder body = new StringBuilder();
-                            body.append(banker.getNationUrlMarkup(true) + " | " + banker.getAllianceUrlMarkup(true)).append("\n");
-                            body.append("Transfer: " + PnwUtil.resourcesToString(amount) + " | " + note + " | to:" + receiver.getTypePrefix() + receiver.getName());
-                            body.append("Limit set to $" + MathMan.format(withdrawLimit) + " (worth of $/rss)\n\n");
-                            body.append("To set the limit for a user: " + CM.bank.limits.setTransferLimit.cmd.toSlashMention() + "\n");
-                            body.append("To set the default " + GuildKey.BANKER_WITHDRAW_LIMIT.getCommandMention() + "");
-
-                            Role adminRole = Roles.ADMIN.toRole(senderDB.getGuild());
-
-                            RateLimitUtil.queueMessage(new DiscordChannelIO(alertChannel), msg -> {
-                                msg.embed("Banker withdraw limit exceeded", body.toString());
-                                if (adminRole != null) {
-                                    msg.append(("^ " + adminRole.getAsMention()));
-                                }
-                                return true;
-                            }, true, null);
-                        }
-                        return Map.entry(TransferStatus.INSUFFICIENT_FUNDS, "You (" + banker.getNation() + ") have hit your transfer limit ($" + MathMan.format(withdrawLimit) + ")");
-                    }
-                }
-            }
-        }
         if (DISABLE_TRANSFERS && (banker == null || banker.getNation_id() != Settings.INSTANCE.NATION_ID)) {
             return Map.entry(TransferStatus.AUTHORIZATION, "Error: Maintenance. Transfers are currently disabled");
         }
 
-        long start = System.currentTimeMillis();
-
         synchronized (BANK_LOCK) {
+            if (banker != null) {
+                boolean isAdmin = false;
+                User user = banker.getUser();
+                if (user != null) {
+                    isAdmin = Roles.ADMIN.has(user, senderDB.getGuild());
+                }
+                String append = "#banker=" + banker.getNation_id();
+                // getBankTransactionsWithNote
+                if (note == null || note.isEmpty()) {
+                    note = append;
+                } else {
+                    note += " " + append;
+                }
+
+                if (!isAdmin) {
+                    Double withdrawLimit = senderDB.getHandler().getWithdrawLimit(banker.getNation_id());
+                    if (withdrawLimit != null && withdrawLimit < Long.MAX_VALUE) {
+                        long cutoff = System.currentTimeMillis();
+                        Long interval = senderDB.getOrNull(GuildKey.BANKER_WITHDRAW_LIMIT_INTERVAL);
+                        if (interval != null) {
+                            cutoff -= interval;
+                        } else {
+                            cutoff -= TimeUnit.DAYS.toMillis(1);
+                        }
+
+                        List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsByNote(append, cutoff);
+                        double total = 0;
+                        for (Transaction2 transaction : transactions) {
+                            total += transaction.convertedTotal();
+                        }
+                        if (total > withdrawLimit) {
+                            MessageChannel alertChannel = senderDB.getOrNull(GuildKey.WITHDRAW_ALERT_CHANNEL);
+                            if (alertChannel != null) {
+                                StringBuilder body = new StringBuilder();
+                                body.append(banker.getNationUrlMarkup(true) + " | " + banker.getAllianceUrlMarkup(true)).append("\n");
+                                body.append("Transfer: " + PnwUtil.resourcesToString(amount) + " | " + note + " | to:" + receiver.getTypePrefix() + receiver.getName());
+                                body.append("Limit set to $" + MathMan.format(withdrawLimit) + " (worth of $/rss)\n\n");
+                                body.append("To set the limit for a user: " + CM.bank.limits.setTransferLimit.cmd.toSlashMention() + "\n");
+                                body.append("To set the default " + GuildKey.BANKER_WITHDRAW_LIMIT.getCommandMention() + "");
+
+                                Role adminRole = Roles.ADMIN.toRole(senderDB.getGuild());
+
+                                RateLimitUtil.queueMessage(new DiscordChannelIO(alertChannel), msg -> {
+                                    msg.embed("Banker withdraw limit exceeded", body.toString());
+                                    if (adminRole != null) {
+                                        msg.append(("^ " + adminRole.getAsMention()));
+                                    }
+                                    return true;
+                                }, true, null);
+                            }
+                            return Map.entry(TransferStatus.INSUFFICIENT_FUNDS, "You (" + banker.getNation() + ") have hit your transfer limit ($" + MathMan.format(withdrawLimit) + ")");
+                        }
+                    }
+                }
+            }
+
             boolean isZero = true;
             for (double i : amount) if (i != 0) isZero = false;
             if (isZero) throw new IllegalArgumentException("No funds need to be sent");
@@ -1053,10 +1053,6 @@ public class OffshoreInstance {
                         if (Math.round((diff - totalAddBalance[i]) * 100) > 1)
                             throw new IllegalArgumentException("Error: Addbalance does not match (2) " + MathMan.format(diff) + " != " + MathMan.format(totalAddBalance[i]));
                     }
-
-
-
-//                offshoreDB.addTransfer(tx_datetime, 0, 0, senderDB, banker.getNation_id(), offshoreNote, amount);
                 }
             } catch (Throwable e) {
                 e.printStackTrace();
