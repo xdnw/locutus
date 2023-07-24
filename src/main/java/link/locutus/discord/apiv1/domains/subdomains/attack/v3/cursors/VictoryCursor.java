@@ -39,6 +39,8 @@ public class VictoryCursor extends UnitCursor {
         // load resources
         hasLoot = input.readBit();
         if (hasLoot) {
+            loot_percent_cents = input.readVarInt();
+            infra_destroyed_value_cents = input.readVarLong();
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.CREDITS) continue;
                 looted[type.ordinal()] = input.readVarLong() * 0.01d;
@@ -50,6 +52,15 @@ public class VictoryCursor extends UnitCursor {
     public void serialze(BitBuffer output) {
         super.serialze(output);
         // add current
+        output.writeBit(hasLoot);
+        if (hasLoot) {
+            output.writeVarInt(loot_percent_cents);
+            output.writeVarLong(infra_destroyed_value_cents);
+            for (ResourceType type : ResourceType.values) {
+                if (type == ResourceType.CREDITS) continue;
+                output.writeVarLong((long) (looted[type.ordinal()] * 100));
+            }
+        }
 
     }
 }

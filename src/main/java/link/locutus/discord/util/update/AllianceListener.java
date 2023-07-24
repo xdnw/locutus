@@ -121,7 +121,7 @@ public class AllianceListener {
 
     public static void runMilitarizationAlerts() {
 
-        double thresholdFivedays = 0.02;
+        double thresholdFivedays = 0.025;
         double thresholdDaily = 0.05;
         double thresholdTurnly = 0.1;
 
