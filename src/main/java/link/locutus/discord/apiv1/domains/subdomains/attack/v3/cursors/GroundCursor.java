@@ -19,8 +19,13 @@ public class GroundCursor extends UnitCursor {
     private long money_looted_cents;
 
     @Override
-    public AttackType getAttackType() {
+    public AttackType getAttack_type() {
         return AttackType.GROUND;
+    }
+
+    @Override
+    public double getMoney_looted() {
+        return money_looted_cents * 0.01;
     }
 
     @Override

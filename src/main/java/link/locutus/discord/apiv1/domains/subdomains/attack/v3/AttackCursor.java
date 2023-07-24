@@ -10,78 +10,83 @@ import java.nio.ByteBuffer;
 public class AttackCursor {
     private static final int SIZE = 256;
     private final BitBuffer buffer;
-    private DBWar war;
-
-    private GroundCursor groundCursor = new GroundCursor();
-    private AirSoldierCursor airSoldierCursor = new AirSoldierCursor();
-    private AirTankCursor airTankCursor = new AirTankCursor();
-    private DogfightCursor dogfightCursor = new DogfightCursor();
-    private NavalCursor navalCursor = new NavalCursor();
+    private final AirInfraCursor airInfraCursor = new AirInfraCursor();
+    private final AirMoneyCursor airMoneyCursor = new AirMoneyCursor();
+    private final AirShipCursor airShipCursor = new AirShipCursor();
+    private final AirSoldierCursor airSoldierCursor = new AirSoldierCursor();
+    private final AirTankCursor airTankCursor = new AirTankCursor();
+    private final ALootCursor aLootCursor = new ALootCursor();
+    private final DogfightCursor dogfightCursor = new DogfightCursor();
+    private final FortifyCursor fortifyCursor = new FortifyCursor();
+    private final GroundCursor groundCursor = new GroundCursor();
+    private final MissileCursor missileCursor = new MissileCursor();
+    private final NavalCursor navalCursor = new NavalCursor();
+    private final NukeCursor nukeCursor = new NukeCursor();
+    private final PeaceCursor peaceCursor = new PeaceCursor();
+    private final VictoryCursor victoryCursor = new VictoryCursor();
 
     public AttackCursor() {
         this.buffer = new BitBuffer(ByteBuffer.wrap(new byte[SIZE]));
     }
 
-    public IAttack2 load(DBWar war, byte[] data) {
-        buffer.setBytes(data);
-        AttackType type = AttackType.values[(int) buffer.readBits(4)];
-
-        this.war = war;
+    private AbstractCursor getCursor(AttackType type) {
         switch (type) {
             case GROUND -> {
-                groundCursor.load(war, buffer);
                 return groundCursor;
             }
             case NAVAL -> {
-                this.navalCursor.load(war, buffer);
                 return navalCursor;
             }
             case AIRSTRIKE_INFRA -> {
-                this
+                return airInfraCursor;
             }
             case AIRSTRIKE_SOLDIER -> {
+                return airSoldierCursor;
             }
             case AIRSTRIKE_TANK -> {
+                return airTankCursor;
             }
             case AIRSTRIKE_MONEY -> {
+                return airMoneyCursor;
             }
             case AIRSTRIKE_SHIP -> {
+                return airShipCursor;
             }
             case AIRSTRIKE_AIRCRAFT -> {
-            }
-            case VICTORY -> {
+                return dogfightCursor;
             }
             case FORTIFY -> {
-            }
-            case A_LOOT -> {
-            }
-            case PEACE -> {
+                return fortifyCursor;
             }
             case MISSILE -> {
+                return missileCursor;
             }
             case NUKE -> {
+                return nukeCursor;
+            }
+            case PEACE -> {
+                return peaceCursor;
+            }
+            case VICTORY -> {
+                return victoryCursor;
+            }
+            case A_LOOT -> {
+                return aLootCursor;
+            }
+            default -> {
+                return null;
             }
         }
-        /*
-    GROUND(3, 10, MilitaryUnit.SOLDIER, MilitaryUnit.TANK, MilitaryUnit.AIRCRAFT),
-    VICTORY(0, 0),
-    FORTIFY(3, 0),
-    A_LOOT("Alliance Loot", 0, 0),
-    AIRSTRIKE_INFRA("Airstrike Infrastructure", 4, 12, MilitaryUnit.AIRCRAFT), // infra
-    AIRSTRIKE_SOLDIER("Airstrike Soldiers", 4, 12, MilitaryUnit.AIRCRAFT, MilitaryUnit.SOLDIER),
-    AIRSTRIKE_TANK("Airstrike Tanks", 4, 12, MilitaryUnit.AIRCRAFT, MilitaryUnit.TANK),
-    AIRSTRIKE_MONEY("Airstrike Money", 4, 12, MilitaryUnit.AIRCRAFT, MilitaryUnit.MONEY),
-    AIRSTRIKE_SHIP("Airstrike Ships", 4, 12, MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP),
-    AIRSTRIKE_AIRCRAFT("Dogfight", 4, 12, MilitaryUnit.AIRCRAFT), // airstrike aircraft
-    NAVAL(4, 14, MilitaryUnit.SHIP),
-    PEACE(0, 0),
-    MISSILE(8, 18, MilitaryUnit.MISSILE),
-    NUKE(12, 25, MilitaryUnit.NUKE),
-         */
+    }
 
-
-        // WarAttack -> byte[]
-        // byte[] -> GroundCursor
-        // Serializer for each attack type
+    public IAttack2 load(DBWar war, byte[] data) {
+        buffer.setBytes(data);
+        AttackType type = AttackType.values[(int) buffer.readBits(4)];
+        AbstractCursor cursor = getCursor(type);
+        if (cursor == null) {
+            throw new UnsupportedOperationException("Attack type not supported: " + type);
+        }
+        cursor.load(war, buffer);
+        return cursor;
     }
 }

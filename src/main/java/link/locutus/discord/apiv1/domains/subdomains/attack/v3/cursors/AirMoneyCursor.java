@@ -15,7 +15,7 @@ public class AirMoneyCursor extends UnitCursor {
 
 
     @Override
-    public AttackType getAttackType() {
+    public AttackType getAttack_type() {
         return AttackType.AIRSTRIKE_MONEY;
     }
 
@@ -57,7 +57,10 @@ public class AirMoneyCursor extends UnitCursor {
         if (input.readBit()) defcas2 = input.readVarInt();
         else defcas2 = 0;
     }
-
+    @Override
+    public double getMoney_looted() {
+        return 0;
+    }
     @Override
     public void serialze(BitBuffer output) {
         super.serialze(output);

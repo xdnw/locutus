@@ -2,7 +2,10 @@ package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.util.PnwUtil;
+
+import java.util.Map;
 
 public interface IAttack2 {
     /*
@@ -49,6 +52,8 @@ public interface IAttack2 {
     int getDefcas3(); // ?
     double getInfra_destroyed();
     int getImprovements_destroyed(); // ?
+    void addBuildingsDestroyed(int[] destroyedBuffer);
+
     double getMoney_looted();
     double[] getLoot();
     double getLootPercent();

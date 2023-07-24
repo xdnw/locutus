@@ -674,6 +674,7 @@ public class PWBindings extends BindingHelper {
         List<String> remainder = new ArrayList<>();
         outer:
         for (String arg : args) {
+            arg = arg.trim();
             if (includeTaxId && !arg.startsWith("#") && arg.contains("tax_id")) {
                 int taxId = PnwUtil.parseTaxId(arg);
                 TaxBracket bracket = new TaxBracket(taxId, -1, "", 0, 0, 0L);
@@ -725,7 +726,6 @@ public class PWBindings extends BindingHelper {
         return result;
     }
 
-    @Binding(examples = "Cataclysm,790", value = "A comma separated list of alliances")
     public static Set<DBAlliance> alliances(@Default @Me Guild guild, String input) {
         Set<Integer> aaIds = DiscordUtil.parseAlliances(guild, input);
         if (aaIds == null) throw new IllegalArgumentException("Invalid alliances: " + input);
@@ -735,7 +735,6 @@ public class PWBindings extends BindingHelper {
         }
         return alliances;
     }
-
 
     @Binding(examples = "ACTIVE,EXPIRED", value = "A comma separated list of war statuses")
     public Set<WarStatus> WarStatuses(String input) {

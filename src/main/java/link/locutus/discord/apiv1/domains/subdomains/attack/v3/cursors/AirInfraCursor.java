@@ -12,10 +12,14 @@ public class AirInfraCursor extends UnitCursor {
     private int attcas1;
     private int defcas1;
 
+    @Override
+    public AttackType getAttack_type() {
+        return AttackType.AIRSTRIKE_INFRA;
+    }
 
     @Override
-    public AttackType getAttackType() {
-        return AttackType.AIRSTRIKE_INFRA;
+    public double getMoney_looted() {
+        return 0;
     }
 
     @Override

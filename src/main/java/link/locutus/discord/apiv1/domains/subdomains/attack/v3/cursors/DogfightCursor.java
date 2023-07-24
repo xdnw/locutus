@@ -14,7 +14,7 @@ public class DogfightCursor extends UnitCursor {
 
 
     @Override
-    public AttackType getAttackType() {
+    public AttackType getAttack_type() {
         return AttackType.AIRSTRIKE_AIRCRAFT;
     }
 
@@ -25,7 +25,10 @@ public class DogfightCursor extends UnitCursor {
         this.attcas1 = attack.getAtt_soldiers_lost();
         this.defcas1 = attack.getDef_soldiers_lost();
     }
-
+    @Override
+    public double getMoney_looted() {
+        return 0;
+    }
     private static final MilitaryUnit[] UNITS = {MilitaryUnit.AIRCRAFT};
 
     @Override

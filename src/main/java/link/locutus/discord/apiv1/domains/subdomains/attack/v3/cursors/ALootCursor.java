@@ -17,7 +17,7 @@ public class ALootCursor extends FailedCursor {
     private int loot_percent_cents;
 
     @Override
-    public AttackType getAttackType() {
+    public AttackType getAttack_type() {
         return AttackType.A_LOOT;
     }
 

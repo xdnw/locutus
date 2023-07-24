@@ -11,7 +11,7 @@ import link.locutus.discord.util.io.BitBuffer;
 public class PeaceCursor extends FailedCursor {
 
     @Override
-    public AttackType getAttackType() {
+    public AttackType getAttack_type() {
         return AttackType.PEACE;
     }
 

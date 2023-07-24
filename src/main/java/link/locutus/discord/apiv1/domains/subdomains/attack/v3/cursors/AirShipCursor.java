@@ -15,7 +15,7 @@ public class AirShipCursor extends UnitCursor {
 
 
     @Override
-    public AttackType getAttackType() {
+    public AttackType getAttack_type() {
         return AttackType.AIRSTRIKE_SHIP;
     }
 
@@ -42,7 +42,10 @@ public class AirShipCursor extends UnitCursor {
             default -> 0;
         };
     }
-
+    @Override
+    public double getMoney_looted() {
+        return 0;
+    }
     @Override
     public void load(DBWar war, BitBuffer input) {
         super.load(war, input);

@@ -1,7 +1,5 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors;
 
-package link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors;
-
 import com.politicsandwar.graphql.model.WarAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.UnitCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -18,7 +16,7 @@ public class NavalCursor extends UnitCursor {
 
 
     @Override
-    public AttackType getAttackType() {
+    public AttackType getAttack_type() {
         return AttackType.NAVAL;
     }
 
@@ -30,7 +28,10 @@ public class NavalCursor extends UnitCursor {
     }
 
     private static final MilitaryUnit[] UNITS = {MilitaryUnit.SHIP};
-
+    @Override
+    public double getMoney_looted() {
+        return 0;
+    }
     @Override
     public MilitaryUnit[] getUnits() {
         return UNITS;

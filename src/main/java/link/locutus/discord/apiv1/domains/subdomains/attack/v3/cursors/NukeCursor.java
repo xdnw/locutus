@@ -1,7 +1,6 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors;
 
 import com.politicsandwar.graphql.model.WarAttack;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.PVCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.ProjectileCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.UnitCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -13,13 +12,8 @@ import link.locutus.discord.util.io.BitBuffer;
 public class NukeCursor extends ProjectileCursor {
 
     @Override
-    public AttackType getAttackType() {
+    public AttackType getAttack_type() {
         return AttackType.NUKE;
-    }
-
-    @Override
-    public void load(WarAttack attack) {
-        super.load(attack);
     }
 
     private static final MilitaryUnit[] UNITS = {MilitaryUnit.NUKE};
@@ -39,7 +33,7 @@ public class NukeCursor extends ProjectileCursor {
 
     @Override
     public void load(WarAttack attack) {
-
+        super.load(attack);
     }
 
     @Override
