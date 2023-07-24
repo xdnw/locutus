@@ -151,6 +151,7 @@ public class Settings extends Config {
 
         public void disableListeners() {
             Settings.INSTANCE.DISCORD.INTENTS.GUILD_MESSAGES = false;
+            Settings.INSTANCE.DISCORD.INTENTS.MESSAGE_CONTENT = false;
             Settings.INSTANCE.DISCORD.INTENTS.GUILD_MESSAGE_REACTIONS = false;
             Settings.INSTANCE.DISCORD.INTENTS.DIRECT_MESSAGES = false;
             Settings.INSTANCE.DISCORD.INTENTS.EMOJI = false;
@@ -431,11 +432,31 @@ public class Settings extends Config {
 
 
         public static class INTENTS {
+            @Comment("Can see what members are in a guild")
             public boolean GUILD_MEMBERS = true;
+            @Comment({
+                    "Can see guild member online status",
+                    "Used to limit alerts to online members only",
+            })
             public boolean GUILD_PRESENCES = true;
+            @Comment("Can see messages sent in guild channels mentioning or replying to this bot")
             public boolean GUILD_MESSAGES = true;
-            public boolean GUILD_MESSAGE_REACTIONS = true;
+            @Comment({
+                    "Can see reactions to messages sent by the bot",
+                    "Disabled by default; bot interaction uses buttons now",
+                    "The `/embed info` command will not display reaction totals if this is disabled"
+            })
+            public boolean GUILD_MESSAGE_REACTIONS = false;
+            @Comment("Can read direct messages sent to the bot")
             public boolean DIRECT_MESSAGES = true;
+            @Comment({"Can see all messages sent in guild channels",
+                    "Disabled by default since message content is a whitelisted intent",
+                    "Legacy commands require mentioning or replying to the bot"})
+            public boolean MESSAGE_CONTENT = false;
+            @Comment({
+                    "To be able to use custom emojis in embeds as well as the import emoji command",
+                    "Disabled by default since it increases discord api usage and is non essential"
+            })
             public boolean EMOJI = false;
         }
 
