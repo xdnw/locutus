@@ -9,7 +9,6 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.io.BitBuffer;
 
 public class AirTankCursor extends UnitCursor {
-    private SuccessType success;
     private int attcas1;
     private int defcas1;
     private int defcas2;
@@ -18,11 +17,6 @@ public class AirTankCursor extends UnitCursor {
     @Override
     public AttackType getAttackType() {
         return AttackType.AIRSTRIKE_TANK;
-    }
-
-    @Override
-    public SuccessType getSuccess() {
-        return success;
     }
 
     @Override
@@ -53,7 +47,6 @@ public class AirTankCursor extends UnitCursor {
     @Override
     public void load(DBWar war, BitBuffer input) {
         super.load(war, input);
-        success = SuccessType.values[(int) input.readBits(2)];
 
         if (input.readBit()) attcas1 = input.readVarInt();
         else attcas1 = 0;
@@ -68,8 +61,6 @@ public class AirTankCursor extends UnitCursor {
     @Override
     public void serialze(BitBuffer output) {
         super.serialze(output);
-        // success = 0,1,2,3
-        output.writeBits(success.ordinal(), 2);
 
         output.writeBit(attcas1 > 0);
         if (attcas1 > 0) output.writeVarInt(attcas1);

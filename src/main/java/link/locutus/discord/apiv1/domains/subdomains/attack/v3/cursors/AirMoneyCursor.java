@@ -9,7 +9,6 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.io.BitBuffer;
 
 public class AirMoneyCursor extends UnitCursor {
-    private SuccessType success;
     private int attcas1;
     private int defcas1;
     private int defcas2;
@@ -20,18 +19,13 @@ public class AirMoneyCursor extends UnitCursor {
         return AttackType.AIRSTRIKE_MONEY;
     }
 
-    @Override
-    public SuccessType getSuccess() {
-        return success;
-    }
 
     @Override
     public void load(WarAttack attack) {
         super.load(attack);
-        success = SuccessType.values[attack.getSuccess()];
-        this.attcas1 = attack.getAtt_soldiers_lost();
-        this.defcas1 = attack.getDef_soldiers_lost();
-        this.defcas2 = attack.getDef_tanks_lost();
+        this.attcas1 = attack.getAtt_aircraft_lost();
+        this.defcas1 = attack.getDef_aircraft_lost();
+        this.defcas2 = attack.getMoney_destroyed().intValue();
     }
 
     private static final MilitaryUnit[] UNITS = {MilitaryUnit.AIRCRAFT, MilitaryUnit.MONEY};
@@ -53,7 +47,6 @@ public class AirMoneyCursor extends UnitCursor {
     @Override
     public void load(DBWar war, BitBuffer input) {
         super.load(war, input);
-        success = SuccessType.values[(int) input.readBits(2)];
 
         if (input.readBit()) attcas1 = input.readVarInt();
         else attcas1 = 0;
@@ -68,7 +61,6 @@ public class AirMoneyCursor extends UnitCursor {
     @Override
     public void serialze(BitBuffer output) {
         super.serialze(output);
-        output.writeBits(success.ordinal(), 2);
 
         output.writeBit(attcas1 > 0);
         if (attcas1 > 0) output.writeVarInt(attcas1);

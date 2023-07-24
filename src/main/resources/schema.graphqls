@@ -733,7 +733,7 @@ type Nation {
   urban_planning: Boolean
 
   # Whether or not the nation has the Advanced Urban Planning project [deprecated]
-  adv_city_planning: Boolean
+#  adv_city_planning: Boolean
 #   @deprecated(reason: "Use advanced_urban_planning instead")
 
   # Whether or not the nation has the Advanced Urban Planning project
@@ -755,7 +755,7 @@ type Nation {
   recycling_initiative: Boolean
 
   # Whether or not the nation has the Telecommunications Satellite project [deprecated]
-  telecom_satellite: Boolean
+#  telecom_satellite: Boolean
 #   @deprecated(reason: "Use telecommunications_satellite instead")
 
   # Whether or not the nation has the Telecommunications Satellite project
@@ -774,14 +774,14 @@ type Nation {
   clinical_research_center: Boolean
 
   # Whether or not the nation has the Specialized Police Training Program project [deprecated]
-  specialized_police_training: Boolean
+#  specialized_police_training: Boolean
 #   @deprecated(reason: "Use specialized_police_training_program instead")
 
   # Whether or not the nation has the Specialized Police Training Program project
   specialized_police_training_program: Boolean
 
   # Whether or not the nation has the Advanced Engineering Corps project [deprecated]
-  adv_engineering_corps: Boolean
+#  adv_engineering_corps: Boolean
 #   @deprecated(reason: "Use advanced_engineering_corps instead")
 
   # Whether or not the nation has the Advanced Engineering Corps project
@@ -794,7 +794,7 @@ type Nation {
   research_and_development_center: Boolean
 
   # Whether or not the nation has the Resource Production Center project
-  resource_production_center: Boolean
+#  resource_production_center: Boolean
 #   @deprecated(reason: "Use activity_center instead")
 
   # Whether or not the nation has the Metropolitan Planning project
@@ -1878,7 +1878,7 @@ type WarAttack {
 #   improvementslost: Int @deprecated(reason: "Use improvements_lost instead.")
 
   # Number of improvements destroyed in the attack (0-2)
-  improvements_lost: Int
+#  improvements_lost: Int
 #   @deprecated(reason: "Use improvements_destroyed instead")
 
   # Money stolen in the attack [deprecated]
@@ -1916,7 +1916,7 @@ type WarAttack {
   def_gas_used: Float
 
   # How many aircraft the attacker destroyed in the attack using tanks (only applies to ground attacks when the attacker has ground control, otherwise 0)
-  aircraft_killed_by_tanks: Int
+#  aircraft_killed_by_tanks: Int
 #   @deprecated(reason: "No longer recorded separately")
 
   # The amount of money destroyed in the attack

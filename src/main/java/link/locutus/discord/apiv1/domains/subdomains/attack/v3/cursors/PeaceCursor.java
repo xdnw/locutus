@@ -4,16 +4,15 @@ import com.politicsandwar.graphql.model.WarAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.FailedCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.UnitCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.io.BitBuffer;
 
-public class FortifyCursor extends FailedCursor {
+public class PeaceCursor extends FailedCursor {
 
     @Override
     public AttackType getAttackType() {
-        return AttackType.FORTIFY;
+        return AttackType.PEACE;
     }
 
     @Override

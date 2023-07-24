@@ -13,7 +13,6 @@ import link.locutus.discord.util.io.BitBuffer;
 import java.util.Map;
 
 public class NavalCursor extends UnitCursor {
-    private SuccessType success;
     private int attcas1;
     private int defcas1;
 
@@ -24,14 +23,8 @@ public class NavalCursor extends UnitCursor {
     }
 
     @Override
-    public SuccessType getSuccess() {
-        return success;
-    }
-
-    @Override
     public void load(WarAttack attack) {
         super.load(attack);
-        success = SuccessType.values[attack.getSuccess()];
         this.attcas1 = attack.getAtt_ships_lost();
         this.defcas1 = attack.getDef_ships_lost();
     }
@@ -54,7 +47,6 @@ public class NavalCursor extends UnitCursor {
     @Override
     public void load(DBWar war, BitBuffer input) {
         super.load(war, input);
-        success = SuccessType.values[(int) input.readBits(2)];
 
         if (input.readBit()) attcas1 = input.readVarInt();
         else attcas1 = 0;
@@ -66,8 +58,6 @@ public class NavalCursor extends UnitCursor {
     @Override
     public void serialze(BitBuffer output) {
         super.serialze(output);
-        // success = 0,1,2,3
-        output.writeBits(success.ordinal(), 2);
 
         output.writeBit(attcas1 > 0);
         if (attcas1 > 0) output.writeVarInt(attcas1);

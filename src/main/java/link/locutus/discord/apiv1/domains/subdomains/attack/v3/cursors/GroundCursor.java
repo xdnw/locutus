@@ -11,7 +11,6 @@ import link.locutus.discord.util.io.BitBuffer;
 import java.util.Map;
 
 public class GroundCursor extends UnitCursor {
-    private SuccessType success;
     private int attcas1;
     private int attcas2;
     private int defcas1;
@@ -19,21 +18,14 @@ public class GroundCursor extends UnitCursor {
     private int defcas3;
     private long money_looted_cents;
 
-
     @Override
     public AttackType getAttackType() {
         return AttackType.GROUND;
     }
 
     @Override
-    public SuccessType getSuccess() {
-        return success;
-    }
-
-    @Override
     public void load(WarAttack attack) {
         super.load(attack);
-        success = SuccessType.values[attack.getSuccess()];
         this.attcas1 = attack.getAtt_soldiers_lost();
         this.attcas2 = attack.getAtt_tanks_lost();
         this.defcas1 = attack.getDef_soldiers_lost();
@@ -62,8 +54,6 @@ public class GroundCursor extends UnitCursor {
     @Override
     public void load(DBWar war, BitBuffer input) {
         super.load(war, input);
-        success = SuccessType.values[(int) input.readBits(2)];
-
         if (input.readBit()) attcas1 = input.readVarInt();
         else attcas1 = 0;
 
@@ -79,15 +69,15 @@ public class GroundCursor extends UnitCursor {
         if (input.readBit()) defcas3 = input.readVarInt();
         else defcas3 = 0;
 
-        if (input.readBit()) money_looted_cents = input.readVarLong();
-        else money_looted_cents = 0;
+        if (success != SuccessType.UTTER_FAILURE) {
+            if (input.readBit()) money_looted_cents = input.readVarLong();
+            else money_looted_cents = 0;
+        }
     }
 
     @Override
     public void serialze(BitBuffer output) {
         super.serialze(output);
-        // success = 0,1,2,3
-        output.writeBits(success.ordinal(), 2);
 
         output.writeBit(attcas1 > 0);
         if (attcas1 > 0) output.writeVarInt(attcas1);
@@ -104,7 +94,9 @@ public class GroundCursor extends UnitCursor {
         output.writeBit(defcas3 > 0);
         if (defcas3 > 0) output.writeVarInt(defcas3);
 
-        output.writeBit(money_looted_cents > 0);
-        if (money_looted_cents > 0) output.writeVarLong(money_looted_cents);
+        if (success != SuccessType.UTTER_FAILURE) {
+            output.writeBit(money_looted_cents > 0);
+            if (money_looted_cents > 0) output.writeVarLong(money_looted_cents);
+        }
     }
 }
