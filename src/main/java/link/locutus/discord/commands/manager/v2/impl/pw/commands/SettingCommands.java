@@ -57,7 +57,7 @@ public class SettingCommands {
         StringBuilder response = new StringBuilder();
         Object value = key.getOrNull(db, false);
         if (value != null) {
-            response.append("Previous value:\n```\n" + key.toReadableString(value) + "\n```\n");
+            response.append("Previous value:\n```\n" + key.toReadableString(db, value) + "\n```\n");
         } else {
             response.append("Previous value (invalid):\n```\n" + valueRaw + "\n```\n");
         }
@@ -101,7 +101,7 @@ public class SettingCommands {
                         response.append("**current value**: `" + valueStr + "`\n\n");
                         response.append("`A value is set but it is invalid`\n");
                     } else {
-                        response.append("**current value**: `" + key.toReadableString(valueObj) + "`\n\n");
+                        response.append("**current value**: `" + key.toReadableString(db, valueObj) + "`\n\n");
                     }
                     response.append("`note: to delete, use: " + CM.settings.delete.cmd.create(key.name()).toSlashCommand(false) + "`\n");
                 } else {
@@ -130,7 +130,7 @@ public class SettingCommands {
 
                         Object setValue = keyObjectEntry.getValue();
                         if (setValue != null) {
-                            String setValueStr = currKey.toReadableString(setValue);
+                            String setValueStr = currKey.toReadableString(db, setValue);
                             if (setValueStr.length() > 25) {
                                 setValueStr = setValueStr.substring(0, 24) + "\u2026";
                             }
@@ -164,7 +164,7 @@ public class SettingCommands {
             if (valueObj == null) {
                 return "Invalid value for key `" + key.name() + "`";
             }
-            if (!key.hasPermission(db, author, valueObj)) return "No permission to set `" + key.name() + "` to `" + key.toReadableString(valueObj) + "`";
+            if (!key.hasPermission(db, author, valueObj)) return "No permission to set `" + key.name() + "` to `" + key.toReadableString(db, valueObj) + "`";
         }
         if (valueObj == null) {
             if (!key.has(db, false)) {

@@ -114,7 +114,7 @@ public abstract class GuildSetting<T> {
         return value;
     }
 
-    public String toReadableString(T value) {
+    public String toReadableString(GuildDB db, T value) {
         return toString(value);
     }
 

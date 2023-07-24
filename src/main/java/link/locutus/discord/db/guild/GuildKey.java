@@ -10,6 +10,8 @@ import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
@@ -28,6 +30,7 @@ import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AutoAuditType;
 import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
@@ -305,7 +308,7 @@ public class GuildKey {
         }
 
         @Override
-        public String toReadableString(List<String> value) {
+        public String toReadableString(GuildDB db, List<String> value) {
             List<String> redacted = new ArrayList<>();
             for (String key : value) {
                 String startWith = key.charAt(0) + "";
@@ -492,7 +495,7 @@ public class GuildKey {
         }
 
         @Override
-        public String toReadableString(Long value) {
+        public String toReadableString(GuildDB db, Long value) {
             return TimeUtil.secToTime(TimeUnit.MILLISECONDS, value);
         }
 
@@ -617,7 +620,7 @@ public class GuildKey {
         }
 
         @Override
-        public String toReadableString(Map<ResourceType, Double> value) {
+        public String toReadableString(GuildDB db, Map<ResourceType, Double> value) {
             return PnwUtil.resourcesToString(value);
         }
 
@@ -677,7 +680,7 @@ public class GuildKey {
         }
 
         @Override
-        public String toReadableString(Map<Role, Set<Role>> map) {
+        public String toReadableString(GuildDB db, Map<Role, Set<Role>> map) {
             List<String> lines = new ArrayList<>();
             for (Map.Entry<Role, Set<Role>> entry : map.entrySet()) {
                 String key = entry.getKey().getName();
@@ -1134,7 +1137,7 @@ public class GuildKey {
         }
 
         @Override
-        public String toReadableString(Guild value) {
+        public String toReadableString(GuildDB db, Guild value) {
             return value.toString();
         }
 
@@ -1254,7 +1257,7 @@ public class GuildKey {
         }
 
         @Override
-        public String toReadableString(GuildDB value) {
+        public String toReadableString(GuildDB db, GuildDB value) {
             return value.getName();
         }
 
@@ -1813,7 +1816,7 @@ public class GuildKey {
         }
 
         @Override
-        public String toReadableString(Long value) {
+        public String toReadableString(GuildDB db, Long value) {
             return TimeUtil.secToTime(TimeUnit.MILLISECONDS, value);
         }
 
@@ -1952,7 +1955,7 @@ public class GuildKey {
         }
 
         @Override
-        public String toReadableString(Set<Integer> value) {
+        public String toReadableString(GuildDB db, Set<Integer> value) {
 
             List<String> names = new ArrayList<>();
 
@@ -2011,6 +2014,105 @@ public class GuildKey {
             return "Only do alliance ground unit alerts for the top X alliances (by active member score)";
         }
     }.setupRequirements(f -> f.requires(AA_GROUND_UNIT_ALERTS).requireValidAlliance());
+
+    public static GuildSetting<Map<Long, Double>> GRANT_TEMPLATE_LIMITS = new GuildSetting<Map<Long,Double>>(GuildSettingCategory.ORBIS_ALERTS, Map.class, Long.class, Double.class) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String addGrantTemplateLimit(@Me GuildDB db, @Me User user, Role role, @Range(min=1) Double marketValue) {
+            // get existing
+            Map<Long, Double> limits = GRANT_TEMPLATE_LIMITS.getOrNull(db, false);
+            if (limits == null)
+                limits = new LinkedHashMap<>();
+            // add new
+            limits.put(role.getIdLong(), marketValue);
+            return GRANT_TEMPLATE_LIMITS.setAndValidate(db, user, limits);
+        }
+
+        @Override
+        public Map<Long, Double> parse(GuildDB db, String input) {
+            // split newline
+            Map<Long, Double> result = new LinkedHashMap<>();
+            // Discord JDA role id -> PnwUtil resources to array (parse resources)
+
+            String[] split = input.split("[\n;\\n]");
+            Guild guild = db.getGuild();
+            for (String line : split) {
+                String[] roleRss = line.split("[:=]", 2);
+                // role id
+                String roleStr = roleRss[0];
+                Role role = DiscordBindings.role(guild, roleStr);
+                double value = PrimitiveBindings.Double(roleRss[1]);
+                result.put(role.getIdLong(), value);
+            }
+            return result;
+        }
+
+        @Override
+        public String toString(Map<Long, Double> value) {
+            List<String> lines = new ArrayList<>();
+            for (Map.Entry<Long, Double> entry : value.entrySet()) {
+                lines.add(entry.getKey() + ":" + entry.getValue());
+            }
+            return String.join("\n", lines);
+        }
+
+        @Override
+        public String toReadableString(GuildDB db, Map<Long, Double> value) {
+            List<String> lines = new ArrayList<>();
+            Guild guild = db.getGuild();
+            for (Map.Entry<Long, Double> entry : value.entrySet()) {
+                long roleId = entry.getKey();
+                Role roleOrNull = guild.getRoleById(roleId);
+                String roleNameOrId = roleOrNull == null ? roleId + "" : roleOrNull.getName();
+                lines.add(roleNameOrId + "=" + MathMan.format(entry.getValue()));
+            }
+            return String.join("\n", lines);
+        }
+
+        @Override
+        public String help() {
+            return "The global grant template send limits for each role, limiting how much each granter can send per interval.\n" +
+                    "This applies in addition to any limits set in the individual template.\n" +
+                    "The ECON role overrides grant template limits. See: " + CM.role.setAlias.cmd.toSlashMention() + "\n" +
+                    "The highest value for each resource will be used" +
+                    "Format: `role_id:resource1,resource2,resource3`";
+        }
+    }.setupRequirements(f -> f.requireValidAlliance().requiresOffshore());
+
+    // add a limit interval
+    public static GuildSetting<Long> GRANT_LIMIT_DELAY = new GuildLongSetting(GuildSettingCategory.RECRUIT) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String GRANT_LIMIT_DELAY(@Me GuildDB db, @Me User user, @Timediff Long timediff) {
+            if (timediff < TimeUnit.HOURS.toMillis(2)) {
+                return "The interval must be at least 2 hours";
+            }
+            return GRANT_LIMIT_DELAY.setAndValidate(db, user, timediff);
+        }
+
+        // fix legacy
+        @Override
+        public Long parse(GuildDB db, String input) {
+            // if info contains letters
+            if (input.matches(".*[a-zA-Z]+.*")) {
+                input = "" + (TimeUtil.timeToSec(input) * 1000);
+            }
+            return super.parse(db, input);
+        }
+
+        @Override
+        public String toReadableString(GuildDB db, Long value) {
+            return TimeUtil.secToTime(TimeUnit.MILLISECONDS, value);
+        }
+
+        @Override
+        public String help() {
+            return "The timeframe the " + GRANT_TEMPLATE_LIMITS.name() + " is for, which restricts max funds that a user can grant using templates over this timeframe.";
+        }
+
+    }.setupRequirements(f -> f.requireValidAlliance().requires(RECRUIT_MESSAGE_OUTPUT).requires(ALLIANCE_ID));
 
     //AA_GROUND_THRESHOLD - Double (min=0, max=100, default: 40)
 //    public static GuildSetting<Double> AA_GROUND_THRESHOLD = new GuildDoubleSetting(GuildSettingCategory.ORBIS_ALERTS) {

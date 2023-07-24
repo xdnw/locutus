@@ -34,6 +34,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -45,6 +46,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 public class GrantCommands {
 
@@ -675,18 +677,18 @@ public class GrantCommands {
         String instructions = template.getInstructions(me, receiver, customValue);
 
         // validate requirements
-        List<Grant.Requirement> failedRequirements = new ArrayList<>();
-        requirements = template.getDefaultRequirements(me, receiver, customValue);
-        boolean canOverride = Roles.ECON.has(selfMember);
-        for (Grant.Requirement requirement : requirements) {
-            if (!requirement.apply(receiver.asNation())) {
-                failedRequirements.add(requirement);
-                if (requirement.canOverride() && canOverride) continue;
-                else {
-                    return "Failed requirement: " + requirement.getMessage();
-                }
-            }
-        }
+//        List<Grant.Requirement> failedRequirements = new ArrayList<>();
+//        requirements = template.getDefaultRequirements(me, receiver, customValue);
+//        boolean canOverride = Roles.ECON.has(selfMember);
+//        for (Grant.Requirement requirement : requirements) {
+//            if (!requirement.apply(receiver.asNation())) {
+//                failedRequirements.add(requirement);
+//                if (requirement.canOverride() && canOverride) continue;
+//                else {
+//                    return "Failed requirement: " + requirement.getMessage();
+//                }
+//            }
+//        }
 
         for (int i = 0; i < cost.length; i++) {
             if (cost[i] < 0)
@@ -707,13 +709,13 @@ public class GrantCommands {
             // add failedRequirements to message
             String title = "Send grant: " + template.getName();
             StringBuilder body = new StringBuilder();
-            if (!failedRequirements.isEmpty()) {
-                body.append("### Failed requirements:\n");
-                for (Grant.Requirement requirement : failedRequirements) {
-                    body.append("- ").append(requirement.getMessage()).append("\n");
-                }
-                body.append("\n\n");
-            }
+//            if (!failedRequirements.isEmpty()) {
+//                body.append("### Failed requirements:\n");
+//                for (Grant.Requirement requirement : failedRequirements) {
+//                    body.append("- ").append(requirement.getMessage()).append("\n");
+//                }
+//                body.append("\n\n");
+//            }
             body.append(template.toFullString(me, receiver, parsed));
             io.create().confirmation(title, body.toString(), command).send();
             return null;
@@ -733,6 +735,26 @@ public class GrantCommands {
             }
         }
 
+        GrantTemplateManager manager = db.getGrantTemplateManager();
+
+        Map<Long, Double> rankLimits = GuildKey.GRANT_TEMPLATE_LIMITS.getOrNull(db);
+        Double limit = null;
+        if (rankLimits != null && !rankLimits.isEmpty()) {
+            Member myRoles = selfMember;
+            for (Map.Entry<Long, Double> entry : rankLimits.entrySet()) {
+                Role role = db.getGuild().getRoleById(entry.getKey());
+                if (role == null) continue;
+                if (myRoles.getRoles().contains(role)) {
+                    if (limit == null) limit = 0d;
+                    limit = Math.max(limit, entry.getValue());
+                }
+            }
+            if (limit == null) {
+                throw new IllegalArgumentException("Grant template limits are set (see: " + CM.settings.info.cmd.toSlashMention() + " with key " + GuildKey.GRANT_TEMPLATE_LIMITS.name() + ")\n" +
+                        "However you have none of the roles set in the limits.");
+            }
+        }
+
         Map.Entry<OffshoreInstance.TransferStatus, String> status;
         synchronized (OffshoreInstance.BANK_LOCK) {
             for (Grant.Requirement requirement : requirements) {
@@ -741,6 +763,34 @@ public class GrantCommands {
                     return "Failed requirement (2): " + requirement.getMessage();
                 }
             }
+            { // limits
+
+                Long duration = GuildKey.GRANT_LIMIT_DELAY.getOrNull(db);
+                if (duration == null) duration = TimeUnit.DAYS.toMillis(1);
+                // if duration < 2h
+                if (duration < TimeUnit.HOURS.toMillis(2)) {
+                    throw new IllegalArgumentException("Grant template limits are set (see: " + CM.settings.info.cmd.toSlashMention() + " with key " + GuildKey.GRANT_LIMIT_DELAY.name() + ")\n" +
+                            "However the duration is less than 2 hours.");
+                }
+                // get grants in past timeframe
+                List<GrantTemplateManager.GrantSendRecord> records = manager.getRecordsBySender(me.getNation_id());
+                long cutoff = System.currentTimeMillis() - duration;
+                double totalOverDuration = 0;
+                for (GrantTemplateManager.GrantSendRecord record : records) {
+                    if (record.date < cutoff) continue;
+                    totalOverDuration += PnwUtil.convertedTotal(record.amount);
+                }
+                double total = totalOverDuration + PnwUtil.convertedTotal(cost);
+                if (total > limit) {
+                    throw new IllegalArgumentException("You have a grant template limit of ~$" + MathMan.format(limit) +
+                            " however have withdrawn ~$" + MathMan.format(totalOverDuration) + " over the past `" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "` " +
+                            " and are requesting ~$" + MathMan.format(PnwUtil.convertedTotal(cost)) +
+                            " which exceeds your limit by ~$" + MathMan.format(total - limit) + "\n" +
+                            "`note: Figures are equivalent market value, not straight cash`\n" +
+                            "See: " + GuildKey.GRANT_TEMPLATE_LIMITS.getCommandMention());
+                }
+            }
+
             status = offshore.transferFromNationAccountWithRoleChecks(
                     () -> accessType,
                     selfMember.getUser(),

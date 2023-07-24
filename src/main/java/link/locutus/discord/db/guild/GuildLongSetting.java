@@ -12,7 +12,7 @@ public abstract class GuildLongSetting extends GuildSetting<Long> {
     }
 
     @Override
-    public String toReadableString(Long value) {
+    public String toReadableString(GuildDB db, Long value) {
         return MathMan.format(value);
     }
 
