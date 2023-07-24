@@ -187,10 +187,10 @@ public class AllianceListener {
             ) {
                 if (groundPctAvg >= thresholdMin) {
                     alertAlliances.put(alliance, rank);
+                    alliance.setMeta(AllianceMeta.GROUND_MILITARIZATION_DATE, now);
+                } else {
+                    alliance.setMeta(AllianceMeta.GROUND_MILITARIZATION_DATE, now - TimeUnit.DAYS.toMillis(5));
                 }
-
-                // set meta
-                alliance.setMeta(AllianceMeta.GROUND_MILITARIZATION_DATE, now);
                 alliance.setMeta(AllianceMeta.GROUND_MILITARIZATION, groundPctAvg);
 
 
