@@ -5,12 +5,14 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.UnitCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.io.BitBuffer;
 
 public class VictoryCursor extends UnitCursor {
-    public double[] looted = ResourceType.getBuffer();
     public boolean hasLoot = false;
+    public double[] looted = ResourceType.getBuffer();
     private int loot_percent_cents;
+    private long infra_destroyed_value_cents;
 
     @Override
     public AttackType getAttackType() {
@@ -29,7 +31,19 @@ public class VictoryCursor extends UnitCursor {
             new Exception().printStackTrace();
             System.out.println("Infra is destroyed in victory");
         }
-        attack.
+    }
+
+    @Override
+    public void load(DBWar war, BitBuffer input) {
+        super.load(war, input);
+        // load resources
+        hasLoot = input.readBit();
+        if (hasLoot) {
+            for (ResourceType type : ResourceType.values) {
+                if (type == ResourceType.CREDITS) continue;
+                looted[type.ordinal()] = input.readVarLong() * 0.01d;
+            }
+        }
     }
 
     @Override

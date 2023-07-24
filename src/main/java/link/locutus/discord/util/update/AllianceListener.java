@@ -125,7 +125,7 @@ public class AllianceListener {
         double thresholdDaily = 0.1;
         double thresholdTurnly = 0.2;
 
-        double thresholdMin = 0.4;
+        double thresholdMin = 0.2;
 
         Map<Integer, Double> milPreviousMap = new HashMap<>();
         Map<Integer, Double> milNowMap = new HashMap<>();
