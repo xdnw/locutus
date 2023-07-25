@@ -832,7 +832,7 @@ public class OffshoreInstance {
                 senderDB.subtractBalance(timestamp, nationAccount, bankerNation.getNation_id(), note, amount);
             }
 
-            if (nationAccount != null && !depositType.isIgnored() && (banker == null || !Roles.ECON.has(banker, guildDBCached.getGuild()))) {
+            if (nationAccount != null && !depositType.isIgnored() && (banker == null || !Roles.ECON.has(banker, getGuildDB().getGuild()))) {
                 double[] myNewDeposits = nationAccount.getNetDeposits(senderDB, !ignoreGrants, -1L);
                 // ensure myDeposits and myNewDeposits difference is amount
                 double[] diff = ResourceType.getBuffer();
