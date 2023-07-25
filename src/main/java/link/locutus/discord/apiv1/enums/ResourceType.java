@@ -11,11 +11,9 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.util.IOUtil;
-import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -84,7 +82,7 @@ public enum ResourceType {
     public static final ResourceType[] values = values();
     public static final List<ResourceType> valuesList = Arrays.asList(values);
 
-    public static boolean isEmpty(double[] resources) {
+    public static boolean isZero(double[] resources) {
         for (double i : resources) {
             if (i != 0 && (Math.abs(i) >= 0.005)) return false;
         }
@@ -233,7 +231,7 @@ public enum ResourceType {
         }
 
         public boolean isEmpty() {
-            return resources == null || ResourceType.isEmpty(resources);
+            return resources == null || ResourceType.isZero(resources);
         }
 
         public double[] build() {

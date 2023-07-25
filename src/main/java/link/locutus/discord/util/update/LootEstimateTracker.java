@@ -103,13 +103,13 @@ public class LootEstimateTracker {
     }
 
     public void add(int nationId, long date, double[] minAndMax) {
-        if (ResourceType.isEmpty(minAndMax)) return;
+        if (ResourceType.isZero(minAndMax)) return;
         LootEstimate estimate = getOrCreate(nationId);
         if (estimate != null) estimate.addRelative(minAndMax, date);
     }
 
     public void addRevenue(int nationId, long date, double[] minAndMax, int taxId) {
-        if (ResourceType.isEmpty(minAndMax)) return;
+        if (ResourceType.isZero(minAndMax)) return;
         LootEstimate estimate = getOrCreate(nationId);
         if (estimate != null) estimate.addUnknownRevenue(this, nationId, taxId, date, minAndMax);
     }
@@ -237,7 +237,7 @@ public class LootEstimateTracker {
         }
 
         public synchronized void addDiffByTaxId(int taxId, double[] diff) {
-            if (ResourceType.isEmpty(diff)) {
+            if (ResourceType.isZero(diff)) {
                 if (diffByTaxId != null) diffByTaxId.remove(taxId);
                 return;
             }
@@ -285,7 +285,7 @@ public class LootEstimateTracker {
             if (taxId != this.tax_id) {
                 if (this.tax_id != 0) {
                     double[] oldDiff = getDiffByTaxId(this.tax_id);
-                    if (!ResourceType.isEmpty(oldDiff)) {
+                    if (!ResourceType.isZero(oldDiff)) {
                         addDiffByTaxId(this.tax_id, oldDiff);
                         parent.saveTaxDiff.consume(nationId, this.tax_id, oldDiff);
                     }

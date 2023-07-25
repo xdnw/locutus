@@ -25,35 +25,33 @@ import java.util.regex.Pattern;
 import static link.locutus.discord.util.TimeUtil.YYYY_MM_DD_HH_MM_SS;
 
 public class DBAttack {
-    private WarAttackSerializer serializer;
-    private byte[] data;
-//    private int war_attack_id;
-//    private long date;
-//    private int war_id;
-//    private int attacker_nation_id;
-//    private int defender_nation_id;
-
-//    private AttackType attack_type;
-//    private int success;
-
-//    private Map<Byte, Integer> units_killed;// = new Byte2IntArrayMap();
-
-//    private double infra_destroyed;
-//    private int improvements_destroyed;
-
-//    public ResourceType.IResourceArray resources_looted;
-//    private double lootPercent;
-
-//    private int city_infra_before_cents;
-//    private long infra_destroyed_value_cents;
-
-//    private short att_gas_used_cents;
-//    private short att_mun_used_cents;
-//    private short def_gas_used_cents;
-//    private short def_mun_used_cents;
-//
-//    public double infraPercent_cached;
-//    public int city_cached;
+    private int war_attack_id;
+    private long date;
+    private int war_id;
+    private int attacker_nation_id;
+    private int defender_nation_id;
+    private AttackType attack_type;
+    private int victor;
+    private int success;
+    private int attcas1;
+    private int attcas2;
+    private int defcas1;
+    private int defcas2;
+    private int defcas3;
+    private double infra_destroyed;
+    private int improvements_destroyed;
+    private double money_looted;
+    public double[] loot;
+    private int looted;
+    private double lootPercent;
+    private double city_infra_before;
+    private double infra_destroyed_value;
+    private double att_gas_used;
+    private double att_mun_used;
+    private double def_gas_used;
+    private double def_mun_used;
+    public double infraPercent_cached;
+    public int city_cached;
 
     public DBAttack() {}
 
@@ -93,31 +91,31 @@ public class DBAttack {
     }
 
     public DBAttack(WarAttack a) {
-        this(a.getId(),
-        a.getDate().toEpochMilli(),
-        a.getWar_id(),
-        a.getAtt_id(),
-        a.getDef_id(),
-        AttackType.fromV3(a.getType()),
-        a.getVictor(),
-        a.getSuccess(),
-        a.getAttcas1(),
-        a.getAttcas2(),
-        a.getDefcas1(),
-        a.getDefcas2(),
-        a.getAircraft_killed_by_tanks(),
-        a.getInfra_destroyed(),
-        a.getImprovements_lost(),
-        a.getMoney_stolen(),
-        a.getLoot_info(),
-        a.getCity_infra_before(),
-        a.getInfra_destroyed_value(),
-        a.getAtt_gas_used(),
-        a.getAtt_mun_used(),
-        a.getDef_gas_used(),
-        a.getDef_mun_used());
-
-        if (a.getCity_id() != null) this.city_cached = a.getCity_id();
+        throw new UnsupportedOperationException("This constructor is not supported. Use the other one.");
+//        this(a.getId(),
+//        a.getDate().toEpochMilli(),
+//        a.getWar_id(),
+//        a.getAtt_id(),
+//        a.getDef_id(),
+//        AttackType.fromV3(a.getType()),
+//        a.getVictor(),
+//        a.getSuccess(),
+//        a.getAttcas1(),
+//        a.getAttcas2(),
+//        a.getDefcas1(),
+//        a.getDefcas2(),
+//        a.getAircraft_killed_by_tanks(),
+//        a.getInfra_destroyed(),
+//        a.getImprovements_lost(),
+//        a.getMoney_stolen(),
+//        a.getLoot_info(),
+//        a.getCity_infra_before(),
+//        a.getInfra_destroyed_value(),
+//        a.getAtt_gas_used(),
+//        a.getAtt_mun_used(),
+//        a.getDef_gas_used(),
+//        a.getDef_mun_used());
+//        if (a.getCity_id() != null) this.city_cached = a.getCity_id();
     }
 
     public Map<ResourceType, Double> getLoot() {
@@ -138,11 +136,6 @@ public class DBAttack {
             setLooted(allianceId.get());
 
             String looterStr = note.split(" looted [0-9]+\\.[0-9]+% of ")[0];
-            for (Map.Entry<Integer, DBNation> entry : Locutus.imp().getNationDB().getNations().entrySet()) {
-                if (entry.getValue().getNation().equals(looterStr)) {
-                    break;
-                }
-            }
         } else if (getAttack_type() == AttackType.VICTORY) {
             setLoot(new double[ResourceType.values.length]);
             setLoot(parseNationLoot(note, loot));
@@ -200,14 +193,16 @@ public class DBAttack {
         return lootPercent;
     }
 
-    private static double parseBankLoot(String input, AtomicInteger allianceIdOutput, double[] resourceOutput) {
+    public static double parseBankLoot(String input, AtomicInteger allianceIdOutput, double[] resourceOutput) {
         String[] split = input.split(" looted [0-9]+\\.[0-9]+% of ", 2);
         String attacker = split[0];
 
         split = split[1].split("'s alliance bank, taking: \\$", 2);
         String bank = split[0];
 
-        double[] rss = parseRss(split[1], resourceOutput);
+        if (resourceOutput != null) {
+            double[] rss = parseRss(split[1], resourceOutput);
+        }
 
         Matcher matcher = PERCENT_PATTERN.matcher(input);
         matcher.matches();
@@ -320,7 +315,6 @@ public class DBAttack {
 
     public Map<MilitaryUnit, Integer> getUnitLosses(boolean attacker) {
         if (getAttack_type() == AttackType.NUKE || getAttack_type() == AttackType.MISSILE) {
-            setVictor(getAttacker_nation_id());
             setAttcas1(1);
         }
         if (getAttcas1() == 0 && getAttcas2() == 0 && getDefcas1() == 0 && getDefcas2() == 0 && getDefcas3() == 0) return Collections.emptyMap();
@@ -383,9 +377,6 @@ public class DBAttack {
                 }
             }
         }
-        if ((getAttack_type() == AttackType.NUKE || getAttack_type() == AttackType.MISSILE) && getSuccess() == 1) {
-            setVictor(getAttacker_nation_id());
-        }
         if (attacker ? getVictor() == getDefender_nation_id() : getVictor() == getAttacker_nation_id()) {
             if (infra && getInfra_destroyed_value() != 0) {
                 if (getInfra_destroyed_value() == intOverflow) {
@@ -406,6 +397,10 @@ public class DBAttack {
             }
         }
         return losses;
+    }
+
+    public int getVictor() {
+        return getSuccess() > 0 ? getAttacker_nation_id() : getDefender_nation_id();
     }
 
     public int getWar_id() {

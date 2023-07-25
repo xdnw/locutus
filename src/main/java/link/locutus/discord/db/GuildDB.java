@@ -1784,7 +1784,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 addTransfer(dateTime, 0, 0, account.getIdLong(), account.getReceiverType(), banker, offshoreNote, toSubtract);
             }
         }
-        if (!ResourceType.isEmpty(amountLeft)) {
+        if (!ResourceType.isZero(amountLeft)) {
             throw new IllegalArgumentException("Could not add balance to all accounts. Amount left: " + PnwUtil.resourcesToString(amountLeft));
         }
         return ammountEach;

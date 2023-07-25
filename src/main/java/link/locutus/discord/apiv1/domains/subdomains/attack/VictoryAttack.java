@@ -10,7 +10,7 @@ public abstract class VictoryAttack extends AbstractAttack {
     }
 
     public static VictoryAttack create(int id, long date, boolean isAttackerIdGreater, double[] loot, double lootPct, double infra_destroyed_value) {
-        boolean noLoot = (loot == null || ResourceType.isEmpty(loot));
+        boolean noLoot = (loot == null || ResourceType.isZero(loot));
         boolean noInfra = (infra_destroyed_value == 0);
         if (noLoot) {
             if (noInfra) {

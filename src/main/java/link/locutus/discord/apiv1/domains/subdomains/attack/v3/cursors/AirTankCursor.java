@@ -1,10 +1,10 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors;
 
 import com.politicsandwar.graphql.model.WarAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.UnitCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.io.BitBuffer;
 
@@ -13,6 +13,13 @@ public class AirTankCursor extends UnitCursor {
     private int defcas1;
     private int defcas2;
 
+    @Override
+    public void load(DBAttack legacy) {
+        super.load(legacy);
+        attcas1 = legacy.getAttcas1();
+        defcas1 = legacy.getDefcas1();
+        defcas2 = legacy.getDefcas2();
+    }
 
     @Override
     public AttackType getAttack_type() {
@@ -22,7 +29,6 @@ public class AirTankCursor extends UnitCursor {
     @Override
     public void load(WarAttack attack) {
         super.load(attack);
-        success = SuccessType.values[attack.getSuccess()];
         this.attcas1 = attack.getAtt_soldiers_lost();
         this.defcas1 = attack.getDef_soldiers_lost();
         this.defcas2 = attack.getDef_tanks_lost();

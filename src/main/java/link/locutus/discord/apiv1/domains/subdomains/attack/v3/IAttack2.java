@@ -53,12 +53,15 @@ public interface IAttack2 {
     double getInfra_destroyed();
     int getImprovements_destroyed(); // ?
     void addBuildingsDestroyed(int[] destroyedBuffer);
-
+    default int getAllianceIdLooted() {
+        return 0;
+    }
     double getMoney_looted();
     double[] getLoot();
     double getLootPercent();
     // skip getLooted
     double getCity_infra_before();
+
     default double getInfra_destroyed_value() {
         double before = getCity_infra_before();
         if (before > 0) {

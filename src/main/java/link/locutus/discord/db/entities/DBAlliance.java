@@ -1088,7 +1088,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
             }
 
             double[] deposit = ResourceType.fromApiV3(bankrec, null);
-            if (ResourceType.isEmpty(deposit)) continue;
+            if (ResourceType.isZero(deposit)) continue;
 
             int moneyTax = 0;
             int resourceTax = 0;
@@ -1233,7 +1233,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
                 toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.ALLIANCE_ACCESS, ResourceType.getBuffer()));
                 continue;
             }
-            if (ResourceType.isEmpty(resources)) {
+            if (ResourceType.isZero(resources)) {
                 toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, ResourceType.getBuffer()));
                 continue;
             }

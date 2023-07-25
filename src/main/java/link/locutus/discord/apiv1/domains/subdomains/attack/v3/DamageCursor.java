@@ -2,6 +2,7 @@ package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
 import com.politicsandwar.graphql.model.WarAttack;
 import it.unimi.dsi.fastutil.bytes.Byte2ByteArrayMap;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -20,6 +21,20 @@ public abstract class DamageCursor extends AbstractCursor{
     private Map<Byte, Byte> buildingsDestroyed = new Byte2ByteArrayMap();
     private int num_improvements;
 
+    @Override
+    public void load(DBAttack legacy) {
+        super.load(legacy);
+        success = SuccessType.values[legacy.getSuccess()];
+        city_id = legacy.city_cached;
+        city_infra_before_cents = (int) (legacy.getCity_infra_before() * 100);
+        infra_destroyed_cents = (int) (legacy.getInfra_destroyed() * 100);
+        num_improvements = legacy.getImprovements_destroyed();
+        buildingsDestroyed.clear();
+        if (num_improvements > 0) {
+            // default to Buildings.FARM.ordinal()
+            buildingsDestroyed.put((byte) Buildings.FARM.ordinal(), (byte) num_improvements);
+        }
+    }
 
     @Override
     public final SuccessType getSuccess() {

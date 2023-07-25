@@ -301,7 +301,7 @@ public class BankCommands {
                 }
                 toKeep = PnwUtil.max(toKeep, rss);
             }
-            if (!ResourceType.isEmpty(toKeep)) {
+            if (!ResourceType.isZero(toKeep)) {
                 // to deposit = stockpile - toKeep, max 0
                 toDeposit = ResourceType.builder().add(stockpile).subtract(toKeep).build();
             }
@@ -309,7 +309,7 @@ public class BankCommands {
             toDeposit = PnwUtil.max(toDeposit, ResourceType.getBuffer());
             toDeposit = PnwUtil.min(toDeposit, PnwUtil.resourcesToArray(stockpile));
 
-            if (ResourceType.isEmpty(toDeposit)) {
+            if (ResourceType.isZero(toDeposit)) {
                 statuses.put(nation, OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN);
                 continue;
             }
@@ -1416,7 +1416,7 @@ public class BankCommands {
         Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, 0, 0);
 
         double[] toAdd = depoByType.get(from);
-        if (toAdd == null || ResourceType.isEmpty(toAdd)) {
+        if (toAdd == null || ResourceType.isZero(toAdd)) {
             return "Nothing to shift for " + nation.getNation();
         }
         long now = System.currentTimeMillis();
@@ -3314,7 +3314,7 @@ public class BankCommands {
                 for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : depoByAccount.entrySet()) {
                     NationOrAllianceOrGuild account = entry.getKey();
                     double[] depo = entry.getValue();
-                    if (!ResourceType.isEmpty(depo)) {
+                    if (!ResourceType.isZero(depo)) {
                         long tx_datetime = System.currentTimeMillis();
                         long receiver_id = 0;
                         int receiver_type = 0;
@@ -3323,7 +3323,7 @@ public class BankCommands {
                         String note = "#deposit";
                         double[] amount = depo;
                         for (int i = 0; i < amount.length; i++) amount[i] = -amount[i];
-                        if (!ResourceType.isEmpty(amount)) {
+                        if (!ResourceType.isZero(amount)) {
                             if (account.isGuild()) {
                                 offshoreDB.addTransfer(tx_datetime, account.asGuild().getIdLong(), account.getReceiverType(), receiver_id, receiver_type, banker, note, amount);
                             } else {

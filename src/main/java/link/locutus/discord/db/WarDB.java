@@ -9,6 +9,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.WarAttacksContainer;
 import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.WarAttackWrapper;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AttackCursorFactory;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.WarType;
@@ -76,10 +78,42 @@ public class WarDB extends DBMainV2 {
 
         Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS = -1;
 
+        warDb.testLoadAttacks2();
+
         System.exit(0);
 
 //        warDb.loadWars();
 //        warDb.testLoadAttacks();
+    }
+
+    public void testLoadAttacks2() {
+        String whereClause;
+        if (Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS == 0) {
+            return ;
+        } else if (Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS >= 0) {
+            long date = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS);
+            whereClause = " WHERE date > " + date;
+        } else {
+            whereClause = "";
+        }
+
+        AttackCursorFactory cursorManager = new AttackCursorFactory();
+
+        try (PreparedStatement stmt= getConnection().prepareStatement("select * FROM `attacks2`" + whereClause + " ORDER BY `war_attack_id` ASC", ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY)) {
+            stmt.setFetchSize(2 << 16);
+            try (ResultSet rs = stmt.executeQuery()) {
+                DBAttack legacy = createAttack(rs);
+                AbstractCursor cursor = cursorManager.load(legacy, true);
+
+                // check values match
+
+                // serialize then deserialize to check matches
+
+                // test api v3 war attack matches
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     public void testLoadAttacks() {
@@ -170,7 +204,7 @@ public class WarDB extends DBMainV2 {
                     switch (attack.getAttack_type()) {
                         case VICTORY -> {
                             double[] lootAmt = legacy.loot;
-                            if (lootAmt != null && !ResourceType.isEmpty(lootAmt)) {
+                            if (lootAmt != null && !ResourceType.isZero(lootAmt)) {
                                 if (!Arrays.equals(lootAmt, wrapper.getLoot())) {
                                     throw new IllegalStateException("Attack loot mismatch " + Arrays.toString(lootAmt) + " != " + Arrays.toString(wrapper.getLoot()));
                                 }
@@ -2190,7 +2224,6 @@ public class WarDB extends DBMainV2 {
 
         if (attack.getSuccess() > 0 || attack.getAttack_type() == AttackType.VICTORY)
         {
-            attack.setVictor(attack.getAttacker_nation_id());
             attack.setLooted(attack.getDefender_nation_id());
 
             attack.setInfra_destroyed(getLongDef0(rs, 15) * 0.01);
@@ -2216,7 +2249,6 @@ public class WarDB extends DBMainV2 {
                 attack.setLoot(ArrayUtil.toDoubleArray(lootBytes));
                 attack.setLootPercent(rs.getInt(20) * 0.0001);
             }
-            attack.setVictor(rs.getInt(7));
         }
 
         switch (attack.getAttack_type()) {

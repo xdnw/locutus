@@ -432,28 +432,72 @@ public class PoliticsAndWarV3 {
             p.att_id();
             p.def_id();
             p.type();
-            p.victor();
             p.success();
 //            p.attcas1();
 //            p.attcas2();
 //            p.defcas1();
 //            p.defcas2();
+            // victory
+            p.infra_destroyed_percentage();
+
+            CityInfraDamageResponseProjection cityDamageProj = new CityInfraDamageResponseProjection();
+            cityDamageProj.infrastructure();
+            cityDamageProj.id();
+
+            p.cities_infra_before(cityDamageProj);
 
 
-
-            p.aircraft_killed_by_tanks();
+            // unit attack
             p.infra_destroyed();
-            p.improvements_lost();
-            p.money_stolen();
-            p.loot_info();
             p.city_infra_before();
-            p.infra_destroyed_value();
+            p.city_id();
+
+            // units for each attack
+            p.att_soldiers_lost();
+            p.def_soldiers_lost();
+            p.att_tanks_lost();
+            p.def_tanks_lost();
+            p.att_aircraft_lost();
+            p.def_aircraft_lost();
+            p.att_ships_lost();
+            p.def_ships_lost();
+
+            // ground money
+            p.money_stolen();
+
+            // a and victory loot
+            // loot percent??
+            p.loot_info(); // deprecated
+            p.money_looted();
+            p.coal_looted();
+            p.oil_looted();
+            p.uranium_looted();
+            p.iron_looted();
+            p.bauxite_looted();
+            p.lead_looted();
+            p.gasoline_looted();
+            p.munitions_looted();
+            p.steel_looted();
+            p.aluminum_looted();
+            p.food_looted();
+
+            // airstrike money
+            p.money_destroyed();
+
+            // improvements
+            p.improvements_destroyed();
+
+            p.money_stolen();
+//            p.infra_destroyed_value(); // can be calculated
+
+            // slavage
+            p.military_salvage_aluminum();
+            p.military_salvage_steel();
+
             p.att_gas_used();
             p.att_mun_used();
             p.def_gas_used();
             p.def_mun_used();
-
-            p.city_id();
         };
     }
 

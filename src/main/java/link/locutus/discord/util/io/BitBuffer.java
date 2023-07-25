@@ -118,6 +118,18 @@ public class BitBuffer {
         return this;
     }
 
+    public int getPosition() {
+        return position;
+    }
+
+    public byte[] getWrittenBytes() {
+        // bytes up to position
+        byte[] bytes = new byte[position];
+        byte[] allBytes = this.bytes.array();
+        System.arraycopy(allBytes, 0, bytes, 0, position);
+        return bytes;
+    }
+
     public BitBuffer clear() {
         return position(0);
     }

@@ -1889,7 +1889,7 @@ type WarAttack {
 
   # String containing the entire text stating what the winner looted (note: contains '' and '
   # ' for HTML formatting)
-#   loot_info: String @deprecated(reason: "No longer in use")
+   loot_info: String @deprecated(reason: "No longer in use")
 
   # Resistance eliminated by the attack
 #   resistance_eliminated: Int @deprecated(reason: "Use resistance_lost instead.")

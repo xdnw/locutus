@@ -2,17 +2,20 @@ package link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors;
 
 import com.politicsandwar.graphql.model.WarAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.FailedCursor;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.UnitCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.io.BitBuffer;
+
+import java.util.Map;
 
 public class VictoryCursor extends FailedCursor {
     public boolean hasLoot = false;
     public double[] looted = ResourceType.getBuffer();
     private int loot_percent_cents;
+    private Map<Integer, Integer> cityInfraBefore;
+    private int ifnra_destroyed_percent_cents;
     private long infra_destroyed_value_cents;
 
     @Override
@@ -26,6 +29,46 @@ public class VictoryCursor extends FailedCursor {
         if (attack.getInfra_destroyed() != null) {
             new Exception().printStackTrace();
             System.out.println("Infra is destroyed in victory");
+        }
+
+        // loot
+        looted[ResourceType.MONEY.ordinal()] = attack.getMoney_looted();
+        looted[ResourceType.COAL.ordinal()] = attack.getCoal_looted();
+        looted[ResourceType.OIL.ordinal()] = attack.getOil_looted();
+        looted[ResourceType.URANIUM.ordinal()] = attack.getUranium_looted();
+        looted[ResourceType.IRON.ordinal()] = attack.getIron_looted();
+        looted[ResourceType.BAUXITE.ordinal()] = attack.getBauxite_looted();
+        looted[ResourceType.LEAD.ordinal()] = attack.getLead_looted();
+        looted[ResourceType.GASOLINE.ordinal()] = attack.getGasoline_looted();
+        looted[ResourceType.MUNITIONS.ordinal()] = attack.getMunitions_looted();
+        looted[ResourceType.STEEL.ordinal()] = attack.getSteel_looted();
+        looted[ResourceType.ALUMINUM.ordinal()] = attack.getAluminum_looted();
+        looted[ResourceType.FOOD.ordinal()] = attack.getFood_looted();
+
+        hasLoot = !ResourceType.isZero(looted);
+
+        if (hasLoot) {
+            // get war
+            DBWar war = getWar();
+
+            if (war != null) {
+                DBNation attacker = war.getNation(true);
+                DBNation defender = war.getNation(false);
+
+                double baseLoot = 0.1 * war.getWarType().lootModifier();
+                double modifier = 1;
+                if (attacker != null) {
+                    modifier += attacker.looterModifier(false) - 1;
+                }
+                if (defender != null) {
+                    modifier += defender.lootModifier() - 1;
+                }
+
+                loot_percent_cents = (int) Math.round(100 * baseLoot * modifier);
+            }
+
+        } else {
+            loot_percent_cents = 0;
         }
     }
 

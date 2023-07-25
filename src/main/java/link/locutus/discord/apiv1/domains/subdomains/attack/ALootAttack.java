@@ -10,7 +10,7 @@ public abstract class ALootAttack extends AbstractAttack {
     }
 
     public static ALootAttack create(int id, long date, boolean isAttackerIdGreater, double[] loot, double lootPct) {
-        boolean noLoot = (loot == null || ResourceType.isEmpty(loot));
+        boolean noLoot = (loot == null || ResourceType.isZero(loot));
         if (noLoot) {
             return new ALootAttack.ALootAttackNoLootNoInfra(id, date, isAttackerIdGreater);
         } else {
