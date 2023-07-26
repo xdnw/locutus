@@ -5,6 +5,7 @@ import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.WarAttacksContainer;
@@ -87,6 +88,52 @@ public class WarDB extends DBMainV2 {
 
 //        warDb.loadWars();
 //        warDb.testLoadAttacks();
+    }
+
+    public void testAttackSerializingTime() throws IOException {
+        Map<AttackType, Integer> countByType = new EnumMap<>(AttackType.class);
+        int num_attacks = 0;
+        int numErrors = 0;
+
+        AttackCursorFactory cursorManager = new AttackCursorFactory();
+
+        FastByteArrayOutputStream baos = new FastByteArrayOutputStream();
+
+
+        long start = System.currentTimeMillis();
+        try (PreparedStatement stmt= getConnection().prepareStatement("select * FROM `attacks2` ORDER BY `war_attack_id` ASC", ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY)) {
+            stmt.setFetchSize(2 << 16);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    DBAttack legacy = createAttack(rs);
+                    AbstractCursor cursor = cursorManager.load(legacy, true);
+                    DBWar war = getWar(legacy.getWar_id());
+                    // serialize
+                    byte[] bytes = cursorManager.toBytes(cursor);
+                    // add byte length to count
+                    countByType.compute(legacy.getAttack_type(), (k, v) -> v == null ? bytes.length : v + bytes.length);
+                    // write
+                    baos.write(bytes);
+
+                    // deserialize
+                    AbstractCursor cursor2 = cursorManager.load(war, bytes, true);
+
+                }
+            }
+        } catch (SQLException | IOException e) {
+            e.printStackTrace();
+        }
+
+        long diff = System.currentTimeMillis() - start;
+        // print
+        System.out.println("Took " + diff + "ms to load " + num_attacks + " attacks");
+        // print total bytes
+        System.out.println("Total bytes: " + baos.length());
+        // print total by type
+        for (Map.Entry<AttackType, Integer> entry : countByType.entrySet()) {
+            System.out.println(entry.getKey() + ": " + entry.getValue());
+        }
+
     }
 
     public void testLoadAttacks3() {
