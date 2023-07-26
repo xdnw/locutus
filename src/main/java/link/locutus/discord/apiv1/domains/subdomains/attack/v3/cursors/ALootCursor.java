@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.FailedCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.io.BitBuffer;
 
@@ -21,13 +22,22 @@ public class ALootCursor extends FailedCursor {
     private int alliance_id;
 
     @Override
+    public SuccessType getSuccess() {
+        return SuccessType.PYRRHIC_VICTORY;
+    }
+
+    @Override
     public void load(DBAttack legacy) {
         super.load(legacy);
         this.hasLoot = legacy.loot != null && !ResourceType.isZero(legacy.loot);
-        this.loot_percent_cents = (int) (legacy.getLootPercent() * 100);
+        this.loot_percent_cents = (int) (legacy.getLootPercent() * 100 * 100);
         this.alliance_id = legacy.getLooted() == null ? 0 : legacy.getLooted();
         if (hasLoot) {
             this.looted = legacy.loot;
+        } else if (legacy.getMoney_looted() > 0) {
+            hasLoot = true;
+            Arrays.fill(looted, 0);
+            looted[ResourceType.MONEY.ordinal()] = legacy.getMoney_looted();
         }
     }
 
@@ -38,7 +48,7 @@ public class ALootCursor extends FailedCursor {
 
     @Override
     public double getLootPercent() {
-        return hasLoot ? loot_percent_cents * 0.01d : 0;
+        return loot_percent_cents * 0.0001d;
     }
 
     @Override
@@ -77,6 +87,7 @@ public class ALootCursor extends FailedCursor {
 
             hasLoot = !ResourceType.isZero(looted);
         } else {
+            loot_percent_cents = 0;
             hasLoot = false;
             alliance_id = 0;
         }

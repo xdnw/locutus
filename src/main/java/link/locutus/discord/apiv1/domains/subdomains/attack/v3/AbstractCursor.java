@@ -32,9 +32,9 @@ public abstract class AbstractCursor implements IAttack2 {
         war_cached = null;
         war_attack_id = attack.getId();
         date = attack.getDate().toEpochMilli();
-        war_id = attack.getWar().getId();
-        attacker_id = attack.getAttacker().getId();
-        defender_id = attack.getDefender().getId();
+        war_id = attack.getWar_id();
+        attacker_id = attack.getAtt_id();
+        defender_id = attack.getDef_id();
     }
 
     public void serialze(BitBuffer output) {

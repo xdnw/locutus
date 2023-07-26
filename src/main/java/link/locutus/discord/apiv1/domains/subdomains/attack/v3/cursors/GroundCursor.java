@@ -27,7 +27,7 @@ public class GroundCursor extends UnitCursor {
         this.defcas1 = legacy.getDefcas1();
         this.defcas2 = legacy.getDefcas2();
         this.defcas3 = legacy.getDefcas3();
-        this.money_looted_cents = (long) (legacy.getMoney_looted() * 100);
+        this.money_looted_cents = (long) Math.round(legacy.getMoney_looted() * 100);
     }
 
     @Override

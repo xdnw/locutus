@@ -1,21 +1,29 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors;
 
+import com.politicsandwar.graphql.model.CityInfraDamage;
 import com.politicsandwar.graphql.model.WarAttack;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.FailedCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.io.BitBuffer;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 public class VictoryCursor extends FailedCursor {
     public boolean hasLoot = false;
     public double[] looted = ResourceType.getBuffer();
     private int loot_percent_cents;
-    private Map<Integer, Integer> cityInfraBefore;
-    private int ifnra_destroyed_percent_cents;
+    private Map<Integer, Integer> city_infra_before_cents = new Int2IntOpenHashMap();
+    private int infra_destroyed_percent_cents;
+    private int infra_destroyed_cents;
     private long infra_destroyed_value_cents;
 
     @Override
@@ -24,11 +32,71 @@ public class VictoryCursor extends FailedCursor {
     }
 
     @Override
+    public SuccessType getSuccess() {
+        return SuccessType.PYRRHIC_VICTORY;
+    }
+
+    @Override
+    public double[] getLoot() {
+        return hasLoot ? looted : null;
+    }
+
+    @Override
+    public double getLootPercent() {
+        return loot_percent_cents * 0.01d;
+    }
+
+    @Override
+    public void load(DBAttack legacy) {
+        super.load(legacy);
+        this.hasLoot = legacy.loot != null && !ResourceType.isZero(legacy.loot);
+        this.loot_percent_cents = (int) Math.round(legacy.getLootPercent() * 100);
+        if (hasLoot) {
+            this.looted = legacy.loot;
+        } else if (legacy.getMoney_looted() > 0) {
+            hasLoot = true;
+            Arrays.fill(looted, 0);
+            looted[ResourceType.MONEY.ordinal()] = legacy.getMoney_looted();
+        }
+        city_infra_before_cents.clear();
+        this.infra_destroyed_cents = (int) Math.round(legacy.getInfra_destroyed() * 100);
+        infra_destroyed_percent_cents = (int) Math.round(legacy.infraPercent_cached * 100);
+        infra_destroyed_value_cents = (int) Math.round(legacy.getInfra_destroyed_value() * 100);
+    }
+
+    @Override
+    public double getInfra_destroyed() {
+        return infra_destroyed_cents * 0.01;
+    }
+
+    @Override
+    public double getInfra_destroyed_percent() {
+        return infra_destroyed_percent_cents * 0.01;
+    }
+
+    @Override
     public void load(WarAttack attack) {
         super.load(attack);
         if (attack.getInfra_destroyed() != null) {
             new Exception().printStackTrace();
             System.out.println("Infra is destroyed in victory");
+        }
+
+        List<CityInfraDamage> infraBefore = attack.getCities_infra_before();
+        infra_destroyed_percent_cents = (int) (attack.getInfra_destroyed_percentage() * 100);
+        city_infra_before_cents.clear();
+        infra_destroyed_value_cents = 0;
+        infra_destroyed_cents = 0;
+
+        if (infraBefore != null && !infraBefore.isEmpty() && infra_destroyed_percent_cents > 0) {
+            for (CityInfraDamage cityInfraDamage : infraBefore) {
+                double before = cityInfraDamage.getInfrastructure();
+                double after = before * (1 - attack.getInfra_destroyed_percentage());
+                double value = PnwUtil.calculateInfra(after, before);
+                infra_destroyed_cents += (before - after) * 100;
+                infra_destroyed_value_cents += (value * 100);
+                city_infra_before_cents.put(cityInfraDamage.getId(), (int) (before * 100));
+            }
         }
 
         // loot
@@ -73,21 +141,6 @@ public class VictoryCursor extends FailedCursor {
     }
 
     @Override
-    public void load(DBWar war, BitBuffer input) {
-        super.load(war, input);
-        // load resources
-        hasLoot = input.readBit();
-        if (hasLoot) {
-            loot_percent_cents = input.readVarInt();
-            infra_destroyed_value_cents = input.readVarLong();
-            for (ResourceType type : ResourceType.values) {
-                if (type == ResourceType.CREDITS) continue;
-                looted[type.ordinal()] = input.readVarLong() * 0.01d;
-            }
-        }
-    }
-
-    @Override
     public void serialze(BitBuffer output) {
         super.serialze(output);
         // add current
@@ -95,11 +148,54 @@ public class VictoryCursor extends FailedCursor {
         if (hasLoot) {
             output.writeVarInt(loot_percent_cents);
             output.writeVarLong(infra_destroyed_value_cents);
+
+            output.writeBit(!city_infra_before_cents.isEmpty());
+            if (!city_infra_before_cents.isEmpty()) {
+                output.writeVarInt(infra_destroyed_percent_cents);
+                output.writeVarInt(city_infra_before_cents.size());
+                for (Map.Entry<Integer, Integer> entry : city_infra_before_cents.entrySet()) {
+                    output.writeVarInt(entry.getKey());
+                    output.writeVarInt(entry.getValue());
+                }
+            }
+
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.CREDITS) continue;
                 output.writeVarLong((long) (looted[type.ordinal()] * 100));
             }
         }
+    }
 
+    @Override
+    public void load(DBWar war, BitBuffer input) {
+        super.load(war, input);
+        // load resources
+        hasLoot = input.readBit();
+
+        city_infra_before_cents.clear();
+
+        if (hasLoot) {
+            loot_percent_cents = input.readVarInt();
+            infra_destroyed_value_cents = input.readVarLong();
+
+            if (input.readBit()) {
+                infra_destroyed_percent_cents = input.readVarInt();
+                int size = input.readVarInt();
+                for (int i = 0; i < size; i++) {
+                    city_infra_before_cents.put(input.readVarInt(), input.readVarInt());
+                }
+            } else {
+                infra_destroyed_percent_cents = 0;
+            }
+
+            for (ResourceType type : ResourceType.values) {
+                if (type == ResourceType.CREDITS) continue;
+                looted[type.ordinal()] = input.readVarLong() * 0.01d;
+            }
+        } else {
+            infra_destroyed_value_cents = 0;
+            infra_destroyed_percent_cents = 0;
+            loot_percent_cents = 0;
+        }
     }
 }

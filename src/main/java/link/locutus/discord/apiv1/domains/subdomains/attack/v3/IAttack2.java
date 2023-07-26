@@ -53,6 +53,13 @@ public interface IAttack2 {
     double getInfra_destroyed();
     int getImprovements_destroyed(); // ?
     void addBuildingsDestroyed(int[] destroyedBuffer);
+    /**
+     * Valid for victory when all cities receive damage
+     * @return number between 0 and 100
+     */
+    double getInfra_destroyed_percent();
+
+    int getCity_id();
     default int getAllianceIdLooted() {
         return 0;
     }
@@ -67,7 +74,7 @@ public interface IAttack2 {
         if (before > 0) {
             double destroyed = getInfra_destroyed();
             if (destroyed == 0) return 0;
-            return PnwUtil.calculateInfraFast(before, before - destroyed);
+            return PnwUtil.calculateInfra(before - destroyed, before);
         }
         return 0;
     }
@@ -77,5 +84,7 @@ public interface IAttack2 {
     double getDef_gas_used();
     double getDef_mun_used();
 
-
+    default int getVictor() {
+        return getSuccess() != SuccessType.UTTER_FAILURE ? getAttacker_id() : getDefender_id();
+    }
 }

@@ -141,8 +141,54 @@ public class AttackCursorFactory {
             throw new UnsupportedOperationException("Attack type not supported: " + type);
         }
 
+        // correct the values instead if possible
+        // infra_destroyed -> 0 if negative
+        if (legacy.getInfra_destroyed() < 0) {
+            legacy.setInfra_destroyed(0);
+        }
+        // date -> war date if negative
+        if (legacy.getDate() < 0) {
+            DBWar war = legacy.getWar();
+            if (war != null) {
+                legacy.setDate(war.getDate());
+            } else {
+                legacy.setDate(0);
+            }
+        }
+        // money_looted -> assume 0 if negative
+        if (legacy.getMoney_looted() < 0) {
+            legacy.setMoney_looted(0);
+        }
+        // att/def gas/mun assume 0 if negative
+        if (legacy.getAtt_gas_used() < 0) {
+            legacy.setAtt_gas_used(0);
+        }
+        if (legacy.getAtt_mun_used() < 0) {
+            legacy.setAtt_mun_used(0);
+        }
+        if (legacy.getDef_gas_used() < 0) {
+            legacy.setDef_gas_used(0);
+        }
+        if (legacy.getDef_mun_used() < 0) {
+            legacy.setDef_mun_used(0);
+        }
+        // defcas1, defcas2 -> assume 0 if negative
+        if (legacy.getDefcas1() < 0) {
+            legacy.setDefcas1(0);
+        }
+        if (legacy.getDefcas2() < 0) {
+            legacy.setDefcas2(0);
+        }
+        // attcas1, attcas2 -> assume 0 if negative
+        if (legacy.getAttcas1() < 0) {
+            legacy.setAttcas1(0);
+        }
+        if (legacy.getAttcas2() < 0) {
+            legacy.setAttcas2(0);
+        }
+
         checkArgument(legacy.getWar_attack_id() >= 0, "war_attack_id");
-        checkArgument(legacy.getDate() >= 0, "date");
+        checkArgument(legacy.getDate() >= 0, "date " + legacy.getDate());
         checkArgument(legacy.getWar_id() >= 0, "war_id");
         checkArgument(legacy.getAttacker_nation_id() >= 0, "attacker_nation_id");
         checkArgument(legacy.getDefender_nation_id() >= 0, "defender_nation_id");
@@ -150,12 +196,12 @@ public class AttackCursorFactory {
         checkArgument(legacy.getSuccess() >= 0, "success");
         checkArgument(legacy.getAttcas1() >= 0, "attcas1");
         checkArgument(legacy.getAttcas2() >= 0, "attcas2");
-        checkArgument(legacy.getDefcas1() >= 0, "defcas1");
+        checkArgument(legacy.getDefcas1() >= 0, "defcas1 " + legacy.getDefcas1());
         checkArgument(legacy.getDefcas2() >= 0, "defcas2");
         checkArgument(legacy.getDefcas3() >= 0, "defcas3");
-        checkArgument(legacy.getInfra_destroyed() >= 0, "infra_destroyed");
+        checkArgument(legacy.getInfra_destroyed() >= 0, "infra_destroyed " + legacy.getInfra_destroyed());
         checkArgument(legacy.getImprovements_destroyed() >= 0, "improvements_destroyed");
-        checkArgument(legacy.getMoney_looted() >= 0, "money_looted");
+        checkArgument(legacy.getMoney_looted() >= 0, "money_looted " + legacy.getMoney_looted());
         // ensure looted is either null or all values are not negative
         if (legacy.loot != null) {
             for (ResourceType r : ResourceType.values) {

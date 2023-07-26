@@ -22,12 +22,21 @@ public abstract class DamageCursor extends AbstractCursor{
     private int num_improvements;
 
     @Override
+    public int getCity_id() {
+        return city_id;
+    }
+
+    @Override
+    public double getInfra_destroyed_percent() {
+        return 0;
+    }
+    @Override
     public void load(DBAttack legacy) {
         super.load(legacy);
         success = SuccessType.values[legacy.getSuccess()];
         city_id = legacy.city_cached;
-        city_infra_before_cents = (int) (legacy.getCity_infra_before() * 100);
-        infra_destroyed_cents = (int) (legacy.getInfra_destroyed() * 100);
+        city_infra_before_cents = (int) Math.round(legacy.getCity_infra_before() * 100);
+        infra_destroyed_cents = (int) Math.round(legacy.getInfra_destroyed() * 100);
         num_improvements = legacy.getImprovements_destroyed();
         buildingsDestroyed.clear();
         if (num_improvements > 0) {
@@ -159,7 +168,10 @@ public abstract class DamageCursor extends AbstractCursor{
             num_improvements = 0;
             buildingsDestroyed.clear();
             for (String impName : attack.getImprovements_destroyed()) {
-                Building building = Buildings.get(impName);
+                Building building = Buildings.fromV3(impName);
+                if (building == null) {
+                    throw new IllegalStateException("Unknown improvement: " + impName);
+                }
                 num_improvements++;
                 buildingsDestroyed.compute((byte) building.ordinal(), (k, v) -> v == null ? (byte) 1 : (byte) (v + 1));
             }

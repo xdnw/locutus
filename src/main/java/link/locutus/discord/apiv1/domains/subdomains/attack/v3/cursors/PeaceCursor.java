@@ -11,6 +11,11 @@ import link.locutus.discord.util.io.BitBuffer;
 public class PeaceCursor extends FailedCursor {
 
     @Override
+    public SuccessType getSuccess() {
+        return SuccessType.PYRRHIC_VICTORY;
+    }
+
+    @Override
     public AttackType getAttack_type() {
         return AttackType.PEACE;
     }

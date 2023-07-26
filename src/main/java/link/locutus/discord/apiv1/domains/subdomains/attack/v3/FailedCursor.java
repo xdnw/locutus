@@ -5,8 +5,23 @@ import link.locutus.discord.apiv1.enums.SuccessType;
 
 public abstract class FailedCursor extends AbstractCursor {
     @Override
-    public final SuccessType getSuccess() {
+    public SuccessType getSuccess() {
         return SuccessType.UTTER_FAILURE;
+    }
+
+    @Override
+    public int getVictor() {
+        return getAttacker_id();
+    }
+
+    @Override
+    public int getCity_id() {
+        return 0;
+    }
+
+    @Override
+    public double getInfra_destroyed_percent() {
+        return 0;
     }
 
     @Override

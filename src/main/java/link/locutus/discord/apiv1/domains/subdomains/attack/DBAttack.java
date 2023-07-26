@@ -634,6 +634,10 @@ public class DBAttack {
     }
 
     public DBWar getWar() {
-        return Locutus.imp().getWarDb().getWar(war_id);
+        Locutus lc = Locutus.imp();
+        if (lc != null) {
+            return lc.getWarDb().getWar(war_id);
+        }
+        return null;
     }
 }

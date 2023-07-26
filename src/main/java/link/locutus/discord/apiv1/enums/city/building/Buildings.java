@@ -158,6 +158,9 @@ public class Buildings {
                     ((ABuilding) building).setOrdinal(buildingsList.size());
                     buildingsList.add(building);
                     BUILDINGS_MAP.put(building.name(), building);
+                    System.out.println(building.name() + " | " + building.nameSnakeCase() + " | " + (building.nameSnakeCase().replace("imp_", "")));
+                    BUILDINGS_MAP.put(building.nameSnakeCase(), building);
+                    BUILDINGS_MAP.put(building.nameSnakeCase().replace("imp_", ""), building);
                 }
             }
             BUILDINGS = buildingsList.toArray(new Building[0]);
@@ -216,6 +219,39 @@ public class Buildings {
 
     public static int size() {
         return BUILDINGS.length;
+    }
+
+    public static Building fromV3(String v3Name) {
+        return switch (v3Name) {
+            case "oil power" -> OIL_POWER;
+            case "wind power" -> WIND_POWER;
+            case "coal power" -> COAL_POWER;
+            case "nuclear power" -> NUCLEAR_POWER;
+            case "coal mine" -> COAL_MINE;
+            case "lead mine" -> LEAD_MINE;
+            case "iron mine" -> IRON_MINE;
+            case "bauxite mine" -> BAUXITE_MINE;
+            case "oil well" -> OIL_WELL;
+            case "uranium mine" -> URANIUM_MINE;
+            case "farm" -> FARM;
+            case "police station" -> POLICE_STATION;
+            case "hospital" -> HOSPITAL;
+            case "recycling center" -> RECYCLING_CENTER;
+            case "subway" -> SUBWAY;
+            case "supermarket" -> SUPERMARKET;
+            case "bank" -> BANK;
+            case "shopping mall" -> MALL;
+            case "stadium" -> STADIUM;
+            case "gas refinery" -> GAS_REFINERY;
+            case "aluminum refinery" -> ALUMINUM_REFINERY;
+            case "steel mill" -> STEEL_MILL;
+            case "munitions factory" -> MUNITIONS_FACTORY;
+            case "barracks" -> BARRACKS;
+            case "factory" -> FACTORY;
+            case "hangar" -> HANGAR;
+            case "drydock" -> DRYDOCK;
+            default -> throw new RuntimeException("Unknown building: " + v3Name);
+        };
     }
 
     public static Building get(String jsonId) {

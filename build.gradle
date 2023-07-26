@@ -98,6 +98,8 @@ dependencies {
     implementation 'com.google.apis:google-api-services-drive:v3-rev20220815-2.0.0'
     implementation 'com.google.apis:google-api-services-docs:v1-rev20220609-2.0.0'
     implementation 'de.erichseifert.gral:gral-core:0.11'
+// https://mvnrepository.com/artifact/org.apache.commons/commons-math3
+    implementation 'org.apache.commons:commons-math3:3.6.1'
 
     implementation 'org.kefirsf:kefirbb:1.5'
     implementation 'com.inversoft:prime-transformer:2.1.4'

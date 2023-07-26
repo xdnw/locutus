@@ -2,6 +2,7 @@ package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
 import com.politicsandwar.graphql.model.WarAttack;
 import it.unimi.dsi.fastutil.bytes.Byte2ByteArrayMap;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -16,6 +17,17 @@ public abstract class UnitCursor extends DamageCursor {
     private int att_gas_used_cents;
     private int def_mun_used_cents;
     private int def_gas_used_cents;
+    private boolean has_salvage;
+
+    @Override
+    public void load(DBAttack legacy) {
+        super.load(legacy);
+        att_mun_used_cents = (int) Math.round(legacy.getAtt_mun_used() * 100);
+        def_mun_used_cents = (int) Math.round(legacy.getDef_mun_used() * 100);
+        att_gas_used_cents = (int) Math.round(legacy.getAtt_gas_used() * 100);
+        def_gas_used_cents = (int) Math.round(legacy.getDef_gas_used() * 100);
+        has_salvage = false;
+    }
 
     @Override
     public void serialze(BitBuffer output) {
@@ -40,6 +52,8 @@ public abstract class UnitCursor extends DamageCursor {
                 output.writeVarInt(def_gas_used_cents);
             }
         }
+
+        output.writeBit(has_salvage);
     }
 
     @Override
@@ -58,6 +72,8 @@ public abstract class UnitCursor extends DamageCursor {
                 def_gas_used_cents = (int) input.readVarInt();
             }
         }
+
+        has_salvage = input.readBit();
     }
 
     @Override
@@ -68,6 +84,8 @@ public abstract class UnitCursor extends DamageCursor {
         def_mun_used_cents = (int) (attack.getDef_mun_used() * 100);
         att_gas_used_cents = (int) (attack.getAtt_gas_used() * 100);
         def_gas_used_cents = (int) (attack.getDef_gas_used() * 100);
+
+        has_salvage = (success != SuccessType.UTTER_FAILURE && attack.getMilitary_salvage_aluminum() > 0 && attack.getMilitary_salvage_steel() > 0);
     }
 
 
