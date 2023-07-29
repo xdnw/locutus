@@ -227,7 +227,7 @@ public class IACommands {
     public String listAssignableRoles(@Me GuildDB db, @Me Member member) {
         Map<Role, Set<Role>> assignable = db.getOrNull(GuildKey.ASSIGNABLE_ROLES);
         if (assignable == null || assignable.isEmpty()) {
-            return "No roles found. See `" +  CM.self.create.cmd.toSlashMention() + "`";
+            return "No roles found. See " +  CM.self.create.cmd.toSlashMention() + "";
         }
         assignable = new HashMap<>(assignable);
         if (!Roles.ADMIN.has(member)) {
@@ -308,7 +308,7 @@ public class IACommands {
             }
         }
         if (!canAssign) {
-            return "No permission to assign " + addRole + " (see: `listAssignableRoles` | ADMIN: see `" +  CM.self.create.cmd.toSlashMention() + "`)";
+            return "No permission to assign " + addRole + " (see: `listAssignableRoles` | ADMIN: see " +  CM.self.create.cmd.toSlashMention() + ")";
         }
         if (member.getRoles().contains(addRole)) {
             return member + " already has " + addRole;
@@ -342,7 +342,7 @@ public class IACommands {
             }
         }
         if (!canAssign) {
-            return "No permission to assign " + addRole + " (see: `listAssignableRoles` | ADMIN: see `" +  CM.self.create.cmd.toSlashMention() + "`)";
+            return "No permission to assign " + addRole + " (see: `listAssignableRoles` | ADMIN: see " +  CM.self.create.cmd.toSlashMention() + ")";
         }
         if (!member.getRoles().contains(addRole)) {
             return member + " does not have " + addRole;

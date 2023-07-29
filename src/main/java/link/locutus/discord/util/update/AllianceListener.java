@@ -121,11 +121,11 @@ public class AllianceListener {
 
     public static void runMilitarizationAlerts() {
 
-        double thresholdFivedays = 0.05;
-        double thresholdDaily = 0.1;
-        double thresholdTurnly = 0.2;
+        double thresholdFivedays = 0.02;
+        double thresholdDaily = 0.05;
+        double thresholdTurnly = 0.1;
 
-        double thresholdMin = 0.4;
+        double thresholdMin = 0.2;
 
         Map<Integer, Double> milPreviousMap = new HashMap<>();
         Map<Integer, Double> milNowMap = new HashMap<>();
@@ -187,10 +187,10 @@ public class AllianceListener {
             ) {
                 if (groundPctAvg >= thresholdMin) {
                     alertAlliances.put(alliance, rank);
+                    alliance.setMeta(AllianceMeta.GROUND_MILITARIZATION_DATE, now);
+                } else {
+                    alliance.setMeta(AllianceMeta.GROUND_MILITARIZATION_DATE, now - TimeUnit.DAYS.toMillis(5));
                 }
-
-                // set meta
-                alliance.setMeta(AllianceMeta.GROUND_MILITARIZATION_DATE, now);
                 alliance.setMeta(AllianceMeta.GROUND_MILITARIZATION, groundPctAvg);
 
 
@@ -247,7 +247,7 @@ public class AllianceListener {
                 CM.alliance.stats.metricsByTurn graphCmd = CM.alliance.stats.metricsByTurn.cmd.create(AllianceMetric.GROUND_PCT.name(), StringMan.join(allowedIds, ","), "7d");
                 IMessageBuilder msg = new DiscordChannelIO(channel).create()
                         .embed(title, body.toString())
-                        .commandButton(CommandBehavior.UNDO_REACTION, graphCmd, "graph");
+                        .commandButton(CommandBehavior.DELETE_REACTION, graphCmd, "graph");
 
                 if (role != null) {
                     msg.append(role.getAsMention());

@@ -172,7 +172,7 @@ public final class FileUtil {
         POST,
     }
 
-    private static PageRequestQueue pageRequestQueue = new PageRequestQueue(250);
+    private static PageRequestQueue pageRequestQueue = new PageRequestQueue(8);
     private static AtomicInteger requestOrder = new AtomicInteger();
 
     private static long getPriority(int priority) {
@@ -272,6 +272,7 @@ public final class FileUtil {
                             cause = cause.getCause();
                         }
                         if (e.getMessage().contains("Server returned HTTP response code: 429")) {
+                            System.out.println("Error 429");
                             try {
                                 Thread.sleep(backoff);
                                 backoff += 4000;
