@@ -830,10 +830,18 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public Map<DBNation, Map<ResourceType, Double>> getMemberStockpile() throws IOException {
+        return getMemberStockpile(f -> true);
+    }
+
+    public Map<DBNation, Map<ResourceType, Double>> getMemberStockpile(Predicate<DBNation> fetchNations) throws IOException {
         PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.SEE_SPIES);
         List<Integer> ids = getNations().stream()
-                .filter(f -> f.getVm_turns() == 0 && f.getPositionEnum().id > Rank.APPLICANT.id)
+                .filter(f -> f.getVm_turns() == 0 && f.getPositionEnum().id > Rank.APPLICANT.id && fetchNations.test(f))
                 .map(f -> f.getNation_id()).collect(Collectors.toList());
+        ids.sort(Comparator.comparingInt(a -> a));
+        if (ids.isEmpty()) {
+            return new HashMap<>();
+        }
         Map<Integer, double[]> stockPile = api.getStockPile(f -> f.setId(ids));
         Map<DBNation, Map<ResourceType, Double>> result = new HashMap<>();
         for (Map.Entry<Integer, double[]> entry : stockPile.entrySet()) {
@@ -883,7 +891,12 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public void updateCities() throws IOException, ParseException {
-        Set<Integer> nationIds = getNations(false, 0, true).stream().map(f -> f.getId()).collect(Collectors.toSet());
+        updateCities(f -> true);
+    }
+
+    public void updateCities(Predicate<DBNation> fetchNation) throws IOException, ParseException {
+        Set<Integer> nationIds = getNations(false, 0, true).stream().filter(fetchNation).map(DBNation::getId).collect(Collectors.toSet());
+        if (nationIds.isEmpty()) return;
         Locutus.imp().getNationDB().updateCitiesOfNations(nationIds, true, Event::post);
     }
 
@@ -1106,10 +1119,11 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return taxes;
     }
 
-    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> getResourcesNeeded(Collection<DBNation> nations, double daysDefault, boolean useExisting, boolean force) throws IOException {
-        Map<DBNation, Map<ResourceType, Double>> existing;
+    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> getResourcesNeeded(Collection<DBNation> nations, Map<DBNation, Map<ResourceType, Double>> existing, double daysDefault, boolean useExisting, boolean force) throws IOException {
         if (useExisting) {
-            existing = getMemberStockpile();
+            if (existing == null) {
+                existing = getMemberStockpile(f -> nations.contains(f));
+            }
         } else {
             existing = new HashMap<>();
             for (DBNation nation : nations) {
@@ -1188,9 +1202,9 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return count;
     }
 
-    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean allowBeige, boolean noDailyCash, boolean noCash, boolean force) throws IOException, ExecutionException, InterruptedException {
+    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, Map<DBNation, Map<ResourceType, Double>> cachedStockpilesorNull, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean allowBeige, boolean noDailyCash, boolean noCash, boolean force) throws IOException, ExecutionException, InterruptedException {
         Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> nationResourcesNeed;
-        nationResourcesNeed = getResourcesNeeded(nations, daysDefault, useExisting, force);
+        nationResourcesNeed = getResourcesNeeded(nations, cachedStockpilesorNull, daysDefault, useExisting, force);
 
         Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> toSend = new HashMap<>();
 

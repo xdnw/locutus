@@ -1478,6 +1478,13 @@ public class UnsortedCommands {
         List<String> cmd = new ArrayList<>();
         Set<Character> flags = new HashSet<>();
         if (days != null) cmd.add(days + " ");
+
+        if (build.getCity_id() != null) {
+            JavaCity jc = new JavaCity(build);
+            jc.zeroNonMilitary();
+            build = jc.toCityBuild();
+        }
+
         cmd.add(build.toString());
         if (buildMMR != null) cmd.add("mmr=" + buildMMR);
 
