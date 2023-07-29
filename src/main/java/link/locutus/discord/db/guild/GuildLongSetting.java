@@ -1,6 +1,7 @@
 package link.locutus.discord.db.guild;
 
 import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.MathMan;
 
 public abstract class GuildLongSetting extends GuildSetting<Long> {
