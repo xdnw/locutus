@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
 
 import static link.locutus.discord.util.TimeUtil.YYYY_MM_DD_HH_MM_SS;
 
-public class DBAttack {
+public class AbstractCursor {
     private int war_attack_id;
     private long date;
     private int war_id;
@@ -53,9 +53,9 @@ public class DBAttack {
     public double infraPercent_cached;
     public int city_cached;
 
-    public DBAttack() {}
+    public AbstractCursor() {}
 
-    public DBAttack(int war_attack_id, long epoch, int war_id, int attacker_nation_id, int defender_nation_id, AttackType attack_type, int victor, int success, int attcas1, int attcas2, int defcas1, int defcas2, int defcas3,
+    public AbstractCursor(int war_attack_id, long epoch, int war_id, int attacker_nation_id, int defender_nation_id, AttackType attack_type, int victor, int success, int attcas1, int attcas2, int defcas1, int defcas2, int defcas3,
                     double infra_destroyed, int improvements_destroyed, double money_looted, String note, double city_infra_before, double infra_destroyed_value, double att_gas_used, double att_mun_used, double def_gas_used, double def_mun_used) {
         this.setWar_attack_id(war_attack_id);
         this.setDate(epoch);
@@ -90,7 +90,7 @@ public class DBAttack {
         this.setDef_mun_used(def_mun_used);
     }
 
-    public DBAttack(WarAttack a) {
+    public AbstractCursor(WarAttack a) {
         throw new UnsupportedOperationException("This constructor is not supported. Use the other one.");
 //        this(a.getId(),
 //        a.getDate().toEpochMilli(),
@@ -285,7 +285,7 @@ public class DBAttack {
         return resourceOutput;
     }
 
-    public DBAttack(WarAttacksContainer container) {
+    public AbstractCursor(WarAttacksContainer container) {
         this(Integer.parseInt(container.getWarAttackId()),
                 TimeUtil.parseDate(YYYY_MM_DD_HH_MM_SS, container.getDate()),
                 Integer.parseInt(container.getWarId()),
@@ -412,7 +412,7 @@ public class DBAttack {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        DBAttack attack = (DBAttack) o;
+        AbstractCursor attack = (AbstractCursor) o;
 
         return attack.getWar_attack_id() == getWar_attack_id();
     }
@@ -424,7 +424,7 @@ public class DBAttack {
 
     @Override
     public String toString() {
-        return "DBAttack{" +
+        return "AbstractCursor{" +
                 "war_attack_id=" + getWar_attack_id() +
                 ", epoch=" + getDate() +
                 ", war_id=" + getWar_id() +

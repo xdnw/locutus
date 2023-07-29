@@ -1,7 +1,7 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors;
 
 import com.politicsandwar.graphql.model.WarAttack;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.UnitCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -20,7 +20,7 @@ public class GroundCursor extends UnitCursor {
     private long money_looted_cents;
 
     @Override
-    public void load(DBAttack legacy) {
+    public void load(AbstractCursor legacy) {
         super.load(legacy);
         this.attcas1 = legacy.getAttcas1();
         this.attcas2 = legacy.getAttcas2();
@@ -95,7 +95,6 @@ public class GroundCursor extends UnitCursor {
     @Override
     public void serialze(BitBuffer output) {
         super.serialze(output);
-
         output.writeBit(attcas1 > 0);
         if (attcas1 > 0) output.writeVarInt(attcas1);
 

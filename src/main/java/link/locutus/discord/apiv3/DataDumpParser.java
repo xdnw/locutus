@@ -11,7 +11,7 @@ import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -318,14 +318,14 @@ public class DataDumpParser {
         }
     }
 
-    public Map<Continent, Double> getRadsAt(long currentTurn, List<DBAttack> attacks, Map<Long, Map<Integer, Continent>> continentInfo) {
+    public Map<Continent, Double> getRadsAt(long currentTurn, List<AbstractCursor> attacks, Map<Long, Map<Integer, Continent>> continentInfo) {
         double radsBase = MilitaryUnit.NUKE_RADIATION;
 
         double[] radsByContinent = new double[Continent.values.length];
         int unknown = 0;
         int total = 0;
 
-        for (DBAttack attack : attacks) {
+        for (AbstractCursor attack : attacks) {
             long attTurn = TimeUtil.getTurn(attack.getDate());
             long expireTurn = attTurn + 100;
 
@@ -370,7 +370,7 @@ public class DataDumpParser {
         long diff1 = System.currentTimeMillis() - start2;
 
         long cutoff = minDate - TimeUnit.DAYS.toMillis(20);
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(cutoff, f -> f.getAttack_type() == AttackType.NUKE && f.getSuccess() > 0);
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(cutoff, f -> f.getAttack_type() == AttackType.NUKE && f.getSuccess() > 0);
         attacks.sort(Comparator.comparingLong(o -> o.getDate()));
 
         long currTurn = TimeUtil.getTurn();
@@ -399,9 +399,9 @@ public class DataDumpParser {
         return nationsAtWar;
     }
 
-    public Map<DBWar, Long> getWarEndDates(Map<Integer, DBWar> wars, Collection<DBAttack> attacks) {
+    public Map<DBWar, Long> getWarEndDates(Map<Integer, DBWar> wars, Collection<AbstractCursor> attacks) {
         Map<DBWar, Long> warEndDates = new HashMap<>();
-        for (DBAttack attack : attacks) {
+        for (AbstractCursor attack : attacks) {
             switch (attack.getAttack_type()) {
                 case VICTORY, A_LOOT, PEACE -> {
                     DBWar war = wars.get(attack.getWar_id());
@@ -441,7 +441,7 @@ public class DataDumpParser {
         Locutus.imp().runEventsAsync(Locutus.imp().getWarDb()::updateAttacks);
 
         Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWarsSince(minDate - TimeUnit.DAYS.toMillis(5));
-        Collection<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(minDate - TimeUnit.DAYS.toMillis(20));
+        Collection<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(minDate - TimeUnit.DAYS.toMillis(20));
 
         Map<DBWar, Long> warEndDates = getWarEndDates(wars, attacks);
 
@@ -485,7 +485,7 @@ public class DataDumpParser {
         }
 
         // add attacks
-        for (DBAttack attack : attacks) {
+        for (AbstractCursor attack : attacks) {
             tracker.onAttack(attack, false);
         }
 
@@ -687,9 +687,9 @@ public class DataDumpParser {
     public void backCalculateBeigeDamage() throws IOException, ParseException {
         load();
         long min = getMinDate();
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(min, f -> f.getAttack_type() == AttackType.VICTORY && f.getInfra_destroyed_value() <= 0);
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(min, f -> f.getAttack_type() == AttackType.VICTORY && f.getInfra_destroyed_value() <= 0);
         Map<Long, Set<Integer>> nationsByDay = new HashMap<>();
-        for (DBAttack attack : attacks) {
+        for (AbstractCursor attack : attacks) {
             long day = TimeUtil.getDay(attack.getDate());
             nationsByDay.computeIfAbsent(day, k -> new HashSet<>()).add(attack.getDefender_nation_id());
         }
@@ -698,15 +698,15 @@ public class DataDumpParser {
 
         Map<Long, Map<Integer, Map<Integer, Double>>> infraMap = cityInfraByDay((day, nation) -> nationsByDay.getOrDefault(day, Collections.emptySet()).contains(nation));
 
-        attacks.removeIf(dbAttack -> {
-            long day = TimeUtil.getDay(dbAttack.getDate());
+        attacks.removeIf(AbstractCursor -> {
+            long day = TimeUtil.getDay(AbstractCursor.getDate());
             Map<Integer, Map<Integer, Double>> infraDay = infraMap.get(day);
             if (infraDay == null) return true;
-            return infraDay.containsKey(dbAttack.getDefender_nation_id());
+            return infraDay.containsKey(AbstractCursor.getDefender_nation_id());
         });
 
-        Map<Integer, DBAttack> attacksById = new HashMap<>();
-        for (DBAttack attack : attacks) {
+        Map<Integer, AbstractCursor> attacksById = new HashMap<>();
+        for (AbstractCursor attack : attacks) {
             attacksById.put(attack.getWar_attack_id(), attack);
         }
 
@@ -723,19 +723,19 @@ public class DataDumpParser {
                 String end = "% of the infrastructure in each of their cities.";
                 String[] split = note.substring(0, note.length() - end.length()).split(" ");
                 try {
-                    DBAttack dbAttack = attacksById.get(id);
+                    AbstractCursor AbstractCursor = attacksById.get(id);
                     double infraPercent_cached = Double.parseDouble(split[split.length - 1]) / 100d;
 
-                    long day = TimeUtil.getDay(dbAttack.getDate());
-                    Map<Integer, Double> cityInfra = infraMap.get(day).get(dbAttack.getDefender_nation_id());
+                    long day = TimeUtil.getDay(AbstractCursor.getDate());
+                    Map<Integer, Double> cityInfra = infraMap.get(day).get(AbstractCursor.getDefender_nation_id());
                     double cost = 0;
                     for (Map.Entry<Integer, Double> entry : cityInfra.entrySet()) {
                         double infraAmt = entry.getValue();
                         cost += PnwUtil.calculateInfra(infraAmt * (1 - infraPercent_cached), infraAmt);
                     }
-                    dbAttack.setInfra_destroyed_value(cost);
-                    System.out.println("Save $" + dbAttack.getInfra_destroyed_value());
-                    Locutus.imp().getWarDb().saveAttacks(List.of(dbAttack));
+                    AbstractCursor.setInfra_destroyed_value(cost);
+                    System.out.println("Save $" + AbstractCursor.getInfra_destroyed_value());
+                    Locutus.imp().getWarDb().saveAttacks(List.of(AbstractCursor));
 
                 } catch (Throwable e) {
                     System.out.println("Error parsing " + note);

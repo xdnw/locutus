@@ -1,14 +1,16 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
 import com.politicsandwar.graphql.model.WarAttack;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors.*;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.io.BitBuffer;
 
+import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -31,7 +33,7 @@ public class AttackCursorFactory {
     private final VictoryCursor victoryCursor = new VictoryCursor();
 
     public AttackCursorFactory() {
-        this.buffer = new BitBuffer(ByteBuffer.wrap(new byte[SIZE]));
+        this.buffer = new BitBuffer(ByteBuffer.wrap(new byte[SIZE]).order(ByteOrder.LITTLE_ENDIAN));
     }
 
     private AbstractCursor create(AttackType type) {
@@ -84,6 +86,8 @@ public class AttackCursorFactory {
         }
     }
 
+    private Object lock = new Object();
+
     private AbstractCursor getCursor(AttackType type) {
         switch (type) {
             case GROUND -> {
@@ -134,7 +138,7 @@ public class AttackCursorFactory {
         }
     }
 
-    public AbstractCursor load(DBAttack legacy, boolean create) {
+    public AbstractCursor load(AbstractCursor legacy, boolean create) {
         AttackType type = legacy.getAttack_type();
         AbstractCursor cursor = create ? create(type) : getCursor(type);
         if (cursor == null) {
@@ -222,14 +226,14 @@ public class AttackCursorFactory {
         return cursor;
     }
 
-    public byte[] toBytes(AbstractCursor cursor) {
-        buffer.clear();
+    public synchronized byte[] toBytes(AbstractCursor cursor) {
+        buffer.reset();
         buffer.writeBits(cursor.getAttack_type().ordinal(), 4);
         cursor.serialze(buffer);
         return buffer.getWrittenBytes();
     }
 
-    public AbstractCursor load(WarAttack attack, boolean create) {
+    public synchronized AbstractCursor load(WarAttack attack, boolean create) {
         AttackType type = AttackType.fromV3(attack.getType());
 
         // validate all the non deprecated fields
@@ -315,7 +319,7 @@ public class AttackCursorFactory {
         return cursor;
     }
 
-    public AbstractCursor load(DBWar war, byte[] data, boolean create) {
+    public synchronized AbstractCursor load(DBWar war, byte[] data, boolean create) {
         buffer.setBytes(data);
         AttackType type = AttackType.values[(int) buffer.readBits(4)];
         AbstractCursor cursor = create ? create(type) : getCursor(type);

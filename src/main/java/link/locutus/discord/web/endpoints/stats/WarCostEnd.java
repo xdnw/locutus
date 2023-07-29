@@ -6,7 +6,7 @@ import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.endpoints.Endpoint;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -28,9 +28,9 @@ public class WarCostEnd extends Endpoint {
         String args1 = path.get(1);
         int days = Integer.parseInt(path.get(2));
 
-        List<DBAttack> attacks;
-        Function<DBAttack, Boolean> isPrimary;
-        Function<DBAttack, Boolean> isSecondary;
+        List<AbstractCursor> attacks;
+        Function<AbstractCursor, Boolean> isPrimary;
+        Function<AbstractCursor, Boolean> isSecondary;
         String nameA;
         String nameB;
 

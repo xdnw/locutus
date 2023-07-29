@@ -4,49 +4,101 @@ import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 
 public class BitBuffer {
-    private static final byte[] MASKS = new byte[Long.SIZE];
 
+    private static final long[] MASK = new long[Long.SIZE + 1];
     static {
-        for (int i = 0; i < MASKS.length; i++)
-            MASKS[i] = (byte) (Math.pow(2, i) - 1);
+        for (int i = 0; i < Long.SIZE; i++) {
+            MASK[i] = (1L << i) - 1;
+        }
+        MASK[Long.SIZE] = -1L;
     }
 
-
-    private ByteBuffer bytes;
-    private int position = 0;
-    private byte bit = 0;
     private long buffer;
+    private int bitsInBuffer;
+    public final ByteBuffer byteBuffer;
 
-    public BitBuffer(ByteBuffer bytes) {
-        this.bytes = bytes;
-        buffer = bytes.getLong(position);
+    public BitBuffer(ByteBuffer byteBuffer) {
+        this.buffer = 0L;
+        this.bitsInBuffer = 0;
+        this.byteBuffer = byteBuffer;
     }
-
 
     public void writeBits(long value, int count) {
-        buffer |= value >>> bit;
+        int remainingBits = 64 - bitsInBuffer;
 
-        //Save the full buffer to memory and pull out the next one.
-        if ((bit += count) > 64)
-            buffer = bytes.putLong(position++).getLong(position) | value << (bit += -64);
+        // If the new value fits entirely within the buffer, write it directly.
+        if (count <= remainingBits) {
+            long mask = MASK[count];
+            buffer |= (value & mask) << bitsInBuffer;
+            bitsInBuffer += count;
+            if (bitsInBuffer == 64) {
+                flush();
+            }
+        } else {
+            // Write as much as possible to the current buffer.
+            buffer |= (value & MASK[remainingBits]) << bitsInBuffer;
+            flush();
+
+            // Write the remaining bits in another iteration.
+            int remainingCount = count - remainingBits;
+            buffer |= (value >>> remainingBits) & MASK[remainingCount];
+            bitsInBuffer = remainingCount;
+        }
     }
 
     public long readBits(int count) {
-        long value = buffer << bit;
-        if ((bit += count) > 64)
-            value |= (buffer = bytes.getLong(position++)) >>> (bit += -64);
-        return value & MASKS[count];
+        long result;
+        if (count <= bitsInBuffer) {
+            result = buffer & MASK[count];
+            buffer >>>= count;
+            bitsInBuffer -= count;
+        } else {
+            int remainingCount = count - bitsInBuffer;
+            result = buffer & MASK[bitsInBuffer];
+            buffer = byteBuffer.getLong();
+            result |= (buffer & MASK[remainingCount]) << bitsInBuffer;
+            buffer >>>= remainingCount;
+            bitsInBuffer = 64 - remainingCount;
+        }
+
+        return result;
+    }
+
+    private void fill() {
+        buffer = byteBuffer.getLong();
+        bitsInBuffer = 64;
+    }
+
+    private void flush() {
+        byteBuffer.putLong(buffer);
+        buffer = 0;
+        bitsInBuffer = 0;
+    }
+
+    public byte[] getWrittenBytes() {
+        int numBytesInBuffer = (bitsInBuffer + 7) / 8;
+        byte[] bytes = new byte[byteBuffer.position() + numBytesInBuffer];
+        System.arraycopy(byteBuffer.array(), 0, bytes, 0, byteBuffer.position());
+        if (bitsInBuffer > 0) {
+            int lastByteIndex = byteBuffer.position();
+            for (int i = 0; i < numBytesInBuffer; i++) {
+                bytes[lastByteIndex + i] = (byte) buffer;
+                buffer >>>= 8;
+            }
+        }
+        return bytes;
+    }
+
+    public long readLong() {
+        return readBits(Long.SIZE);
     }
 
     public void setBytes(byte[] data) {
-        // reset the bitbuffer to these bytes
-        bytes.clear();
-        bytes.put(data);
-        bytes.position(0);
-
-        position = 0;
-        bit = 0;
-        buffer = bytes.getLong(position);
+        byteBuffer.clear();
+        byteBuffer.put(data);
+        byteBuffer.position(0);
+        buffer = 0;
+        bitsInBuffer = 0;
     }
 
     public boolean readBit() {
@@ -71,10 +123,6 @@ public class BitBuffer {
 
     public short readShort() {
         return (short) readBits(Short.SIZE);
-    }
-
-    public long readLong() {
-        return readBits(Long.SIZE);
     }
 
     public float readFloat() {
@@ -113,25 +161,11 @@ public class BitBuffer {
         writeLong(Double.doubleToLongBits(value));
     }
 
-    public BitBuffer position(int position) {
-        this.position = position;
+    public BitBuffer reset() {
+        byteBuffer.position(0);
+        buffer = 0;
+        bitsInBuffer = 0;
         return this;
-    }
-
-    public int getPosition() {
-        return position;
-    }
-
-    public byte[] getWrittenBytes() {
-        // bytes up to position
-        byte[] bytes = new byte[position];
-        byte[] allBytes = this.bytes.array();
-        System.arraycopy(allBytes, 0, bytes, 0, position);
-        return bytes;
-    }
-
-    public BitBuffer clear() {
-        return position(0);
     }
 
     public void writeVarInt(int value) {

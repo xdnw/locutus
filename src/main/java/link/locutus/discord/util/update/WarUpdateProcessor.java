@@ -23,7 +23,7 @@ import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.war.WarCard;
 import com.google.common.eventbus.Subscribe;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -157,7 +157,7 @@ public class WarUpdateProcessor {
 
     @Subscribe
     public void onAttack(AttackEvent event) {
-        DBAttack root = event.getAttack();
+        AbstractCursor root = event.getAttack();
         int nationId = root.getAttacker_nation_id();
         DBNation attacker = Locutus.imp().getNationDB().getNation(root.getAttacker_nation_id());
         DBNation defender = Locutus.imp().getNationDB().getNation(root.getDefender_nation_id());
@@ -371,7 +371,7 @@ public class WarUpdateProcessor {
         }
     }
 
-    public static AttackTypeSubCategory incrementCategory(DBAttack root, Map<AttackTypeSubCategory, Integer> sum) {
+    public static AttackTypeSubCategory incrementCategory(AbstractCursor root, Map<AttackTypeSubCategory, Integer> sum) {
         if (root.getImprovements_destroyed() != 0) {
             sum.put(AttackTypeSubCategory.IMPROVEMENTS_DESTROYED, sum.getOrDefault(AttackTypeSubCategory.IMPROVEMENTS_DESTROYED, 0) + root.getImprovements_destroyed());
         }
@@ -382,7 +382,7 @@ public class WarUpdateProcessor {
         return category;
     }
 
-    public static AttackTypeSubCategory subCategorize(DBAttack root) {
+    public static AttackTypeSubCategory subCategorize(AbstractCursor root) {
         switch (root.getAttack_type()) {
             case FORTIFY:
                 return AttackTypeSubCategory.FORTIFY;
@@ -481,7 +481,7 @@ public class WarUpdateProcessor {
         return null;
     }
 
-    public static Map.Entry<AttackTypeSubCategory, String> checkViolation(DBAttack root, GuildDB db) {
+    public static Map.Entry<AttackTypeSubCategory, String> checkViolation(AbstractCursor root, GuildDB db) {
         Set<Integer> enemies = db != null ? db.getCoalition("enemies") : new HashSet<>();
 
         DBNation attacker = Locutus.imp().getNationDB().getNation(root.getAttacker_nation_id());
@@ -575,7 +575,7 @@ public class WarUpdateProcessor {
             case VICTORY:
                 break;
             case FORTIFY:
-                List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWarId(root.getWar_id(), root.getDate());
+                List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByWarId(root.getWar_id(), root.getDate());
                 attacks.removeIf(f -> f.getWar_attack_id() >= root.getWar_attack_id() || f.getAttacker_nation_id() != root.getAttacker_nation_id());
                 if (attacks.size() > 0 && attacks.get(attacks.size() - 1).getAttack_type() == AttackType.FORTIFY) {
                     return AttackTypeSubCategory.DOUBLE_FORTIFY.toPair();
@@ -732,7 +732,7 @@ public class WarUpdateProcessor {
                             (defender.getAircraft() < attacker.getAircraft() && defender.getGroundStrength(true, false) > 0 && defender.getGroundStrength(true, false) < attacker.getGroundStrength(true, true)))) {
 
                         attacks = Locutus.imp().getWarDb().getAttacksByWarId(root.getWar_id(), root.getDate());
-                        for (DBAttack attack : attacks) {
+                        for (AbstractCursor attack : attacks) {
                             if (attack.getAttack_type() == NAVAL && attack.getWar_attack_id() != root.getWar_attack_id()) {
                                 return AttackTypeSubCategory.NAVAL_ALREADY_BLOCKADED.toPair();
                             }

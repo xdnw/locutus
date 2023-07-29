@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -45,12 +45,12 @@ public class AllianceLootRanking extends Command {
         }
         long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
 
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs);
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs);
 
         Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
         Map<Integer, Map<ResourceType, Double>> byAlliance = new HashMap<>();
 
-        for (DBAttack attack : attacks) {
+        for (AbstractCursor attack : attacks) {
 
             Map<ResourceType, Double> loot = attack.getLoot();
             Integer looter = attack.getLooter();

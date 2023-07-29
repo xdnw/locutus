@@ -1,7 +1,7 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors;
 
 import com.politicsandwar.graphql.model.WarAttack;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.UnitCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -15,7 +15,7 @@ public class AirSoldierCursor extends UnitCursor {
     private int defcas2;
 
     @Override
-    public void load(DBAttack legacy) {
+    public void load(AbstractCursor legacy) {
         super.load(legacy);
         this.attcas1 = legacy.getAttcas1();
         this.defcas1 = legacy.getDefcas1();

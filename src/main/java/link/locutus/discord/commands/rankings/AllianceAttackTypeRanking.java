@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -55,12 +55,12 @@ public class AllianceAttackTypeRanking extends Command {
         long cutoffMs = System.currentTimeMillis() - TimeUtil.timeToSec(arg) * 1000L;
         AttackType type = AttackType.get(args.get(1).toUpperCase());
 
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs);
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs);
 //            Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWars();
         Map<Integer, Integer> totalAttacks = new HashMap<>();
         Map<Integer, Integer> attackOfType = new HashMap<>();
 
-        for (DBAttack attack : attacks) {
+        for (AbstractCursor attack : attacks) {
             DBNation nat = Locutus.imp().getNationDB().getNation(attack.getAttacker_nation_id());
             if (nat == null || nat.getAlliance_id() == 0 || nat.getPosition() <= 1) continue;
             totalAttacks.put(nat.getAlliance_id(), totalAttacks.getOrDefault(nat.getAlliance_id(), 0) + 1);

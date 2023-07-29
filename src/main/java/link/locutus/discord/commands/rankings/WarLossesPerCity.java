@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -54,8 +54,8 @@ public class WarLossesPerCity extends Command {
 
         Map<Integer, Double> totals = new HashMap<>();
         Map<Integer, Integer> counters = new HashMap<>();
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs);
-        for (DBAttack attack : attacks) {
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs);
+        for (AbstractCursor attack : attacks) {
             if (attack.getVictor() != 0) {
                 if (nationMap.containsKey(attack.getDefender_nation_id())) {
                     double defLoss = attack.getLossesConverted(false);

@@ -27,7 +27,7 @@ import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -71,14 +71,14 @@ public class NationUpdateProcessor {
 
         Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWarsSince(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(5));
 
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(now - TimeUnit.DAYS.toMillis(5));
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(now - TimeUnit.DAYS.toMillis(5));
 
         Collections.sort(attacks, Comparator.comparingLong(o -> o.getDate()));
 
         Map<Integer, Map<Integer, Integer>> blockadedByNationByWar = new HashMap<>(); // map of nations getting blockaded
         Map<Integer, Map<Integer, Integer>> blockadingByNationByWar = new HashMap<>(); // map of nations blockading
 
-        for (DBAttack attack : attacks) {
+        for (AbstractCursor attack : attacks) {
             if (attack.getAttack_type() != AttackType.NAVAL) continue;
 
             DBNation defender = DBNation.getById(attack.getDefender_nation_id());

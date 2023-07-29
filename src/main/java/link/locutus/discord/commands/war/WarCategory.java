@@ -23,7 +23,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.task.war.WarCard;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -234,7 +234,7 @@ public class WarCategory {
         return false;
     }
 
-    public void update(DBAttack attack) {
+    public void update(AbstractCursor attack) {
         int attackerId = attack.getAttacker_nation_id();
         int defenderId = attack.getDefender_nation_id();
         WarRoom roomTmp = warRoomMap.get(attackerId);

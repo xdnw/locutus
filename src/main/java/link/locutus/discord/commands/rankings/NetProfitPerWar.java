@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -64,10 +64,10 @@ public class NetProfitPerWar extends Command {
         Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
 
         Set<Integer> finalAAs = AAs;
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs);
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs);
 
         SummedMapRankBuilder<Integer, Number> byNation = new RankBuilder<>(attacks)
-                .group((BiConsumer<DBAttack, GroupedRankBuilder<Integer, DBAttack>>) (attack, map) -> {
+                .group((BiConsumer<AbstractCursor, GroupedRankBuilder<Integer, AbstractCursor>>) (attack, map) -> {
                     // Group attacks into attacker and defender
                     map.put(attack.getAttacker_nation_id(), attack);
                     map.put(attack.getDefender_nation_id(), attack);

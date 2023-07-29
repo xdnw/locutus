@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -158,18 +158,18 @@ public class WarCostRanking extends Command {
         String title = (damage && net ? "Net " : "Total ") + (typeName == null ? "" : typeName + " ") + (profit ? damage ? "damage" : "profit" : (unitKill != null ? "kills" : unitLoss != null ? "deaths" : "losses")) + " " + (average ? "per" : "of") + " war (%s)";
         title = String.format(title, diffStr);
 
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(start, end);
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(start, end);
 
-        GroupedRankBuilder<Integer, DBAttack> attackGroup = new RankBuilder<>(attacks)
+        GroupedRankBuilder<Integer, AbstractCursor> attackGroup = new RankBuilder<>(attacks)
                 .group((attack, map) -> {
                     // Group attacks into attacker and defender
                     map.put(attack.getAttacker_nation_id(), attack);
                     map.put(attack.getDefender_nation_id(), attack);
                 });
 
-        BiFunction<Boolean, DBAttack, Double> valueFunc;
+        BiFunction<Boolean, AbstractCursor, Double> valueFunc;
         {
-            BiFunction<Boolean, DBAttack, Double> getValue = null;
+            BiFunction<Boolean, AbstractCursor, Double> getValue = null;
             if (unitKill != null) {
                 MilitaryUnit finalUnit = unitKill;
                 getValue = (attacker, attack) -> attack.getUnitLosses(!attacker).getOrDefault(finalUnit, 0).doubleValue();

@@ -10,8 +10,7 @@ import de.erichseifert.gral.io.plots.DrawableWriterFactory;
 import de.erichseifert.gral.plots.BarPlot;
 import de.erichseifert.gral.plots.colors.ColorMapper;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
-import link.locutus.discord.apiv1.domains.subdomains.SAllianceContainer;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -47,7 +46,6 @@ import org.json.JSONObject;
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.security.GeneralSecurityException;
@@ -67,7 +65,7 @@ public class StatCommands {
                                   @Arg("Period of time to graph") @Default @Timestamp Long cutoff,
                                   @Arg("Restrict to a list of attack types") @Default Set<AttackType> allowedTypes) throws IOException {
         if (cutoff == null) cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30);
-        List<DBAttack> attacks;
+        List<AbstractCursor> attacks;
         if (nations != null) {
             Set<Integer> nationIds = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
             attacks = Locutus.imp().getWarDb().getAttacks(nationIds, cutoff);
@@ -84,7 +82,7 @@ public class StatCommands {
             throw new IllegalArgumentException("Too many days.");
         }
         Map<Long, Integer> totalAttacksByDay = new HashMap<>();
-        for (DBAttack attack : attacks) {
+        for (AbstractCursor attack : attacks) {
             long day = TimeUtil.getDay(attack.getDate());
             totalAttacksByDay.put(day, totalAttacksByDay.getOrDefault(day, 0) + 1);
         }
@@ -169,9 +167,9 @@ public class StatCommands {
 
         Map<Integer, DBWar> wars = parser.getWars();
 
-        BiFunction<Boolean, DBAttack, Double> valueFunc;
+        BiFunction<Boolean, AbstractCursor, Double> valueFunc;
         {
-            BiFunction<Boolean, DBAttack, Double> getValue = null;
+            BiFunction<Boolean, AbstractCursor, Double> getValue = null;
             if (unitKill != null) {
                 getValue = (attacker, attack) -> attack.getUnitLosses(!attacker).getOrDefault(unitKill, 0).doubleValue();
             }
@@ -206,7 +204,7 @@ public class StatCommands {
             valueFunc = getValue;
         }
 
-        GroupedRankBuilder<Integer, DBAttack> nationAllianceGroup = new RankBuilder<>(parser.getAttacks())
+        GroupedRankBuilder<Integer, AbstractCursor> nationAllianceGroup = new RankBuilder<>(parser.getAttacks())
                 .group((attack, map) -> {
                     // Group attacks into attacker and defender
                     DBWar war = wars.get(attack.getWar_id());
@@ -230,7 +228,7 @@ public class StatCommands {
         // war
         // nation
         // alliance
-        BiFunction<Integer, DBAttack, Integer> groupBy;
+        BiFunction<Integer, AbstractCursor, Integer> groupBy;
         if (groupByAlliance) groupBy = (attacker, attack) -> wars.get(attack.getWar_id()).getNationId(attacker);
         else groupBy = (attacker, attack) -> attack.getWar_id();
 
@@ -1414,19 +1412,19 @@ public class StatCommands {
             AttackCost activeCost = new AttackCost();
 
             {
-                Map<Integer, List<DBAttack>> allAttacks = Locutus.imp().getWarDb().getAttacksByWar(nationId, time);
+                Map<Integer, List<AbstractCursor>> allAttacks = Locutus.imp().getWarDb().getAttacksByNationGroupWar(nationId, time);
 
                 for (DBWar war : wars) {
                     if (war.date < time) {
                         continue;
                     }
 
-                    List<DBAttack> warAttacks = allAttacks.getOrDefault(war.warId, Collections.emptyList());
+                    List<AbstractCursor> warAttacks = allAttacks.getOrDefault(war.warId, Collections.emptyList());
 
                     boolean selfAttack = false;
                     boolean enemyAttack = false;
 
-                    for (DBAttack attack : warAttacks) {
+                    for (AbstractCursor attack : warAttacks) {
                         if (attack.getAttacker_nation_id() == nationId) {
                             selfAttack = true;
                         } else {
@@ -1434,8 +1432,8 @@ public class StatCommands {
                         }
                     }
 
-                    Function<DBAttack, Boolean> isPrimary = a -> a.getAttacker_nation_id() == nationId;
-                    Function<DBAttack, Boolean> isSecondary = a -> a.getAttacker_nation_id() != nationId;
+                    Function<AbstractCursor, Boolean> isPrimary = a -> a.getAttacker_nation_id() == nationId;
+                    Function<AbstractCursor, Boolean> isSecondary = a -> a.getAttacker_nation_id() != nationId;
 
                     AttackCost cost = null;
                     if (war.attacker_id == nationId) {
@@ -1571,7 +1569,7 @@ public class StatCommands {
             Set<Integer> nationIds = new HashSet<>();
             for (DBNation aaNation : aaNations) nationIds.add(aaNation.getNation_id());
 
-            List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksAny(nationIds, time);
+            List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksAny(nationIds, time);
 
             attacks.removeIf(n -> {
                 DBNation nat1 = Locutus.imp().getNationDB().getNation(n.getAttacker_nation_id());
@@ -1579,7 +1577,7 @@ public class StatCommands {
                 return nat1 == null || nat2 == null || !nationsByAA.containsKey(nat1.getAlliance_id()) || !nationsByAA.containsKey(nat2.getAlliance_id());
             });
 
-            Function<DBAttack, Boolean> isPrimary = attack -> Locutus.imp().getNationDB().getNation(attack.getAttacker_nation_id()).getAlliance_id() == aaId;
+            Function<AbstractCursor, Boolean> isPrimary = attack -> Locutus.imp().getNationDB().getNation(attack.getAttacker_nation_id()).getAlliance_id() == aaId;
             warCost.addCost(attacks, isPrimary, f -> !isPrimary.apply(f));
 
             DBAlliance alliance = DBAlliance.getOrCreate(entry.getKey());
@@ -1677,7 +1675,7 @@ public class StatCommands {
             }
         }).get();
 
-        List<DBAttack> allAttacks = new ArrayList<>(parser1.getAttacks());
+        List<AbstractCursor> allAttacks = new ArrayList<>(parser1.getAttacks());
         Set<Integer> aaIds = attackers.stream().filter(NationOrAlliance::isAlliance).map(NationOrAlliance::getId).collect(Collectors.toSet());
         Set<Integer> natIds = attackers.stream().filter(NationOrAlliance::isNation).map(NationOrAlliance::getId).collect(Collectors.toSet());
         for (Map.Entry<Integer, List<DBWar>> entry : warsByNation.entrySet()) {
@@ -1699,17 +1697,17 @@ public class StatCommands {
             {
                 List<DBWar> wars = entry.getValue();
                 Set<Integer> warIds = wars.stream().map(f -> f.warId).collect(Collectors.toSet());
-                List<DBAttack> attacks = new ArrayList<>();
-                for (DBAttack attack : allAttacks) if (warIds.contains(attack.getWar_id())) attacks.add(attack);
-                Map<Integer, List<DBAttack>> attacksByWar = new RankBuilder<>(attacks).group(f -> f.getWar_id()).get();
+                List<AbstractCursor> attacks = new ArrayList<>();
+                for (AbstractCursor attack : allAttacks) if (warIds.contains(attack.getWar_id())) attacks.add(attack);
+                Map<Integer, List<AbstractCursor>> attacksByWar = new RankBuilder<>(attacks).group(f -> f.getWar_id()).get();
 
                 for (DBWar war : wars) {
-                    List<DBAttack> warAttacks = attacksByWar.getOrDefault(war.warId, Collections.emptyList());
+                    List<AbstractCursor> warAttacks = attacksByWar.getOrDefault(war.warId, Collections.emptyList());
 
                     boolean selfAttack = false;
                     boolean enemyAttack = false;
 
-                    for (DBAttack attack : warAttacks) {
+                    for (AbstractCursor attack : warAttacks) {
                         if (attack.getAttacker_nation_id() == nationId) {
                             selfAttack = true;
                         } else {
@@ -1717,8 +1715,8 @@ public class StatCommands {
                         }
                     }
 
-                    Function<DBAttack, Boolean> isPrimary = a -> a.getAttacker_nation_id() == nationId;
-                    Function<DBAttack, Boolean> isSecondary = a -> a.getAttacker_nation_id() != nationId;
+                    Function<AbstractCursor, Boolean> isPrimary = a -> a.getAttacker_nation_id() == nationId;
+                    Function<AbstractCursor, Boolean> isSecondary = a -> a.getAttacker_nation_id() != nationId;
 
                     AttackCost cost;
                     if (war.attacker_id == nationId) {

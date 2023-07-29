@@ -4,7 +4,7 @@ import com.google.common.eventbus.Subscribe;
 import com.politicsandwar.graphql.model.BBGame;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -590,7 +590,7 @@ public class LootEstimateTracker {
 
     @Subscribe
     public void onAttack(AttackEvent event) {
-        DBAttack attack = event.getAttack();
+        AbstractCursor attack = event.getAttack();
         boolean hasSalvage = false;
         if (attack.getSuccess() > 0) {
             DBNation attacker = nationFactory.apply(attack.getAttacker_nation_id());
@@ -598,7 +598,7 @@ public class LootEstimateTracker {
         }
     }
 
-    public void onAttack(DBAttack attack, boolean hasSalvage) {
+    public void onAttack(AbstractCursor attack, boolean hasSalvage) {
         // consumption
         double[] attLoss = PnwUtil.resourcesToArray(attack.getLosses(true, false, false, true, true));
         double[] defLoss = PnwUtil.resourcesToArray(attack.getLosses(false, false, false, true, true));

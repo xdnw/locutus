@@ -2,7 +2,7 @@ package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
 import com.politicsandwar.graphql.model.WarAttack;
 import it.unimi.dsi.fastutil.bytes.Byte2ByteArrayMap;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -20,7 +20,7 @@ public abstract class UnitCursor extends DamageCursor {
     private boolean has_salvage;
 
     @Override
-    public void load(DBAttack legacy) {
+    public void load(AbstractCursor legacy) {
         super.load(legacy);
         att_mun_used_cents = (int) Math.round(legacy.getAtt_mun_used() * 100);
         def_mun_used_cents = (int) Math.round(legacy.getDef_mun_used() * 100);
@@ -42,6 +42,7 @@ public abstract class UnitCursor extends DamageCursor {
                 output.writeVarInt(att_gas_used_cents);
             }
         }
+        // 5 bits for length
 
         output.writeBit(def_mun_used_cents > 0);
         if (def_mun_used_cents > 0) {

@@ -1,6 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -87,7 +87,7 @@ public class CounterGenerator {
                         maxOffFactor = 0;
                         break;
                     }
-                    List<DBAttack> attacks = war.getAttacks();
+                    List<AbstractCursor> attacks = war.getAttacks();
                     Map.Entry<Integer, Integer> resistance = war.getResistance(attacks);
                     Map.Entry<Integer, Integer> map = war.getMap(attacks);
                     int remainingHours = Math.max(0, ((resistance.getValue() - (10 * map.getValue() / 3)) / 10) * 3);

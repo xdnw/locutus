@@ -1,7 +1,7 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors;
 
 import com.politicsandwar.graphql.model.WarAttack;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.UnitCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -14,7 +14,7 @@ public class DogfightCursor extends UnitCursor {
     private int defcas1;
 
     @Override
-    public void load(DBAttack legacy) {
+    public void load(AbstractCursor legacy) {
         super.load(legacy);
         this.attcas1 = legacy.getAttcas1();
         this.defcas1 = legacy.getDefcas1();
@@ -65,8 +65,6 @@ public class DogfightCursor extends UnitCursor {
     @Override
     public void serialze(BitBuffer output) {
         super.serialze(output);
-        // success = 0,1,2,3
-        output.writeBits(success.ordinal(), 2);
 
         output.writeBit(attcas1 > 0);
         if (attcas1 > 0) output.writeVarInt(attcas1);

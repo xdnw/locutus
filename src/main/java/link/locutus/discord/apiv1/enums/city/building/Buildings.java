@@ -158,9 +158,6 @@ public class Buildings {
                     ((ABuilding) building).setOrdinal(buildingsList.size());
                     buildingsList.add(building);
                     BUILDINGS_MAP.put(building.name(), building);
-                    System.out.println(building.name() + " | " + building.nameSnakeCase() + " | " + (building.nameSnakeCase().replace("imp_", "")));
-                    BUILDINGS_MAP.put(building.nameSnakeCase(), building);
-                    BUILDINGS_MAP.put(building.nameSnakeCase().replace("imp_", ""), building);
                 }
             }
             BUILDINGS = buildingsList.toArray(new Building[0]);

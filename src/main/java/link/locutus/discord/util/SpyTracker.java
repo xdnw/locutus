@@ -4,7 +4,7 @@ import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -200,12 +200,12 @@ public class SpyTracker {
     public synchronized long removeMatchingAttacks() {
         long cutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(20);
         long requiredProximityMs = TimeUnit.SECONDS.toMillis(1);
-        List<DBAttack> allAttacks = Locutus.imp().getWarDb().getAttacks(cutoff);
+        List<AbstractCursor> allAttacks = Locutus.imp().getWarDb().getAttacks(cutoff);
 
-        Map<Integer, List<DBAttack>> attacksByNation = new HashMap<>();
+        Map<Integer, List<AbstractCursor>> attacksByNation = new HashMap<>();
 
         long latestAttackMs = 0;
-        for (DBAttack attack : allAttacks) {
+        for (AbstractCursor attack : allAttacks) {
             if (attack.getDate() > latestAttackMs) {
                 latestAttackMs = attack.getDate();
             }
@@ -216,9 +216,9 @@ public class SpyTracker {
         while (iter.hasNext()) {
             SpyActivity activity = iter.next();
             if (activity.unit != MilitaryUnit.SPIES) {
-                List<DBAttack> attacks = attacksByNation.get(activity.nationId);
+                List<AbstractCursor> attacks = attacksByNation.get(activity.nationId);
                 if (attacks != null) {
-                    for (DBAttack attack : attacks) {
+                    for (AbstractCursor attack : attacks) {
                         boolean isAttacker = attack.getAttacker_nation_id() == activity.nationId;
                         boolean checkNation = activity.isKill != isAttacker;
                         Map<MilitaryUnit, Integer> losses = attack.getUnitLosses(checkNation);

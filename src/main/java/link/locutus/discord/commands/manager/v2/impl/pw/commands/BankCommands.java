@@ -58,7 +58,7 @@ import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -762,15 +762,15 @@ public class BankCommands {
                 f -> (allyIds.contains(f) || enemyIds.contains(f)),
                 f -> (allyIds.contains(f.attacker_aa) || allyIds.contains(f.defender_aa)) && (enemyIds.contains(f.attacker_aa) || enemyIds.contains(f.defender_aa)) && f.date > cutoff).values());
 
-        List<DBAttack> allattacks = Locutus.imp().getWarDb().getAttacksByWars(wars);
-        Map<Integer, List<DBAttack>> attacksByWar = new HashMap<>();
-        for (DBAttack attack : allattacks) {
+        List<AbstractCursor> allattacks = Locutus.imp().getWarDb().getAttacksByWars(wars);
+        Map<Integer, List<AbstractCursor>> attacksByWar = new HashMap<>();
+        for (AbstractCursor attack : allattacks) {
             attacksByWar.computeIfAbsent(attack.getWar_id(), f -> new ArrayList<>()).add(attack);
         }
 
         if (removeWarsWithNoDefenderActions) {
             wars.removeIf(f -> {
-                List<DBAttack> attacks = attacksByWar.get(f.warId);
+                List<AbstractCursor> attacks = attacksByWar.get(f.warId);
                 if (attacks == null) return true;
                 boolean att1 = attacks.stream().anyMatch(g -> g.getAttacker_nation_id() == f.attacker_id);
                 boolean att2 = attacks.stream().anyMatch(g -> g.getAttacker_nation_id() == f.defender_id);
@@ -779,7 +779,7 @@ public class BankCommands {
         }
 
         wars.removeIf(f -> {
-            List<DBAttack> attacks = attacksByWar.get(f.warId);
+            List<AbstractCursor> attacks = attacksByWar.get(f.warId);
             AttackCost cost = f.toCost(attacks);
             boolean primary = allyIds.contains(f.attacker_aa);
             return cost.convertedTotal(primary) <= 0;
@@ -794,7 +794,7 @@ public class BankCommands {
         Map<Integer, double[]> warcostByNation = new HashMap<>();
 
         for (DBWar war : wars) {
-            List<DBAttack> attacks = attacksByWar.get(war.warId);
+            List<AbstractCursor> attacks = attacksByWar.get(war.warId);
             AttackCost ac = war.toCost(attacks);
             boolean primary = allies.contains(war.attacker_aa);
             double[] units = PnwUtil.resourcesToArray(ac.getUnitCost(primary));

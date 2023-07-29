@@ -27,7 +27,7 @@ import link.locutus.discord.web.commands.search.SearchType;
 import link.locutus.discord.web.jooby.PageHandler;
 import link.locutus.discord.web.jooby.WebRoot;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import io.javalin.http.Context;
@@ -345,7 +345,7 @@ public class IndexPages extends PageHelper {
         Collections.sort(myWars, Comparator.comparingLong(o -> o.date));
         Collections.reverse(myWars);
         System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (2)");
-        List<DBAttack> attacks = myWars.isEmpty() ? Collections.emptyList() : Locutus.imp().getWarDb().getAttacksByWars(myWars);
+        List<AbstractCursor> attacks = myWars.isEmpty() ? Collections.emptyList() : Locutus.imp().getWarDb().getAttacksByWars(myWars);
         System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (3)");
         boolean isFightingActives = false;
 
@@ -353,7 +353,7 @@ public class IndexPages extends PageHelper {
         System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (4)");
 
         for (DBWar war : myWars) {
-            List<DBAttack> warAttacks = attacks.stream().filter(f -> f.getWar_id() == war.warId).collect(Collectors.toList());
+            List<AbstractCursor> warAttacks = attacks.stream().filter(f -> f.getWar_id() == war.warId).collect(Collectors.toList());
             WarCard warcard = new WarCard(war, warAttacks, false, false, false);
             warCards.put(war, warcard);
 

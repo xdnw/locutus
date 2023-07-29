@@ -189,7 +189,10 @@ public class Settings extends Config {
         @Comment("Fetches all wars (default 5 minutes)")
         public int ALL_WAR_SECONDS = 60 * 5;
 
-        @Comment("Unload attacks after days (-1 = load all attacks)")
+        @Comment({
+                "Unload attacks after days (-1 = load all attacks)",
+                "Must be less than or equal to `unload-wars-after-days`"
+        })
         public int UNLOAD_ATTACKS_AFTER_DAYS = -1;
 
         @Comment("Unload wars after days (-1 = load all wars)")

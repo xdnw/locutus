@@ -858,7 +858,8 @@ public class DBAlliance implements NationList, NationOrAlliance {
     public PoliticsAndWarV3 getApiOrThrow(AlliancePermission... permissions) {
         PoliticsAndWarV3 api = getApi( permissions);
         if (api == null) {
-            String msg = "No api key found for " + getQualifiedName() + ". Please use" + CM.credentials.addApiKey.cmd.toSlashMention();
+            String msg = "No api key found for " + getQualifiedName() + ". Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "\n" +
+                    "Api key can be found on <https://politicsandwar.com/account/>";
             if (permissions.length > 0) msg += " and ensure your in-game position grants: " + StringMan.getString(permissions);
             throw new IllegalArgumentException(msg);
         }
@@ -948,7 +949,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
         for (DBWar war : Locutus.imp().getWarDb().getWarsByAlliance(getAlliance_id())) {
 
-            List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWar(war);
+            List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByNationGroupWar(war);
             attacks.removeIf(f -> f.getAttack_type() != AttackType.A_LOOT);
             if (attacks.size() != 1) continue;
 

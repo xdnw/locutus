@@ -2,7 +2,7 @@ package link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors;
 
 import com.politicsandwar.graphql.model.WarAttack;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.FailedCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -13,7 +13,7 @@ import link.locutus.discord.util.io.BitBuffer;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack.parseBankLoot;
+import static link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor.parseBankLoot;
 
 public class ALootCursor extends FailedCursor {
     public boolean hasLoot = false;
@@ -27,7 +27,7 @@ public class ALootCursor extends FailedCursor {
     }
 
     @Override
-    public void load(DBAttack legacy) {
+    public void load(AbstractCursor legacy) {
         super.load(legacy);
         this.hasLoot = legacy.loot != null && !ResourceType.isZero(legacy.loot);
         this.loot_percent_cents = (int) (legacy.getLootPercent() * 100 * 100);
@@ -104,15 +104,16 @@ public class ALootCursor extends FailedCursor {
         // load resources
         hasLoot = input.readBit();
         if (hasLoot) {
-            alliance_id = input.readVarInt();
             loot_percent_cents = input.readVarInt();
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.CREDITS) continue;
                 looted[type.ordinal()] = input.readVarLong() * 0.01d;
             }
         } else {
-            alliance_id = 0;
             loot_percent_cents = 0;
+        }
+        if (input.readBit()) {
+            alliance_id = input.readVarInt();
         }
     }
 
@@ -122,12 +123,15 @@ public class ALootCursor extends FailedCursor {
         // add current
         output.writeBit(hasLoot);
         if (hasLoot) {
-            output.writeVarInt(alliance_id);
             output.writeVarInt(loot_percent_cents);
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.CREDITS) continue;
                 output.writeVarLong((long) (looted[type.ordinal()] * 100));
             }
+        }
+        output.writeBit(alliance_id != 0);
+        if (alliance_id != 0) {
+            output.writeVarInt(alliance_id);
         }
     }
 }

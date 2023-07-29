@@ -2,7 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -1268,8 +1268,8 @@ public class AdminCommands {
     public String syncLootFromAttacks() {
         int found = 0;
         int added = 0;
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(0, AttackType.A_LOOT);
-        for (DBAttack attack : attacks) {
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(0, AttackType.A_LOOT);
+        for (AbstractCursor attack : attacks) {
             if (attack.getLooted() > 0) {
                 LootEntry existing = Locutus.imp().getNationDB().getAllianceLoot(attack.getLooted());
                 if (existing != null && existing.getDate() < attack.getDate()) {

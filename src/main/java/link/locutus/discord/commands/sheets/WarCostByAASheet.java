@@ -17,7 +17,7 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -108,7 +108,7 @@ public class WarCostByAASheet extends Command {
             Set<Integer> nationIds = new HashSet<>();
             for (DBNation aaNation : aaNations) nationIds.add(aaNation.getNation_id());
 
-            List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksAny(nationIds, cutoff);
+            List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksAny(nationIds, cutoff);
 
             attacks.removeIf(n -> {
                 DBNation nat1 = Locutus.imp().getNationDB().getNation(n.getAttacker_nation_id());
@@ -116,9 +116,9 @@ public class WarCostByAASheet extends Command {
                 return nat1 == null || nat2 == null || !nationsByAA.containsKey(nat1.getAlliance_id()) || !nationsByAA.containsKey(nat2.getAlliance_id());
             });
 
-            Function<DBAttack, Boolean> isPrimary = new Function<DBAttack, Boolean>() {
+            Function<AbstractCursor, Boolean> isPrimary = new Function<AbstractCursor, Boolean>() {
                 @Override
-                public Boolean apply(DBAttack attack) {
+                public Boolean apply(AbstractCursor attack) {
                     return Locutus.imp().getNationDB().getNation(attack.getAttacker_nation_id()).getAlliance_id() == aaId;
                 }
             };

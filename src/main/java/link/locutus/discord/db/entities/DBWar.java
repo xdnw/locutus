@@ -2,6 +2,7 @@ package link.locutus.discord.db.entities;
 
 import com.politicsandwar.graphql.model.War;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -132,8 +133,8 @@ public class DBWar {
         return body.toString();
     }
 
-    public List<DBAttack> getAttacks() {
-        return Locutus.imp().getWarDb().getAttacksByWar(this);
+    public List<AbstractCursor> getAttacks() {
+        return Locutus.imp().getWarDb().getAttacksByNationGroupWar(this);
     }
 
     public List<DBAttack> getAttacks(Collection<DBAttack> attacks) {

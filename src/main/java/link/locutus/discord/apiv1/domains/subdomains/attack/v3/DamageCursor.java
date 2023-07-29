@@ -2,7 +2,7 @@ package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
 import com.politicsandwar.graphql.model.WarAttack;
 import it.unimi.dsi.fastutil.bytes.Byte2ByteArrayMap;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -31,7 +31,7 @@ public abstract class DamageCursor extends AbstractCursor{
         return 0;
     }
     @Override
-    public void load(DBAttack legacy) {
+    public void load(AbstractCursor legacy) {
         super.load(legacy);
         success = SuccessType.values[legacy.getSuccess()];
         city_id = legacy.city_cached;
@@ -41,7 +41,7 @@ public abstract class DamageCursor extends AbstractCursor{
         buildingsDestroyed.clear();
         if (num_improvements > 0) {
             // default to Buildings.FARM.ordinal()
-            buildingsDestroyed.put((byte) Buildings.FARM.ordinal(), (byte) num_improvements);
+//            buildingsDestroyed.put((byte) Buildings.FARM.ordinal(), (byte) num_improvements);
         }
     }
 
@@ -115,17 +115,21 @@ public abstract class DamageCursor extends AbstractCursor{
         output.writeBits(success.ordinal(), 2);
 
         if (success != SuccessType.UTTER_FAILURE) {
-            output.writeInt(city_id);
+            output.writeVarInt(city_id);
             output.writeVarInt(city_infra_before_cents);
             output.writeVarInt(infra_destroyed_cents);
             output.writeBits(num_improvements, 4);
-
-            // 26 types of buildings (2^5)
-            for (Map.Entry<Byte, Byte> entry : buildingsDestroyed.entrySet()) {
-                byte typeId = entry.getKey();
-                byte amt = entry.getValue();
-                for (int i = 0; i < amt; i++) {
-                    output.writeBits(typeId, 5);
+            if (buildingsDestroyed.size() != num_improvements) {
+                output.writeBit(false);
+            } else {
+                // 26 types of buildings (2^5)
+                output.writeBit(true);
+                for (Map.Entry<Byte, Byte> entry : buildingsDestroyed.entrySet()) {
+                    byte typeId = entry.getKey();
+                    byte amt = entry.getValue();
+                    for (int i = 0; i < amt; i++) {
+                        output.writeBits(typeId, 5);
+                    }
                 }
             }
         }
@@ -137,15 +141,17 @@ public abstract class DamageCursor extends AbstractCursor{
         success = SuccessType.values[(int) input.readBits(2)];
 
         if (success != SuccessType.UTTER_FAILURE) {
-            city_id = input.readInt();
+            city_id = input.readVarInt();
             city_infra_before_cents = (int) input.readVarInt();
             infra_destroyed_cents = (int) input.readVarInt();
             num_improvements = (int) input.readBits(4);
 
             buildingsDestroyed.clear();
-            for (int i = 0; i < num_improvements; i++) {
-                byte typeId = (byte) input.readBits(5);
-                buildingsDestroyed.compute(typeId, (k, v) -> v == null ? (byte) 1 : (byte) (v + 1));
+            if (input.readBit()) {
+                for (int i = 0; i < num_improvements; i++) {
+                    byte typeId = (byte) input.readBits(5);
+                    buildingsDestroyed.compute(typeId, (k, v) -> v == null ? (byte) 1 : (byte) (v + 1));
+                }
             }
         } else {
             city_id = 0;

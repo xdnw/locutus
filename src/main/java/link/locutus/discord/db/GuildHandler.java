@@ -43,7 +43,7 @@ import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.task.war.WarCard;
 import com.google.common.eventbus.Subscribe;
 import com.google.gson.JsonObject;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -1129,7 +1129,7 @@ public class GuildHandler {
 //                            }
 //                        }
 //                        if (latestWar != null) {
-//                            for (DBAttack attack : latestWar.getAttacks()) {
+//                            for (AbstractCursor attack : latestWar.getAttacks()) {
 //                                latestWarTime = Math.max(latestWarTime, attack.epoch);
 //                            }
 //                            cutoff = Math.min(latestWarTime, cutoff);
@@ -1367,7 +1367,7 @@ public class GuildHandler {
 //        return null;
 //    }
 
-    public void onAttack(DBNation memberNation, DBAttack root) {
+    public void onAttack(DBNation memberNation, AbstractCursor root) {
         Set<Integer> aaIds = db.getAllianceIds();
         if (!aaIds.isEmpty()) {
             if (root.getAttack_type() == AttackType.VICTORY) {
@@ -1381,7 +1381,7 @@ public class GuildHandler {
         }
     }
 
-    private void handleWonWars(DBNation enemy, Set<Integer> aaIds, DBAttack root, DBNation memberNation) {
+    private void handleWonWars(DBNation enemy, Set<Integer> aaIds, AbstractCursor root, DBNation memberNation) {
         if (enemy == null || aaIds.contains(enemy.getAlliance_id()) || enemy.getNation_id() == memberNation.getNation_id()) return;
         MessageChannel channel = db.getOrNull(GuildKey.WON_WAR_CHANNEL);
         if (enemy.getActive_m() > 1440 || enemy.getVm_turns() > 0) return;
@@ -1394,7 +1394,7 @@ public class GuildHandler {
         createWarInfoEmbed(title, war, enemy, memberNation, channel);
     }
 
-    private void handleLostWars(DBNation enemy, Set<Integer> aaIds, DBAttack root, DBNation memberNation) {
+    private void handleLostWars(DBNation enemy, Set<Integer> aaIds, AbstractCursor root, DBNation memberNation) {
         if (enemy == null || aaIds.contains(enemy.getAlliance_id()) || enemy.getNation_id() == memberNation.getNation_id()) return;
         MessageChannel channel = db.getOrNull(GuildKey.LOST_WAR_CHANNEL);
 
@@ -2056,7 +2056,7 @@ public class GuildHandler {
         return allowedReasons;
     }
 
-    public void beigeAlert(DBAttack root) {
+    public void beigeAlert(AbstractCursor root) {
         Set<Integer> enemies = db.getCoalition("enemies");
         if (enemies.isEmpty()) return;
 

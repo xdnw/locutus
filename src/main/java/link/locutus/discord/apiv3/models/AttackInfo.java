@@ -1,6 +1,6 @@
 //package link.locutus.discord.apiv3.models;
 //
-//import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+//import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 //import link.locutus.discord.apiv1.enums.AttackType;
 //import link.locutus.discord.db.entities.DBWar;
 //import link.locutus.discord.util.IOUtil;
@@ -39,7 +39,7 @@
 //    att_gas varint
 //    def_gas varint
 //     */
-//    public void loadFrom(DBWar war, DBAttack attack) throws IOException {
+//    public void loadFrom(DBWar war, AbstractCursor attack) throws IOException {
 //        ByteArrayOutputStream out = new ByteArrayOutputStream();
 //        DataOutputStream dos = new DataOutputStream(out);
 //        out.reset();
@@ -62,7 +62,7 @@
 //
 //    }
 //
-//    public void writeTo(DBWar war, DBAttack attack) {
+//    public void writeTo(DBWar war, AbstractCursor attack) {
 //
 //    }
 //

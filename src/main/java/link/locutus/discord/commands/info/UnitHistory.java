@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.info;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.commands.manager.Command;
@@ -47,12 +47,12 @@ public class UnitHistory extends Command {
         long day = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
 
         if (unit == MilitaryUnit.NUKE || unit == MilitaryUnit.MISSILE) {
-            List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(nation.getNation_id(), day);
+            List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(nation.getNation_id(), day);
             AttackType attType = unit == MilitaryUnit.NUKE ? AttackType.NUKE : AttackType.MISSILE;
             attacks.removeIf(f -> f.getAttack_type() != attType);
 
             outer:
-            for (DBAttack attack : attacks) {
+            for (AbstractCursor attack : attacks) {
                 AbstractMap.SimpleEntry<Long, Integer> toAdd = new AbstractMap.SimpleEntry<>(attack.getDate(), nation.getUnits(unit));
                 int i = 0;
                 for (; i < history.size(); i++) {

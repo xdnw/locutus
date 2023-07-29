@@ -53,7 +53,7 @@ public class WarAttackParser {
                 warUrl = Locutus.imp().getWarDb().getWar(warId);
                 if (warUrl == null) throw new IllegalArgumentException("War not found (out of sync?)");
 
-                attacks = Locutus.imp().getWarDb().getAttacksByWar(warUrl);
+                attacks = Locutus.imp().getWarDb().getAttacksByNationGroupWar(warUrl);
 
                 nameA = PnwUtil.getName(warUrl.attacker_id, false);
                 nameB = PnwUtil.getName(warUrl.defender_id, false);

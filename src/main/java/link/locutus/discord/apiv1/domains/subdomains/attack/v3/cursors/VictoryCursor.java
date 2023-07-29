@@ -3,7 +3,7 @@ package link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors;
 import com.politicsandwar.graphql.model.CityInfraDamage;
 import com.politicsandwar.graphql.model.WarAttack;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.FailedCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -47,7 +47,7 @@ public class VictoryCursor extends FailedCursor {
     }
 
     @Override
-    public void load(DBAttack legacy) {
+    public void load(AbstractCursor legacy) {
         super.load(legacy);
         this.hasLoot = legacy.loot != null && !ResourceType.isZero(legacy.loot);
         this.loot_percent_cents = (int) Math.round(legacy.getLootPercent() * 100);
@@ -152,7 +152,7 @@ public class VictoryCursor extends FailedCursor {
             output.writeBit(!city_infra_before_cents.isEmpty());
             if (!city_infra_before_cents.isEmpty()) {
                 output.writeVarInt(infra_destroyed_percent_cents);
-                output.writeVarInt(city_infra_before_cents.size());
+                output.writeBits(city_infra_before_cents.size(), 7);
                 for (Map.Entry<Integer, Integer> entry : city_infra_before_cents.entrySet()) {
                     output.writeVarInt(entry.getKey());
                     output.writeVarInt(entry.getValue());
@@ -161,7 +161,9 @@ public class VictoryCursor extends FailedCursor {
 
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.CREDITS) continue;
-                output.writeVarLong((long) (looted[type.ordinal()] * 100));
+                double amt = looted[type.ordinal()];
+                output.writeBit(amt > 0);
+                if (amt > 0) output.writeVarLong((long) (amt * 100));
             }
         }
     }
@@ -180,22 +182,28 @@ public class VictoryCursor extends FailedCursor {
 
             if (input.readBit()) {
                 infra_destroyed_percent_cents = input.readVarInt();
-                int size = input.readVarInt();
+                long size = input.readBits(7);
                 for (int i = 0; i < size; i++) {
-                    city_infra_before_cents.put(input.readVarInt(), input.readVarInt());
+                    int cityId = input.readVarInt();
+                    int infra = input.readVarInt();
+                    city_infra_before_cents.put(cityId, infra);
+                    infra_destroyed_cents += Math.round(infra * (infra_destroyed_percent_cents * 0.01));
                 }
             } else {
+                infra_destroyed_cents = 0;
                 infra_destroyed_percent_cents = 0;
             }
 
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.CREDITS) continue;
-                looted[type.ordinal()] = input.readVarLong() * 0.01d;
+                if (input.readBit()) looted[type.ordinal()] = input.readVarLong() * 0.01d;
+                else looted[type.ordinal()] = 0;
             }
         } else {
             infra_destroyed_value_cents = 0;
             infra_destroyed_percent_cents = 0;
             loot_percent_cents = 0;
+            infra_destroyed_cents = 0;
         }
     }
 }

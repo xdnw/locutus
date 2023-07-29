@@ -12,7 +12,7 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.sim.WarNation;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.WarContainer;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -43,13 +43,13 @@ public class WarCard {
         this(war, checkCounters, false);
     }
 
-    public WarCard(DBWar war, List<DBAttack> attacks, boolean onlyCheckBlockade) {
+    public WarCard(DBWar war, List<AbstractCursor> attacks, boolean onlyCheckBlockade) {
         this.war = war;
         this.warId = war.warId;
         update(attacks, onlyCheckBlockade);
     }
 
-    public WarCard(DBWar war, List<DBAttack> attacks, boolean checkGC, boolean checkAC, boolean checkBlockade) {
+    public WarCard(DBWar war, List<AbstractCursor> attacks, boolean checkGC, boolean checkAC, boolean checkBlockade) {
         this.war = war;
         this.warId = war.warId;
         update(attacks, checkGC, checkAC, checkBlockade);
@@ -152,7 +152,7 @@ public class WarCard {
 //            war.update(pnwWar);
 //        }
 //
-//        List<DBAttack> attacks = Locutus.imp().getWarDB().getAttacksByWarId(war.warId);
+//        List<AbstractCursor> attacks = Locutus.imp().getWarDB().getAttacksByWarId(war.warId);
 //        Map<MilitaryUnit, Integer> attUnitLoss = new HashMap<>();
 //        Map<MilitaryUnit, Integer> defUnitLoss = new HashMap<>();
 //        Map<ResourceType, Double> attRssLoss = new HashMap<>();
@@ -162,7 +162,7 @@ public class WarCard {
 //        double attInfraLoss = 0;
 //        double defInfraLoss = 0;
 //
-//        for (DBAttack attack : attacks) {
+//        for (AbstractCursor attack : attacks) {
 //            attUnitLoss = PnwUtil.add(attack.getUnitLosses(true), attUnitLoss);
 //            defUnitLoss = PnwUtil.add(attack.getUnitLosses(false), defUnitLoss);
 //            PnwUtil.addResourcesToA(attRssLoss, attack.getLosses(true));
@@ -226,7 +226,7 @@ public class WarCard {
 
     public void update(DBWar war, boolean checkCounters, boolean onlyCheckBlockade) {
         this.war = war;
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWar(war);
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByNationGroupWar(war);
         update(attacks, onlyCheckBlockade);
         if (checkCounters) updateCounterStats();
     }
@@ -285,12 +285,12 @@ public class WarCard {
         return description.toString();
     }
 
-    public void update(List<DBAttack> attacks, boolean onlyCheckBlockade) {
+    public void update(List<AbstractCursor> attacks, boolean onlyCheckBlockade) {
         if (onlyCheckBlockade) update(attacks, false, false, true);
         else  update(attacks, true, true, true);
     }
 
-    public void update(List<DBAttack> attacks, boolean checkGC, boolean checkAC, boolean checkBlockade) {
+    public void update(List<AbstractCursor> attacks, boolean checkGC, boolean checkAC, boolean checkBlockade) {
         Map.Entry<Integer, Integer> res = this.war.getResistance(attacks);
         this.attackerResistance = res.getKey();
         this.defenderResistance = res.getValue();
@@ -305,7 +305,7 @@ public class WarCard {
 
         boolean isActive = war.isActive();
 //
-        for (DBAttack attack : attacks) {
+        for (AbstractCursor attack : attacks) {
             if (attack.getAttacker_nation_id() == war.attacker_id) attackerFortified = false; else defenderFortified = false;
             switch (attack.getAttack_type()) {
                 case FORTIFY:

@@ -1,5 +1,6 @@
 package link.locutus.discord.db;
 
+import com.google.common.collect.Lists;
 import com.politicsandwar.graphql.model.*;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
@@ -9,8 +10,6 @@ import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.WarAttacksContainer;
-import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractAttack;
-import link.locutus.discord.apiv1.domains.subdomains.attack.WarAttackWrapper;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AttackCursorFactory;
 import link.locutus.discord.apiv1.enums.*;
@@ -18,7 +17,6 @@ import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.NationLootType;
-import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.Treaty;
@@ -52,7 +50,6 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -65,8 +62,7 @@ public class WarDB extends DBMainV2 {
     private Map<Integer, DBWar> warsById;
     private Map<Integer, Map<Integer, DBWar>> warsByAllianceId;
     private Map<Integer, Map<Integer, DBWar>> warsByNationId;
-    private final Int2ObjectOpenHashMap<Object> attacksByWar = new Int2ObjectOpenHashMap<>();
-    private ObjectArrayList<DBAttack> allAttacks2 = new ObjectArrayList<>();
+    private final Int2ObjectOpenHashMap<List<byte[]>> attacksByWarId = new Int2ObjectOpenHashMap<>();
     public WarDB() throws SQLException {
         super(Settings.INSTANCE.DATABASE, "war");
         warsById = new Int2ObjectOpenHashMap<>();
@@ -74,7 +70,7 @@ public class WarDB extends DBMainV2 {
         warsByNationId = new Int2ObjectOpenHashMap<>();
     }
 
-    public static void main(String[] args) throws SQLException {
+    public static void main(String[] args) throws SQLException, IOException {
         Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
         WarDB warDb = new WarDB();
 
@@ -82,7 +78,8 @@ public class WarDB extends DBMainV2 {
 
 //        warDb.testLoadAttacks2();
         warDb.loadAttacks(1);
-        warDb.testLoadAttacks3();
+        warDb.loadWars(-1);
+        warDb.testAttackSerializingTime();
 
         System.exit(0);
 
@@ -95,40 +92,68 @@ public class WarDB extends DBMainV2 {
         int num_attacks = 0;
         int numErrors = 0;
 
+        /**
+         * Took 41748ms to load 0 attacks
+         *
+         * Took 42044ms to load 12695101 attacks
+         * (serializing)
+         *
+         * Total bytes: 61,750,087
+         */
+
         AttackCursorFactory cursorManager = new AttackCursorFactory();
 
         FastByteArrayOutputStream baos = new FastByteArrayOutputStream();
+        long totalBytes = 0;
 
+        int max_attacks = 12695101;
+        int skipped = 0;
+        int notSkipped = 0;
 
         long start = System.currentTimeMillis();
         try (PreparedStatement stmt= getConnection().prepareStatement("select * FROM `attacks2` ORDER BY `war_attack_id` ASC", ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY)) {
             stmt.setFetchSize(2 << 16);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
+                    num_attacks++;
                     DBAttack legacy = createAttack(rs);
                     AbstractCursor cursor = cursorManager.load(legacy, true);
                     DBWar war = getWar(legacy.getWar_id());
+
+                    if ((num_attacks) % 100000 == 0) {
+                        // and print %
+                        System.out.println("Loaded " + num_attacks + " attacks | " + skipped + " skipped | " + MathMan.format((num_attacks) / (double) max_attacks * 100) + "%");
+                    }
                     // serialize
                     byte[] bytes = cursorManager.toBytes(cursor);
                     // add byte length to count
                     countByType.compute(legacy.getAttack_type(), (k, v) -> v == null ? bytes.length : v + bytes.length);
-                    // write
-                    baos.write(bytes);
-
-                    // deserialize
+                    totalBytes += bytes.length;
+                    if (bytes.length < 4) {
+                        throw new RuntimeException("bytes.length < 4 " + bytes.length + " | " + legacy.getAttack_type());
+                    }
+//                    // write
+//                    baos.write(bytes);
+//
+//                    // deserialize
+                    if (war == null) {
+                        skipped++;
+                        continue;
+                    }
                     AbstractCursor cursor2 = cursorManager.load(war, bytes, true);
-
+                    notSkipped++;
                 }
             }
-        } catch (SQLException | IOException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
 
         long diff = System.currentTimeMillis() - start;
-        // print
-        System.out.println("Took " + diff + "ms to load " + num_attacks + " attacks");
+        // print time, num and skipped
+        System.out.println("Took " + diff + "ms to load " + num_attacks + " attacks (" + skipped + " skipped)");
         // print total bytes
-        System.out.println("Total bytes: " + baos.length());
+        System.out.println("Total bytes: " + totalBytes);
+        // Took 54134ms to load 12695101 attacks (228834 skipped)
         // print total by type
         for (Map.Entry<AttackType, Integer> entry : countByType.entrySet()) {
             System.out.println(entry.getKey() + ": " + entry.getValue());
@@ -187,6 +212,245 @@ public class WarDB extends DBMainV2 {
 
     }
 
+    private void validateAttack(DBWar war, DBAttack legacy, AbstractCursor cursor) {
+        // remove this later
+        if (legacy.getLootPercent() > 1) {
+            throw new IllegalArgumentException("Loot percent > 1 " + legacy.getLootPercent());
+        }
+
+        // check all values match
+        // which are:
+        //    private int war_attack_id;
+        if (legacy.getWar_attack_id() != cursor.getWar_attack_id()) {
+            throw new IllegalArgumentException("War attack id mismatch");
+        }
+        //    private long date;
+        if (legacy.getDate() != cursor.getDate() && legacy.getDate() != 0) {
+            throw new IllegalArgumentException("Date mismatch " + legacy.getDate() + " | " + (legacy.getDate() < TimeUtil.getOrigin()));
+        }
+        //    private int war_id;
+        if (legacy.getWar_id() != cursor.getWar_id()) {
+            throw new IllegalArgumentException("War id mismatch");
+        }
+        //    private int attacker_nation_id;
+        if (legacy.getAttacker_nation_id() != cursor.getAttacker_id() && (war == null || war.attacker_id != cursor.getAttacker_id())) {
+            // print att/def of legacy and cursor
+            System.out.println("Legacy att/def: " + legacy.getAttacker_nation_id() + " | " + legacy.getDefender_nation_id());
+            System.out.println("Cursor att/def: " + cursor.getAttacker_id() + " | " + cursor.getDefender_id());
+            throw new IllegalArgumentException("Attacker nation id mismatch " + cursor.getAttacker_id() + " != " + legacy.getAttacker_nation_id());
+        }
+        //    private int defender_nation_id;
+        if (legacy.getDefender_nation_id() != cursor.getDefender_id() && (war == null || war.defender_id != cursor.getDefender_id())) {
+            throw new IllegalArgumentException("Defender nation id mismatch");
+        }
+        //    private AttackType attack_type;
+        if (legacy.getAttack_type() != cursor.getAttack_type()) {
+            throw new IllegalArgumentException("Attack type mismatch");
+        }
+        //    private int victor;
+//                    int newVictor = cursor.getVictor();
+//                    if (legacy.getVictor() != newVictor) {
+//                        // print type
+//                        // print attacker / defender
+//                        // print success
+//                        System.out.println("Victor mismatch " + legacy.getVictor() + " | " + newVictor);
+//                        System.out.println("Type: " + cursor.getAttack_type());
+//                        System.out.println("Attacker: " + legacy.getAttacker_nation_id() + " | " + cursor.getAttacker_id());
+//                        System.out.println("Defender: " + legacy.getDefender_nation_id() + " | " + cursor.getDefender_id());
+//                        System.out.println("Success: " + SuccessType.values[legacy.getSuccess()] + " | " + cursor.getSuccess());
+//                        throw new IllegalArgumentException("Victor mismatch " + legacy.getVictor() + " | " + newVictor);
+//                    }
+        //    private int success;
+        if (legacy.getSuccess() != cursor.getSuccess().ordinal() && legacy.getAttack_type() != AttackType.PEACE && legacy.getAttack_type() != AttackType.FORTIFY && legacy.getAttack_type() != AttackType.VICTORY) {
+            // print type and success
+            System.out.println("Success mismatch " + legacy.getSuccess() + " | " + cursor.getSuccess().ordinal());
+            System.out.println("Type: " + cursor.getAttack_type());
+            throw new IllegalArgumentException("Success mismatch");
+        }
+        //    private int attcas1;
+        if (legacy.getAttcas1() != cursor.getAttcas1()) {
+            if ((legacy.getAttack_type() != AttackType.MISSILE && legacy.getAttack_type() != AttackType.NUKE) || legacy.getAttcas1() != 0) {
+                System.out.println("Attcas1 mismatch " + legacy.getAttcas1() + " | " + cursor.getAttcas1());
+                System.out.println("Type: " + cursor.getAttack_type());
+                throw new IllegalArgumentException("Attcas1 mismatch");
+            }
+        }
+        //    private int attcas2;
+        if (legacy.getAttcas2() != cursor.getAttcas2()) {
+            throw new IllegalArgumentException("Attcas2 mismatch");
+        }
+        //    private int defcas1;
+        if (legacy.getDefcas1() != cursor.getDefcas1()) {
+            throw new IllegalArgumentException("Defcas1 mismatch");
+        }
+        //    private int defcas2;
+        if (legacy.getDefcas2() != cursor.getDefcas2()) {
+            throw new IllegalArgumentException("Defcas2 mismatch");
+        }
+        //    private int defcas3;
+        if (legacy.getDefcas3() != cursor.getDefcas3()) {
+            throw new IllegalArgumentException("Defcas3 mismatch");
+        }
+        //    private double infra_destroyed;
+//        if (Math.round(legacy.getInfra_destroyed() * 100) != Math.round(cursor.getInfra_destroyed() * 100)) {
+//            // print type and amounts
+//            System.out.println("Infra destroyed mismatch " + legacy.getAttack_type() + " " + legacy.getInfra_destroyed() + " | " + cursor.getInfra_destroyed());
+//            throw new IllegalArgumentException("Infra destroyed mismatch");
+//        }
+        //    private int improvements_destroyed;
+        if (legacy.getImprovements_destroyed() != cursor.getImprovements_destroyed()) {
+            throw new IllegalArgumentException("Improvements destroyed mismatch");
+        }
+        //    private double money_looted;
+        if (Math.round(legacy.getMoney_looted() * 100) != Math.round(cursor.getMoney_looted() * 100)) {
+            if (legacy.getAttack_type() == AttackType.VICTORY && cursor.getLoot() != null && (Math.round(cursor.getLoot()[ResourceType.MONEY.ordinal()] * 100) == Math.round(100 * legacy.getMoney_looted()))) {
+                if (legacy.getMoney_looted() > 0 && legacy.loot != null && legacy.getMoney_looted() != legacy.loot[ResourceType.MONEY.ordinal()]) {
+                    throw new IllegalArgumentException("Money looted mismatch 2");
+                }
+            } else if (legacy.getMoney_looted() ==0 || cursor.getLoot() == null || cursor.getLoot()[ResourceType.MONEY.ordinal()] == 0) {
+                // print type and amounts
+                System.out.println("Money looted mismatch " + legacy.getAttack_type() + " " + legacy.getMoney_looted() + " | " + cursor.getMoney_looted());
+                System.out.println("Loot : " + (legacy.loot != null) + " | " + (cursor.getLoot() != null));
+                if (legacy.loot != null) {
+                    System.out.println("loot l " + PnwUtil.resourcesToString(legacy.loot));
+                }
+                if (cursor.getLoot() != null) {
+                    System.out.println("loot c " + PnwUtil.resourcesToString(cursor.getLoot()));
+                }
+                throw new IllegalArgumentException("Money looted mismatch");
+            }
+        }
+        //    public double[] loot;
+        if (legacy.loot != null && !ResourceType.isZero(legacy.loot)) {
+            if (cursor.getLoot() == null || !Arrays.equals(legacy.loot, cursor.getLoot())) {
+                throw new IllegalArgumentException("Loot mismatch");
+            }
+        }
+        //    private int looted;
+        if (legacy.getLooted() != null && legacy.getLooted() > 0 && legacy.getAttack_type() == AttackType.A_LOOT && legacy.getLooted() != cursor.getAllianceIdLooted()) {
+            throw new IllegalArgumentException("Looted mismatch");
+        }
+        //    private double lootPercent;
+        if (Math.round(legacy.getLootPercent() * 100) != Math.round(cursor.getLootPercent() * 100) && legacy.loot != null && !ResourceType.isZero(legacy.loot)) {
+            // print type, percent and loot amounts
+            System.out.println("Tyoe " + legacy.getAttack_type() + " | " + cursor.getAttack_type());
+            System.out.println("Loot percent mismatch " + legacy.getAttack_type() + " " + legacy.getLootPercent() + " | " + cursor.getLootPercent());
+            if (legacy.loot != null) {
+                // print
+                System.out.println("loot l " + PnwUtil.resourcesToString(legacy.loot));
+            }
+            if (cursor.getLoot() != null) {
+                // print
+                System.out.println("loot c " + PnwUtil.resourcesToString(cursor.getLoot()));
+            }
+            // print count by type (or 0)
+            throw new IllegalArgumentException("Loot percent mismatch");
+        }
+        //    private double city_infra_before;
+        if (Math.round(legacy.getCity_infra_before() * 100) != Math.round(cursor.getCity_infra_before() * 100) && legacy.getCity_infra_before() > 0 && legacy.getAttack_type() != AttackType.VICTORY) {
+            //print
+            System.out.println("City infra before mismatch " + legacy.getCity_infra_before() + " | " + cursor.getCity_infra_before());
+            System.out.println("Type " + legacy.getAttack_type());
+            throw new IllegalArgumentException("City infra before mismatch");
+        }
+        //    private double infra_destroyed_value;
+//                    {
+//                        double valueLegacy = legacy.getInfra_destroyed_value();
+//                        double valueCursor = cursor.getInfra_destroyed_value();
+//                        // if within 10% of each other, ignore
+//                        if (Math.abs(valueLegacy - valueCursor) > 0.1 * Math.max(valueLegacy, valueCursor) && legacy.getCity_infra_before() > 0) {
+//                            // print type and amounts
+//                            System.out.println("final: " + legacy.getCity_infra_before() + " - " + cursor.getCity_infra_before());
+//                            // after
+//                            System.out.println("before: " + (legacy.getCity_infra_before() - legacy.getInfra_destroyed()) + " - " + (cursor.getCity_infra_before() - cursor.getInfra_destroyed()));
+//                            System.out.println("Type " + legacy.getAttack_type());
+////                            throw new IllegalArgumentException("Infra destroyed value mismatch " + valueLegacy + " | " + valueCursor);
+//                        }
+//                    }
+        //    private double att_gas_used;
+        if (Math.round(legacy.getAtt_gas_used() * 100) != Math.round(cursor.getAtt_gas_used() * 100)) {
+            throw new IllegalArgumentException("Att gas used mismatch");
+        }
+        //    private double att_mun_used;
+        if (Math.round(legacy.getAtt_mun_used() * 100) != Math.round(cursor.getAtt_mun_used() * 100)) {
+            throw new IllegalArgumentException("Att mun used mismatch");
+        }
+        //    private double def_gas_used;
+        if (Math.round(legacy.getDef_gas_used() * 100) != Math.round(cursor.getDef_gas_used() * 100)) {
+            System.out.println("Def gas used mismatch " + legacy.getDef_gas_used() + " | " + cursor.getDef_gas_used());
+            System.out.println("Type " + legacy.getAttack_type());
+            throw new IllegalArgumentException("Def gas used mismatch");
+        }
+        //    private double def_mun_used;
+        if (Math.round(legacy.getDef_mun_used() * 100) != Math.round(cursor.getDef_mun_used() * 100)) {
+            throw new IllegalArgumentException("Def mun used mismatch");
+        }
+        //    public double infraPercent_cached;
+        if (legacy.infraPercent_cached > 0 && Math.round(legacy.infraPercent_cached * 100) != Math.round(cursor.getInfra_destroyed_percent() * 100)) {
+            throw new IllegalArgumentException("Infra percent cached mismatch");
+        }
+        //    public int city_cached;
+        if (legacy.city_cached > 0 && legacy.city_cached != cursor.getCity_id()) {
+            throw new IllegalArgumentException("City cached mismatch");
+        }
+    }
+
+    public void importLegacyAttacks() {
+        try {
+            // if attacks2 does not exist, return
+            if (!tableExists("attacks2")) {
+                return;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        // load attacks
+        // convert to attack cursor
+        AttackCursorFactory cursorManager = new AttackCursorFactory();
+        List<AbstractCursor> attacks = new ArrayList<>();
+        try (PreparedStatement stmt= getConnection().prepareStatement("select * FROM `attacks2` ORDER BY `war_attack_id` ASC", ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY)) {
+            stmt.setFetchSize(2 << 16);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    DBAttack legacy = createAttack(rs);
+                    AbstractCursor cursor = cursorManager.load(legacy, true);
+                    attacks.add(cursor);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        String query = "INSERT OR IGNORE INTO `ATTACKS3` (`war_id`, `attacker_nation_id`, `defender_nation_id`, `date`, `data`) VALUES (?, ?, ?, ?, ?)";
+        executeBatch(attacks, query, new ThrowingBiConsumer<AbstractCursor, PreparedStatement>() {
+            @Override
+            public void acceptThrows(AbstractCursor attack, PreparedStatement stmt) throws SQLException {
+                stmt.setInt(1, attack.getWar_id());
+                stmt.setInt(2, attack.getAttacker_id());
+                stmt.setInt(3, attack.getDefender_id());
+                stmt.setLong(4, attack.getDate());
+                byte[] data = cursorManager.toBytes(attack);
+                stmt.setBytes(5, data);
+            }
+        });
+
+        // if table sizes match, drop attacks2
+        int countRows = 0;
+        try (PreparedStatement stmt = getConnection().prepareStatement("SELECT COUNT(*) FROM `attacks2`")) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    countRows = rs.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        if (countRows == attacks.size()) {
+            executeStmt("DROP TABLE `attacks2`");
+        }
+    }
+
     public void testLoadAttacks2() {
         String whereClause;
         if (Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS == 0) {
@@ -210,187 +474,8 @@ public class WarDB extends DBMainV2 {
                     DBAttack legacy = createAttack(rs);
                     AbstractCursor cursor = cursorManager.load(legacy, true);
 
-                    // add to countByType
                     countByType.compute(legacy.getAttack_type(), (k, v) -> v == null ? 1 : v + 1);
-
-                    // remove this later
-                    if (legacy.getLootPercent() > 1) {
-                        throw new IllegalArgumentException("Loot percent > 1 " + legacy.getLootPercent());
-                    }
-
-                    // check all values match
-                    // which are:
-                    //    private int war_attack_id;
-                    if (legacy.getWar_attack_id() != cursor.getWar_attack_id()) {
-                        throw new IllegalArgumentException("War attack id mismatch");
-                    }
-                    //    private long date;
-                    if (legacy.getDate() != cursor.getDate()) {
-                        throw new IllegalArgumentException("Date mismatch");
-                    }
-                    //    private int war_id;
-                    if (legacy.getWar_id() != cursor.getWar_id()) {
-                        throw new IllegalArgumentException("War id mismatch");
-                    }
-                    //    private int attacker_nation_id;
-                    if (legacy.getAttacker_nation_id() != cursor.getAttacker_id()) {
-                        throw new IllegalArgumentException("Attacker nation id mismatch");
-                    }
-                    //    private int defender_nation_id;
-                    if (legacy.getDefender_nation_id() != cursor.getDefender_id()) {
-                        throw new IllegalArgumentException("Defender nation id mismatch");
-                    }
-                    //    private AttackType attack_type;
-                    if (legacy.getAttack_type() != cursor.getAttack_type()) {
-                        throw new IllegalArgumentException("Attack type mismatch");
-                    }
-                    //    private int victor;
-//                    int newVictor = cursor.getVictor();
-//                    if (legacy.getVictor() != newVictor) {
-//                        // print type
-//                        // print attacker / defender
-//                        // print success
-//                        System.out.println("Victor mismatch " + legacy.getVictor() + " | " + newVictor);
-//                        System.out.println("Type: " + cursor.getAttack_type());
-//                        System.out.println("Attacker: " + legacy.getAttacker_nation_id() + " | " + cursor.getAttacker_id());
-//                        System.out.println("Defender: " + legacy.getDefender_nation_id() + " | " + cursor.getDefender_id());
-//                        System.out.println("Success: " + SuccessType.values[legacy.getSuccess()] + " | " + cursor.getSuccess());
-//                        throw new IllegalArgumentException("Victor mismatch " + legacy.getVictor() + " | " + newVictor);
-//                    }
-                    //    private int success;
-                    if (legacy.getSuccess() != cursor.getSuccess().ordinal() && legacy.getAttack_type() != AttackType.PEACE && legacy.getAttack_type() != AttackType.FORTIFY && legacy.getAttack_type() != AttackType.VICTORY) {
-                        // print type and success
-                        System.out.println("Success mismatch " + legacy.getSuccess() + " | " + cursor.getSuccess().ordinal());
-                        System.out.println("Type: " + cursor.getAttack_type());
-                        throw new IllegalArgumentException("Success mismatch");
-                    }
-                    //    private int attcas1;
-                    if (legacy.getAttcas1() != cursor.getAttcas1()) {
-                        if ((legacy.getAttack_type() != AttackType.MISSILE && legacy.getAttack_type() != AttackType.NUKE) || legacy.getAttcas1() != 0) {
-                            System.out.println("Attcas1 mismatch " + legacy.getAttcas1() + " | " + cursor.getAttcas1());
-                            System.out.println("Type: " + cursor.getAttack_type());
-                            throw new IllegalArgumentException("Attcas1 mismatch");
-                        }
-                    }
-                    //    private int attcas2;
-                    if (legacy.getAttcas2() != cursor.getAttcas2()) {
-                        throw new IllegalArgumentException("Attcas2 mismatch");
-                    }
-                    //    private int defcas1;
-                    if (legacy.getDefcas1() != cursor.getDefcas1()) {
-                        throw new IllegalArgumentException("Defcas1 mismatch");
-                    }
-                    //    private int defcas2;
-                    if (legacy.getDefcas2() != cursor.getDefcas2()) {
-                        throw new IllegalArgumentException("Defcas2 mismatch");
-                    }
-                    //    private int defcas3;
-                    if (legacy.getDefcas3() != cursor.getDefcas3()) {
-                        throw new IllegalArgumentException("Defcas3 mismatch");
-                    }
-                    //    private double infra_destroyed;
-                    if (Math.round(legacy.getInfra_destroyed() * 100) != Math.round(cursor.getInfra_destroyed() * 100)) {
-                        // print type and amounts
-                        System.out.println("Infra destroyed mismatch " + legacy.getAttack_type() + " " + legacy.getInfra_destroyed() + " | " + cursor.getInfra_destroyed());
-                        throw new IllegalArgumentException("Infra destroyed mismatch");
-                    }
-                    //    private int improvements_destroyed;
-                    if (legacy.getImprovements_destroyed() != cursor.getImprovements_destroyed()) {
-                        throw new IllegalArgumentException("Improvements destroyed mismatch");
-                    }
-                    //    private double money_looted;
-                    if (Math.round(legacy.getMoney_looted() * 100) != Math.round(cursor.getMoney_looted() * 100)) {
-                        if (legacy.getAttack_type() == AttackType.VICTORY && cursor.getLoot() != null && (Math.round(cursor.getLoot()[ResourceType.MONEY.ordinal()] * 100) == Math.round(100 * legacy.getMoney_looted()))) {
-                            if (legacy.getMoney_looted() > 0 && legacy.loot != null && legacy.getMoney_looted() != legacy.loot[ResourceType.MONEY.ordinal()]) {
-                                throw new IllegalArgumentException("Money looted mismatch 2");
-                            }
-                        } else if (legacy.getMoney_looted() ==0 || cursor.getLoot() == null || cursor.getLoot()[ResourceType.MONEY.ordinal()] == 0) {
-                            // print type and amounts
-                            System.out.println("Money looted mismatch " + legacy.getAttack_type() + " " + legacy.getMoney_looted() + " | " + cursor.getMoney_looted());
-                            System.out.println("Loot : " + (legacy.loot != null) + " | " + (cursor.getLoot() != null));
-                            if (legacy.loot != null) {
-                                System.out.println("loot l " + PnwUtil.resourcesToString(legacy.loot));
-                            }
-                            if (cursor.getLoot() != null) {
-                                System.out.println("loot c " + PnwUtil.resourcesToString(cursor.getLoot()));
-                            }
-                            throw new IllegalArgumentException("Money looted mismatch");
-                        }
-                    }
-                    //    public double[] loot;
-                    if (legacy.loot != null && !ResourceType.isZero(legacy.loot)) {
-                        if (cursor.getLoot() == null || !Arrays.equals(legacy.loot, cursor.getLoot())) {
-                            throw new IllegalArgumentException("Loot mismatch");
-                        }
-                    }
-                    //    private int looted;
-                    if (legacy.getLooted() != null && legacy.getLooted() > 0 && legacy.getAttack_type() == AttackType.A_LOOT && legacy.getLooted() != cursor.getAllianceIdLooted()) {
-                        throw new IllegalArgumentException("Looted mismatch");
-                    }
-                    //    private double lootPercent;
-                    if (Math.round(legacy.getLootPercent() * 100) != Math.round(cursor.getLootPercent() * 100)) {
-                        // print type, percent and loot amounts
-                        System.out.println("Tyoe " + legacy.getAttack_type() + " | " + cursor.getAttack_type());
-                        System.out.println("Loot percent mismatch " + legacy.getAttack_type() + " " + legacy.getLootPercent() + " | " + cursor.getLootPercent());
-                        if (legacy.loot != null) {
-                            // print
-                            System.out.println("loot l " + PnwUtil.resourcesToString(legacy.loot));
-                        }
-                        if (cursor.getLoot() != null) {
-                            // print
-                            System.out.println("loot c " + PnwUtil.resourcesToString(cursor.getLoot()));
-                        }
-                        // print count by type (or 0)
-                        System.out.println("Count by type " + countByType.getOrDefault(legacy.getAttack_type(), 0));
-                        throw new IllegalArgumentException("Loot percent mismatch");
-                    }
-                    //    private double city_infra_before;
-                    if (Math.round(legacy.getCity_infra_before() * 100) != Math.round(cursor.getCity_infra_before() * 100) && legacy.getCity_infra_before() > 0 && legacy.getAttack_type() != AttackType.VICTORY) {
-                        //print
-                        System.out.println("City infra before mismatch " + legacy.getCity_infra_before() + " | " + cursor.getCity_infra_before());
-                        System.out.println("Type " + legacy.getAttack_type());
-                        throw new IllegalArgumentException("City infra before mismatch");
-                    }
-                    //    private double infra_destroyed_value;
-//                    {
-//                        double valueLegacy = legacy.getInfra_destroyed_value();
-//                        double valueCursor = cursor.getInfra_destroyed_value();
-//                        // if within 10% of each other, ignore
-//                        if (Math.abs(valueLegacy - valueCursor) > 0.1 * Math.max(valueLegacy, valueCursor) && legacy.getCity_infra_before() > 0) {
-//                            // print type and amounts
-//                            System.out.println("final: " + legacy.getCity_infra_before() + " - " + cursor.getCity_infra_before());
-//                            // after
-//                            System.out.println("before: " + (legacy.getCity_infra_before() - legacy.getInfra_destroyed()) + " - " + (cursor.getCity_infra_before() - cursor.getInfra_destroyed()));
-//                            System.out.println("Type " + legacy.getAttack_type());
-////                            throw new IllegalArgumentException("Infra destroyed value mismatch " + valueLegacy + " | " + valueCursor);
-//                        }
-//                    }
-                    //    private double att_gas_used;
-                    if (Math.round(legacy.getAtt_gas_used() * 100) != Math.round(cursor.getAtt_gas_used() * 100)) {
-                        throw new IllegalArgumentException("Att gas used mismatch");
-                    }
-                    //    private double att_mun_used;
-                    if (Math.round(legacy.getAtt_mun_used() * 100) != Math.round(cursor.getAtt_mun_used() * 100)) {
-                        throw new IllegalArgumentException("Att mun used mismatch");
-                    }
-                    //    private double def_gas_used;
-                    if (Math.round(legacy.getDef_gas_used() * 100) != Math.round(cursor.getDef_gas_used() * 100)) {
-                        System.out.println("Def gas used mismatch " + legacy.getDef_gas_used() + " | " + cursor.getDef_gas_used());
-                        System.out.println("Type " + legacy.getAttack_type());
-                        throw new IllegalArgumentException("Def gas used mismatch");
-                    }
-                    //    private double def_mun_used;
-                    if (Math.round(legacy.getDef_mun_used() * 100) != Math.round(cursor.getDef_mun_used() * 100)) {
-                        throw new IllegalArgumentException("Def mun used mismatch");
-                    }
-                    //    public double infraPercent_cached;
-                    if (legacy.infraPercent_cached > 0 && Math.round(legacy.infraPercent_cached * 100) != Math.round(cursor.getInfra_destroyed_percent() * 100)) {
-                        throw new IllegalArgumentException("Infra percent cached mismatch");
-                    }
-                    //    public int city_cached;
-                    if (legacy.city_cached > 0 && legacy.city_cached != cursor.getCity_id()) {
-                        throw new IllegalArgumentException("City cached mismatch");
-                    }
+                    validateAttack(null, legacy, cursor);
 
 
                     num_attacks++;
@@ -407,199 +492,6 @@ public class WarDB extends DBMainV2 {
         }
 
         System.out.println("Loaded " + num_attacks + " attacks | " + numErrors + " errors");
-    }
-
-    public void testLoadAttacks() {
-        String whereClause;
-        if (Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS == 0) {
-            return ;
-        } else if (Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS >= 0) {
-            long date = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS);
-            whereClause = " WHERE date > " + date;
-        } else {
-            whereClause = "";
-        }
-        System.out.println("Start loading");
-        try (PreparedStatement stmt= getConnection().prepareStatement("select * FROM `attacks2`" + whereClause + " ORDER BY `war_attack_id` ASC", ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY)) {
-            stmt.setFetchSize(2 << 16);
-            try (ResultSet rs = stmt.executeQuery()) {
-                AbstractAttack[] attackBuf = new AbstractAttack[1];
-                int[] warBuf = new int[1];
-                long start  = System.currentTimeMillis();
-                long[] timePerType = new long[AttackType.values.length];
-                long[] numTypes = new long[AttackType.values.length];
-
-                ObjectArrayList<AbstractAttack> all = new ObjectArrayList<>();
-//                ObjectArrayList<DBAttack> all2 = new ObjectArrayList<>();
-
-                int check1 = 0;
-                int check2 = 0;
-                while (rs.next()) {
-//                    long start2 = System.nanoTime();
-                    AbstractAttack.createSingle(rs, f -> warBuf[0] = f, f -> attackBuf[0] = f);
-//                    long diff = System.nanoTime() - start2;
-//                    timePerType[attackBuf[0].getAttack_type().ordinal()] += diff;
-//                    numTypes[attackBuf[0].getAttack_type().ordinal()]++;
-//
-                    AbstractAttack attack = attackBuf[0];
-                    all.add(attack);
-                    int war_id = warBuf[0];
-
-                    DBAttack legacy = createAttack(rs);
-                    if (legacy.getDate() < 0) continue;
-                    // validate attacks are the same
-                    if (war_id != legacy.getWar_id()) {
-                        throw new IllegalStateException("War id mismatch " + war_id + " != " + legacy.getWar_id());
-                    }
-
-                    if (attack.getAttack_type() != legacy.getAttack_type()) {
-                        throw new IllegalStateException("Attack type mismatch " + attack.getAttack_type() + " != " + legacy.getAttack_type());
-                    }
-                    if (attack.getDate() != legacy.getDate()) {
-                        throw new IllegalStateException("Attack date mismatch " + attack.getDate() + " != " + legacy.getDate());
-                    }
-                    boolean greater = legacy.getAttacker_nation_id() > legacy.getDefender_nation_id();
-                    if (greater != attack.isAttackerIdGreater()) {
-                        throw new IllegalStateException("Attack greater id mismatch " + greater + " != " + attack.isAttackerIdGreater());
-                    }
-
-                    // type
-                    if (attack.getAttack_type() != legacy.getAttack_type()) {
-                        throw new IllegalStateException("Attack type mismatch " + attack.getAttack_type() + " != " + legacy.getAttack_type());
-                    }
-
-                    check1++;
-
-                    DBWar war = warsById.get(war_id);
-                    if (war == null) continue;
-
-                    check2++;
-                    WarAttackWrapper wrapper = new WarAttackWrapper(war, attack);
-                    // attacker
-                    // defender
-                    if (wrapper.getAttackerId() != legacy.getAttacker_nation_id()) {
-                        throw new IllegalStateException("Attack attacker mismatch " + wrapper.getAttackerId() + " != " + legacy.getAttacker_nation_id());
-                    }
-                    if (wrapper.getDefenderId() != legacy.getDefender_nation_id()) {
-                        throw new IllegalStateException("Attack defender mismatch " + wrapper.getDefenderId() + " != " + legacy.getDefender_nation_id());
-                    }
-                    if (wrapper.getAttackerAA() != (legacy.getAttacker_nation_id() == war.attacker_id ? war.attacker_aa : war.defender_aa)) {
-                        throw new IllegalStateException("Attack attacker aa mismatch " + check2 + " | " + wrapper.getAttackerAA() + " != " + war.attacker_aa);
-                    }
-                    if (wrapper.getDefenderAA() != (legacy.getAttacker_nation_id() == war.attacker_id ? war.defender_aa : war.attacker_aa)) {
-                        throw new IllegalStateException("Attack defender aa mismatch " + wrapper.getDefenderAA() + " != " + war.defender_aa);
-                    }
-                    if (legacy.getDefcas1() < 0) continue;
-                    if (wrapper.getImprovements_destroyed() != legacy.getImprovements_destroyed()) {
-                        throw new IllegalStateException("Attack improvements destroyed mismatch " + wrapper.getImprovements_destroyed() + " != " + legacy.getImprovements_destroyed());
-                    }
-
-                    switch (attack.getAttack_type()) {
-                        case VICTORY -> {
-                            double[] lootAmt = legacy.loot;
-                            if (lootAmt != null && !ResourceType.isZero(lootAmt)) {
-                                if (!Arrays.equals(lootAmt, wrapper.getLoot())) {
-                                    throw new IllegalStateException("Attack loot mismatch " + Arrays.toString(lootAmt) + " != " + Arrays.toString(wrapper.getLoot()));
-                                }
-                                if (Math.abs(wrapper.getLootPercent() - legacy.getLootPercent()) > 0.01) {
-                                    throw new IllegalStateException("Attack loot percent mismatch " + wrapper.getLootPercent() + " != " + legacy.getLootPercent());
-                                }
-                            }
-                        }
-                        case FORTIFY -> {
-
-                        }
-                        case A_LOOT -> {
-//                            double[] rss1 = attack.getLoot();
-                        }
-                        case AIRSTRIKE_AIRCRAFT,AIRSTRIKE_SHIP,AIRSTRIKE_MONEY,AIRSTRIKE_TANK,AIRSTRIKE_SOLDIER,AIRSTRIKE_INFRA,NAVAL,GROUND -> {
-                            if (attack.getAttack_type() == AttackType.GROUND) {
-                                if (Math.abs(attack.getMoney_looted() - legacy.getMoney_looted()) > 1 && legacy.getMoney_looted() >= 0) {
-                                    throw new IllegalStateException(attack.getAttack_type() + ": " + attack.getWar_attack_id() + " | " + attack.getClass().getSimpleName() + " | " + check2 + " | Attack money mismatch " + attack.getMoney_looted() + " != " + legacy.getMoney_looted());
-                                }
-                            }
-                            if (attack.getSuccess().ordinal() != legacy.getSuccess()) {
-                                throw new IllegalStateException(attack.getAttack_type() + " | " + attack.getWar_attack_id() + " | " + attack.getClass().getSimpleName() + " | " + check2 + " Attack success mismatch " + attack.getSuccess() + " != " + legacy.getSuccess());
-                            }
-
-                            double infraDamage1 = attack.getInfra_destroyed();
-                            if (Math.abs(infraDamage1 - legacy.getInfra_destroyed()) > 0.02) {
-                                System.out.println(attack.getCity_infra_before() + " | " + legacy.getCity_infra_before() + " -> " + attack.getInfra_destroyed() + " | " + legacy.getInfra_destroyed());
-                                System.out.println(legacy.getAttcas1() + " | " + legacy.getDefcas1());
-                                throw new IllegalStateException(attack.getAttack_type() + ": " + attack.getWar_attack_id() + " | " + attack.getClass().getSimpleName() + " | " + check2 + " | Attack infra damage mismatch " + infraDamage1 + " != " + legacy.getInfra_destroyed());
-                            }
-                            if (legacy.getInfra_destroyed() > 0 && Math.abs(attack.getCity_infra_before() - legacy.getCity_infra_before()) > 0.02) {
-                                System.out.println(attack.getCity_infra_before() + " | " + legacy.getCity_infra_before() + " -> " + attack.getInfra_destroyed() + " | " + legacy.getInfra_destroyed());
-                                System.out.println(legacy.getMoney_looted() + " | " + legacy.getMoney_looted());
-                                throw new IllegalStateException(attack.getAttack_type() + ": " + attack.getWar_attack_id() + " | " + attack.getClass().getSimpleName() + " | " + check2 + " | Attack infra before mismatch " + attack.getCity_infra_before() + " != " + legacy.getCity_infra_before());
-                            }
-                            long gas1 = Math.round(attack.getAtt_gas_used() * 100);
-                            long muni1 = Math.round(attack.getAtt_mun_used() * 100);
-                            long gas2 = Math.round(legacy.getAtt_gas_used() * 100);
-                            long muni2 = Math.round(legacy.getAtt_mun_used() * 100);
-                            if (Math.abs(gas1 - gas2) > 2) {
-                                throw new IllegalStateException(attack.getAttack_type() + ": " + attack.getClass().getSimpleName() + " | " + check2 + " | " + attack.getWar_attack_id() + " | Attack gas used mismatch " + gas1 + " != " + gas2);
-                            }
-                            if (Math.abs(muni1 - muni2) > 2) {
-                                throw new IllegalStateException(attack.getAttack_type() + ": " + attack.getClass().getSimpleName() + " | " + check2 + " | " + attack.getWar_attack_id() + " | Attack muni used mismatch " + muni1 + " != " + muni2);
-                            }
-                            if (attack.getAttcas1() != legacy.getAttcas1()) {
-                                throw new IllegalStateException(attack.getAttack_type() + ": " + attack.getClass().getSimpleName() + " | " + check2 + " | " + attack.getWar_attack_id() + " | Attack attacker casualties 1 mismatch " + attack.getAttcas1() + " != " + legacy.getAttcas1());
-                            }
-                            if (attack.getAttcas2() != legacy.getAttcas2()) {
-                                throw new IllegalStateException(attack.getAttack_type() + ": " + attack.getClass().getSimpleName() + " | " + check2 + " | " + attack.getWar_attack_id() + " | Attack attacker casualties 2 mismatch " + attack.getAttcas2() + " != " + legacy.getAttcas2());
-                            }
-                            if (attack.getDefcas1() != legacy.getDefcas1() && legacy.getDefcas1() > 0) {
-                                throw new IllegalStateException(attack.getAttack_type() + ": " + attack.getClass().getSimpleName() + " | " + check2 + " | " + attack.getWar_attack_id() + " | Attack defender casualties 1 mismatch " + attack.getDefcas1() + " != " + legacy.getDefcas1());
-                            }
-                            if (attack.getDefcas2() != legacy.getDefcas2()) {
-                                throw new IllegalStateException(attack.getAttack_type() + ": " + attack.getClass().getSimpleName() + " | " + check2 + " | " + attack.getWar_attack_id() + " | Attack defender casualties 2 mismatch " + attack.getDefcas2() + " != " + legacy.getDefcas2());
-                            }
-                            if (attack.getDefcas3() != legacy.getDefcas3()) {
-                                throw new IllegalStateException(attack.getAttack_type() + ": " + attack.getClass().getSimpleName() + " | " + check2 + " | " + attack.getWar_attack_id() + " | Attack defender casualties 3 mismatch " + attack.getDefcas3() + " != " + legacy.getDefcas3());
-                            }
-                        }
-                        case PEACE -> {
-                        }
-
-                        case MISSILE -> {
-                            if (attack.getSuccess().ordinal() != legacy.getSuccess()) {
-                                throw new IllegalStateException(attack.getAttack_type() + " | " + attack.getWar_attack_id() + " Attack success mismatch " + attack.getSuccess() + " != " + legacy.getSuccess());
-                            }
-                        }
-                        case NUKE -> {
-                            if (attack.getSuccess().ordinal() != legacy.getSuccess()) {
-                                throw new IllegalStateException(attack.getAttack_type() + " | " + attack.getWar_attack_id() + " Attack success mismatch " + attack.getSuccess() + " != " + legacy.getSuccess());
-                            }
-                        }
-                    }
-                }
-                long diff = System.currentTimeMillis() - start;
-                System.out.println("Loaded " + allAttacks2.size() + " attacks in " + diff + "ms");
-                System.out.println("Check " + check1 + " | " + check2);
-                System.gc();
-                System.gc();
-                System.gc();
-                System.gc();
-                long memUsage = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
-                System.out.println("Memory usage: " + MathMan.format(memUsage / 1024d / 1024d) + "MB");
-                System.out.println(all.hashCode() + " | " + all.size() + " | " + all.get(ThreadLocalRandom.current().nextInt(5)).getWar_attack_id());
-//                System.out.println(all.hashCode());
-//                System.out.println(all2.hashCode());
-                // Memory usage: 13.22MB
-                // Memory usage: 552.15MB
-                // Memory usage: 552.29MB
-                // Memory usage: 2,136.96MB
-
-                // print time per type
-                // print total per type
-                for (AttackType type : AttackType.values) {
-                    System.out.println(type + " " + MathMan.format(timePerType[type.ordinal()]) + "ns | " + (MathMan.format(timePerType[type.ordinal()] / (double) numTypes[type.ordinal()])));
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
     }
 
     private void setWar(DBWar war) {
@@ -623,15 +515,15 @@ public class WarDB extends DBMainV2 {
         Locutus.imp().getExecutor().submit(new Runnable() {
             @Override
             public void run() {
-                if (Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS > 6 || Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS <= 0) {
-                    loadWars(Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS);
-                }
-                if (Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS > 6 || Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS <= 0) {
-                    loadAttacks(Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS);
+                int loadWarsDays = Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS < 0 ? -1 : Math.max(Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS, 6);
+                loadWars(loadWarsDays);
+                int loadAttackDays = Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS < 0 ? -1 : Math.min(Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS, Math.max(0, loadWarsDays));
+                if (loadAttackDays != 0) {
+                    loadAttacks(loadAttackDays);
                 }
             }
         });
-        System.out.println("Loaded " + allAttacks2.size() + " attacks in " + (System.currentTimeMillis() - start) + "ms");
+        System.out.println("Loaded attacks in " + (System.currentTimeMillis() - start) + "ms");
     }
 
     public void loadWars(int days) {
@@ -804,46 +696,70 @@ public class WarDB extends DBMainV2 {
         };
 
         {
-            String nations = "CREATE TABLE IF NOT EXISTS `attacks2` (" +
-                    "`war_attack_id` INT NOT NULL PRIMARY KEY, " +
+//            String nations = "CREATE TABLE IF NOT EXISTS `attacks2` (" +
+//                    "`war_attack_id` INT NOT NULL PRIMARY KEY, " +
+//                    "`date` BIGINT NOT NULL, " +
+//                    "war_id INT NOT NULL, " +
+//                    "attacker_nation_id INT NOT NULL, " +
+//                    "defender_nation_id INT NOT NULL, " +
+//                    "attack_type INT NOT NULL, " +
+//                    "victor INT NOT NULL, " +
+//                    "success INT NOT NULL," +
+//                    "attcas1 INT NOT NULL," +
+//                    "attcas2 INT NOT NULL," +
+//                    "defcas1 INT NOT NULL," +
+//                    "defcas2 INT NOT NULL," +
+//                    "defcas3 INT NOT NULL," +
+//                    "city_id INT NOT NULL," + // Not used anymore
+//                    "infra_destroyed INT," +
+//                    "improvements_destroyed INT," +
+//                    "money_looted BIGINT," +
+//                    "looted INT," +
+//                    "loot BLOB," +
+//                    "pct_looted INT," +
+//                    "city_infra_before INT," +
+//                    "infra_destroyed_value INT," +
+//                    "att_gas_used INT," +
+//                    "att_mun_used INT," +
+//                    "def_gas_used INT," +
+//                    "def_mun_used INT" +
+//                    ")";
+//            try (Statement stmt = getConnection().createStatement()) {
+//                stmt.addBatch(nations);
+//                stmt.executeBatch();
+//                stmt.clearBatch();
+//            } catch (SQLException e) {
+//                e.printStackTrace();
+//            }
+//            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_warid ON attacks2 (war_id);");
+//            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_attacker_nation_id ON attacks2 (attacker_nation_id);");
+//            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_defender_nation_id ON attacks2 (defender_nation_id);");
+//            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_date ON attacks2 (date);");
+
+            // if not exist,
+            // id (int)
+            // war_id (int)
+            // attacker_nation_id (int)
+            // defender_nation_id (int)
+            // date (long)
+            // data (byte[])
+            // create index for war_id, attacker_nation_id, defender_nation_id, date
+
+            String attacksTable = "CREATE TABLE IF NOT EXISTS `ATTACKS3` (" +
+                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "`war_id` INT NOT NULL, " +
+                    "`attacker_nation_id` INT NOT NULL, " +
+                    "`defender_nation_id` INT NOT NULL, " +
                     "`date` BIGINT NOT NULL, " +
-                    "war_id INT NOT NULL, " +
-                    "attacker_nation_id INT NOT NULL, " +
-                    "defender_nation_id INT NOT NULL, " +
-                    "attack_type INT NOT NULL, " +
-                    "victor INT NOT NULL, " +
-                    "success INT NOT NULL," +
-                    "attcas1 INT NOT NULL," +
-                    "attcas2 INT NOT NULL," +
-                    "defcas1 INT NOT NULL," +
-                    "defcas2 INT NOT NULL," +
-                    "defcas3 INT NOT NULL," +
-                    "city_id INT NOT NULL," + // Not used anymore
-                    "infra_destroyed INT," +
-                    "improvements_destroyed INT," +
-                    "money_looted BIGINT," +
-                    "looted INT," +
-                    "loot BLOB," +
-                    "pct_looted INT," +
-                    "city_infra_before INT," +
-                    "infra_destroyed_value INT," +
-                    "att_gas_used INT," +
-                    "att_mun_used INT," +
-                    "def_gas_used INT," +
-                    "def_mun_used INT" +
-                    ")";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(nations);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        };
-        executeStmt("CREATE INDEX IF NOT EXISTS index_attack_warid ON attacks2 (war_id);");
-        executeStmt("CREATE INDEX IF NOT EXISTS index_attack_attacker_nation_id ON attacks2 (attacker_nation_id);");
-        executeStmt("CREATE INDEX IF NOT EXISTS index_attack_defender_nation_id ON attacks2 (defender_nation_id);");
-        executeStmt("CREATE INDEX IF NOT EXISTS index_attack_date ON attacks2 (date);");
+                    "`data` BLOB NOT NULL)";
+            executeStmt(attacksTable);
+            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_warid ON ATTACKS3 (war_id);");
+            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_attacker_nation_id ON ATTACKS3 (attacker_nation_id);");
+            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_defender_nation_id ON ATTACKS3 (defender_nation_id);");
+            executeStmt("CREATE INDEX IF NOT EXISTS index_attack_date ON ATTACKS3 (date);");
+
+            importLegacyAttacks();
+        }
 
         // create custom bounties table
         {
@@ -1234,7 +1150,7 @@ public class WarDB extends DBMainV2 {
             return stat;
         }
         int warId = war.warId;
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWar(war);
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByNationGroupWar(war);
 
         long startDate = war.date;
         long startTurn = TimeUtil.getTurn(startDate);
@@ -1244,7 +1160,7 @@ public class WarDB extends DBMainV2 {
 
         boolean isOngoing = war.status == WarStatus.ACTIVE || war.status == WarStatus.DEFENDER_OFFERED_PEACE || war.status == WarStatus.ATTACKER_OFFERED_PEACE;
         boolean isActive = war.status == WarStatus.DEFENDER_OFFERED_PEACE || war.status == WarStatus.DEFENDER_VICTORY || war.status == WarStatus.ATTACKER_OFFERED_PEACE;
-        for (DBAttack attack : attacks) {
+        for (AbstractCursor attack : attacks) {
             if (attack.getAttack_type() == AttackType.VICTORY && attack.getAttacker_nation_id() == war.attacker_id) {
                 war.status = WarStatus.ATTACKER_VICTORY;
             }
@@ -1852,22 +1768,6 @@ public class WarDB extends DBMainV2 {
         return getWarsByNation(nationId).stream().max(Comparator.comparingInt(o -> o.warId)).orElse(null);
     }
 
-    public List<DBAttack> selectAttacks(Consumer<SelectBuilder> query) {
-        List<DBAttack> list = new ArrayList<>();
-        SelectBuilder builder = getDb().selectBuilder("attacks2")
-                .select("*");
-        if (query != null) query.accept(builder);
-        try (ResultSet rs = builder.executeRaw()) {
-            while (rs.next()) {
-                list.add(createAttack(rs));
-            }
-            return list;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
-    }
-
     public List<DBWar> getWarsByNation(int nation, WarStatus... statuses) {
         if (statuses.length == 0) return getWarsByNation(nation);
         if (statuses.length == 1) return getWarsByNation(nation, statuses[0]);
@@ -2003,19 +1903,21 @@ public class WarDB extends DBMainV2 {
 //        return query;
 //    }
 
-    public void saveAttacks(Collection<DBAttack> values) {
+    private final AttackCursorFactory attackCursorFactory = new AttackCursorFactory();
+
+    public void saveAttacks(Collection<AbstractCursor> values) {
         if (values.isEmpty()) return;
 
         // sort attacks
-        ArrayList<DBAttack> valuesList = new ArrayList<>(values);
+        ArrayList<AbstractCursor> valuesList = new ArrayList<>(values);
         Collections.sort(valuesList, Comparator.comparingInt(f -> f.getWar_attack_id()));
         values = valuesList;
 
-        for (DBAttack attack : values) {
+        for (AbstractCursor attack : values) {
             if (attack.getAttack_type() != AttackType.VICTORY && attack.getAttack_type() != AttackType.A_LOOT) continue;
 
-            Map<ResourceType, Double> loot = attack.getLoot();
-            Double pct;
+            double[] loot = attack.getLoot();
+            double pct;
             if (loot == null) {
                 pct = 1d;
             } else {
@@ -2025,8 +1927,8 @@ public class WarDB extends DBMainV2 {
             double factor = 1/pct;
 
             double[] lootCopy;
-            if (attack.loot != null) {
-                lootCopy = attack.loot.clone();
+            if (loot != null) {
+                lootCopy = loot.clone();
                 for (int i = 0; i < lootCopy.length; i++) {
                     lootCopy[i] = (lootCopy[i] * factor) - lootCopy[i];
                 }
@@ -2034,90 +1936,46 @@ public class WarDB extends DBMainV2 {
                 lootCopy = ResourceType.getBuffer();
             }
             if (attack.getAttack_type() == AttackType.VICTORY) {
-                Locutus.imp().getNationDB().saveLoot(attack.getDefender_nation_id(), attack.getDate(), lootCopy, NationLootType.WAR_LOSS);
+                Locutus.imp().getNationDB().saveLoot(attack.getDefender_id(), attack.getDate(), lootCopy, NationLootType.WAR_LOSS);
             } else if (attack.getAttack_type() == AttackType.A_LOOT) {
-                Integer allianceId = attack.getLooted();
-                if (allianceId != null) {
+                int allianceId = attack.getAllianceIdLooted();
+                if (allianceId > 0) {
                     Locutus.imp().getNationDB().saveAllianceLoot(allianceId, attack.getDate(), lootCopy, NationLootType.WAR_LOSS);
                 }
             }
         }
-        synchronized (allAttacks2) {
-            if (allAttacks2.isEmpty()) {
-                allAttacks2.addAll(valuesList);
-            } else {
-                DBAttack latest = getLatestAttack();
-                for (DBAttack attack : valuesList) {
-                    if (attack.getWar_attack_id() > latest.getWar_attack_id()) {
-                        allAttacks2.add(attack);
-                    } else {
-                        int indexFound = ArrayUtil.binarySearchLess(allAttacks2, f -> f.getWar_attack_id() <= attack.getWar_attack_id());
-                        if (indexFound < 0) {
-                            // insert at 0 index
-                            allAttacks2.add(0, attack);
-                        } else {
-                            DBAttack existing = allAttacks2.get(indexFound);
-                            if (existing.getWar_attack_id() == attack.getWar_attack_id()) {
-                                // replace
-                                allAttacks2.set(indexFound, attack);
-                            } else {
-                                // insert at indexFound + 1
-                                allAttacks2.add(indexFound + 1, attack);
-                            }
-                        }
-                    }
+        List<AttackEntry> toSave = new ArrayList<>();
+        // add to attacks map
+        synchronized (attacksByWarId) {
+            for (AbstractCursor attack : values) {
+                List<byte[]> attacks = attacksByWarId.computeIfAbsent(attack.getWar_id(), k -> new ObjectArrayList<>());
+                byte[] data = attackCursorFactory.toBytes(attack);
+                if (attacks.isEmpty() || attacks.stream().noneMatch(f -> Arrays.equals(f, data))) {
+                    attacks.add(data);
+                    toSave.add(new AttackEntry(attack.getWar_id(), attack.getAttacker_id(), attack.getDefender_id(), attack.getDate(), data));
                 }
             }
         }
-        // ctiy_id not used anymore, but sqlite doesn't allow removing
-        String query = "INSERT OR REPLACE INTO `attacks2`(`war_attack_id`, `date`, `war_id`, `attacker_nation_id`, `defender_nation_id`, `attack_type`, `victor`, `success`, attcas1, attcas2, defcas1, defcas2, defcas3,city_id,infra_destroyed,improvements_destroyed,money_looted,looted,loot,pct_looted,city_infra_before,infra_destroyed_value,att_gas_used,att_mun_used,def_gas_used,def_mun_used) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-        ThrowingBiConsumer<DBAttack, PreparedStatement> setStmt = (attack, stmt) -> {
-            stmt.setInt(1, attack.getWar_attack_id());
-            stmt.setLong(2, attack.getDate());
-            stmt.setInt(3, attack.getWar_id());
-            stmt.setInt(4, attack.getAttacker_nation_id());
-            stmt.setInt(5, attack.getDefender_nation_id());
-            stmt.setInt(6, attack.getAttack_type().ordinal());
-            stmt.setInt(7, attack.getVictor());
-            stmt.setInt(8, attack.getSuccess());
-            stmt.setInt(9, attack.getAttcas1());
-            stmt.setInt(10, attack.getAttcas2());
-            stmt.setInt(11, attack.getDefcas1());
-            stmt.setInt(12, attack.getDefcas2());
-            stmt.setInt(13, attack.getDefcas3());
-            stmt.setLong(14, attack.city_cached);
-            stmt.setLong(15, (long) (attack.getInfra_destroyed() * 100));
-            stmt.setLong(16, attack.getImprovements_destroyed());
-            stmt.setLong(17, (long) (attack.getMoney_looted() * 100));
-
-            stmt.setInt(18, attack.getLooted());
-
-            if (attack.loot == null) stmt.setNull(19, Types.BLOB);
-            else stmt.setBytes(19, ArrayUtil.toByteArray(attack.loot));
-
-            stmt.setInt(20, (int) (attack.getLootPercent() * 100 * 100));
-
-            stmt.setLong(21, (int) (attack.getCity_infra_before() * 100));
-            stmt.setLong(22, (long) (attack.getInfra_destroyed_value() * 100));
-            stmt.setLong(23, (int) (attack.getAtt_gas_used() * 100));
-            stmt.setLong(24, (int) (attack.getAtt_mun_used() * 100));
-            stmt.setLong(25, (int) (attack.getDef_gas_used() * 100));
-            stmt.setLong(26, (int) (attack.getDef_mun_used() * 100));
-        };
-        if (values.size() == 1) {
-            DBAttack value = values.iterator().next();
-            update(query, stmt -> setStmt.accept(value, stmt));
-        } else {
-            executeBatch(values, query, setStmt);
-        }
+        // String query = "INSERT OR IGNORE INTO `ATTACKS3` (`war_id`, `attacker_nation_id`, `defender_nation_id`, `date`, `data`) VALUES (?, ?, ?, ?, ?)";
+        String query = "INSERT OR REPLACE INTO `ATTACKS3` (`war_id`, `attacker_nation_id`, `defender_nation_id`, `date`, `data`) VALUES (?, ?, ?, ?, ?)";
+        executeBatch(toSave, query, new ThrowingBiConsumer<AttackEntry, PreparedStatement>() {
+            @Override
+            public void acceptThrows(AttackEntry attack, PreparedStatement stmt) throws SQLException {
+                stmt.setInt(1, attack.war_id());
+                stmt.setInt(2, attack.attacker_id());
+                stmt.setInt(3, attack.defender_id());
+                stmt.setLong(4, attack.date());
+                stmt.setBytes(5, attack.data());
+            }
+        });
     }
 
     public boolean updateAttacks(Consumer<Event> eventConsumer) {
         return updateAttacks( eventConsumer != null, eventConsumer);
     }
 
-    private DBAttack getLatestAttack() {
+    private AbstractCursor getLatestAttack() {
         if (allAttacks2.isEmpty()) return null;
         synchronized (allAttacks2) {
             return allAttacks2.get(allAttacks2.size() - 1);
@@ -2129,7 +1987,7 @@ public class WarDB extends DBMainV2 {
 
     public boolean updateAttacks(boolean runAlerts, Consumer<Event> eventConsumer, boolean v2) {
         long start = System.currentTimeMillis();
-        DBAttack latest = getLatestAttack();
+        AbstractCursor latest = getLatestAttack();
         Integer maxId = latest == null ? null : latest.getWar_attack_id();
         if (maxId == null || maxId == 0) runAlerts = false;
 
@@ -2137,11 +1995,11 @@ public class WarDB extends DBMainV2 {
         if (!v2 && (latest == null || latest.getDate() < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1))) {
             PoliticsAndWarV3 v3 = Locutus.imp().getV3();
             System.out.println("No recent attack data in DB. Updating attacks without event handling: " + maxId);
-            List<DBAttack> attackList = new ArrayList<>();
+            List<AbstractCursor> attackList = new ArrayList<>();
             v3.fetchAttacksSince(maxId, new Predicate<WarAttack>() {
                 @Override
                 public boolean test(WarAttack v3Attack) {
-                    DBAttack attack = new DBAttack(v3Attack);
+                    AbstractCursor attack = new DBAttack(v3Attack);
                     synchronized (attackList) {
                         attackList.add(attack);
                         if (attackList.size() > 1000) {
@@ -2158,10 +2016,10 @@ public class WarDB extends DBMainV2 {
             return true;
         }
 
-        List<DBAttack> dbAttacks = new ArrayList<>();
-        List<DBAttack> newAttacks;
+        List<AbstractCursor> dbAttacks = new ArrayList<>();
+        List<AbstractCursor> newAttacks;
         Set<DBWar> warsToSave = new LinkedHashSet<>();
-        List<DBAttack> dirtyCities = new ArrayList<>();
+        List<AbstractCursor> dirtyCities = new ArrayList<>();
 
         synchronized (activeWars) {
             Set<Integer> existingIds = new IntOpenHashSet();
@@ -2286,8 +2144,8 @@ public class WarDB extends DBMainV2 {
             if (!attackInfraPctMembers.isEmpty()) { // update infra
 
                 // get infra before
-                for (Map.Entry<DBAttack, Double> entry : attackInfraPctMembers.entrySet()) {
-                    DBAttack attack = entry.getKey();
+                for (Map.Entry<AbstractCursor, Double> entry : attackInfraPctMembers.entrySet()) {
+                    AbstractCursor attack = entry.getKey();
                     double pct = entry.getValue();
                     if (pct > 0) {
                         Map<Integer, DBCity> cities = Locutus.imp().getNationDB().getCitiesV3(attack.getDefender_nation_id());
@@ -2372,21 +2230,17 @@ public class WarDB extends DBMainV2 {
                 System.err.println("Took too long to update blockades (" + diff + "ms)");
             }
 
-            for (DBAttack attack : dbAttacks) {
+            for (AbstractCursor attack : dbAttacks) {
                 eventConsumer.accept(new AttackEvent(attack));
             }
         }
         return true;
     }
 
-//    public List<DBAttack> getAttacks(List<Alliance> coal1Alliances, List<DBNation> coal1Nations, List<Alliance> coal2Alliances, List<DBNation> coal2Nations, long start, long end) {
-//
-//    }
-
-    public List<DBAttack> getAttacksByWar(DBWar war) {
+    public List<AbstractCursor> getAttacksByNationGroupWar(DBWar war) {
         long start = war.date;
         long end = war.possibleEndDate();
-        List<DBAttack> list = new ArrayList<>();
+        List<AbstractCursor> list = new ArrayList<>();
         iterateAttacks(start, end, f -> {
             if (f.getWar_id() == war.getWarId()) {
                 list.add(f);
@@ -2395,10 +2249,10 @@ public class WarDB extends DBMainV2 {
         return list;
     }
 
-    public List<DBAttack> getAttacksByWarId(int warId, long expectedDate) {
+    public List<AbstractCursor> getAttacksByWarId(int warId, long expectedDate) {
         DBWar war = getWar(warId);
         if (war == null) {
-            List<DBAttack> list = new ArrayList<>();
+            List<AbstractCursor> list = new ArrayList<>();
             long turn = TimeUtil.getTurn(expectedDate);
             long start = TimeUtil.getTimeFromTurn(turn - 60);
             long end = TimeUtil.getTimeFromTurn(turn + 60);
@@ -2409,103 +2263,134 @@ public class WarDB extends DBMainV2 {
             });
             return list;
         }
-        return getAttacksByWar(war);
+        return getAttacksByNationGroupWar(war);
     }
 
-    public Collection<DBAttack> loadAttacks(int days) {
+    public List<AbstractCursor> getAttacksByWarId(DBWar war, AttackCursorFactory factory) {
+        List<byte[]> attacks;
+        synchronized (attacksByWarId) {
+            attacks = attacksByWarId.get(war.warId);
+        }
+        if (attacks == null || attacks.isEmpty()) return Collections.emptyList();
+        // use guava transform
+        List<AbstractCursor> list = Lists.transform(attacks, input -> factory.load(war, input, true));
+        return list;
+    }
+
+    public void loadAttacks(int days) {
         String whereClause;
         if (days == 0) {
-            return allAttacks2;
+            return;
         } else if (days >= 0) {
             long date = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
             whereClause = " WHERE date > " + date;
         } else {
             whereClause = "";
         }
-        ObjectArrayList<DBAttack> tmp = new ObjectArrayList<>();
-        try (PreparedStatement stmt= prepareQuery("select * FROM `attacks2`" + whereClause + " ORDER BY `war_attack_id` ASC")) {
+        String query = "SELECT * FROM `attacks3` " + whereClause + " ORDER BY `war_attack_id` ASC";
+        // `war_id`, `attacker_nation_id`, `defender_nation_id`, `date`, `data`
+        // Int2ObjectOpenHashMap<List<byte[]>> attacksByWarId (is a field for this class)
+        AttackCursorFactory factory = new AttackCursorFactory();
+        try (PreparedStatement stmt = prepareQuery(query)) {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    tmp.add(createAttack(rs));
+                    int warId = rs.getInt("war_id");
+                    DBWar war = getWar(warId);
+                    if (war == null) {
+                        continue;
+                    }
+                    List<byte[]> list = attacksByWarId.get(warId);
+                    if (list == null) {
+                        // use fastUtil
+                        list = new ObjectArrayList<>();
+                        attacksByWarId.put(warId, list);
+                    }
+                    byte[] bytes = rs.getBytes("data");
+                    list.add(bytes);
                 }
             }
-            return allAttacks2 = tmp;
         } catch (SQLException e) {
             e.printStackTrace();
-            return null;
         }
     }
 
-    public Map<Integer, List<DBAttack>> getAttacksByWar(int nationId, long cuttoff) {
-        List<DBAttack> attacks = getAttacks(nationId, cuttoff);
-        return new RankBuilder<>(attacks).group(a -> a.getWar_id()).get();
-    }
-
-    public List<DBAttack> getAttacks(Predicate<DBAttack> filter) {
-        ObjectArrayList<DBAttack> list = new ObjectArrayList<>();
-        synchronized (allAttacks2) {
-            for (DBAttack attack : allAttacks2) {
-                if (filter.test(attack)) list.add(attack);
+    public Map<Integer, List<AbstractCursor>> getAttacksByNationGroupWar(int nationId, long startDate) {
+        Map<Integer, List<AbstractCursor>> result = new Int2ObjectOpenHashMap<>();
+        // attacks start within 5 days after a war
+        long cutoff = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(startDate) + 60);
+        synchronized (warsByNationId) {
+            Map<Integer, DBWar> warMap = warsByNationId.get(nationId);
+            if (warMap != null) {
+                for (DBWar war : warMap.values()) {
+                    if (war.date > cutoff) {
+                        continue;
+                    }
+                    List<AbstractCursor> list = getAttacksByWarId(war, new AttackCursorFactory());
+                    if (list != null && !list.isEmpty()) {
+                        result.put(war.warId, list);
+                    }
+                }
             }
         }
-        return list;
+        return result;
     }
 
-    public void iterateAttacks(long start, long end, Consumer<DBAttack> consumer) {
+    public void iterateAttacks(long start, long end, Predicate<DBWar> ifWar, Consumer<AbstractCursor> consumer) {
         if (start > end) return;
-        if (end >= System.currentTimeMillis()) {
-            iterateAttacks(start, consumer);
-            return;
-        }
-        synchronized (allAttacks2) {
-            int indexStart = ArrayUtil.binarySearchGreater(allAttacks2, f -> f.getDate() >= start);
-//            int indexEnd = ArrayUtil.binarySearchGreater(allAttacks2, f -> f.epoch <= end);
-            if (indexStart == -1) return;
-            for (int i = indexStart; i < allAttacks2.size(); i++) {
-                DBAttack attack = allAttacks2.get(i);
-                if (attack.getDate() > end) break;
-                consumer.accept(attack);
+        AttackCursorFactory factory = new AttackCursorFactory();
+
+        synchronized (warsById) {
+            for (Map.Entry<Integer, DBWar> entry : warsById.entrySet()) {
+                DBWar war = entry.getValue();
+                if (war.date > end) continue;
+                if (war.possibleEndDate() < start) continue;
+                if (!ifWar.test(war)) continue;
+
+                for (AbstractCursor attack : getAttacksByWarId(war, factory)) {
+                    if (attack.getDate() > end) break;
+                    if (attack.getDate() < start) continue;
+                    consumer.accept(attack);
+                }
             }
         }
     }
 
-    public void iterateAttacks(long start, Consumer<DBAttack> consumer) {
-        if (start >= System.currentTimeMillis()) return;
-        synchronized (allAttacks2) {
-            int indexStart = ArrayUtil.binarySearchGreater(allAttacks2, f -> f.getDate() >= start);
-            if (indexStart == -1) return;
-            for (int i = indexStart; i < allAttacks2.size(); i++) {
-                consumer.accept(allAttacks2.get(i));
+    public List<AbstractCursor> getAttacks(long start, long end, Predicate<DBWar> ifWar, Predicate<AbstractCursor> filter) {
+        if (start > end) return Collections.emptyList();
+        List<AbstractCursor> list = new ObjectArrayList<>();
+        AttackCursorFactory factory = new AttackCursorFactory();
+
+        synchronized (warsById) {
+            for (Map.Entry<Integer, DBWar> entry : warsById.entrySet()) {
+                DBWar war = entry.getValue();
+                if (war.date > end) continue;
+                if (war.possibleEndDate() < start) continue;
+                if (!ifWar.test(war)) continue;
+
+                for (AbstractCursor attack : getAttacksByWarId(war, factory)) {
+                    if (attack.getDate() > end) break;
+                    if (attack.getDate() < start) continue;
+                    if (filter.test(attack)) list.add(attack);
+                }
             }
         }
-    }
-
-    public List<DBAttack> getAttacks(long start, long end, Predicate<DBAttack> filter) {
-        List<DBAttack> list = new ObjectArrayList<>();
-        iterateAttacks(start, end, f -> {
-            if (filter.test(f)) list.add(f);
-        });
         return list;
     }
 
-    public List<DBAttack> getAttacks(long start, Predicate<DBAttack> filter) {
-        List<DBAttack> list = new ObjectArrayList<>();
-        iterateAttacks(start, f -> {
-            if (filter.test(f)) list.add(f);
-        });
+    public List<AbstractCursor> getAttacks(long start, Predicate<DBWar> ifWar, Predicate<AbstractCursor> filter) {
+        return getAttacks(start, Long.MAX_VALUE, ifWar, filter);
+    }
+
+    public List<AbstractCursor> getAttacks(long start, Predicate<DBWar> ifWar) {
+        return getAttacks(start, Long.MAX_VALUE, ifWar);
+    }
+    public List<AbstractCursor> getAttacks(long start, long end, Predicate<DBWar> ifWar) {
+        ObjectArrayList<AbstractCursor> list = new ObjectArrayList<>();
+        iterateAttacks(start, end, ifWar, list::add);
         return list;
     }
 
-    public List<DBAttack> getAttacks(long cuttoffMs) {
-        return getAttacks(cuttoffMs, Long.MAX_VALUE);
-    }
-    public List<DBAttack> getAttacks(long start, long end) {
-        ObjectArrayList<DBAttack> list = new ObjectArrayList<>();
-        iterateAttacks(start, end, list::add);
-        return list;
-    }
-
-    public DBAttack createAttack(ResultSet rs) throws SQLException {
+    private DBAttack createAttack(ResultSet rs) throws SQLException {
         DBAttack attack = new DBAttack();
         attack.setWar_attack_id(rs.getInt(1));
         attack.setDate(rs.getLong(2));
@@ -2630,46 +2515,34 @@ public class WarDB extends DBMainV2 {
         return yourLoot;
     }
 
-    public Map<Integer, Map.Entry<Long, double[]>> getNationLootFromAttacksLegacy() {
+    public Map<Integer, Map.Entry<Long, double[]>> getNationLootFromAttacksLegacy(long time) {
         Map<Integer, Map.Entry<Long, double[]>> nationLoot = new ConcurrentHashMap<>();
 
-        // `attacker_nation_id`, `defender_nation_id`
-        String nationReq = "";
-        try (PreparedStatement stmt= prepareQuery("select * FROM (SELECT * FROM `attacks2` WHERE `attack_type` = 1" + nationReq + " ORDER BY date DESC) AS tmp_table GROUP BY case when victor = attacker_nation_id then defender_nation_id else attacker_nation_id end")) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    DBAttack attack = createAttack(rs);
-                    if (attack.loot == null) continue;
-
-                    int looted = attack.getLooted();
-                    int looter = attack.getLooter();
-
-//                    double factor = 0.1;
-//                    if (victor != null && victor.getPolicy().equalsIgnoreCase("Pirate")) {
-//                        factor = 0.14;
-//                    }
-//                    if (loser != null && loser.getPolicy().equalsIgnoreCase("Moneybags")) {
-//                        factor *= 0.6;
-//                    }
+        AttackCursorFactory factory = new AttackCursorFactory();
+        // iterate all victory attacks
+        for (DBWar war : getWarsSince(time).values()) {
+            if (war.status != WarStatus.ATTACKER_VICTORY && war.status != WarStatus.DEFENDER_VICTORY) continue;
+            List<AbstractCursor> attacks = getAttacksByWarId(war, factory);
+            if (attacks == null || attacks.isEmpty()) continue;
+            // iterate backwards
+            for (int i = attacks.size() - 1; i >= 0; i--) {
+                AbstractCursor attack = attacks.get(i);
+                if (attack.getAttack_type() != AttackType.VICTORY) continue;
+                int looted = attack.getDefender_id();
+                Map.Entry<Long, double[]> existing = nationLoot.get(looted);
+                    if (existing == null || existing.getKey() < attack.getDate()) {
+                    double[] loot = attack.getLoot();
+                    if (loot == null) loot = ResourceType.getBuffer();
                     double factor = 1 / attack.getLootPercent();
-                    double[] lootCopy = attack.loot.clone();
-                    for (int i = 0; i < lootCopy.length; i++) {
-                        lootCopy[i] = lootCopy[i] * factor - lootCopy[i];
+                    double[] lootCopy = loot.clone();
+                    for (int j = 0; j < lootCopy.length; j++) {
+                        lootCopy[j] = lootCopy[j] * factor - lootCopy[j];
                     }
-
-                    AbstractMap.SimpleEntry<Long, double[]> newEntry = new AbstractMap.SimpleEntry<>(attack.getDate(), lootCopy);
-                    Map.Entry<Long, double[]> existing = nationLoot.put(looted, newEntry);
-                    if (existing != null && existing.getKey() > attack.getDate()) {
-                        nationLoot.put(looted, existing);
-                    }
+                    nationLoot.put(looted, new AbstractMap.SimpleEntry<>(attack.getDate(), lootCopy));
                 }
             }
-            return nationLoot;
-            // nation loot
-        } catch (SQLException e) {
-            e.printStackTrace();
         }
-        return null;
+        return nationLoot;
     }
 
     public List<DBAttack> getAttacks(int nation_id) {

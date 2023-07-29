@@ -1,7 +1,7 @@
 package link.locutus.discord.util.battle.sim;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -239,7 +239,7 @@ public class SimulatedWarNode {
         aggressor = new WarNation(Locutus.imp().getNationDB().getNation(aggId));
         defender = new WarNation(Locutus.imp().getNationDB().getNation(defId));
 
-        List<DBAttack> attacks = war.getAttacks();
+        List<AbstractCursor> attacks = war.getAttacks();
         Map.Entry<Integer, Integer> resistance = war.getResistance(attacks);
 
         aggressor.setResistance(resistance.getKey());
