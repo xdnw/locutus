@@ -16,7 +16,6 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.task.war.WarCard;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.SWarContainer;
 import link.locutus.discord.apiv1.domains.subdomains.WarContainer;
 import link.locutus.discord.apiv1.enums.WarType;
@@ -137,9 +136,9 @@ public class DBWar {
         return Locutus.imp().getWarDb().getAttacksByNationGroupWar(this);
     }
 
-    public List<DBAttack> getAttacks(Collection<DBAttack> attacks) {
-        List<DBAttack> result = new ArrayList<>();
-        for (DBAttack attack : attacks) {
+    public List<AbstractCursor> getAttacks(Collection<AbstractCursor> attacks) {
+        List<AbstractCursor> result = new ArrayList<>();
+        for (AbstractCursor attack : attacks) {
             if (attack.getWar_id() == warId) result.add(attack);
         }
         return result;
@@ -150,11 +149,11 @@ public class DBWar {
      * @param attacks
      * @return [attacker, defender]
      */
-    public Map.Entry<Integer, Integer> getResistance(List<DBAttack> attacks) {
+    public Map.Entry<Integer, Integer> getResistance(List<AbstractCursor> attacks) {
         int[] result = {100, 100};
-        for (DBAttack attack : attacks) {
-            if (attack.getSuccess() == 0) continue;
-            int resI = attack.getAttacker_nation_id() == attacker_id ? 1 : 0;
+        for (AbstractCursor attack : attacks) {
+            if (attack.getSuccess() == SuccessType.UTTER_FAILURE) continue;
+            int resI = attack.getAttacker_id() == attacker_id ? 1 : 0;
             int damage;
             switch (attack.getAttack_type()) {
                 default:continue;
@@ -182,13 +181,13 @@ public class DBWar {
                     damage = 31;
                     break;
             }
-            damage -= (9 - attack.getSuccess() * 3);
+            damage -= (9 - attack.getSuccess().ordinal() * 3);
             result[resI] = Math.max(0, result[resI] - damage);
         }
         return new AbstractMap.SimpleEntry<>(result[0], result[1]);
     }
 
-    public Map.Entry<Integer, Integer> getMap(List<DBAttack> attacks) {
+    public Map.Entry<Integer, Integer> getMap(List<AbstractCursor> attacks) {
         DBNation attacker = Locutus.imp().getNationDB().getNation(attacker_id);
         DBNation defender = Locutus.imp().getNationDB().getNation(defender_id);
 
@@ -212,8 +211,8 @@ public class DBWar {
         boolean selfAttack = false;
         boolean enemyAttack = false;
 
-        for (DBAttack attack : attacks) {
-            if (attack.getAttacker_nation_id() == attacker_id) {
+        for (AbstractCursor attack : attacks) {
+            if (attack.getAttacker_id() == attacker_id) {
                 selfAttack = true;
             } else {
                 enemyAttack = true;
@@ -225,9 +224,9 @@ public class DBWar {
         boolean wasted = false;
 
         outer:
-        for (DBAttack attack : attacks) {
+        for (AbstractCursor attack : attacks) {
             long[] turnMap;
-            if (attack.getAttacker_nation_id() == attacker_id) {
+            if (attack.getAttacker_id() == attacker_id) {
                 selfAttack = true;
                 turnMap = attTurnMap;
             } else {
@@ -239,7 +238,7 @@ public class DBWar {
             int mapUsed = 0;
             switch (attack.getAttack_type()) {
                 case FORTIFY:
-                    if (attack.getAttacker_nation_id() == attacker_id) {
+                    if (attack.getAttacker_id() == attacker_id) {
                         fortified = true;
                     }
                 case GROUND:
@@ -428,11 +427,11 @@ public class DBWar {
         return toCost(getAttacks());
     }
 
-    public AttackCost toCost(List<DBAttack> attacks) {
+    public AttackCost toCost(List<AbstractCursor> attacks) {
         String nameA = PnwUtil.getName(attacker_id, false);
         String nameB = PnwUtil.getName(defender_id, false);
-        Function<DBAttack, Boolean> isPrimary = a -> a.getAttacker_nation_id() == attacker_id;
-        Function<DBAttack, Boolean> isSecondary = b -> b.getAttacker_nation_id() == defender_id;
+        Function<AbstractCursor, Boolean> isPrimary = a -> a.getAttacker_id() == attacker_id;
+        Function<AbstractCursor, Boolean> isSecondary = b -> b.getAttacker_id() == defender_id;
         AttackCost cost = new AttackCost(nameA, nameB);
         cost.addCost(attacks, isPrimary, isSecondary);
         return cost;
@@ -468,27 +467,27 @@ public class DBWar {
     public int getControl(Predicate<AttackType> attackType, MilitaryUnit... units) {
         long acDate = 0;
         int acNation = 0;
-        for (DBAttack attack : getAttacks()) {
+        for (AbstractCursor attack : getAttacks()) {
             if (attackType.test(attack.getAttack_type())) {
-                switch (SuccessType.values[attack.getSuccess()]) {
+                switch (attack.getSuccess()) {
                     case PYRRHIC_VICTORY, MODERATE_SUCCESS -> {
-                        if (acNation != attack.getAttacker_nation_id()) {
+                        if (acNation != attack.getAttacker_id()) {
                             acNation = 0;
                             acDate = 0;
                         }
                     }
                     case IMMENSE_TRIUMPH -> {
-                        acNation = attack.getAttacker_nation_id();
+                        acNation = attack.getAttacker_id();
                         acDate = attack.getDate();
                     }
                 }
             }
         }
         if (acNation != 0) {
-            for (DBAttack attack : Locutus.imp().getWarDb().getAttacks(acNation, acDate)) {
+            for (AbstractCursor attack : Locutus.imp().getWarDb().getAttacks(acNation, acDate)) {
                 if (attackType.test(attack.getAttack_type()) &&
-                        SuccessType.values[attack.getSuccess()] == SuccessType.IMMENSE_TRIUMPH &&
-                        attack.getDefender_nation_id() == acNation &&
+                        attack.getSuccess() == SuccessType.IMMENSE_TRIUMPH &&
+                        attack.getDefender_id() == acNation &&
                         attack.getDate() > acDate) {
                     return 0;
                 }

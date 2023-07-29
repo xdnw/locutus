@@ -4403,7 +4403,7 @@ public class DBNation implements NationOrAlliance {
                 MilitaryUnit[] units = attack.getAttack_type().getUnits();
                 for (MilitaryUnit other : units) {
                     if (other == unit) {
-                        Map<MilitaryUnit, Integer> losses = attack.getUnitLosses(attack.getAttacker_nation_id() == nation_id);
+                        Map<MilitaryUnit, Integer> losses = attack.getUnitLosses(attack.getAttacker_id() == nation_id);
                         long turn = TimeUtil.getTurn(attack.getDate());
                         unitsLost.put(turn, losses.getOrDefault(unit, 0) + unitsLost.getOrDefault(turn, 0));
                         continue outer;
@@ -4690,7 +4690,7 @@ public class DBNation implements NationOrAlliance {
     public AttackCost getWarCost() {
         AttackCost cost = new AttackCost();
         List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(nation_id, 0);
-        cost.addCost(attacks, a -> a.getAttacker_nation_id() == nation_id, b -> b.getDefender_nation_id() == nation_id);
+        cost.addCost(attacks, a -> a.getAttacker_id() == nation_id, b -> b.getDefender_id() == nation_id);
         return cost;
     }
 
@@ -4700,7 +4700,7 @@ public class DBNation implements NationOrAlliance {
         double total = 0;
         List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(nation_id, 0);
         for (DBAttack attack : attacks) {
-            if (attack.getAttacker_nation_id() == nation_id) {
+            if (attack.getAttacker_id() == nation_id) {
                 Map<ResourceType, Double> loot = attack.getLoot();
                 if (!loot.isEmpty()) total += PnwUtil.convertedTotal(loot);
             }

@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
 
 import static link.locutus.discord.util.TimeUtil.YYYY_MM_DD_HH_MM_SS;
 
-public class AbstractCursor {
+public class DBAttack {
     private int war_attack_id;
     private long date;
     private int war_id;
@@ -53,9 +53,9 @@ public class AbstractCursor {
     public double infraPercent_cached;
     public int city_cached;
 
-    public AbstractCursor() {}
+    public DBAttack() {}
 
-    public AbstractCursor(int war_attack_id, long epoch, int war_id, int attacker_nation_id, int defender_nation_id, AttackType attack_type, int victor, int success, int attcas1, int attcas2, int defcas1, int defcas2, int defcas3,
+    public DBAttack(int war_attack_id, long epoch, int war_id, int attacker_nation_id, int defender_nation_id, AttackType attack_type, int victor, int success, int attcas1, int attcas2, int defcas1, int defcas2, int defcas3,
                     double infra_destroyed, int improvements_destroyed, double money_looted, String note, double city_infra_before, double infra_destroyed_value, double att_gas_used, double att_mun_used, double def_gas_used, double def_mun_used) {
         this.setWar_attack_id(war_attack_id);
         this.setDate(epoch);
@@ -90,7 +90,7 @@ public class AbstractCursor {
         this.setDef_mun_used(def_mun_used);
     }
 
-    public AbstractCursor(WarAttack a) {
+    public DBAttack(WarAttack a) {
         throw new UnsupportedOperationException("This constructor is not supported. Use the other one.");
 //        this(a.getId(),
 //        a.getDate().toEpochMilli(),
@@ -139,7 +139,7 @@ public class AbstractCursor {
         } else if (getAttack_type() == AttackType.VICTORY) {
             setLoot(new double[ResourceType.values.length]);
             setLoot(parseNationLoot(note, loot));
-            setLooted(getAttacker_nation_id());
+            setLooted(getAttacker_id());
             setLootPercent(0.1);
 
             String end = "% of the infrastructure in each of their cities.";
@@ -285,7 +285,7 @@ public class AbstractCursor {
         return resourceOutput;
     }
 
-    public AbstractCursor(WarAttacksContainer container) {
+    public DBAttack(WarAttacksContainer container) {
         this(Integer.parseInt(container.getWarAttackId()),
                 TimeUtil.parseDate(YYYY_MM_DD_HH_MM_SS, container.getDate()),
                 Integer.parseInt(container.getWarId()),
@@ -365,19 +365,19 @@ public class AbstractCursor {
             if (getVictor() != 0) {
                 if (loot != null) {
                     Map<ResourceType, Double> lootDouble = PnwUtil.resourcesToMap(loot);
-                    if (attacker ? getVictor() == getAttacker_nation_id() : getVictor() == getDefender_nation_id()) {
+                    if (attacker ? getVictor() == getAttacker_id() : getVictor() == getDefender_id()) {
                         losses = PnwUtil.subResourcesToA(losses, lootDouble);
-                    } else if (attacker ? getVictor() == getDefender_nation_id() : getVictor() == getAttacker_nation_id()) {
+                    } else if (attacker ? getVictor() == getDefender_id() : getVictor() == getAttacker_id()) {
                         losses = PnwUtil.addResourcesToA(losses, lootDouble);
                     }
                 }
                 else if (getMoney_looted() != 0) {
-                    int sign = (getVictor() == (attacker ? getAttacker_nation_id() : getDefender_nation_id())) ? -1 : 1;
+                    int sign = (getVictor() == (attacker ? getAttacker_id() : getDefender_id())) ? -1 : 1;
                     losses.put(ResourceType.MONEY, losses.getOrDefault(ResourceType.MONEY, 0d) + getMoney_looted() * sign);
                 }
             }
         }
-        if (attacker ? getVictor() == getDefender_nation_id() : getVictor() == getAttacker_nation_id()) {
+        if (attacker ? getVictor() == getDefender_id() : getVictor() == getAttacker_id()) {
             if (infra && getInfra_destroyed_value() != 0) {
                 if (getInfra_destroyed_value() == intOverflow) {
                     setInfra_destroyed_value(PnwUtil.calculateInfra(this.getCity_infra_before() - getInfra_destroyed(), this.getCity_infra_before()));
@@ -400,7 +400,7 @@ public class AbstractCursor {
     }
 
     public int getVictor() {
-        return getSuccess() > 0 ? getAttacker_nation_id() : getDefender_nation_id();
+        return getSuccess() > 0 ? getAttacker_id() : getDefender_id();
     }
 
     public int getWar_id() {
@@ -412,7 +412,7 @@ public class AbstractCursor {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        AbstractCursor attack = (AbstractCursor) o;
+        DBAttack attack = (DBAttack) o;
 
         return attack.getWar_attack_id() == getWar_attack_id();
     }
@@ -424,12 +424,12 @@ public class AbstractCursor {
 
     @Override
     public String toString() {
-        return "AbstractCursor{" +
+        return "DBAttack{" +
                 "war_attack_id=" + getWar_attack_id() +
                 ", epoch=" + getDate() +
                 ", war_id=" + getWar_id() +
-                ", attacker_nation_id=" + getAttacker_nation_id() +
-                ", defender_nation_id=" + getDefender_nation_id() +
+                ", attacker_nation_id=" + getAttacker_id() +
+                ", defender_nation_id=" + getDefender_id() +
                 ", attack_type=" + getAttack_type() +
                 ", victor=" + getVictor() +
                 ", success=" + getSuccess() +
@@ -454,7 +454,7 @@ public class AbstractCursor {
     }
 
     public DBNation getNation(boolean attacker) {
-        return DBNation.getById(attacker ? getAttacker_nation_id() : getDefender_nation_id());
+        return DBNation.getById(attacker ? getAttacker_id() : getDefender_id());
     }
 
     public int getWar_attack_id() {
@@ -477,7 +477,7 @@ public class AbstractCursor {
         this.war_id = war_id;
     }
 
-    public int getAttacker_nation_id() {
+    public int getAttacker_id() {
         return attacker_nation_id;
     }
 
@@ -485,7 +485,7 @@ public class AbstractCursor {
         this.attacker_nation_id = attacker_nation_id;
     }
 
-    public int getDefender_nation_id() {
+    public int getDefender_id() {
         return defender_nation_id;
     }
 

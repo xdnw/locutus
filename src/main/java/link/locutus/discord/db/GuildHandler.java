@@ -43,7 +43,7 @@ import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.util.task.war.WarCard;
 import com.google.common.eventbus.Subscribe;
 import com.google.gson.JsonObject;
-import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -1371,10 +1371,10 @@ public class GuildHandler {
         Set<Integer> aaIds = db.getAllianceIds();
         if (!aaIds.isEmpty()) {
             if (root.getAttack_type() == AttackType.VICTORY) {
-                DBNation attacker = Locutus.imp().getNationDB().getNation(root.getAttacker_nation_id());
+                DBNation attacker = Locutus.imp().getNationDB().getNation(root.getAttacker_id());
                 handleLostWars(attacker, aaIds, root, memberNation);
 
-                DBNation defender = Locutus.imp().getNationDB().getNation(root.getDefender_nation_id());
+                DBNation defender = Locutus.imp().getNationDB().getNation(root.getDefender_id());
                 handleWonWars(defender, aaIds, root, memberNation);
 
             }
@@ -2064,8 +2064,8 @@ public class GuildHandler {
         MessageChannel channelViolation = db.getOrNull(GuildKey.ENEMY_BEIGED_ALERT_VIOLATIONS);
         if (channelAllowed == null && channelViolation == null) return;
 
-        DBNation attacker = Locutus.imp().getNationDB().getNation(root.getAttacker_nation_id());
-        DBNation defender = Locutus.imp().getNationDB().getNation(root.getDefender_nation_id());
+        DBNation attacker = Locutus.imp().getNationDB().getNation(root.getAttacker_id());
+        DBNation defender = Locutus.imp().getNationDB().getNation(root.getDefender_id());
         if (!enemies.contains(defender.getAlliance_id())) return;
 
         DBWar war = Locutus.imp().getWarDb().getWar(root.getWar_id());
@@ -2157,7 +2157,7 @@ public class GuildHandler {
                 DiscordUtil.sendMessage(channel, explanation.toString());
             }
 
-            DBNation nation = DBNation.getById(root.getAttacker_nation_id());
+            DBNation nation = DBNation.getById(root.getAttacker_id());
             if (nation != null && db.getGuild().getMember(user) != null) {
                 ApiKeyPool keys = db.getMailKey();
                 if (keys != null) {

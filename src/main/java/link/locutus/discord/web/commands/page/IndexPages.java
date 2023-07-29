@@ -27,7 +27,7 @@ import link.locutus.discord.web.commands.search.SearchType;
 import link.locutus.discord.web.jooby.PageHandler;
 import link.locutus.discord.web.jooby.WebRoot;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import io.javalin.http.Context;

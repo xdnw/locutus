@@ -58,7 +58,7 @@ import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
-import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -772,8 +772,8 @@ public class BankCommands {
             wars.removeIf(f -> {
                 List<AbstractCursor> attacks = attacksByWar.get(f.warId);
                 if (attacks == null) return true;
-                boolean att1 = attacks.stream().anyMatch(g -> g.getAttacker_nation_id() == f.attacker_id);
-                boolean att2 = attacks.stream().anyMatch(g -> g.getAttacker_nation_id() == f.defender_id);
+                boolean att1 = attacks.stream().anyMatch(g -> g.getAttacker_id() == f.attacker_id);
+                boolean att2 = attacks.stream().anyMatch(g -> g.getAttacker_id() == f.defender_id);
                 return !att1 || !att2;
             });
         }

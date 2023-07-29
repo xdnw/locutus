@@ -20,7 +20,7 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
@@ -156,15 +156,15 @@ public class WarCostSheet extends Command {
                     boolean enemyAttack = false;
 
                     for (AbstractCursor attack : warAttacks) {
-                        if (attack.getAttacker_nation_id() == nationId) {
+                        if (attack.getAttacker_id() == nationId) {
                             selfAttack = true;
                         } else {
                             enemyAttack = true;
                         }
                     }
 
-                    Function<AbstractCursor, Boolean> isPrimary = a -> a.getAttacker_nation_id() == nationId;
-                    Function<AbstractCursor, Boolean> isSecondary = a -> a.getAttacker_nation_id() != nationId;
+                    Function<AbstractCursor, Boolean> isPrimary = a -> a.getAttacker_id() == nationId;
+                    Function<AbstractCursor, Boolean> isSecondary = a -> a.getAttacker_id() != nationId;
 
                     AttackCost cost;
                     if (war.attacker_id == nationId) {

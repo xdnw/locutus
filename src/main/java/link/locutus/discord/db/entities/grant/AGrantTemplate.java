@@ -470,7 +470,7 @@ public abstract class AGrantTemplate<T> {
             // reverse attacks
             Collections.reverse(attacks);
             for (DBAttack attack : attacks) {
-                if (attack.getAttacker_nation_id() != receiver.getId()) {
+                if (attack.getAttacker_id() != receiver.getId()) {
                     return attack.getDate();
                 }
             }

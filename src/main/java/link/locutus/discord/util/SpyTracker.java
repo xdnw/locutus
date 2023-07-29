@@ -4,7 +4,7 @@ import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -209,8 +209,8 @@ public class SpyTracker {
             if (attack.getDate() > latestAttackMs) {
                 latestAttackMs = attack.getDate();
             }
-            attacksByNation.computeIfAbsent(attack.getAttacker_nation_id(), k -> new ArrayList<>()).add(attack);
-            attacksByNation.computeIfAbsent(attack.getDefender_nation_id(), k -> new ArrayList<>()).add(attack);
+            attacksByNation.computeIfAbsent(attack.getAttacker_id(), k -> new ArrayList<>()).add(attack);
+            attacksByNation.computeIfAbsent(attack.getDefender_id(), k -> new ArrayList<>()).add(attack);
         }
         Iterator<SpyActivity> iter = queue.iterator();
         while (iter.hasNext()) {
@@ -219,7 +219,7 @@ public class SpyTracker {
                 List<AbstractCursor> attacks = attacksByNation.get(activity.nationId);
                 if (attacks != null) {
                     for (AbstractCursor attack : attacks) {
-                        boolean isAttacker = attack.getAttacker_nation_id() == activity.nationId;
+                        boolean isAttacker = attack.getAttacker_id() == activity.nationId;
                         boolean checkNation = activity.isKill != isAttacker;
                         Map<MilitaryUnit, Integer> losses = attack.getUnitLosses(checkNation);
                         Integer loss = losses.get(activity.unit);

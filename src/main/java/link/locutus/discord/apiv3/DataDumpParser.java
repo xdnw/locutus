@@ -11,7 +11,7 @@ import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -334,9 +334,9 @@ public class DataDumpParser {
 
                 long day = TimeUtil.getDay(attack.getDate());
 
-                Continent continent = continentInfo.getOrDefault(day, Collections.emptyMap()).get(attack.getDefender_nation_id());
+                Continent continent = continentInfo.getOrDefault(day, Collections.emptyMap()).get(attack.getDefender_id());
                 if (continent == null) {
-                    DBNation nation = DBNation.getById(attack.getDefender_nation_id());
+                    DBNation nation = DBNation.getById(attack.getDefender_id());
                     if (nation != null) continent = nation.getContinent();
                     else {
 //                        System.out.println("Could not find continent for " + attack.defender_nation_id);
@@ -370,7 +370,7 @@ public class DataDumpParser {
         long diff1 = System.currentTimeMillis() - start2;
 
         long cutoff = minDate - TimeUnit.DAYS.toMillis(20);
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(cutoff, f -> f.getAttack_type() == AttackType.NUKE && f.getSuccess() > 0);
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(cutoff, f -> true, f -> f.getAttack_type() == AttackType.NUKE && f.getSuccess() != SuccessType.UTTER_FAILURE);
         attacks.sort(Comparator.comparingLong(o -> o.getDate()));
 
         long currTurn = TimeUtil.getTurn();
@@ -423,7 +423,7 @@ public class DataDumpParser {
 
         long minDate = getMinDate();
 
-        Map<Integer, Map.Entry<Long, double[]>> legacyLoot = Locutus.imp().getWarDb().getNationLootFromAttacksLegacy();
+        Map<Integer, Map.Entry<Long, double[]>> legacyLoot = Locutus.imp().getWarDb().getNationLootFromAttacksLegacy(0);
 
         Map<Integer, LootEntry> loot = Locutus.imp().getNationDB().getNationLootMap();
 
@@ -691,7 +691,7 @@ public class DataDumpParser {
         Map<Long, Set<Integer>> nationsByDay = new HashMap<>();
         for (AbstractCursor attack : attacks) {
             long day = TimeUtil.getDay(attack.getDate());
-            nationsByDay.computeIfAbsent(day, k -> new HashSet<>()).add(attack.getDefender_nation_id());
+            nationsByDay.computeIfAbsent(day, k -> new HashSet<>()).add(attack.getDefender_id());
         }
 
         System.out.println("Attacks " + attacks.size());
@@ -702,7 +702,7 @@ public class DataDumpParser {
             long day = TimeUtil.getDay(AbstractCursor.getDate());
             Map<Integer, Map<Integer, Double>> infraDay = infraMap.get(day);
             if (infraDay == null) return true;
-            return infraDay.containsKey(AbstractCursor.getDefender_nation_id());
+            return infraDay.containsKey(AbstractCursor.getDefender_id());
         });
 
         Map<Integer, AbstractCursor> attacksById = new HashMap<>();
@@ -727,7 +727,7 @@ public class DataDumpParser {
                     double infraPercent_cached = Double.parseDouble(split[split.length - 1]) / 100d;
 
                     long day = TimeUtil.getDay(AbstractCursor.getDate());
-                    Map<Integer, Double> cityInfra = infraMap.get(day).get(AbstractCursor.getDefender_nation_id());
+                    Map<Integer, Double> cityInfra = infraMap.get(day).get(AbstractCursor.getDefender_id());
                     double cost = 0;
                     for (Map.Entry<Integer, Double> entry : cityInfra.entrySet()) {
                         double infraAmt = entry.getValue();

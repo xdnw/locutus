@@ -6,7 +6,7 @@ import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.endpoints.Endpoint;
-import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -50,14 +50,14 @@ public class WarCostEnd extends Endpoint {
             attacks = Locutus.imp().getWarDb().getAttacksByWars(wars, cutoffMs);
             isPrimary = a -> {
                 DBWar war = warMap.get(a.getWar_id());
-                int aa1 = war.attacker_id == a.getAttacker_nation_id() ? war.attacker_aa : war.defender_aa;
-                int aa2 = war.attacker_id == a.getAttacker_nation_id() ? war.defender_aa : war.attacker_aa;
+                int aa1 = war.attacker_id == a.getAttacker_id() ? war.attacker_aa : war.defender_aa;
+                int aa2 = war.attacker_id == a.getAttacker_id() ? war.defender_aa : war.attacker_aa;
                 return aaIdss1.contains(aa1) && aaIdss2.contains(aa2);
             };
             isSecondary = a -> {
                 DBWar war = warMap.get(a.getWar_id());
-                int aa1 = war.attacker_id == a.getAttacker_nation_id() ? war.attacker_aa : war.defender_aa;
-                int aa2 = war.attacker_id == a.getAttacker_nation_id() ? war.defender_aa : war.attacker_aa;
+                int aa1 = war.attacker_id == a.getAttacker_id() ? war.attacker_aa : war.defender_aa;
+                int aa2 = war.attacker_id == a.getAttacker_id() ? war.defender_aa : war.attacker_aa;
                 return aaIdss2.contains(aa1) && aaIdss1.contains(aa2);
             };
             nameA = args0;
@@ -90,13 +90,13 @@ public class WarCostEnd extends Endpoint {
             }
 
             isPrimary = a -> {
-                DBNation n1 = nations.get(a.getAttacker_nation_id());
-                DBNation n2 = nations.get(a.getDefender_nation_id());
+                DBNation n1 = nations.get(a.getAttacker_id());
+                DBNation n2 = nations.get(a.getDefender_id());
                 return n1 != null && n2 != null && alliances1.contains(n1) && alliances2.contains(n2);
             };
             isSecondary = a -> {
-                DBNation n1 = nations.get(a.getAttacker_nation_id());
-                DBNation n2 = nations.get(a.getDefender_nation_id());
+                DBNation n1 = nations.get(a.getAttacker_id());
+                DBNation n2 = nations.get(a.getDefender_id());
                 return n1 != null && n2 != null && alliances1.contains(n2) && alliances2.contains(n1);
             };
         }

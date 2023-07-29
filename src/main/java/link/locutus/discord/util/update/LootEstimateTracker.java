@@ -4,7 +4,7 @@ import com.google.common.eventbus.Subscribe;
 import com.politicsandwar.graphql.model.BBGame;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -593,7 +593,7 @@ public class LootEstimateTracker {
         AbstractCursor attack = event.getAttack();
         boolean hasSalvage = false;
         if (attack.getSuccess() > 0) {
-            DBNation attacker = nationFactory.apply(attack.getAttacker_nation_id());
+            DBNation attacker = nationFactory.apply(attack.getAttacker_id());
             hasSalvage = attacker != null && attacker.hasProject(Projects.MILITARY_SALVAGE);
         }
     }
@@ -613,8 +613,8 @@ public class LootEstimateTracker {
             attLoss[ResourceType.ALUMINUM.ordinal()] -= unitLosses.getOrDefault(ResourceType.ALUMINUM, 0d) * 0.05;
         }
         // negate this
-        add(attack.getAttacker_nation_id(), attack.getDate(), ResourceType.negative(attLoss));
-        add(attack.getDefender_nation_id(), attack.getDate(), ResourceType.negative(defLoss));
+        add(attack.getAttacker_id(), attack.getDate(), ResourceType.negative(attLoss));
+        add(attack.getDefender_id(), attack.getDate(), ResourceType.negative(defLoss));
     }
 
     @Subscribe

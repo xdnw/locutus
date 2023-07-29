@@ -796,7 +796,10 @@ public class IACommands {
             auth = sender.getAuth(true);
             GuildDB authDB = Locutus.imp().getGuildDB(sender.getAlliance_id());
             boolean hasPerms = (Roles.INTERNAL_AFFAIRS.hasOnRoot(author)) || (authDB != null && Roles.INTERNAL_AFFAIRS.has(author, authDB.getGuild()));
-            if (!hasPerms) return "You do not have permission to reply to this message";
+            if (authDB == null) {
+                return "No discord guild found for sender's alliance (sender: " + sender.getNation() + ", alliance: " + sender.getAllianceName() + "). See: " + GuildKey.ALLIANCE_ID.getCommandMention();
+            }
+            if (!hasPerms) return "You do not have permission to reply to this message.\n" + Roles.INTERNAL_AFFAIRS.toDiscordRoleNameElseInstructions(authDB.getGuild());
         }
         if (auth == null) throw new IllegalArgumentException("No authentication found");
 

@@ -12,7 +12,7 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.sim.WarNation;
-import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.WarContainer;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -306,20 +306,20 @@ public class WarCard {
         boolean isActive = war.isActive();
 //
         for (AbstractCursor attack : attacks) {
-            if (attack.getAttacker_nation_id() == war.attacker_id) attackerFortified = false; else defenderFortified = false;
+            if (attack.getAttacker_id() == war.attacker_id) attackerFortified = false; else defenderFortified = false;
             switch (attack.getAttack_type()) {
                 case FORTIFY:
-                    if (attack.getAttacker_nation_id() == war.attacker_id) attackerFortified = true;
+                    if (attack.getAttacker_id() == war.attacker_id) attackerFortified = true;
                     else defenderFortified = true;
                     break;
                 case GROUND:
                     switch (attack.getSuccess()) {
                         case 3:
                             gcDate = attack.getDate();
-                            groundControl = attack.getAttacker_nation_id();
+                            groundControl = attack.getAttacker_id();
                         case 2:
                         case 1:
-                            if (groundControl != attack.getAttacker_nation_id()) groundControl = 0;
+                            if (groundControl != attack.getAttacker_id()) groundControl = 0;
                     }
                     break;
                 case AIRSTRIKE_INFRA:
@@ -331,20 +331,20 @@ public class WarCard {
                     switch (attack.getSuccess()) {
                         case 3:
                             acDate = attack.getDate();
-                            airSuperiority = attack.getAttacker_nation_id();
+                            airSuperiority = attack.getAttacker_id();
                         case 2:
                         case 1:
-                            if (airSuperiority != attack.getAttacker_nation_id()) airSuperiority = 0;
+                            if (airSuperiority != attack.getAttacker_id()) airSuperiority = 0;
                     }
                     break;
                 case NAVAL:
                     switch (attack.getSuccess()) {
                         case 3:
                             blockadeDate = attack.getDate();
-                            blockaded = attack.getDefender_nation_id();
+                            blockaded = attack.getDefender_id();
                         case 2:
                         case 1:
-                            if (blockaded != attack.getDefender_nation_id()) blockaded = 0;
+                            if (blockaded != attack.getDefender_id()) blockaded = 0;
                     }
                     break;
                 case VICTORY:
@@ -356,7 +356,7 @@ public class WarCard {
         if (isActive) {
             if (checkGC && gcDate != Long.MAX_VALUE) {
                 attacks = Locutus.imp().getWarDb().getAttacks(groundControl, gcDate);
-                attacks.removeIf(a -> a.getDefender_nation_id() != groundControl || a.getSuccess() != 3);
+                attacks.removeIf(a -> a.getDefender_id() != groundControl || a.getSuccess() != 3);
                 if (!attacks.isEmpty()
                         || (Locutus.imp().getNationDB().getMinMilitary(groundControl, MilitaryUnit.SOLDIER, gcDate) == 0
                         && Locutus.imp().getNationDB().getMinMilitary(groundControl, MilitaryUnit.TANK, gcDate) == 0
@@ -364,7 +364,7 @@ public class WarCard {
             }
             if (checkAC && acDate != Long.MAX_VALUE) {
                 attacks = Locutus.imp().getWarDb().getAttacks(airSuperiority, acDate);
-                attacks.removeIf(a -> a.getDefender_nation_id() != airSuperiority || a.getSuccess() != 3);
+                attacks.removeIf(a -> a.getDefender_id() != airSuperiority || a.getSuccess() != 3);
                 if (!attacks.isEmpty()
                         || Locutus.imp().getNationDB().getMinMilitary(airSuperiority, MilitaryUnit.AIRCRAFT, acDate) == 0)
                     airSuperiority = 0;
@@ -372,7 +372,7 @@ public class WarCard {
             if (checkBlockade && blockadeDate != Long.MAX_VALUE) {
                 int blockader = blockaded == war.attacker_id ? war.defender_id : war.attacker_id;
                 attacks = Locutus.imp().getWarDb().getAttacks(blockader, blockadeDate);
-                attacks.removeIf(a -> a.getDefender_nation_id() != blockader || a.getSuccess() != 3);
+                attacks.removeIf(a -> a.getDefender_id() != blockader || a.getSuccess() != 3);
                 if (!attacks.isEmpty() ||
                         Locutus.imp().getNationDB().getMinMilitary(blockader, MilitaryUnit.SHIP, blockadeDate) == 0) {
                     blockaded = 0;

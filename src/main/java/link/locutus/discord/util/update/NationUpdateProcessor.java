@@ -2,6 +2,7 @@ package link.locutus.discord.util.update;
 
 import com.google.common.eventbus.Subscribe;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -27,7 +28,7 @@ import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
-import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -81,16 +82,16 @@ public class NationUpdateProcessor {
         for (AbstractCursor attack : attacks) {
             if (attack.getAttack_type() != AttackType.NAVAL) continue;
 
-            DBNation defender = DBNation.getById(attack.getDefender_nation_id());
+            DBNation defender = DBNation.getById(attack.getDefender_id());
             if (defender == null) continue;
 
-            if (attack.getSuccess() == 3) {
-                Map<Integer, Integer> defenderBlockades = blockadingByNationByWar.get(attack.getDefender_nation_id());
+            if (attack.getSuccess() == SuccessType.IMMENSE_TRIUMPH) {
+                Map<Integer, Integer> defenderBlockades = blockadingByNationByWar.get(attack.getDefender_id());
                 if (defenderBlockades != null && !defenderBlockades.isEmpty()) {
                     for (Map.Entry<Integer, Integer> entry : defenderBlockades.entrySet()) {
                         int blockaded = entry.getKey();
                         int warId = entry.getValue();
-                        blockadedByNationByWar.getOrDefault(blockaded, Collections.emptyMap()).remove(attack.getDefender_nation_id());
+                        blockadedByNationByWar.getOrDefault(blockaded, Collections.emptyMap()).remove(attack.getDefender_id());
                     }
                     defenderBlockades.clear();
                 }
@@ -98,13 +99,13 @@ public class NationUpdateProcessor {
                 DBWar war = wars.get(attack.getWar_id());
                 // Only if war is active
                 if (war != null && (war.status == WarStatus.ACTIVE || war.status == WarStatus.DEFENDER_OFFERED_PEACE || war.status == WarStatus.ATTACKER_OFFERED_PEACE)) {
-                    blockadedByNationByWar.computeIfAbsent(attack.getDefender_nation_id(), f -> new HashMap<>()).put(attack.getAttacker_nation_id(), attack.getWar_id());
-                    blockadingByNationByWar.computeIfAbsent(attack.getAttacker_nation_id(), f -> new HashMap<>()).put(attack.getDefender_nation_id(), attack.getWar_id());
+                    blockadedByNationByWar.computeIfAbsent(attack.getDefender_id(), f -> new HashMap<>()).put(attack.getAttacker_id(), attack.getWar_id());
+                    blockadingByNationByWar.computeIfAbsent(attack.getAttacker_id(), f -> new HashMap<>()).put(attack.getDefender_id(), attack.getWar_id());
                 }
             }
             if (attack.getSuccess() >= 2) {
-                blockadedByNationByWar.getOrDefault(attack.getAttacker_nation_id(), Collections.emptyMap()).remove(attack.getDefender_nation_id());
-                blockadingByNationByWar.getOrDefault(attack.getDefender_nation_id(), Collections.emptyMap()).remove(attack.getAttacker_nation_id());
+                blockadedByNationByWar.getOrDefault(attack.getAttacker_id(), Collections.emptyMap()).remove(attack.getDefender_id());
+                blockadingByNationByWar.getOrDefault(attack.getDefender_id(), Collections.emptyMap()).remove(attack.getAttacker_id());
             }
         }
 

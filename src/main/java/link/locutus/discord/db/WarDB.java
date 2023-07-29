@@ -233,14 +233,14 @@ public class WarDB extends DBMainV2 {
             throw new IllegalArgumentException("War id mismatch");
         }
         //    private int attacker_nation_id;
-        if (legacy.getAttacker_nation_id() != cursor.getAttacker_id() && (war == null || war.attacker_id != cursor.getAttacker_id())) {
+        if (legacy.getAttacker_id() != cursor.getAttacker_id() && (war == null || war.attacker_id != cursor.getAttacker_id())) {
             // print att/def of legacy and cursor
-            System.out.println("Legacy att/def: " + legacy.getAttacker_nation_id() + " | " + legacy.getDefender_nation_id());
+            System.out.println("Legacy att/def: " + legacy.getAttacker_id() + " | " + legacy.getDefender_id());
             System.out.println("Cursor att/def: " + cursor.getAttacker_id() + " | " + cursor.getDefender_id());
-            throw new IllegalArgumentException("Attacker nation id mismatch " + cursor.getAttacker_id() + " != " + legacy.getAttacker_nation_id());
+            throw new IllegalArgumentException("Attacker nation id mismatch " + cursor.getAttacker_id() + " != " + legacy.getAttacker_id());
         }
         //    private int defender_nation_id;
-        if (legacy.getDefender_nation_id() != cursor.getDefender_id() && (war == null || war.defender_id != cursor.getDefender_id())) {
+        if (legacy.getDefender_id() != cursor.getDefender_id() && (war == null || war.defender_id != cursor.getDefender_id())) {
             throw new IllegalArgumentException("Defender nation id mismatch");
         }
         //    private AttackType attack_type;
@@ -255,8 +255,8 @@ public class WarDB extends DBMainV2 {
 //                        // print success
 //                        System.out.println("Victor mismatch " + legacy.getVictor() + " | " + newVictor);
 //                        System.out.println("Type: " + cursor.getAttack_type());
-//                        System.out.println("Attacker: " + legacy.getAttacker_nation_id() + " | " + cursor.getAttacker_id());
-//                        System.out.println("Defender: " + legacy.getDefender_nation_id() + " | " + cursor.getDefender_id());
+//                        System.out.println("Attacker: " + legacy.getAttacker_id() + " | " + cursor.getAttacker_id());
+//                        System.out.println("Defender: " + legacy.getDefender_id() + " | " + cursor.getDefender_id());
 //                        System.out.println("Success: " + SuccessType.values[legacy.getSuccess()] + " | " + cursor.getSuccess());
 //                        throw new IllegalArgumentException("Victor mismatch " + legacy.getVictor() + " | " + newVictor);
 //                    }
@@ -1161,10 +1161,10 @@ public class WarDB extends DBMainV2 {
         boolean isOngoing = war.status == WarStatus.ACTIVE || war.status == WarStatus.DEFENDER_OFFERED_PEACE || war.status == WarStatus.ATTACKER_OFFERED_PEACE;
         boolean isActive = war.status == WarStatus.DEFENDER_OFFERED_PEACE || war.status == WarStatus.DEFENDER_VICTORY || war.status == WarStatus.ATTACKER_OFFERED_PEACE;
         for (AbstractCursor attack : attacks) {
-            if (attack.getAttack_type() == AttackType.VICTORY && attack.getAttacker_nation_id() == war.attacker_id) {
+            if (attack.getAttack_type() == AttackType.VICTORY && attack.getAttacker_id() == war.attacker_id) {
                 war.status = WarStatus.ATTACKER_VICTORY;
             }
-            if (attack.getAttacker_nation_id() == war.defender_id) isActive = true;
+            if (attack.getAttacker_id() == war.defender_id) isActive = true;
             switch (attack.getAttack_type()) {
                 case A_LOOT:
                 case VICTORY:
@@ -2053,27 +2053,27 @@ public class WarDB extends DBMainV2 {
             long now = System.currentTimeMillis();
             for (DBAttack attack : newAttacks) {
                 if (runAlerts) {
-                    Locutus.imp().getNationDB().setNationActive(attack.getAttacker_nation_id(), attack.getDate(), eventConsumer);
+                    Locutus.imp().getNationDB().setNationActive(attack.getAttacker_id(), attack.getDate(), eventConsumer);
                     Map<MilitaryUnit, Integer> attLosses = attack.getUnitLosses(true);
                     Map<MilitaryUnit, Integer> defLosses = attack.getUnitLosses(false);
                     if (!attLosses.isEmpty()) {
-                        Locutus.imp().getNationDB().updateNationUnits(attack.getAttacker_nation_id(), attack.getDate(), attLosses, eventConsumer);
+                        Locutus.imp().getNationDB().updateNationUnits(attack.getAttacker_id(), attack.getDate(), attLosses, eventConsumer);
                     }
                     if (!defLosses.isEmpty()) {
-                        Locutus.imp().getNationDB().updateNationUnits(attack.getDefender_nation_id(), attack.getDate(), defLosses, eventConsumer);
+                        Locutus.imp().getNationDB().updateNationUnits(attack.getDefender_id(), attack.getDate(), defLosses, eventConsumer);
                     }
                 }
 
                 if (attack.getAttack_type() == AttackType.NUKE && attack.getSuccess() > 0 && attack.city_cached != 0) {
-                    Locutus.imp().getNationDB().setCityNukeFromAttack(attack.getDefender_nation_id(), attack.city_cached, attack.getDate(), eventConsumer);
+                    Locutus.imp().getNationDB().setCityNukeFromAttack(attack.getDefender_id(), attack.city_cached, attack.getDate(), eventConsumer);
                 }
 
                 if (attack.getAttack_type() == AttackType.VICTORY) {
-                    DBWar war = activeWars.getWar(attack.getAttacker_nation_id(), attack.getWar_id());
+                    DBWar war = activeWars.getWar(attack.getAttacker_id(), attack.getWar_id());
                     if (war != null) {
 
                         if (runAlerts) {
-                            DBNation defender = DBNation.getById(attack.getDefender_nation_id());
+                            DBNation defender = DBNation.getById(attack.getDefender_id());
                             if (defender != null && defender.getLastFetchedUnitsMs() < attack.getDate()) {
                                 DBNation copyOriginal = null;
                                 if (!defender.isBeige()) copyOriginal = new DBNation(defender);
@@ -2083,7 +2083,7 @@ public class WarDB extends DBMainV2 {
                                     eventConsumer.accept(new NationChangeColorEvent(copyOriginal, defender));
                             }
                             DBWar oldWar = new DBWar(war);
-                            war.status = war.attacker_id == attack.getAttacker_nation_id() ? WarStatus.ATTACKER_VICTORY : WarStatus.DEFENDER_VICTORY;
+                            war.status = war.attacker_id == attack.getAttacker_id() ? WarStatus.ATTACKER_VICTORY : WarStatus.DEFENDER_VICTORY;
                             if (eventConsumer != null) {
                                 eventConsumer.accept(new WarStatusChangeEvent(oldWar, war));
                             }
@@ -2093,7 +2093,7 @@ public class WarDB extends DBMainV2 {
 
                 if (attack.getCity_infra_before() > 0 && attack.getInfra_destroyed() > 0 && attack.city_cached != 0 && attack.getAttack_type() != AttackType.VICTORY && attack.getAttack_type() != AttackType.A_LOOT) {
                     double infra = attack.getCity_infra_before() - attack.getInfra_destroyed();
-                    Locutus.imp().getNationDB().setCityInfraFromAttack(attack.getDefender_nation_id(), attack.city_cached, infra, attack.getDate(), eventConsumer);
+                    Locutus.imp().getNationDB().setCityInfraFromAttack(attack.getDefender_id(), attack.city_cached, infra, attack.getDate(), eventConsumer);
                 }
                 if (attack.getImprovements_destroyed() > 0 && attack.city_cached != 0) {
                     dirtyCities.add(attack);
@@ -2101,7 +2101,7 @@ public class WarDB extends DBMainV2 {
                 if (attack.getDate() > now) {
                     attack.setDate(now);
                 }
-                if (attack.getAttack_type() == AttackType.GROUND && attack.getMoney_looted() != 0 && Settings.INSTANCE.LEGACY_SETTINGS.ATTACKER_DESKTOP_ALERTS.contains(attack.getAttacker_nation_id())) {
+                if (attack.getAttack_type() == AttackType.GROUND && attack.getMoney_looted() != 0 && Settings.INSTANCE.LEGACY_SETTINGS.ATTACKER_DESKTOP_ALERTS.contains(attack.getAttacker_id())) {
                     AlertUtil.openDesktop(attack.toUrl());
                 }
                 if ((attack.getAttack_type() == AttackType.NUKE || attack.getAttack_type() == AttackType.MISSILE) && attack.getSuccess() == 0) {
@@ -2110,10 +2110,10 @@ public class WarDB extends DBMainV2 {
 
                 {
                     if (attack.getAttack_type() == AttackType.VICTORY && attack.infraPercent_cached > 0) {
-                        DBNation defender = Locutus.imp().getNationDB().getNation(attack.getDefender_nation_id());
+                        DBNation defender = Locutus.imp().getNationDB().getNation(attack.getDefender_id());
                         DBWar war = getWar(attack.getWar_id());
                         if (war != null) {
-                            war.status = attack.getVictor() == attack.getAttacker_nation_id() ? WarStatus.ATTACKER_VICTORY : WarStatus.DEFENDER_VICTORY;
+                            war.status = attack.getVictor() == attack.getAttacker_id() ? WarStatus.ATTACKER_VICTORY : WarStatus.DEFENDER_VICTORY;
 
                             activeWars.makeWarInactive(war);
                             warsToSave.add(war);
@@ -2148,7 +2148,7 @@ public class WarDB extends DBMainV2 {
                     AbstractCursor attack = entry.getKey();
                     double pct = entry.getValue();
                     if (pct > 0) {
-                        Map<Integer, DBCity> cities = Locutus.imp().getNationDB().getCitiesV3(attack.getDefender_nation_id());
+                        Map<Integer, DBCity> cities = Locutus.imp().getNationDB().getCitiesV3(attack.getDefender_id());
                         if (cities != null && !cities.isEmpty()) {
                             attack.setInfra_destroyed(0d);
                             attack.setInfra_destroyed_value(0d);
@@ -2165,11 +2165,11 @@ public class WarDB extends DBMainV2 {
                                 attack.setInfra_destroyed(attack.getInfra_destroyed() + infraStart - infraEnd);
                                 if (infraStart > infraEnd) {
                                     attack.setInfra_destroyed_value(attack.getInfra_destroyed_value() + PnwUtil.calculateInfra(infraEnd, infraStart));
-                                    Locutus.imp().getNationDB().setCityInfraFromAttack(attack.getDefender_nation_id(), city.id, infraEnd, attack.getDate(), eventConsumer);
+                                    Locutus.imp().getNationDB().setCityInfraFromAttack(attack.getDefender_id(), city.id, infraEnd, attack.getDate(), eventConsumer);
                                 }
                             }
                         } else {
-                            DBNation defender = DBNation.getById(attack.getDefender_nation_id());
+                            DBNation defender = DBNation.getById(attack.getDefender_id());
                             if (defender != null) {
                                 int numCities = defender.getCities();
                                 double scoreNoInfra = defender.estimateScore(0);
@@ -2213,7 +2213,7 @@ public class WarDB extends DBMainV2 {
 
         if (runAlerts) {
             for (DBAttack attack : dirtyCities) {
-                Locutus.imp().getNationDB().markCityDirty(attack.getDefender_nation_id(), attack.city_cached, attack.getDate());
+                Locutus.imp().getNationDB().markCityDirty(attack.getDefender_id(), attack.city_cached, attack.getDate());
             }
         }
 
@@ -2402,7 +2402,7 @@ public class WarDB extends DBMainV2 {
 
         if (attack.getSuccess() > 0 || attack.getAttack_type() == AttackType.VICTORY)
         {
-            attack.setLooted(attack.getDefender_nation_id());
+            attack.setLooted(attack.getDefender_id());
 
             attack.setInfra_destroyed(getLongDef0(rs, 15) * 0.01);
             if (attack.getInfra_destroyed() > 0) {
@@ -2545,32 +2545,32 @@ public class WarDB extends DBMainV2 {
         return nationLoot;
     }
 
-    public List<DBAttack> getAttacks(int nation_id) {
+    public List<AbstractCursor> getAttacks(int nation_id) {
         List<DBWar> wars = getWarsByNation(nation_id);
         return getAttacksByWars(wars);
     }
-    public List<DBAttack> getAttacks(int nation_id, long cuttoffMs) {
+    public List<AbstractCursor> getAttacks(int nation_id, long cuttoffMs) {
         return getAttacks(nation_id, cuttoffMs, Long.MAX_VALUE);
     }
-    public List<DBAttack> getAttacks(int nation_id, long start, long end) {
+    public List<AbstractCursor> getAttacks(int nation_id, long start, long end) {
         if (start <= 0 && end == Long.MAX_VALUE) return getAttacks(nation_id);
 
         List<DBWar> wars = getWarsByNation(nation_id);
         // remove wars outside the date
         long startWithExpire = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(start) - 60);
         wars.removeIf(f -> f.date < startWithExpire || f.date > end);
-        List<DBAttack> attacks = getAttacksByWars(wars, start, end);
+        List<AbstractCursor> attacks = getAttacksByWars(wars, start, end);
         return attacks;
     }
 
-    public List<DBAttack> getAttacks(long cuttoffMs, AttackType type) {
+    public List<AbstractCursor> getAttacks(long cuttoffMs, AttackType type) {
         return getAttacks(cuttoffMs, f -> f.getAttack_type() == type);
     }
-    public List<DBAttack> getAttacksByWars(Collection<DBWar> wars) {
+    public List<AbstractCursor> getAttacksByWars(Collection<DBWar> wars) {
         return getAttacksByWars(wars, 0, Long.MAX_VALUE);
     }
-    public List<DBAttack> getAttacksByWars(Collection<DBWar> wars, long start, long end) {
-        List<DBAttack> list = new ObjectArrayList<>();
+    public List<AbstractCursor> getAttacksByWars(Collection<DBWar> wars, long start, long end) {
+        List<AbstractCursor> list = new ObjectArrayList<>();
 
         Set<Integer> warIds = new IntOpenHashSet(wars.stream().map(war -> war.warId).toList());
 

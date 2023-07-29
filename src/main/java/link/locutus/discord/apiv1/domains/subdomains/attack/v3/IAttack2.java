@@ -1,8 +1,10 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
 import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.PnwUtil;
 
 import java.util.Map;
@@ -12,8 +14,8 @@ public interface IAttack2 {
     "war_attack_id=" + getWar_attack_id() +
                 ", epoch=" + getDate() +
                 ", war_id=" + getWar_id() +
-                ", attacker_nation_id=" + getAttacker_nation_id() +
-                ", defender_nation_id=" + getDefender_nation_id() +
+                ", attacker_nation_id=" + getAttacker_id() +
+                ", defender_nation_id=" + getDefender_id() +
                 ", attack_type=" + getAttack_type() +
                 ", victor=" + getVictor() +
                 ", success=" + getSuccess() +
@@ -86,5 +88,27 @@ public interface IAttack2 {
 
     default int getVictor() {
         return getSuccess() != SuccessType.UTTER_FAILURE ? getAttacker_id() : getDefender_id();
+    }
+
+    int getWar_id();
+
+    default String toUrl() {
+        return "" + Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war=" + getWar_id();
+    }
+
+    default double getLossesConverted(boolean attacker) {
+        return PnwUtil.convertedTotal(getLosses(attacker));
+    }
+
+    default double getLossesConverted(boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
+        return PnwUtil.convertedTotal(getLosses(attacker, units, infra, consumption, includeLoot, includeBuildings));
+    }
+
+    default Map<ResourceType, Double> getLosses(boolean attacker) {
+        return getLosses(attacker, true, true, true, true, true);
+    }
+
+    default Map<ResourceType, Double> getLosses(boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
+
     }
 }

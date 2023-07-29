@@ -23,7 +23,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.task.war.WarCard;
-import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -235,14 +235,14 @@ public class WarCategory {
     }
 
     public void update(AbstractCursor attack) {
-        int attackerId = attack.getAttacker_nation_id();
-        int defenderId = attack.getDefender_nation_id();
+        int attackerId = attack.getAttacker_id();
+        int defenderId = attack.getDefender_id();
         WarRoom roomTmp = warRoomMap.get(attackerId);
         if (roomTmp == null) roomTmp = warRoomMap.get(defenderId);
         if (roomTmp == null || roomTmp.channel == null) return;
         WarRoom room = roomTmp;
 
-        boolean value = room.target.getNation_id() == attack.getAttacker_nation_id();
+        boolean value = room.target.getNation_id() == attack.getAttacker_id();
         boolean change = attack.getSuccess() == 3 || (attack.getSuccess() > 0 && !value);
 
         DBNation attacker = Locutus.imp().getNationDB().getNation(attackerId);

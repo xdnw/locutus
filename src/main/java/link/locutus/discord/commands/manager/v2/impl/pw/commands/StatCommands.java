@@ -10,7 +10,7 @@ import de.erichseifert.gral.io.plots.DrawableWriterFactory;
 import de.erichseifert.gral.plots.BarPlot;
 import de.erichseifert.gral.plots.colors.ColorMapper;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -240,7 +240,7 @@ public class StatCommands {
                         DBWar war = wars.get(attack.getWar_id());
                         int nationId = groupByAlliance ? war.getNationId(byNatOrAA) : byNatOrAA;
                         DBNation nation = DBNation.getById(nationId);
-                        return scale(nation, sign * valueFunc.apply(attack.getAttacker_nation_id() == nationId, attack), scalePerCity, groupByAlliance);
+                        return scale(nation, sign * valueFunc.apply(attack.getAttacker_id() == nationId, attack), scalePerCity, groupByAlliance);
                     });
         } else {
             byGroupMap = nationAllianceGroup.map(groupBy,
@@ -249,7 +249,7 @@ public class StatCommands {
                         DBWar war = wars.get(attack.getWar_id());
                         int nationId = groupByAlliance ? war.getNationId(byNatOrAA) : byNatOrAA;
                         DBNation nation = parser.getNation(nationId, war);
-                        boolean primary = (attack.getAttacker_nation_id() != nationId) == netProfit;
+                        boolean primary = (attack.getAttacker_id() != nationId) == netProfit;
                         double totalVal = valueFunc.apply(primary, attack);
                         if (netTotal) {
                             totalVal -= valueFunc.apply(!primary, attack);
@@ -1425,15 +1425,15 @@ public class StatCommands {
                     boolean enemyAttack = false;
 
                     for (AbstractCursor attack : warAttacks) {
-                        if (attack.getAttacker_nation_id() == nationId) {
+                        if (attack.getAttacker_id() == nationId) {
                             selfAttack = true;
                         } else {
                             enemyAttack = true;
                         }
                     }
 
-                    Function<AbstractCursor, Boolean> isPrimary = a -> a.getAttacker_nation_id() == nationId;
-                    Function<AbstractCursor, Boolean> isSecondary = a -> a.getAttacker_nation_id() != nationId;
+                    Function<AbstractCursor, Boolean> isPrimary = a -> a.getAttacker_id() == nationId;
+                    Function<AbstractCursor, Boolean> isSecondary = a -> a.getAttacker_id() != nationId;
 
                     AttackCost cost = null;
                     if (war.attacker_id == nationId) {
@@ -1572,12 +1572,12 @@ public class StatCommands {
             List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksAny(nationIds, time);
 
             attacks.removeIf(n -> {
-                DBNation nat1 = Locutus.imp().getNationDB().getNation(n.getAttacker_nation_id());
-                DBNation nat2 = Locutus.imp().getNationDB().getNation(n.getAttacker_nation_id());
+                DBNation nat1 = Locutus.imp().getNationDB().getNation(n.getAttacker_id());
+                DBNation nat2 = Locutus.imp().getNationDB().getNation(n.getAttacker_id());
                 return nat1 == null || nat2 == null || !nationsByAA.containsKey(nat1.getAlliance_id()) || !nationsByAA.containsKey(nat2.getAlliance_id());
             });
 
-            Function<AbstractCursor, Boolean> isPrimary = attack -> Locutus.imp().getNationDB().getNation(attack.getAttacker_nation_id()).getAlliance_id() == aaId;
+            Function<AbstractCursor, Boolean> isPrimary = attack -> Locutus.imp().getNationDB().getNation(attack.getAttacker_id()).getAlliance_id() == aaId;
             warCost.addCost(attacks, isPrimary, f -> !isPrimary.apply(f));
 
             DBAlliance alliance = DBAlliance.getOrCreate(entry.getKey());
@@ -1708,15 +1708,15 @@ public class StatCommands {
                     boolean enemyAttack = false;
 
                     for (AbstractCursor attack : warAttacks) {
-                        if (attack.getAttacker_nation_id() == nationId) {
+                        if (attack.getAttacker_id() == nationId) {
                             selfAttack = true;
                         } else {
                             enemyAttack = true;
                         }
                     }
 
-                    Function<AbstractCursor, Boolean> isPrimary = a -> a.getAttacker_nation_id() == nationId;
-                    Function<AbstractCursor, Boolean> isSecondary = a -> a.getAttacker_nation_id() != nationId;
+                    Function<AbstractCursor, Boolean> isPrimary = a -> a.getAttacker_id() == nationId;
+                    Function<AbstractCursor, Boolean> isSecondary = a -> a.getAttacker_id() != nationId;
 
                     AttackCost cost;
                     if (war.attacker_id == nationId) {

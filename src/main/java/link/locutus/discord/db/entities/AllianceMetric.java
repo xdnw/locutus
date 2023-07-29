@@ -188,7 +188,7 @@ public enum AllianceMetric {
             AttackCost cost = new AttackCost();
             long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
             List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(nationIds, cutoff);
-            cost.addCost(attacks, a -> nationIds.contains(a.getAttacker_nation_id()), b -> nationIds.contains(b.getDefender_nation_id()));
+            cost.addCost(attacks, a -> nationIds.contains(a.getAttacker_id()), b -> nationIds.contains(b.getDefender_id()));
             return cost.convertedTotal(true);
         }
     },
@@ -484,10 +484,10 @@ public enum AllianceMetric {
                 DBWar war = attack.getWar();
                 if (war == null) continue;
                 if (allianceIds.contains(war.attacker_aa)) {
-                    attacksByAA.computeIfAbsent(war.attacker_aa, f -> new HashMap<>()).put(attack, war.attacker_id == attack.getAttacker_nation_id());
+                    attacksByAA.computeIfAbsent(war.attacker_aa, f -> new HashMap<>()).put(attack, war.attacker_id == attack.getAttacker_id());
                 }
                 if (allianceIds.contains(war.defender_aa)) {
-                    attacksByAA.computeIfAbsent(war.defender_aa, f -> new HashMap<>()).put(attack, war.defender_id == attack.getAttacker_nation_id());
+                    attacksByAA.computeIfAbsent(war.defender_aa, f -> new HashMap<>()).put(attack, war.defender_id == attack.getAttacker_id());
                 }
             }
             for (DBAlliance alliance : alliances) {

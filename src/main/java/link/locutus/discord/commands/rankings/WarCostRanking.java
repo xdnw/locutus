@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -163,8 +163,8 @@ public class WarCostRanking extends Command {
         GroupedRankBuilder<Integer, AbstractCursor> attackGroup = new RankBuilder<>(attacks)
                 .group((attack, map) -> {
                     // Group attacks into attacker and defender
-                    map.put(attack.getAttacker_nation_id(), attack);
-                    map.put(attack.getDefender_nation_id(), attack);
+                    map.put(attack.getAttacker_id(), attack);
+                    map.put(attack.getDefender_id(), attack);
                 });
 
         BiFunction<Boolean, AbstractCursor, Double> valueFunc;
@@ -213,7 +213,7 @@ public class WarCostRanking extends Command {
                     // Convert attack to profit value
                     (nationdId, attack) -> {
                         DBNation nation = nationMap.get(nationdId);
-                        return nation != null ? scale(nation, sign * valueFunc.apply(attack.getAttacker_nation_id() == nationdId, attack), scale, isAA) : 0;
+                        return nation != null ? scale(nation, sign * valueFunc.apply(attack.getAttacker_id() == nationdId, attack), scale, isAA) : 0;
                     });
         } else {
             byNationMap = attackGroup.map((i, a) -> a.getWar_id(),
@@ -221,7 +221,7 @@ public class WarCostRanking extends Command {
                     (nationdId, attack) -> {
                         DBNation nation = nationMap.get(nationdId);
                         if (nation == null) return 0d;
-                        boolean primary = (attack.getAttacker_nation_id() != nationdId) == profit;
+                        boolean primary = (attack.getAttacker_id() != nationdId) == profit;
                         double total = valueFunc.apply(primary, attack);
                         if (net) {
                             total -= valueFunc.apply(!primary, attack);

@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -61,7 +61,7 @@ public class AllianceAttackTypeRanking extends Command {
         Map<Integer, Integer> attackOfType = new HashMap<>();
 
         for (AbstractCursor attack : attacks) {
-            DBNation nat = Locutus.imp().getNationDB().getNation(attack.getAttacker_nation_id());
+            DBNation nat = Locutus.imp().getNationDB().getNation(attack.getAttacker_id());
             if (nat == null || nat.getAlliance_id() == 0 || nat.getPosition() <= 1) continue;
             totalAttacks.put(nat.getAlliance_id(), totalAttacks.getOrDefault(nat.getAlliance_id(), 0) + 1);
 

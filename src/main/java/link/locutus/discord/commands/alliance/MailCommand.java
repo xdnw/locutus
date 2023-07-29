@@ -71,7 +71,7 @@ public class MailCommand extends Command implements Noformat {
                     auth = from.getAuth(true);
                     GuildDB authDB = Locutus.imp().getGuildDB(from.getAlliance_id());
                     boolean hasPerms = (Roles.INTERNAL_AFFAIRS.hasOnRoot(author)) || (authDB != null && Roles.INTERNAL_AFFAIRS.has(author, authDB.getGuild()));
-                    if (!hasPerms) return "You do not have permission to reply to this message.";
+                    if (!hasPerms) return "You do not have permission to reply to this message (1).";
                 } else {
                     auth = me.getAuth();
                 }

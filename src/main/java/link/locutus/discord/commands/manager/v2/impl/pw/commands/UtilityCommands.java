@@ -46,7 +46,7 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.nation.MultiReport;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.util.task.roles.IAutoRoleTask;
-import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -449,7 +449,7 @@ public class UtilityCommands {
                 if (attacks.size() != 1) continue;
 
                 AbstractCursor attack = attacks.get(0);
-                int attAA = war.isAttacker(attack.getAttacker_nation_id()) ? war.attacker_aa : war.defender_aa;
+                int attAA = war.isAttacker(attack.getAttacker_id()) ? war.attacker_aa : war.defender_aa;
                 if (attAA == aa.getAlliance_id()) continue;
                 boolean lowMil = false;
                 for (DBNation member : members) {

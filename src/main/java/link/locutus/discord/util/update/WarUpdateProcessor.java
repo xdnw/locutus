@@ -2,6 +2,7 @@ package link.locutus.discord.util.update;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.commands.external.guild.SyncBounties;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -23,7 +24,7 @@ import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.war.WarCard;
 import com.google.common.eventbus.Subscribe;
-import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -158,9 +159,9 @@ public class WarUpdateProcessor {
     @Subscribe
     public void onAttack(AttackEvent event) {
         AbstractCursor root = event.getAttack();
-        int nationId = root.getAttacker_nation_id();
-        DBNation attacker = Locutus.imp().getNationDB().getNation(root.getAttacker_nation_id());
-        DBNation defender = Locutus.imp().getNationDB().getNation(root.getDefender_nation_id());
+        int nationId = root.getAttacker_id();
+        DBNation attacker = Locutus.imp().getNationDB().getNation(root.getAttacker_id());
+        DBNation defender = Locutus.imp().getNationDB().getNation(root.getDefender_id());
 
         if (attacker == null || defender == null) {
             return;
@@ -449,7 +450,7 @@ public class WarUpdateProcessor {
                         return AttackTypeSubCategory.AIRSTRIKE_SHIP_NONE;
                     }
                 }
-                if (root.getSuccess() != 3) {
+                if (root.getSuccess() != SuccessType.IMMENSE_TRIUMPH) {
                     return AttackTypeSubCategory.AIRSTRIKE_NOT_DOGFIGHT_UNSUCCESSFUL;
                 }
                 return AttackTypeSubCategory.AIRSTRIKE_UNIT;
@@ -484,10 +485,10 @@ public class WarUpdateProcessor {
     public static Map.Entry<AttackTypeSubCategory, String> checkViolation(AbstractCursor root, GuildDB db) {
         Set<Integer> enemies = db != null ? db.getCoalition("enemies") : new HashSet<>();
 
-        DBNation attacker = Locutus.imp().getNationDB().getNation(root.getAttacker_nation_id());
-        DBNation defender = Locutus.imp().getNationDB().getNation(root.getDefender_nation_id());
+        DBNation attacker = Locutus.imp().getNationDB().getNation(root.getAttacker_id());
+        DBNation defender = Locutus.imp().getNationDB().getNation(root.getDefender_id());
 
-        if (root.getSuccess() == 0) {
+        if (root.getSuccess() == SuccessType.UTTER_FAILURE) {
             switch (root.getAttack_type()) {
                 case GROUND:
                 case VICTORY:
@@ -547,7 +548,7 @@ public class WarUpdateProcessor {
                     double usageCostPerTank = (PnwUtil.convertedTotal(ResourceType.MUNITIONS, 1) + PnwUtil.convertedTotal(ResourceType.GASOLINE, 1)) / 100d;
                     double cost = MilitaryUnit.TANK.getConvertedCost() * root.getAttcas2() + usageCostPerTank * attTanks;
 
-                    double extraInfraDestroyed = ((attTanks - (defTanks * 0.5)) * 0.01) * 0.95 * (root.getSuccess() / 3d);
+                    double extraInfraDestroyed = ((attTanks - (defTanks * 0.5)) * 0.01) * 0.95 * (root.getSuccess().ordinal() / 3d);
                     DBWar war = Locutus.imp().getWarDb().getWar(root.getWar_id());
                     if (war != null) {
                         if (war.warType == WarType.RAID) {
@@ -576,7 +577,7 @@ public class WarUpdateProcessor {
                 break;
             case FORTIFY:
                 List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByWarId(root.getWar_id(), root.getDate());
-                attacks.removeIf(f -> f.getWar_attack_id() >= root.getWar_attack_id() || f.getAttacker_nation_id() != root.getAttacker_nation_id());
+                attacks.removeIf(f -> f.getWar_attack_id() >= root.getWar_attack_id() || f.getAttacker_id() != root.getAttacker_id());
                 if (attacks.size() > 0 && attacks.get(attacks.size() - 1).getAttack_type() == AttackType.FORTIFY) {
                     return AttackTypeSubCategory.DOUBLE_FORTIFY.toPair();
                 }
@@ -648,7 +649,7 @@ public class WarUpdateProcessor {
                     }
                 }
 
-                if (((defender.getAircraft() > attacker.getAircraft() * 0.6 && root.getDefcas1() < root.getAttcas1()) || root.getSuccess() < 3) && root.getAttack_type() != AttackType.AIRSTRIKE_AIRCRAFT) {
+                if (((defender.getAircraft() > attacker.getAircraft() * 0.6 && root.getDefcas1() < root.getAttcas1()) || root.getSuccess().ordinal() < 3) && root.getAttack_type() != AttackType.AIRSTRIKE_AIRCRAFT) {
                     return AttackTypeSubCategory.AIRSTRIKE_FAILED_NOT_DOGFIGHT.toPair();
                 }
 
@@ -688,7 +689,7 @@ public class WarUpdateProcessor {
 
                     String message = AttackTypeSubCategory.AIRSTRIKE_INFRA.message.replace("{amount}", attAir + "");
 
-                    double usageCost = root.getLossesConverted(true, false, false, true, false);
+                    double usageCost = root.getLossesConverted(true, false, false, true, false, false);
                     if (usageCost > root.getInfra_destroyed_value()) {
                         message += "\nYou used $" + MathMan.format(usageCost) + " worth of resources, and only destroyed $" + MathMan.format(root.getInfra_destroyed_value()) + " extra worth of infra";
                     } else {
@@ -716,7 +717,7 @@ public class WarUpdateProcessor {
                     if (attShips > 1 && defender.getAvg_infra() < 1850 && root.getCity_infra_before() <= 1850) {
                         String message = AttackTypeSubCategory.NAVAL_MAX_VS_NONE.message;
 
-                        double usageCost = root.getLossesConverted(true, false, false, true, false);
+                        double usageCost = root.getLossesConverted(true, false, false, true, false, false);
                         if (usageCost > root.getInfra_destroyed_value()) {
                             message += "\nYou used $" + MathMan.format(usageCost) + " worth of resources, and only destroyed $" + MathMan.format(root.getInfra_destroyed_value()) + " extra worth of infra";
                         } else {
@@ -726,7 +727,7 @@ public class WarUpdateProcessor {
                         return Map.entry(AttackTypeSubCategory.NAVAL_MAX_VS_NONE, message);
                     }
                 }
-                if (defender.getBlockadedBy().contains(attacker.getNation_id()) && !defender.getBlockadedBy().contains(root.getDefender_nation_id())) {
+                if (defender.getBlockadedBy().contains(attacker.getNation_id()) && !defender.getBlockadedBy().contains(root.getDefender_id())) {
                     if (defender.getActive_m() < 1440 && root.getDefcas1() == 0 &&
                             ((defender.getAircraft() > 0 && defender.getAircraft() < attacker.getAircraft() * 0.8) ||
                             (defender.getAircraft() < attacker.getAircraft() && defender.getGroundStrength(true, false) > 0 && defender.getGroundStrength(true, false) < attacker.getGroundStrength(true, true)))) {

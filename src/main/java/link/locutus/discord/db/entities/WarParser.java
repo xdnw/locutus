@@ -172,7 +172,7 @@ public class WarParser {
             DBWar war = getWars().get(attack.getWar_id());
             if (war == null) return false;
             boolean isWarPrimary = isPrimary.apply(war);
-            return (isWarPrimary ? war.attacker_id : war.defender_id) == attack.getAttacker_nation_id();
+            return (isWarPrimary ? war.attacker_id : war.defender_id) == attack.getAttacker_id();
         };
     }
 
@@ -181,7 +181,7 @@ public class WarParser {
             DBWar war = getWars().get(attack.getWar_id());
             if (war == null) return false;
             boolean isWarSecondary = isSecondary.apply(war);
-            return (isWarSecondary ? war.attacker_id : war.defender_id) == attack.getDefender_nation_id();
+            return (isWarSecondary ? war.attacker_id : war.defender_id) == attack.getDefender_id();
         };
     }
 
@@ -245,12 +245,12 @@ public class WarParser {
             if (!attPrimary.apply(attack) && !attSecondary.apply(attack)) continue;
             {
                 String other = attPrimary.apply(attack) ? nameB : nameA;
-                AttackCost cost = warCostByNation.computeIfAbsent(attack.getAttacker_nation_id(), f -> new AttackCost(PnwUtil.getName(attack.getAttacker_nation_id(), false), other));
+                AttackCost cost = warCostByNation.computeIfAbsent(attack.getAttacker_id(), f -> new AttackCost(PnwUtil.getName(attack.getAttacker_id(), false), other));
                 cost.addCost(attack, true);
             }
             {
                 String other = attSecondary.apply(attack) ? nameA : nameB;
-                AttackCost cost = warCostByNation.computeIfAbsent(attack.getDefender_nation_id(), f -> new AttackCost(PnwUtil.getName(attack.getDefender_nation_id(), false), other));
+                AttackCost cost = warCostByNation.computeIfAbsent(attack.getDefender_id(), f -> new AttackCost(PnwUtil.getName(attack.getDefender_id(), false), other));
                 cost.addCost(attack, false);
             }
         }
@@ -286,12 +286,12 @@ public class WarParser {
             if (!attPrimary.apply(attack) && !attSecondary.apply(attack)) continue;
             {
                 String other = attPrimary.apply(attack) ? nameB : nameA;
-                AttackTypeBreakdown cost = warCostByNation.computeIfAbsent(attack.getAttacker_nation_id(), f -> new AttackTypeBreakdown(PnwUtil.getName(attack.getAttacker_nation_id(), false), other));
+                AttackTypeBreakdown cost = warCostByNation.computeIfAbsent(attack.getAttacker_id(), f -> new AttackTypeBreakdown(PnwUtil.getName(attack.getAttacker_id(), false), other));
                 cost.addAttack(attack, true);
             }
             {
                 String other = attSecondary.apply(attack) ? nameA : nameB;
-                AttackTypeBreakdown cost = warCostByNation.computeIfAbsent(attack.getDefender_nation_id(), f -> new AttackTypeBreakdown(PnwUtil.getName(attack.getDefender_nation_id(), false), other));
+                AttackTypeBreakdown cost = warCostByNation.computeIfAbsent(attack.getDefender_id(), f -> new AttackTypeBreakdown(PnwUtil.getName(attack.getDefender_id(), false), other));
                 cost.addAttack(attack, false);
             }
         }

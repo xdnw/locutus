@@ -2,7 +2,7 @@ package link.locutus.discord.commands.rankings;
 
 import de.erichseifert.gral.data.DataTable;
 import de.erichseifert.gral.data.Row;
-import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;

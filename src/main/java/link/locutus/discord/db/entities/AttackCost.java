@@ -3,7 +3,7 @@ package link.locutus.discord.db.entities;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -43,9 +43,9 @@ public class AttackCost {
 
 //    private boolean profit = false;
     private Set<Integer> wars = new LinkedHashSet<>();
-    private Set<DBAttack> attacks = new LinkedHashSet<>();
-    private Set<DBAttack> primaryAttacks = new LinkedHashSet<>();
-    private Set<DBAttack> secondaryAttacks = new LinkedHashSet<>();
+    private Set<AbstractCursor> attacks = new LinkedHashSet<>();
+    private Set<AbstractCursor> primaryAttacks = new LinkedHashSet<>();
+    private Set<AbstractCursor> secondaryAttacks = new LinkedHashSet<>();
 
 
     public AttackCost() {
@@ -153,11 +153,11 @@ public class AttackCost {
         return wars.size();
     }
 
-    public Set<DBAttack> getAttacks() {
+    public Set<AbstractCursor> getAttacks() {
         return attacks;
     }
 
-    public Set<DBAttack> getAttacks(boolean isPrimary) {
+    public Set<AbstractCursor> getAttacks(boolean isPrimary) {
         return isPrimary ? primaryAttacks : secondaryAttacks;
     }
 
@@ -165,17 +165,17 @@ public class AttackCost {
         return attacker ? victories1 : victories2;
     }
 
-    public void addCost(Collection<DBAttack> attacks, Function<DBAttack, Boolean> isPrimary, Function<DBAttack, Boolean> isSecondary) {
-        for (DBAttack attack : attacks) {
+    public void addCost(Collection<AbstractCursor> attacks, Function<AbstractCursor, Boolean> isPrimary, Function<AbstractCursor, Boolean> isSecondary) {
+        for (AbstractCursor attack : attacks) {
             addCost(attack, isPrimary, isSecondary);
         }
     }
 
-    public void addCost(DBAttack attack, boolean isAttacker) {
+    public void addCost(AbstractCursor attack, boolean isAttacker) {
         addCost(attack, p -> isAttacker, p -> !isAttacker);
     }
 
-    public void addCost(DBAttack attack, Function<DBAttack, Boolean> isPrimary, Function<DBAttack, Boolean> isSecondary) {
+    public void addCost(AbstractCursor attack, Function<AbstractCursor, Boolean> isPrimary, Function<AbstractCursor, Boolean> isSecondary) {
         boolean primary = isPrimary.apply(attack);
         boolean secondary = isSecondary.apply(attack);
 
@@ -205,8 +205,8 @@ public class AttackCost {
             Map<ResourceType, Double> defTotal = attack.getLosses(false, true, true, true, true);
 
             if (primary) {
-                ids1.add(attack.getAttacker_nation_id());
-                ids2.add(attack.getDefender_nation_id());
+                ids1.add(attack.getAttacker_id());
+                ids2.add(attack.getDefender_id());
                 unit1 = PnwUtil.add(unit1, attUnit);
                 unit2 = PnwUtil.add(unit2, defUnit);
                 loot1 = PnwUtil.addResourcesToA(loot1, attLoot);
@@ -218,8 +218,8 @@ public class AttackCost {
                 infrn1 += attInfra;
                 infrn2 += defInfra;
             } else if (secondary) {
-                ids2.add(attack.getAttacker_nation_id());
-                ids1.add(attack.getDefender_nation_id());
+                ids2.add(attack.getAttacker_id());
+                ids1.add(attack.getDefender_id());
                 unit1 = PnwUtil.add(unit1, defUnit);
                 unit2 = PnwUtil.add(unit2, attUnit);
                 loot1 = PnwUtil.addResourcesToA(loot1, defLoot);

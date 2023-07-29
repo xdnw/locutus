@@ -9,8 +9,8 @@ public interface IAttack {
     "war_attack_id=" + getWar_attack_id() +
                 ", epoch=" + getDate() +
                 ", war_id=" + getWar_id() +
-                ", attacker_nation_id=" + getAttacker_nation_id() +
-                ", defender_nation_id=" + getDefender_nation_id() +
+                ", attacker_nation_id=" + getAttacker_id() +
+                ", defender_nation_id=" + getDefender_id() +
                 ", attack_type=" + getAttack_type() +
                 ", victor=" + getVictor() +
                 ", success=" + getSuccess() +

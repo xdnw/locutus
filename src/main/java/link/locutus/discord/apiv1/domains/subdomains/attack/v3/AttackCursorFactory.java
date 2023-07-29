@@ -1,7 +1,7 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
 import com.politicsandwar.graphql.model.WarAttack;
-import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors.*;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -194,8 +194,8 @@ public class AttackCursorFactory {
         checkArgument(legacy.getWar_attack_id() >= 0, "war_attack_id");
         checkArgument(legacy.getDate() >= 0, "date " + legacy.getDate());
         checkArgument(legacy.getWar_id() >= 0, "war_id");
-        checkArgument(legacy.getAttacker_nation_id() >= 0, "attacker_nation_id");
-        checkArgument(legacy.getDefender_nation_id() >= 0, "defender_nation_id");
+        checkArgument(legacy.getAttacker_id() >= 0, "attacker_nation_id");
+        checkArgument(legacy.getDefender_id() >= 0, "defender_nation_id");
         // skip victor
         checkArgument(legacy.getSuccess() >= 0, "success");
         checkArgument(legacy.getAttcas1() >= 0, "attcas1");

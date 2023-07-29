@@ -2,7 +2,7 @@ package link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors;
 
 import com.politicsandwar.graphql.model.WarAttack;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.FailedCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -13,7 +13,7 @@ import link.locutus.discord.util.io.BitBuffer;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static link.locutus.discord.apiv1.domains.subdomains.attack.AbstractCursor.parseBankLoot;
+import static link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor.parseBankLoot;
 
 public class ALootCursor extends FailedCursor {
     public boolean hasLoot = false;
