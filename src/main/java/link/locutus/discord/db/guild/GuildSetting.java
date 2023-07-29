@@ -118,8 +118,8 @@ public abstract class GuildSetting<T> {
         return toString(value);
     }
 
-    public String getCommandFromArg(Object value) {
-        return getCommandObjRaw(value);
+    public String getCommandFromArg(GuildDB db, Object value) {
+        return getCommandObjRaw(db, value);
     }
 
     private Set<ParametricCallable> getCallables() {
@@ -134,11 +134,11 @@ public abstract class GuildSetting<T> {
         return callables;
     }
 
-    public String getCommandObj(T value) {
-        return getCommandObjRaw(value);
+    public String getCommandObj(GuildDB db, T value) {
+        return getCommandObjRaw(db, value);
     }
 
-    private String getCommandObjRaw(Object value) {
+    private String getCommandObjRaw(GuildDB db, Object value) {
         Set<ParametricCallable> callables = getCallables();
         if (value != null) {
             for (ParametricCallable callable : callables) {
@@ -150,7 +150,7 @@ public abstract class GuildSetting<T> {
                             valueStr = (String) value;
                         } else {
                             try {
-                                valueStr = toReadableString((T) value);
+                                valueStr = toReadableString(db, (T) value);
                             } catch (Throwable e) {
                                 valueStr = value + "";
                             }
@@ -180,7 +180,7 @@ public abstract class GuildSetting<T> {
     }
 
     public String set(GuildDB db, T value) {
-        String readableStr = toReadableString(value);
+        String readableStr = toReadableString(db, value);
         db.setInfo(this, value);
         return "Set `" + name() + "` to `" + readableStr + "`\n" +
                 "Delete with " + CM.settings.delete.cmd.create(name);
@@ -243,7 +243,7 @@ public abstract class GuildSetting<T> {
         for (GuildSetting require : requires) {
             if (require.getOrNull(db, false) == null) {
                 if (throwException) {
-                    errors.add("Missing required setting `" + require.name() + "` (see: " + require.getCommandObj((String) null) + ")");
+                    errors.add("Missing required setting `" + require.name() + "` (see: " + require.getCommandObj(db, (String) null) + ")");
                 } else {
                     return false;
                 }
@@ -482,7 +482,7 @@ public abstract class GuildSetting<T> {
             throw new IllegalArgumentException("This setting is not allowed in this server (you may be missing some prerequisite settings)");
         }
         if (!hasPermission(db, user, value)) {
-            throw new IllegalArgumentException("You do not have permission to set " + name() + " to `" + toReadableString(value) + "`");
+            throw new IllegalArgumentException("You do not have permission to set " + name() + " to `" + toReadableString(db, value) + "`");
         }
         return validate(db, value);
     }
