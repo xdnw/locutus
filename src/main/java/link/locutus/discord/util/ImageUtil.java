@@ -59,6 +59,7 @@ public class ImageUtil {
         }
         File fileAbs = fileTmp.getAbsoluteFile();
         String result = ocr.discernAndAutoCleanImage(fileAbs, type);
+        result = result.replace("|", "I");
         fileTmp.delete();
         return result;
     }
