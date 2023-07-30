@@ -72,7 +72,7 @@ public class CommandManager2 {
 
         this.commands = CommandGroup.createRoot(store, validators);
 
-        if (!Settings.INSTANCE.OPENAI_API_KEY.isEmpty()) {
+        if (!Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI_API_KEY.isEmpty()) {
             try {
                 pwgptHandler = new PWGPTHandler(this);
             } catch (SQLException | ClassNotFoundException e) {
@@ -279,6 +279,9 @@ public class CommandManager2 {
 
         this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "audit"), "auditAlertOptOut", "optout");
         this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "enemy"), "enemyAlertOptOut", "optout");
+        this.commands.registerMethod(new PlayerSettingCommands(), List.of("announcement"), "viewAnnouncement", "view");
+
+        this.commands.registerMethod(new TestCommands(), List.of("announcement"), "ocr", "ocr");
 
         StringBuilder output = new StringBuilder();
         this.commands.generatePojo("", output, 0);

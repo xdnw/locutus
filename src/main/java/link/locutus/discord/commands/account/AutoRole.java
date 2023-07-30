@@ -66,7 +66,7 @@ public class AutoRole extends Command {
 
         if (args.get(0).equalsIgnoreCase("*")) {
             if (!Roles.INTERNAL_AFFAIRS.has(author, guild)) return "No permission";
-            JSONObject command = CM.role.autoassign.cmd.create().toJson();
+            JSONObject command = CM.role.autoassign.cmd.create(force + "").toJson();
             return UtilityCommands.autoroleall(author, db, channel, command, force);
         } else {
             DBNation nation = DiscordUtil.parseNation(args.get(0));
@@ -75,7 +75,7 @@ public class AutoRole extends Command {
             if (user == null) return "User is not registered.";
             Member member = db.getGuild().getMember(user);
             if (member == null) return "Member not found in guild: " + DiscordUtil.getFullUsername(user);
-            JSONObject command = CM.role.autorole.cmd.create(user.getAsMention()).toJson();
+            JSONObject command = CM.role.autorole.cmd.create(user.getAsMention(), force + "").toJson();
             return UtilityCommands.autorole(db, channel, command, member, force);
         }
     }

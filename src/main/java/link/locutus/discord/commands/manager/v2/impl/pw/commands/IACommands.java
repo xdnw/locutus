@@ -1402,7 +1402,7 @@ public class IACommands {
         }
 
         ApiKeyPool keys = db.getMailKey();
-        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + CM.credentials.addApiKey.cmd.toSlashMention() + "");
+        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention() + "");
 
         io.send("Sending to " + messageMap.size() + " nations in " + alliances.size() + " alliances. Please wait.");
         List<String> response = new ArrayList<>();

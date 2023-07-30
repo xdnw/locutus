@@ -1236,7 +1236,7 @@ public class UnsortedCommands {
         IACheckup checkup = new IACheckup(db, db.getAllianceList().subList(aaIds), false);
 
         ApiKeyPool keys = mailResults ? db.getMailKey() : null;
-        if (mailResults && keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + CM.credentials.addApiKey.cmd.toSlashMention() + "");
+        if (mailResults && keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention() + "");
 
         CompletableFuture<IMessageBuilder> msg = channel.send("Please wait...");
 

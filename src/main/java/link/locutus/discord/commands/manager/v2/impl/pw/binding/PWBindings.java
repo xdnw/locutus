@@ -1137,7 +1137,7 @@ public class PWBindings extends BindingHelper {
     @Me
     @Binding
     public WarCategory.WarRoom warRoom(@Me WarCategory warCat, @Me TextChannel channel) {
-        WarCategory.WarRoom warroom = warCat.getWarRoom(((GuildMessageChannel) channel));
+        WarCategory.WarRoom warroom = warCat.getWarRoom(channel);
         if (warroom == null) throw new IllegalArgumentException("The command was not run in a war room");
         return warroom;
     }

@@ -1020,7 +1020,8 @@ public final class Locutus extends ListenerAdapter {
             Guild guild = event.isFromGuild() ? event.getGuild() : message.isFromGuild() ? message.getGuild() : null;
             MessageChannel channel = event.getChannel();
 
-            IMessageIO io = new DiscordHookIO(event.getHook(), event);
+            InteractionHook hook = event.getHook();
+            IMessageIO io = new DiscordHookIO(hook, event);
 
             String id = button.getId();
             if (id == null) {
@@ -1084,7 +1085,12 @@ public final class Locutus extends ListenerAdapter {
             System.out.println("ID 3 " + id + " " + behavior);
 
             if (!id.contains("modal create")) {
-                RateLimitUtil.queue(event.deferEdit());
+                if (behavior == CommandBehavior.EPHEMERAL) {
+                    event.deferReply(true).queue();
+                    hook.setEphemeral(true);
+                } else {
+                    RateLimitUtil.queue(event.deferEdit());
+                }
             }
 
             System.out.println("Id new " + id + " | " + behavior);
@@ -1109,7 +1115,7 @@ public final class Locutus extends ListenerAdapter {
                     case DELETE_MESSAGE -> {
                         RateLimitUtil.queue(message.delete());
                     }
-                    case UNDO_REACTION -> {
+                    case EPHEMERAL,UNDO_REACTION -> {
                         // unsupported
                     }
                     case DELETE_REACTION -> {

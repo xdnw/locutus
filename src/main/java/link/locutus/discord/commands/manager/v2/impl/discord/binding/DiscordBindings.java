@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.discord.binding;
 
+import cn.easyproject.easyocr.ImageType;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
@@ -13,6 +14,7 @@ import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -293,5 +295,13 @@ public class DiscordBindings extends BindingHelper {
     @Binding
     public PermissionHandler permissionHandler() {
         return Locutus.imp().getCommandManager().getV2().getPermisser();
+    }
+
+    @Binding(value = "An image or captcha type for Optical Character Recognition (OCR)",
+            examples = "CLEAR\n" +
+                        "CAPTCHA_NORMAL"
+    )
+    public ImageType ImageType(String input) {
+        return emum(ImageType.class, input);
     }
 }

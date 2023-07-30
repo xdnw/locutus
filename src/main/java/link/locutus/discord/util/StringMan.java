@@ -1,6 +1,7 @@
 package link.locutus.discord.util;
 
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
+import net.sourceforge.tess4j.Tesseract;
 import org.apache.commons.lang3.StringUtils;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
 

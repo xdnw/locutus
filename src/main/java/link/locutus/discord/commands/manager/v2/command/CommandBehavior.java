@@ -6,6 +6,7 @@ public enum CommandBehavior {
     DELETE_REACTIONS("_"),
 
     DELETE_REACTION("."),
+    EPHEMERAL("="),
     ;
 
     private final String value;
