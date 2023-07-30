@@ -550,6 +550,99 @@ public class WarDB extends DBMainV2 {
         }
     }
 
+    public List<AbstractCursor> getAttacksByWarId(DBWar war, AttackCursorFactory factory) {
+        List<byte[]> attacks;
+        synchronized (attacksByWarId) {
+            attacks = attacksByWarId.get(war.warId);
+        }
+        if (attacks == null || attacks.isEmpty()) return Collections.emptyList();
+        // use guava transform
+        List<AbstractCursor> list = Lists.transform(attacks, input -> factory.load(war, input, true));
+        return list;
+    }
+
+    public static class AttackQuery {
+        public long start;
+        public long end;
+        public Set<DBWar> wars;
+        public Predicate<AttackType> attackTypeFilter;
+        public Predicate<AbstractCursor> preliminaryFilter;
+        public Predicate<AbstractCursor> attackFilter;
+
+        public AttackQuery() {
+
+        }
+
+        public AttackQuery setStart(long start) {
+            this.start = start;
+            return this;
+        }
+
+        public AttackQuery setEnd(long end) {
+            this.end = end;
+            return this;
+        }
+
+        public AttackQuery withWars(Set<DBWar> wars) {
+            this.wars = wars;
+            return this;
+        }
+
+        public AttackQuery withWar(DBWar war) {
+            this.wars = Collections.singleton(war);
+            return this;
+        }
+
+        public AttackQuery withWars()
+
+        public AttackQuery setWarFilter(Predicate<DBWar> warFilter) {
+            this.warFilter = warFilter;
+            return this;
+        }
+
+        public AttackQuery setAttackTypeFilter(Predicate<AttackType> attackTypeFilter) {
+            this.attackTypeFilter = attackTypeFilter;
+            return this;
+        }
+
+        public AttackQuery setPreliminaryFilter(Predicate<AbstractCursor> preliminaryFilter) {
+            this.preliminaryFilter = preliminaryFilter;
+            return this;
+        }
+
+        public AttackQuery setAttackFilter(Predicate<AbstractCursor> attackFilter) {
+            this.attackFilter = attackFilter;
+            return this;
+        }
+
+        public List<AbstractCursor> getList() {
+
+        }
+
+        public Map<DBWar, List<AbstractCursor>> getMap() {
+
+        }
+    }
+
+    public List<AbstractCursor> getAttacks(long start, long end, Predicate<DBWar> warFilter, Predicate<AttackType> attackTypeFilter, Predicate<AbstractCursor> preliminaryFilter, Predicate) {
+        List<AbstractCursor> result = new ArrayList<>();
+        synchronized (attacksByWarId) {
+            for (Map.Entry<Integer, List<byte[]>> entry : attacksByWarId.entrySet()) {
+                DBWar war = getWarById(entry.getKey());
+                if (war == null) continue;
+                if (warFilter != null && !warFilter.test(war)) continue;
+                for (byte[] attack : entry.getValue()) {
+                    AbstractCursor cursor = AttackCursorFactory.load(attack, true);
+                    if (attackTypeFilter != null && !attackTypeFilter.test(cursor.getAttackType())) continue;
+                    if (attackFilter != null && !attackFilter.test(cursor)) continue;
+                    if (cursor.getDate() < start || cursor.getDate() > end) continue;
+                    result.add(cursor);
+                }
+            }
+        }
+        return result;
+    }
+
     public Map<Integer, DBWar> getWarsForNationOrAlliance(Predicate<Integer> nations, Predicate<Integer> alliances, Predicate<DBWar> warFilter) {
         Map<Integer, DBWar> result = new Int2ObjectOpenHashMap<>();
         if (alliances != null) {
@@ -2264,17 +2357,6 @@ public class WarDB extends DBMainV2 {
             return list;
         }
         return getAttacksByNationGroupWar(war);
-    }
-
-    public List<AbstractCursor> getAttacksByWarId(DBWar war, AttackCursorFactory factory) {
-        List<byte[]> attacks;
-        synchronized (attacksByWarId) {
-            attacks = attacksByWarId.get(war.warId);
-        }
-        if (attacks == null || attacks.isEmpty()) return Collections.emptyList();
-        // use guava transform
-        List<AbstractCursor> list = Lists.transform(attacks, input -> factory.load(war, input, true));
-        return list;
     }
 
     public void loadAttacks(int days) {

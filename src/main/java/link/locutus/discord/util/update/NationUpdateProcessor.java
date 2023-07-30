@@ -70,6 +70,14 @@ public class NationUpdateProcessor {
     public static void updateBlockades() {
         long now = System.currentTimeMillis();
 
+        // get active wars
+        Set<DBWar> activeWars = Locutus.imp().getWarDb().getActiveWars();
+        // Get the ones with navals in them
+
+        // get wars from those nation ids
+
+
+
         Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWarsSince(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(5));
 
         List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(now - TimeUnit.DAYS.toMillis(5));
@@ -103,7 +111,7 @@ public class NationUpdateProcessor {
                     blockadingByNationByWar.computeIfAbsent(attack.getAttacker_id(), f -> new HashMap<>()).put(attack.getDefender_id(), attack.getWar_id());
                 }
             }
-            if (attack.getSuccess() >= 2) {
+            if (attack.getSuccess().ordinal() >= SuccessType.MODERATE_SUCCESS.ordinal()) {
                 blockadedByNationByWar.getOrDefault(attack.getAttacker_id(), Collections.emptyMap()).remove(attack.getDefender_id());
                 blockadingByNationByWar.getOrDefault(attack.getDefender_id(), Collections.emptyMap()).remove(attack.getAttacker_id());
             }

@@ -44,7 +44,7 @@ public abstract class AbstractCursor implements IAttack2 {
         output.writeBit(attacker_id > defender_id);
     }
 
-    public void load(DBWar war, BitBuffer input) {
+    public void initialize(DBWar war, BitBuffer input) {
         war_cached = war;
         war_attack_id = input.readInt();
         date = input.readVarLong() + TimeUtil.getOrigin();
@@ -67,6 +67,10 @@ public abstract class AbstractCursor implements IAttack2 {
                 defender_id = war.defender_id;
             }
         }
+    }
+
+    public void load(DBWar war, BitBuffer input) {
+
     }
 
 

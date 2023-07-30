@@ -1,5 +1,6 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
+import com.google.common.base.Predicate;
 import com.politicsandwar.graphql.model.WarAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors.*;
@@ -325,6 +326,25 @@ public class AttackCursorFactory {
         AbstractCursor cursor = create ? create(type) : getCursor(type);
         if (cursor == null) {
             throw new UnsupportedOperationException("Attack type not supported: " + type);
+        }
+        cursor.initialize(war, buffer);
+        cursor.load(war, buffer);
+        return cursor;
+    }
+
+    public synchronized AbstractCursor load(DBWar war, byte[] data, boolean create, Predicate<AttackType> testType, Predicate<AbstractCursor> testInitial) {
+        buffer.setBytes(data);
+        AttackType type = AttackType.values[(int) buffer.readBits(4)];
+        if (!testType.test(type)) {
+            return null;
+        }
+        AbstractCursor cursor = create ? create(type) : getCursor(type);
+        if (cursor == null) {
+            throw new UnsupportedOperationException("Attack type not supported: " + type);
+        }
+        cursor.initialize(war, buffer);
+        if (!testInitial.test(cursor)) {
+            return null;
         }
         cursor.load(war, buffer);
         return cursor;
