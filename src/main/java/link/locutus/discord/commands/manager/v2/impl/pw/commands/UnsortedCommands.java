@@ -1236,7 +1236,7 @@ public class UnsortedCommands {
         IACheckup checkup = new IACheckup(db, db.getAllianceList().subList(aaIds), false);
 
         ApiKeyPool keys = mailResults ? db.getMailKey() : null;
-        if (mailResults && keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + CM.credentials.addApiKey.cmd.toSlashMention() + "");
+        if (mailResults && keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention() + "");
 
         CompletableFuture<IMessageBuilder> msg = channel.send("Please wait...");
 
@@ -1478,6 +1478,13 @@ public class UnsortedCommands {
         List<String> cmd = new ArrayList<>();
         Set<Character> flags = new HashSet<>();
         if (days != null) cmd.add(days + " ");
+
+        if (build.getCity_id() != null) {
+            JavaCity jc = new JavaCity(build);
+            jc.zeroNonMilitary();
+            build = jc.toCityBuild();
+        }
+
         cmd.add(build.toString());
         if (buildMMR != null) cmd.add("mmr=" + buildMMR);
 

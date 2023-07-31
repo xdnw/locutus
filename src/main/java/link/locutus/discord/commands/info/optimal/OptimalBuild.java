@@ -259,7 +259,8 @@ public class OptimalBuild extends Command {
 
             checkup(io, me, cityId, origin); // show help
 
-            if (days == null) {
+//            if (days == null)
+            {
                 origin.zeroNonMilitary();
             }
         } else {

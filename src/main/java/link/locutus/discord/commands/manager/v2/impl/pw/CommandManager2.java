@@ -72,7 +72,7 @@ public class CommandManager2 {
 
         this.commands = CommandGroup.createRoot(store, validators);
 
-        if (!Settings.INSTANCE.OPENAI_API_KEY.isEmpty()) {
+        if (!Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI_API_KEY.isEmpty()) {
             try {
                 pwgptHandler = new PWGPTHandler(this);
             } catch (SQLException | ClassNotFoundException e) {
@@ -279,6 +279,10 @@ public class CommandManager2 {
 
         this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "audit"), "auditAlertOptOut", "optout");
         this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "enemy"), "enemyAlertOptOut", "optout");
+        this.commands.registerMethod(new PlayerSettingCommands(), List.of("announcement"), "viewAnnouncement", "view");
+
+        this.commands.registerMethod(new TestCommands(), List.of("announcement"), "ocr", "ocr");
+        this.commands.registerMethod(new TestCommands(), List.of("announcement"), "find_announcement", "find");
 
         StringBuilder output = new StringBuilder();
         this.commands.generatePojo("", output, 0);
@@ -515,6 +519,12 @@ public class CommandManager2 {
                     io.create().append(result.toString()).send();
                 }
             } catch (CommandUsageException e) {
+                Throwable root = e;
+                while (root.getCause() != null && root.getCause() != root) {
+                    root = root.getCause();
+                }
+                root.printStackTrace();
+
                 StringBuilder body = new StringBuilder();
 
                 if (e.getMessage() != null && (e.getMessage().contains("`") || e.getMessage().contains("<#") || e.getMessage().contains("</") || e.getMessage().contains("<@"))) {

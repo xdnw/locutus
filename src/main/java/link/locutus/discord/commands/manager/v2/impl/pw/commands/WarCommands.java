@@ -2983,7 +2983,7 @@ public class WarCommands {
             }
         }
         if (key == null){
-            return "No api key found. Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + " or specify `sendFromGuildAccount` or `apiKey` in the command";
+            return "No api key found. Please use" + GuildKey.API_KEY.getCommandMention() + " or specify `sendFromGuildAccount` or `apiKey` in the command";
         }
 
         if (header != null && !header.isEmpty() && !Roles.MAIL.has(author, guild)) {

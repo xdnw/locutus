@@ -88,20 +88,36 @@ public interface IMessageBuilder {
     @CheckReturnValue
     default IMessageBuilder writeTable(String title, List<List<String>> tableList, boolean embed, String footer) {
         if (tableList.size() == 0) return this;
-
-        AsciiTable at = new AsciiTable(new AT_Context().setWidth(36).setLineSeparator("\n"));
-        at.addRow(tableList.get(0).toArray(new Object[0]));
-        at.addRule();
-        for (int i = 1; i < tableList.size(); i++) {
-            at.addRow(tableList.get(i).toArray(new Object[0]));
-            if (i != tableList.size() - 1) {
-                at.addRule();
+        String tableStr;
+        try {
+            AsciiTable at = new AsciiTable(new AT_Context().setWidth(36).setLineSeparator("\n"));
+            at.addRow(tableList.get(0).toArray(new Object[0]));
+            at.addRule();
+            for (int i = 1; i < tableList.size(); i++) {
+                at.addRow(tableList.get(i).toArray(new Object[0]));
+                if (i != tableList.size() - 1) {
+                    at.addRule();
+                }
             }
-        }
-        if (footer == null) footer = "";
-        else footer = "\n" + footer;
+            if (footer == null) footer = "";
+            else footer = "\n" + footer;
 
-        String tableStr = at.render();
+            tableStr = at.render();
+        } catch (Throwable e) {
+            AsciiTable at = new AsciiTable(new AT_Context().setLineSeparator("\n"));
+            at.addRow(tableList.get(0).toArray(new Object[0]));
+            at.addRule();
+            for (int i = 1; i < tableList.size(); i++) {
+                at.addRow(tableList.get(i).toArray(new Object[0]));
+                if (i != tableList.size() - 1) {
+                    at.addRule();
+                }
+            }
+            if (footer == null) footer = "";
+            else footer = "\n" + footer;
+
+            tableStr = at.render();
+        }
         tableStr = tableStr.lines().map(f -> f.substring(1, f.length() - 1)).collect(Collectors.joining("\n"));
         if (embed) {
             return embed(title, "```\n" + tableStr + "\n```" + footer);

@@ -905,6 +905,8 @@ public class PoliticsAndWarV3 {
 
                 projection.wars_won();
                 projection.wars_lost();
+
+                projection.spies();
             }
         }, f -> PoliticsAndWarV3.ErrorResponse.THROW, nationResults);
     }

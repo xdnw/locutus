@@ -248,7 +248,7 @@ public class BankCommands {
                 throw new IllegalArgumentException("rawsDays must be > 1 turns (1/12 days)");
             }
             allianceList.updateCities();
-            Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> funds = allianceList.calculateDisburse(nations, rawsDays, true, false, true, rawsNoDailyCash, rawsNoCash, false);
+            Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> funds = allianceList.calculateDisburse(nations, null, rawsDays, false, false, true, rawsNoDailyCash, rawsNoCash, false);
             for (Map.Entry<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> entry : funds.entrySet()) {
                 DBNation nation = entry.getKey();
                 OffshoreInstance.TransferStatus status = entry.getValue().getKey();
@@ -267,7 +267,7 @@ public class BankCommands {
             }
         }
 
-        Map<DBNation, Map<ResourceType, Double>> stockpiles = allianceList.getMemberStockpile();
+        Map<DBNation, Map<ResourceType, Double>> stockpiles = allianceList.getMemberStockpile(remainingNations::contains);
         for (DBNation nation : remainingNations) {
             Map<ResourceType, Double> stockpile = stockpiles.get(nation);
             if (stockpile == null) {
@@ -338,9 +338,9 @@ public class BankCommands {
                     nation.getName(),
                     nation.getNationUrl(),
                     entry.getValue().name(),
-                    "",
+                    "{}",
                     stockpileStr,
-                    "",
+                    "null",
                     "false",
                     "false",
                     "false"
@@ -359,7 +359,9 @@ public class BankCommands {
                         String content = errors.stream().map(f -> StringMan.join(f, "\t")).collect(Collectors.joining("\n"));
                         msg.file(title + ".txt", content);
                     } else {
-                        msg.writeTable(title, errors, false, null);
+                        String content = errors.stream().map(f -> StringMan.join(f, "\t")).collect(Collectors.joining("\n"));
+                        msg.append("### " + title + "\n");
+                        msg.append("```\n" + content + "\n```");
                     }
                 }
             }
@@ -951,7 +953,7 @@ public class BankCommands {
             return null;
         }
 
-        Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> funds = allianceList.calculateDisburse(nations, daysDefault, true, false, true, noDailyCash, noCash, force);
+        Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> funds = allianceList.calculateDisburse(nations, null, daysDefault, true, false, true, noDailyCash, noCash, force);
         Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
         for (Map.Entry<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> entry : funds.entrySet()) {
             DBNation nation = entry.getKey();

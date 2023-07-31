@@ -140,9 +140,13 @@ public class AllianceList {
     }
 
     public Map<DBNation, Map<ResourceType, Double>> getMemberStockpile() throws IOException {
+        return getMemberStockpile(f -> true);
+    }
+
+    public Map<DBNation, Map<ResourceType, Double>> getMemberStockpile(Predicate<DBNation> fetchNation) throws IOException {
         Map<DBNation, Map<ResourceType, Double>> result = new LinkedHashMap<>();
         for (DBAlliance alliance : getAlliances()) {
-            result.putAll(alliance.getMemberStockpile());
+            result.putAll(alliance.getMemberStockpile(fetchNation));
         }
         return result;
     }
@@ -150,16 +154,16 @@ public class AllianceList {
     public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> getResourcesNeeded(Collection<DBNation> nations, double daysDefault, boolean useExisting, boolean force) throws IOException {
         Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> result = new LinkedHashMap<>();
         for (DBAlliance alliance : getAlliances()) {
-            result.putAll(alliance.getResourcesNeeded(nations, daysDefault, useExisting, force));
+            result.putAll(alliance.getResourcesNeeded(nations, null, daysDefault, useExisting, force));
         }
         return result;
     }
 
-    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean allowBeige, boolean noDailyCash, boolean noCash, boolean force) throws IOException, ExecutionException, InterruptedException {
+    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, Map<DBNation, Map<ResourceType, Double>> cachedStockpilesorNull, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean allowBeige, boolean noDailyCash, boolean noCash, boolean force) throws IOException, ExecutionException, InterruptedException {
         Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> result = new LinkedHashMap<>();
         for (DBAlliance alliance : getAlliances()) {
             try {
-                alliance.updateCities();
+                alliance.updateCities(nations::contains);
             } catch (ParseException e) {
                 for (DBNation nation : nations) {
                     if (nation.getAlliance_id() == alliance.getAlliance_id()) {
@@ -169,7 +173,7 @@ public class AllianceList {
 
                 continue;
             }
-            result.putAll(alliance.calculateDisburse(nations, daysDefault, useExisting, ignoreInactives, allowBeige, noDailyCash, noCash, force));
+            result.putAll(alliance.calculateDisburse(nations, cachedStockpilesorNull, daysDefault, useExisting, ignoreInactives, allowBeige, noDailyCash, noCash, force));
         }
         return result;
     }

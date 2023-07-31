@@ -37,6 +37,10 @@ public class DiscordHookIO implements IMessageIO {
         this.modalCallback = modalCallback;
     }
 
+    public InteractionHook getHook() {
+        return hook;
+    }
+
     @Override
     public void setMessageDeleted() {
         this.originalDeleted = true;

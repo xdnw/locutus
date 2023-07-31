@@ -678,7 +678,7 @@ public class UtilityCommands {
                     int num = transferEntry.getValue().getKey();
                     double value = transferEntry.getValue().getValue();
 
-                    response.append(PnwUtil.getName(entry.getKey(), true) + " <" + PnwUtil.getAllianceUrl(entry.getKey()) + "> has " + num + " transfers with" + PnwUtil.getName(otherAAId, true) + " worth ~$" + MathMan.format(value) + "\n");
+                    response.append(PnwUtil.getName(entry.getKey(), true) + " <" + PnwUtil.getAllianceUrl(entry.getKey()) + "> has " + num + " transfers with " + PnwUtil.getName(otherAAId, true) + " worth ~$" + MathMan.format(value) + "\n");
                 }
             }
             if (response.length() == 0) return "No results founds in the specified timeframe";

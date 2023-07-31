@@ -5,6 +5,15 @@ import link.locutus.discord.commands.manager.v2.command.CommandRef;
 
 public class CM {
     public static class admin{
+        public static class alliance{
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="runMilitarizationAlerts")
+            public static class military_alerts extends CommandRef {
+                public static final military_alerts cmd = new military_alerts();
+                public military_alerts create() {
+                    return createArgs();
+                }
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="apiUsageStats")
         public static class apiUsageStats extends CommandRef {
             public static final apiUsageStats cmd = new apiUsageStats();
@@ -533,8 +542,8 @@ public class CM {
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="announce")
         public static class create extends CommandRef {
             public static final create cmd = new create();
-            public create create(String sendTo, String subject, String announcement, String replacements, String requiredVariation, String requiredDepth, String seed, String sendMail, String sendDM, String force) {
-                return createArgs("sendTo", sendTo, "subject", subject, "announcement", announcement, "replacements", replacements, "requiredVariation", requiredVariation, "requiredDepth", requiredDepth, "seed", seed, "sendMail", sendMail, "sendDM", sendDM, "force", force);
+            public create create(String sendTo, String subject, String announcement, String replacements, String channel, String bottomText, String requiredVariation, String requiredDepth, String seed, String sendMail, String sendDM, String force) {
+                return createArgs("sendTo", sendTo, "subject", subject, "announcement", announcement, "replacements", replacements, "channel", channel, "bottomText", bottomText, "requiredVariation", requiredVariation, "requiredDepth", requiredDepth, "seed", seed, "sendMail", sendMail, "sendDM", sendDM, "force", force);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.PlayerSettingCommands.class,method="readAnnouncement")
@@ -542,6 +551,13 @@ public class CM {
             public static final read cmd = new read();
             public read create(String ann_id, String markRead) {
                 return createArgs("ann_id", ann_id, "markRead", markRead);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.PlayerSettingCommands.class,method="viewAnnouncement")
+        public static class view extends CommandRef {
+            public static final view cmd = new view();
+            public view create(String ann_id) {
+                return createArgs("ann_id", ann_id);
             }
         }
     }
@@ -1783,15 +1799,15 @@ public class CM {
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="autoroleall")
         public static class autoassign extends CommandRef {
             public static final autoassign cmd = new autoassign();
-            public autoassign create() {
-                return createArgs();
+            public autoassign create(String force) {
+                return createArgs("force", force);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="autorole")
         public static class autorole extends CommandRef {
             public static final autorole cmd = new autorole();
-            public autorole create(String member) {
-                return createArgs("member", member);
+            public autorole create(String member, String force) {
+                return createArgs("member", member, "force", force);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="clearAllianceRoles")
@@ -2250,6 +2266,20 @@ public class CM {
         }
     }
     public static class settings_orbis_alerts{
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="AA_GROUND_TOP_X", field="AA_GROUND_TOP_X")
+        public static class AA_GROUND_TOP_X extends CommandRef {
+            public static final AA_GROUND_TOP_X cmd = new AA_GROUND_TOP_X();
+            public AA_GROUND_TOP_X create(String topX) {
+                return createArgs("topX", topX);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="AA_GROUND_UNIT_ALERTS", field="AA_GROUND_UNIT_ALERTS")
+        public static class AA_GROUND_UNIT_ALERTS extends CommandRef {
+            public static final AA_GROUND_UNIT_ALERTS cmd = new AA_GROUND_UNIT_ALERTS();
+            public AA_GROUND_UNIT_ALERTS create(String channel) {
+                return createArgs("channel", channel);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="ACTIVITY_ALERTS", field="ACTIVITY_ALERTS")
         public static class ACTIVITY_ALERTS extends CommandRef {
             public static final ACTIVITY_ALERTS cmd = new ACTIVITY_ALERTS();
