@@ -7,10 +7,21 @@ import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.io.BitBuffer;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 
 public abstract class ProjectileCursor extends DamageCursor {
+    @Override
+    public Map<MilitaryUnit, Integer> getUnitLosses(boolean isAttacker) {
+        return isAttacker ? Collections.singletonMap(getUnits()[0], 1) : Collections.emptyMap();
+    }
 
+    @Override
+    public void addUnitLosses(int[] unitTotals, boolean isAttacker) {
+        if (isAttacker)
+            unitTotals[getUnits()[0].ordinal()] += 1;
+    }
     @Override
     public void load(WarAttack attack) {
         super.load(attack);

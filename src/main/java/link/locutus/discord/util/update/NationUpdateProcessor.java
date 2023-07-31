@@ -80,7 +80,7 @@ public class NationUpdateProcessor {
 
         Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWarsSince(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(5));
 
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(now - TimeUnit.DAYS.toMillis(5));
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().queryAttacks().withWars(wars).afterDate(now - TimeUnit.DAYS.toMillis(5)).getList();
 
         Collections.sort(attacks, Comparator.comparingLong(o -> o.getDate()));
 

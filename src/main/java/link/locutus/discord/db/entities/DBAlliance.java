@@ -950,7 +950,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
         for (DBWar war : Locutus.imp().getWarDb().getWarsByAlliance(getAlliance_id())) {
 
-            List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByNationGroupWar(war);
+            List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByWarId(war);
             attacks.removeIf(f -> f.getAttack_type() != AttackType.A_LOOT);
             if (attacks.size() != 1) continue;
 

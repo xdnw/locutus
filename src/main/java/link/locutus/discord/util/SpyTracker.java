@@ -200,7 +200,7 @@ public class SpyTracker {
     public synchronized long removeMatchingAttacks() {
         long cutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(20);
         long requiredProximityMs = TimeUnit.SECONDS.toMillis(1);
-        List<AbstractCursor> allAttacks = Locutus.imp().getWarDb().getAttacks(cutoff);
+        List<AbstractCursor> allAttacks = Locutus.imp().getWarDb().queryAttacks().withAllWars().afterDate(cutoff).getList();
 
         Map<Integer, List<AbstractCursor>> attacksByNation = new HashMap<>();
 

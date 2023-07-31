@@ -5,12 +5,15 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.io.BitBuffer;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -124,10 +127,76 @@ public abstract class AbstractCursor implements IAttack2 {
         return war_cached;
     }
 
+    @Override
+    public Map<ResourceType, Double> getLosses(boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
+        Map<ResourceType, Double> losses = new HashMap<>();
+        if (units) {
+            Map<MilitaryUnit, Integer> unitLosses = getUnitLosses(attacker);
+            for (Map.Entry<MilitaryUnit, Integer> entry : unitLosses.entrySet()) {
+                MilitaryUnit unit = entry.getKey();
+                int amt = entry.getValue();
+                if (amt > 0) {
+                    double[] cost = unit.getCost(amt);
+                    for (ResourceType type : ResourceType.values) {
+                        double rssCost = cost[type.ordinal()];
+                        if (rssCost > 0) {
+                            losses.put(type, losses.getOrDefault(type, 0d) + rssCost);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (includeLoot) {
+            double[] loot = getLoot();
+            if (loot != null) {
+                Map<ResourceType, Double> lootDouble = PnwUtil.resourcesToMap(loot);
+                if (attacker) {
+                    losses = PnwUtil.subResourcesToA(losses, lootDouble);
+                } else {
+                    losses = PnwUtil.addResourcesToA(losses, lootDouble);
+                }
+            }
+            else if (getMoney_looted() != 0) {
+                int sign = (getVictor() == (attacker ? getAttacker_id() : getDefender_id())) ? -1 : 1;
+                losses.put(ResourceType.MONEY, losses.getOrDefault(ResourceType.MONEY, 0d) + getMoney_looted() * sign);
+            }
+        }
+        if (attacker ? getVictor() == getDefender_id() : getVictor() == getAttacker_id()) {
+            if (infra && getInfra_destroyed_value() != 0) {
+                losses.put(ResourceType.MONEY, (losses.getOrDefault(ResourceType.MONEY, 0d) + getInfra_destroyed_value()));
+            }
+        }
+
+        if (consumption) {
+            double mun = attacker ? getAtt_mun_used() : getDef_mun_used();
+            double gas = attacker ? getAtt_gas_used() : getDef_gas_used();
+            if (mun > 0) {
+                losses.put(ResourceType.MUNITIONS, (losses.getOrDefault(ResourceType.MUNITIONS, 0d) + mun));
+            }
+            if (gas > 0) {
+                losses.put(ResourceType.GASOLINE, (losses.getOrDefault(ResourceType.GASOLINE, 0d) + gas));
+            }
+        }
+
+        if (includeBuildings && !attacker) {
+            for (Map.Entry<Building, Integer> entry : getBuildingsDestroyed().entrySet()) {
+                Building building = entry.getKey();
+                for (ResourceType type : ResourceType.values) {
+                    double rssCost = building.cost(type);
+                    if (rssCost > 0) {
+                        losses.put(type, losses.getOrDefault(type, 0d) + rssCost * entry.getValue());
+                    }
+                }
+            }
+
+        }
+        return losses;
+    }
+
     public abstract Map<Building, Integer> getBuildingsDestroyed();
     public abstract Set<Integer> getCityIdsDamaged();
-
-    public abstract Map<MilitaryUnit, Integer> getUnitLosses2(boolean isAttacker);
+    public abstract Map<MilitaryUnit, Integer> getUnitLosses(boolean isAttacker);
 
     public abstract void addUnitLosses(int[] unitTotals, boolean isAttacker);
 }

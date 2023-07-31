@@ -1,6 +1,5 @@
 package link.locutus.discord.db.handlers;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -8,14 +7,12 @@ import link.locutus.discord.db.WarDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.TimeUtil;
 
-import java.util.AbstractQueue;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -86,51 +83,6 @@ public class AttackQuery {
         return this;
     }
 
-    public List<AbstractCursor> getAttacksByWars(List<DBWar> wars, long cuttoffMs) {
-        return getAttacksByWars(wars, cuttoffMs, Long.MAX_VALUE);
-    }
-
-    public List<AbstractCursor> getAttacks(Set<Integer> nationIds, long cuttoffMs) {
-        return getAttacks(nationIds, cuttoffMs, Long.MAX_VALUE);
-    }
-    public List<AbstractCursor> getAttacks(Set<Integer> nationIds, long start, long end) {
-        Set<DBWar> allWars = new LinkedHashSet<>();
-        long startWithExpire = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(start) - 60);
-        synchronized (warsByNationId) {
-            for (int nationId : nationIds) {
-                Map<Integer, DBWar> natWars = warsByNationId.get(nationId);
-                if (natWars != null) {
-                    for (DBWar war : natWars.values()) {
-                        if (!nationIds.contains(war.attacker_id) || !nationIds.contains(war.defender_id)) continue;
-                        if (war.date < startWithExpire || war.date > end) continue;
-                        allWars.add(war);
-                    }
-                }
-            }
-        }
-        return getAttacksByWars(allWars, start, end);
-    }
-
-    public List<AbstractCursor> getAttacksAny(Set<Integer> nationIds, long cuttoffMs) {
-        return getAttacksAny(nationIds, cuttoffMs, Long.MAX_VALUE);
-    }
-    public List<AbstractCursor> getAttacksAny(Set<Integer> nationIds, long start, long end) {
-        Set<DBWar> allWars = new LinkedHashSet<>();
-        long startWithExpire = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(start) - 60);
-        synchronized (warsByNationId) {
-            for (int nationId : nationIds) {
-                Map<Integer, DBWar> natWars = warsByNationId.get(nationId);
-                if (natWars != null) {
-                    for (DBWar war : natWars.values()) {
-                        if (war.date < startWithExpire || war.date > end) continue;
-                        allWars.add(war);
-                    }
-                }
-            }
-        }
-        return getAttacksByWars(allWars, start, end);
-    }
-
     public AttackQuery withWarsForNationOrAlliance(Predicate<Integer> nations, Predicate<Integer> alliances, Predicate<DBWar> warFilter) {
         wars = getDb().getWarsForNationOrAlliance(nations, alliances, warFilter);
         return this;
@@ -141,7 +93,7 @@ public class AttackQuery {
         return this;
     }
 
-    public AttackQuery withWarFilter(Predicate<DBWar> warFilter) {
+    public AttackQuery withWars(Predicate<DBWar> warFilter) {
         wars = getDb().getWars(warFilter);
         return this;
     }
@@ -197,6 +149,13 @@ public class AttackQuery {
             withAllWars();
         }
         return getDb().getAttacksByWar(wars, attackTypeFilter, preliminaryFilter, attackFilter);
+    }
+
+    public AttackQuery withTypes(AttackType... types) {
+        Set<AttackType> typeSet = new LinkedHashSet<>();
+        Collections.addAll(typeSet, types);
+        appendAttackTypeFilter(typeSet::contains);
+        return this;
     }
 }
 

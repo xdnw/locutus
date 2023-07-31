@@ -1270,19 +1270,20 @@ public class AdminCommands {
         int added = 0;
         List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(0, AttackType.A_LOOT);
         for (AbstractCursor attack : attacks) {
-            if (attack.getLooted() > 0) {
-                LootEntry existing = Locutus.imp().getNationDB().getAllianceLoot(attack.getLooted());
+            if (attack.getAllianceIdLooted() > 0) {
+                LootEntry existing = Locutus.imp().getNationDB().getAllianceLoot(attack.getAllianceIdLooted());
                 if (existing != null && existing.getDate() < attack.getDate()) {
                     Double pct = attack.getLootPercent();
                     if (pct == 0) pct = 0.01;
                     double factor = 1/pct;
+                    double[] loot = attack.getLoot();
 
-                    double[] lootCopy = attack.loot == null ? ResourceType.getBuffer() : attack.loot.clone();
+                    double[] lootCopy = loot == null ? ResourceType.getBuffer() : loot.clone();
                     for (int i = 0; i < lootCopy.length; i++) {
                         lootCopy[i] = (lootCopy[i] * factor) - lootCopy[i];
                     }
 
-                    Locutus.imp().getNationDB().saveAllianceLoot(attack.getLooted(), attack.getDate(), lootCopy, NationLootType.WAR_LOSS);
+                    Locutus.imp().getNationDB().saveAllianceLoot(attack.getAllianceIdLooted(), attack.getDate(), lootCopy, NationLootType.WAR_LOSS);
                 }
             }
         }

@@ -53,6 +53,7 @@ public class WarCostAB extends Command {
                 "Add -i to exclude infra cost\n" +
                 "Add -c to exclude consumption\n" +
                 "Add -l to exclude loot\n" +
+                "Add -b to exclude buildings\n" +
                 "Add -w to list the wars (txt file)\n" +
                 "Add -t to list the war types\n" +
                 "Add `-s` to list war status\n" +
@@ -82,7 +83,7 @@ public class WarCostAB extends Command {
 
         AttackCost cost = parser.toWarCost();
 
-        StringBuilder result = new StringBuilder(cost.toString(!flags.contains('u'), !flags.contains('i'), !flags.contains('c'), !flags.contains('l')));
+        StringBuilder result = new StringBuilder(cost.toString(!flags.contains('u'), !flags.contains('i'), !flags.contains('c'), !flags.contains('l'), !flags.contains('b')));
         IMessageBuilder msg = channel.create();
         if (flags.contains('w')) {
             msg.file(cost.getNumWars() + " wars", "- " + StringMan.join(cost.getWarIds(), "\n- "));

@@ -7,6 +7,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.db.entities.*;
@@ -592,7 +593,7 @@ public class LootEstimateTracker {
     public void onAttack(AttackEvent event) {
         AbstractCursor attack = event.getAttack();
         boolean hasSalvage = false;
-        if (attack.getSuccess() > 0) {
+        if (attack.getSuccess() != SuccessType.UTTER_FAILURE) {
             DBNation attacker = nationFactory.apply(attack.getAttacker_id());
             hasSalvage = attacker != null && attacker.hasProject(Projects.MILITARY_SALVAGE);
         }
@@ -600,15 +601,15 @@ public class LootEstimateTracker {
 
     public void onAttack(AbstractCursor attack, boolean hasSalvage) {
         // consumption
-        double[] attLoss = PnwUtil.resourcesToArray(attack.getLosses(true, false, false, true, true));
-        double[] defLoss = PnwUtil.resourcesToArray(attack.getLosses(false, false, false, true, true));
+        double[] attLoss = PnwUtil.resourcesToArray(attack.getLosses(true, false, false, true, true, false));
+        double[] defLoss = PnwUtil.resourcesToArray(attack.getLosses(false, false, false, true, true, false));
 
         // Handle airstrike money (since it comes under unit losses, which we are excluding)
         if (attack.getAttack_type() == AttackType.AIRSTRIKE_MONEY && attack.getDefcas1() > 0) {
             defLoss[ResourceType.MONEY.ordinal()] += attack.getDefcas1();
         }
-        if (attack.getSuccess() > 0 && hasSalvage) {
-            Map<ResourceType, Double> unitLosses = attack.getLosses(true, true, false, false, false);
+        if (attack.getSuccess() != SuccessType.UTTER_FAILURE && hasSalvage) {
+            Map<ResourceType, Double> unitLosses = attack.getLosses(true, true, false, false, false, false);
             attLoss[ResourceType.STEEL.ordinal()] -= unitLosses.getOrDefault(ResourceType.STEEL, 0d) * 0.05;
             attLoss[ResourceType.ALUMINUM.ordinal()] -= unitLosses.getOrDefault(ResourceType.ALUMINUM, 0d) * 0.05;
         }

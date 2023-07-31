@@ -10,6 +10,7 @@ import de.erichseifert.gral.io.plots.DrawableWriterFactory;
 import de.erichseifert.gral.plots.BarPlot;
 import de.erichseifert.gral.plots.colors.ColorMapper;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -55,6 +56,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.commands.rankings.WarCostRanking.scale;
@@ -65,23 +67,37 @@ public class StatCommands {
                                   @Arg("Period of time to graph") @Default @Timestamp Long cutoff,
                                   @Arg("Restrict to a list of attack types") @Default Set<AttackType> allowedTypes) throws IOException {
         if (cutoff == null) cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30);
-        List<AbstractCursor> attacks;
-        if (nations != null) {
-            Set<Integer> nationIds = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
-            attacks = Locutus.imp().getWarDb().getAttacks(nationIds, cutoff);
-        } else {
-            attacks = Locutus.imp().getWarDb().getAttacks(cutoff);
-        }
-        if (allowedTypes != null) {
-            attacks.removeIf(f -> !allowedTypes.contains(f.getAttack_type()));
-        }
+        Long finalCutoff = cutoff;
 
         long minDay = TimeUtil.getDay(cutoff);
         long maxDay = TimeUtil.getDay();
         if (maxDay - minDay > 50000) {
             throw new IllegalArgumentException("Too many days.");
         }
+
+        Predicate<AttackType> alllowedType = allowedTypes == null ? f -> true : allowedTypes::contains;
+
+        Map<Integer, DBWar> wars;
+        if (nations == null) {
+            wars = Locutus.imp().getWarDb().getWarsSince(cutoff);
+        } else {
+            Set<Integer> nationIds = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
+            wars = Locutus.imp().getWarDb().getWarsForNationOrAlliance(nationIds::contains, null, f -> f.possibleEndDate() >= finalCutoff);
+        }
+
+        final List<AbstractCursor> attacks = new ArrayList<>();
+        Locutus.imp().getWarDb().getAttacks(wars, alllowedType, new Predicate<AbstractCursor>() {
+            @Override
+            public boolean test(AbstractCursor attack) {
+                if (attack.getDate() > finalCutoff) {
+                    attacks.add(attack);
+                }
+                return false;
+            }
+        }, f -> false);
+
         Map<Long, Integer> totalAttacksByDay = new HashMap<>();
+
         for (AbstractCursor attack : attacks) {
             long day = TimeUtil.getDay(attack.getDate());
             totalAttacksByDay.put(day, totalAttacksByDay.getOrDefault(day, 0) + 1);
@@ -120,6 +136,7 @@ public class StatCommands {
                                  @Switch("i") boolean excludeInfra,
                                  @Switch("c") boolean excludeConsumption,
                                  @Switch("l") boolean excludeLoot,
+                                 @Switch("b") boolean excludeBuildings,
                                  @Switch("u") boolean excludeUnits,
                                  @Arg("Return total war costs instead of average per war") @Switch("t") boolean total,
                                  @Arg("Rank by net profit") @Switch("p") boolean netProfit,
@@ -184,15 +201,15 @@ public class StatCommands {
             if (resource != null) {
                 if (getValue != null) throw new IllegalArgumentException("Cannot combine multiple type rankings (3)");
                 double min = damage ? 0 : Double.NEGATIVE_INFINITY;
-                getValue = (attacker, attack) -> Math.max(min, attack.getLosses(attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot).getOrDefault(resource, 0d));
+                getValue = (attacker, attack) -> Math.max(min, attack.getLosses(attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings).getOrDefault(resource, 0d));
             }
             if (getValue == null) {
                 getValue = (attacker, attack) -> {
                     if (!damage) {
-                        return attack.getLossesConverted(attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot);
+                        return attack.getLossesConverted(attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings);
                     } else {
                         double totalVal = 0;
-                        Map<ResourceType, Double> losses = attack.getLosses(attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot);
+                        Map<ResourceType, Double> losses = attack.getLosses(attacker, !excludeUnits, !excludeInfra, !excludeConsumption, !excludeLoot, !excludeBuildings);
                         for (Map.Entry<ResourceType, Double> entry : losses.entrySet()) {
                             if (entry.getValue() > 0)
                                 totalVal += PnwUtil.convertedTotal(entry.getKey(), entry.getValue());
@@ -283,15 +300,16 @@ public class StatCommands {
                          @Switch("i") boolean ignoreInfra,
                          @Switch("c") boolean ignoreConsumption,
                          @Switch("l") boolean ignoreLoot,
+                         @Switch("b") boolean ignoreBuildings,
 
-                         @Arg("Return a list of war ids") @Switch("l") boolean listWarIds,
+                         @Arg("Return a list of war ids") @Switch("id") boolean listWarIds,
                          @Arg("Return a tally of war types") @Switch("t") boolean showWarTypes,
 
                          @Switch("w") Set<WarType> allowedWarTypes,
                          @Switch("s") Set<WarStatus> allowedWarStatus,
                          @Switch("a") Set<AttackType> allowedAttackTypes) {
         return warsCost(channel, Collections.singleton(nation), coalition2, timeStart, timeEnd,
-                ignoreUnits, ignoreInfra, ignoreConsumption, ignoreLoot, listWarIds, showWarTypes,
+                ignoreUnits, ignoreInfra, ignoreConsumption, ignoreLoot, ignoreBuildings, listWarIds, showWarTypes,
                 allowedWarTypes, allowedWarStatus, allowedAttackTypes);
     }
 
@@ -300,12 +318,13 @@ public class StatCommands {
                           @Switch("u") boolean ignoreUnits,
                           @Switch("i") boolean ignoreInfra,
                           @Switch("c") boolean ignoreConsumption,
-                          @Switch("l") boolean ignoreLoot) {
+                          @Switch("l") boolean ignoreLoot,
+                          @Switch("b") boolean ignoreBuildings) {
         AttackCost cost = war.toCost();
         if (Roles.ECON.has(author, guild)) {
             WarCostAB.reimburse(cost, war, guild, channel);
         }
-        return cost.toString(!ignoreUnits, !ignoreInfra, !ignoreConsumption, !ignoreLoot);
+        return cost.toString(!ignoreUnits, !ignoreInfra, !ignoreConsumption, !ignoreLoot, !ignoreBuildings);
     }
 
     @Command(desc = "War costs between two coalitions over a time period")
@@ -317,8 +336,9 @@ public class StatCommands {
                            @Switch("i") boolean ignoreInfra,
                            @Switch("c") boolean ignoreConsumption,
                            @Switch("l") boolean ignoreLoot,
+                           @Switch("b") boolean ignoreBuildings,
 
-                           @Switch("l") boolean listWarIds,
+                           @Switch("id") boolean listWarIds,
                            @Switch("t") boolean showWarTypes,
 
                            @Switch("w") Set<WarType> allowedWarTypes,
@@ -332,7 +352,7 @@ public class StatCommands {
         AttackCost cost = parser.toWarCost();
 
         IMessageBuilder msg = channel.create();
-        msg.append(cost.toString(!ignoreUnits, !ignoreInfra, !ignoreConsumption, !ignoreLoot));
+        msg.append(cost.toString(!ignoreUnits, !ignoreInfra, !ignoreConsumption, !ignoreLoot, !ignoreBuildings));
         if (listWarIds) {
             msg.file(cost.getNumWars() + " wars", "- " + StringMan.join(cost.getWarIds(), "\n- "));
         }

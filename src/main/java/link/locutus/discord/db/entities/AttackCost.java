@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities;
 
+import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -35,13 +36,14 @@ public class AttackCost {
     private Map<ResourceType, Double> consumption1 = new HashMap<>();
     private Map<ResourceType, Double> consumption2 = new HashMap<>();
 
+    private Map<Building, Integer> buildings1 = new HashMap<>();
+    private Map<Building, Integer> buildings2 = new HashMap<>();
+
     private Set<Integer> ids1 = new LinkedHashSet<>();
     private Set<Integer> ids2 = new LinkedHashSet<>();
 
     private Set<Integer> victories1 = new LinkedHashSet<>();
     private Set<Integer> victories2 = new LinkedHashSet<>();
-
-//    private boolean profit = false;
     private Set<Integer> wars = new LinkedHashSet<>();
     private Set<AbstractCursor> attacks = new LinkedHashSet<>();
     private Set<AbstractCursor> primaryAttacks = new LinkedHashSet<>();
@@ -192,17 +194,21 @@ public class AttackCost {
             Map<MilitaryUnit, Integer> attUnit = attack.getUnitLosses(true);
             Map<MilitaryUnit, Integer> defUnit = attack.getUnitLosses(false);
 
-            Map<ResourceType, Double> attLoot = attack.getLosses(true, false, false, false, true);
-            Map<ResourceType, Double> defLoot = attack.getLosses(false, false, false, false, true);
+            Map<ResourceType, Double> attLoot = attack.getLosses(true, false, false, false, true, false);
+            Map<ResourceType, Double> defLoot = attack.getLosses(false, false, false, false, true, false);
 
-            Map<ResourceType, Double> attConsume = attack.getLosses(true, false, false, true, false);
-            Map<ResourceType, Double> defConsume = attack.getLosses(false, false, false, true, false);
+            Map<ResourceType, Double> attConsume = attack.getLosses(true, false, false, true, false, false);
+            Map<ResourceType, Double> defConsume = attack.getLosses(false, false, false, true, false, false);
 
-            double attInfra = PnwUtil.convertedTotal(attack.getLosses(true, false, true, false, false));
-            double defInfra = PnwUtil.convertedTotal(attack.getLosses(false, false, true, false, false));
+            double attInfra = PnwUtil.convertedTotal(attack.getLosses(true, false, true, false, false, false));
+            double defInfra = PnwUtil.convertedTotal(attack.getLosses(false, false, true, false, false, false));
 
-            Map<ResourceType, Double> attTotal = attack.getLosses(true, true, true, true, true);
-            Map<ResourceType, Double> defTotal = attack.getLosses(false, true, true, true, true);
+            Map<Building, Integer> defBuild = attack.getBuildingsDestroyed();
+
+            Map<ResourceType, Double> attTotal = attack.getLosses(true, true, true, true, true, true);
+            Map<ResourceType, Double> defTotal = attack.getLosses(false, true, true, true, true, true);
+
+
 
             if (primary) {
                 ids1.add(attack.getAttacker_id());
@@ -217,6 +223,7 @@ public class AttackCost {
                 total2 = PnwUtil.addResourcesToA(total2, defTotal);
                 infrn1 += attInfra;
                 infrn2 += defInfra;
+                buildings2 = PnwUtil.add(buildings2, defBuild);
             } else if (secondary) {
                 ids2.add(attack.getAttacker_id());
                 ids1.add(attack.getDefender_id());
@@ -230,16 +237,17 @@ public class AttackCost {
                 total2 = PnwUtil.addResourcesToA(total2, attTotal);
                 infrn1 += defInfra;
                 infrn2 += attInfra;
+                buildings1 = PnwUtil.add(buildings2, defBuild);
             }
         }
     }
 
     @Override
     public String toString() {
-        return toString(true, true, true, true);
+        return toString(true, true, true, true, true);
     }
 
-    public String toString(boolean units, boolean infra, boolean consumption, boolean loot) {
+    public String toString(boolean units, boolean infra, boolean consumption, boolean loot, boolean buildings) {
         StringBuilder response = new StringBuilder();
         response.append("**" + nameA + " losses:** (" + getIds(true).size() + " nations)\n");
         Map<ResourceType, Double> totalA = new HashMap<>();
@@ -259,6 +267,9 @@ public class AttackCost {
         if (loot) {
             response.append("Loot: ```" + PnwUtil.resourcesToString(getLoot(true))).append("```");
             totalA = PnwUtil.add(totalA, getLoot(true));
+        }
+        if (buildings) {
+            response.append("Buildings: ```" + StringMan.getString(getBuildingsDestroyed(true))).append("```");
         }
         response.append("Total: ```" + PnwUtil.resourcesToString(totalA)).append("```");
         response.append("Converted Total: `$" + MathMan.format(PnwUtil.convertedTotal(totalA))).append("`\n\n");
@@ -282,9 +293,20 @@ public class AttackCost {
             response.append("Loot: ```" + PnwUtil.resourcesToString(getLoot(false))).append("```");
             totalB = PnwUtil.add(totalB, getLoot(false));
         }
+        if (buildings) {
+            response.append("Buildings: ```" + StringMan.getString(getBuildingsDestroyed(false))).append("```");
+        }
         response.append("Total: ```" + PnwUtil.resourcesToString(totalB)).append("```");
         response.append("Converted Total: `$" + MathMan.format(PnwUtil.convertedTotal(totalB))).append("`\n");
 
         return response.toString();
+    }
+
+    private Map<Building, Integer> getBuildingsDestroyed(boolean isAttacker) {
+        if (isAttacker) {
+            return buildings1;
+        } else {
+            return buildings2;
+        }
     }
 }

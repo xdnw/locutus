@@ -473,11 +473,11 @@ public class WarDB extends DBMainV2 {
                 loadWars(loadWarsDays);
                 int loadAttackDays = Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS < 0 ? -1 : Math.min(Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS, Math.max(0, loadWarsDays));
                 if (loadAttackDays != 0) {
+                    importLegacyAttacks();
                     loadAttacks(loadAttackDays);
                 }
             }
         });
-        System.out.println("Loaded attacks in " + (System.currentTimeMillis() - start) + "ms");
     }
 
     public void loadWars(int days) {
@@ -648,6 +648,52 @@ public class WarDB extends DBMainV2 {
         return result;
     }
 
+    public List<AbstractCursor> getAttacksByWars(List<DBWar> wars, long cuttoffMs) {
+        return getAttacksByWars(wars, cuttoffMs, Long.MAX_VALUE);
+    }
+
+    public List<AbstractCursor> getAttacks(Set<Integer> nationIds, long cuttoffMs) {
+        return getAttacks(nationIds, cuttoffMs, Long.MAX_VALUE);
+    }
+
+    public List<AbstractCursor> getAttacks(Set<Integer> nationIds, long start, long end) {
+        Set<DBWar> allWars = new LinkedHashSet<>();
+        long startWithExpire = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(start) - 60);
+        synchronized (warsByNationId) {
+            for (int nationId : nationIds) {
+                Map<Integer, DBWar> natWars = warsByNationId.get(nationId);
+                if (natWars != null) {
+                    for (DBWar war : natWars.values()) {
+                        if (!nationIds.contains(war.attacker_id) || !nationIds.contains(war.defender_id)) continue;
+                        if (war.date < startWithExpire || war.date > end) continue;
+                        allWars.add(war);
+                    }
+                }
+            }
+        }
+        return getAttacksByWars(allWars, start, end);
+    }
+
+    public List<AbstractCursor> getAttacksAny(Set<Integer> nationIds, long cuttoffMs) {
+        return getAttacksAny(nationIds, cuttoffMs, Long.MAX_VALUE);
+    }
+    public List<AbstractCursor> getAttacksAny(Set<Integer> nationIds, long start, long end) {
+        Set<DBWar> allWars = new LinkedHashSet<>();
+        long startWithExpire = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(start) - 60);
+        synchronized (warsByNationId) {
+            for (int nationId : nationIds) {
+                Map<Integer, DBWar> natWars = warsByNationId.get(nationId);
+                if (natWars != null) {
+                    for (DBWar war : natWars.values()) {
+                        if (war.date < startWithExpire || war.date > end) continue;
+                        allWars.add(war);
+                    }
+                }
+            }
+        }
+        return getAttacksByWars(allWars, start, end);
+    }
+
     public Map<Integer, DBWar> getWars(Predicate<DBWar> filter) {
         return getWarsForNationOrAlliance(null, null, filter);
     }
@@ -802,8 +848,6 @@ public class WarDB extends DBMainV2 {
             executeStmt("CREATE INDEX IF NOT EXISTS index_attack_attacker_nation_id ON ATTACKS3 (attacker_nation_id);");
             executeStmt("CREATE INDEX IF NOT EXISTS index_attack_defender_nation_id ON ATTACKS3 (defender_nation_id);");
             executeStmt("CREATE INDEX IF NOT EXISTS index_attack_date ON ATTACKS3 (date);");
-
-            importLegacyAttacks();
         }
 
         // create custom bounties table

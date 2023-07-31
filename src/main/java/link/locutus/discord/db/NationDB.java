@@ -2969,7 +2969,7 @@ public class NationDB extends DBMainV2 {
         }
 
         if (fromAttacks) {
-            Map<Integer, Map.Entry<Long, double[]>> nationLoot = Locutus.imp().getWarDb().getNationLootFromAttacksLegacy();
+            Map<Integer, Map.Entry<Long, double[]>> nationLoot = Locutus.imp().getWarDb().getNationLootFromAttacksLegacy(0);
             for (Map.Entry<Integer, Map.Entry<Long, double[]>> entry : nationLoot.entrySet()) {
                 int nationId = entry.getKey();
                 long date = entry.getValue().getKey();

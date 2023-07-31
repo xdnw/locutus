@@ -1,6 +1,7 @@
 package link.locutus.discord.util.task.war;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
@@ -226,7 +227,7 @@ public class WarCard {
 
     public void update(DBWar war, boolean checkCounters, boolean onlyCheckBlockade) {
         this.war = war;
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByNationGroupWar(war);
+        List<AbstractCursor> attacks = war.getAttacks();
         update(attacks, onlyCheckBlockade);
         if (checkCounters) updateCounterStats();
     }
@@ -314,11 +315,11 @@ public class WarCard {
                     break;
                 case GROUND:
                     switch (attack.getSuccess()) {
-                        case 3:
+                        case IMMENSE_TRIUMPH:
                             gcDate = attack.getDate();
                             groundControl = attack.getAttacker_id();
-                        case 2:
-                        case 1:
+                        case MODERATE_SUCCESS:
+                        case PYRRHIC_VICTORY:
                             if (groundControl != attack.getAttacker_id()) groundControl = 0;
                     }
                     break;
@@ -329,21 +330,21 @@ public class WarCard {
                 case AIRSTRIKE_SHIP:
                 case AIRSTRIKE_AIRCRAFT:
                     switch (attack.getSuccess()) {
-                        case 3:
+                        case IMMENSE_TRIUMPH:
                             acDate = attack.getDate();
                             airSuperiority = attack.getAttacker_id();
-                        case 2:
-                        case 1:
+                        case MODERATE_SUCCESS:
+                        case PYRRHIC_VICTORY:
                             if (airSuperiority != attack.getAttacker_id()) airSuperiority = 0;
                     }
                     break;
                 case NAVAL:
                     switch (attack.getSuccess()) {
-                        case 3:
+                        case IMMENSE_TRIUMPH:
                             blockadeDate = attack.getDate();
                             blockaded = attack.getDefender_id();
-                        case 2:
-                        case 1:
+                        case MODERATE_SUCCESS:
+                        case PYRRHIC_VICTORY:
                             if (blockaded != attack.getDefender_id()) blockaded = 0;
                     }
                     break;
@@ -356,7 +357,7 @@ public class WarCard {
         if (isActive) {
             if (checkGC && gcDate != Long.MAX_VALUE) {
                 attacks = Locutus.imp().getWarDb().getAttacks(groundControl, gcDate);
-                attacks.removeIf(a -> a.getDefender_id() != groundControl || a.getSuccess() != 3);
+                attacks.removeIf(a -> a.getDefender_id() != groundControl || a.getSuccess() != SuccessType.IMMENSE_TRIUMPH);
                 if (!attacks.isEmpty()
                         || (Locutus.imp().getNationDB().getMinMilitary(groundControl, MilitaryUnit.SOLDIER, gcDate) == 0
                         && Locutus.imp().getNationDB().getMinMilitary(groundControl, MilitaryUnit.TANK, gcDate) == 0
@@ -364,7 +365,7 @@ public class WarCard {
             }
             if (checkAC && acDate != Long.MAX_VALUE) {
                 attacks = Locutus.imp().getWarDb().getAttacks(airSuperiority, acDate);
-                attacks.removeIf(a -> a.getDefender_id() != airSuperiority || a.getSuccess() != 3);
+                attacks.removeIf(a -> a.getDefender_id() != airSuperiority || a.getSuccess() != SuccessType.IMMENSE_TRIUMPH);
                 if (!attacks.isEmpty()
                         || Locutus.imp().getNationDB().getMinMilitary(airSuperiority, MilitaryUnit.AIRCRAFT, acDate) == 0)
                     airSuperiority = 0;
@@ -372,7 +373,7 @@ public class WarCard {
             if (checkBlockade && blockadeDate != Long.MAX_VALUE) {
                 int blockader = blockaded == war.attacker_id ? war.defender_id : war.attacker_id;
                 attacks = Locutus.imp().getWarDb().getAttacks(blockader, blockadeDate);
-                attacks.removeIf(a -> a.getDefender_id() != blockader || a.getSuccess() != 3);
+                attacks.removeIf(a -> a.getDefender_id() != blockader || a.getSuccess() != SuccessType.IMMENSE_TRIUMPH);
                 if (!attacks.isEmpty() ||
                         Locutus.imp().getNationDB().getMinMilitary(blockader, MilitaryUnit.SHIP, blockadeDate) == 0) {
                     blockaded = 0;

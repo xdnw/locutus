@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class AllianceAttackTypeRanking extends Command {
     public AllianceAttackTypeRanking() {
@@ -55,7 +56,8 @@ public class AllianceAttackTypeRanking extends Command {
         long cutoffMs = System.currentTimeMillis() - TimeUtil.timeToSec(arg) * 1000L;
         AttackType type = AttackType.get(args.get(1).toUpperCase());
 
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs);
+        Set<Integer> allowedNations = Locutus.imp().getNationDB().getNationsMatching(f -> f.getAlliance_id() > 0 && f.getPosition() > 1).stream().map(DBNation::getId).collect(Collectors.toSet());
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().queryAttacks().withActiveWars(f -> allowedNations.contains(f), f -> true).afterDate(cutoffMs).withTypes(type).getList();
 //            Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWars();
         Map<Integer, Integer> totalAttacks = new HashMap<>();
         Map<Integer, Integer> attackOfType = new HashMap<>();

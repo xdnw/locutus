@@ -444,7 +444,7 @@ public class UtilityCommands {
 
             for (DBWar war : Locutus.imp().getWarDb().getWarsByAlliance(aa.getAlliance_id())) {
 
-                List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByNationGroupWar(war);
+                List<AbstractCursor> attacks = war.getAttacks();
                 attacks.removeIf(f -> f.getAttack_type() != AttackType.A_LOOT);
                 if (attacks.size() != 1) continue;
 

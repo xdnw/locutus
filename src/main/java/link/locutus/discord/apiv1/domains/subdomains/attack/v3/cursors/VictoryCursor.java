@@ -15,8 +15,11 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.io.BitBuffer;
 
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class VictoryCursor extends FailedCursor {
     public boolean hasLoot = false;
@@ -206,5 +209,10 @@ public class VictoryCursor extends FailedCursor {
             loot_percent_cents = 0;
             infra_destroyed_cents = 0;
         }
+    }
+
+    @Override
+    public Set<Integer> getCityIdsDamaged() {
+        return city_infra_before_cents == null ? Collections.emptySet() : city_infra_before_cents.keySet();
     }
 }

@@ -57,9 +57,10 @@ public class AllianceLootLosses extends Command {
         Map<Integer, Double> totals = new HashMap<>();
         List<AbstractCursor> aaLoot = Locutus.imp().getWarDb().getAttacks(cutOff, AttackType.A_LOOT);
         for (AbstractCursor attack : aaLoot) {
-            Map<ResourceType, Double> loot = attack.getLoot();
-            Integer allianceId = attack.getLooted();
-            if (allianceId == null || allianceId == 0) continue;
+            double[] loot = attack.getLoot();
+            if (loot == null) continue;
+            int allianceId = attack.getAllianceIdLooted();
+            if (allianceId == 0) continue;
 
             Double existing = totals.getOrDefault(allianceId, 0d);
             totals.put(allianceId, existing + PnwUtil.convertedTotal(loot));

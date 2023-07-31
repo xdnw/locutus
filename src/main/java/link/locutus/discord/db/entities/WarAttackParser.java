@@ -71,7 +71,7 @@ public class WarAttackParser {
 
         if (args.size() == 3 || args.size() == 4) {
             long start;
-            long end = Long.MAX_VALUE;
+            long end;
             if (!MathMan.isInteger(args.get(2))) {
                 start = System.currentTimeMillis() - TimeUtil.timeToSec(args.get(2)) * 1000L;
             } else {
@@ -85,6 +85,8 @@ public class WarAttackParser {
                     int days = MathMan.parseInt(args.get(3));
                     end = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
                 }
+            } else {
+                end = Long.MAX_VALUE;
             }
             if (end <= start) throw new IllegalArgumentException("End date must be greater than start date");
 
@@ -139,11 +141,17 @@ public class WarAttackParser {
                 } else if (alliances2.size() == 1) {
                     attacks = Locutus.imp().getWarDb().getAttacks(alliances2.iterator().next().getNation_id(), start, end);
                 } else if (args.get(0).equalsIgnoreCase("*")) {
-                    attacks = Locutus.imp().getWarDb().getAttacksAny(alliances2.stream().map(DBNation::getNation_id).collect(Collectors.toSet()), start, end);
+                    Set<Integer> attackerIds = alliances2.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
+                    attacks = Locutus.imp().getWarDb().queryAttacks()
+                            .withWars(f -> attackerIds.contains(f.getAttacker_id()) || attackerIds.contains(f.getDefender_id())).between(start, end).getList();
                 } else if (args.get(1).equalsIgnoreCase("*")) {
-                    attacks = Locutus.imp().getWarDb().getAttacksAny(alliances1.stream().map(DBNation::getNation_id).collect(Collectors.toSet()), start, end);
+                    Set<Integer> attackerIds = alliances1.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
+                    attacks = Locutus.imp().getWarDb().queryAttacks()
+                            .withWars(f -> attackerIds.contains(f.getAttacker_id()) || attackerIds.contains(f.getDefender_id())).between(start, end).getList();
                 } else {
-                    attacks = Locutus.imp().getWarDb().getAttacks(allIds, start, end);
+                    attacks = Locutus.imp().getWarDb().queryAttacks()
+                            .withWarsForNationOrAlliance(allIds::contains, null, f -> f.getDate() <= end && f.possibleEndDate() >= start)
+                            .between(start, end).getList();
                 }
 
                 if (args.get(0).equalsIgnoreCase("*")) {
@@ -195,10 +203,8 @@ public class WarAttackParser {
                 public boolean test(AbstractCursor attack) {
                     DBWar war = finalWarMap1.get(attack.getWar_id());
                     if (war == null) return true;
-                    AbstractCursor copy = new AbstractCursor();
-                    copy.setAttacker_nation_id(war.attacker_id);
-                    copy.setDefender_nation_id(war.defender_id);
-                    return !filter.apply(attack);
+                    boolean flip = war.attacker_id != attack.getAttacker_id();
+                    return filter.apply(attack) == flip;
                 }
             });
         }

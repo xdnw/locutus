@@ -6,12 +6,17 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.FailedCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.io.BitBuffer;
 
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ALootCursor extends FailedCursor {
@@ -48,6 +53,11 @@ public class ALootCursor extends FailedCursor {
     @Override
     public double getLootPercent() {
         return loot_percent_cents * 0.0001d;
+    }
+
+    @Override
+    public Map<ResourceType, Double> getLosses(boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
+        return null;
     }
 
     @Override
@@ -114,6 +124,11 @@ public class ALootCursor extends FailedCursor {
         if (input.readBit()) {
             alliance_id = input.readVarInt();
         }
+    }
+
+    @Override
+    public Set<Integer> getCityIdsDamaged() {
+        return Collections.emptySet();
     }
 
     @Override

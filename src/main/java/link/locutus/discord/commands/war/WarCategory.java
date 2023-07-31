@@ -2,6 +2,7 @@ package link.locutus.discord.commands.war;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -243,7 +244,7 @@ public class WarCategory {
         WarRoom room = roomTmp;
 
         boolean value = room.target.getNation_id() == attack.getAttacker_id();
-        boolean change = attack.getSuccess() == 3 || (attack.getSuccess() > 0 && !value);
+        boolean change = attack.getSuccess() == SuccessType.IMMENSE_TRIUMPH || (attack.getSuccess() != SuccessType.UTTER_FAILURE && !value);
 
         DBNation attacker = Locutus.imp().getNationDB().getNation(attackerId);
         DBNation defender = Locutus.imp().getNationDB().getNation(defenderId);
@@ -303,7 +304,7 @@ public class WarCategory {
                 message = name1 + " looted " + PnwUtil.resourcesToString(attack.getLoot()) + " from " + name2;
                 break;
             case A_LOOT:
-                message = name1 + " looted " + PnwUtil.resourcesToString(attack.getLoot()) + " from " + PnwUtil.getName(attack.getLooted(), true);
+                message = name1 + " looted " + PnwUtil.resourcesToString(attack.getLoot()) + " from " + PnwUtil.getName(attack.getAllianceIdLooted(), true);
                 break;
             case PEACE:
                 message = name1 + " agreed to peace with " + name2;
@@ -334,22 +335,7 @@ public class WarCategory {
 
         if (message != null) {
             if (showSuccess) {
-                String successType;
-                switch (attack.getSuccess()) {
-                    default:
-                    case 0:
-                        successType = "UTTER_FAILURE";
-                        break;
-                    case 1:
-                        successType = "PYRRHIC_VICTORY";
-                        break;
-                    case 2:
-                        successType = "MODERATE_SUCCESS";
-                        break;
-                    case 3:
-                        successType = "IMMENSE_TRIUMPH";
-                        break;
-                }
+                String successType = attack.getSuccess().name();
                 message += ". It was a " + successType;
             }
             if (showLoot && attack.getMoney_looted() != 0) {

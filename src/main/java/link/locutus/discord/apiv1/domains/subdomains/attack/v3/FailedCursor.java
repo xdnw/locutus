@@ -1,6 +1,7 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
 import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 
@@ -11,6 +12,16 @@ public abstract class FailedCursor extends AbstractCursor {
     @Override
     public SuccessType getSuccess() {
         return SuccessType.UTTER_FAILURE;
+    }
+
+    @Override
+    public void addUnitLosses(int[] unitTotals, boolean isAttacker) {
+
+    }
+
+    @Override
+    public Map<MilitaryUnit, Integer> getUnitLosses(boolean isAttacker) {
+        return Collections.emptyMap();
     }
 
     @Override

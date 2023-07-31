@@ -1,9 +1,9 @@
 package link.locutus.discord.db.entities;
 
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv3.enums.AttackTypeSubCategory;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.update.WarUpdateProcessor;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,18 +36,18 @@ public class AttackTypeBreakdown {
         return (primary ? mapA : mapB).getOrDefault(category, 0);
     }
 
-    public void addAttack(DBAttack attack, boolean isAttacker) {
+    public void addAttack(AbstractCursor attack, boolean isAttacker) {
         addAttack(attack, p -> isAttacker, p -> !isAttacker);
     }
 
-    public AttackTypeBreakdown addAttacks(Collection<DBAttack> attacks, Function<DBAttack, Boolean> isPrimary, Function<DBAttack, Boolean> isSecondary) {
-        for (DBAttack attack : attacks) {
+    public AttackTypeBreakdown addAttacks(Collection<AbstractCursor> attacks, Function<AbstractCursor, Boolean> isPrimary, Function<AbstractCursor, Boolean> isSecondary) {
+        for (AbstractCursor attack : attacks) {
             addAttack(attack, isPrimary, isSecondary);
         }
         return this;
     }
 
-    public AttackTypeBreakdown addAttack(DBAttack attack, Function<DBAttack, Boolean> isPrimary, Function<DBAttack, Boolean> isSecondary) {
+    public AttackTypeBreakdown addAttack(AbstractCursor attack, Function<AbstractCursor, Boolean> isPrimary, Function<AbstractCursor, Boolean> isSecondary) {
         boolean primary = isPrimary.apply(attack);
         boolean secondary = isSecondary.apply(attack);
         if (!primary && !secondary) return this;

@@ -576,7 +576,7 @@ public class WarUpdateProcessor {
             case VICTORY:
                 break;
             case FORTIFY:
-                List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByWarId(root.getWar_id(), root.getDate());
+                List<AbstractCursor> attacks = root.getWar().getAttacks();
                 attacks.removeIf(f -> f.getWar_attack_id() >= root.getWar_attack_id() || f.getAttacker_id() != root.getAttacker_id());
                 if (attacks.size() > 0 && attacks.get(attacks.size() - 1).getAttack_type() == AttackType.FORTIFY) {
                     return AttackTypeSubCategory.DOUBLE_FORTIFY.toPair();
@@ -593,7 +593,7 @@ public class WarUpdateProcessor {
                 if (defender.getTanks() > 0 && defender.getSoldiers() < root.getDefcas2() && attacker.getSoldiers() * 0.4 > defender.getSoldiers() && root.getDefcas1() == 0 && attacker.getGroundStrength(true, false) > defender.getGroundStrength(true, true)) {
                     int attAir = (int) (root.getAtt_gas_used() * 4);
                     if (attAir > 3) {
-                        attacks = Locutus.imp().getWarDb().getAttacksByWarId(root.getWar_id(), root.getDate());
+                        attacks = root.getWar().getAttacks();
                         attacks.remove(root);
                         DBWar war = Locutus.imp().getWarDb().getWar(root.getWar_id());
                         if (war != null) {
@@ -732,7 +732,7 @@ public class WarUpdateProcessor {
                             ((defender.getAircraft() > 0 && defender.getAircraft() < attacker.getAircraft() * 0.8) ||
                             (defender.getAircraft() < attacker.getAircraft() && defender.getGroundStrength(true, false) > 0 && defender.getGroundStrength(true, false) < attacker.getGroundStrength(true, true)))) {
 
-                        attacks = Locutus.imp().getWarDb().getAttacksByWarId(root.getWar_id(), root.getDate());
+                        attacks = root.getWar().getAttacks();
                         for (AbstractCursor attack : attacks) {
                             if (attack.getAttack_type() == NAVAL && attack.getWar_attack_id() != root.getWar_attack_id()) {
                                 return AttackTypeSubCategory.NAVAL_ALREADY_BLOCKADED.toPair();

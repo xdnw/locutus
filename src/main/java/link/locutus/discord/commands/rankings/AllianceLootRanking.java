@@ -2,11 +2,14 @@ package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
+import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -17,6 +20,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.function.Predicate;
 
 import static link.locutus.discord.util.MathMan.format;
 
@@ -45,33 +49,26 @@ public class AllianceLootRanking extends Command {
         }
         long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
 
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs);
-
         Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
         Map<Integer, Map<ResourceType, Double>> byAlliance = new HashMap<>();
 
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().queryAttacks()
+                .withWars(f -> f.possibleEndDate() >= cutoffMs && (f.attacker_aa > 0 || f.defender_aa > 0)).afterDate(cutoffMs).withTypes(AttackType.A_LOOT, AttackType.VICTORY, AttackType.GROUND).getList();
+
         for (AbstractCursor attack : attacks) {
 
-            Map<ResourceType, Double> loot = attack.getLoot();
-            Integer looter = attack.getLooter();
-            if (looter != null) {
+            double[] loot = attack.getLoot();
+            if (loot == null) continue;
+            int looter = attack.getAttacker_id();
+            {
                 DBNation nation = nations.get(looter);
                 int allianceId = nation == null ? 0 : nation.getAlliance_id();
                 Map<ResourceType, Double> map = byAlliance.get(allianceId);
                 if (map == null) {
                     map = new HashMap<>();
                 }
-                Map<ResourceType, Double> add = PnwUtil.add(map, loot);
+                Map<ResourceType, Double> add = PnwUtil.add(map, PnwUtil.resourcesToMap(loot));
                 byAlliance.put(allianceId, add);
-            } else if (attack.getVictor() != 0 && attack.getMoney_looted() != 0) {
-                DBNation nation = nations.get(attack.getVictor());
-                int allianceId = nation == null ? 0 : nation.getAlliance_id();
-                Map<ResourceType, Double> map = byAlliance.get(allianceId);
-                if (map == null) {
-                    map = new HashMap<>();
-                }
-                map.put(ResourceType.MONEY, (map.getOrDefault(ResourceType.MONEY, 0d) + attack.getMoney_looted()));
-                byAlliance.put(allianceId, map);
             }
         }
 

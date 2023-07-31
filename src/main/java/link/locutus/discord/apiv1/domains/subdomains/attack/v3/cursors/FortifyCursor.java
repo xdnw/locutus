@@ -9,6 +9,10 @@ import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.io.BitBuffer;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Set;
+
 public class FortifyCursor extends FailedCursor {
 
     @Override
@@ -29,6 +33,11 @@ public class FortifyCursor extends FailedCursor {
     @Override
     public void load(DBWar war, BitBuffer input) {
         super.load(war, input);
+    }
+
+    @Override
+    public Set<Integer> getCityIdsDamaged() {
+        return Collections.emptySet();
     }
 
     @Override
