@@ -2,6 +2,10 @@ package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.apiv1.enums.city.building.Building;
+
+import java.util.Collections;
+import java.util.Map;
 
 public abstract class FailedCursor extends AbstractCursor {
     @Override
@@ -62,6 +66,11 @@ public abstract class FailedCursor extends AbstractCursor {
     @Override
     public void addBuildingsDestroyed(int[] destroyedBuffer) {
 
+    }
+
+    @Override
+    public Map<Building, Integer> getBuildingsDestroyed() {
+        return Collections.emptyMap();
     }
 
     @Override

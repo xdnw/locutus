@@ -2,6 +2,7 @@ package link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors;
 
 import com.politicsandwar.graphql.model.WarAttack;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.FailedCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -12,8 +13,6 @@ import link.locutus.discord.util.io.BitBuffer;
 
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor.parseBankLoot;
 
 public class ALootCursor extends FailedCursor {
     public boolean hasLoot = false;
@@ -76,7 +75,7 @@ public class ALootCursor extends FailedCursor {
             looted[ResourceType.FOOD.ordinal()] = attack.getFood_looted();
 
             AtomicInteger allianceId = new AtomicInteger();
-            loot_percent_cents = (int) (parseBankLoot(note, allianceId, null) * 100);
+            loot_percent_cents = (int) (DBAttack.parseBankLoot(note, allianceId, null) * 100);
             this.alliance_id = allianceId.get();
             if (alliance_id == 0) {
                 DBWar war = getWar();

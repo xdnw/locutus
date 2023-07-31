@@ -348,6 +348,12 @@ public class AttackCursorFactory {
         return cursor;
     }
 
+    public synchronized int getId(byte[] data) {
+        buffer.setBytes(data);
+        buffer.readBits(4);
+        return buffer.readInt();
+    }
+
     public synchronized AbstractCursor loadWithPretest(DBWar war, byte[] data, boolean create, Predicate<AbstractCursor> testInitial) {
         buffer.setBytes(data);
         AttackType type = AttackType.values[(int) buffer.readBits(4)];

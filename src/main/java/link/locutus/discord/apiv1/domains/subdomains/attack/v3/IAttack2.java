@@ -108,7 +108,5 @@ public interface IAttack2 {
         return getLosses(attacker, true, true, true, true, true);
     }
 
-    default Map<ResourceType, Double> getLosses(boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
-
-    }
+    Map<ResourceType, Double> getLosses(boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings);
 }

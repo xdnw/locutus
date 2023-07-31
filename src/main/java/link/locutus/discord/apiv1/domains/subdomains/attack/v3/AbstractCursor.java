@@ -4,10 +4,15 @@ import com.politicsandwar.graphql.model.WarAttack;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
+import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.io.BitBuffer;
+
+import java.util.Map;
+import java.util.Set;
 
 public abstract class AbstractCursor implements IAttack2 {
     protected DBWar war_cached;
@@ -33,6 +38,11 @@ public abstract class AbstractCursor implements IAttack2 {
         war_cached = null;
         war_attack_id = attack.getId();
         date = attack.getDate().toEpochMilli();
+        long now =  System.currentTimeMillis();
+        if (date > now) {
+            System.err.println("Attack date is in the future: " + date);
+            date = now;
+        }
         war_id = attack.getWar_id();
         attacker_id = attack.getAtt_id();
         defender_id = attack.getDef_id();
@@ -113,4 +123,11 @@ public abstract class AbstractCursor implements IAttack2 {
         }
         return war_cached;
     }
+
+    public abstract Map<Building, Integer> getBuildingsDestroyed();
+    public abstract Set<Integer> getCityIdsDamaged();
+
+    public abstract Map<MilitaryUnit, Integer> getUnitLosses2(boolean isAttacker);
+
+    public abstract void addUnitLosses(int[] unitTotals, boolean isAttacker);
 }

@@ -2,6 +2,9 @@ package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
 import com.politicsandwar.graphql.model.WarAttack;
 import it.unimi.dsi.fastutil.bytes.Byte2ByteArrayMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.SuccessType;
@@ -10,7 +13,10 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.io.BitBuffer;
 
+import java.util.Collections;
+import java.util.EnumMap;
 import java.util.Map;
+import java.util.Set;
 
 public abstract class DamageCursor extends AbstractCursor{
 
@@ -30,8 +36,15 @@ public abstract class DamageCursor extends AbstractCursor{
     public double getInfra_destroyed_percent() {
         return 0;
     }
+
     @Override
-    public void load(AbstractCursor legacy) {
+    public Set<Integer> getCityIdsDamaged() {
+        if (city_id == 0) return Collections.emptySet();
+        return Collections.singleton(city_id);
+    }
+
+    @Override
+    public void load(DBAttack legacy) {
         super.load(legacy);
         success = SuccessType.values[legacy.getSuccess()];
         city_id = legacy.city_cached;
@@ -91,6 +104,20 @@ public abstract class DamageCursor extends AbstractCursor{
     public int getDefcas3() {
         MilitaryUnit[] units = getUnits();
         return units.length > 2 ? getUnitLosses(units[2], false) : 0;
+    }
+
+    @Override
+    public Map<Building, Integer> getBuildingsDestroyed() {
+        if (num_improvements == 0 || buildingsDestroyed.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Building, Integer> result = new Object2ObjectOpenHashMap<>();
+        for (Map.Entry<Byte, Byte> entry : buildingsDestroyed.entrySet()) {
+            byte typeId = entry.getKey();
+            byte amt = entry.getValue();
+            result.put(Buildings.get(typeId), (int) amt);
+        }
+        return result;
     }
 
     @Override

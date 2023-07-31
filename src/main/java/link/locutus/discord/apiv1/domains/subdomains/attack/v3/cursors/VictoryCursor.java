@@ -3,6 +3,7 @@ package link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors;
 import com.politicsandwar.graphql.model.CityInfraDamage;
 import com.politicsandwar.graphql.model.WarAttack;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.FailedCursor;
 import link.locutus.discord.apiv1.enums.AttackType;

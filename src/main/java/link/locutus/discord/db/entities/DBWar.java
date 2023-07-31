@@ -133,7 +133,7 @@ public class DBWar {
     }
 
     public List<AbstractCursor> getAttacks() {
-        return Locutus.imp().getWarDb().getAttacksByNationGroupWar(this);
+        return Locutus.imp().getWarDb().getAttacksByWarId(this);
     }
 
     public List<AbstractCursor> getAttacks(Collection<AbstractCursor> attacks) {
