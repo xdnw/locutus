@@ -315,6 +315,49 @@ public class AdminCommands {
         return (archive ? "Archived" : "Unarchived") + " announcement with id: #" + announcementId;
     }
 
+    @Command(desc = "Find the announcement closest matching a message")
+    @RolePermission(Roles.ADMIN)
+    @NoFormat
+    public String find_announcement(@Me GuildDB db, int announcementId, String message) throws IOException {
+//        Announcement announcement = db.getAnnouncement(announcementId);
+        List<Announcement.PlayerAnnouncement> announcements = db.getPlayerAnnouncementsByAnnId(announcementId);
+        if (announcements.isEmpty()) {
+            return "No announcements found with id: #" + announcementId;
+        }
+        long diffMin = Long.MAX_VALUE;
+        List<Announcement.PlayerAnnouncement> matches = new ArrayList<>();
+        for (Announcement.PlayerAnnouncement announcement : announcements) {
+            String content = announcement.getContent();
+            if (message.equalsIgnoreCase(content)) {
+                return "Announcement sent to nation id: " + announcement.receiverNation;
+            }
+            byte[] diff = StringMan.getDiffBytes(message, content);
+            if (diff.length < diffMin) {
+                diffMin = diff.length;
+                matches.clear();
+                matches.add(announcement);
+            } else if (diff.length == diffMin) {
+                matches.add(announcement);
+            }
+        }
+
+        if (matches.isEmpty()) {
+            return "No announcements found with id: #" + announcementId;
+        } else if (matches.size() == 1) {
+            Announcement.PlayerAnnouncement match = matches.get(0);
+            return "Closest match: " + match.receiverNation + " with " + diffMin + " differences:\n```\n" + match.getContent() + "\n```";
+        } else {
+            StringBuilder response = new StringBuilder();
+            response.append(matches.size() + " matches with " + diffMin + " differences:\n");
+            for (Announcement.PlayerAnnouncement match : matches) {
+                response.append("- " + match.receiverNation + "\n");
+                // content in ```
+                response.append("```\n" + match.getContent() + "\n```\n");
+            }
+            return response.toString();
+        }
+    }
+
     @Command(desc = "Send an announcement to multiple nations, with random variations for each receiver\n")
     @RolePermission(Roles.ADMIN)
     @HasApi
