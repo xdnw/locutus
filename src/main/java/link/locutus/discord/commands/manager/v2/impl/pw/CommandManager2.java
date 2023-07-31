@@ -518,6 +518,12 @@ public class CommandManager2 {
                     io.create().append(result.toString()).send();
                 }
             } catch (CommandUsageException e) {
+                Throwable root = e;
+                while (root.getCause() != null && root.getCause() != root) {
+                    root = root.getCause();
+                }
+                root.printStackTrace();
+
                 StringBuilder body = new StringBuilder();
 
                 if (e.getMessage() != null && (e.getMessage().contains("`") || e.getMessage().contains("<#") || e.getMessage().contains("</") || e.getMessage().contains("<@"))) {
