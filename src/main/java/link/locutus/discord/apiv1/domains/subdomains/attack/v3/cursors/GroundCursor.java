@@ -20,7 +20,7 @@ public class GroundCursor extends UnitCursor {
     private long money_looted_cents;
 
     @Override
-    public void load(AbstractCursor legacy) {
+    public void load(DBAttack legacy) {
         super.load(legacy);
         this.attcas1 = legacy.getAttcas1();
         this.attcas2 = legacy.getAttcas2();

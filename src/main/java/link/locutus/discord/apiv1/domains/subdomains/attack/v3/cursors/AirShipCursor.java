@@ -15,7 +15,7 @@ public class AirShipCursor extends UnitCursor {
     private int defcas2;
 
     @Override
-    public void load(AbstractCursor legacy) {
+    public void load(DBAttack legacy) {
         super.load(legacy);
         this.attcas1 = legacy.getAttcas1();
         this.defcas1 = legacy.getDefcas1();

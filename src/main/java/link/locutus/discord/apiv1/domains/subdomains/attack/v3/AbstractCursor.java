@@ -2,6 +2,7 @@ package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
 import com.politicsandwar.graphql.model.WarAttack;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.db.entities.DBWar;
@@ -16,7 +17,7 @@ public abstract class AbstractCursor implements IAttack2 {
     protected int attacker_id;
     protected int defender_id;
 
-    public void load(AbstractCursor legacy) {
+    public void load(DBAttack legacy) {
         war_attack_id = legacy.getWar_attack_id();
         date = Math.max(TimeUtil.getOrigin(), legacy.getDate());
         war_id = legacy.getWar_id();

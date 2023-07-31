@@ -47,7 +47,7 @@ public class VictoryCursor extends FailedCursor {
     }
 
     @Override
-    public void load(AbstractCursor legacy) {
+    public void load(DBAttack legacy) {
         super.load(legacy);
         this.hasLoot = legacy.loot != null && !ResourceType.isZero(legacy.loot);
         this.loot_percent_cents = (int) Math.round(legacy.getLootPercent() * 100);

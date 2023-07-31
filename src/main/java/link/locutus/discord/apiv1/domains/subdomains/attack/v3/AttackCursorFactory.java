@@ -1,7 +1,7 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
-import com.google.common.base.Predicate;
 import com.politicsandwar.graphql.model.WarAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors.*;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -12,6 +12,7 @@ import link.locutus.discord.util.io.BitBuffer;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.function.Predicate;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -139,7 +140,7 @@ public class AttackCursorFactory {
         }
     }
 
-    public AbstractCursor load(AbstractCursor legacy, boolean create) {
+    public AbstractCursor load(DBAttack legacy, boolean create) {
         AttackType type = legacy.getAttack_type();
         AbstractCursor cursor = create ? create(type) : getCursor(type);
         if (cursor == null) {
@@ -332,7 +333,37 @@ public class AttackCursorFactory {
         return cursor;
     }
 
-    public synchronized AbstractCursor load(DBWar war, byte[] data, boolean create, Predicate<AttackType> testType, Predicate<AbstractCursor> testInitial) {
+    public synchronized AbstractCursor loadWithType(DBWar war, byte[] data, boolean create, Predicate<AttackType> testType) {
+        buffer.setBytes(data);
+        AttackType type = AttackType.values[(int) buffer.readBits(4)];
+        if (!testType.test(type)) {
+            return null;
+        }
+        AbstractCursor cursor = create ? create(type) : getCursor(type);
+        if (cursor == null) {
+            throw new UnsupportedOperationException("Attack type not supported: " + type);
+        }
+        cursor.initialize(war, buffer);
+        cursor.load(war, buffer);
+        return cursor;
+    }
+
+    public synchronized AbstractCursor loadWithPretest(DBWar war, byte[] data, boolean create, Predicate<AbstractCursor> testInitial) {
+        buffer.setBytes(data);
+        AttackType type = AttackType.values[(int) buffer.readBits(4)];
+        AbstractCursor cursor = create ? create(type) : getCursor(type);
+        if (cursor == null) {
+            throw new UnsupportedOperationException("Attack type not supported: " + type);
+        }
+        cursor.initialize(war, buffer);
+        if (!testInitial.test(cursor)) {
+            return null;
+        }
+        cursor.load(war, buffer);
+        return cursor;
+    }
+
+    public synchronized AbstractCursor loadWithTypePretest(DBWar war, byte[] data, boolean create, Predicate<AttackType> testType, Predicate<AbstractCursor> testInitial) {
         buffer.setBytes(data);
         AttackType type = AttackType.values[(int) buffer.readBits(4)];
         if (!testType.test(type)) {
