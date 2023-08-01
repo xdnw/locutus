@@ -1297,6 +1297,19 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 });
         return result;
     }
+
+    public List<Announcement.PlayerAnnouncement> getPlayerAnnouncementsContaining(String invite) {
+        List<Announcement.PlayerAnnouncement> result = new ArrayList<>();
+        query("select * FROM ANNOUNCEMENTS_PLAYER2 WHERE diff LIKE ? ORDER BY ann_id desc",
+                (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setString(1, "%" + invite + "%"),
+                (ThrowingConsumer<ResultSet>) rs -> {
+                    while (rs.next()) {
+                        result.add(new Announcement.PlayerAnnouncement(this, null, rs));
+                    }
+                });
+        return result;
+    }
+
     public List<Announcement.PlayerAnnouncement> getPlayerAnnouncementsByAnnId(int ann_id) {
         Announcement announcement = getAnnouncement(ann_id);
         if (announcement == null) return null;

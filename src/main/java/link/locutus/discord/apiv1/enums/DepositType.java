@@ -128,7 +128,7 @@ public enum DepositType {
             if (city != 0) {
                 note += " #city=" + city;
             }
-            if (ignore) {
+            if (ignore && type != IGNORE) {
                 note += " #ignore";
             }
             return note.trim();

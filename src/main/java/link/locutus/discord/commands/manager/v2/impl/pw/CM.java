@@ -546,6 +546,27 @@ public class CM {
                 return createArgs("sendTo", sendTo, "subject", subject, "announcement", announcement, "replacements", replacements, "channel", channel, "bottomText", bottomText, "requiredVariation", requiredVariation, "requiredDepth", requiredDepth, "seed", seed, "sendMail", sendMail, "sendDM", sendDM, "force", force);
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="find_announcement")
+        public static class find extends CommandRef {
+            public static final find cmd = new find();
+            public find create(String announcementId, String message) {
+                return createArgs("announcementId", announcementId, "message", message);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="sendInvite")
+        public static class invite extends CommandRef {
+            public static final invite cmd = new invite();
+            public invite create(String message, String inviteTo, String sendTo, String expire, String maxUsesEach, String sendDM, String sendMail, String force) {
+                return createArgs("message", message, "inviteTo", inviteTo, "sendTo", sendTo, "expire", expire, "maxUsesEach", maxUsesEach, "sendDM", sendDM, "sendMail", sendMail, "force", force);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.web.test.TestCommands.class,method="ocr")
+        public static class ocr extends CommandRef {
+            public static final ocr cmd = new ocr();
+            public ocr create(String discordImageUrl, String type) {
+                return createArgs("discordImageUrl", discordImageUrl, "type", type);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.PlayerSettingCommands.class,method="readAnnouncement")
         public static class read extends CommandRef {
             public static final read cmd = new read();

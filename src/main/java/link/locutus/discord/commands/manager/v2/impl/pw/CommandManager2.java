@@ -199,6 +199,21 @@ public class CommandManager2 {
         this.commands.registerMethod(new SettingCommands(), List.of("settings"), "sheets", "sheets");
         this.commands.registerMethod(new SettingCommands(), List.of("settings"), "info", "info");
 
+        this.commands.registerMethod(new AdminCommands(), List.of("admin"), "loginTimes", "list_login_times");
+
+        this.commands.registerMethod(new StatCommands(), List.of("stats_war"), "warAttacksByDay", "warattacksbyday");
+        this.commands.registerMethod(new FunCommands(), List.of("fun"), "stealBorgsCity", "stealborgscity");
+
+        this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "audit"), "auditAlertOptOut", "optout");
+        this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "enemy"), "enemyAlertOptOut", "optout");
+        this.commands.registerMethod(new PlayerSettingCommands(), List.of("announcement"), "viewAnnouncement", "view");
+
+        this.commands.registerMethod(new TestCommands(), List.of("announcement"), "ocr", "ocr");
+        this.commands.registerMethod(new AdminCommands(), List.of("announcement"), "find_announcement", "find");
+        this.commands.registerMethod(new AdminCommands(), List.of("announcement"), "find_invite", "find_invite");
+        this.commands.registerMethod(new UnsortedCommands(), List.of("announcement"), "sendInvite", "invite");
+
+
         for (GuildSetting setting : GuildKey.values()) {
             List<String> path = List.of("settings_" + setting.getCategory().name().toLowerCase(Locale.ROOT));
 
@@ -271,18 +286,6 @@ public class CommandManager2 {
 //        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "buyList", "buy_list");
 //        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "sellList", "sell_list");
 //        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "myOffers", "my_offers");
-
-        this.commands.registerMethod(new AdminCommands(), List.of("admin"), "loginTimes", "list_login_times");
-
-        this.commands.registerMethod(new StatCommands(), List.of("stats_war"), "warAttacksByDay", "warattacksbyday");
-        this.commands.registerMethod(new FunCommands(), List.of("fun"), "stealBorgsCity", "stealborgscity");
-
-        this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "audit"), "auditAlertOptOut", "optout");
-        this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "enemy"), "enemyAlertOptOut", "optout");
-        this.commands.registerMethod(new PlayerSettingCommands(), List.of("announcement"), "viewAnnouncement", "view");
-
-        this.commands.registerMethod(new TestCommands(), List.of("announcement"), "ocr", "ocr");
-        this.commands.registerMethod(new TestCommands(), List.of("announcement"), "find_announcement", "find");
 
         StringBuilder output = new StringBuilder();
         this.commands.generatePojo("", output, 0);

@@ -19,6 +19,8 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
@@ -70,7 +72,12 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.unions.DefaultGuildChannelUnion;
+import net.dv8tion.jda.api.requests.restaction.InviteAction;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -1512,5 +1519,177 @@ public class UnsortedCommands {
 
 
         return new OptimalBuild().onCommand(io, guild, author, me, cmd, flags);
+    }
+
+    @Command(desc = "Get the invite for the linked milcom server")
+    @RolePermission(Roles.ADMIN)
+    public String sendInvite(@Me GuildDB db,
+                             @Me User author,
+                             @Me DBNation me,
+                             @Me JSONObject command,
+                             @Me IMessageIO currentChannel,
+                             String message,
+                             Guild inviteTo,
+                             @Default NationList sendTo,
+                             @Switch("e") @Timediff Long expire,
+                             @Switch("u") Integer maxUsesEach,
+                             @Arg("Send the invite via discord direct message") @Switch("d") boolean sendDM,
+                             @Switch("m") boolean sendMail,
+                             @Switch("f") boolean force) throws IOException {
+        DefaultGuildChannelUnion defaultChannel = inviteTo.getDefaultChannel();
+        if (defaultChannel == null) {
+            throw new IllegalArgumentException("No default channel found for " + inviteTo + ". Please set one in the server settings.");
+        }
+        if (sendTo == null) {
+            SimpleNationList tmp = new SimpleNationList(Collections.singleton(me));
+            tmp.setFilter(me.getQualifiedName());
+            sendTo = tmp;
+        }
+        if (sendDM && !Roles.MAIL.hasOnRoot(author)) {
+            throw new IllegalArgumentException("You do not have permission to send direct mesages");
+        }
+        // ensure admin on inviteTo guild
+        Member member = inviteTo.getMember(author);
+        if (member == null) {
+            throw new IllegalArgumentException("You are not a member of " + inviteTo);
+        }
+        if (!member.hasPermission(Permission.CREATE_INSTANT_INVITE) && !Roles.ADMIN.has(author, inviteTo) && !Roles.INTERNAL_AFFAIRS.has(author, inviteTo)) {
+            throw new IllegalArgumentException("You do not have permission to create invites in " + inviteTo);
+        }
+
+        // dm user instructions find_announcement
+        ApiKeyPool keys = (sendMail || sendDM) ? db.getMailKey() : null;
+        if ((sendMail || sendDM) && keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention() + "");
+        Set<Integer> aaIds = db.getAllianceIds();
+
+        List<String> errors = new ArrayList<>();
+        Collection<DBNation> nations = sendTo.getNations();
+        for (DBNation nation : nations) {
+            User user = nation.getUser();
+            if (user.getMutualGuilds().contains(inviteTo)) {
+                errors.add("Already in the guild: `" + nation.getNation() + "`");
+                continue;
+            }
+            if (user == null) {
+                errors.add("Cannot find user for `" + nation.getNation() + "`");
+            } else if (db.getGuild().getMember(user) == null) {
+                errors.add("Cannot find member in guild for `" + nation.getNation() + "` | `" + user.getName() + "`");
+            } else {
+                continue;
+            }
+            if (!aaIds.isEmpty() && !aaIds.contains(nation.getAlliance_id())) {
+                throw new IllegalArgumentException("Cannot send to nation not in alliance: " + nation.getNation() + " | " + user);
+            }
+            if (!force) {
+                if (nation.getActive_m() > 20000)
+                    return "The " + nations.size() + " receivers includes inactive for >2 weeks. Use `" + sendTo.getFilter() + ",#active_m<20000` or set `force` to confirm";
+                if (nation.getVm_turns() > 0)
+                    return "The " + nations.size() + " receivers includes vacation mode nations. Use `" + sendTo.getFilter() + ",#vm_turns=0` or set `force` to confirm";
+                if (nation.getPosition() < 1) {
+                    return "The " + nations.size() + " receivers includes applicants. Use `" + sendTo.getFilter() + ",#position>1` or set `force` to confirm";
+                }
+            }
+        }
+
+        if (!force) {
+            StringBuilder confirmBody = new StringBuilder();
+            if (!sendDM && !sendMail) confirmBody.append("**Warning: No ingame or direct message option has been specified**\n");
+            confirmBody.append("Send DM (`-d`): " + sendDM).append("\n");
+            confirmBody.append("Send Ingame (`-m`): " + sendMail).append("\n");
+            if (!errors.isEmpty()) {
+                confirmBody.append("\n**Errors**:\n- " + StringMan.join(errors, "\n- ")).append("\n");
+            }
+            DiscordUtil.pending(currentChannel, command, "Send to " + nations.size() + " nations", confirmBody + "\nPress to confirm");
+            return null;
+        }
+
+        currentChannel.send("Please wait...");
+
+        List<Integer> failedToDM = new ArrayList<>();
+        List<Integer> failedToMail = new ArrayList<>();
+
+        StringBuilder output = new StringBuilder();
+
+        Map<DBNation, String> sentMessages = new HashMap<>();
+
+        String subject = "Invite to: " + inviteTo.getName();
+
+        for (DBNation nation : nations) {
+            InviteAction create = defaultChannel.createInvite().setUnique(true);
+            if (expire != null) {
+                create = create.setMaxAge((int) (expire / 1000L));
+            }
+            if (maxUsesEach != null) {
+                create = create.setMaxUses(maxUsesEach);
+            }
+            Invite invite = RateLimitUtil.complete(create);
+
+            String replaced = message + "\n" + invite.getUrl();
+            String personal = replaced + "\n\n- " + author.getAsMention();
+
+            boolean result = sendDM && nation.sendDM(personal);
+            if (!result && sendDM) {
+                failedToDM.add(nation.getNation_id());
+            }
+            if ((!result && sendDM) || sendMail) {
+                try {
+                    nation.sendMail(keys, subject, personal);
+                } catch (IllegalArgumentException | IOException e) {
+                    failedToMail.add(nation.getNation_id());
+                }
+            }
+
+            sentMessages.put(nation, replaced);
+
+            output.append("\n\n```" + replaced + "```" + "^ " + nation.getNation());
+        }
+
+        output.append("\n\n------\n");
+        if (errors.size() > 0) {
+            output.append("Errors:\n- " + StringMan.join(errors, "\n- "));
+        }
+        if (failedToDM.size() > 0) {
+            output.append("\nFailed DM (sent ingame): " + StringMan.getString(failedToDM));
+        }
+        if (failedToMail.size() > 0) {
+            output.append("\nFailed Mail: " + StringMan.getString(failedToMail));
+        }
+
+        int annId = db.addAnnouncement(author, subject, message, "", sendTo.getFilter());
+        for (Map.Entry<DBNation, String> entry : sentMessages.entrySet()) {
+            byte[] diff = StringMan.getDiffBytes(message, entry.getValue());
+            db.addPlayerAnnouncement(entry.getKey(), annId, diff);
+        }
+
+        MessageChannel channel;
+        if (currentChannel instanceof DiscordHookIO hook) {
+            channel = hook.getHook().getInteraction().getMessageChannel();
+        } else if (currentChannel instanceof DiscordChannelIO channelIO) {
+            channel = channelIO.getChannel();
+        } else {
+            channel = null;
+        }
+        if (channel != null) {
+            IMessageBuilder msg = new DiscordChannelIO(channel).create();
+            StringBuilder body = new StringBuilder();
+            body.append("From: " + author.getAsMention() + "\n");
+            body.append("To: `" + sendTo.getFilter() + "`\n");
+
+            if (sendMail) {
+                body.append("- A copy of this announcement has been sent ingame\n");
+            }
+            if (sendDM) {
+                body.append("- A copy of this announcement has been sent as a direct message\n");
+            }
+
+            body.append("\n\nPress `view` to view the announcement");
+
+            msg = msg.embed("[#" + annId + "] " + subject, body.toString());
+
+            CM.announcement.view cmd = CM.announcement.view.cmd.create(annId + "");
+            msg.commandButton(CommandBehavior.EPHEMERAL, cmd, "view").send();
+        }
+
+        return "Done. See " + CM.announcement.find.cmd.toSlashMention();
     }
 }
