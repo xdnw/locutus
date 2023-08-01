@@ -75,23 +75,6 @@ public class WarDB extends DBMainV2 {
         warsByNationId = new Int2ObjectOpenHashMap<>();
     }
 
-    public static void main(String[] args) throws SQLException, IOException {
-        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-        WarDB warDb = new WarDB();
-
-        Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS = 5;
-
-//        warDb.testLoadAttacks2();
-        warDb.loadAttacks(1);
-        warDb.loadWars(-1);
-        warDb.testAttackSerializingTime();
-
-        System.exit(0);
-
-//        warDb.loadWars();
-//        warDb.testLoadAttacks();
-    }
-
     public void testAttackSerializingTime() throws IOException {
         Map<AttackType, Integer> countByType = new EnumMap<>(AttackType.class);
         int num_attacks = 0;
@@ -376,22 +359,23 @@ public class WarDB extends DBMainV2 {
             e.printStackTrace();
         }
 
-        String query = "INSERT OR IGNORE INTO `ATTACKS3` (`war_id`, `attacker_nation_id`, `defender_nation_id`, `date`, `data`) VALUES (?, ?, ?, ?, ?)";
+        String query = "INSERT OR IGNORE INTO `ATTACKS3` (`id`, `war_id`, `attacker_nation_id`, `defender_nation_id`, `date`, `data`) VALUES (?, ?, ?, ?, ?, ?)";
         executeBatch(attacks, query, new ThrowingBiConsumer<AbstractCursor, PreparedStatement>() {
             @Override
             public void acceptThrows(AbstractCursor attack, PreparedStatement stmt) throws SQLException {
-                stmt.setInt(1, attack.getWar_id());
-                stmt.setInt(2, attack.getAttacker_id());
-                stmt.setInt(3, attack.getDefender_id());
-                stmt.setLong(4, attack.getDate());
+                stmt.setInt(1, attack.getWar_attack_id());
+                stmt.setInt(2, attack.getWar_id());
+                stmt.setInt(3, attack.getAttacker_id());
+                stmt.setInt(4, attack.getDefender_id());
+                stmt.setLong(5, attack.getDate());
                 byte[] data = cursorManager.toBytes(attack);
-                stmt.setBytes(5, data);
+                stmt.setBytes(6, data);
             }
         });
 
         // if table sizes match, drop attacks2
         int countRows = 0;
-        try (PreparedStatement stmt = getConnection().prepareStatement("SELECT COUNT(*) FROM `attacks2`")) {
+        try (PreparedStatement stmt = getConnection().prepareStatement("SELECT COUNT(*) FROM `attacks3`")) {
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     countRows = rs.getInt(1);
@@ -400,7 +384,7 @@ public class WarDB extends DBMainV2 {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-        if (countRows == attacks.size()) {
+        if (countRows >= attacks.size() && countRows > 0) {
             executeStmt("DROP TABLE `attacks2`");
         }
     }
@@ -465,19 +449,18 @@ public class WarDB extends DBMainV2 {
     }
 
     public void load() {
-        long start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(6);
-        Locutus.imp().getExecutor().submit(new Runnable() {
-            @Override
-            public void run() {
-                int loadWarsDays = Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS < 0 ? -1 : Math.max(Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS, 6);
-                loadWars(loadWarsDays);
-                int loadAttackDays = Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS < 0 ? -1 : Math.min(Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS, Math.max(0, loadWarsDays));
-                if (loadAttackDays != 0) {
-                    importLegacyAttacks();
-                    loadAttacks(loadAttackDays);
-                }
-            }
-        });
+        System.out.println("Loading wars and attacks");
+        int loadWarsDays = Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS < 0 ? -1 : Math.max(Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS, 6);
+        loadWars(loadWarsDays);
+        System.out.println("Loaded wars");
+        int loadAttackDays = Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS < 0 ? -1 : Math.min(Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS, Math.max(0, loadWarsDays));
+        if (loadAttackDays != 0) {
+            System.out.println("Loading attacks");
+            importLegacyAttacks();
+            System.out.println("Loaded legacy attacks");
+            loadAttacks(loadAttackDays);
+            System.out.println("Loaded attacks " + attacksByWarId.size());
+        }
     }
 
     public void loadWars(int days) {
@@ -533,6 +516,7 @@ public class WarDB extends DBMainV2 {
 
                 for (byte[] data : attacks) {
                     AbstractCursor cursor = loader.apply(war, data);
+                    if (cursor == null) continue;
                     attackAdder.accept(cursor);
                 }
             }
@@ -837,7 +821,7 @@ public class WarDB extends DBMainV2 {
             // create index for war_id, attacker_nation_id, defender_nation_id, date
 
             String attacksTable = "CREATE TABLE IF NOT EXISTS `ATTACKS3` (" +
-                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "`id` INTEGER PRIMARY KEY, " +
                     "`war_id` INT NOT NULL, " +
                     "`attacker_nation_id` INT NOT NULL, " +
                     "`defender_nation_id` INT NOT NULL, " +
@@ -2041,21 +2025,22 @@ public class WarDB extends DBMainV2 {
                 byte[] data = attackCursorFactory.toBytes(attack);
                 if (attacks.isEmpty() || attacks.stream().noneMatch(f -> Arrays.equals(f, data))) {
                     attacks.add(data);
-                    toSave.add(new AttackEntry(attack.getWar_id(), attack.getAttacker_id(), attack.getDefender_id(), attack.getDate(), data));
+                    toSave.add(new AttackEntry(attack.getWar_attack_id(), attack.getWar_id(), attack.getAttacker_id(), attack.getDefender_id(), attack.getDate(), data));
                 }
             }
         }
 
         // String query = "INSERT OR IGNORE INTO `ATTACKS3` (`war_id`, `attacker_nation_id`, `defender_nation_id`, `date`, `data`) VALUES (?, ?, ?, ?, ?)";
-        String query = "INSERT OR REPLACE INTO `ATTACKS3` (`war_id`, `attacker_nation_id`, `defender_nation_id`, `date`, `data`) VALUES (?, ?, ?, ?, ?)";
+        String query = "INSERT OR REPLACE INTO `ATTACKS3` (`id`, `war_id`, `attacker_nation_id`, `defender_nation_id`, `date`, `data`) VALUES (?, ?, ?, ?, ?, ?)";
         executeBatch(toSave, query, new ThrowingBiConsumer<AttackEntry, PreparedStatement>() {
             @Override
             public void acceptThrows(AttackEntry attack, PreparedStatement stmt) throws SQLException {
-                stmt.setInt(1, attack.war_id());
-                stmt.setInt(2, attack.attacker_id());
-                stmt.setInt(3, attack.defender_id());
-                stmt.setLong(4, attack.date());
-                stmt.setBytes(5, attack.data());
+                stmt.setInt(1, attack.id());
+                stmt.setInt(2, attack.war_id());
+                stmt.setInt(3, attack.attacker_id());
+                stmt.setInt(4, attack.defender_id());
+                stmt.setLong(5, attack.date());
+                stmt.setBytes(6, attack.data());
             }
         });
     }
@@ -2251,7 +2236,7 @@ public class WarDB extends DBMainV2 {
         } else {
             whereClause = "";
         }
-        String query = "SELECT * FROM `attacks3` " + whereClause + " ORDER BY `war_attack_id` ASC";
+        String query = "SELECT * FROM `attacks3` " + whereClause + " ORDER BY `id` ASC";
         // `war_id`, `attacker_nation_id`, `defender_nation_id`, `date`, `data`
         // Int2ObjectOpenHashMap<List<byte[]>> attacksByWarId (is a field for this class)
         AttackCursorFactory factory = new AttackCursorFactory();

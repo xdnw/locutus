@@ -152,9 +152,9 @@ public abstract class AbstractCursor implements IAttack2 {
             if (loot != null) {
                 Map<ResourceType, Double> lootDouble = PnwUtil.resourcesToMap(loot);
                 if (attacker) {
-                    losses = PnwUtil.subResourcesToA(losses, lootDouble);
+                    PnwUtil.subResourcesToA(losses, lootDouble);
                 } else {
-                    losses = PnwUtil.addResourcesToA(losses, lootDouble);
+                    PnwUtil.addResourcesToA(losses, lootDouble);
                 }
             }
             else if (getMoney_looted() != 0) {

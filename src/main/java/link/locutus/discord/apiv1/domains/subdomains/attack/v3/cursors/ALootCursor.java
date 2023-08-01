@@ -56,11 +56,6 @@ public class ALootCursor extends FailedCursor {
     }
 
     @Override
-    public Map<ResourceType, Double> getLosses(boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
-        return null;
-    }
-
-    @Override
     public AttackType getAttack_type() {
         return AttackType.A_LOOT;
     }

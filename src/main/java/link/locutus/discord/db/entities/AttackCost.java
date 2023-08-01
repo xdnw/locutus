@@ -200,8 +200,8 @@ public class AttackCost {
             Map<ResourceType, Double> attConsume = attack.getLosses(true, false, false, true, false, false);
             Map<ResourceType, Double> defConsume = attack.getLosses(false, false, false, true, false, false);
 
-            double attInfra = PnwUtil.convertedTotal(attack.getLosses(true, false, true, false, false, false));
-            double defInfra = PnwUtil.convertedTotal(attack.getLosses(false, false, true, false, false, false));
+            double attInfra = 0;
+            double defInfra = attack.getInfra_destroyed_value();
 
             Map<Building, Integer> defBuild = attack.getBuildingsDestroyed();
 

@@ -2217,7 +2217,7 @@ public class NationDB extends DBMainV2 {
         saveTreasures(treasuresToSave);
     }
 
-    public void saveTreasures(Collection<DBTreasure> treasures) {
+    public synchronized void saveTreasures(Collection<DBTreasure> treasures) {
         String insert = "INSERT OR REPLACE INTO TREASURES4 (id, name, color, continent, bonus, spawn_date, nation_id, respawn_alert) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         for (DBTreasure treasure : treasures) {
             try (PreparedStatement stmt = getConnection().prepareStatement(insert, Statement.RETURN_GENERATED_KEYS)) {
@@ -2292,7 +2292,7 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    public void addDescription(int id, String description) {
+    public synchronized void addDescription(int id, String description) {
         String query = "INSERT INTO NATION_DESCRIPTIONS (id, description) VALUES (?, ?)";
         try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
             stmt.setInt(1, id);
@@ -2364,7 +2364,7 @@ public class NationDB extends DBMainV2 {
             throw new RuntimeException(e);
         }
     }
-    public void addRadiationByTurn(Continent continent, long turn, double radiation) {
+    public synchronized void addRadiationByTurn(Continent continent, long turn, double radiation) {
         try (PreparedStatement stmt = getConnection().prepareStatement("INSERT OR IGNORE INTO RADIATION_BY_TURN (continent, radiation, turn) VALUES (?, ?, ?)")) {
             stmt.setInt(1, continent.ordinal());
             stmt.setInt(2, (int) (radiation * 100));
@@ -2965,7 +2965,9 @@ public class NationDB extends DBMainV2 {
                 }
             }
 
-            getDb().drop("NATION_LOOT");
+            synchronized (this) {
+                getDb().drop("NATION_LOOT");
+            }
         }
 
         if (fromAttacks) {
@@ -3924,7 +3926,7 @@ public class NationDB extends DBMainV2 {
         deleteNationsInDB(ids);
     }
 
-    private void deleteNationsInDB(Set<Integer> ids) {
+    private synchronized void deleteNationsInDB(Set<Integer> ids) {
         if (ids.size() == 1) {
             int id = ids.iterator().next();
             executeStmt("DELETE FROM NATIONS2 WHERE nation_id = " + id);
@@ -3937,7 +3939,7 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    private void deleteTreatiesInDB(Set<Integer> ids) {
+    private synchronized void deleteTreatiesInDB(Set<Integer> ids) {
         if (ids.size() == 1) {
             int id = ids.iterator().next();
             executeStmt("DELETE FROM TREATIES2 WHERE id = " + id);
