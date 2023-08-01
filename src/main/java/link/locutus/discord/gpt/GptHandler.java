@@ -5,9 +5,9 @@ import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
 import com.knuddels.jtokkit.api.ModelType;
-import com.theokanning.openai.OpenAiService;
 import com.theokanning.openai.moderation.Moderation;
 import com.theokanning.openai.moderation.ModerationRequest;
+import com.theokanning.openai.service.OpenAiService;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -15,6 +15,8 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.imps.AdaEmbedding;
 import link.locutus.discord.gpt.imps.GPTSummarizer;
+import link.locutus.discord.gpt.imps.GPTText2Text;
+import link.locutus.discord.gpt.imps.IText2Text;
 import link.locutus.discord.gpt.imps.ProcessSummarizer;
 import link.locutus.discord.gpt.imps.ProcessText2Text;
 import link.locutus.discord.util.FileUtil;
@@ -55,7 +57,7 @@ public class GptHandler {
     public final IEmbeddingDatabase embeddingDatabase;
     private final ISummarizer summarizer;
     private final IModerator moderator;
-    private final ProcessText2Text text2text;
+    private final IText2Text text2text;
 
     public GptHandler() throws SQLException, ClassNotFoundException {
         this.registry = Encodings.newDefaultEncodingRegistry();
@@ -79,11 +81,13 @@ public class GptHandler {
             throw new RuntimeException("venv not found: " + venvExe.getAbsolutePath());
         }
 
-        this.summarizer = new ProcessSummarizer(venvExe, gpt4freePath, ModelType.GPT_3_5_TURBO, 8192);
-        this.text2text = new ProcessText2Text(venvExe, gpt4freePath);
+//        this.summarizer = new ProcessSummarizer(venvExe, gpt4freePath, ModelType.GPT_3_5_TURBO, 8192);
+//        this.text2text = new ProcessText2Text(venvExe, gpt4freePath);
+        this.summarizer = new GPTSummarizer(registry, service);
+        this.text2text = new GPTText2Text(registry, service, embeddingDatabase);
     }
 
-    public ProcessText2Text getText2text() {
+    public IText2Text getText2text() {
         return text2text;
     }
 

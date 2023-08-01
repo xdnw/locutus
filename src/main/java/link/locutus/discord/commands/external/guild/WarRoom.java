@@ -72,7 +72,7 @@ public class WarRoom extends Command {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         WarCategory warCat = db.getWarChannel(true);
         if (warCat == null) {
-            return "War categories are not enabled. See " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(true) + "";
+            return "War categories are not enabled. See " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(db, true) + "";
         }
         String filterArg = DiscordUtil.parseArg(args, "filter");
 

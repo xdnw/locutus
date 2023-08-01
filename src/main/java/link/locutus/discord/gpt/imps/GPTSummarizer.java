@@ -3,7 +3,11 @@ package link.locutus.discord.gpt.imps;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
 import com.knuddels.jtokkit.api.ModelType;
-import com.theokanning.openai.OpenAiService;
+import com.theokanning.openai.completion.chat.ChatCompletionChoice;
+import com.theokanning.openai.completion.chat.ChatCompletionRequest;
+import com.theokanning.openai.completion.chat.ChatCompletionResult;
+import com.theokanning.openai.completion.chat.ChatMessage;
+import com.theokanning.openai.service.OpenAiService;
 import com.theokanning.openai.completion.CompletionChoice;
 import com.theokanning.openai.completion.CompletionRequest;
 import com.theokanning.openai.completion.CompletionResult;
@@ -52,15 +56,19 @@ public class GPTSummarizer implements ISummarizer {
 
     public String summarizeChunk(String chunk) {
         String full = prompt.replace("{query}", chunk);
-        CompletionRequest completionRequest = CompletionRequest.builder()
-                .prompt(full)
+
+        ChatCompletionRequest completionRequest = ChatCompletionRequest.builder()
+                .messages(List.of(new ChatMessage("user", full)))
                 .model(this.model.getName())
-                .echo(false)
                 .build();
-        CompletionResult completion = service.createCompletion(completionRequest);
+        ChatCompletionResult completion = service.createChatCompletion(completionRequest);
         List<String> results = new ArrayList<>();
-        for (CompletionChoice choice : completion.getChoices()) {
-            results.add(choice.getText());
+        for (ChatCompletionChoice choice : completion.getChoices()) {
+            System.out.println("Reason: " + choice.getFinishReason());
+            System.out.println("name: " + choice.getMessage().getName());
+            System.out.println("role: " + choice.getMessage().getRole());
+            System.out.println("text: " + choice.getMessage().getContent());
+            results.add(choice.getMessage().getContent());
         }
         return String.join("\n", results);
     }

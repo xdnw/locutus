@@ -50,10 +50,26 @@ import static graphql.com.google.common.base.Preconditions.checkNotNull;
 
 public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingDatabase, Closeable {
 
-    private final Long2ObjectOpenHashMap<float[]> vectors = new Long2ObjectOpenHashMap<>();
-    private Map<Integer, Set<Long>> textHashBySource = new Int2ObjectOpenHashMap<>();
-    private Map<Integer, Map<Long, Long>> expandedTextHashBySource = new Int2ObjectOpenHashMap<>();
-    private Map<Long, Set<EmbeddingSource>> embeddingSourcesByGuild = new ConcurrentHashMap<>();
+    private final Long2ObjectOpenHashMap<float[]> vectors;
+    private final Map<Integer, Set<Long>> textHashBySource;
+    private final Map<Integer, Map<Long, Long>> expandedTextHashBySource;
+    private final Map<Long, Set<EmbeddingSource>> embeddingSourcesByGuild;
+
+    public AEmbeddingDatabase(String name) throws SQLException, ClassNotFoundException {
+        super(Settings.INSTANCE.DATABASE, name, false);
+        this.vectors = new Long2ObjectOpenHashMap<>();
+        this.textHashBySource = new Int2ObjectOpenHashMap<>();
+        this.expandedTextHashBySource = new Int2ObjectOpenHashMap<>();
+        this.embeddingSourcesByGuild = new ConcurrentHashMap<>();
+
+        // import old data
+        importLegacyDate();
+
+        loadVectors();
+        loadHashesBySource();
+        loadSources();
+        loadExpandedTextMeta();
+    }
 
     @Override
     public void registerHashes(EmbeddingSource source, Set<Long> hashes, boolean deleteAbsent) {
@@ -241,7 +257,7 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
             long hash = r.get("hash", Long.class);
             byte[] data = r.get("data", byte[].class);
             float[] vector = ArrayUtil.toFloatArray(data);
-            vectors.put(hash, vector);
+            this.vectors.put(hash, vector);
         });
     }
 
@@ -283,17 +299,6 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
         createVectorSourcesTable();
 //        sources: long source_id, String source_name, long date_added, long guild_id
         createSourcesTable();
-
-        // import old data
-        importLegacyDate();
-
-        loadVectors();
-
-        loadHashesBySource();
-
-        loadSources();
-
-        loadExpandedTextMeta();
     }
 
     public void loadExpandedTextMeta() {
@@ -307,11 +312,6 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
             Map<Long, Long> hashes = expandedTextHashBySource.computeIfAbsent(source_id, k -> new Long2LongOpenHashMap());
             hashes.put(embedding_hash, body_hash);
         });
-    }
-
-    public AEmbeddingDatabase(String name) throws SQLException, ClassNotFoundException {
-        super(Settings.INSTANCE.DATABASE, name, false);
-        createTables();
     }
 
     @Override

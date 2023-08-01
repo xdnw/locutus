@@ -160,7 +160,7 @@ public class GuildKey {
                                         "2. Scroll down to where it says Alliance Description:\n" +
                                         "3. Put your guild id `" + db.getIdLong() + "` somewhere in the text\n" +
                                         "4. Click save\n" +
-                                        "5. Run the command " + getCommandObj(aaIds) + " again\n" +
+                                        "5. Run the command " + getCommandObj(db, aaIds) + " again\n" +
                                         "(note: you can remove the id after setup)";
                                 throw new IllegalArgumentException(msg);
                             }

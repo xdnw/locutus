@@ -250,8 +250,13 @@ public final class FileUtil {
                         return new String(bytes, StandardCharsets.UTF_8);
                     } catch (IOException e) {
                         try (InputStream is = http.getErrorStream()) {
-                            throw new IOException(e.getMessage() + ":\n" + IOUtils.toString(is, StandardCharsets.UTF_8));
+                            if (is != null) {
+                                throw new IOException(e.getMessage() + ":\n" + IOUtils.toString(is, StandardCharsets.UTF_8));
+                            }
                         }
+                        System.out.println("URL " + urlStr);
+                        e.printStackTrace();
+                        throw new RuntimeException(e);
                     }
                 } catch (IOException e) {
                     throw new RuntimeException(e);
@@ -268,10 +273,10 @@ public final class FileUtil {
                         return result;
                     } catch (RuntimeException e) {
                         Throwable cause = e;
-                        while (cause.getCause() != null) {
+                        while (cause.getCause() != null && cause != cause.getCause()) {
                             cause = cause.getCause();
                         }
-                        if (e.getMessage().contains("Server returned HTTP response code: 429")) {
+                        if (e.getMessage() != null && e.getMessage().contains("Server returned HTTP response code: 429")) {
                             System.out.println("Error 429");
                             try {
                                 Thread.sleep(backoff);

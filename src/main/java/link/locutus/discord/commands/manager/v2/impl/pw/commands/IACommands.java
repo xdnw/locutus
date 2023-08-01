@@ -979,7 +979,7 @@ public class IACommands {
 
         Set<Integer> aaIds = db.getAllianceIds();
         if (!aaIds.contains(aaId)) {
-            return "Alliance: " + PnwUtil.getMarkdownUrl(aaId, true) + " is not registered in this discord server. Please use " + GuildKey.ALLIANCE_ID.getCommandObj(Collections.singleton(aaId)) + " to register it.";
+            return "Alliance: " + PnwUtil.getMarkdownUrl(aaId, true) + " is not registered in this discord server. Please use " + GuildKey.ALLIANCE_ID.getCommandObj(db, Collections.singleton(aaId)) + " to register it.";
         }
         DBAlliance alliance = DBAlliance.getOrCreate(aaId);
 

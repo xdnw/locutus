@@ -1,6 +1,6 @@
 package link.locutus.discord.gpt;
 
-import com.theokanning.openai.OpenAiService;
+import com.theokanning.openai.service.OpenAiService;
 import com.theokanning.openai.moderation.Moderation;
 import com.theokanning.openai.moderation.ModerationRequest;
 import link.locutus.discord.config.Settings;

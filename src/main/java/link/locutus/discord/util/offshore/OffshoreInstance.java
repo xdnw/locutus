@@ -661,7 +661,7 @@ public class OffshoreInstance {
                             String msg = nationAccount.getNation() + " is missing `" + PnwUtil.resourcesToString(missing) + "`. (see " +
                                     CM.deposits.check.cmd.create(nationAccount.getNation(), null, null, null, null, null, null, null, null) +
                                     " ). RESOURCE_CONVERSION is disabled (see " +
-                                    GuildKey.RESOURCE_CONVERSION.getCommandObj(true) +
+                                    GuildKey.RESOURCE_CONVERSION.getCommandObj(senderDB, true) +
                                     ")";
                             allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                             if (allowedIds.isEmpty()) {
@@ -712,7 +712,7 @@ public class OffshoreInstance {
                         String msg = taxAccount.getQualifiedName() + " is missing `" + PnwUtil.resourcesToString(missing) + "`. (see " +
                                 CM.deposits.check.cmd.create(taxAccount.getQualifiedName(), null, null, null, null, null, null, null, null) +
                                 " ). RESOURCE_CONVERSION is disabled (see " +
-                                GuildKey.RESOURCE_CONVERSION.getCommandObj(true) +
+                                GuildKey.RESOURCE_CONVERSION.getCommandObj(senderDB, true) +
                                 ")";
                         allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                         if (allowedIds.isEmpty()) {
