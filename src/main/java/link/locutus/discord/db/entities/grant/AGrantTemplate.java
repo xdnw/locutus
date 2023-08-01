@@ -2,6 +2,7 @@ package link.locutus.discord.db.entities.grant;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.commands.manager.v2.binding.Key;
@@ -475,11 +476,11 @@ public abstract class AGrantTemplate<T> {
         outer:
         for (int offensiveI = requireNOffensives; offensiveI < wars.size(); offensiveI++) {
             DBWar war = wars.get(offensiveI);
-            List<DBAttack> attacks = war.getAttacks();
+            List<AbstractCursor> attacks = war.getAttacks();
             // reverse attacks
             Collections.reverse(attacks);
-            for (DBAttack attack : attacks) {
-                if (attack.getAttacker_nation_id() != receiver.getId()) {
+            for (AbstractCursor attack : attacks) {
+                if (attack.getAttacker_id() != receiver.getId()) {
                     return attack.getDate();
                 }
             }

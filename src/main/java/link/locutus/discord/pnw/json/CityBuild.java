@@ -82,6 +82,16 @@ public class CityBuild {
     private transient Double commerce;
     private transient Boolean powered;
 
+    private transient Integer city_id;
+
+    public void setCity_id(Integer city_id) {
+        this.city_id = city_id;
+    }
+
+    public Integer getCity_id() {
+        return city_id;
+    }
+
     public CityBuild() {
         infraNeeded = 0;
         impTotal = 0;

@@ -1,6 +1,7 @@
 package link.locutus.discord.util.task.war;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.config.Settings;
@@ -12,7 +13,7 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.sim.WarNation;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.WarContainer;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -43,13 +44,13 @@ public class WarCard {
         this(war, checkCounters, false);
     }
 
-    public WarCard(DBWar war, List<DBAttack> attacks, boolean onlyCheckBlockade) {
+    public WarCard(DBWar war, List<AbstractCursor> attacks, boolean onlyCheckBlockade) {
         this.war = war;
         this.warId = war.warId;
         update(attacks, onlyCheckBlockade);
     }
 
-    public WarCard(DBWar war, List<DBAttack> attacks, boolean checkGC, boolean checkAC, boolean checkBlockade) {
+    public WarCard(DBWar war, List<AbstractCursor> attacks, boolean checkGC, boolean checkAC, boolean checkBlockade) {
         this.war = war;
         this.warId = war.warId;
         update(attacks, checkGC, checkAC, checkBlockade);
@@ -152,7 +153,7 @@ public class WarCard {
 //            war.update(pnwWar);
 //        }
 //
-//        List<DBAttack> attacks = Locutus.imp().getWarDB().getAttacksByWarId(war.warId);
+//        List<AbstractCursor> attacks = Locutus.imp().getWarDB().getAttacksByWarId(war.warId);
 //        Map<MilitaryUnit, Integer> attUnitLoss = new HashMap<>();
 //        Map<MilitaryUnit, Integer> defUnitLoss = new HashMap<>();
 //        Map<ResourceType, Double> attRssLoss = new HashMap<>();
@@ -162,7 +163,7 @@ public class WarCard {
 //        double attInfraLoss = 0;
 //        double defInfraLoss = 0;
 //
-//        for (DBAttack attack : attacks) {
+//        for (AbstractCursor attack : attacks) {
 //            attUnitLoss = PnwUtil.add(attack.getUnitLosses(true), attUnitLoss);
 //            defUnitLoss = PnwUtil.add(attack.getUnitLosses(false), defUnitLoss);
 //            PnwUtil.addResourcesToA(attRssLoss, attack.getLosses(true));
@@ -226,7 +227,7 @@ public class WarCard {
 
     public void update(DBWar war, boolean checkCounters, boolean onlyCheckBlockade) {
         this.war = war;
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWar(war);
+        List<AbstractCursor> attacks = war.getAttacks();
         update(attacks, onlyCheckBlockade);
         if (checkCounters) updateCounterStats();
     }
@@ -285,12 +286,12 @@ public class WarCard {
         return description.toString();
     }
 
-    public void update(List<DBAttack> attacks, boolean onlyCheckBlockade) {
+    public void update(List<AbstractCursor> attacks, boolean onlyCheckBlockade) {
         if (onlyCheckBlockade) update(attacks, false, false, true);
         else  update(attacks, true, true, true);
     }
 
-    public void update(List<DBAttack> attacks, boolean checkGC, boolean checkAC, boolean checkBlockade) {
+    public void update(List<AbstractCursor> attacks, boolean checkGC, boolean checkAC, boolean checkBlockade) {
         Map.Entry<Integer, Integer> res = this.war.getResistance(attacks);
         this.attackerResistance = res.getKey();
         this.defenderResistance = res.getValue();
@@ -305,21 +306,21 @@ public class WarCard {
 
         boolean isActive = war.isActive();
 //
-        for (DBAttack attack : attacks) {
-            if (attack.getAttacker_nation_id() == war.attacker_id) attackerFortified = false; else defenderFortified = false;
+        for (AbstractCursor attack : attacks) {
+            if (attack.getAttacker_id() == war.attacker_id) attackerFortified = false; else defenderFortified = false;
             switch (attack.getAttack_type()) {
                 case FORTIFY:
-                    if (attack.getAttacker_nation_id() == war.attacker_id) attackerFortified = true;
+                    if (attack.getAttacker_id() == war.attacker_id) attackerFortified = true;
                     else defenderFortified = true;
                     break;
                 case GROUND:
                     switch (attack.getSuccess()) {
-                        case 3:
+                        case IMMENSE_TRIUMPH:
                             gcDate = attack.getDate();
-                            groundControl = attack.getAttacker_nation_id();
-                        case 2:
-                        case 1:
-                            if (groundControl != attack.getAttacker_nation_id()) groundControl = 0;
+                            groundControl = attack.getAttacker_id();
+                        case MODERATE_SUCCESS:
+                        case PYRRHIC_VICTORY:
+                            if (groundControl != attack.getAttacker_id()) groundControl = 0;
                     }
                     break;
                 case AIRSTRIKE_INFRA:
@@ -329,22 +330,22 @@ public class WarCard {
                 case AIRSTRIKE_SHIP:
                 case AIRSTRIKE_AIRCRAFT:
                     switch (attack.getSuccess()) {
-                        case 3:
+                        case IMMENSE_TRIUMPH:
                             acDate = attack.getDate();
-                            airSuperiority = attack.getAttacker_nation_id();
-                        case 2:
-                        case 1:
-                            if (airSuperiority != attack.getAttacker_nation_id()) airSuperiority = 0;
+                            airSuperiority = attack.getAttacker_id();
+                        case MODERATE_SUCCESS:
+                        case PYRRHIC_VICTORY:
+                            if (airSuperiority != attack.getAttacker_id()) airSuperiority = 0;
                     }
                     break;
                 case NAVAL:
                     switch (attack.getSuccess()) {
-                        case 3:
+                        case IMMENSE_TRIUMPH:
                             blockadeDate = attack.getDate();
-                            blockaded = attack.getDefender_nation_id();
-                        case 2:
-                        case 1:
-                            if (blockaded != attack.getDefender_nation_id()) blockaded = 0;
+                            blockaded = attack.getDefender_id();
+                        case MODERATE_SUCCESS:
+                        case PYRRHIC_VICTORY:
+                            if (blockaded != attack.getDefender_id()) blockaded = 0;
                     }
                     break;
                 case VICTORY:
@@ -356,7 +357,7 @@ public class WarCard {
         if (isActive) {
             if (checkGC && gcDate != Long.MAX_VALUE) {
                 attacks = Locutus.imp().getWarDb().getAttacks(groundControl, gcDate);
-                attacks.removeIf(a -> a.getDefender_nation_id() != groundControl || a.getSuccess() != 3);
+                attacks.removeIf(a -> a.getDefender_id() != groundControl || a.getSuccess() != SuccessType.IMMENSE_TRIUMPH);
                 if (!attacks.isEmpty()
                         || (Locutus.imp().getNationDB().getMinMilitary(groundControl, MilitaryUnit.SOLDIER, gcDate) == 0
                         && Locutus.imp().getNationDB().getMinMilitary(groundControl, MilitaryUnit.TANK, gcDate) == 0
@@ -364,7 +365,7 @@ public class WarCard {
             }
             if (checkAC && acDate != Long.MAX_VALUE) {
                 attacks = Locutus.imp().getWarDb().getAttacks(airSuperiority, acDate);
-                attacks.removeIf(a -> a.getDefender_nation_id() != airSuperiority || a.getSuccess() != 3);
+                attacks.removeIf(a -> a.getDefender_id() != airSuperiority || a.getSuccess() != SuccessType.IMMENSE_TRIUMPH);
                 if (!attacks.isEmpty()
                         || Locutus.imp().getNationDB().getMinMilitary(airSuperiority, MilitaryUnit.AIRCRAFT, acDate) == 0)
                     airSuperiority = 0;
@@ -372,7 +373,7 @@ public class WarCard {
             if (checkBlockade && blockadeDate != Long.MAX_VALUE) {
                 int blockader = blockaded == war.attacker_id ? war.defender_id : war.attacker_id;
                 attacks = Locutus.imp().getWarDb().getAttacks(blockader, blockadeDate);
-                attacks.removeIf(a -> a.getDefender_nation_id() != blockader || a.getSuccess() != 3);
+                attacks.removeIf(a -> a.getDefender_id() != blockader || a.getSuccess() != SuccessType.IMMENSE_TRIUMPH);
                 if (!attacks.isEmpty() ||
                         Locutus.imp().getNationDB().getMinMilitary(blockader, MilitaryUnit.SHIP, blockadeDate) == 0) {
                     blockaded = 0;

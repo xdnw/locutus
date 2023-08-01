@@ -73,7 +73,7 @@ public class Embassy extends Command {
 
         Role role = DiscordUtil.getAARoles(guild.getRoles()).get(aa);
         if (role == null) {
-            return "No role found (try using " + CM.role.autoassign.cmd.create().toSlashCommand() + " ?)";
+            return "No role found (try using " + CM.role.autoassign.cmd.toSlashMention() + " ?)";
         }
 
         for (TextChannel catChan : category.getTextChannels()) {

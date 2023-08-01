@@ -1175,7 +1175,7 @@ public class GuildKey {
         @Override
         public Map.Entry<Integer, Long> validate(GuildDB db, Map.Entry<Integer, Long> ids) {
             if (db.getOrNull(ALLIANCE_ID) != null) {
-                throw new IllegalArgumentException("You cannot delegate a server with an alliance id set");
+                throw new IllegalArgumentException("You cannot set a delegate a server when this server has `ALLIANCE_ID` set. Remove `DELEGATE_SERVER` or `ALLIANCE_ID` first");
             }
             Guild guild = Locutus.imp().getDiscordApi().getGuildById(ids.getValue());
             if (guild == null)

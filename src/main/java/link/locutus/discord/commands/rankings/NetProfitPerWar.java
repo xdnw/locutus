@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -9,6 +9,7 @@ import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.Predicate;
 
 public class NetProfitPerWar extends Command {
     public NetProfitPerWar() {
@@ -42,6 +44,7 @@ public class NetProfitPerWar extends Command {
         Set<Integer> AAs = null;
         String id = "AA";
 
+        Predicate<DBWar> warFilter = f -> true;
         for (String arg : args) {
             if (MathMan.isInteger(arg)) {
                 days = Integer.parseInt(arg);
@@ -53,6 +56,8 @@ public class NetProfitPerWar extends Command {
             } else {
                 id = arg;
                 AAs = DiscordUtil.parseAlliances(guild, arg);
+                Set<Integer> finalAAs1 = AAs;
+                warFilter = warFilter.and(f -> (finalAAs1.contains(f.getAttacker_aa()) || finalAAs1.contains(f.getDefender_aa())));
             }
         }
         int sign = profit ? -1 : 1;
@@ -64,18 +69,20 @@ public class NetProfitPerWar extends Command {
         Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
 
         Set<Integer> finalAAs = AAs;
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs);
+
+        Predicate<DBWar> finalWarFilter = warFilter;
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs, Long.MAX_VALUE, f -> f.possibleEndDate() >= cutoffMs && finalWarFilter.test(f), f -> true);
 
         SummedMapRankBuilder<Integer, Number> byNation = new RankBuilder<>(attacks)
-                .group((BiConsumer<DBAttack, GroupedRankBuilder<Integer, DBAttack>>) (attack, map) -> {
+                .group((BiConsumer<AbstractCursor, GroupedRankBuilder<Integer, AbstractCursor>>) (attack, map) -> {
                     // Group attacks into attacker and defender
-                    map.put(attack.getAttacker_nation_id(), attack);
-                    map.put(attack.getDefender_nation_id(), attack);
+                    map.put(attack.getAttacker_id(), attack);
+                    map.put(attack.getDefender_id(), attack);
                 }).map((i, a) -> a.getWar_id(),
                         // Convert attack to profit value
                         (nationdId, attack) -> {
                             DBNation nation = nations.get(nationdId);
-                            return nation != null ? sign * attack.getLossesConverted(attack.getAttacker_nation_id() == nationdId) : 0;
+                            return nation != null ? sign * attack.getLossesConverted(attack.getAttacker_id() == nationdId) : 0;
                         })
                 // Average it per war
                 .average();

@@ -42,6 +42,7 @@ import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.*;
 import net.dv8tion.jda.api.utils.WidgetUtil;
 import net.dv8tion.jda.api.utils.data.SerializableData;
+import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
@@ -663,9 +664,15 @@ public class SlashCommandManager extends ListenerAdapter {
             MessageChannel channel = event.getChannel();
             InteractionHook hook = event.getHook();
 
-            String path = event.getFullCommandName();
+            String path = event.getFullCommandName().replace("/", " ").toLowerCase(Locale.ROOT);
             if (!path.contains("modal")) {
-                RateLimitUtil.queue(event.deferReply(false));
+                if (path.equalsIgnoreCase("announcement view")) {
+                    RateLimitUtil.complete(event.deferReply(true));
+                    hook.setEphemeral(true);
+                } else {
+                    System.out.println("Normal reply");
+                    RateLimitUtil.queue(event.deferReply(false));
+                }
             }
 
             Map<String, String> combined = new HashMap<>();
@@ -678,7 +685,7 @@ public class SlashCommandManager extends ListenerAdapter {
 
             DiscordHookIO io = new DiscordHookIO(hook, event);
             Guild guild = event.isFromGuild() ? event.getGuild() : null;
-            Locutus.imp().getCommandManager().getV2().run(guild, channel, event.getUser(), null, io, path.replace("/", " "), combined, true);
+            Locutus.imp().getCommandManager().getV2().run(guild, channel, event.getUser(), null, io, path, combined, true);
             long end = System.currentTimeMillis();
             if (end - start > 15) {
                 System.out.println("remove:||Slash command took " + (end - start) + "ms");

@@ -303,7 +303,7 @@ public class FACommands {
             aaRoles = DiscordUtil.getAARoles(guild.getRoles());
             role = aaRoles.get(nation.getAlliance_id());
             if (role == null) {
-                return "No alliance role found. Please try " + CM.role.autoassign.cmd.create().toSlashCommand() + "";
+                return "No alliance role found. Please try " + CM.role.autoassign.cmd.toSlashMention() + "";
             }
         }
 

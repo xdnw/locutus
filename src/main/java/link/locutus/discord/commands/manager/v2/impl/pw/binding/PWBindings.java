@@ -259,6 +259,7 @@ public class PWBindings extends BindingHelper {
     public CityBuild city(@Default @Me DBNation nation, @TextArea String input) {
         // {city X Nation}
         int index = input.indexOf('{');
+        Integer cityId = null;
         String json;
         if (index == -1) {
             json = null;
@@ -268,12 +269,14 @@ public class PWBindings extends BindingHelper {
                 index = input.indexOf('}');
                 if (index == -1) throw new IllegalArgumentException("No closing bracket found");
                 // parse number 1234
-                int cityId = input.contains(" ") ? Integer.parseInt(input.substring(6, index)) - 1 : 0;
+                int cityIndex = input.contains(" ") ? Integer.parseInt(input.substring(6, index)) - 1 : 0;
                 Set<Map.Entry<Integer, JavaCity>> cities = nation.getCityMap(true, false).entrySet();
                 int i = 0;
                 for (Map.Entry<Integer, JavaCity> entry : cities) {
-                    if (++i == index) {
-                       return entry.getValue().toCityBuild();
+                    if (++i == cityIndex) {
+                        CityBuild build = entry.getValue().toCityBuild();
+                        build.setCity_id(entry.getKey());
+                        return build;
                     }
                 }
                 throw new IllegalArgumentException("City not found: " + index + " for natiion " + nation.getName());
@@ -283,7 +286,7 @@ public class PWBindings extends BindingHelper {
         }
         CityBuild build = null;
         if (input.contains("city/id=")) {
-            int cityId = Integer.parseInt(input.split("=")[1]);
+            cityId = Integer.parseInt(input.split("=")[1]);
             Map.Entry<Integer, DBCity> cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
             if (cityEntry == null) throw new IllegalArgumentException("No city found in cache for " + cityId);
             int nationId = cityEntry.getKey();
@@ -297,7 +300,12 @@ public class PWBindings extends BindingHelper {
             if (build != null) {
                 json = build2.toString().replace("}", "") + "," + build.toString().replace("{", "");
                 build = CityBuild.of(json, true);
+            } else {
+                build = build2;
             }
+        }
+        if (build != null && cityId != null) {
+            build.setCity_id(cityId);
         }
         return build;
     }
@@ -674,6 +682,7 @@ public class PWBindings extends BindingHelper {
         List<String> remainder = new ArrayList<>();
         outer:
         for (String arg : args) {
+            arg = arg.trim();
             if (includeTaxId && !arg.startsWith("#") && arg.contains("tax_id")) {
                 int taxId = PnwUtil.parseTaxId(arg);
                 TaxBracket bracket = new TaxBracket(taxId, -1, "", 0, 0, 0L);
@@ -724,7 +733,6 @@ public class PWBindings extends BindingHelper {
         if (result.isEmpty()) throw new IllegalArgumentException("Invalid nations or alliances: " + input);
         return result;
     }
-
     @Binding(examples = "Cataclysm,790", value = "A comma separated list of alliances")
     public static Set<DBAlliance> alliances(@Default @Me Guild guild, String input) {
         Set<Integer> aaIds = DiscordUtil.parseAlliances(guild, input);
@@ -735,7 +743,6 @@ public class PWBindings extends BindingHelper {
         }
         return alliances;
     }
-
 
     @Binding(examples = "ACTIVE,EXPIRED", value = "A comma separated list of war statuses")
     public Set<WarStatus> WarStatuses(String input) {
@@ -1129,7 +1136,7 @@ public class PWBindings extends BindingHelper {
     @Me
     @Binding
     public WarCategory.WarRoom warRoom(@Me WarCategory warCat, @Me TextChannel channel) {
-        WarCategory.WarRoom warroom = warCat.getWarRoom(((GuildMessageChannel) channel));
+        WarCategory.WarRoom warroom = warCat.getWarRoom(channel);
         if (warroom == null) throw new IllegalArgumentException("The command was not run in a war room");
         return warroom;
     }

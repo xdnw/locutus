@@ -1,7 +1,7 @@
 package link.locutus.discord.db.entities;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -266,7 +266,7 @@ public class CustomBounty {
         if (allowedAttackRolls == null) allowedAttackRolls = new HashSet<>();
     }
 
-    public Map<DBWar, Set<DBAttack>> getWarAttacks(Set<Integer> attackerNations, Set<Integer> attackerAlliances) {
+    public Map<DBWar, Set<AbstractCursor>> getWarAttacks(Set<Integer> attackerNations, Set<Integer> attackerAlliances) {
         if (claimedBy != 0) {
             throw new IllegalStateException("Cannot get wars for a completed bounty");
         }
@@ -281,11 +281,11 @@ public class CustomBounty {
             wars.removeIf(f -> !allowedWarStatus.contains(f.status));
         }
         // get validating attacks
-        List<DBAttack> attacks = getAttacks(wars, attackerNations, attackerAlliances);
+        List<AbstractCursor> attacks = getAttacks(wars, attackerNations, attackerAlliances);
 
         // remove wars that dont have attacks
         Set<Integer> warsWithAttacks = new HashSet<>();
-        for (DBAttack attack : attacks) {
+        for (AbstractCursor attack : attacks) {
             warsWithAttacks.add(attack.getWar_id());
         }
         wars.removeIf(f -> !warsWithAttacks.contains(f.warId));
@@ -330,20 +330,20 @@ public class CustomBounty {
             // remove wars that dont match snapshoty
 
         }
-        Map<DBWar, Set<DBAttack>> warAttacks = new HashMap<>();
+        Map<DBWar, Set<AbstractCursor>> warAttacks = new HashMap<>();
         Map<Integer, DBWar> warsById = new HashMap<>();
         for (DBWar war : wars) {
             warAttacks.put(war, new HashSet<>());
             warsById.put(war.warId, war);
         }
-        for (DBAttack attack : attacks) {
+        for (AbstractCursor attack : attacks) {
             warAttacks.get(warsById.get(attack.getWar_id())).add(attack);
         }
         return warAttacks;
     }
 
-    private List<DBAttack> getAttacks(Set<DBWar> wars, Set<Integer> attackerNations, Set<Integer> attackerAlliances) {
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWars(wars);
+    private List<AbstractCursor> getAttacks(Set<DBWar> wars, Set<Integer> attackerNations, Set<Integer> attackerAlliances) {
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByWars(wars);
         Set<Integer> offensiveWarIds = new HashSet<>();
         for (DBWar war : wars) {
             if (nations.contains(war.attacker_id) || alliances.contains(war.attacker_aa)) {
@@ -359,7 +359,7 @@ public class CustomBounty {
         }
         // rolls
         if (!allowedAttackRolls.isEmpty()) {
-            attacks.removeIf(f -> !allowedAttackRolls.contains(SuccessType.values[f.getSuccess()]) && f.getAttack_type() != AttackType.VICTORY && f.getAttack_type() != AttackType.A_LOOT);
+            attacks.removeIf(f -> !allowedAttackRolls.contains(f.getSuccess()) && f.getAttack_type() != AttackType.VICTORY && f.getAttack_type() != AttackType.A_LOOT);
         }
 
         if (!unitAttacks.isEmpty()) {

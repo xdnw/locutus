@@ -2,7 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -12,7 +12,10 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -62,7 +65,9 @@ import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
+import rocker.guild.ia.message;
 
 import java.io.File;
 import java.io.IOException;
@@ -311,6 +316,61 @@ public class AdminCommands {
         return (archive ? "Archived" : "Unarchived") + " announcement with id: #" + announcementId;
     }
 
+    @Command(desc = "Find the announcement closest matching a message")
+    @RolePermission(Roles.ADMIN)
+    @NoFormat
+    public String find_invite(@Me GuildDB db, String invite) throws IOException {
+        List<Announcement.PlayerAnnouncement> matches = db.getPlayerAnnouncementsContaining(invite);
+        if (matches.isEmpty()) {
+            return "No announcements found with content: `" + invite + "`";
+        } else {
+            return "Found " + matches.size() + " matches:\n- " +
+                    matches.stream().map(f -> "{ID:" + f.ann_id + ", receiver:" + f.receiverNation + "}").collect(Collectors.joining("\n- "));
+        }
+    }
+
+    @Command(desc = "Find the announcement closest matching a message")
+    @RolePermission(Roles.ADMIN)
+    @NoFormat
+    public String find_announcement(@Me GuildDB db, int announcementId, String message) throws IOException {
+        List<Announcement.PlayerAnnouncement> announcements = db.getPlayerAnnouncementsByAnnId(announcementId);
+        if (announcements.isEmpty()) {
+            return "No announcements found with id: #" + announcementId;
+        }
+        long diffMin = Long.MAX_VALUE;
+        List<Announcement.PlayerAnnouncement> matches = new ArrayList<>();
+        for (Announcement.PlayerAnnouncement announcement : announcements) {
+            String content = announcement.getContent();
+            if (message.equalsIgnoreCase(content)) {
+                return "Announcement sent to nation id: " + announcement.receiverNation;
+            }
+            byte[] diff = StringMan.getDiffBytes(message, content);
+            if (diff.length < diffMin) {
+                diffMin = diff.length;
+                matches.clear();
+                matches.add(announcement);
+            } else if (diff.length == diffMin) {
+                matches.add(announcement);
+            }
+        }
+
+        if (matches.isEmpty()) {
+            return "No announcements found with id: #" + announcementId;
+        } else if (matches.size() == 1) {
+            Announcement.PlayerAnnouncement match = matches.get(0);
+            return "Closest match: " + match.receiverNation + " with " + diffMin + " differences:\n```\n" + match.getContent() + "\n```";
+        } else {
+            StringBuilder response = new StringBuilder();
+            response.append(matches.size() + " matches with " + diffMin + " differences:\n");
+            for (Announcement.PlayerAnnouncement match : matches) {
+                response.append("- " + match.receiverNation + "\n");
+                // content in ```
+                response.append("```\n" + match.getContent() + "\n```\n");
+            }
+            return response.toString();
+        }
+    }
+
     @Command(desc = "Send an announcement to multiple nations, with random variations for each receiver\n")
     @RolePermission(Roles.ADMIN)
     @HasApi
@@ -322,14 +382,24 @@ public class AdminCommands {
                            @Arg("The message you want to send") @TextArea String announcement,
                            @Arg("Lines of replacement words or phrases, separated by `|` for each variation\n" +
                                    "Add multiple lines for each replacement you want") @TextArea String replacements,
+                           @Arg("The channel to post the announcement to (must be same server)") @Switch("c") MessageChannel channel,
+                           @Arg("The text to post in the channel below the hidden announcement (e.g. mentions)") @Switch("b") String bottomText,
                            @Arg("The required number of differences between each message") @Switch("v") @Default("0") Integer requiredVariation,
                            @Arg("The required depth of changes from the original message") @Switch("r") @Default("0") Integer requiredDepth,
                            @Arg("Variation seed. The same seed will produce the same variations, otherwise results are random") @Switch("s") Long seed,
                            @Arg("If messages are sent in-game") @Switch("m") boolean sendMail,
                            @Arg("If messages are sent via discord direct message") @Switch("d") boolean sendDM,
                            @Switch("f") boolean force) throws IOException {
-        ApiKeyPool keys = db.getMailKey();
-        if (keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + CM.credentials.addApiKey.cmd.toSlashMention() + "");
+        // ensure channel is in same server or null
+        if (channel != null && ((GuildMessageChannel) channel).getGuild().getIdLong() != guild.getIdLong()) {
+            throw new IllegalArgumentException("Channel must be in the same server: " + ((GuildMessageChannel) channel).getGuild() + " != " + guild);
+        }
+        if (bottomText != null && channel == null) {
+            throw new IllegalArgumentException("Bottom text requires a channel");
+        }
+
+        ApiKeyPool keys = (sendMail || sendDM) ? db.getMailKey() : null;
+        if ((sendMail || sendDM) && keys == null) throw new IllegalArgumentException("No API_KEY set, please use " + GuildKey.API_KEY.getCommandMention() + "");
         Set<Integer> aaIds = db.getAllianceIds();
 
         List<String> errors = new ArrayList<>();
@@ -358,10 +428,7 @@ public class AdminCommands {
         }
 
         List<String> replacementLines = Arrays.asList(replacements.split("(?<!\\\\\\\\)\\\\n|\\\\\\\\n"));
-        System.out.println(replacementLines);
-
         Random random = seed == null ? new Random() : new Random(seed);
-
         Set<String> results = StringMan.enumerateReplacements(announcement, replacementLines, nations.size() + 1000, requiredVariation, requiredDepth);
 
         if (results.size() < nations.size()) return "Not enough entropy. Please provide more replacements";
@@ -402,7 +469,7 @@ public class AdminCommands {
             if (!result && sendDM) {
                 failedToDM.add(nation.getNation_id());
             }
-            if (!result || sendMail) {
+            if ((!result && sendDM) || sendMail) {
                 try {
                     nation.sendMail(keys, subject, personal);
                 } catch (IllegalArgumentException e) {
@@ -432,8 +499,34 @@ public class AdminCommands {
             db.addPlayerAnnouncement(entry.getKey(), annId, diff);
         }
 
+        if (channel != null) {
+            IMessageBuilder msg = new DiscordChannelIO(channel).create();
+            StringBuilder body = new StringBuilder();
+            body.append("From: " + author.getAsMention() + "\n");
+            body.append("To: `" + sendTo.getFilter() + "`\n");
+
+            if (sendMail) {
+                body.append("- A copy of this announcement has been sent ingame\n");
+            }
+            if (sendDM) {
+                body.append("- A copy of this announcement has been sent as a direct message\n");
+            }
+
+            body.append("\n\nPress `view` to view the announcement");
+
+            msg = msg.embed("[#" + annId + "] " + subject, body.toString());
+            if (bottomText != null && !bottomText.isEmpty()) {
+                msg = msg.append(bottomText);
+            }
+
+            CM.announcement.view cmd = CM.announcement.view.cmd.create(annId + "");
+            msg.commandButton(CommandBehavior.EPHEMERAL, cmd, "view").send();
+        }
+
         return output.toString().trim();
     }
+
+
 
 //    @Command
 //    @RolePermission(value = Roles.ADMIN, root = true)
@@ -1268,21 +1361,22 @@ public class AdminCommands {
     public String syncLootFromAttacks() {
         int found = 0;
         int added = 0;
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(0, AttackType.A_LOOT);
-        for (DBAttack attack : attacks) {
-            if (attack.getLooted() > 0) {
-                LootEntry existing = Locutus.imp().getNationDB().getAllianceLoot(attack.getLooted());
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(0, AttackType.A_LOOT);
+        for (AbstractCursor attack : attacks) {
+            if (attack.getAllianceIdLooted() > 0) {
+                LootEntry existing = Locutus.imp().getNationDB().getAllianceLoot(attack.getAllianceIdLooted());
                 if (existing != null && existing.getDate() < attack.getDate()) {
                     Double pct = attack.getLootPercent();
                     if (pct == 0) pct = 0.01;
                     double factor = 1/pct;
+                    double[] loot = attack.getLoot();
 
-                    double[] lootCopy = attack.loot == null ? ResourceType.getBuffer() : attack.loot.clone();
+                    double[] lootCopy = loot == null ? ResourceType.getBuffer() : loot.clone();
                     for (int i = 0; i < lootCopy.length; i++) {
                         lootCopy[i] = (lootCopy[i] * factor) - lootCopy[i];
                     }
 
-                    Locutus.imp().getNationDB().saveAllianceLoot(attack.getLooted(), attack.getDate(), lootCopy, NationLootType.WAR_LOSS);
+                    Locutus.imp().getNationDB().saveAllianceLoot(attack.getAllianceIdLooted(), attack.getDate(), lootCopy, NationLootType.WAR_LOSS);
                 }
             }
         }

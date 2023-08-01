@@ -1,11 +1,11 @@
 package link.locutus.discord.db.entities;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -187,8 +187,8 @@ public enum AllianceMetric {
 
             AttackCost cost = new AttackCost();
             long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
-            List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(nationIds, cutoff);
-            cost.addCost(attacks, a -> nationIds.contains(a.getAttacker_nation_id()), b -> nationIds.contains(b.getDefender_nation_id()));
+            List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(nationIds, cutoff);
+            cost.addCost(attacks, a -> nationIds.contains(a.getAttacker_id()), b -> nationIds.contains(b.getDefender_id()));
             return cost.convertedTotal(true);
         }
     },
@@ -458,51 +458,51 @@ public enum AllianceMetric {
 
     ;
 
-    public static synchronized void updateLegacy() {
-        long currentTurn = TimeUtil.getTurn();
-        long[] min = new long[1];
-        try {
-            Locutus.imp().getWarDb().iterateAttacks(0, new Consumer<DBAttack>() {
-                @Override
-                public void accept(DBAttack dbAttack) {
-                    min[0] = dbAttack.getDate();
-                    throw new RuntimeException("break");
-                }
-            });
-        } catch (RuntimeException ignore) {};
-        long startTurn = TimeUtil.getTurn(min[0]);
-        AllianceMetric metric = AllianceMetric.WARCOST_DAILY;
-        Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances(true, true, true, 80);
-        Set<Integer> allianceIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
-        for (long turn = startTurn; turn < currentTurn; turn++) {
-            System.out.println("Updating " + ((turn - startTurn)) + "/" + (currentTurn - startTurn) + " " + ((double) (turn - startTurn) / (currentTurn - startTurn) * 100) + "%");
-            long start = TimeUtil.getTimeFromTurn(turn + 1) - TimeUnit.DAYS.toMillis(1);
-            long end = TimeUtil.getTimeFromTurn(turn + 1);
-            List<DBAttack> allAttacks = Locutus.imp().getWarDb().getAttacks(start, end, f -> true);
-            Map<Integer, Map<DBAttack, Boolean>> attacksByAA = new HashMap<>();
-            for (DBAttack attack : allAttacks) {
-                DBWar war = attack.getWar();
-                if (war == null) continue;
-                if (allianceIds.contains(war.attacker_aa)) {
-                    attacksByAA.computeIfAbsent(war.attacker_aa, f -> new HashMap<>()).put(attack, war.attacker_id == attack.getAttacker_nation_id());
-                }
-                if (allianceIds.contains(war.defender_aa)) {
-                    attacksByAA.computeIfAbsent(war.defender_aa, f -> new HashMap<>()).put(attack, war.defender_id == attack.getAttacker_nation_id());
-                }
-            }
-            for (DBAlliance alliance : alliances) {
-                Map<DBAttack, Boolean> attacks = attacksByAA.get(alliance.getAlliance_id());
-                if (attacks == null || attacks.isEmpty()) continue;
-
-                AttackCost cost = new AttackCost();
-
-                cost.addCost(attacks.keySet(), a -> attacks.get(a), b -> !attacks.get(b));
-                double total = cost.convertedTotal(true);
-
-                Locutus.imp().getNationDB().addMetric(alliance, metric, turn, total);
-            }
-        }
-    }
+//    public static synchronized void updateLegacy() {
+//        long currentTurn = TimeUtil.getTurn();
+//        long[] min = new long[1];
+//        try {
+//            Locutus.imp().getWarDb().iterateAttacks(0, new Consumer<AbstractCursor>() {
+//                @Override
+//                public void accept(AbstractCursor AbstractCursor) {
+//                    min[0] = AbstractCursor.getDate();
+//                    throw new RuntimeException("break");
+//                }
+//            });
+//        } catch (RuntimeException ignore) {};
+//        long startTurn = TimeUtil.getTurn(min[0]);
+//        AllianceMetric metric = AllianceMetric.WARCOST_DAILY;
+//        Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances(true, true, true, 80);
+//        Set<Integer> allianceIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
+//        for (long turn = startTurn; turn < currentTurn; turn++) {
+//            System.out.println("Updating " + ((turn - startTurn)) + "/" + (currentTurn - startTurn) + " " + ((double) (turn - startTurn) / (currentTurn - startTurn) * 100) + "%");
+//            long start = TimeUtil.getTimeFromTurn(turn + 1) - TimeUnit.DAYS.toMillis(1);
+//            long end = TimeUtil.getTimeFromTurn(turn + 1);
+//            List<AbstractCursor> allAttacks = Locutus.imp().getWarDb().getAttacks(start, end, f -> true);
+//            Map<Integer, Map<AbstractCursor, Boolean>> attacksByAA = new HashMap<>();
+//            for (AbstractCursor attack : allAttacks) {
+//                DBWar war = attack.getWar();
+//                if (war == null) continue;
+//                if (allianceIds.contains(war.attacker_aa)) {
+//                    attacksByAA.computeIfAbsent(war.attacker_aa, f -> new HashMap<>()).put(attack, war.attacker_id == attack.getAttacker_id());
+//                }
+//                if (allianceIds.contains(war.defender_aa)) {
+//                    attacksByAA.computeIfAbsent(war.defender_aa, f -> new HashMap<>()).put(attack, war.defender_id == attack.getAttacker_id());
+//                }
+//            }
+//            for (DBAlliance alliance : alliances) {
+//                Map<AbstractCursor, Boolean> attacks = attacksByAA.get(alliance.getAlliance_id());
+//                if (attacks == null || attacks.isEmpty()) continue;
+//
+//                AttackCost cost = new AttackCost();
+//
+//                cost.addCost(attacks.keySet(), a -> attacks.get(a), b -> !attacks.get(b));
+//                double total = cost.convertedTotal(true);
+//
+//                Locutus.imp().getNationDB().addMetric(alliance, metric, turn, total);
+//            }
+//        }
+//    }
 
     private static Map.Entry<Integer, double[]> aaRevenueCache;
 

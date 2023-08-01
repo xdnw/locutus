@@ -58,7 +58,7 @@ import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -248,7 +248,7 @@ public class BankCommands {
                 throw new IllegalArgumentException("rawsDays must be > 1 turns (1/12 days)");
             }
             allianceList.updateCities();
-            Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> funds = allianceList.calculateDisburse(nations, rawsDays, true, false, true, rawsNoDailyCash, rawsNoCash, false);
+            Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> funds = allianceList.calculateDisburse(nations, null, rawsDays, false, false, true, rawsNoDailyCash, rawsNoCash, false);
             for (Map.Entry<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> entry : funds.entrySet()) {
                 DBNation nation = entry.getKey();
                 OffshoreInstance.TransferStatus status = entry.getValue().getKey();
@@ -267,7 +267,7 @@ public class BankCommands {
             }
         }
 
-        Map<DBNation, Map<ResourceType, Double>> stockpiles = allianceList.getMemberStockpile();
+        Map<DBNation, Map<ResourceType, Double>> stockpiles = allianceList.getMemberStockpile(remainingNations::contains);
         for (DBNation nation : remainingNations) {
             Map<ResourceType, Double> stockpile = stockpiles.get(nation);
             if (stockpile == null) {
@@ -301,7 +301,7 @@ public class BankCommands {
                 }
                 toKeep = PnwUtil.max(toKeep, rss);
             }
-            if (!ResourceType.isEmpty(toKeep)) {
+            if (!ResourceType.isZero(toKeep)) {
                 // to deposit = stockpile - toKeep, max 0
                 toDeposit = ResourceType.builder().add(stockpile).subtract(toKeep).build();
             }
@@ -309,7 +309,7 @@ public class BankCommands {
             toDeposit = PnwUtil.max(toDeposit, ResourceType.getBuffer());
             toDeposit = PnwUtil.min(toDeposit, PnwUtil.resourcesToArray(stockpile));
 
-            if (ResourceType.isEmpty(toDeposit)) {
+            if (ResourceType.isZero(toDeposit)) {
                 statuses.put(nation, OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN);
                 continue;
             }
@@ -338,9 +338,9 @@ public class BankCommands {
                     nation.getName(),
                     nation.getNationUrl(),
                     entry.getValue().name(),
-                    "",
+                    "{}",
                     stockpileStr,
-                    "",
+                    "null",
                     "false",
                     "false",
                     "false"
@@ -359,7 +359,9 @@ public class BankCommands {
                         String content = errors.stream().map(f -> StringMan.join(f, "\t")).collect(Collectors.joining("\n"));
                         msg.file(title + ".txt", content);
                     } else {
-                        msg.writeTable(title, errors, false, null);
+                        String content = errors.stream().map(f -> StringMan.join(f, "\t")).collect(Collectors.joining("\n"));
+                        msg.append("### " + title + "\n");
+                        msg.append("```\n" + content + "\n```");
                     }
                 }
             }
@@ -748,7 +750,8 @@ public class BankCommands {
     @Command(desc = "Generate csv of war cost by nation between alliances (for reimbursement)\n" +
             "Filters out wars where nations did not perform actions")
     @RolePermission(Roles.ADMIN)
-    public String warReimburseByNationCsv(@Arg("The alliances with nations you want to reimburse") Set<DBAlliance> allies, @Arg("The enemies during the conflict") Set<DBAlliance> enemies,
+    public String warReimburseByNationCsv(@Arg("The alliances with nations you want to reimburse") Set<DBAlliance> allies,
+                                          @Arg("The enemies during the conflict") Set<DBAlliance> enemies,
                                           @Arg("Starting time of the conflict") @Timestamp long cutoff, @Arg("If wars with no actions by the defender should NOT be reimbursed") boolean removeWarsWithNoDefenderActions) {
         Set<Integer> allyIds = allies.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
         Set<Integer> enemyIds = enemies.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
@@ -762,24 +765,24 @@ public class BankCommands {
                 f -> (allyIds.contains(f) || enemyIds.contains(f)),
                 f -> (allyIds.contains(f.attacker_aa) || allyIds.contains(f.defender_aa)) && (enemyIds.contains(f.attacker_aa) || enemyIds.contains(f.defender_aa)) && f.date > cutoff).values());
 
-        List<DBAttack> allattacks = Locutus.imp().getWarDb().getAttacksByWars(wars);
-        Map<Integer, List<DBAttack>> attacksByWar = new HashMap<>();
-        for (DBAttack attack : allattacks) {
+        List<AbstractCursor> allattacks = Locutus.imp().getWarDb().getAttacksByWars(wars);
+        Map<Integer, List<AbstractCursor>> attacksByWar = new HashMap<>();
+        for (AbstractCursor attack : allattacks) {
             attacksByWar.computeIfAbsent(attack.getWar_id(), f -> new ArrayList<>()).add(attack);
         }
 
         if (removeWarsWithNoDefenderActions) {
             wars.removeIf(f -> {
-                List<DBAttack> attacks = attacksByWar.get(f.warId);
+                List<AbstractCursor> attacks = attacksByWar.get(f.warId);
                 if (attacks == null) return true;
-                boolean att1 = attacks.stream().anyMatch(g -> g.getAttacker_nation_id() == f.attacker_id);
-                boolean att2 = attacks.stream().anyMatch(g -> g.getAttacker_nation_id() == f.defender_id);
+                boolean att1 = attacks.stream().anyMatch(g -> g.getAttacker_id() == f.attacker_id);
+                boolean att2 = attacks.stream().anyMatch(g -> g.getAttacker_id() == f.defender_id);
                 return !att1 || !att2;
             });
         }
 
         wars.removeIf(f -> {
-            List<DBAttack> attacks = attacksByWar.get(f.warId);
+            List<AbstractCursor> attacks = attacksByWar.get(f.warId);
             AttackCost cost = f.toCost(attacks);
             boolean primary = allyIds.contains(f.attacker_aa);
             return cost.convertedTotal(primary) <= 0;
@@ -794,7 +797,7 @@ public class BankCommands {
         Map<Integer, double[]> warcostByNation = new HashMap<>();
 
         for (DBWar war : wars) {
-            List<DBAttack> attacks = attacksByWar.get(war.warId);
+            List<AbstractCursor> attacks = attacksByWar.get(war.warId);
             AttackCost ac = war.toCost(attacks);
             boolean primary = allies.contains(war.attacker_aa);
             double[] units = PnwUtil.resourcesToArray(ac.getUnitCost(primary));
@@ -950,7 +953,7 @@ public class BankCommands {
             return null;
         }
 
-        Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> funds = allianceList.calculateDisburse(nations, daysDefault, true, false, true, noDailyCash, noCash, force);
+        Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> funds = allianceList.calculateDisburse(nations, null, daysDefault, true, false, true, noDailyCash, noCash, force);
         Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
         for (Map.Entry<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> entry : funds.entrySet()) {
             DBNation nation = entry.getKey();
@@ -1416,7 +1419,7 @@ public class BankCommands {
         Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, 0, 0);
 
         double[] toAdd = depoByType.get(from);
-        if (toAdd == null || ResourceType.isEmpty(toAdd)) {
+        if (toAdd == null || ResourceType.isZero(toAdd)) {
             return "Nothing to shift for " + nation.getNation();
         }
         long now = System.currentTimeMillis();
@@ -3314,7 +3317,7 @@ public class BankCommands {
                 for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : depoByAccount.entrySet()) {
                     NationOrAllianceOrGuild account = entry.getKey();
                     double[] depo = entry.getValue();
-                    if (!ResourceType.isEmpty(depo)) {
+                    if (!ResourceType.isZero(depo)) {
                         long tx_datetime = System.currentTimeMillis();
                         long receiver_id = 0;
                         int receiver_type = 0;
@@ -3323,7 +3326,7 @@ public class BankCommands {
                         String note = "#deposit";
                         double[] amount = depo;
                         for (int i = 0; i < amount.length; i++) amount[i] = -amount[i];
-                        if (!ResourceType.isEmpty(amount)) {
+                        if (!ResourceType.isZero(amount)) {
                             if (account.isGuild()) {
                                 offshoreDB.addTransfer(tx_datetime, account.asGuild().getIdLong(), account.getReceiverType(), receiver_id, receiver_type, banker, note, amount);
                             } else {

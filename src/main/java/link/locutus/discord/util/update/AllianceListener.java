@@ -121,7 +121,7 @@ public class AllianceListener {
 
     public static void runMilitarizationAlerts() {
 
-        double thresholdFivedays = 0.02;
+        double thresholdFivedays = 0.025;
         double thresholdDaily = 0.05;
         double thresholdTurnly = 0.1;
 
@@ -196,7 +196,7 @@ public class AllianceListener {
 
             } else {
                 if (groundPctAvg < previousMil) {
-//                    alliance.setMeta(AllianceMeta.GROUND_MILITARIZATION_DATE, now);
+                    alliance.setMeta(AllianceMeta.GROUND_MILITARIZATION_DATE, now - TimeUnit.DAYS.toMillis(5));
                     alliance.setMeta(AllianceMeta.GROUND_MILITARIZATION, groundPctAvg);
                 }
                 continue;

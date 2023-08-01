@@ -46,7 +46,7 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.nation.MultiReport;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.util.task.roles.IAutoRoleTask;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -85,7 +85,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -445,12 +444,12 @@ public class UtilityCommands {
 
             for (DBWar war : Locutus.imp().getWarDb().getWarsByAlliance(aa.getAlliance_id())) {
 
-                List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWar(war);
+                List<AbstractCursor> attacks = war.getAttacks();
                 attacks.removeIf(f -> f.getAttack_type() != AttackType.A_LOOT);
                 if (attacks.size() != 1) continue;
 
-                DBAttack attack = attacks.get(0);
-                int attAA = war.isAttacker(attack.getAttacker_nation_id()) ? war.attacker_aa : war.defender_aa;
+                AbstractCursor attack = attacks.get(0);
+                int attAA = war.isAttacker(attack.getAttacker_id()) ? war.attacker_aa : war.defender_aa;
                 if (attAA == aa.getAlliance_id()) continue;
                 boolean lowMil = false;
                 for (DBNation member : members) {
@@ -679,7 +678,7 @@ public class UtilityCommands {
                     int num = transferEntry.getValue().getKey();
                     double value = transferEntry.getValue().getValue();
 
-                    response.append(PnwUtil.getName(entry.getKey(), true) + " <" + PnwUtil.getAllianceUrl(entry.getKey()) + "> has " + num + " transfers with" + PnwUtil.getName(otherAAId, true) + " worth ~$" + MathMan.format(value) + "\n");
+                    response.append(PnwUtil.getName(entry.getKey(), true) + " <" + PnwUtil.getAllianceUrl(entry.getKey()) + "> has " + num + " transfers with " + PnwUtil.getName(otherAAId, true) + " worth ~$" + MathMan.format(value) + "\n");
                 }
             }
             if (response.length() == 0) return "No results founds in the specified timeframe";

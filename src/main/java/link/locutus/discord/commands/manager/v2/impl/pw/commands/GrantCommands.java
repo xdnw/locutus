@@ -1018,7 +1018,7 @@ public class GrantCommands {
 //                                    }
 //                                }
 //                                if (latestWar != null) {
-//                                    for (DBAttack attack : latestWar.getAttacks()) {
+//                                    for (AbstractCursor attack : latestWar.getAttacks()) {
 //                                        latestWarTime = Math.max(latestWarTime, attack.epoch);
 //                                    }
 //                                    cutoff = Math.min(latestWarTime, cutoff);
@@ -1315,7 +1315,7 @@ public class GrantCommands {
 //            if (war.attacker_id == nation.getNation_id()) {
 //                if (!banks.contains(war.attacker_aa)) continue;
 //                if (war.status == WarStatus.EXPIRED || war.status == WarStatus.DEFENDER_VICTORY) {
-//                    List<DBAttack> attacks = war.getAttacks();
+//                    List<AbstractCursor> attacks = war.getAttacks();
 //                    attacks.removeIf(f -> f.attacker_nation_id != nation.getNation_id());
 //                    if (attacks.isEmpty()) continue;
 //                }
@@ -1323,7 +1323,7 @@ public class GrantCommands {
 //            } else {
 //                if (!banks.contains(war.defender_aa)) continue;
 //                if (war.status == WarStatus.ATTACKER_VICTORY || war.status == WarStatus.EXPIRED || war.status == WarStatus.PEACE) {
-//                    List<DBAttack> attacks = war.getAttacks();
+//                    List<AbstractCursor> attacks = war.getAttacks();
 //                    attacks.removeIf(f -> f.attacker_nation_id != nation.getNation_id());
 //                    if (attacks.isEmpty()) continue;
 //

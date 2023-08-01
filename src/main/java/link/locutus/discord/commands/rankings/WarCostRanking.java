@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -69,6 +69,7 @@ public class WarCostRanking extends Command {
                 Add -i to exclude infra cost
                 Add -c to exclude consumption
                 Add -l to exclude loot
+                Add -b to exclude buildings
                 Add -t to rank total instead of average per war
                 Add -p to do loss instead of profit
                 Add -d to do damage dealt instead of cost
@@ -135,6 +136,7 @@ public class WarCostRanking extends Command {
         boolean consumption = !flags.contains('c');
         boolean average = !flags.contains('t');
         boolean loot = !flags.contains('l');
+        boolean buildings = !flags.contains('b');
 
         boolean scale = flags.contains('s');
 
@@ -158,18 +160,18 @@ public class WarCostRanking extends Command {
         String title = (damage && net ? "Net " : "Total ") + (typeName == null ? "" : typeName + " ") + (profit ? damage ? "damage" : "profit" : (unitKill != null ? "kills" : unitLoss != null ? "deaths" : "losses")) + " " + (average ? "per" : "of") + " war (%s)";
         title = String.format(title, diffStr);
 
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(start, end);
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(nationMap.keySet(), start, end);
 
-        GroupedRankBuilder<Integer, DBAttack> attackGroup = new RankBuilder<>(attacks)
+        GroupedRankBuilder<Integer, AbstractCursor> attackGroup = new RankBuilder<>(attacks)
                 .group((attack, map) -> {
                     // Group attacks into attacker and defender
-                    map.put(attack.getAttacker_nation_id(), attack);
-                    map.put(attack.getDefender_nation_id(), attack);
+                    map.put(attack.getAttacker_id(), attack);
+                    map.put(attack.getDefender_id(), attack);
                 });
 
-        BiFunction<Boolean, DBAttack, Double> valueFunc;
+        BiFunction<Boolean, AbstractCursor, Double> valueFunc;
         {
-            BiFunction<Boolean, DBAttack, Double> getValue = null;
+            BiFunction<Boolean, AbstractCursor, Double> getValue = null;
             if (unitKill != null) {
                 MilitaryUnit finalUnit = unitKill;
                 getValue = (attacker, attack) -> attack.getUnitLosses(!attacker).getOrDefault(finalUnit, 0).doubleValue();
@@ -188,15 +190,15 @@ public class WarCostRanking extends Command {
                 if (getValue != null) throw new IllegalArgumentException("Cannot combine multiple type rankings (3)");
                 double min = damage ? 0 : Double.NEGATIVE_INFINITY;
                 ResourceType finalResourceType = resourceType;
-                getValue = (attacker, attack) -> Math.max(min, attack.getLosses(attacker, units, infra, consumption, loot).getOrDefault(finalResourceType, 0d));
+                getValue = (attacker, attack) -> Math.max(min, attack.getLosses(attacker, units, infra, consumption, loot, buildings).getOrDefault(finalResourceType, 0d));
             }
             if (getValue == null) {
                 getValue = (attacker, attack) -> {
                     if (!damage) {
-                        return attack.getLossesConverted(attacker, units, infra, consumption, loot);
+                        return attack.getLossesConverted(attacker, units, infra, consumption, loot, buildings);
                     } else {
                         double total = 0;
-                        Map<ResourceType, Double> losses = attack.getLosses(attacker, units, infra, consumption, loot);
+                        Map<ResourceType, Double> losses = attack.getLosses(attacker, units, infra, consumption, loot, buildings);
                         for (Map.Entry<ResourceType, Double> entry : losses.entrySet()) {
                             if (entry.getValue() > 0) total += PnwUtil.convertedTotal(entry.getKey(), entry.getValue());
                         }
@@ -213,7 +215,7 @@ public class WarCostRanking extends Command {
                     // Convert attack to profit value
                     (nationdId, attack) -> {
                         DBNation nation = nationMap.get(nationdId);
-                        return nation != null ? scale(nation, sign * valueFunc.apply(attack.getAttacker_nation_id() == nationdId, attack), scale, isAA) : 0;
+                        return nation != null ? scale(nation, sign * valueFunc.apply(attack.getAttacker_id() == nationdId, attack), scale, isAA) : 0;
                     });
         } else {
             byNationMap = attackGroup.map((i, a) -> a.getWar_id(),
@@ -221,7 +223,7 @@ public class WarCostRanking extends Command {
                     (nationdId, attack) -> {
                         DBNation nation = nationMap.get(nationdId);
                         if (nation == null) return 0d;
-                        boolean primary = (attack.getAttacker_nation_id() != nationdId) == profit;
+                        boolean primary = (attack.getAttacker_id() != nationdId) == profit;
                         double total = valueFunc.apply(primary, attack);
                         if (net) {
                             total -= valueFunc.apply(!primary, attack);

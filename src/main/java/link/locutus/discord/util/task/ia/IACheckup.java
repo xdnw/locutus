@@ -476,9 +476,9 @@ public class IACheckup {
 //            case LOSE_A_WAR: {
 ////                List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(nation.getNation_id());
 ////                wars.removeIf(f -> f.attacker_id == nation.getNation_id());
-////                List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWars(wars, 0);
+////                List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByWars(wars, 0);
 ////                attacks.removeIf(f -> f.attack_type != AttackType.VICTORY);
-////                for (DBAttack attack : attacks) {
+////                for (AbstractCursor attack : attacks) {
 ////                    if (attack.attacker_nation_id != nation.getNation_id()) return null;
 ////                }
 ////                String desc = "Get yourself rolled. e.g. Find an inactive raid target in an alliance, attack them and get some counters on yourself.\n" +

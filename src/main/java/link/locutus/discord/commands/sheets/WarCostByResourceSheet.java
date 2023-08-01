@@ -5,25 +5,21 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -123,7 +119,7 @@ public class WarCostByResourceSheet extends Command {
 
             {
                 List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(nationId);
-                Map<Integer, List<DBAttack>> allAttacks = Locutus.imp().getWarDb().getAttacksByWar(nationId, cutoffMs);
+                Map<Integer, List<AbstractCursor>> allAttacks = Locutus.imp().getWarDb().getAttacksByNationGroupWar(nationId, cutoffMs);
 
                 for (DBWar war : wars) {
                     if (war.date < cutoffMs) {
@@ -136,21 +132,21 @@ public class WarCostByResourceSheet extends Command {
                         continue;
                     }
 
-                    List<DBAttack> warAttacks = allAttacks.getOrDefault(war.warId, Collections.emptyList());
+                    List<AbstractCursor> warAttacks = allAttacks.getOrDefault(war.warId, Collections.emptyList());
 
                     boolean selfAttack = false;
                     boolean enemyAttack = false;
 
-                    for (DBAttack attack : warAttacks) {
-                        if (attack.getAttacker_nation_id() == nationId) {
+                    for (AbstractCursor attack : warAttacks) {
+                        if (attack.getAttacker_id() == nationId) {
                             selfAttack = true;
                         } else {
                             enemyAttack = true;
                         }
                     }
 
-                    Function<DBAttack, Boolean> isPrimary = a -> a.getAttacker_nation_id() == nationId;
-                    Function<DBAttack, Boolean> isSecondary = a -> a.getAttacker_nation_id() != nationId;
+                    Function<AbstractCursor, Boolean> isPrimary = a -> a.getAttacker_id() == nationId;
+                    Function<AbstractCursor, Boolean> isSecondary = a -> a.getAttacker_id() != nationId;
 
                     AttackCost cost = null;
                     if (war.attacker_id == nationId) {

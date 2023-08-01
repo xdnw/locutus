@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
+import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
+
 import java.lang.reflect.Type;
 import java.util.*;
 
@@ -12,6 +14,12 @@ public class SimpleValueStore<T> implements ValueStore<T> {
 
     @Override
     public <V extends T> Parser<V> addParser(Key<V> key, Parser<V> parser) {
+        for (Class<?> type : key.getAnnotationTypes()) {
+            if (Arg.class.isAssignableFrom(type)) {
+                throw new IllegalArgumentException("Cannot add Arg annotation to key " + key);
+            }
+        }
+
         allowedAnnotations.addAll(key.getAnnotationTypes());
         bindings.computeIfAbsent(key.getType(), f -> new LinkedHashMap<>()).put(key, parser);
         return parser;

@@ -1,17 +1,17 @@
 package link.locutus.discord.event.war;
 
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.event.Event;
 
 public class AttackEvent extends Event {
-    private final DBAttack attack;
+    private final AbstractCursor attack;
 
-    public AttackEvent(DBAttack attack) {
+    public AttackEvent(AbstractCursor attack) {
         super(attack.getDate());
         this.attack = attack;
     }
 
-    public DBAttack getAttack() {
+    public AbstractCursor getAttack() {
         return attack;
     }
 }

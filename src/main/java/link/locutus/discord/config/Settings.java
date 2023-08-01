@@ -77,9 +77,6 @@ public class Settings extends Config {
     @Comment("The nation id of the admin. (generated from login or api key)")
     public int NATION_ID = 0; // generated
 
-    @Comment({"Your API key from <https://platform.openai.com/account/api-keys> (optional)"})
-    public String OPENAI_API_KEY = "";
-
     ////////////////////////////////////////////////////////////////////////////
 
     @Create
@@ -98,7 +95,8 @@ public class Settings extends Config {
     public LEGACY_SETTINGS LEGACY_SETTINGS;
     @Create
     public PROXY PROXY;
-
+    @Create
+    public ARTIFICIAL_INTELLIGENCE ARTIFICIAL_INTELLIGENCE;
     @Create
     public DATABASE DATABASE;
 
@@ -189,7 +187,10 @@ public class Settings extends Config {
         @Comment("Fetches all wars (default 5 minutes)")
         public int ALL_WAR_SECONDS = 60 * 5;
 
-        @Comment("Unload attacks after days (-1 = load all attacks)")
+        @Comment({
+                "Unload attacks after days (-1 = load all attacks)",
+                "Must be less than or equal to `unload-wars-after-days`"
+        })
         public int UNLOAD_ATTACKS_AFTER_DAYS = -1;
 
         @Comment("Unload wars after days (-1 = load all wars)")
@@ -500,6 +501,27 @@ public class Settings extends Config {
 
         @Comment("The port google drive uses to validate your credentials")
         public int GOOGLE_DRIVE_VALIDATION_PORT = 8890;
+    }
+
+    @Comment({
+            "How often in seconds a task is run (set to 0 to disable)",
+            "Note: Politics and war is rate limited. You may experience issues if you run tasks too frequently"
+    })
+    public static class ARTIFICIAL_INTELLIGENCE {
+
+        @Comment({
+                "The directory of the tesseract files.",
+                "Tesseract is used for optical character recognition (OCR) to read text from images",
+                "To install tesseract, see:",
+                "macOS: `brew install tesseract` and `brew install tesseract-lang`",
+                "linux: `yum install tesseract` and `yum install tesseract-langpack-eng`",
+                "windows: `https://github.com/UB-Mannheim/tesseract/wiki`"
+        })
+        public String TESSERACT_LOCATION = "src/main/java/tessdata";
+
+        @Comment({"Your API key from <https://platform.openai.com/account/api-keys> (optional)"})
+        public String OPENAI_API_KEY = "";
+
     }
 
     public static class DATABASE {

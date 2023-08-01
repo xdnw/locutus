@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class AllianceAttackTypeRanking extends Command {
     public AllianceAttackTypeRanking() {
@@ -55,13 +56,14 @@ public class AllianceAttackTypeRanking extends Command {
         long cutoffMs = System.currentTimeMillis() - TimeUtil.timeToSec(arg) * 1000L;
         AttackType type = AttackType.get(args.get(1).toUpperCase());
 
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs);
+        Set<Integer> allowedNations = Locutus.imp().getNationDB().getNationsMatching(f -> f.getAlliance_id() > 0 && f.getPosition() > 1).stream().map(DBNation::getId).collect(Collectors.toSet());
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().queryAttacks().withActiveWars(f -> allowedNations.contains(f), f -> true).afterDate(cutoffMs).withTypes(type).getList();
 //            Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWars();
         Map<Integer, Integer> totalAttacks = new HashMap<>();
         Map<Integer, Integer> attackOfType = new HashMap<>();
 
-        for (DBAttack attack : attacks) {
-            DBNation nat = Locutus.imp().getNationDB().getNation(attack.getAttacker_nation_id());
+        for (AbstractCursor attack : attacks) {
+            DBNation nat = Locutus.imp().getNationDB().getNation(attack.getAttacker_id());
             if (nat == null || nat.getAlliance_id() == 0 || nat.getPosition() <= 1) continue;
             totalAttacks.put(nat.getAlliance_id(), totalAttacks.getOrDefault(nat.getAlliance_id(), 0) + 1);
 

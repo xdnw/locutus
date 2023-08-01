@@ -12,6 +12,11 @@ public class BitInputStream {
         this.in = in;
     }
 
+    public void clear() {
+        this.num = 0;
+        this.count = 8;
+    }
+
     public boolean read() throws IOException {
         if (this.count == 8){
             this.num = this.in.read() + 128;
@@ -28,5 +33,4 @@ public class BitInputStream {
     public void close() throws IOException {
         this.in.close();
     }
-
 }

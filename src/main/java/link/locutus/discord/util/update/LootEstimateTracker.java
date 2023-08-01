@@ -4,9 +4,10 @@ import com.google.common.eventbus.Subscribe;
 import com.politicsandwar.graphql.model.BBGame;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.db.entities.*;
@@ -103,13 +104,13 @@ public class LootEstimateTracker {
     }
 
     public void add(int nationId, long date, double[] minAndMax) {
-        if (ResourceType.isEmpty(minAndMax)) return;
+        if (ResourceType.isZero(minAndMax)) return;
         LootEstimate estimate = getOrCreate(nationId);
         if (estimate != null) estimate.addRelative(minAndMax, date);
     }
 
     public void addRevenue(int nationId, long date, double[] minAndMax, int taxId) {
-        if (ResourceType.isEmpty(minAndMax)) return;
+        if (ResourceType.isZero(minAndMax)) return;
         LootEstimate estimate = getOrCreate(nationId);
         if (estimate != null) estimate.addUnknownRevenue(this, nationId, taxId, date, minAndMax);
     }
@@ -237,7 +238,7 @@ public class LootEstimateTracker {
         }
 
         public synchronized void addDiffByTaxId(int taxId, double[] diff) {
-            if (ResourceType.isEmpty(diff)) {
+            if (ResourceType.isZero(diff)) {
                 if (diffByTaxId != null) diffByTaxId.remove(taxId);
                 return;
             }
@@ -285,7 +286,7 @@ public class LootEstimateTracker {
             if (taxId != this.tax_id) {
                 if (this.tax_id != 0) {
                     double[] oldDiff = getDiffByTaxId(this.tax_id);
-                    if (!ResourceType.isEmpty(oldDiff)) {
+                    if (!ResourceType.isZero(oldDiff)) {
                         addDiffByTaxId(this.tax_id, oldDiff);
                         parent.saveTaxDiff.consume(nationId, this.tax_id, oldDiff);
                     }
@@ -590,31 +591,31 @@ public class LootEstimateTracker {
 
     @Subscribe
     public void onAttack(AttackEvent event) {
-        DBAttack attack = event.getAttack();
+        AbstractCursor attack = event.getAttack();
         boolean hasSalvage = false;
-        if (attack.getSuccess() > 0) {
-            DBNation attacker = nationFactory.apply(attack.getAttacker_nation_id());
+        if (attack.getSuccess() != SuccessType.UTTER_FAILURE) {
+            DBNation attacker = nationFactory.apply(attack.getAttacker_id());
             hasSalvage = attacker != null && attacker.hasProject(Projects.MILITARY_SALVAGE);
         }
     }
 
-    public void onAttack(DBAttack attack, boolean hasSalvage) {
+    public void onAttack(AbstractCursor attack, boolean hasSalvage) {
         // consumption
-        double[] attLoss = PnwUtil.resourcesToArray(attack.getLosses(true, false, false, true, true));
-        double[] defLoss = PnwUtil.resourcesToArray(attack.getLosses(false, false, false, true, true));
+        double[] attLoss = PnwUtil.resourcesToArray(attack.getLosses(true, false, false, true, true, false));
+        double[] defLoss = PnwUtil.resourcesToArray(attack.getLosses(false, false, false, true, true, false));
 
         // Handle airstrike money (since it comes under unit losses, which we are excluding)
         if (attack.getAttack_type() == AttackType.AIRSTRIKE_MONEY && attack.getDefcas1() > 0) {
             defLoss[ResourceType.MONEY.ordinal()] += attack.getDefcas1();
         }
-        if (attack.getSuccess() > 0 && hasSalvage) {
-            Map<ResourceType, Double> unitLosses = attack.getLosses(true, true, false, false, false);
+        if (attack.getSuccess() != SuccessType.UTTER_FAILURE && hasSalvage) {
+            Map<ResourceType, Double> unitLosses = attack.getLosses(true, true, false, false, false, false);
             attLoss[ResourceType.STEEL.ordinal()] -= unitLosses.getOrDefault(ResourceType.STEEL, 0d) * 0.05;
             attLoss[ResourceType.ALUMINUM.ordinal()] -= unitLosses.getOrDefault(ResourceType.ALUMINUM, 0d) * 0.05;
         }
         // negate this
-        add(attack.getAttacker_nation_id(), attack.getDate(), ResourceType.negative(attLoss));
-        add(attack.getDefender_nation_id(), attack.getDate(), ResourceType.negative(defLoss));
+        add(attack.getAttacker_id(), attack.getDate(), ResourceType.negative(attLoss));
+        add(attack.getDefender_id(), attack.getDate(), ResourceType.negative(defLoss));
     }
 
     @Subscribe

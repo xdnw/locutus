@@ -1,7 +1,7 @@
 package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
@@ -55,11 +55,12 @@ public class AllianceLootLosses extends Command {
         }
 
         Map<Integer, Double> totals = new HashMap<>();
-        List<DBAttack> aaLoot = Locutus.imp().getWarDb().getAttacks(cutOff, AttackType.A_LOOT);
-        for (DBAttack attack : aaLoot) {
-            Map<ResourceType, Double> loot = attack.getLoot();
-            Integer allianceId = attack.getLooted();
-            if (allianceId == null || allianceId == 0) continue;
+        List<AbstractCursor> aaLoot = Locutus.imp().getWarDb().getAttacks(cutOff, AttackType.A_LOOT);
+        for (AbstractCursor attack : aaLoot) {
+            double[] loot = attack.getLoot();
+            if (loot == null) continue;
+            int allianceId = attack.getAllianceIdLooted();
+            if (allianceId == 0) continue;
 
             Double existing = totals.getOrDefault(allianceId, 0d);
             totals.put(allianceId, existing + PnwUtil.convertedTotal(loot));

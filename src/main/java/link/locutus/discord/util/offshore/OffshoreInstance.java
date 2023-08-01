@@ -173,7 +173,7 @@ public class OffshoreInstance {
             });
 
             if (bankRecs.isEmpty()) {
-                if (ResourceType.isEmpty(stockpile)) {
+                if (ResourceType.isZero(stockpile)) {
                     throw new IllegalArgumentException("No bank records & stockpile found for " + allianceId);
                 }
                 if (getGuildDB().getOrNull(GuildKey.PUBLIC_OFFSHORING) == Boolean.TRUE) {

@@ -1298,6 +1298,18 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return result;
     }
 
+    public List<Announcement.PlayerAnnouncement> getPlayerAnnouncementsContaining(String invite) {
+        List<Announcement.PlayerAnnouncement> result = new ArrayList<>();
+        query("select * FROM ANNOUNCEMENTS_PLAYER2 WHERE diff LIKE ? ORDER BY ann_id desc",
+                (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setString(1, "%" + invite + "%"),
+                (ThrowingConsumer<ResultSet>) rs -> {
+                    while (rs.next()) {
+                        result.add(new Announcement.PlayerAnnouncement(this, null, rs));
+                    }
+                });
+        return result;
+    }
+
     public List<Announcement.PlayerAnnouncement> getPlayerAnnouncementsByAnnId(int ann_id) {
         Announcement announcement = getAnnouncement(ann_id);
         if (announcement == null) return null;
@@ -1310,6 +1322,21 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                     }
                 });
         return result;
+    }
+
+    public Announcement.PlayerAnnouncement getPlayerAnnouncement(int ann_id, int nationId) {
+            List<Announcement.PlayerAnnouncement> result = new ArrayList<>();
+        query("select * FROM ANNOUNCEMENTS_PLAYER2 WHERE ann_id = ? AND receiver = ? ORDER BY ann_id desc",
+                (ThrowingConsumer<PreparedStatement>) stmt -> {
+                    stmt.setInt(1, ann_id);
+                    stmt.setInt(2, nationId);
+                },
+                (ThrowingConsumer<ResultSet>) rs -> {
+                    while (rs.next()) {
+                        result.add(new Announcement.PlayerAnnouncement(this, rs));
+                    }
+                });
+        return result.isEmpty() ? null : result.get(0);
     }
 
     public List<Announcement.PlayerAnnouncement> getPlayerAnnouncementsByNation(int nationId, boolean requireActive) {
@@ -1784,7 +1811,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 addTransfer(dateTime, 0, 0, account.getIdLong(), account.getReceiverType(), banker, offshoreNote, toSubtract);
             }
         }
-        if (!ResourceType.isEmpty(amountLeft)) {
+        if (!ResourceType.isZero(amountLeft)) {
             throw new IllegalArgumentException("Could not add balance to all accounts. Amount left: " + PnwUtil.resourcesToString(amountLeft));
         }
         return ammountEach;

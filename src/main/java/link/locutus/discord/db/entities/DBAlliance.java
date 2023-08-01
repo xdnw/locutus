@@ -9,6 +9,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -830,10 +831,18 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public Map<DBNation, Map<ResourceType, Double>> getMemberStockpile() throws IOException {
+        return getMemberStockpile(f -> true);
+    }
+
+    public Map<DBNation, Map<ResourceType, Double>> getMemberStockpile(Predicate<DBNation> fetchNations) throws IOException {
         PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.SEE_SPIES);
         List<Integer> ids = getNations().stream()
-                .filter(f -> f.getVm_turns() == 0 && f.getPositionEnum().id > Rank.APPLICANT.id)
+                .filter(f -> f.getVm_turns() == 0 && f.getPositionEnum().id > Rank.APPLICANT.id && fetchNations.test(f))
                 .map(f -> f.getNation_id()).collect(Collectors.toList());
+        ids.sort(Comparator.comparingInt(a -> a));
+        if (ids.isEmpty()) {
+            return new HashMap<>();
+        }
         Map<Integer, double[]> stockPile = api.getStockPile(f -> f.setId(ids));
         Map<DBNation, Map<ResourceType, Double>> result = new HashMap<>();
         for (Map.Entry<Integer, double[]> entry : stockPile.entrySet()) {
@@ -858,7 +867,8 @@ public class DBAlliance implements NationList, NationOrAlliance {
     public PoliticsAndWarV3 getApiOrThrow(AlliancePermission... permissions) {
         PoliticsAndWarV3 api = getApi( permissions);
         if (api == null) {
-            String msg = "No api key found for " + getQualifiedName() + ". Please use" + CM.credentials.addApiKey.cmd.toSlashMention();
+            String msg = "No api key found for " + getQualifiedName() + ". Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "\n" +
+                    "Api key can be found on <https://politicsandwar.com/account/>";
             if (permissions.length > 0) msg += " and ensure your in-game position grants: " + StringMan.getString(permissions);
             throw new IllegalArgumentException(msg);
         }
@@ -883,7 +893,12 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public void updateCities() throws IOException, ParseException {
-        Set<Integer> nationIds = getNations(false, 0, true).stream().map(f -> f.getId()).collect(Collectors.toSet());
+        updateCities(f -> true);
+    }
+
+    public void updateCities(Predicate<DBNation> fetchNation) throws IOException, ParseException {
+        Set<Integer> nationIds = getNations(false, 0, true).stream().filter(fetchNation).map(DBNation::getId).collect(Collectors.toSet());
+        if (nationIds.isEmpty()) return;
         Locutus.imp().getNationDB().updateCitiesOfNations(nationIds, true, Event::post);
     }
 
@@ -948,12 +963,12 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
         for (DBWar war : Locutus.imp().getWarDb().getWarsByAlliance(getAlliance_id())) {
 
-            List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacksByWar(war);
+            List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByWarId(war);
             attacks.removeIf(f -> f.getAttack_type() != AttackType.A_LOOT);
             if (attacks.size() != 1) continue;
 
-            DBAttack attack = attacks.get(0);
-            int attAA = war.isAttacker(attack.getAttacker_nation_id()) ? war.attacker_aa : war.defender_aa;
+            AbstractCursor attack = attacks.get(0);
+            int attAA = war.isAttacker(attack.getAttacker_id()) ? war.attacker_aa : war.defender_aa;
             if (attAA == getAlliance_id()) continue;
             boolean lowMil = false;
             for (DBNation member : members) {
@@ -1088,7 +1103,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
             }
 
             double[] deposit = ResourceType.fromApiV3(bankrec, null);
-            if (ResourceType.isEmpty(deposit)) continue;
+            if (ResourceType.isZero(deposit)) continue;
 
             int moneyTax = 0;
             int resourceTax = 0;
@@ -1106,10 +1121,11 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return taxes;
     }
 
-    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> getResourcesNeeded(Collection<DBNation> nations, double daysDefault, boolean useExisting, boolean force) throws IOException {
-        Map<DBNation, Map<ResourceType, Double>> existing;
+    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> getResourcesNeeded(Collection<DBNation> nations, Map<DBNation, Map<ResourceType, Double>> existing, double daysDefault, boolean useExisting, boolean force) throws IOException {
         if (useExisting) {
-            existing = getMemberStockpile();
+            if (existing == null) {
+                existing = getMemberStockpile(f -> nations.contains(f));
+            }
         } else {
             existing = new HashMap<>();
             for (DBNation nation : nations) {
@@ -1188,9 +1204,9 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return count;
     }
 
-    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean allowBeige, boolean noDailyCash, boolean noCash, boolean force) throws IOException, ExecutionException, InterruptedException {
+    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, Map<DBNation, Map<ResourceType, Double>> cachedStockpilesorNull, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean allowBeige, boolean noDailyCash, boolean noCash, boolean force) throws IOException, ExecutionException, InterruptedException {
         Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> nationResourcesNeed;
-        nationResourcesNeed = getResourcesNeeded(nations, daysDefault, useExisting, force);
+        nationResourcesNeed = getResourcesNeeded(nations, cachedStockpilesorNull, daysDefault, useExisting, force);
 
         Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> toSend = new HashMap<>();
 
@@ -1233,7 +1249,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
                 toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.ALLIANCE_ACCESS, ResourceType.getBuffer()));
                 continue;
             }
-            if (ResourceType.isEmpty(resources)) {
+            if (ResourceType.isZero(resources)) {
                 toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.NOTHING_WITHDRAWN, ResourceType.getBuffer()));
                 continue;
             }

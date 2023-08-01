@@ -5,6 +5,7 @@ import com.politicsandwar.graphql.model.Nation;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.building.PowerBuilding;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -23,7 +24,6 @@ import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.nation.NationRegisterEvent;
@@ -46,7 +46,6 @@ import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.web.jooby.handler.CommandResult;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.Continent;
@@ -642,7 +641,7 @@ public class DBNation implements NationOrAlliance {
         if (getNumWars() == 0) return 100;
         int min = 100;
         for (DBWar war : getActiveWars()) {
-            List<DBAttack> attacks = war.getAttacks();
+            List<AbstractCursor> attacks = war.getAttacks();
 
             Map.Entry<Integer, Integer> warRes = war.getResistance(attacks);
             int myRes = war.isAttacker(this) ? warRes.getKey() : warRes.getValue();
@@ -656,7 +655,7 @@ public class DBNation implements NationOrAlliance {
         if (getNumWars() == 0) return 100;
         int min = 100;
         for (DBWar war : getActiveWars()) {
-            List<DBAttack> attacks = war.getAttacks();
+            List<AbstractCursor> attacks = war.getAttacks();
 
             boolean isAttacker = war.isAttacker(this);
 
@@ -3275,8 +3274,8 @@ public class DBNation implements NationOrAlliance {
 //
 //            Map<ResourceType, Double> consumption = new HashMap<>();
 //            Map<MilitaryUnit, Integer> unitLosses = new HashMap<>();
-//            List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(nation_id, cutoffMs);
-//            for (DBAttack attack : attacks) {
+//            List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(nation_id, cutoffMs);
+//            for (AbstractCursor attack : attacks) {
 //                boolean attacker = attack.attacker_nation_id == nation_id;
 //
 //                Map<ResourceType, Double> attConsume = attack.getLosses(attacker, false, false, true, true);
@@ -3721,8 +3720,8 @@ public class DBNation implements NationOrAlliance {
 //                beige[turnsAgo] -= days * 120;
             }
         }
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(nation_id, System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days + 1));
-        for (DBAttack attack : attacks) {
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(nation_id, System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days + 1));
+        for (AbstractCursor attack : attacks) {
             if (attack.getAttack_type() != AttackType.VICTORY || attack.getVictor() == nation_id) continue;
 
             ZonedDateTime warTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(attack.getDate()), ZoneOffset.UTC);
@@ -4396,14 +4395,14 @@ public class DBNation implements NationOrAlliance {
         List<Map.Entry<Long, Integer>> history = getUnitHistory(unit);
 
         if (unit == MilitaryUnit.NUKE || unit == MilitaryUnit.MISSILE) {
-            List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(getNation_id(), cutoff);
+            List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(getNation_id(), cutoff);
 
             outer:
-            for (DBAttack attack : attacks) {
+            for (AbstractCursor attack : attacks) {
                 MilitaryUnit[] units = attack.getAttack_type().getUnits();
                 for (MilitaryUnit other : units) {
                     if (other == unit) {
-                        Map<MilitaryUnit, Integer> losses = attack.getUnitLosses(attack.getAttacker_nation_id() == nation_id);
+                        Map<MilitaryUnit, Integer> losses = attack.getUnitLosses(attack.getAttacker_id() == nation_id);
                         long turn = TimeUtil.getTurn(attack.getDate());
                         unitsLost.put(turn, losses.getOrDefault(unit, 0) + unitsLost.getOrDefault(turn, 0));
                         continue outer;
@@ -4412,7 +4411,7 @@ public class DBNation implements NationOrAlliance {
             }
 
             outer:
-            for (DBAttack attack : attacks) {
+            for (AbstractCursor attack : attacks) {
                 AbstractMap.SimpleEntry<Long, Integer> toAdd = new AbstractMap.SimpleEntry<>(attack.getDate(), getUnits(unit));
                 int i = 0;
                 for (; i < history.size(); i++) {
@@ -4689,8 +4688,8 @@ public class DBNation implements NationOrAlliance {
 
     public AttackCost getWarCost() {
         AttackCost cost = new AttackCost();
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(nation_id, 0);
-        cost.addCost(attacks, a -> a.getAttacker_nation_id() == nation_id, b -> b.getDefender_nation_id() == nation_id);
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(nation_id, 0);
+        cost.addCost(attacks, a -> a.getAttacker_id() == nation_id, b -> b.getDefender_id() == nation_id);
         return cost;
     }
 
@@ -4698,11 +4697,11 @@ public class DBNation implements NationOrAlliance {
     @RolePermission(Roles.MILCOM)
     public double getMoneyLooted() {
         double total = 0;
-        List<DBAttack> attacks = Locutus.imp().getWarDb().getAttacks(nation_id, 0);
-        for (DBAttack attack : attacks) {
-            if (attack.getAttacker_nation_id() == nation_id) {
-                Map<ResourceType, Double> loot = attack.getLoot();
-                if (!loot.isEmpty()) total += PnwUtil.convertedTotal(loot);
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(nation_id, 0);
+        for (AbstractCursor attack : attacks) {
+            if (attack.getAttacker_id() == nation_id) {
+                double[] loot = attack.getLoot();
+                if (loot != null) total += PnwUtil.convertedTotal(loot);
             }
         }
         return total;

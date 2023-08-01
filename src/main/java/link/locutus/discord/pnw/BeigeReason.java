@@ -4,7 +4,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.task.war.WarCard;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -62,7 +62,7 @@ public enum BeigeReason {
         return desc;
     }
 
-    public static Set<BeigeReason> getAllowedBeigeReasons(GuildDB db, DBNation attacker, DBWar war, DBAttack attack) {
+    public static Set<BeigeReason> getAllowedBeigeReasons(GuildDB db, DBNation attacker, DBWar war, AbstractCursor attack) {
         Set<BeigeReason> reasons = getBeigeReason(db, attacker, war, attack);
         if (reasons.isEmpty()) {
             return Collections.emptySet();
@@ -73,7 +73,7 @@ public enum BeigeReason {
         return allowed;
     }
 
-    public static Set<BeigeReason> getBeigeReason(GuildDB db, DBNation attacker, DBWar war, DBAttack attack) {
+    public static Set<BeigeReason> getBeigeReason(GuildDB db, DBNation attacker, DBWar war, AbstractCursor attack) {
         Set<BeigeReason> result = new HashSet<>();
         boolean declared = war.isAttacker(attacker);
         DBNation defender = war.getNation(!declared);
@@ -115,7 +115,7 @@ public enum BeigeReason {
         }
 
         if (defender.getActive_m() < 2880 && defender.getVm_turns() == 0) {
-            List<DBAttack> attacks = war.getAttacks();
+            List<AbstractCursor> attacks = war.getAttacks();
             Map.Entry<Integer, Integer> res = war.getResistance(war.getAttacks());
             int otherRes = war.isAttacker(attacker) ? res.getKey() : res.getValue();
             if (otherRes <= 42) {
@@ -177,7 +177,7 @@ public enum BeigeReason {
 //                Map.Entry<Integer, Integer> res = war.getResistance(war.getAttacks());
 //                int otherRes = war.isAttacker(attacker) ? res.getValue() : res.getKey();
 //
-//                List<DBAttack> attacks = war.getAttacks();
+//                List<AbstractCursor> attacks = war.getAttacks();
 //                attacks.remove(attack);
 //                WarCard card = new WarCard(war, attacks, true);
 //

@@ -9,8 +9,8 @@ public interface IAttack {
     "war_attack_id=" + getWar_attack_id() +
                 ", epoch=" + getDate() +
                 ", war_id=" + getWar_id() +
-                ", attacker_nation_id=" + getAttacker_nation_id() +
-                ", defender_nation_id=" + getDefender_nation_id() +
+                ", attacker_nation_id=" + getAttacker_id() +
+                ", defender_nation_id=" + getDefender_id() +
                 ", attack_type=" + getAttack_type() +
                 ", victor=" + getVictor() +
                 ", success=" + getSuccess() +
@@ -57,7 +57,7 @@ public interface IAttack {
         if (before > 0) {
             double destroyed = getInfra_destroyed();
             if (destroyed == 0) return 0;
-            return PnwUtil.calculateInfraFast(before, before - destroyed);
+            return PnwUtil.calculateInfra(before - destroyed, before);
         }
         return 0;
     }

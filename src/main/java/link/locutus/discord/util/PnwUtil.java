@@ -1,5 +1,6 @@
 package link.locutus.discord.util;
 
+import com.google.common.math.DoubleMath;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.commands.stock.Exchange;
@@ -19,6 +20,7 @@ import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
+import org.apache.commons.math3.util.FastMath;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -710,21 +712,34 @@ public class PnwUtil {
         return totals;
     }
 
-    private static double[] INFRA_COST_CACHE = null;
-    private static double[] INFRA_COST_FAST_CACHE = null;
+    private static final int[] INFRA_COST_FAST_CACHE;
 
-    public static double calculateInfraFast(double from, double to) {
-        if (to > 10000) throw new IllegalArgumentException("Infra cannot exceed 10,000");
-        if (INFRA_COST_FAST_CACHE == null) {
-            INFRA_COST_FAST_CACHE = new double[10000];
-            double total = 0;
-            for (int i = 1; i < INFRA_COST_FAST_CACHE.length; i++) {
-                double cost = 300d + (Math.pow(Math.max(i - 10d, 20), (2.2d))) / 710d;
-                total += cost;
-                INFRA_COST_FAST_CACHE[i] = total;
-            }
+    static {
+        int max = 4000;
+        int min = 30;
+        int minCents = min * 100;
+        INFRA_COST_FAST_CACHE = new int[(max - min) * 100 + 1];
+        for (int i = minCents; i <= max * 100; i++) {
+            double x = (i * 0.01) - 10d;
+            int cost = Math.toIntExact(Math.round(100 * (300d + (Math.pow(x, (2.2d))) * 0.00140845070422535211267605633803)));
+            INFRA_COST_FAST_CACHE[i - minCents] = cost;
         }
-        return INFRA_COST_FAST_CACHE[(int) to] - INFRA_COST_FAST_CACHE[(int) from];
+    }
+
+    private static int getInfraCostCents(double infra) {
+        if (infra <= 4000) {
+            int index = Math.max(0, (int) (infra * 100) - 3000);
+            return INFRA_COST_FAST_CACHE[index];
+        }
+        return (int) Math.round(100 * (300d + (Math.pow(Math.max(infra - 10d, 20), (2.2d))) * 0.00140845070422535211267605633803));
+    }
+
+    private static int getInfraCostCents(int infra_cents) {
+        if (infra_cents <= 400000) {
+            int index = Math.max(0, infra_cents - 3000);
+            return INFRA_COST_FAST_CACHE[index];
+        }
+        return (int) Math.round(100 * (300d + (Math.pow(Math.max(infra_cents - 1000, 2000) * 0.01, (2.2d))) * 0.00140845070422535211267605633803));
     }
 
     public static double calculateInfra(double from, double to, boolean aec, boolean cfce, boolean urbanization, boolean gsa) {
@@ -737,25 +752,57 @@ public class PnwUtil {
         }
         return PnwUtil.calculateInfra(from, to) * (to > from ? factor : 1);
     }
+
+    // precompute the cost for first 4k infra
     public static double calculateInfra(double from, double to) {
         if (from < 0) return 0;
         if (to <= from) return (from - to) * -150;
         if (to > 10000) throw new IllegalArgumentException("Infra cannot exceed 10,000");
 
-        double[] tmp = INFRA_COST_CACHE;
-        if (tmp != null && from == tmp[0] && to == tmp[1]) {
-            return tmp[2];
-        }
+//        double total = 0;
+//        for (double i = to; i >= from; i -= 100) {
+//            double amt = Math.min(100, i - from);
+//            int cost_cents = getInfraCostCents(i - amt);
+//
+//            System.out.println("Buy " + amt + " infra @ " + cost_cents + " cents starting at " + (i - amt));
+//            total += (cost_cents * amt) * 0.01;
+//        }
+//        return Math.round(total * 100) * 0.01;
 
-        double total = 0;
-        for (double i = Math.max(0, from); i < to; i += 100) {
-            double cost = 300d + (Math.pow(Math.max(i - 10d, 20), (2.2d))) / 710d;
-            double amt = Math.min(100, to - i);
-            total += cost * amt;
+        long total_cents = 0;
+        int to_cents = (int) Math.round(to * 100);
+        int from_cents = (int) Math.round(from * 100);
+        for (int i = to_cents; i >= from_cents; i -= 10000) {
+            int amt = Math.min(10000, i - from_cents);
+            int cost_cents = getInfraCostCents(i - amt);
+            total_cents += ((long) cost_cents * amt);
         }
-        INFRA_COST_CACHE = new double[]{from, to, total};
+        total_cents = (total_cents + 50)  / 100;
+        return total_cents * 0.01;
+    }
 
-        return total;
+    public static void main(String[] args) {
+        double start = 0.039999999999999994;
+        double end =  0.06;
+        // 1008588.99 | 1008457.93
+        // $1008457.93
+
+        System.out.println("start -> end: " + start + " -> " + end);
+
+        System.out.println(calculateInfra(start, end));
+//        // calculateInfra(2105, 2550)
+//        double total = 0;
+//        // run calculation 100,000 times, add to total. determine time ms taken
+//        long startMs = System.currentTimeMillis();
+//        for (int i = 0; i < 10000000; i++) {
+//            end += 1;
+//            if (end > 4000) {
+//                end -= 2000;
+//            }
+//            total += calculateInfra(start, end);
+//        }
+//        long endMs = System.currentTimeMillis();
+//        System.out.println("Total: " + total + " in " + (endMs - startMs) + "ms");
     }
 
     /**

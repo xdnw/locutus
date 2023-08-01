@@ -20,7 +20,7 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
@@ -122,7 +122,7 @@ public class WarCostSheet extends Command {
             }
         }).get();
 
-        List<DBAttack> allAttacks = new ArrayList<>(parser1.getAttacks());
+        List<AbstractCursor> allAttacks = new ArrayList<>(parser1.getAttacks());
 
         for (Map.Entry<DBNation, List<DBWar>> entry : warsByNation.entrySet()) {
             DBNation nation = entry.getKey();
@@ -145,26 +145,26 @@ public class WarCostSheet extends Command {
             {
                 List<DBWar> wars = entry.getValue();
                 Set<Integer> warIds = wars.stream().map(f -> f.warId).collect(Collectors.toSet());
-                List<DBAttack> attacks = new ArrayList<>();
-                for (DBAttack attack : allAttacks) if (warIds.contains(attack.getWar_id())) attacks.add(attack);
-                Map<Integer, List<DBAttack>> attacksByWar = new RankBuilder<>(attacks).group(f -> f.getWar_id()).get();
+                List<AbstractCursor> attacks = new ArrayList<>();
+                for (AbstractCursor attack : allAttacks) if (warIds.contains(attack.getWar_id())) attacks.add(attack);
+                Map<Integer, List<AbstractCursor>> attacksByWar = new RankBuilder<>(attacks).group(f -> f.getWar_id()).get();
 
                 for (DBWar war : wars) {
-                    List<DBAttack> warAttacks = attacksByWar.getOrDefault(war.warId, Collections.emptyList());
+                    List<AbstractCursor> warAttacks = attacksByWar.getOrDefault(war.warId, Collections.emptyList());
 
                     boolean selfAttack = false;
                     boolean enemyAttack = false;
 
-                    for (DBAttack attack : warAttacks) {
-                        if (attack.getAttacker_nation_id() == nationId) {
+                    for (AbstractCursor attack : warAttacks) {
+                        if (attack.getAttacker_id() == nationId) {
                             selfAttack = true;
                         } else {
                             enemyAttack = true;
                         }
                     }
 
-                    Function<DBAttack, Boolean> isPrimary = a -> a.getAttacker_nation_id() == nationId;
-                    Function<DBAttack, Boolean> isSecondary = a -> a.getAttacker_nation_id() != nationId;
+                    Function<AbstractCursor, Boolean> isPrimary = a -> a.getAttacker_id() == nationId;
+                    Function<AbstractCursor, Boolean> isSecondary = a -> a.getAttacker_id() != nationId;
 
                     AttackCost cost;
                     if (war.attacker_id == nationId) {
