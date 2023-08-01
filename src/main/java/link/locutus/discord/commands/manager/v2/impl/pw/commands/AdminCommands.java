@@ -67,6 +67,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
+import rocker.guild.ia.message;
 
 import java.io.File;
 import java.io.IOException;
@@ -313,6 +314,19 @@ public class AdminCommands {
         if (archive == null) archive = true;
         db.setAnnouncementActive(announcementId, !archive);
         return (archive ? "Archived" : "Unarchived") + " announcement with id: #" + announcementId;
+    }
+
+    @Command(desc = "Find the announcement closest matching a message")
+    @RolePermission(Roles.ADMIN)
+    @NoFormat
+    public String find_invite(@Me GuildDB db, String invite) throws IOException {
+        List<Announcement.PlayerAnnouncement> matches = db.getPlayerAnnouncementsContaining(invite);
+        if (matches.isEmpty()) {
+            return "No announcements found with content: `" + invite + "`";
+        } else {
+            return "Found " + matches.size() + " matches:\n- " +
+                    matches.stream().map(f -> "{ID:" + f.ann_id + ", receiver:" + f.receiverNation + "}").collect(Collectors.joining("\n- "));
+        }
     }
 
     @Command(desc = "Find the announcement closest matching a message")
