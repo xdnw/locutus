@@ -237,7 +237,7 @@ public class AttackCost {
                 total2 = PnwUtil.addResourcesToA(total2, attTotal);
                 infrn1 += defInfra;
                 infrn2 += attInfra;
-                buildings1 = PnwUtil.add(buildings2, defBuild);
+                buildings1 = PnwUtil.add(buildings1, defBuild);
             }
         }
     }

@@ -95,4 +95,9 @@ public class ABuilding implements Building {
         }
         return profitBuffer;
     }
+
+    @Override
+    public String toString() {
+        return name();
+    }
 }
