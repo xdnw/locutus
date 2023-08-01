@@ -733,7 +733,7 @@ public class PWBindings extends BindingHelper {
         if (result.isEmpty()) throw new IllegalArgumentException("Invalid nations or alliances: " + input);
         return result;
     }
-
+    @Binding(examples = "Cataclysm,790", value = "A comma separated list of alliances")
     public static Set<DBAlliance> alliances(@Default @Me Guild guild, String input) {
         Set<Integer> aaIds = DiscordUtil.parseAlliances(guild, input);
         if (aaIds == null) throw new IllegalArgumentException("Invalid alliances: " + input);

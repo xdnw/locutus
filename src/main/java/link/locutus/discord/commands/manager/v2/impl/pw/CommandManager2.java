@@ -282,7 +282,7 @@ public class CommandManager2 {
         this.commands.registerMethod(new PlayerSettingCommands(), List.of("announcement"), "viewAnnouncement", "view");
 
         this.commands.registerMethod(new TestCommands(), List.of("announcement"), "ocr", "ocr");
-        this.commands.registerMethod(new TestCommands(), List.of("announcement"), "find_announcement", "find");
+        this.commands.registerMethod(new AdminCommands(), List.of("announcement"), "find_announcement", "find");
 
         StringBuilder output = new StringBuilder();
         this.commands.generatePojo("", output, 0);

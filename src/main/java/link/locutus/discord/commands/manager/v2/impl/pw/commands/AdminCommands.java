@@ -319,7 +319,6 @@ public class AdminCommands {
     @RolePermission(Roles.ADMIN)
     @NoFormat
     public String find_announcement(@Me GuildDB db, int announcementId, String message) throws IOException {
-//        Announcement announcement = db.getAnnouncement(announcementId);
         List<Announcement.PlayerAnnouncement> announcements = db.getPlayerAnnouncementsByAnnId(announcementId);
         if (announcements.isEmpty()) {
             return "No announcements found with id: #" + announcementId;
