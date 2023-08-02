@@ -54,7 +54,7 @@ public class NationLootRanking extends Command {
         String diffStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff);
 
         Map<Integer, Double> totals = new HashMap<>();
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(nationMap.keySet(), cutoffMs);
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksEither(nationMap.keySet(), cutoffMs);
         for (AbstractCursor attack : attacks) {
             if (attack.getVictor() != 0 && attack.getMoney_looted() != 0) {
                 if (nationMap.containsKey(attack.getVictor())) {

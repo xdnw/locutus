@@ -70,17 +70,9 @@ public class NationUpdateProcessor {
     public static void updateBlockades() {
         long now = System.currentTimeMillis();
 
-        // get active wars
-        Set<DBWar> activeWars = Locutus.imp().getWarDb().getActiveWars();
-        // Get the ones with navals in them
+        Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWarsSince(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10));
 
-        // get wars from those nation ids
-
-
-
-        Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWarsSince(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(5));
-
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().queryAttacks().withWars(wars).afterDate(now - TimeUnit.DAYS.toMillis(5)).getList();
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().queryAttacks().withWars(wars).withType(AttackType.NAVAL).afterDate(now - TimeUnit.DAYS.toMillis(10)).getList();
 
         Collections.sort(attacks, Comparator.comparingLong(o -> o.getDate()));
 
