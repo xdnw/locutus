@@ -1230,7 +1230,12 @@ public class DBNation implements NationOrAlliance {
             }
         }
         if (nation.getSpies() != null) {
-            this.setSpies(nation.getSpies(), false); // For tracking last update time, even if no change
+            this.setSpies(nation.getSpies());
+            if (copyOriginal != null && copyOriginal.getSpies() != (nation.getSpies())) {
+                if (eventConsumer != null) eventConsumer.accept(new NationChangeUnitEvent(copyOriginal, this, MilitaryUnit.SPIES));
+                dirty = true;
+            }
+
         }
         if (nation.getVacation_mode_turns() != null && this.getVm_turns() != nation.getVacation_mode_turns()) {
             long turnEnd = TimeUtil.getTurn() + nation.getVacation_mode_turns();
@@ -1448,45 +1453,6 @@ public class DBNation implements NationOrAlliance {
         return total / (double) cities.size();
     }
 
-    public Integer updateSpies(PagePriority priority) {
-        return updateSpies(priority, false);
-    }
-
-    public Integer updateSpies(PagePriority priority, boolean update, boolean force) {
-        if (!update && spies >= 0) {
-            return spies;
-        }
-        return updateSpies(priority, force);
-    }
-
-    public Integer updateSpies(PagePriority priority, boolean force) {
-        return updateSpies(priority, force ? Integer.MIN_VALUE : 0);
-    }
-
-    public Long getTurnUpdatedSpies() {
-        ByteBuffer lastTurn = spies < 0 ? null : getMeta(NationMeta.UPDATE_SPIES);
-        return lastTurn == null ? null : lastTurn.getLong();
-    }
-
-    public Integer updateSpies(PagePriority priority, int turns) {
-        ByteBuffer lastTurn = spies < 0 ? null : getMeta(NationMeta.UPDATE_SPIES);
-        long currentTurn = TimeUtil.getTurn();
-
-        if (lastTurn == null || (currentTurn - lastTurn.getLong() > turns)) {
-            try {
-                if (getPositionEnum().id > Rank.APPLICANT.id) {
-                    if (getAlliance().updateSpies(false).contains(nation_id)) {
-                        return spies;
-                    }
-                }
-                SpyCount.guessSpyCount(priority, this);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        return spies;
-    }
-
     public void setMeta(NationMeta key, byte value) {
         setMeta(key, new byte[] {value});
     }
@@ -1557,19 +1523,9 @@ public class DBNation implements NationOrAlliance {
         return Math.max(spies, 0);
     }
 
-    public void setSpies(int spies, boolean events) {
-        setMeta(NationMeta.UPDATE_SPIES, TimeUtil.getTurn());
-        if (events && this.spies != spies) {
-            DBNation copyOriginal = new DBNation(this);
-            this.spies = spies;
-
-            Locutus.imp().getNationDB().setSpies(getNation_id(), spies);
-            Locutus.imp().getNationDB().saveNation(this);
-
-            new NationChangeUnitEvent(copyOriginal, this, MilitaryUnit.SPIES).post();
-        } else {
-            this.spies = spies;
-        }
+    public void setSpies(int spies) {
+        getCache().processUnitChange(this, MilitaryUnit.NUKE, this.nukes, nukes);
+        this.nukes = nukes;
     }
 
     public double[] getNetDeposits(GuildDB db) throws IOException {
@@ -2811,7 +2767,7 @@ public class DBNation implements NationOrAlliance {
                 setNukes(amt);
                 break;
             case SPIES:
-                setSpies(amt, false);
+                setSpies(amt);
                 break;
             default:
                 throw new UnsupportedOperationException("Unit type not implemented");
@@ -3458,7 +3414,7 @@ public class DBNation implements NationOrAlliance {
         return Locutus.imp().getWarDb().getBlockadedByNation(false).getOrDefault(nation_id, empty);
     }
 
-    public void toCard(IMessageIO channel, boolean spies, boolean refresh) {
+    public void toCard(IMessageIO channel, boolean refresh) {
         String title = nation;
         String counterEmoji = "Counter";
         String counterCmd = Settings.commandPrefix(true) + "counter " + getNationUrl();
@@ -3467,7 +3423,7 @@ public class DBNation implements NationOrAlliance {
         String refreshEmoji = "Refresh";
         String refreshCmd = Settings.commandPrefix(true) + "who " + getNationUrl();
 
-        String response = toEmbedString(spies);
+        String response = toEmbedString();
         IMessageBuilder msg = channel.create().embed(title, response)
                 .commandButton(CommandBehavior.UNDO_REACTION, CM.war.counter.nation.cmd.create(getId() + "", null, null, null, null, null, null, null), "Counter");
         if (refresh) {
@@ -3475,14 +3431,14 @@ public class DBNation implements NationOrAlliance {
         }
         msg.send();
     }
-    public String toEmbedString(boolean spies) {
+    public String toEmbedString() {
         StringBuilder response = new StringBuilder();
         PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(getNation_id());
         if (user != null) {
             response.append(user.getDiscordName() + " / <@" + user.getDiscordId() + "> | ");
         }
         response.append(toMarkdown(true, true, true, false, false));
-        response.append(toMarkdown(true, false, false, true, spies));
+        response.append(toMarkdown(true, false, false, true, true));
 
         response.append(" ```")
                 .append(String.format("%6s", getVm_turns())).append(" \uD83C\uDFD6\ufe0f").append(" | ")
@@ -3594,7 +3550,7 @@ public class DBNation implements NationOrAlliance {
         return body.toString();
     }
 
-    public String toMarkdown(boolean embed, boolean title, boolean general, boolean military, boolean spies) {
+    public String toMarkdown(boolean embed, boolean title, boolean general, boolean military) {
         StringBuilder response = new StringBuilder();
         if (title) {
             String nationUrl = getNationUrlMarkup(embed);
@@ -3608,7 +3564,7 @@ public class DBNation implements NationOrAlliance {
 
             response.append('\n');
         }
-        if (general || military || spies) {
+        if (general || military) {
             response.append("```");
             if (general) {
                 int active = getActive_m();
@@ -3625,7 +3581,8 @@ public class DBNation implements NationOrAlliance {
                         .append(String.format("%6s", getSoldiers())).append(" \uD83D\uDC82").append(" | ")
                         .append(String.format("%5s", getTanks())).append(" \u2699").append(" | ")
                         .append(String.format("%5s", getAircraft())).append(" \u2708").append(" | ")
-                        .append(String.format("%4s", getShips())).append(" \u26F5").append(" | ");
+                        .append(String.format("%4s", getShips())).append(" \u26F5").append(" | ")
+                        .append(String.format("%2s", getSpies())).append(" \uD83D\uDD0E").append(" | ");
             }
             if (general) {
                 response
