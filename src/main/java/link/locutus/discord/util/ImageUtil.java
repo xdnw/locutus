@@ -260,11 +260,4 @@ public class ImageUtil {
             throw new IllegalArgumentException("Unknown result: Neither ParsedResults > ParsedText nor ErrorMessage found:\n" + jsonStr);
         }
     }
-
-    public static void main(String[] args) throws IOException {
-        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-        String url = "https://cdn.discordapp.com/attachments/1082912526964101140/1136265470903853137/image.png";
-        String text = getTextAPI(url);
-        System.out.println(text);
-    }
 }
