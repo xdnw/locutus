@@ -658,7 +658,6 @@ public class WarDB extends DBMainV2 {
         else if (alliances == null) {
             synchronized (warsById) {
                 if (warFilter == null) {
-
                     result.putAll(warsById);
                 } else {
                     for (Map.Entry<Integer, DBWar> warEntry : warsById.entrySet()) {
@@ -1690,7 +1689,7 @@ public class WarDB extends DBMainV2 {
         }
 
         long currentTurn = TimeUtil.getTurn();
-        for (DBWar war : activeWars.getActiveWars()) {
+        for (DBWar war : activeWars.getActiveWars().values()) {
             if (!newWarIds.add(war.getWarId())) continue;
 
             long warTurn = TimeUtil.getTurn(war.date);

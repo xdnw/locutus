@@ -235,13 +235,7 @@ public class TimeUtil {
         long daysSince0 = TimeUnit.MILLISECONDS.toDays(now);
         long hoursInCurrentDay = TimeUnit.MILLISECONDS.toHours(now % 86400000);
         int turnsPerDay = 12;
-        long turn = (hoursInCurrentDay / 2) + daysSince0 * turnsPerDay;
-
-        long checkTurn = getTurn(ZonedDateTime.now(ZoneOffset.UTC));
-        if (checkTurn != turn) {
-            System.out.println("Turn mismatch: " + turn + " vs " + checkTurn);
-        }
-        return checkTurn;
+        return (hoursInCurrentDay / 2) + daysSince0 * turnsPerDay;
     }
 
     public static long getTurn(long timestamp) {

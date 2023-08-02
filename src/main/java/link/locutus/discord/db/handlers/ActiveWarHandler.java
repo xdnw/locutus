@@ -82,14 +82,16 @@ public class ActiveWarHandler {
         return result;
     }
 
-    public Set<DBWar> getActiveWars() {
-        Set<DBWar> wars = new LinkedHashSet<>();
+    public Map<Integer, DBWar> getActiveWars() {
+        Int2ObjectOpenHashMap<DBWar> result = new Int2ObjectOpenHashMap<>();
         synchronized (activeWars) {
             for (DBWar[] nationWars : activeWars.values()) {
-                wars.addAll(Arrays.asList(nationWars));
+                for (DBWar war : nationWars) {
+                    result.put(war.warId, war);
+                }
             }
         }
-        return wars;
+        return result;
     }
 
     public List<DBWar> getActiveWars(int nationId) {

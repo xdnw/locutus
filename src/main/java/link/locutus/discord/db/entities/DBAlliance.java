@@ -917,7 +917,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return null;
     }
 
-    private boolean isRightSizeForOffshore(Set<DBNation> members) {
+    public boolean isRightSizeForOffshore(Set<DBNation> members) {
         if (members.size() > 3) {
             return false;
         }
@@ -956,6 +956,15 @@ public class DBAlliance implements NationList, NationOrAlliance {
     public DBAlliance findParentOfThisOffshore() {
         Set<DBNation> members = getNations();
         if (!isRightSizeForOffshore(members)) {
+            deleteMeta(AllianceMeta.OFFSHORE_PARENT);
+            return null;
+        }
+        return findParentOfThisOffshore(members, false);
+    }
+
+    public DBAlliance findParentOfThisOffshore(Set<DBNation> membersOrNull, boolean checkSize) {
+        Set<DBNation> members = membersOrNull == null ? getNations() : membersOrNull;
+        if (checkSize && !isRightSizeForOffshore(members)) {
             deleteMeta(AllianceMeta.OFFSHORE_PARENT);
             return null;
         }
