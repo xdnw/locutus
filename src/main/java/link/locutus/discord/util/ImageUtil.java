@@ -4,6 +4,7 @@ import ai.djl.util.Pair;
 import cn.easyproject.easyocr.EasyOCR;
 import cn.easyproject.easyocr.ImageType;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.util.io.PagePriority;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
 import org.bytedeco.opencv.global.opencv_imgcodecs;
@@ -11,6 +12,8 @@ import org.bytedeco.opencv.global.opencv_imgproc;
 import org.bytedeco.opencv.opencv_core.IntIntPair;
 import org.bytedeco.opencv.opencv_core.Mat;
 import org.bytedeco.opencv.opencv_core.Size;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import javax.imageio.ImageIO;
 import java.awt.Graphics2D;
@@ -18,14 +21,17 @@ import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -47,7 +53,7 @@ public class ImageUtil {
         }
     }
 
-    public static String getText(String imageUrl, ImageType type) {
+    public static String getTextLocal(String imageUrl, ImageType type) {
         String pathStr = Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.TESSERACT_LOCATION;
         EasyOCR ocr = new EasyOCR(pathStr);
         ocr.setTesseractOptions(EasyOCR.OPTION_LANG_ENG);
@@ -144,5 +150,114 @@ public class ImageUtil {
         // Convert the word to lowercase for case-insensitive matching
         word = word.toLowerCase();
         return englishWords.contains(word);
+    }
+
+    private static final String OCR_API_URL = "https://api.ocr.space/parse/image"; // OCR API Endpoints
+
+    public static String convertImageUrlToText(String apiKey, boolean isOverlayRequired, String imageUrl, String language) {
+        try {
+            URL obj = new URL(OCR_API_URL);
+            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+
+            // Add request header
+            con.setRequestMethod("POST");
+            con.setRequestProperty("User-Agent", "Mozilla/5.0");
+            con.setRequestProperty("Accept-Language", "en-US,en;q=0.5");
+
+            JSONObject postDataParams = new JSONObject();
+            postDataParams.put("apikey", apiKey);
+            postDataParams.put("isOverlayRequired", isOverlayRequired);
+            postDataParams.put("url", imageUrl);
+            postDataParams.put("language", language);
+
+            // Send post request
+            con.setDoOutput(true);
+            DataOutputStream wr = new DataOutputStream(con.getOutputStream());
+            wr.writeBytes(getPostDataString(postDataParams));
+            wr.flush();
+            wr.close();
+
+            // Read the response
+            BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
+            String inputLine;
+            StringBuilder response = new StringBuilder();
+
+            while ((inputLine = in.readLine()) != null) {
+                response.append(inputLine);
+            }
+            in.close();
+
+            // Return the result
+            return response.toString();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    private static String getPostDataString(JSONObject params) throws Exception {
+        StringBuilder result = new StringBuilder();
+        boolean first = true;
+
+        for (String key : params.keySet()) {
+            Object value = params.get(key);
+
+            if (first) {
+                first = false;
+            } else {
+                result.append("&");
+            }
+
+            result.append(URLEncoder.encode(key, "UTF-8"));
+            result.append("=");
+            result.append(URLEncoder.encode(value.toString(), "UTF-8"));
+        }
+        return result.toString();
+    }
+
+    public static String getText(String imageUrl) {
+        try {
+            return getTextAPI(imageUrl);
+        } catch (IOException | IllegalArgumentException e) {
+            e.printStackTrace();
+        }
+        return getTextLocal(imageUrl, ImageType.CLEAR);
+    }
+
+    // Example usage:
+    public static String getTextAPI(String imageUrl) throws IOException {
+        String endpoint = "https://api.ocr.space/parse/imageurl?apikey=" + Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OCR_SPACE_KEY + "&isTable=true&OCREngine=2&url=";
+
+        String url = endpoint + imageUrl;
+        String jsonStr = FileUtil.readStringFromURL(PagePriority.API_OCR.ordinal(), url);
+        System.out.println(jsonStr);
+        JSONObject json = new JSONObject(jsonStr);
+        // ParsedResults > ParsedText
+        String parsedText = null;
+        String errorMessage = null;
+
+        if (json.has("ParsedResults")) {
+            JSONArray parsedResultsArray = json.getJSONArray("ParsedResults");
+            if (parsedResultsArray.length() > 0) {
+                JSONObject parsedResults = parsedResultsArray.getJSONObject(0);
+                if (parsedResults.has("ParsedText")) {
+                    parsedText = parsedResults.getString("ParsedText");
+                }
+            }
+        }
+
+        if (json.has("ErrorMessage")) {
+            errorMessage = json.getString("ErrorMessage");
+        }
+
+        if (parsedText != null) {
+            return parsedText;
+        } else if (errorMessage != null) {
+            throw new IllegalArgumentException(errorMessage);
+        } else {
+            throw new IllegalArgumentException("Unknown result: Neither ParsedResults > ParsedText nor ErrorMessage found:\n" + jsonStr);
+        }
     }
 }

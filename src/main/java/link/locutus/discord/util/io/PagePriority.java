@@ -22,6 +22,7 @@ public enum PagePriority {
     API_TAX_CREATE,
     API_TAX_EDIT,
     API_TAX_DELETE,
+    API_OCR,
     EMBARGO,
     PUSHER,
     ALLIANCE_EDIT,
