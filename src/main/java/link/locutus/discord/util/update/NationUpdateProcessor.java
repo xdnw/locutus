@@ -1,6 +1,11 @@
 package link.locutus.discord.util.update;
 
 import com.google.common.eventbus.Subscribe;
+import it.unimi.dsi.fastutil.ints.Int2BooleanOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -173,26 +178,35 @@ public class NationUpdateProcessor {
     private static Map<Integer, Integer> ACTIVITY_ALERTS = new PassiveExpiringMap<Integer, Integer>(240, TimeUnit.MINUTES);
 
     public static void onActivityCheck() {
-        Map<Integer, Integer> membersByAA = new HashMap<>(); // only <7d non vm nations
-        Map<Integer, Integer> activeMembersByAA = new HashMap<>();
-        Map<Integer, Double> averageMilitarization = new HashMap<>();
+        Map<Integer, Integer> membersByAA = new Int2IntOpenHashMap(); // only <7d non vm nations
+        Map<Integer, Integer> activeMembersByAA = new Int2IntOpenHashMap();
+        Map<Integer, Double> averageMilitarization = new Int2DoubleOpenHashMap();
+
+        Map<Integer, Boolean> status = new Int2BooleanOpenHashMap();
+        Set<Long> checkedUser = new LongOpenHashSet();
+        for (Guild guild : Locutus.imp().getDiscordApi().getGuilds()) {
+            for (Member member : guild.getMembers()) {
+                long userId = member.getIdLong();
+                if (checkedUser.contains(userId)) continue;
+                checkedUser.add(userId);
+                DBNation nation = DiscordUtil.getNation(member.getUser());
+                if (nation == null) continue;
+                status.put(nation.getId(), member.getOnlineStatus() == OnlineStatus.ONLINE);
+            }
+        }
+
+        long inactive7d = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(7200);
+        long inactive1d = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1440);
+        long turnNow = TimeUtil.getTurn();
+
         for (Map.Entry<Integer, DBNation> entry : Locutus.imp().getNationDB().getNations().entrySet()) {
             DBNation nation = entry.getValue();
-            if (nation.getActive_m() > 7200 || nation.getPosition() <= Rank.APPLICANT.id || nation.getVm_turns() > 0) continue;
+            if (nation.lastActiveMs() < inactive7d || nation.getPosition() <= Rank.APPLICANT.id || nation.getLeaving_vm() > turnNow) continue;
             int aaId = nation.getAlliance_id();
             membersByAA.put(aaId, membersByAA.getOrDefault(aaId, 0) + 1);
             boolean active = nation.getActive_m() < 30;
-            if (!active && nation.getActive_m() < 1440 && nation.getVm_turns() == 0 && nation.getPositionEnum().id > Rank.APPLICANT.id) {
-                User user = nation.getUser();
-                if (user != null) {
-                    List<Guild> mutual = user.getMutualGuilds();
-                    if (!mutual.isEmpty()) {
-                        Member member = mutual.get(0).getMember(user);
-                        if (member != null && member.getOnlineStatus() == OnlineStatus.ONLINE) {
-                            active = true;
-                        }
-                    }
-                }
+            if (!active && nation.lastActiveMs() > inactive1d && nation.getLeaving_vm() <= turnNow && nation.getPositionEnum().id > Rank.APPLICANT.id) {
+                active = status.getOrDefault(nation.getId(), false);
             }
             if (active) {
                 activeMembersByAA.put(aaId, activeMembersByAA.getOrDefault(aaId, 0) + 1);
