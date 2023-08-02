@@ -960,7 +960,6 @@ public class DBAlliance implements NationList, NationOrAlliance {
             return null;
         }
 
-
         for (DBWar war : Locutus.imp().getWarDb().getWarsByAlliance(getAlliance_id())) {
 
             List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByWarId(war);

@@ -34,12 +34,7 @@ public class PNWUser {
     }
 
     public User getUser() {
-        User user = Locutus.imp().getDiscordApi().getUserById(discordId);
-        if (user != null && !discordName.contains("#")) {
-            discordName = DiscordUtil.getFullUsername(user);
-            Locutus.imp().getDiscordDB().addUser(this);
-        }
-        return user;
+        return Locutus.imp().getDiscordApi().getUserById(discordId);
     }
 
     public Map<Guild, Collection<Map.Entry<ActionType, String>>> getKicksAndBans() {

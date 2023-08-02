@@ -61,7 +61,19 @@ public class AllianceListener {
 
         { // Update offshores
             for (DBAlliance alliance : Locutus.imp().getNationDB().getAlliances()) {
+                ByteBuffer dateBuf = alliance.getMeta(AllianceMeta.OFFSHORE_PARENT_DATE);
+                ByteBuffer iterationBuf = alliance.getMeta(AllianceMeta.OFFSHORE_PARENT_ITERATION);
+                long date = System.currentTimeMillis() - (dateBuf == null ? 0 : dateBuf.getLong());
+                int iteration = iterationBuf == null ? 0 : iterationBuf.getInt();
+
+                long requiredWait = TimeUnit.HOURS.toMillis(2) + iteration > 0 ? (TimeUnit.DAYS.toMillis((long) Math.pow(2, iteration))) : 0;
+                if (date < requiredWait) continue;
+
                 alliance.findParentOfThisOffshore();
+
+                // set meta
+                alliance.setMeta(AllianceMeta.OFFSHORE_PARENT_DATE, System.currentTimeMillis());
+                alliance.setMeta(AllianceMeta.OFFSHORE_PARENT_ITERATION, iteration + 1);
             }
         }
 

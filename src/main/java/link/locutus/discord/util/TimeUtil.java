@@ -231,7 +231,17 @@ public class TimeUtil {
     }
 
     public static long getTurn() {
-        return getTurn(ZonedDateTime.now(ZoneOffset.UTC));
+        long now = System.currentTimeMillis();
+        long daysSince0 = TimeUnit.MILLISECONDS.toDays(now);
+        long hoursInCurrentDay = TimeUnit.MILLISECONDS.toHours(now % 86400000);
+        int turnsPerDay = 12;
+        long turn = (hoursInCurrentDay / 2) + daysSince0 * turnsPerDay;
+
+        long checkTurn = getTurn(ZonedDateTime.now(ZoneOffset.UTC));
+        if (checkTurn != turn) {
+            System.out.println("Turn mismatch: " + turn + " vs " + checkTurn);
+        }
+        return checkTurn;
     }
 
     public static long getTurn(long timestamp) {

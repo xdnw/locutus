@@ -160,6 +160,7 @@ public class BankDB extends DBMainV3 {
     public List<Transaction2> getTransactions(Condition condition) {
         return getTransactions(condition, null, null);
     }
+
     public List<Transaction2> getTransactions(Condition condition, SortField<?> orderBy, Integer limit) {
         Result<Record> rs = query(TRANSACTIONS_2, condition, orderBy, limit);
         List<Transaction2> list = new ArrayList<>();
