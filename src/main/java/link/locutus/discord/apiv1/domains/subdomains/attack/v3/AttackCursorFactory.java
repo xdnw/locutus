@@ -17,7 +17,7 @@ import java.util.function.Predicate;
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class AttackCursorFactory {
-    private static final int SIZE = 256;
+    private static final int SIZE = 1024;
     private final BitBuffer buffer;
     private final AirInfraCursor airInfraCursor = new AirInfraCursor();
     private final AirMoneyCursor airMoneyCursor = new AirMoneyCursor();

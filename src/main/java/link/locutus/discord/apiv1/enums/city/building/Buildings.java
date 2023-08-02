@@ -220,9 +220,13 @@ public class Buildings {
 
     public static Building fromV3(String v3Name) {
         return switch (v3Name) {
+            case "oil power plant" -> OIL_POWER;
             case "oil power" -> OIL_POWER;
+            case "wind power plant" -> WIND_POWER;
             case "wind power" -> WIND_POWER;
+            case "coal power plant" -> COAL_POWER;
             case "coal power" -> COAL_POWER;
+            case "nuclear power plant" -> NUCLEAR_POWER;
             case "nuclear power" -> NUCLEAR_POWER;
             case "coal mine" -> COAL_MINE;
             case "lead mine" -> LEAD_MINE;
@@ -240,7 +244,9 @@ public class Buildings {
             case "shopping mall" -> MALL;
             case "stadium" -> STADIUM;
             case "gas refinery" -> GAS_REFINERY;
+            case "aluminumrefinery" -> ALUMINUM_REFINERY;
             case "aluminum refinery" -> ALUMINUM_REFINERY;
+            case "oil refinery" -> GAS_REFINERY;
             case "steel mill" -> STEEL_MILL;
             case "munitions factory" -> MUNITIONS_FACTORY;
             case "barracks" -> BARRACKS;

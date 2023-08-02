@@ -81,10 +81,6 @@ public class VictoryCursor extends FailedCursor {
     @Override
     public void load(WarAttack attack) {
         super.load(attack);
-        if (attack.getInfra_destroyed() != null) {
-            new Exception().printStackTrace();
-            System.out.println("Infra is destroyed in victory");
-        }
 
         List<CityInfraDamage> infraBefore = attack.getCities_infra_before();
         infra_destroyed_percent_cents = (int) (attack.getInfra_destroyed_percentage() * 100);

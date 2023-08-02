@@ -458,7 +458,9 @@ public class WarDB extends DBMainV2 {
             System.out.println("Loading attacks");
             importLegacyAttacks();
             System.out.println("Loaded legacy attacks");
+            long start = System.currentTimeMillis();
             loadAttacks(loadAttackDays);
+            System.out.println("Loaded attacks in " + (System.currentTimeMillis() - start) + "ms");
             System.out.println("Loaded attacks " + attacksByWarId.size());
         }
     }
@@ -490,7 +492,7 @@ public class WarDB extends DBMainV2 {
     public List<AbstractCursor> getAttacks(Map<Integer, DBWar> wars, Predicate<AttackType> attackTypeFilter,  Predicate<AbstractCursor> preliminaryFilter, Predicate<AbstractCursor> attackFilter) {
         List<AbstractCursor> result = new ObjectArrayList<>();
         final BiFunction<DBWar, byte[], AbstractCursor> loader;
-        if (attackFilter != null) {
+        if (attackTypeFilter != null) {
             if (preliminaryFilter != null) {
                 loader = (war, data) -> attackCursorFactory.loadWithTypePretest(war, data, true, attackTypeFilter, preliminaryFilter);
             } else {
@@ -527,7 +529,7 @@ public class WarDB extends DBMainV2 {
     public Map<DBWar, List<AbstractCursor>> getAttacksByWar(Map<Integer, DBWar> wars, Predicate<AttackType> attackTypeFilter,  Predicate<AbstractCursor> preliminaryFilter, Predicate<AbstractCursor> attackFilter) {
         Map<DBWar, List<AbstractCursor>> result = new Object2ObjectOpenHashMap<>();
         final BiFunction<DBWar, byte[], AbstractCursor> loader;
-        if (attackFilter != null) {
+        if (attackTypeFilter != null) {
             if (preliminaryFilter != null) {
                 loader = (war, data) -> attackCursorFactory.loadWithTypePretest(war, data, true, attackTypeFilter, preliminaryFilter);
             } else {
@@ -1983,7 +1985,7 @@ public class WarDB extends DBMainV2 {
 
         // sort attacks
         ArrayList<AbstractCursor> valuesList = new ArrayList<>(values);
-        Collections.sort(valuesList, Comparator.comparingInt(f -> f.getWar_attack_id()));
+        valuesList.sort(Comparator.comparingInt(AbstractCursor::getWar_attack_id));
         values = valuesList;
 
         for (AbstractCursor attack : values) {
@@ -2018,15 +2020,29 @@ public class WarDB extends DBMainV2 {
             }
         }
         List<AttackEntry> toSave = new ArrayList<>();
+        Map<Integer, Set<Integer>> attackIdsByWarId = new Int2ObjectOpenHashMap<>();
         // add to attacks map
         synchronized (attacksByWarId) {
             for (AbstractCursor attack : values) {
-                List<byte[]> attacks = attacksByWarId.computeIfAbsent(attack.getWar_id(), k -> new ObjectArrayList<>());
-                byte[] data = attackCursorFactory.toBytes(attack);
-                if (attacks.isEmpty() || attacks.stream().noneMatch(f -> Arrays.equals(f, data))) {
-                    attacks.add(data);
-                    toSave.add(new AttackEntry(attack.getWar_attack_id(), attack.getWar_id(), attack.getAttacker_id(), attack.getDefender_id(), attack.getDate(), data));
+                List<byte[]> attacks = attacksByWarId.get(attack.getWar_id());
+
+                Set<Integer> attackIds = attackIdsByWarId.get(attack.getWar_id());
+                if (attackIds == null && attacks != null && !attacks.isEmpty()) {
+                    for (byte[] data : attacks) {
+                        int id = attackCursorFactory.getId(data);
+                        attackIds = new IntOpenHashSet();
+                        attackIds.add(id);
+                        attackIdsByWarId.put(attack.getWar_id(), attackIds);
+                    }
                 }
+                if (attackIds != null && attackIds.contains(attack.getWar_attack_id())) continue;
+                if (attacks == null) {
+                    attacks = new ObjectArrayList<>();
+                    attacksByWarId.put(attack.getWar_id(), attacks);
+                }
+
+                byte[] data = attackCursorFactory.toBytes(attack);
+                attacks.add(data);
             }
         }
 
@@ -2071,8 +2087,11 @@ public class WarDB extends DBMainV2 {
     }
 
     public boolean updateAttacks(boolean runAlerts, Consumer<Event> eventConsumer, boolean v2) {
-        long start = System.currentTimeMillis();
         AbstractCursor latest = getLatestAttack();
+        return updateAttacks(latest, runAlerts, eventConsumer, v2);
+    }
+
+    private boolean updateAttacks(AbstractCursor latest, boolean runAlerts, Consumer<Event> eventConsumer, boolean v2) {
         Integer maxId = latest == null ? null : latest.getWar_attack_id();
         if (maxId == null || maxId == 0) runAlerts = false;
 
