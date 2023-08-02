@@ -63,7 +63,7 @@ public class ActiveWarHandler {
     }
 
     public Map<Integer, DBWar> getActiveWarsById() {
-        return getActiveWars().stream().collect(Collectors.toMap(DBWar::getWarId, Function.identity()));
+        return getActiveWars();
     }
 
     public Map<Integer, DBWar> getActiveWars(Predicate<Integer> nationId, Predicate<DBWar> warPredicate) {
