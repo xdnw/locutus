@@ -4,6 +4,7 @@ import com.google.common.eventbus.Subscribe;
 import it.unimi.dsi.fastutil.ints.Int2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -182,7 +183,7 @@ public class NationUpdateProcessor {
         Map<Integer, Integer> activeMembersByAA = new Int2IntOpenHashMap();
         Map<Integer, Double> averageMilitarization = new Int2DoubleOpenHashMap();
 
-        Map<Integer, Boolean> status = new Int2BooleanOpenHashMap();
+        Set<Integer> online = new IntOpenHashSet();
         Set<Long> checkedUser = new LongOpenHashSet();
         for (Guild guild : Locutus.imp().getDiscordApi().getGuilds()) {
             for (Member member : guild.getMembers()) {
@@ -191,7 +192,9 @@ public class NationUpdateProcessor {
                 checkedUser.add(userId);
                 DBNation nation = DiscordUtil.getNation(member.getUser());
                 if (nation == null) continue;
-                status.put(nation.getId(), member.getOnlineStatus() == OnlineStatus.ONLINE);
+                if (member.getOnlineStatus() == OnlineStatus.ONLINE) {
+                    online.add(nation.getId());
+                }
             }
         }
 
@@ -206,7 +209,7 @@ public class NationUpdateProcessor {
             membersByAA.put(aaId, membersByAA.getOrDefault(aaId, 0) + 1);
             boolean active = nation.getActive_m() < 30;
             if (!active && nation.lastActiveMs() > inactive1d && nation.getLeaving_vm() <= turnNow && nation.getPositionEnum().id > Rank.APPLICANT.id) {
-                active = status.getOrDefault(nation.getId(), false);
+                active = online.contains(nation.getId());
             }
             if (active) {
                 activeMembersByAA.put(aaId, activeMembersByAA.getOrDefault(aaId, 0) + 1);
