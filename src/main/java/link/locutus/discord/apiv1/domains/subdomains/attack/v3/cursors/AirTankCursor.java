@@ -30,8 +30,8 @@ public class AirTankCursor extends UnitCursor {
     @Override
     public void load(WarAttack attack) {
         super.load(attack);
-        this.attcas1 = attack.getAtt_soldiers_lost();
-        this.defcas1 = attack.getDef_soldiers_lost();
+        this.attcas1 = attack.getAtt_aircraft_lost();
+        this.defcas1 = attack.getDef_aircraft_lost();
         this.defcas2 = attack.getDef_tanks_lost();
     }
 

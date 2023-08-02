@@ -69,10 +69,31 @@ public class WarDB extends DBMainV2 {
     private Map<Integer, Map<Integer, DBWar>> warsByNationId;
     private final Int2ObjectOpenHashMap<List<byte[]>> attacksByWarId = new Int2ObjectOpenHashMap<>();
     public WarDB() throws SQLException {
-        super(Settings.INSTANCE.DATABASE, "war");
+        this("war");
+    }
+
+    public WarDB(String name) throws SQLException {
+        super(Settings.INSTANCE.DATABASE, name);
         warsById = new Int2ObjectOpenHashMap<>();
         warsByAllianceId = new Int2ObjectOpenHashMap<>();
         warsByNationId = new Int2ObjectOpenHashMap<>();
+    }
+
+    public List<DBAttack> getLegacyVictory() {
+        List<DBAttack> attacks = new ArrayList<>();
+        try (PreparedStatement stmt= getConnection().prepareStatement("select * FROM `attacks2` WHERE `attack_type` = ? ORDER BY `war_attack_id` ASC", ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY)) {
+            stmt.setFetchSize(2 << 16);
+            stmt.setInt(1, AttackType.VICTORY.ordinal());
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    DBAttack legacy = createAttack(rs);
+                    attacks.add(legacy);
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return attacks;
     }
 
     public void testAttackSerializingTime() throws IOException {
@@ -462,6 +483,23 @@ public class WarDB extends DBMainV2 {
             loadAttacks(loadAttackDays);
             System.out.println("Loaded attacks in " + (System.currentTimeMillis() - start) + "ms");
             System.out.println("Loaded attacks " + attacksByWarId.size());
+
+            System.out.println("Updating attacks");
+
+            {
+                // get attacks by id 20071530
+//                Map<Integer, DBWar> wars = getWars(f -> f.date > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(20));
+//                List<AbstractCursor> attacks = queryAttacks().withWars(wars).getList();
+//                //
+//                attacks.removeIf(f -> f.getDate() > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(18));
+//                // get last
+//                AbstractCursor attack = attacks.stream().max(Comparator.comparing(AbstractCursor::getWar_attack_id)).orElse(null);
+//                if (attack == null) {
+//                    System.out.println("No attacks found");
+//                } else {
+//                    updateAttacks(attack, false, null, false);
+//                }
+            }
         }
     }
 
@@ -651,6 +689,27 @@ public class WarDB extends DBMainV2 {
                 if (natWars != null) {
                     for (DBWar war : natWars.values()) {
                         if (!nationIds.contains(war.attacker_id) || !nationIds.contains(war.defender_id)) continue;
+                        if (war.date < startWithExpire || war.date > end) continue;
+                        allWars.add(war);
+                    }
+                }
+            }
+        }
+        return getAttacksByWars(allWars, start, end);
+    }
+
+    public List<AbstractCursor> getAttacksEither(Set<Integer> nationIds, long cuttoffMs) {
+        return getAttacksEither(nationIds, cuttoffMs, Long.MAX_VALUE);
+    }
+
+    public List<AbstractCursor> getAttacksEither(Set<Integer> nationIds, long start, long end) {
+        Set<DBWar> allWars = new LinkedHashSet<>();
+        long startWithExpire = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(start) - 60);
+        synchronized (warsByNationId) {
+            for (int nationId : nationIds) {
+                Map<Integer, DBWar> natWars = warsByNationId.get(nationId);
+                if (natWars != null) {
+                    for (DBWar war : natWars.values()) {
                         if (war.date < startWithExpire || war.date > end) continue;
                         allWars.add(war);
                     }
@@ -2024,6 +2083,8 @@ public class WarDB extends DBMainV2 {
         // add to attacks map
         synchronized (attacksByWarId) {
             for (AbstractCursor attack : values) {
+                // AttackEntry(int id, int war_id, int attacker_id, int defender_id, long date, byte[] data) {
+                toSave.add(new AttackEntry(attack.getWar_attack_id(), attack.getWar_id(), attack.getAttacker_id(), attack.getDefender_id(), attack.getDate(), attackCursorFactory.toBytes(attack)));
                 List<byte[]> attacks = attacksByWarId.get(attack.getWar_id());
 
                 Set<Integer> attackIds = attackIdsByWarId.get(attack.getWar_id());

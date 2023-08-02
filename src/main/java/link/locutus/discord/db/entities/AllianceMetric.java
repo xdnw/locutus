@@ -187,7 +187,7 @@ public enum AllianceMetric {
 
             AttackCost cost = new AttackCost();
             long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
-            List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(nationIds, cutoff);
+            List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksEither(nationIds, cutoff);
             cost.addCost(attacks, a -> nationIds.contains(a.getAttacker_id()), b -> nationIds.contains(b.getDefender_id()));
             return cost.convertedTotal(true);
         }

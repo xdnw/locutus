@@ -759,7 +759,7 @@ public class JavaCity {
         profit += income;
 
         double basePopulation = getInfra() * 100;
-        double food = (Math.pow(basePopulation, 2)) / 125000000 + ((basePopulation) * (1 + Math.log(getAge()) / 15d) - basePopulation) / 850;
+        double food = (Math.pow(basePopulation, 2)) / 125_000_000 + ((basePopulation) * (1 + Math.log(getAge()) / 15d) - basePopulation) / 850;
 
         profit -= PnwUtil.convertedTotalNegative(ResourceType.FOOD, food);
 
@@ -820,7 +820,9 @@ public class JavaCity {
 
         profitBuffer[ResourceType.MONEY.ordinal()] += income * turns / 12;
 
-        profitBuffer[ResourceType.FOOD.ordinal()] -= metrics.population * turns / (1000d * 12);
+        double basePopulation = getInfra() * 100;
+        double food = (Math.pow(basePopulation, 2)) / 125_000_000 + ((basePopulation) * (1 + Math.log(getAge()) / 15d) - basePopulation) / 850;
+        profitBuffer[ResourceType.FOOD.ordinal()] -= food * turns / 12d;
 
         return profitBuffer;
     }

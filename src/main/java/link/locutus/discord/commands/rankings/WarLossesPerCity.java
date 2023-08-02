@@ -54,7 +54,7 @@ public class WarLossesPerCity extends Command {
 
         Map<Integer, Double> totals = new HashMap<>();
         Map<Integer, Integer> counters = new HashMap<>();
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(nationMap.keySet(), cutoffMs);
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksEither(nationMap.keySet(), cutoffMs);
         for (AbstractCursor attack : attacks) {
             if (attack.getVictor() != 0) {
                 if (nationMap.containsKey(attack.getDefender_id())) {

@@ -51,6 +51,25 @@ public class VictoryCursor extends FailedCursor {
     }
 
     @Override
+    public double getInfra_destroyed_value() {
+        if (infra_destroyed_value_cents > 0) {
+            return infra_destroyed_value_cents * 0.01d;
+        } else if (!city_infra_before_cents.isEmpty() && infra_destroyed_percent_cents > 0) {
+            double pct = (1 - infra_destroyed_percent_cents * 0.01);
+            for (Map.Entry<Integer, Integer> entry : city_infra_before_cents.entrySet()) {
+                int before = entry.getValue();
+                int after = (int) Math.round(before * pct);
+                if (after < before) {
+                    double value = PnwUtil.calculateInfra(after * 0.01, before * 0.01);
+                    infra_destroyed_cents += (before - after);
+                    infra_destroyed_value_cents += (value * 100);
+                }
+            }
+        }
+        return infra_destroyed_value_cents * 0.01;
+    }
+
+    @Override
     public void load(DBAttack legacy) {
         super.load(legacy);
         this.hasLoot = legacy.loot != null && !ResourceType.isZero(legacy.loot);
@@ -65,7 +84,7 @@ public class VictoryCursor extends FailedCursor {
         city_infra_before_cents.clear();
         this.infra_destroyed_cents = (int) Math.round(legacy.getInfra_destroyed() * 100);
         infra_destroyed_percent_cents = (int) Math.round(legacy.infraPercent_cached * 100);
-        infra_destroyed_value_cents = (int) Math.round(legacy.getInfra_destroyed_value() * 100);
+        infra_destroyed_value_cents = (long) Math.round(legacy.getInfra_destroyed_value() * 100);
     }
 
     @Override
