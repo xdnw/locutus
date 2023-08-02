@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw;
 
+import ai.djl.MalformedModelException;
+import ai.djl.repository.zoo.ModelNotFoundException;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -37,6 +39,7 @@ import org.json.JSONObject;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.util.*;
@@ -75,7 +78,8 @@ public class CommandManager2 {
         if (!Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI_API_KEY.isEmpty()) {
             try {
                 pwgptHandler = new PWGPTHandler(this);
-            } catch (SQLException | ClassNotFoundException e) {
+            } catch (SQLException | ClassNotFoundException | ModelNotFoundException | MalformedModelException |
+                     IOException e) {
                 throw new RuntimeException(e);
             }
         }

@@ -1,5 +1,7 @@
 package link.locutus.discord.gpt;
 
+import ai.djl.MalformedModelException;
+import ai.djl.repository.zoo.ModelNotFoundException;
 import ai.djl.util.Platform;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
@@ -17,6 +19,7 @@ import link.locutus.discord.gpt.imps.AdaEmbedding;
 import link.locutus.discord.gpt.imps.GPTSummarizer;
 import link.locutus.discord.gpt.imps.GPTText2Text;
 import link.locutus.discord.gpt.imps.IText2Text;
+import link.locutus.discord.gpt.imps.MiniEmbedding;
 import link.locutus.discord.gpt.imps.ProcessSummarizer;
 import link.locutus.discord.gpt.imps.ProcessText2Text;
 import link.locutus.discord.util.FileUtil;
@@ -59,7 +62,7 @@ public class GptHandler {
     private final IModerator moderator;
     private final IText2Text text2text;
 
-    public GptHandler() throws SQLException, ClassNotFoundException {
+    public GptHandler() throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
         this.registry = Encodings.newDefaultEncodingRegistry();
         this.service = new OpenAiService(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI_API_KEY, Duration.ofSeconds(50));
 
@@ -70,6 +73,7 @@ public class GptHandler {
         this.moderator = new GPTModerator(service);
         this.embeddingDatabase = new AdaEmbedding(registry, service);
         // TODO change ^ that to mini
+//        this.embeddingDatabase = new MiniEmbedding(platform);
 
         File gpt4freePath = new File("../gpt4free/my_project/gpt3_5_turbo.py");
         File venvExe = new File("../gpt4free/venv/Scripts/python.exe");

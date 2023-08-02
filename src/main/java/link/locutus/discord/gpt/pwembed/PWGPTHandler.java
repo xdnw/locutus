@@ -1,5 +1,7 @@
 package link.locutus.discord.gpt.pwembed;
 
+import ai.djl.MalformedModelException;
+import ai.djl.repository.zoo.ModelNotFoundException;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.theokanning.openai.embedding.EmbeddingResult;
@@ -27,6 +29,7 @@ import link.locutus.discord.util.scheduler.TriConsumer;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -53,7 +56,7 @@ public class PWGPTHandler {
     private final Map<EmbeddingSource, IEmbeddingAdapter<?>> adapterMap2 = new HashMap<>();
     private final CommandManager2 cmdManager;
 
-    public PWGPTHandler(CommandManager2 manager) throws SQLException, ClassNotFoundException {
+    public PWGPTHandler(CommandManager2 manager) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
         this.cmdManager = manager;
         this.handler = new GptHandler();
     }
