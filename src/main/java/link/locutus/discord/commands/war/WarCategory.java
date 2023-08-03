@@ -679,7 +679,7 @@ public class WarCategory {
 
                 body.append("**Enemy:** ").append(target.getNationUrlMarkup(true))
                         .append(" | ").append(target.getAllianceUrlMarkup(true));
-                body.append(target.toMarkdown(true, false, false, true, false));
+                body.append(target.toMarkdown(true, true, false, false, true, false));
                 body.append("\n");
 
                 List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(target.getNation_id(), WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);

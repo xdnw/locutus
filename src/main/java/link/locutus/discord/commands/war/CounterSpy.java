@@ -204,8 +204,8 @@ public class CounterSpy extends Command {
                     .append(" | ")
                     .append(PnwUtil.getBBUrl(enemy.getAlliance_id(), true))
                     .append("\n**Spies: **").append(enemySpies).append("\n")
-                    .append(enemy.toMarkdown(true, false, true, false, false))
-                    .append(enemy.toMarkdown(true, false, false, true, true))
+                    .append(enemy.toMarkdown(true, true, false, true, false, false))
+                    .append(enemy.toMarkdown(true, true, false, false, true, true))
                     ;
 
 

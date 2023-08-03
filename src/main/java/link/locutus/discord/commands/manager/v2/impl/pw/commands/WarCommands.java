@@ -1588,8 +1588,8 @@ public class WarCommands {
                 .append(" | ")
                 .append(PnwUtil.getBBUrl(enemy.getAlliance_id(), true))
                 .append("\n**Spies: **").append(enemySpies).append("\n")
-                .append(enemy.toMarkdown(true, false, true, false, false))
-                .append(enemy.toMarkdown(true, false, false, true, true))
+                .append(enemy.toMarkdown(true, true, false, true, false, false))
+                .append(enemy.toMarkdown(true, true, false, false, true, true))
         ;
 
         channel.create().embed(title, body.toString()).send();
@@ -4139,7 +4139,7 @@ public class WarCommands {
 
         if (!skipAddMembers) {
             for (DBNation dbNation : attackersSorted) {
-                response.append("\nAdded " + dbNation.toMarkdown(false, true, false, true, false));
+                response.append("\nAdded " + dbNation.toMarkdown(false, false, true, false, true, false));
             }
         }
 

@@ -468,7 +468,7 @@ public class NationUpdateProcessor {
         if (loot < 10000000) {
             return false;
         }
-        String msg = defender.toMarkdown(true, true, true, true, false);
+        String msg = defender.toMarkdown(true, true, true, true, true, false);
         String title = "Target: " + defender.getNation() + ": You can loot: ~$" + MathMan.format(loot);
 
         String url = "https://politicsandwar.com/nation/war/declare/id=" + defender.getNation_id();

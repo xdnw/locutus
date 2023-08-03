@@ -347,7 +347,7 @@ public class LeavingBeigeAlert {
 
                         double loot = lootEstimateByNation.computeIfAbsent(target, DBNation::lootTotal);
                         String title = "Target: " + target.getNation() + ": Worth ~$" + MathMan.format(loot);
-                        String body = target.toMarkdown(true, true, true, true, false);
+                        String body = target.toMarkdown(true, true, true, true, true, false);
 
                         boolean isSubscription = targetEntry.getValue();
                         if (isSubscription) {

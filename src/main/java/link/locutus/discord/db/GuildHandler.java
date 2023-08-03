@@ -2511,14 +2511,14 @@ public class GuildHandler {
         String title = blockaded.getNation() + " " + titleSuffix;
         StringBuilder body = new StringBuilder();
         body.append("**Defender:** " + blockaded.getNationUrlMarkup(true) + " | " + blockaded.getAllianceUrlMarkup(true)).append("\n");
-        body.append(blockaded.toMarkdown(true, false, true, false, false)).append("\n");
-        body.append(blockaded.toMarkdown(true, false, false, true, false)).append("\n");
+        body.append(blockaded.toMarkdown(true, true, false, true, false, false)).append("\n");
+        body.append(blockaded.toMarkdown(true, true, false, false, true, false)).append("\n");
         body.append("\n");
 
         if (blockader != null) {
             body.append("**Blockader:** " + blockader.getNationUrlMarkup(true) + " | " + blockader.getAllianceUrlMarkup(true)).append("\n");
-            body.append(blockader.toMarkdown(true, false, true, false, false)).append("\n");
-            body.append(blockader.toMarkdown(true, false, false, true, false)).append("\n");
+            body.append(blockader.toMarkdown(true, true, false, true, false, false)).append("\n");
+            body.append(blockader.toMarkdown(true, true, false, false, true, false)).append("\n");
         }
 
         IMessageBuilder msg = io.create().embed(title, body.toString());
