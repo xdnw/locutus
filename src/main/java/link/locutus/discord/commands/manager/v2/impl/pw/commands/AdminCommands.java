@@ -1306,7 +1306,7 @@ public class AdminCommands {
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
     public String syncBlockades(@Me IMessageIO channel) throws IOException, ParseException {
-        NationUpdateProcessor.updateBlockades();;
+        Locutus.imp().getWarDb().syncBlockades();
         return "Done!";
     }
 

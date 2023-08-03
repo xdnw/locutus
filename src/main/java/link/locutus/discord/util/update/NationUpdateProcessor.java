@@ -67,111 +67,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class NationUpdateProcessor {
-    // TODO update war rooms
-
-    public static void updateBlockades() {
-        long now = System.currentTimeMillis();
-
-        Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWarsSince(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10));
-
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().queryAttacks().withWars(wars).withType(AttackType.NAVAL).afterDate(now - TimeUnit.DAYS.toMillis(10)).getList();
-
-        Collections.sort(attacks, Comparator.comparingLong(o -> o.getDate()));
-
-        Map<Integer, Map<Integer, Integer>> blockadedByNationByWar = new HashMap<>(); // map of nations getting blockaded
-        Map<Integer, Map<Integer, Integer>> blockadingByNationByWar = new HashMap<>(); // map of nations blockading
-
-        for (AbstractCursor attack : attacks) {
-            if (attack.getAttack_type() != AttackType.NAVAL) continue;
-
-            DBNation defender = DBNation.getById(attack.getDefender_id());
-            if (defender == null) continue;
-
-            if (attack.getSuccess() == SuccessType.IMMENSE_TRIUMPH) {
-                Map<Integer, Integer> defenderBlockades = blockadingByNationByWar.get(attack.getDefender_id());
-                if (defenderBlockades != null && !defenderBlockades.isEmpty()) {
-                    for (Map.Entry<Integer, Integer> entry : defenderBlockades.entrySet()) {
-                        int blockaded = entry.getKey();
-                        int warId = entry.getValue();
-                        blockadedByNationByWar.getOrDefault(blockaded, Collections.emptyMap()).remove(attack.getDefender_id());
-                    }
-                    defenderBlockades.clear();
-                }
-
-                DBWar war = wars.get(attack.getWar_id());
-                // Only if war is active
-                if (war != null && (war.status == WarStatus.ACTIVE || war.status == WarStatus.DEFENDER_OFFERED_PEACE || war.status == WarStatus.ATTACKER_OFFERED_PEACE)) {
-                    blockadedByNationByWar.computeIfAbsent(attack.getDefender_id(), f -> new HashMap<>()).put(attack.getAttacker_id(), attack.getWar_id());
-                    blockadingByNationByWar.computeIfAbsent(attack.getAttacker_id(), f -> new HashMap<>()).put(attack.getDefender_id(), attack.getWar_id());
-                }
-            }
-            if (attack.getSuccess().ordinal() >= SuccessType.MODERATE_SUCCESS.ordinal()) {
-                blockadedByNationByWar.getOrDefault(attack.getAttacker_id(), Collections.emptyMap()).remove(attack.getDefender_id());
-                blockadingByNationByWar.getOrDefault(attack.getDefender_id(), Collections.emptyMap()).remove(attack.getAttacker_id());
-            }
-        }
-
-        Set<Integer> nationIds = new HashSet<>();
-        nationIds.addAll(blockadedByNationByWar.keySet());
-        nationIds.addAll(blockadingByNationByWar.keySet());
-
-        // Remove if nation is deleted
-        for (Integer nationId : nationIds) {
-            DBNation nation = DBNation.getById(nationId);
-            if (nation == null) {
-                Map<Integer, Integer> blockading = blockadingByNationByWar.remove(nationId);
-                if (blockading != null && !blockading.isEmpty()) {
-                    for (Map.Entry<Integer, Integer> entry : blockading.entrySet()) {
-                        Integer blockadedId = entry.getKey();
-                        blockadedByNationByWar.getOrDefault(blockadedId, Collections.emptyMap()).remove(nationId);
-                    }
-                }
-            }
-        }
-
-        Map<Integer, Set<Integer>> previous = Locutus.imp().getWarDb().getBlockadedByNation(true);
-        Set<Long> previousBlockadedBlockaderPair = new HashSet<>();
-        Set<Long> currentBlockadedBlockaderPair = new HashSet<>();
-
-        for (Map.Entry<Integer, Set<Integer>> entry : previous.entrySet()) {
-            int blockaded = entry.getKey();
-            for (Integer blockader : entry.getValue()) {
-                long pair = MathMan.pairInt(blockaded, blockader);
-                previousBlockadedBlockaderPair.add(pair);
-            }
-        }
-
-        for (Map.Entry<Integer, Map<Integer, Integer>> entry : blockadedByNationByWar.entrySet()) {
-            int blockaded = entry.getKey();
-            for (Map.Entry<Integer, Integer> entry2 : entry.getValue().entrySet()) {
-                int blockader = entry2.getKey();
-                long pair = MathMan.pairInt(blockaded, blockader);
-                currentBlockadedBlockaderPair.add(pair);
-            }
-        }
-
-        for (long pair : previousBlockadedBlockaderPair) {
-            if (!currentBlockadedBlockaderPair.contains(pair)) {
-                int blockaded = MathMan.unpairIntX(pair);
-                int blockader = MathMan.unpairIntY(pair);
-
-                Locutus.imp().getWarDb().deleteBlockaded(blockaded, blockader);
-
-                new NationUnblockadedEvent(blockaded, blockader, blockadedByNationByWar.getOrDefault(blockaded, Collections.emptyMap())).post();
-            }
-        }
-        for (long pair : currentBlockadedBlockaderPair) {
-            if (!previousBlockadedBlockaderPair.contains(pair)) {
-                int blockaded = MathMan.unpairIntX(pair);
-                int blockader = MathMan.unpairIntY(pair);
-
-                new NationBlockadedEvent(blockaded, blockader, blockadedByNationByWar.getOrDefault(blockaded, Collections.emptyMap())).post();
-
-                Locutus.imp().getWarDb().addBlockaded(blockaded, blockader);
-            }
-        }
-    }
-
     private static Map<Integer, Integer> ACTIVITY_ALERTS = new PassiveExpiringMap<Integer, Integer>(240, TimeUnit.MINUTES);
 
     public static void onActivityCheck() {
@@ -182,7 +77,7 @@ public class NationUpdateProcessor {
         Set<Integer> online = new IntOpenHashSet();
         Set<Long> checkedUser = new LongOpenHashSet();
         for (Guild guild : Locutus.imp().getDiscordApi().getGuilds()) {
-            for (Member member : guild.getMembers()) {
+            for (Member member : guild.getMemberCache()) {
                 long userId = member.getIdLong();
                 if (checkedUser.contains(userId)) continue;
                 checkedUser.add(userId);

@@ -3434,16 +3434,12 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "List of nation ids whuch are blockaded by this nation's navy ships in-game")
     public Set<Integer> getBlockading() {
-        Set<Integer> empty = Collections.emptySet();
-        if (getNumWars() == 0 || getActive_m() > 7200 || ships == 0) return empty;
-        return Locutus.imp().getWarDb().getBlockaderByNation(false).getOrDefault(nation_id, empty);
+        return Locutus.imp().getWarDb().getNationsBlockadedBy(nation_id);
     }
 
     @Command(desc = "List of nation ids which are blockading this nation with their navy ships in-game")
     public Set<Integer> getBlockadedBy() {
-        Set<Integer> empty = Collections.emptySet();
-        if (getNumWars() == 0) return empty;
-        return Locutus.imp().getWarDb().getBlockadedByNation(false).getOrDefault(nation_id, empty);
+        return Locutus.imp().getWarDb().getNationsBlockading(nation_id);
     }
 
     public void toCard(IMessageIO channel, boolean refresh) {
