@@ -928,8 +928,9 @@ public class JavaCity {
     }
 
     public int getAge() {
-        if (dateCreated <= 0) return 0;
-        return (int) TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - dateCreated);
+        if (dateCreated <= 0) return 1;
+        if (dateCreated == Long.MAX_VALUE) return 1;
+        return (int) Math.max(1, TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - dateCreated));
     }
 
     public double getFreeInfra() {
