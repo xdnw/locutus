@@ -5,6 +5,7 @@ import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TableIndex;
 import com.ptsmods.mysqlw.table.TablePreset;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -61,7 +62,13 @@ public class TradeDB extends DBMainV2 {
 
                 .addIndex(TableIndex.index("index_trade_date", "date", TableIndex.Type.INDEX))
                 .addIndex(TableIndex.index("index_trade_type", "resource", TableIndex.Type.INDEX))
+                .addIndex(TableIndex.index("index_trade_seller", "seller", TableIndex.Type.INDEX))
+                .addIndex(TableIndex.index("index_trade_buyer", "buyer", TableIndex.Type.INDEX))
                 .create(getDb());
+
+        // add index for seller and buyer if not exist
+        executeStmt("ALTER TABLE TRADES ADD INDEX index_trade_seller (seller)");
+        executeStmt("ALTER TABLE TRADES ADD INDEX index_trade_buyer (buyer)");
 
         deleteIncompleteTrades();
 
@@ -698,23 +705,45 @@ public class TradeDB extends DBMainV2 {
 
     public List<DBTrade> getTrades(long startDate) {
         return getTrades(f ->
-                f.where(QueryCondition.greater("date", startDate))
+                f.where(QueryCondition.greater("date", startDate).and(QueryCondition.notEquals("seller", 0).and(QueryCondition.notEquals("buyer", 0)))
         );
     }
 
     public List<DBTrade> getTrades(ResourceType type, long startDate, long endDate) {
         return getTrades(f ->
-                f.where(QueryCondition.equals("resource", type.ordinal()))
-                        .where(QueryCondition.greater("date", startDate))
-                        .where(QueryCondition.less("date", endDate))
+                f.where(QueryCondition.equals("resource", type.ordinal())
+                                .and(QueryCondition.greater("date", startDate))
+                                .and(QueryCondition.less("date", endDate))
+                                .and(QueryCondition.notEquals("seller", 0))
+                                .and(QueryCondition.notEquals("buyer", 0))
+                        )
         );
     }
 
+    public List<DBTrade> getTrades(Set<Integer> nationIds, long startDate) {
+        if (nationIds.isEmpty()) return Collections.emptyList();
+        if (nationIds.size() == 1) {
+            int nationId = nationIds.iterator().next();
+            return getTrades(nationId, startDate);
+        }
+        // sorted
+        List<Integer> sorted = new ArrayList<>(nationIds);
+        sorted.sort(Comparator.naturalOrder());
+        Object[] nationIdsArr = sorted.toArray();
+        List<DBTrade> result = getTrades(f -> f.where(QueryCondition.greater("date", startDate))
+                .where(QueryCondition.in("seller", nationIdsArr).or(QueryCondition.in("buyer", nationIdsArr)))
+        );
+        return result;
+    }
+
     public List<DBTrade> getTrades(int nationId, long startDate) {
-        return getTrades(f -> f.where(QueryCondition.greater("date", startDate))
+        List<DBTrade> result = getTrades(f -> f.where(QueryCondition.greater("date", startDate))
                 .where(QueryCondition.equals("seller", nationId).or(QueryCondition.equals("buyer", nationId)))
         );
+        result.removeIf(f -> f.getSeller() == 0 || f.getBuyer() == 0);
+        return result;
     }
+
     public List<DBTrade> getTrades(Consumer<com.ptsmods.mysqlw.query.builder.SelectBuilder> query) {
         List<DBTrade> result = new ArrayList<>();
         com.ptsmods.mysqlw.query.builder.SelectBuilder builder = getDb().selectBuilder("TRADES")
