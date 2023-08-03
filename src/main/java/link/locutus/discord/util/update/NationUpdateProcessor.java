@@ -206,7 +206,7 @@ public class NationUpdateProcessor {
             long activeMinute = nation.lastActiveMs();
             // round to nearest minute
             activeMinute = (activeMinute / 60_000) * 60_000;
-            Locutus.imp().getNationDB().setSpyActivity(nation.getNation_id(), nation.getProjectBitMask(), nation.getSpies(), activeMinute, nation.getWarPolicy());
+//            Locutus.imp().getNationDB().setSpyActivity(nation.getNation_id(), nation.getProjectBitMask(), nation.getSpies(), activeMinute, nation.getWarPolicy());
 
             if (previous.active_m() > 360 && Settings.INSTANCE.TASKS.AUTO_FETCH_UID) {
                 Locutus.imp().getExecutor().submit(new CaughtRunnable() {
