@@ -27,6 +27,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 public class SpyCommand extends Command {
     public SpyCommand() {
@@ -91,10 +92,10 @@ public class SpyCommand extends Command {
 
 
         int result = nation.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE, true, true);
-        Long turnUpdate = nation.getTurnUpdatedSpies();
-        long turnsAgo = TimeUtil.getTurn() - (turnUpdate == null ? 0 : turnUpdate);
+        Long timeUpdated = nation.getTimeUpdatedSpies();
+        long timeAgo = System.currentTimeMillis() - (timeUpdated == null ? 0 : timeUpdated);
 
-        StringBuilder response = new StringBuilder(nation.getNation() + " has " + result + " spies (updated: " + turnsAgo + " turns ago)");
+        StringBuilder response = new StringBuilder(nation.getNation() + " has " + result + " spies (updated: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeAgo) + " ago)");
         response.append("\nRecommended:");
 
         int minSafety = requiredSafety == null ? 1 : requiredSafety;

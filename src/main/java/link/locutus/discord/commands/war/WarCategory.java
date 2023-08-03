@@ -173,7 +173,6 @@ public class WarCategory {
                             case GETS_COUNTERED:
                                 break;
                             case IS_COUNTER:
-                                room.setCounter(true);
                                 break;
                             case ESCALATION:
                                 break;
@@ -185,6 +184,7 @@ public class WarCategory {
                 }
             }
         } catch (InsufficientPermissionException e) {
+            db.setWarCatError(e);
             GuildKey.ENABLE_WAR_ROOMS.set(db, false);
         } catch (Throwable e) {
             e.printStackTrace();
@@ -610,6 +610,10 @@ public class WarCategory {
         public final DBNation target;
         private final Set<DBNation> participants;
         public TextChannel channel;
+        public boolean planning;
+        public boolean enemyGc;
+        public boolean enemyAc;
+        public boolean enemyBlockade;
 
         public WarRoom(DBNation target) {
             checkNotNull(target);
@@ -675,7 +679,7 @@ public class WarCategory {
 
                 body.append("**Enemy:** ").append(target.getNationUrlMarkup(true))
                         .append(" | ").append(target.getAllianceUrlMarkup(true));
-                body.append(target.toMarkdown(true, false, false, true, false));
+                body.append(target.toMarkdown(true, true, false, false, true, false));
                 body.append("\n");
 
                 List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(target.getNation_id(), WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);
@@ -727,27 +731,42 @@ public class WarCategory {
             return msg;
         }
 
-        public boolean setCounter(boolean value) {
-            return setSymbol("\uD83D\uDD19", value);
-        }
-
         public boolean setGC(boolean value) {
+            if (value == enemyGc) return false;
+            enemyGc = value;
             return setSymbol("\uD83D\uDC82", value);
         }
 
+        public boolean isGC() {
+            if (channel != null) return channel.getName().contains("\uD83D\uDC82");
+            return false;
+        }
+
         public boolean setAC(boolean value) {
+            if (value == enemyAc) return false;
+            enemyAc = value;
             return setSymbol("\u2708", value);
         }
 
+        public boolean isAC() {
+            if (channel != null) return channel.getName().contains("\u2708");
+            return false;
+        }
+
         public boolean setBlockade(boolean value) {
+            if (enemyBlockade == value) return false;
+            enemyBlockade = value;
             return setSymbol("\u26F5", value);
         }
 
-        public boolean setPeace(boolean value) {
-            return setSymbol("\u2661", value);
+        public boolean isBlockade() {
+            if (channel != null) return channel.getName().contains("\u26F5");
+            return false;
         }
 
         public boolean setPlanning(boolean value) {
+            if (value == planning) return false;
+            planning = value;
             return setSymbol("\uD83D\uDCC5", value);
         }
 
@@ -766,10 +785,9 @@ public class WarCategory {
                         name = name.replace(symbol, "");
                         if (name.endsWith("-")) name = name.substring(0, name.length() - 1);
                     } else {
-                        System.out.println("Name: " + name + " | " + (name.contains(symbol)));
                         return false;
                     }
-                    RateLimitUtil.complete(channel.getManager().setName(name));
+                    RateLimitUtil.queue(channel.getManager().setName(name));
                     return true;
                 }
             }
@@ -933,6 +951,10 @@ public class WarCategory {
 
         public void setChannel(TextChannel channel) {
             this.channel = channel;
+            planning = isPlanning();
+            enemyGc = isGC();
+            enemyAc = isAC();
+            enemyBlockade = isBlockade();
         }
 
         public void delete(String reason) {
@@ -1208,7 +1230,7 @@ public class WarCategory {
                     } else {
                         WarRoom existing = warRoomMap.get(targetId);
                         if (existing != null && existing.channel != null && existing.channel.getIdLong() != channel.getIdLong()) {
-                            existing.channel = channel;
+                            existing.setChannel(channel);
                         }
                     }
 

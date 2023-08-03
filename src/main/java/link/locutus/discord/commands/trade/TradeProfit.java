@@ -67,7 +67,7 @@ public class TradeProfit extends Command {
 
         long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
 
-        List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(cutoffMs);
+        List<DBTrade> trades = nationIds.size() > 1000 ? Locutus.imp().getTradeManager().getTradeDb().getTrades(cutoffMs) : Locutus.imp().getTradeManager().getTradeDb().getTrades(nationIds, cutoffMs);
 
         Map<ResourceType, Long> netOutflows = new HashMap<>();
 

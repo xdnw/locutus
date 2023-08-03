@@ -519,6 +519,9 @@ public class Settings extends Config {
         })
         public String TESSERACT_LOCATION = "src/main/java/tessdata";
 
+        @Comment({"Your API key for <ocr.space> (optional)"})
+        public String OCR_SPACE_KEY = "";
+
         @Comment({"Your API key from <https://platform.openai.com/account/api-keys> (optional)"})
         public String OPENAI_API_KEY = "";
 

@@ -608,9 +608,8 @@ public class DiscordDB extends DBMainV2 {
         updateUserCache();
         userCache.put(user.getDiscordId(), user);
         PNWUser existing = userNationCache.put(user.getNationId(), user);
-        if (existing != null && existing.getDiscordId() != user.getDiscordId()) {
-//            unregister(null, existing.getDiscordId());
-        }
+        if (existing != null && existing.getDiscordId() == user.getDiscordId() && user.getNationId() == existing.getNationId()) return;
+
         update("INSERT OR REPLACE INTO `USERS`(`nation_id`, `discord_id`, `discord_name`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, user.getNationId());
             stmt.setLong(2, user.getDiscordId());

@@ -122,9 +122,6 @@ public class CounterSpy extends Command {
 
         try {
             Integer enemySpies = enemy.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE);
-            if (enemySpies == null) {
-                enemySpies = SpyCount.guessSpyCount(PagePriority.ESPIONAGE_ODDS_SINGLE, enemy);
-            }
 
             for (DBNation counterWith : toCounter) {
                 Integer mySpies = counterWith.getSpies();
@@ -207,8 +204,8 @@ public class CounterSpy extends Command {
                     .append(" | ")
                     .append(PnwUtil.getBBUrl(enemy.getAlliance_id(), true))
                     .append("\n**Spies: **").append(enemySpies).append("\n")
-                    .append(enemy.toMarkdown(true, false, true, false, false))
-                    .append(enemy.toMarkdown(true, false, false, true, true))
+                    .append(enemy.toMarkdown(true, true, false, true, false, false))
+                    .append(enemy.toMarkdown(true, true, false, false, true, true))
                     ;
 
 

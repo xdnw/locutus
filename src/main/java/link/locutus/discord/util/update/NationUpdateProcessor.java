@@ -1,6 +1,10 @@
 package link.locutus.discord.util.update;
 
 import com.google.common.eventbus.Subscribe;
+import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -48,8 +52,6 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
 import java.nio.ByteBuffer;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -65,134 +67,40 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class NationUpdateProcessor {
-    // TODO update war rooms
-
-    public static void updateBlockades() {
-        long now = System.currentTimeMillis();
-
-        Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWarsSince(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(10));
-
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().queryAttacks().withWars(wars).withType(AttackType.NAVAL).afterDate(now - TimeUnit.DAYS.toMillis(10)).getList();
-
-        Collections.sort(attacks, Comparator.comparingLong(o -> o.getDate()));
-
-        Map<Integer, Map<Integer, Integer>> blockadedByNationByWar = new HashMap<>(); // map of nations getting blockaded
-        Map<Integer, Map<Integer, Integer>> blockadingByNationByWar = new HashMap<>(); // map of nations blockading
-
-        for (AbstractCursor attack : attacks) {
-            if (attack.getAttack_type() != AttackType.NAVAL) continue;
-
-            DBNation defender = DBNation.getById(attack.getDefender_id());
-            if (defender == null) continue;
-
-            if (attack.getSuccess() == SuccessType.IMMENSE_TRIUMPH) {
-                Map<Integer, Integer> defenderBlockades = blockadingByNationByWar.get(attack.getDefender_id());
-                if (defenderBlockades != null && !defenderBlockades.isEmpty()) {
-                    for (Map.Entry<Integer, Integer> entry : defenderBlockades.entrySet()) {
-                        int blockaded = entry.getKey();
-                        int warId = entry.getValue();
-                        blockadedByNationByWar.getOrDefault(blockaded, Collections.emptyMap()).remove(attack.getDefender_id());
-                    }
-                    defenderBlockades.clear();
-                }
-
-                DBWar war = wars.get(attack.getWar_id());
-                // Only if war is active
-                if (war != null && (war.status == WarStatus.ACTIVE || war.status == WarStatus.DEFENDER_OFFERED_PEACE || war.status == WarStatus.ATTACKER_OFFERED_PEACE)) {
-                    blockadedByNationByWar.computeIfAbsent(attack.getDefender_id(), f -> new HashMap<>()).put(attack.getAttacker_id(), attack.getWar_id());
-                    blockadingByNationByWar.computeIfAbsent(attack.getAttacker_id(), f -> new HashMap<>()).put(attack.getDefender_id(), attack.getWar_id());
-                }
-            }
-            if (attack.getSuccess().ordinal() >= SuccessType.MODERATE_SUCCESS.ordinal()) {
-                blockadedByNationByWar.getOrDefault(attack.getAttacker_id(), Collections.emptyMap()).remove(attack.getDefender_id());
-                blockadingByNationByWar.getOrDefault(attack.getDefender_id(), Collections.emptyMap()).remove(attack.getAttacker_id());
-            }
-        }
-
-        Set<Integer> nationIds = new HashSet<>();
-        nationIds.addAll(blockadedByNationByWar.keySet());
-        nationIds.addAll(blockadingByNationByWar.keySet());
-
-        // Remove if nation is deleted
-        for (Integer nationId : nationIds) {
-            DBNation nation = DBNation.getById(nationId);
-            if (nation == null) {
-                Map<Integer, Integer> blockading = blockadingByNationByWar.remove(nationId);
-                if (blockading != null && !blockading.isEmpty()) {
-                    for (Map.Entry<Integer, Integer> entry : blockading.entrySet()) {
-                        Integer blockadedId = entry.getKey();
-                        blockadedByNationByWar.getOrDefault(blockadedId, Collections.emptyMap()).remove(nationId);
-                    }
-                }
-            }
-        }
-
-        Map<Integer, Set<Integer>> previous = Locutus.imp().getWarDb().getBlockadedByNation(true);
-        Set<Long> previousBlockadedBlockaderPair = new HashSet<>();
-        Set<Long> currentBlockadedBlockaderPair = new HashSet<>();
-
-        for (Map.Entry<Integer, Set<Integer>> entry : previous.entrySet()) {
-            int blockaded = entry.getKey();
-            for (Integer blockader : entry.getValue()) {
-                long pair = MathMan.pairInt(blockaded, blockader);
-                previousBlockadedBlockaderPair.add(pair);
-            }
-        }
-
-        for (Map.Entry<Integer, Map<Integer, Integer>> entry : blockadedByNationByWar.entrySet()) {
-            int blockaded = entry.getKey();
-            for (Map.Entry<Integer, Integer> entry2 : entry.getValue().entrySet()) {
-                int blockader = entry2.getKey();
-                long pair = MathMan.pairInt(blockaded, blockader);
-                currentBlockadedBlockaderPair.add(pair);
-            }
-        }
-
-        for (long pair : previousBlockadedBlockaderPair) {
-            if (!currentBlockadedBlockaderPair.contains(pair)) {
-                int blockaded = MathMan.unpairIntX(pair);
-                int blockader = MathMan.unpairIntY(pair);
-
-                Locutus.imp().getWarDb().deleteBlockaded(blockaded, blockader);
-
-                new NationUnblockadedEvent(blockaded, blockader, blockadedByNationByWar.getOrDefault(blockaded, Collections.emptyMap())).post();
-            }
-        }
-        for (long pair : currentBlockadedBlockaderPair) {
-            if (!previousBlockadedBlockaderPair.contains(pair)) {
-                int blockaded = MathMan.unpairIntX(pair);
-                int blockader = MathMan.unpairIntY(pair);
-
-                new NationBlockadedEvent(blockaded, blockader, blockadedByNationByWar.getOrDefault(blockaded, Collections.emptyMap())).post();
-
-                Locutus.imp().getWarDb().addBlockaded(blockaded, blockader);
-            }
-        }
-    }
-
     private static Map<Integer, Integer> ACTIVITY_ALERTS = new PassiveExpiringMap<Integer, Integer>(240, TimeUnit.MINUTES);
 
     public static void onActivityCheck() {
-        Map<Integer, Integer> membersByAA = new HashMap<>(); // only <7d non vm nations
-        Map<Integer, Integer> activeMembersByAA = new HashMap<>();
-        Map<Integer, Double> averageMilitarization = new HashMap<>();
+        Map<Integer, Integer> membersByAA = new Int2IntOpenHashMap(); // only <7d non vm nations
+        Map<Integer, Integer> activeMembersByAA = new Int2IntOpenHashMap();
+        Map<Integer, Double> averageMilitarization = new Int2DoubleOpenHashMap();
+
+        Set<Integer> online = new IntOpenHashSet();
+        Set<Long> checkedUser = new LongOpenHashSet();
+        for (Guild guild : Locutus.imp().getDiscordApi().getGuilds()) {
+            for (Member member : guild.getMemberCache()) {
+                long userId = member.getIdLong();
+                if (checkedUser.contains(userId)) continue;
+                checkedUser.add(userId);
+                DBNation nation = DiscordUtil.getNation(member.getUser());
+                if (nation == null) continue;
+                if (member.getOnlineStatus() == OnlineStatus.ONLINE) {
+                    online.add(nation.getId());
+                }
+            }
+        }
+
+        long inactive7d = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(7200);
+        long inactive1d = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1440);
+        long turnNow = TimeUtil.getTurn();
+
         for (Map.Entry<Integer, DBNation> entry : Locutus.imp().getNationDB().getNations().entrySet()) {
             DBNation nation = entry.getValue();
-            if (nation.getActive_m() > 7200 || nation.getPosition() <= Rank.APPLICANT.id || nation.getVm_turns() > 0) continue;
+            if (nation.lastActiveMs() < inactive7d || nation.getPosition() <= Rank.APPLICANT.id || nation.getLeaving_vm() > turnNow) continue;
             int aaId = nation.getAlliance_id();
             membersByAA.put(aaId, membersByAA.getOrDefault(aaId, 0) + 1);
             boolean active = nation.getActive_m() < 30;
-            if (!active && nation.getActive_m() < 1440 && nation.getVm_turns() == 0 && nation.getPositionEnum().id > Rank.APPLICANT.id) {
-                User user = nation.getUser();
-                if (user != null) {
-                    List<Guild> mutual = user.getMutualGuilds();
-                    if (!mutual.isEmpty()) {
-                        Member member = mutual.get(0).getMember(user);
-                        if (member != null && member.getOnlineStatus() == OnlineStatus.ONLINE) {
-                            active = true;
-                        }
-                    }
-                }
+            if (!active && nation.lastActiveMs() > inactive1d && nation.getLeaving_vm() <= turnNow && nation.getPositionEnum().id > Rank.APPLICANT.id) {
+                active = online.contains(nation.getId());
             }
             if (active) {
                 activeMembersByAA.put(aaId, activeMembersByAA.getOrDefault(aaId, 0) + 1);
@@ -261,7 +169,7 @@ public class NationUpdateProcessor {
         if (notifyMap != null) {
             nation.deleteMeta(NationMeta.LOGIN_NOTIFY);
             if (!notifyMap.isEmpty()) {
-                String message = ("This is your login alert for:\n" + nation.toEmbedString(true));
+                String message = ("This is your login alert for:\n" + nation.toEmbedString());
 
                 for (Map.Entry<Long, Long> entry : notifyMap.entrySet()) {
                     Long userId = entry.getKey();
@@ -298,7 +206,7 @@ public class NationUpdateProcessor {
             long activeMinute = nation.lastActiveMs();
             // round to nearest minute
             activeMinute = (activeMinute / 60_000) * 60_000;
-            Locutus.imp().getNationDB().setSpyActivity(nation.getNation_id(), nation.getProjectBitMask(), nation.getSpies(), activeMinute, nation.getWarPolicy());
+//            Locutus.imp().getNationDB().setSpyActivity(nation.getNation_id(), nation.getProjectBitMask(), nation.getSpies(), activeMinute, nation.getWarPolicy());
 
             if (previous.active_m() > 360 && Settings.INSTANCE.TASKS.AUTO_FETCH_UID) {
                 Locutus.imp().getExecutor().submit(new CaughtRunnable() {
@@ -354,7 +262,7 @@ public class NationUpdateProcessor {
         if (alliance != null && alliance.getRank() < 50)
         {
             String title = current.getNation() + " (" + Rank.byId(previous.getPosition()) + ") leaves " + previous.getAllianceName();
-            String body = current.toEmbedString(false);
+            String body = current.toEmbedString();
             AlertUtil.forEachChannel(f -> true, GuildKey.ORBIS_OFFICER_LEAVE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                 @Override
                 public void accept(MessageChannel channel, GuildDB guildDB) {
@@ -450,7 +358,7 @@ public class NationUpdateProcessor {
                     }
                     if (!inRange && mode.requireInRange()) return;
 
-                    String cardInfo = current.toEmbedString(true);
+                    String cardInfo = current.toEmbedString();
                     DiscordChannelIO io = new DiscordChannelIO(channel);
 
                     IMessageBuilder msg = io.create();
@@ -560,7 +468,7 @@ public class NationUpdateProcessor {
         if (loot < 10000000) {
             return false;
         }
-        String msg = defender.toMarkdown(true, true, true, true, false);
+        String msg = defender.toMarkdown(true, true, true, true, true, false);
         String title = "Target: " + defender.getNation() + ": You can loot: ~$" + MathMan.format(loot);
 
         String url = "https://politicsandwar.com/nation/war/declare/id=" + defender.getNation_id();
@@ -647,7 +555,7 @@ public class NationUpdateProcessor {
         DBAlliance alliance = previous.getAlliance(false);
         if (alliance.getRank() < 50) {
             String title = previous.getNation() + " (" + Rank.byId(previous.getPosition()) + ") deleted from " + previous.getAllianceName();
-            String body = previous.toEmbedString(false);
+            String body = previous.toEmbedString();
             AlertUtil.forEachChannel(f -> true, GuildKey.ORBIS_OFFICER_LEAVE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                 @Override
                 public void accept(MessageChannel channel, GuildDB guildDB) {
@@ -905,7 +813,7 @@ public class NationUpdateProcessor {
             List<String> adminInfo = new ArrayList<>();
 
             String type = "DELETION";
-            String body = previous.toEmbedString(false);
+            String body = previous.toEmbedString();
             String url = previous.getNationUrl();
             try {
                 String html = FileUtil.readStringFromURL(PagePriority.DELETION_ALERT_BAN.ordinal(), url);

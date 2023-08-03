@@ -710,7 +710,7 @@ public class TradeCommands {
         Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
         Map<Integer, TradeRanking.TradeProfitContainer> tradeContainers = new HashMap<>();
 
-        List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(time);
+        List<DBTrade> trades = nationIds.size() > 1000 ? Locutus.imp().getTradeManager().getTradeDb().getTrades(time) : Locutus.imp().getTradeManager().getTradeDb().getTrades(nationIds, time);
 
         for (DBTrade trade : trades) {
             Integer buyer = trade.getBuyer();
@@ -795,9 +795,6 @@ public class TradeCommands {
         Map<ResourceType, Map<Integer, LongAdder>> bought = new EnumMap<>(ResourceType.class);
 
         Map.Entry<Map<ResourceType, Double>, Map<ResourceType, Double>> averages = Locutus.imp().getTradeManager().getAverage(time);
-
-        Map<ResourceType, Double> lowMap = averages.getKey();
-        Map<ResourceType, Double> highMap = averages.getValue();
 
         link.locutus.discord.db.TradeDB tradeDB = Locutus.imp().getTradeManager().getTradeDb();
         for (DBTrade offer : tradeDB.getTrades(time)) {
@@ -890,7 +887,7 @@ public class TradeCommands {
                               @Timestamp long time) throws GeneralSecurityException, IOException {
         Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
 
-        List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(time);
+        List<DBTrade> trades = nationIds.size() > 1000 ? Locutus.imp().getTradeManager().getTradeDb().getTrades(time) : Locutus.imp().getTradeManager().getTradeDb().getTrades(nationIds, time);
 
         Map<ResourceType, Long> netOutflows = new HashMap<>();
 

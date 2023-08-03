@@ -9,6 +9,7 @@ import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.db.entities.DBTreasure;
@@ -2119,6 +2120,7 @@ public class NationDB extends DBMainV2 {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+        executeStmt("CREATE INDEX IF NOT EXISTS index_kicks_nation ON KICKS (nation);");
         executeStmt("CREATE INDEX IF NOT EXISTS index_kicks_alliance ON KICKS (alliance);");
         executeStmt("CREATE INDEX IF NOT EXISTS index_kicks_alliance_date ON KICKS (alliance,date);");
 
@@ -2904,7 +2906,10 @@ public class NationDB extends DBMainV2 {
         }
     }
 
+    private ConcurrentHashMap<Integer, Long> turnActivityCache = new ConcurrentHashMap<>();
+
     public void setActivity(int nationId, long turn) {
+        if (turnActivityCache.computeIfAbsent(nationId, f -> 0L) >= turn) return; // already set (or newer
         update("INSERT OR REPLACE INTO `ACTIVITY` (`nation`, `turn`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
             stmt.setLong(2, turn);
@@ -3266,54 +3271,68 @@ public class NationDB extends DBMainV2 {
 //        }
 //    }
 
-    public Map<Integer, List<DBNation>> getNationsByAlliance(Collection<DBNation> nationSet, boolean removeUntaxable, boolean removeInactive, boolean removeApplicants, boolean sorttByScore) {
-        nationSet.removeIf(n -> n.getAlliance_id() == 0);
-        if (removeUntaxable) {
-            nationSet.removeIf(n -> n.getVm_turns() != 0 ||
-                    n.isGray() ||
-                    n.isBeige());
-        } else if (removeInactive) {
-            nationSet.removeIf(n -> n.getVm_turns() != 0 || n.getActive_m() > 7200);
-        }
-        if (removeApplicants) nationSet.removeIf(n -> n.getPosition() <= 1);
-        Map<Integer, List<DBNation>> byAlliance = new RankBuilder<>(nationSet).group(DBNation::getAlliance_id).get();
+    public Map<Integer, List<DBNation>> getNationsByAlliance(Collection<DBNation> nationSet, boolean removeUntaxable, boolean removeInactive, boolean removeApplicants, boolean sortByScore) {
+        final Int2DoubleMap scoreMap = new Int2DoubleOpenHashMap();
+        Int2ObjectOpenHashMap<List<DBNation>> nationsByAllianceFiltered = new Int2ObjectOpenHashMap<>();
 
-        if (sorttByScore) {
-            Map<Integer, Double> byScore = new GroupedRankBuilder<>(byAlliance).sumValues(n -> n.getScore()).sort().get();
-            LinkedHashMap<Integer, List<DBNation>> result = new LinkedHashMap<Integer, List<DBNation>>();
-            for (Map.Entry<Integer, Double> entry : byScore.entrySet()) {
-                result.put(entry.getKey(), byAlliance.get(entry.getKey()));
+        long activeCutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(7200);
+        long turnNow = TimeUtil.getTurn();
+        for (DBNation nation : nationSet) {
+            int aaId = nation.getAlliance_id();
+            if (aaId == 0) continue;
+            if (removeApplicants && nation.getPositionEnum().id <= Rank.APPLICANT.id) continue;
+            if (removeUntaxable && (nation.isGray() || nation.isBeige())) continue;
+            if (removeInactive && (nation.lastActiveMs() < activeCutoff)) continue;
+            if ((removeUntaxable || removeInactive) && nation.getLeaving_vm() > turnNow) continue;
+            nationsByAllianceFiltered.computeIfAbsent(aaId, f -> new ObjectArrayList<>()).add(nation);
+            // merge nation.getScore() into scoreMap
+            scoreMap.merge(aaId, nation.getScore(), Double::sum);
+        }
+        if (sortByScore) {
+            IntArrayList aaIds = new IntArrayList(scoreMap.keySet());
+            aaIds.sort((IntComparator) (id1, id2) -> Double.compare(scoreMap.get(id2), scoreMap.get(id1)));
+            Int2ObjectLinkedOpenHashMap<List<DBNation>> sortedMap = new Int2ObjectLinkedOpenHashMap<>(nationsByAllianceFiltered.size());
+            for (int aaId : aaIds) {
+                sortedMap.put(aaId, nationsByAllianceFiltered.get(aaId));
             }
-            byAlliance = result;
+            return sortedMap;
+        } else {
+            return nationsByAllianceFiltered;
         }
-
-        return byAlliance;
     }
 
     public Map<Integer, List<DBNation>> getNationsByAlliance(boolean removeUntaxable, boolean removeInactive, boolean removeApplicants, boolean sortByScore) {
-        final Map<Integer, Double> score = new Int2ObjectOpenHashMap<>();
-        Map<Integer, List<DBNation>> nationsByAllianceFiltered = new Int2ObjectOpenHashMap<>();
+        final Int2DoubleMap scoreMap = new Int2DoubleOpenHashMap();
+        Int2ObjectOpenHashMap<List<DBNation>> nationsByAllianceFiltered = new Int2ObjectOpenHashMap<>();
         synchronized (nationsByAlliance) {
+            long activeCutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(7200);
+            long turnNow = TimeUtil.getTurn();
             for (Map.Entry<Integer, Map<Integer, DBNation>> entry : nationsByAlliance.entrySet()) {
                 int aaId = entry.getKey();
                 Map<Integer, DBNation> nationMap = entry.getValue();
+                double score = 0;
                 for (DBNation nation : nationMap.values()) {
                     if (removeApplicants && nation.getPositionEnum().id <= Rank.APPLICANT.id) continue;
-                    boolean vm = nation.getVm_turns() > 0;
-                    if (removeUntaxable && (nation.isGray() || nation.isBeige() || vm)) continue;
-                    if (removeInactive && (vm || nation.active_m() > 7200)) continue;
-                    score.merge(aaId, nation.getScore(), Double::sum);
-                    nationsByAllianceFiltered.computeIfAbsent(aaId, f -> new ArrayList<>()).add(nation);
+                    if (removeUntaxable && (nation.isGray() || nation.isBeige())) continue;
+                    if (removeInactive && (nation.lastActiveMs() < activeCutoff)) continue;
+                    if ((removeUntaxable || removeInactive) && nation.getLeaving_vm() > turnNow) continue;
+                    score += nation.getScore();
+                    nationsByAllianceFiltered.computeIfAbsent(aaId, f -> new ObjectArrayList<>()).add(nation);
                 }
+                scoreMap.put(aaId, score);
             }
         }
-        List<Map.Entry<Integer, List<DBNation>>> sorted = new ArrayList<>(nationsByAllianceFiltered.entrySet());
-        sorted.sort((o1, o2) -> Double.compare(score.get(o2.getKey()), score.get(o1.getKey())));
-        nationsByAllianceFiltered = new LinkedHashMap<>();
-        for (Map.Entry<Integer, List<DBNation>> entry : sorted) {
-            nationsByAllianceFiltered.put(entry.getKey(), entry.getValue());
+        if (sortByScore) {
+            IntArrayList aaIds = new IntArrayList(scoreMap.keySet());
+            aaIds.sort((IntComparator) (id1, id2) -> Double.compare(scoreMap.get(id2), scoreMap.get(id1)));
+            Int2ObjectLinkedOpenHashMap<List<DBNation>> sortedMap = new Int2ObjectLinkedOpenHashMap<>(nationsByAllianceFiltered.size());
+            for (int aaId : aaIds) {
+                sortedMap.put(aaId, nationsByAllianceFiltered.get(aaId));
+            }
+            return sortedMap;
+        } else {
+            return nationsByAllianceFiltered;
         }
-        return nationsByAllianceFiltered;
     }
 
     public int getMilitaryBuy(DBNation nation, MilitaryUnit unit, long time) {

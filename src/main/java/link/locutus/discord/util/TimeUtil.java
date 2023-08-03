@@ -231,7 +231,11 @@ public class TimeUtil {
     }
 
     public static long getTurn() {
-        return getTurn(ZonedDateTime.now(ZoneOffset.UTC));
+        long now = System.currentTimeMillis();
+        long daysSince0 = TimeUnit.MILLISECONDS.toDays(now);
+        long hoursInCurrentDay = TimeUnit.MILLISECONDS.toHours(now % 86400000);
+        int turnsPerDay = 12;
+        return (hoursInCurrentDay / 2) + daysSince0 * turnsPerDay;
     }
 
     public static long getTurn(long timestamp) {

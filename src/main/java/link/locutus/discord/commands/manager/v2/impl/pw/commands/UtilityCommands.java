@@ -1491,8 +1491,7 @@ public Map<ParametricCallable, String> getEndpoints() {
         if (nations.size() == 1) {
             DBNation nation = nations.iterator().next();
             title = nation.getNation();
-            boolean showMoney = false;
-            nation.toCard(channel, false, showMoney);
+            nation.toCard(channel, false);
 
             List<CommandRef> commands = new ArrayList<>();
             commands.add(CM.nation.list.multi.cmd.create(nation.getNation_id() + ""));
@@ -1634,8 +1633,8 @@ public Map<ParametricCallable, String> getEndpoints() {
 
     private void printAA(StringBuilder response, DBNation nation, boolean spies) {
         response.append(String.format("%4s", TimeUtil.secToTime(TimeUnit.DAYS, nation.getAgeDays()))).append(" ");
-        response.append(nation.toMarkdown(false, false, true, false, false));
-        response.append(nation.toMarkdown(false, false, false, true, spies));
+        response.append(nation.toMarkdown(true, false, false, true, false, false));
+        response.append(nation.toMarkdown(true, false, false, false, true, spies));
     }
 
     @Command(desc = "Add or subtract interest to a nation's balance based on their current balance")

@@ -131,7 +131,7 @@ public class IntelOp extends Command {
             alreadySpied.put(nation.getNation_id(), System.currentTimeMillis());
 
             String title = "Gather Intelligence for: " + finalNation.getNation();
-            String response = nation.toEmbedString(false);
+            String response = nation.toEmbedString();
             response += "\n1 spy on extremely covert: ";
             response += "\n*Please post the result of your spy report here*";
             response += "\nMore info: https://docs.google.com/document/d/1gEeSOjjSDNBpKhrU9dhO_DN-YM3nYcklYzSYzSqq8k0";

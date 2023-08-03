@@ -161,27 +161,28 @@ public interface NationList extends NationFilter {
 
     default Set<Integer> updateSpies(boolean updateManually) {
         Set<DBNation> toUpdate = new HashSet<>(getNations());
-        toUpdate.removeIf(f -> f.getVm_turns() > 0 || f.getActive_m() > 7200);
-        Set<Integer> alliances = new HashSet<>();
-        for (DBNation nation : toUpdate) {
-            if (nation.getPosition() > Rank.APPLICANT.id) {
-                alliances.add(nation.getAlliance_id());
-            }
-        }
-        Set<Integer> updated = new HashSet<>();
-        boolean hasUpdated = false;
-        for (Integer allianceId : alliances) {
-            Set<Integer> result = DBAlliance.getOrCreate(allianceId).updateSpies(false);
-            updated.addAll(result);
-            toUpdate.removeIf(f -> result.contains(f.getId()));
-        }
-        if (updateManually) {
-            for (DBNation nation : toUpdate) {
-                nation.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK);
-                updated.add(nation.getId());
-            }
-        }
-        return updated;
+        return toUpdate.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
+//        toUpdate.removeIf(f -> f.getVm_turns() > 0 || f.getActive_m() > 7200);
+//        Set<Integer> alliances = new HashSet<>();
+//        for (DBNation nation : toUpdate) {
+//            if (nation.getPosition() > Rank.APPLICANT.id) {
+//                alliances.add(nation.getAlliance_id());
+//            }
+//        }
+//        Set<Integer> updated = new HashSet<>();
+//        boolean hasUpdated = false;
+//        for (Integer allianceId : alliances) {
+//            Set<Integer> result = DBAlliance.getOrCreate(allianceId).updateSpies(false);
+//            updated.addAll(result);
+//            toUpdate.removeIf(f -> result.contains(f.getId()));
+//        }
+//        if (updateManually) {
+//            for (DBNation nation : toUpdate) {
+//                nation.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK);
+//                updated.add(nation.getId());
+//            }
+//        }
+//        return updated;
     }
 
     default boolean contains(DBNation f) {

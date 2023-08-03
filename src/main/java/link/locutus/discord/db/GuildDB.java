@@ -49,6 +49,7 @@ import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -2289,12 +2290,22 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     public WarCategory getWarChannel(boolean throwException, boolean isWarServer) {
         Boolean enabled = getOrNull(GuildKey.ENABLE_WAR_ROOMS, false);
         if (enabled == Boolean.FALSE || enabled == null) {
-            if (throwException) throw new IllegalArgumentException("War rooms are not enabled " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(this, true) + " in guild " + getGuild());
+            if (throwException) {
+                String msg = "War rooms are not enabled " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(this, true) + " in guild " + getGuild();
+                if (warCatError != null) {
+                    msg += msg + "\nPreviously disabled due to error: " + warCatError.getMessage();
+                }
+                throw new IllegalArgumentException(msg);
+            }
             return null;
         }
         if (!isWhitelisted() && !isValidAlliance()) {
             if (throwException) {
-                throw new IllegalArgumentException("Ensure there are members in this alliance, " + CM.who.cmd.toSlashMention() + " and that " + CM.settings_default.registerAlliance.cmd.toSlashMention() + " is set in guild " + getGuild());
+                String msg = "Ensure there are members in this alliance, " + CM.who.cmd.toSlashMention() + " and that " + CM.settings_default.registerAlliance.cmd.toSlashMention() + " is set in guild " + getGuild();
+                if (warCatError != null) {
+                    msg += msg + "\nPreviously disabled due to error: " + warCatError.getMessage();
+                }
+                throw new IllegalArgumentException(msg);
             }
             return null;
         }
@@ -2536,6 +2547,14 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         DBAlliance aa = DBAlliance.get(aaId);
         if (aa == null) return null;
         return aa.getBank();
+    }
+
+    public void setWarCatError(InsufficientPermissionException e) {
+        this.warCatError = e;
+    }
+
+    public Throwable getWarCatError() {
+        return warCatError;
     }
 
     public enum AutoNickOption {

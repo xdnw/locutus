@@ -384,7 +384,7 @@ public class SpyTracker {
 
             String title = "Possible " + alert.change + " x " + unit + " spied (Note: False positives are common)";
             StringBuilder body = new StringBuilder("**" + title + "**:\n");
-            body.append("\nDefender (" + defSpiesStr + " spies):" + defender.toMarkdown(false, true, true, true, true));
+            body.append("\nDefender (" + defSpiesStr + " spies):" + defender.toMarkdown(false, false, true, true, true, true));
             body.append("\ntimestamp:" + alert.timestamp + " (" + TimeUtil.YYYY_MM_DDTHH_MM_SSX.format(new Date(alert.timestamp)) + ")");
 
             // display recent wars (nation)

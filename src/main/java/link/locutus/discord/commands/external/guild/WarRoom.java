@@ -167,7 +167,6 @@ public class WarRoom extends Command {
         GuildDB db = Locutus.imp().getGuildDB(guild);
         WarCategory.WarRoom room = warCat.get(target, true, true, true, true);
         TextChannel channel = room.getChannel(true, true);
-        room.setPlanning(true);
 
         String declareUrl = target.getDeclareUrl();
         String channelUrl = "https://discord.com/channels/" + guild.getIdLong() + "/" + channel.getIdLong();

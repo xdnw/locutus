@@ -1855,12 +1855,13 @@ public class GuildHandler {
     }
 
     public BiFunction<DBWar, DBWar, Boolean> shouldAlertWar() {
-        Set<Integer> trackedOff = getTrackedWarAlliances(true);
-        Set<Integer> trackedDef = getTrackedWarAlliances(false);
-        return new BiFunction<DBWar, DBWar, Boolean>() {
+        return new BiFunction<>() {
+            private Set<Integer> trackedOff;
+            private Set<Integer> trackedDef;
+
             @Override
             public Boolean apply(DBWar previous, DBWar current) {
-                if (previous != null)return false;
+                if (previous != null) return false;
                 DBNation attacker = current.getNation(true);
                 DBNation defender = current.getNation(false);
                 if (attacker == null || defender == null) {
@@ -1874,13 +1875,22 @@ public class GuildHandler {
                     hideApps = true;
                 }
 
+                if (trackedDef == null) {
+                    trackedDef = getTrackedWarAlliances(false);
+                }
+
                 if (trackedDef.contains(current.defender_aa)) {
                     // defensive
                     if (hideApps == Boolean.TRUE && defender.getPosition() <= 1) {
                         return false;
                     }
-                } else if (trackedOff.contains(current.attacker_aa)) {
-                    // offensive
+                } else {
+                    if (trackedOff == null) {
+                        trackedOff = getTrackedWarAlliances(true);
+                    }
+                    if (trackedOff.contains(current.attacker_aa)) {
+                        // offensive
+                    }
                 }
                 return true;
             }
@@ -2501,14 +2511,14 @@ public class GuildHandler {
         String title = blockaded.getNation() + " " + titleSuffix;
         StringBuilder body = new StringBuilder();
         body.append("**Defender:** " + blockaded.getNationUrlMarkup(true) + " | " + blockaded.getAllianceUrlMarkup(true)).append("\n");
-        body.append(blockaded.toMarkdown(true, false, true, false, false)).append("\n");
-        body.append(blockaded.toMarkdown(true, false, false, true, false)).append("\n");
+        body.append(blockaded.toMarkdown(true, true, false, true, false, false)).append("\n");
+        body.append(blockaded.toMarkdown(true, true, false, false, true, false)).append("\n");
         body.append("\n");
 
         if (blockader != null) {
             body.append("**Blockader:** " + blockader.getNationUrlMarkup(true) + " | " + blockader.getAllianceUrlMarkup(true)).append("\n");
-            body.append(blockader.toMarkdown(true, false, true, false, false)).append("\n");
-            body.append(blockader.toMarkdown(true, false, false, true, false)).append("\n");
+            body.append(blockader.toMarkdown(true, true, false, true, false, false)).append("\n");
+            body.append(blockader.toMarkdown(true, true, false, false, true, false)).append("\n");
         }
 
         IMessageBuilder msg = io.create().embed(title, body.toString());

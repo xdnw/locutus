@@ -19,6 +19,9 @@ public enum AllianceMeta {
     GROUND_MILITARIZATION_DATE,
 
 
+    OFFSHORE_PARENT_DATE,
+    OFFSHORE_PARENT_ITERATION,
+
     ;
 
     public static AllianceMeta[] values = values();
