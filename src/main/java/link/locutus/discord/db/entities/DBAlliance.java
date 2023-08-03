@@ -446,52 +446,53 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public boolean updateSpies(AllianceMembers members) {
-        Set<DBNation> toUpdate = new LinkedHashSet<>();
-        for (AllianceMembersContainer member : members.getNations()) {
-            Integer spies = Integer.parseInt(member.getSpies());
-            DBNation nation = Locutus.imp().getNationDB().getNation(member.getNationId());
-            if (nation != null && !spies.equals(nation.getSpies())) {
-                nation.setSpies(spies, true);
-                Locutus.imp().getNationDB().setSpies(nation.getNation_id(), spies);
-                toUpdate.add(nation);
-            }
-        }
-        Locutus.imp().getNationDB().saveNations(toUpdate);
+//        Set<DBNation> toUpdate = new LinkedHashSet<>();
+//        for (AllianceMembersContainer member : members.getNations()) {
+//            Integer spies = Integer.parseInt(member.getSpies());
+//            DBNation nation = Locutus.imp().getNationDB().getNation(member.getNationId());
+//            if (nation != null && !spies.equals(nation.getSpies())) {
+//                nation.setSpies(spies, true);
+//                Locutus.imp().getNationDB().setSpies(nation.getNation_id(), spies);
+//                toUpdate.add(nation);
+//            }
+//        }
+//        Locutus.imp().getNationDB().saveNations(toUpdate);
         return true;
     }
 
     public Set<Integer> updateSpies(boolean updateManually) {
-        PoliticsAndWarV3 api = getApi(AlliancePermission.SEE_SPIES);
-        Set<Integer> updated = new HashSet<>();
-        if (api != null) {
-            List<Nation> nations = api.fetchNations(f -> {
-                f.setAlliance_id(List.of(allianceId));
-                f.setVmode(false);
-            }, f -> {
-                f.id();
-                f.spies();
-            });
-            Set<DBNation> toSave = new HashSet<>();
-            for (Nation nation : nations) {
-                Integer spies = nation.getSpies();
-                if (spies != null) {
-                    updated.add(nation.getId());
-                    DBNation locutusNation = DBNation.getById(nation.getId());
-                    if (locutusNation != null) {
-                        locutusNation.setSpies(spies, true);
-                        toSave.add(locutusNation);
-                    }
-                }
-            }
-            Locutus.imp().getNationDB().saveNations(toSave);
-            return updated;
-        }
-        if (!updateManually) return updated;
-        for (DBNation nation : getNations(true, 1440, true)) {
-            nation.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK);
-            updated.add(nation.getId());
-        }
-        return updated;
+//        PoliticsAndWarV3 api = getApi(AlliancePermission.SEE_SPIES);
+//        Set<Integer> updated = new HashSet<>();
+//        if (api != null) {
+//            List<Nation> nations = api.fetchNations(f -> {
+//                f.setAlliance_id(List.of(allianceId));
+//                f.setVmode(false);
+//            }, f -> {
+//                f.id();
+//                f.spies();
+//            });
+//            Set<DBNation> toSave = new HashSet<>();
+//            for (Nation nation : nations) {
+//                Integer spies = nation.getSpies();
+//                if (spies != null) {
+//                    updated.add(nation.getId());
+//                    DBNation locutusNation = DBNation.getById(nation.getId());
+//                    if (locutusNation != null) {
+//                        locutusNation.setSpies(spies, true);
+//                        toSave.add(locutusNation);
+//                    }
+//                }
+//            }
+//            Locutus.imp().getNationDB().saveNations(toSave);
+//            return updated;
+//        }
+//        if (!updateManually) return updated;
+//        for (DBNation nation : getNations(true, 1440, true)) {
+//            nation.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK);
+//            updated.add(nation.getId());
+//        }
+//        return updated;
+        return getNations().stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
     }
 
     public DBNation getTotal() {
@@ -917,7 +918,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return null;
     }
 
-    private boolean isRightSizeForOffshore(Set<DBNation> members) {
+    public boolean isRightSizeForOffshore(Set<DBNation> members) {
         if (members.size() > 3) {
             return false;
         }
@@ -956,6 +957,15 @@ public class DBAlliance implements NationList, NationOrAlliance {
     public DBAlliance findParentOfThisOffshore() {
         Set<DBNation> members = getNations();
         if (!isRightSizeForOffshore(members)) {
+            deleteMeta(AllianceMeta.OFFSHORE_PARENT);
+            return null;
+        }
+        return findParentOfThisOffshore(members, false);
+    }
+
+    public DBAlliance findParentOfThisOffshore(Set<DBNation> membersOrNull, boolean checkSize) {
+        Set<DBNation> members = membersOrNull == null ? getNations() : membersOrNull;
+        if (checkSize && !isRightSizeForOffshore(members)) {
             deleteMeta(AllianceMeta.OFFSHORE_PARENT);
             return null;
         }

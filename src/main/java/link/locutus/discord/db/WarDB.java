@@ -501,6 +501,16 @@ public class WarDB extends DBMainV2 {
 //                }
             }
         }
+
+        activeWars.syncBlockades();
+    }
+
+    public Set<Integer> getNationsBlockadedBy(int nationId) {
+        return activeWars.getNationsBlockadedBy(nationId);
+    }
+
+    public Set<Integer> getNationsBlockading(int nationId) {
+        return activeWars.getNationsBlockading(nationId);
     }
 
     public void loadWars(int days) {
@@ -658,7 +668,6 @@ public class WarDB extends DBMainV2 {
         else if (alliances == null) {
             synchronized (warsById) {
                 if (warFilter == null) {
-
                     result.putAll(warsById);
                 } else {
                     for (Map.Entry<Integer, DBWar> warEntry : warsById.entrySet()) {
@@ -927,7 +936,7 @@ public class WarDB extends DBMainV2 {
 
     }
 
-    public Set<DBWar> getActiveWars() {
+    public Map<Integer, DBWar> getActiveWars() {
         return activeWars.getActiveWars();
     }
 
@@ -1093,83 +1102,6 @@ public class WarDB extends DBMainV2 {
             update(query, stmt -> setStmt.accept(value, stmt));
         } else {
             executeBatch(entries, query, setStmt);
-        }
-    }
-
-    public void deleteBlockaded(int blockaded) {
-        update("DELETE FROM BLOCKADED WHERE blockaded = ?", new ThrowingConsumer<PreparedStatement>() {
-            @Override
-            public void acceptThrows(PreparedStatement stmt) throws Exception {
-                stmt.setInt(1, blockaded);
-            }
-        });
-    }
-
-    public void deleteBlockaded(int blockaded, int blockader) {
-        if (blockadedMap != null) {
-            synchronized (blockadeLock) {
-                blockadedMap.getOrDefault(blockaded, Collections.emptySet()).remove(blockader);
-                blockaderMap.getOrDefault(blockader, Collections.emptySet()).remove(blockaded);
-            }
-        }
-        update("DELETE FROM BLOCKADED WHERE blockaded = ? AND blockader = ?", new ThrowingConsumer<PreparedStatement>() {
-            @Override
-            public void acceptThrows(PreparedStatement stmt) throws Exception {
-                stmt.setInt(1, blockaded);
-                stmt.setInt(2, blockader);
-            }
-        });
-    }
-
-    public void addBlockaded(int blockaded, int blockader) {
-        if (blockadedMap != null) {
-            synchronized (blockadeLock) {
-                blockadedMap.computeIfAbsent(blockaded, f -> new HashSet<>()).add(blockader);
-                blockaderMap.computeIfAbsent(blockader, f -> new HashSet<>()).add(blockaded);
-            }
-        }
-        update("INSERT OR REPLACE INTO `BLOCKADED`(`blockaded`, `blockader`) VALUES(?,?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, blockaded);
-            stmt.setInt(2, blockader);
-        });
-    }
-
-    private Object blockadeLock = new Object();
-    private Map<Integer, Set<Integer>> blockadedMap = null;
-    private Map<Integer, Set<Integer>> blockaderMap = null;
-
-    public Map<Integer, Set<Integer>> getBlockadedByNation(boolean update) {
-        updateBlockaded(update);
-        return blockadedMap;
-    }
-
-    public Map<Integer, Set<Integer>> getBlockaderByNation(boolean update) {
-        updateBlockaded(update);
-        return blockaderMap;
-    }
-
-    public void updateBlockaded(boolean force) {
-        if (!force && blockadedMap != null) {
-            return;
-        }
-        Map<Integer, Set<Integer>> blockadedMap = new ConcurrentHashMap<>();
-        Map<Integer, Set<Integer>> blockaderMap = new ConcurrentHashMap<>();
-        try (PreparedStatement stmt= prepareQuery("SELECT * FROM BLOCKADED")) {
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    int blockader = rs.getInt("blockader");
-                    int blockaded = rs.getInt("blockaded");
-
-                    blockadedMap.computeIfAbsent(blockaded, f -> new HashSet<>()).add(blockader);
-                    blockaderMap.computeIfAbsent(blockader, f -> new HashSet<>()).add(blockaded);
-                }
-            }
-            synchronized (blockadeLock) {
-                this.blockadedMap = blockadedMap;
-                this.blockaderMap = blockaderMap;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 
@@ -1502,6 +1434,9 @@ public class WarDB extends DBMainV2 {
             activeWarsToFetch.remove(war.getWarId());
         }
 
+        List<Map.Entry<DBWar, DBWar>> warsToProcess = new ObjectArrayList<>();
+        List<DBWar> warsToSave = new ArrayList<>();
+
         if (activeWarsToFetch.size() > 0) {
             int notDeleted = 0;
             for (int warId : activeWarsToFetch) {
@@ -1513,14 +1448,20 @@ public class WarDB extends DBMainV2 {
                 if (war.getNation(true) != null && war.getNation(false) != null) {
                     notDeleted++;
                 }
-                DBWar copy = new DBWar(war);
+                DBWar copy = eventConsumer != null ? new DBWar(war) : null;
                 war.status = WarStatus.EXPIRED;
                 activeWars.makeWarInactive(war);
-                saveWars(Collections.singleton(war));
+                warsToSave.add(war);
                 if (eventConsumer != null) {
-                    eventConsumer.accept(new WarStatusChangeEvent(copy, war));
+                    warsToProcess.add(new AbstractMap.SimpleEntry<>(copy, war));
                 }
             }
+
+            saveWars(warsToSave);
+            if (eventConsumer != null) {
+                WarUpdateProcessor.processWars(warsToProcess, eventConsumer);
+            }
+
             if (notDeleted > 0) {
                 AlertUtil.error("Unable to fetch " + notDeleted + "/" + numActive + " active wars:", new RuntimeException("Ignore if these wars correspond to deleted nations:\n" + StringMan.getString(activeWarsToFetch)));
             }
@@ -1578,7 +1519,7 @@ public class WarDB extends DBMainV2 {
         int newWarsToFetch = 100;
         int numToUpdate = Math.min(999, PoliticsAndWarV3.WARS_PER_PAGE);
 
-        List<DBWar> mostActiveWars = new ArrayList<>(activeWars.getActiveWars());
+        List<DBWar> mostActiveWars = new ObjectArrayList<>(activeWars.getActiveWars().values());
         if (mostActiveWars.isEmpty()) return false;
 
         int latestWarId = 0;
@@ -1628,6 +1569,9 @@ public class WarDB extends DBMainV2 {
             activeWarsToFetch.remove(war.getWarId());
         }
 
+        List<DBWar> warsToSave = new ArrayList<>();
+        List<Map.Entry<DBWar, DBWar>> warsToProcess = new ArrayList<>();
+
         if (activeWarsToFetch.size() > 0) {
             int notDeleted = 0;
             for (int warId : activeWarsToFetch) {
@@ -1639,14 +1583,20 @@ public class WarDB extends DBMainV2 {
                 if (war.getNation(true) != null && war.getNation(false) != null) {
                     notDeleted++;
                 }
-                DBWar copy = new DBWar(war);
+                DBWar copy = eventConsumer != null ? new DBWar(war) : null;
                 war.status = WarStatus.EXPIRED;
                 activeWars.makeWarInactive(war);
-                saveWars(Collections.singleton(war));
+                warsToSave.add(war);
                 if (eventConsumer != null) {
-                    eventConsumer.accept(new WarStatusChangeEvent(copy, war));
+                    warsToProcess.add(new AbstractMap.SimpleEntry<>(copy, war));
                 }
             }
+
+            saveWars(warsToSave);
+            if (eventConsumer != null) {
+                WarUpdateProcessor.processWars(warsToProcess, eventConsumer);
+            }
+
             if (notDeleted > 0) {
                 AlertUtil.error("Unable to fetch " + notDeleted + "/" + numActive + " active wars:", new RuntimeException("Ignore if these wars correspond to deleted nations:\n" + StringMan.getString(activeWarsToFetch)));
             }
@@ -1690,7 +1640,7 @@ public class WarDB extends DBMainV2 {
         }
 
         long currentTurn = TimeUtil.getTurn();
-        for (DBWar war : activeWars.getActiveWars()) {
+        for (DBWar war : activeWars.getActiveWars().values()) {
             if (!newWarIds.add(war.getWarId())) continue;
 
             long warTurn = TimeUtil.getTurn(war.date);
@@ -2186,6 +2136,7 @@ public class WarDB extends DBMainV2 {
         List<AbstractCursor> dbAttacks = new ArrayList<>();
         List<AbstractCursor> newAttacks;
         Set<DBWar> warsToSave = new LinkedHashSet<>();
+        List<Map.Entry<DBWar, DBWar>> warsToProcess = new ArrayList<>();
         List<AbstractCursor> dirtyCities = new ArrayList<>();
 
         synchronized (activeWars) {
@@ -2226,6 +2177,7 @@ public class WarDB extends DBMainV2 {
             }
 
             long now = System.currentTimeMillis();
+
             for (AbstractCursor attack : newAttacks) {
                 if (runAlerts) {
                     Locutus.imp().getNationDB().setNationActive(attack.getAttacker_id(), attack.getDate(), eventConsumer);
@@ -2258,9 +2210,13 @@ public class WarDB extends DBMainV2 {
                                     eventConsumer.accept(new NationChangeColorEvent(copyOriginal, defender));
                             }
                             DBWar oldWar = new DBWar(war);
-                            war.status = war.attacker_id == attack.getAttacker_id() ? WarStatus.ATTACKER_VICTORY : WarStatus.DEFENDER_VICTORY;
-                            if (eventConsumer != null) {
-                                eventConsumer.accept(new WarStatusChangeEvent(oldWar, war));
+                            WarStatus newStatus = war.attacker_id == attack.getAttacker_id() ? WarStatus.ATTACKER_VICTORY : WarStatus.DEFENDER_VICTORY;
+                            if (war.status != newStatus) {
+                                war.status = newStatus;
+                                warsToSave.add(war);
+                                if (eventConsumer != null) {
+                                    warsToProcess.add(new AbstractMap.SimpleEntry<>(oldWar, war));
+                                }
                             }
                         }
                     }
@@ -2275,7 +2231,6 @@ public class WarDB extends DBMainV2 {
         }
 
         saveWars(warsToSave);
-
         if (runAlerts && dirtyCities.size() > 0) {
             for (AbstractCursor attack : dirtyCities) {
                 // check improvements and modify city
@@ -2291,8 +2246,14 @@ public class WarDB extends DBMainV2 {
         }
 
         if (runAlerts && eventConsumer != null) {
+
+            for (AbstractCursor attack : newAttacks) {
+                activeWars.processAttackChange(attack, eventConsumer);
+            }
+
+            WarUpdateProcessor.processWars(warsToProcess, eventConsumer);
+
             long start2 = System.currentTimeMillis();
-            NationUpdateProcessor.updateBlockades();
             long diff = System.currentTimeMillis() - start2;
 
             if (diff > 200) {
@@ -2659,5 +2620,9 @@ public class WarDB extends DBMainV2 {
 
     public AttackQuery queryAttacks() {
         return new AttackQuery();
+    }
+
+    public void syncBlockades() {
+        activeWars.syncBlockades();
     }
 }

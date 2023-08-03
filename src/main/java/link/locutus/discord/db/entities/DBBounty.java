@@ -116,7 +116,7 @@ public class DBBounty {
 
 
         String title = nation.getNation() + " | " + type + " | $" + MathMan.format(total);
-        String embed = nation.toEmbedString(true);
+        String embed = nation.toEmbedString();
         if (deanonymize && postedBy > 0) embed += "\nPosted by: " + PnwUtil.getName(postedBy, false);
         DiscordUtil.createEmbedCommand(channel.getIdLong(), title, embed);
     }

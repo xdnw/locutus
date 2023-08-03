@@ -905,10 +905,10 @@ public class WarUpdateProcessor {
     }
 
     public static void checkActiveConflicts() {
-        Set<DBWar> activeWars = Locutus.imp().getWarDb().getActiveWars();
+        Map<Integer, DBWar> activeWars = Locutus.imp().getWarDb().getActiveWars();
         Map<Integer, Set<DBWar>> defWarsByAA = new HashMap<>();
 
-        for (DBWar war : activeWars) {
+        for (DBWar war : activeWars.values()) {
             DBNation attacker = war.getNation(true);
             DBNation defender = war.getNation(false);
             if (attacker == null || attacker.getAlliance_id() == 0 || attacker.getVm_turns() > 0 || attacker.active_m() > 2880) continue;

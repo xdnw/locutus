@@ -443,7 +443,7 @@ public class WarCommands {
             alreadySpied.put(nation.getNation_id(), System.currentTimeMillis());
 
             String title = "Gather Intelligence for: " + me.getNation();
-            String response = nation.toEmbedString(false);
+            String response = nation.toEmbedString();
             response += "\n1 spy on extremely covert: ";
             response += "\n*Please post the result of your spy report here*";
             response += "\nMore info: https://docs.google.com/document/d/1gEeSOjjSDNBpKhrU9dhO_DN-YM3nYcklYzSYzSqq8k0";
@@ -1516,16 +1516,10 @@ public class WarCommands {
         channel.send("Please wait...");
 
         Integer enemySpies = enemy.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE);
-        if (enemySpies == null) {
-            enemySpies = SpyCount.guessSpyCount(PagePriority.ESPIONAGE_ODDS_SINGLE, enemy);
-        }
 
         SpyCount.Operation[] opTypes = operations.toArray(new SpyCount.Operation[0]);
         for (DBNation nation : counterWith) {
             Integer mySpies = nation.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE);
-            if (mySpies == null) {
-                mySpies = SpyCount.guessSpyCount(PagePriority.ESPIONAGE_ODDS_SINGLE, nation);
-            }
 
             if (enemySpies == -1) {
                 return "Unknown enemy spies";
@@ -1679,7 +1673,7 @@ public class WarCommands {
             return "No nations found (1)";
         }
 
-        int mySpies = SpyCount.guessSpyCount(PagePriority.ESPIONAGE_ODDS_SINGLE, me);
+        int mySpies = me.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE);
         long dcTime = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - (TimeUtil.getTurn() % 12));
 
         List<Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>>> netDamage = new ArrayList<>();
@@ -3828,10 +3822,10 @@ public class WarCommands {
         me.setMeta(NationMeta.INTERVIEW_SPIES, (byte) 1);
 
         int result = nation.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE, true, true);
-        Long turnUpdate = nation.getTurnUpdatedSpies();
-        long turnsAgo = TimeUtil.getTurn() - (turnUpdate == null ? 0 : turnUpdate);
+        Long timeUpdate = nation.getTimeUpdatedSpies();
+        long timeAgo = System.currentTimeMillis() - (timeUpdate == null ? 0 : timeUpdate);
 
-        StringBuilder response = new StringBuilder(nation.getNation() + " has " + result + " spies (updated: " + turnsAgo + " turns ago)");
+        StringBuilder response = new StringBuilder(nation.getNation() + " has " + result + " spies (updated: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeAgo) + " ago)");
         response.append("\nRecommended:");
 
         int minSafety = requiredSafety == null ? 1 : requiredSafety.id;

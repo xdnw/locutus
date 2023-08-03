@@ -130,10 +130,21 @@ public enum MilitaryUnit {
             }
         } else {
             cap = 0;
-            if (this == MISSILE) {
-                if (hasProject.test(Projects.MISSILE_LAUNCH_PAD)) cap++;
-                if (hasProject.test(Projects.MOON_LANDING)) cap++;
-            } else if (this == NUKE && hasProject.test(Projects.NUCLEAR_RESEARCH_FACILITY)) cap++;
+            switch (this) {
+                case MISSILE -> {
+                    if (hasProject.test(Projects.MISSILE_LAUNCH_PAD)) cap = 1;
+                    if (hasProject.test(Projects.SPACE_PROGRAM)) cap = 2;
+                }
+                case NUKE -> {
+                    if (hasProject.test(Projects.NUCLEAR_RESEARCH_FACILITY)) cap++;
+                }
+                case SPIES -> {
+                    cap = 2;
+                    if (hasProject.test(Projects.INTELLIGENCE_AGENCY)) cap++;
+                    if (hasProject.test(Projects.SPY_SATELLITE)) cap++;
+                }
+            }
+            return cap;
         }
         return cap;
     }

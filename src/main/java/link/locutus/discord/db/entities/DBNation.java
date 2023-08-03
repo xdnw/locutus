@@ -1230,7 +1230,12 @@ public class DBNation implements NationOrAlliance {
             }
         }
         if (nation.getSpies() != null) {
-            this.setSpies(nation.getSpies(), false); // For tracking last update time, even if no change
+            this.setSpies(nation.getSpies(), false);
+            if (copyOriginal != null && copyOriginal.getSpies() != (nation.getSpies())) {
+                if (eventConsumer != null) eventConsumer.accept(new NationChangeUnitEvent(copyOriginal, this, MilitaryUnit.SPIES));
+                dirty = true;
+            }
+
         }
         if (nation.getVacation_mode_turns() != null && this.getVm_turns() != nation.getVacation_mode_turns()) {
             long turnEnd = TimeUtil.getTurn() + nation.getVacation_mode_turns();
@@ -1448,45 +1453,6 @@ public class DBNation implements NationOrAlliance {
         return total / (double) cities.size();
     }
 
-    public Integer updateSpies(PagePriority priority) {
-        return updateSpies(priority, false);
-    }
-
-    public Integer updateSpies(PagePriority priority, boolean update, boolean force) {
-        if (!update && spies >= 0) {
-            return spies;
-        }
-        return updateSpies(priority, force);
-    }
-
-    public Integer updateSpies(PagePriority priority, boolean force) {
-        return updateSpies(priority, force ? Integer.MIN_VALUE : 0);
-    }
-
-    public Long getTurnUpdatedSpies() {
-        ByteBuffer lastTurn = spies < 0 ? null : getMeta(NationMeta.UPDATE_SPIES);
-        return lastTurn == null ? null : lastTurn.getLong();
-    }
-
-    public Integer updateSpies(PagePriority priority, int turns) {
-        ByteBuffer lastTurn = spies < 0 ? null : getMeta(NationMeta.UPDATE_SPIES);
-        long currentTurn = TimeUtil.getTurn();
-
-        if (lastTurn == null || (currentTurn - lastTurn.getLong() > turns)) {
-            try {
-                if (getPositionEnum().id > Rank.APPLICANT.id) {
-                    if (getAlliance().updateSpies(false).contains(nation_id)) {
-                        return spies;
-                    }
-                }
-                SpyCount.guessSpyCount(priority, this);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        return spies;
-    }
-
     public void setMeta(NationMeta key, byte value) {
         setMeta(key, new byte[] {value});
     }
@@ -1558,7 +1524,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public void setSpies(int spies, boolean events) {
-        setMeta(NationMeta.UPDATE_SPIES, TimeUtil.getTurn());
+        getCache().processUnitChange(this, MilitaryUnit.SPIES, this.spies, spies);
         if (events && this.spies != spies) {
             DBNation copyOriginal = new DBNation(this);
             this.spies = spies;
@@ -1567,9 +1533,8 @@ public class DBNation implements NationOrAlliance {
             Locutus.imp().getNationDB().saveNation(this);
 
             new NationChangeUnitEvent(copyOriginal, this, MilitaryUnit.SPIES).post();
-        } else {
-            this.spies = spies;
         }
+        this.spies = spies;
     }
 
     public double[] getNetDeposits(GuildDB db) throws IOException {
@@ -1745,6 +1710,29 @@ public class DBNation implements NationOrAlliance {
     public long getDateCheckedUnits() {
         if (cache == null) return 0;
         return cache.lastCheckUnitMS;
+    }
+
+    public Long getTimeUpdatedSpies() {
+        if (cache != null) {
+            return cache.lastCheckUnitMS;
+        }
+        return null;
+    }
+
+    public Integer updateSpies(PagePriority priority) {
+        return spies;
+    }
+
+    public Integer updateSpies(PagePriority priority, boolean update, boolean force) {
+        return spies;
+    }
+
+    public Integer updateSpies(PagePriority priority, boolean force) {
+        return spies;
+    }
+
+    public Integer updateSpies(PagePriority priority, int turns) {
+        return spies;
     }
 
     public static class LoginFactor {
@@ -2921,9 +2909,9 @@ public class DBNation implements NationOrAlliance {
     }
 
     public String toMarkdown(boolean war) {
-        return toMarkdown(war, true, true, true);
+        return toMarkdown(war, true, true, true, true);
     }
-    public String toMarkdown(boolean war, boolean showOff, boolean showSpies, boolean showInfra) {
+    public String toMarkdown(boolean war, boolean showOff, boolean showSpies, boolean showInfra, boolean spies) {
         StringBuilder response = new StringBuilder();
         if (war) {
             response.append("<" + Settings.INSTANCE.PNW_URL() + "/nation/war/declare/id=" + getNation_id() + ">");
@@ -3446,19 +3434,15 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "List of nation ids whuch are blockaded by this nation's navy ships in-game")
     public Set<Integer> getBlockading() {
-        Set<Integer> empty = Collections.emptySet();
-        if (getNumWars() == 0 || getActive_m() > 7200 || ships == 0) return empty;
-        return Locutus.imp().getWarDb().getBlockaderByNation(false).getOrDefault(nation_id, empty);
+        return Locutus.imp().getWarDb().getNationsBlockadedBy(nation_id);
     }
 
     @Command(desc = "List of nation ids which are blockading this nation with their navy ships in-game")
     public Set<Integer> getBlockadedBy() {
-        Set<Integer> empty = Collections.emptySet();
-        if (getNumWars() == 0) return empty;
-        return Locutus.imp().getWarDb().getBlockadedByNation(false).getOrDefault(nation_id, empty);
+        return Locutus.imp().getWarDb().getNationsBlockading(nation_id);
     }
 
-    public void toCard(IMessageIO channel, boolean spies, boolean refresh) {
+    public void toCard(IMessageIO channel, boolean refresh) {
         String title = nation;
         String counterEmoji = "Counter";
         String counterCmd = Settings.commandPrefix(true) + "counter " + getNationUrl();
@@ -3467,7 +3451,7 @@ public class DBNation implements NationOrAlliance {
         String refreshEmoji = "Refresh";
         String refreshCmd = Settings.commandPrefix(true) + "who " + getNationUrl();
 
-        String response = toEmbedString(spies);
+        String response = toEmbedString();
         IMessageBuilder msg = channel.create().embed(title, response)
                 .commandButton(CommandBehavior.UNDO_REACTION, CM.war.counter.nation.cmd.create(getId() + "", null, null, null, null, null, null, null), "Counter");
         if (refresh) {
@@ -3475,14 +3459,14 @@ public class DBNation implements NationOrAlliance {
         }
         msg.send();
     }
-    public String toEmbedString(boolean spies) {
+    public String toEmbedString() {
         StringBuilder response = new StringBuilder();
         PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(getNation_id());
         if (user != null) {
             response.append(user.getDiscordName() + " / <@" + user.getDiscordId() + "> | ");
         }
         response.append(toMarkdown(true, true, true, false, false));
-        response.append(toMarkdown(true, false, false, true, spies));
+        response.append(toMarkdown(true, false, false, true, true));
 
         response.append(" ```")
                 .append(String.format("%6s", getVm_turns())).append(" \uD83C\uDFD6\ufe0f").append(" | ")
@@ -3594,10 +3578,16 @@ public class DBNation implements NationOrAlliance {
         return body.toString();
     }
 
-    public String toMarkdown(boolean embed, boolean title, boolean general, boolean military, boolean spies) {
+    public String toMarkdown(boolean embed, boolean war, boolean title, boolean general, boolean military, boolean spies) {
         StringBuilder response = new StringBuilder();
         if (title) {
-            String nationUrl = getNationUrlMarkup(embed);
+            String nationUrl;
+            if (war) {
+                String url = Settings.INSTANCE.PNW_URL() + "/nation/war/declare/id=" + getNation_id();
+                nationUrl = embed ? MarkupUtil.markdownUrl(getName(), url) : "<" + url + ">";
+            } else {
+                nationUrl = getNationUrlMarkup(embed);
+            }
             String allianceUrl = getAllianceUrlMarkup(embed);
             response
                     .append(nationUrl)
@@ -3606,9 +3596,13 @@ public class DBNation implements NationOrAlliance {
 
             if (embed && getPositionEnum() == Rank.APPLICANT && alliance_id != 0) response.append(" (applicant)");
 
+            if (getVm_turns() > 0) {
+                response.append(" | VM");
+            }
+
             response.append('\n');
         }
-        if (general || military || spies) {
+        if (general || military) {
             response.append("```");
             if (general) {
                 int active = getActive_m();
@@ -3625,13 +3619,21 @@ public class DBNation implements NationOrAlliance {
                         .append(String.format("%6s", getSoldiers())).append(" \uD83D\uDC82").append(" | ")
                         .append(String.format("%5s", getTanks())).append(" \u2699").append(" | ")
                         .append(String.format("%5s", getAircraft())).append(" \u2708").append(" | ")
-                        .append(String.format("%4s", getShips())).append(" \u26F5").append(" | ");
+                        .append(String.format("%4s", getShips())).append(" \u26F5").append(" | ")
+                        .append(String.format("%2s", getSpies())).append(" \uD83D\uDD0E").append(" | ");
             }
             if (general) {
                 response
                         .append(String.format("%8s", getWarPolicy())).append(" | ")
                         .append(String.format("%1s", getOff())).append("\uD83D\uDDE1").append(" | ")
                         .append(String.format("%1s", getDef())).append("\uD83D\uDEE1").append(" | ");
+
+                if (color == NationColor.BEIGE) {
+                    int turns = getBeigeTurns();
+                    long diff = TimeUnit.MILLISECONDS.toMinutes(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() + turns) - System.currentTimeMillis());
+                    String beigeStr = TimeUtil.secToTime(TimeUnit.MINUTES, diff);
+                    response.append(color == NationColor.BEIGE ? " beige:" + beigeStr : "");
+                }
             }
             String str = response.toString();
             if (str.endsWith(" | ")) response = new StringBuilder(str.substring(0, str.length() - 3));

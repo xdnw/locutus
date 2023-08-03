@@ -10,15 +10,9 @@ import java.util.Map;
 public class NationUnblockadedEvent extends GuildScopeEvent {
     private final int blockader;
     private final int blockaded;
-    private final Map<Integer, Integer> blockaders;
-    public NationUnblockadedEvent(int blockaded, int blockader, Map<Integer, Integer> blockaders) {
+    public NationUnblockadedEvent(int blockaded, int blockader) {
         this.blockaded = blockaded;
         this.blockader = blockader;
-        this.blockaders = blockaders;
-    }
-
-    public Map<Integer, Integer> getBlockaders() {
-        return blockaders;
     }
 
     public int getBlockaded() {

@@ -70,7 +70,7 @@ public class TradeListener {
         if (currentNation == null) {
             body.append("Current owner: " + treasure.getNation_id() + " (deleted)\n");
         } else {
-            body.append(currentNation.toEmbedString(false));
+            body.append(currentNation.toEmbedString());
             body.append("\nCan be attacked by: " + MathMan.format(currentNation.getScore() / 1.75) + "-" + MathMan.format(currentNation.getScore() / 0.75));
         }
 

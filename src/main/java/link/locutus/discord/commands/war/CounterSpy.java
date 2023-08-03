@@ -122,9 +122,6 @@ public class CounterSpy extends Command {
 
         try {
             Integer enemySpies = enemy.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE);
-            if (enemySpies == null) {
-                enemySpies = SpyCount.guessSpyCount(PagePriority.ESPIONAGE_ODDS_SINGLE, enemy);
-            }
 
             for (DBNation counterWith : toCounter) {
                 Integer mySpies = counterWith.getSpies();

@@ -213,7 +213,7 @@ public class Spyops extends Command {
             return "No nations found (1)";
         }
 
-        int mySpies = SpyCount.guessSpyCount(PagePriority.ESPIONAGE_ODDS_SINGLE, me);
+        int mySpies = me.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE);
         long dcTime = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - (TimeUtil.getTurn() % 12));
 
         List<Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>>> netDamage = new ArrayList<>();

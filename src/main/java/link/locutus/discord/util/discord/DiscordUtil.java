@@ -44,6 +44,7 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.utils.FileUpload;
+import net.dv8tion.jda.internal.entities.UserImpl;
 import org.apache.commons.lang3.text.WordUtils;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
@@ -1638,10 +1639,24 @@ public class DiscordUtil {
     }
 
     public static String getDiscriminator(User user) {
+        if (user instanceof UserImpl impl) {
+            short number = impl.getDiscriminatorInt();
+            if (number > 999) {
+                return "#" + number;
+            } else if (number > 99) {
+                return "#0" + number;
+            } else if (number > 9) {
+                return "#00" + number;
+            } else if (number > 0) {
+                return "#000" + number;
+            } else {
+                return "";
+            }
+        }
         String discriminator = user.getDiscriminator();
         if (discriminator.length() != 4 || discriminator.equals("0000")) {
             return "";
         }
-        return "#" + user.getDiscriminator();
+        return "#" + discriminator;
     }
 }
