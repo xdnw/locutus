@@ -2120,6 +2120,7 @@ public class NationDB extends DBMainV2 {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+        executeStmt("CREATE INDEX IF NOT EXISTS index_kicks_nation ON KICKS (nation);");
         executeStmt("CREATE INDEX IF NOT EXISTS index_kicks_alliance ON KICKS (alliance);");
         executeStmt("CREATE INDEX IF NOT EXISTS index_kicks_alliance_date ON KICKS (alliance,date);");
 
