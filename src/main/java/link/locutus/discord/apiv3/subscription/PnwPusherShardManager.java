@@ -116,11 +116,8 @@ public class PnwPusherShardManager {
 //            });
             root.subscribeBuilder(Settings.INSTANCE.API_KEY_PRIMARY, Nation.class, PnwPusherEvent.UPDATE).build(nations -> {
                 try {
-                    System.out.println("Receive nation events");
-                    for (Nation nation : nations) {
-                        nationDB.markNationDirty(nation.getId());
-                    }
                     spyTracker.updateCasualties(nations);
+                    Locutus.imp().runEventsAsync(f -> Locutus.imp().getNationDB().updateNations(nations, f));
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
