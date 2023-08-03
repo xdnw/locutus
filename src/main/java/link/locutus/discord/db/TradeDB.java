@@ -66,9 +66,10 @@ public class TradeDB extends DBMainV2 {
                 .addIndex(TableIndex.index("index_trade_buyer", "buyer", TableIndex.Type.INDEX))
                 .create(getDb());
 
+        // executeStmt("CREATE INDEX IF NOT EXISTS index_mil_unit ON NATION_MIL_HISTORY (unit);");
         // add index for seller and buyer if not exist
-        executeStmt("ALTER TABLE TRADES ADD INDEX index_trade_seller (seller)");
-        executeStmt("ALTER TABLE TRADES ADD INDEX index_trade_buyer (buyer)");
+        executeStmt("CREATE INDEX IF NOT EXISTS index_trade_seller ON TRADES (seller);");
+        executeStmt("CREATE INDEX IF NOT EXISTS index_trade_buyer ON TRADES (buyer);");
 
         deleteIncompleteTrades();
 
