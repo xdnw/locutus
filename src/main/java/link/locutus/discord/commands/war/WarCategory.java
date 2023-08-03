@@ -185,6 +185,7 @@ public class WarCategory {
                 }
             }
         } catch (InsufficientPermissionException e) {
+            db.setWarCatError(e);
             GuildKey.ENABLE_WAR_ROOMS.set(db, false);
         } catch (Throwable e) {
             e.printStackTrace();
