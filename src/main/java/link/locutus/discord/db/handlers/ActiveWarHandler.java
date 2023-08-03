@@ -1,6 +1,7 @@
 package link.locutus.discord.db.handlers;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.db.entities.DBWar;
 
 import java.util.*;
@@ -10,17 +11,21 @@ import java.util.stream.Collectors;
 
 public class ActiveWarHandler {
     private final Map<Integer, DBWar[]> activeWars = new Int2ObjectOpenHashMap<>();
+    private volatile int numActiveWars = 0;
 
     private void makeWarInactive(int nationId, int warId) {
         synchronized (activeWars) {
             DBWar[] wars = activeWars.get(nationId);
             if (wars != null && wars.length > 0) {
                 Set<DBWar> newWars = new HashSet<>(Arrays.asList(wars));
-                newWars.removeIf(f -> f.getWarId() == warId);
-                if (newWars.isEmpty()) {
-                    activeWars.remove(nationId);
-                } else {
-                    activeWars.put(nationId, newWars.toArray(new DBWar[0]));
+                int originalSize = newWars.size();
+                if (newWars.removeIf(f -> f.getWarId() == warId)) {
+                    if (newWars.isEmpty()) {
+                        activeWars.remove(nationId);
+                    } else {
+                        activeWars.put(nationId, newWars.toArray(new DBWar[0]));
+                    }
+                    numActiveWars += newWars.size() - originalSize;
                 }
             }
         }
@@ -52,9 +57,11 @@ public class ActiveWarHandler {
             DBWar[] wars = activeWars.get(nationId);
             if (wars == null) wars = new DBWar[0];
             Set<DBWar> newWars = new HashSet<>(Arrays.asList(wars));
+            int originalSize = newWars.size();
             newWars.removeIf(f -> f.getWarId() == war.getWarId());
             newWars.add(war);
             activeWars.put(nationId, newWars.toArray(new DBWar[0]));
+            numActiveWars += newWars.size() - originalSize;
         }
     }
     public void addActiveWar(DBWar war) {
@@ -63,7 +70,15 @@ public class ActiveWarHandler {
     }
 
     public Map<Integer, DBWar> getActiveWarsById() {
-        return getActiveWars();
+        Int2ObjectOpenHashMap<DBWar> result = new Int2ObjectOpenHashMap<>(numActiveWars >> 1);
+        synchronized (activeWars) {
+            for (DBWar[] nationWars : activeWars.values()) {
+                for (DBWar war : nationWars) {
+                    result.putIfAbsent(war.warId, war);
+                }
+            }
+        }
+        return result;
     }
 
     public Map<Integer, DBWar> getActiveWars(Predicate<Integer> nationId, Predicate<DBWar> warPredicate) {
@@ -83,15 +98,7 @@ public class ActiveWarHandler {
     }
 
     public Map<Integer, DBWar> getActiveWars() {
-        Int2ObjectOpenHashMap<DBWar> result = new Int2ObjectOpenHashMap<>();
-        synchronized (activeWars) {
-            for (DBWar[] nationWars : activeWars.values()) {
-                for (DBWar war : nationWars) {
-                    result.put(war.warId, war);
-                }
-            }
-        }
-        return result;
+        return getActiveWarsById();
     }
 
     public List<DBWar> getActiveWars(int nationId) {

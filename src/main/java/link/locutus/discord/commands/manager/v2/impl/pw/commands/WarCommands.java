@@ -1516,16 +1516,10 @@ public class WarCommands {
         channel.send("Please wait...");
 
         Integer enemySpies = enemy.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE);
-        if (enemySpies == null) {
-            enemySpies = SpyCount.guessSpyCount(PagePriority.ESPIONAGE_ODDS_SINGLE, enemy);
-        }
 
         SpyCount.Operation[] opTypes = operations.toArray(new SpyCount.Operation[0]);
         for (DBNation nation : counterWith) {
             Integer mySpies = nation.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE);
-            if (mySpies == null) {
-                mySpies = SpyCount.guessSpyCount(PagePriority.ESPIONAGE_ODDS_SINGLE, nation);
-            }
 
             if (enemySpies == -1) {
                 return "Unknown enemy spies";
@@ -1679,7 +1673,7 @@ public class WarCommands {
             return "No nations found (1)";
         }
 
-        int mySpies = SpyCount.guessSpyCount(PagePriority.ESPIONAGE_ODDS_SINGLE, me);
+        int mySpies = me.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE);
         long dcTime = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - (TimeUtil.getTurn() % 12));
 
         List<Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>>> netDamage = new ArrayList<>();

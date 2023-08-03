@@ -1230,7 +1230,7 @@ public class DBNation implements NationOrAlliance {
             }
         }
         if (nation.getSpies() != null) {
-            this.setSpies(nation.getSpies());
+            this.setSpies(nation.getSpies(), false);
             if (copyOriginal != null && copyOriginal.getSpies() != (nation.getSpies())) {
                 if (eventConsumer != null) eventConsumer.accept(new NationChangeUnitEvent(copyOriginal, this, MilitaryUnit.SPIES));
                 dirty = true;
@@ -1523,9 +1523,18 @@ public class DBNation implements NationOrAlliance {
         return Math.max(spies, 0);
     }
 
-    public void setSpies(int spies) {
-        getCache().processUnitChange(this, MilitaryUnit.NUKE, this.nukes, nukes);
-        this.nukes = nukes;
+    public void setSpies(int spies, boolean events) {
+        getCache().processUnitChange(this, MilitaryUnit.SPIES, this.spies, spies);
+        if (events && this.spies != spies) {
+            DBNation copyOriginal = new DBNation(this);
+            this.spies = spies;
+
+            Locutus.imp().getNationDB().setSpies(getNation_id(), spies);
+            Locutus.imp().getNationDB().saveNation(this);
+
+            new NationChangeUnitEvent(copyOriginal, this, MilitaryUnit.SPIES).post();
+        }
+        this.spies = spies;
     }
 
     public double[] getNetDeposits(GuildDB db) throws IOException {
@@ -1708,6 +1717,22 @@ public class DBNation implements NationOrAlliance {
             return cache.lastCheckUnitMS;
         }
         return null;
+    }
+
+    public Integer updateSpies(PagePriority priority) {
+        return spies;
+    }
+
+    public Integer updateSpies(PagePriority priority, boolean update, boolean force) {
+        return spies;
+    }
+
+    public Integer updateSpies(PagePriority priority, boolean force) {
+        return spies;
+    }
+
+    public Integer updateSpies(PagePriority priority, int turns) {
+        return spies;
     }
 
     public static class LoginFactor {
@@ -2774,7 +2799,7 @@ public class DBNation implements NationOrAlliance {
                 setNukes(amt);
                 break;
             case SPIES:
-                setSpies(amt);
+                setSpies(amt, false);
                 break;
             default:
                 throw new UnsupportedOperationException("Unit type not implemented");
