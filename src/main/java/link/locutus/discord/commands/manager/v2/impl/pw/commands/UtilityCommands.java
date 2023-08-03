@@ -1491,8 +1491,7 @@ public Map<ParametricCallable, String> getEndpoints() {
         if (nations.size() == 1) {
             DBNation nation = nations.iterator().next();
             title = nation.getNation();
-            boolean showMoney = false;
-            nation.toCard(channel, false, showMoney);
+            nation.toCard(channel, false);
 
             List<CommandRef> commands = new ArrayList<>();
             commands.add(CM.nation.list.multi.cmd.create(nation.getNation_id() + ""));

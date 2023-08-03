@@ -51,6 +51,9 @@ public class DBNationCache {
             case NUKE:
                 index = 5;
                 break;
+            case SPIES:
+                index = 6;
+                break;
         }
         if (index != -1) {
             long now = System.currentTimeMillis();
@@ -80,8 +83,8 @@ public class DBNationCache {
 
             if (countChange) {
                 if (current > previous) {
-                    if (unitBuys == null) unitBuys = new int[12];
-                    unitBuys[6 + index] += (current - previous);
+                    if (unitBuys == null) unitBuys = new int[14];
+                    unitBuys[7 + index] += (current - previous);
                 }
 
                 // Check again even if there is no buy, because project
@@ -99,7 +102,7 @@ public class DBNationCache {
                     }
 
                     int capFast = unit.getMaxPerDay(parent.getCities(), hasProjects);
-                    int totalBought = unitBuys[index] + unitBuys[index + 6];
+                    int totalBought = unitBuys[index] + unitBuys[index + 7];
 
                     if (totalBought > capFast) {
                         // A double buy is sign of day change
@@ -118,17 +121,15 @@ public class DBNationCache {
 
     private void shiftUnitBuys() {
         if (unitBuys != null) {
-            for (int i = 6; i < 12; i++) {
-                unitBuys[i - 6] = unitBuys[i];
+            for (int i = 7; i < 14; i++) {
+                unitBuys[i - 7] = unitBuys[i];
                 unitBuys[i] = 0;
             }
         }
     }
 
     private int[] getOrCreateUnitBuys() {
-        if (unitBuys == null) unitBuys = new int[12];
+        if (unitBuys == null) unitBuys = new int[14];
         return unitBuys;
     }
-
-//    public long lastCheckSpies; // Disabled. Spy count can be unreliable
 }

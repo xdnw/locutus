@@ -1703,6 +1703,13 @@ public class DBNation implements NationOrAlliance {
         return cache.lastCheckUnitMS;
     }
 
+    public Long getTimeUpdatedSpies() {
+        if (cache != null) {
+            return cache.lastCheckUnitMS;
+        }
+        return null;
+    }
+
     public static class LoginFactor {
         private final Function<DBNation, Double> function;
         public final String name;
@@ -2877,9 +2884,9 @@ public class DBNation implements NationOrAlliance {
     }
 
     public String toMarkdown(boolean war) {
-        return toMarkdown(war, true, true, true);
+        return toMarkdown(war, true, true, true, true);
     }
-    public String toMarkdown(boolean war, boolean showOff, boolean showSpies, boolean showInfra) {
+    public String toMarkdown(boolean war, boolean showOff, boolean showSpies, boolean showInfra, boolean spies) {
         StringBuilder response = new StringBuilder();
         if (war) {
             response.append("<" + Settings.INSTANCE.PNW_URL() + "/nation/war/declare/id=" + getNation_id() + ">");
@@ -3550,10 +3557,16 @@ public class DBNation implements NationOrAlliance {
         return body.toString();
     }
 
-    public String toMarkdown(boolean embed, boolean title, boolean general, boolean military) {
+    public String toMarkdown(boolean embed, boolean war, boolean title, boolean general, boolean military, boolean spies) {
         StringBuilder response = new StringBuilder();
         if (title) {
-            String nationUrl = getNationUrlMarkup(embed);
+            String nationUrl;
+            if (war) {
+                String url = Settings.INSTANCE.PNW_URL() + "/nation/war/declare/id=" + getNation_id();
+                nationUrl = embed ? MarkupUtil.markdownUrl(getName(), url) : "<" + url + ">";
+            } else {
+                nationUrl = getNationUrlMarkup(embed);
+            }
             String allianceUrl = getAllianceUrlMarkup(embed);
             response
                     .append(nationUrl)
@@ -3561,6 +3574,10 @@ public class DBNation implements NationOrAlliance {
                     .append(allianceUrl);
 
             if (embed && getPositionEnum() == Rank.APPLICANT && alliance_id != 0) response.append(" (applicant)");
+
+            if (getVm_turns() > 0) {
+                response.append(" | VM");
+            }
 
             response.append('\n');
         }
@@ -3589,6 +3606,13 @@ public class DBNation implements NationOrAlliance {
                         .append(String.format("%8s", getWarPolicy())).append(" | ")
                         .append(String.format("%1s", getOff())).append("\uD83D\uDDE1").append(" | ")
                         .append(String.format("%1s", getDef())).append("\uD83D\uDEE1").append(" | ");
+
+                if (color == NationColor.BEIGE) {
+                    int turns = getBeigeTurns();
+                    long diff = TimeUnit.MILLISECONDS.toMinutes(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() + turns) - System.currentTimeMillis());
+                    String beigeStr = TimeUtil.secToTime(TimeUnit.MINUTES, diff);
+                    response.append(color == NationColor.BEIGE ? " beige:" + beigeStr : "");
+                }
             }
             String str = response.toString();
             if (str.endsWith(" | ")) response = new StringBuilder(str.substring(0, str.length() - 3));

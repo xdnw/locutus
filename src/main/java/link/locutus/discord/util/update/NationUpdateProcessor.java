@@ -1,11 +1,9 @@
 package link.locutus.discord.util.update;
 
 import com.google.common.eventbus.Subscribe;
-import it.unimi.dsi.fastutil.ints.Int2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.SuccessType;
@@ -54,8 +52,6 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
 import java.nio.ByteBuffer;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -278,7 +274,7 @@ public class NationUpdateProcessor {
         if (notifyMap != null) {
             nation.deleteMeta(NationMeta.LOGIN_NOTIFY);
             if (!notifyMap.isEmpty()) {
-                String message = ("This is your login alert for:\n" + nation.toEmbedString(true));
+                String message = ("This is your login alert for:\n" + nation.toEmbedString());
 
                 for (Map.Entry<Long, Long> entry : notifyMap.entrySet()) {
                     Long userId = entry.getKey();
@@ -371,7 +367,7 @@ public class NationUpdateProcessor {
         if (alliance != null && alliance.getRank() < 50)
         {
             String title = current.getNation() + " (" + Rank.byId(previous.getPosition()) + ") leaves " + previous.getAllianceName();
-            String body = current.toEmbedString(false);
+            String body = current.toEmbedString();
             AlertUtil.forEachChannel(f -> true, GuildKey.ORBIS_OFFICER_LEAVE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                 @Override
                 public void accept(MessageChannel channel, GuildDB guildDB) {
@@ -467,7 +463,7 @@ public class NationUpdateProcessor {
                     }
                     if (!inRange && mode.requireInRange()) return;
 
-                    String cardInfo = current.toEmbedString(true);
+                    String cardInfo = current.toEmbedString();
                     DiscordChannelIO io = new DiscordChannelIO(channel);
 
                     IMessageBuilder msg = io.create();
@@ -664,7 +660,7 @@ public class NationUpdateProcessor {
         DBAlliance alliance = previous.getAlliance(false);
         if (alliance.getRank() < 50) {
             String title = previous.getNation() + " (" + Rank.byId(previous.getPosition()) + ") deleted from " + previous.getAllianceName();
-            String body = previous.toEmbedString(false);
+            String body = previous.toEmbedString();
             AlertUtil.forEachChannel(f -> true, GuildKey.ORBIS_OFFICER_LEAVE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                 @Override
                 public void accept(MessageChannel channel, GuildDB guildDB) {
@@ -922,7 +918,7 @@ public class NationUpdateProcessor {
             List<String> adminInfo = new ArrayList<>();
 
             String type = "DELETION";
-            String body = previous.toEmbedString(false);
+            String body = previous.toEmbedString();
             String url = previous.getNationUrl();
             try {
                 String html = FileUtil.readStringFromURL(PagePriority.DELETION_ALERT_BAN.ordinal(), url);

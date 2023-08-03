@@ -4,7 +4,6 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.war.SpyCommand;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -20,7 +19,6 @@ import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.offshore.test.IAChannel;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -81,7 +79,7 @@ public class Who extends Command {
             DBNation nation = nations.iterator().next();
             title = nation.getNation();
             boolean showMoney = false;
-            nation.toCard(channel, false, showMoney);
+            nation.toCard(channel, false);
 
             List<String> commands = new ArrayList<>();
             commands.add(Settings.commandPrefix(true) + "multi " + nation.getNation_id());

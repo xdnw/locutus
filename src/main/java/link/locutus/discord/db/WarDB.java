@@ -926,7 +926,7 @@ public class WarDB extends DBMainV2 {
 
     }
 
-    public Set<DBWar> getActiveWars() {
+    public Map<Integer, DBWar> getActiveWars() {
         return activeWars.getActiveWars();
     }
 
@@ -1577,7 +1577,7 @@ public class WarDB extends DBMainV2 {
         int newWarsToFetch = 100;
         int numToUpdate = Math.min(999, PoliticsAndWarV3.WARS_PER_PAGE);
 
-        List<DBWar> mostActiveWars = new ArrayList<>(activeWars.getActiveWars());
+        List<DBWar> mostActiveWars = new ObjectArrayList<>(activeWars.getActiveWars().values());
         if (mostActiveWars.isEmpty()) return false;
 
         int latestWarId = 0;
