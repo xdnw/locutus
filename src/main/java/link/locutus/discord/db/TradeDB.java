@@ -706,7 +706,7 @@ public class TradeDB extends DBMainV2 {
     public List<DBTrade> getTrades(long startDate) {
         return getTrades(f ->
                 f.where(QueryCondition.greater("date", startDate).and(QueryCondition.notEquals("seller", 0).and(QueryCondition.notEquals("buyer", 0)))
-        );
+        ));
     }
 
     public List<DBTrade> getTrades(ResourceType type, long startDate, long endDate) {
