@@ -3,7 +3,7 @@ package link.locutus.discord.db.guild;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.pnw.NationList;
 
-public abstract class GuildNationListSetting extends GuildSetting<NationList> {
+public abstract class GuildNationListSetting extends GuildSetting<NationList, String> {
     public GuildNationListSetting(GuildSettingCategory category) {
         super(category, Key.of(NationList.class));
     }

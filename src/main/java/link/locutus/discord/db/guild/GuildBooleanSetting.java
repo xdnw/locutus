@@ -2,7 +2,7 @@ package link.locutus.discord.db.guild;
 
 import link.locutus.discord.commands.manager.v2.binding.Key;
 
-public abstract class GuildBooleanSetting extends GuildSetting<Boolean> {
+public abstract class GuildBooleanSetting extends GuildSetting<Boolean, Boolean> {
     public GuildBooleanSetting(GuildSettingCategory category) {
         super(category, Key.of(Boolean.class));
     }

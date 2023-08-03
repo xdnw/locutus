@@ -375,11 +375,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return value;
     }
 
-    public <T> T getOrThrow(GuildSetting<T> key) {
+    public <T, I> T getOrThrow(GuildSetting<T, I> key) {
         return getOrThrow(key, true);
     }
 
-    public <T> T getOrThrow(GuildSetting<T> key, boolean allowDelegate) {
+    public <T, I> T getOrThrow(GuildSetting<T, I> key, boolean allowDelegate) {
         T value = getOrNull(key, allowDelegate);
         if (value == null) {
             throw new UnsupportedOperationException("No " + key.name() + " registered. Use " + key.getCommandMention());
@@ -387,7 +387,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return value;
     }
 
-    public <T> T getOrNull(GuildSetting<T> key, boolean allowDelegate) {
+    public <T, I> T getOrNull(GuildSetting<T, I> key, boolean allowDelegate) {
         Object parsed;
         synchronized (infoParsed) {
             parsed = infoParsed.getOrDefault(key, nullInstance);
@@ -416,7 +416,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         }
     }
 
-    public <T> T getOrNull(GuildSetting<T> key) {
+    public <T, I> T getOrNull(GuildSetting<T, I> key) {
         return getOrNull(key, true);
     }
 
@@ -2748,7 +2748,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return getInfo(key.name(), allowDelegate);
     }
 
-    public <T> void setInfo(GuildSetting<T> key, T value) {
+    public <T, I> void setInfo(GuildSetting<T, I> key, T value) {
         checkNotNull(key);
         checkNotNull(value);
         value = key.validate(this, value);

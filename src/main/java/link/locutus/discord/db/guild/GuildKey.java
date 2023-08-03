@@ -383,7 +383,7 @@ public class GuildKey {
             return "The channel to get alerts when a member is spied";
         }
     }.setupRequirements(f -> f.requires(API_KEY).requires(ALLIANCE_ID).requireActiveGuild());
-    public static GuildSetting<Boolean> MEMBER_CAN_SET_BRACKET = new GuildBooleanSetting(GuildSettingCategory.TAX) {
+    public static GuildBooleanSetting MEMBER_CAN_SET_BRACKET = new GuildBooleanSetting(GuildSettingCategory.TAX) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -396,7 +396,7 @@ public class GuildKey {
             return "Whether members can use " + CM.nation.set.taxbracket.cmd.toSlashMention();
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requires(API_KEY));
-    public static GuildSetting<Boolean> MEMBER_CAN_OFFSHORE = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildBooleanSetting MEMBER_CAN_OFFSHORE = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -608,7 +608,7 @@ public class GuildKey {
             return parsed;
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requires(API_KEY));
-    public static GuildSetting<Map<ResourceType, Double>> WARCHEST_PER_CITY = new GuildResourceSetting(GuildSettingCategory.AUDIT) {
+    public static GuildResourceSetting WARCHEST_PER_CITY = new GuildResourceSetting(GuildSettingCategory.AUDIT) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -725,7 +725,7 @@ public class GuildKey {
             // if ((!db.isValidAlliance() && !db.isWhitelisted() && !db.isOwnerActive()) || db.isDelegateServer()) continue;
         }
     }));
-    public static GuildSetting<Boolean> SHOW_ALLY_DEFENSIVE_WARS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
+    public static GuildBooleanSetting SHOW_ALLY_DEFENSIVE_WARS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -749,7 +749,7 @@ public class GuildKey {
             return "A nation filter to apply to limit what wars milcom gets pinged for. ";
         }
     }.setupRequirements(f -> f.requires(DEFENSE_WAR_CHANNEL));
-    public static GuildSetting<Boolean> WAR_ALERT_FOR_OFFSHORES = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
+    public static GuildBooleanSetting WAR_ALERT_FOR_OFFSHORES = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -773,7 +773,7 @@ public class GuildKey {
             return "The #channel to receive alerts for offensive wars";
         }
     }.setupRequirements(f -> f.requiresAllies().requireActiveGuild().requireValidAlliance());
-    public static GuildSetting<Boolean> SHOW_ALLY_OFFENSIVE_WARS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
+    public static GuildBooleanSetting SHOW_ALLY_OFFENSIVE_WARS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -785,7 +785,7 @@ public class GuildKey {
             return "Whether to show offensive war alerts for allies (true/false)";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requires(OFFENSIVE_WAR_CHANNEL).requiresCoalition(Coalition.ALLIES));
-    public static GuildSetting<Boolean> HIDE_APPLICANT_WARS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
+    public static GuildBooleanSetting HIDE_APPLICANT_WARS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -845,7 +845,7 @@ public class GuildKey {
             return "The #channel to receive alerts for unblockades";
         }
     }.setupRequirements(f -> f.requires(BLOCKADED_ALERTS).requires(ALLIANCE_ID));
-    public static GuildSetting<Boolean> MEMBER_CAN_WITHDRAW = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildBooleanSetting MEMBER_CAN_WITHDRAW = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -857,7 +857,7 @@ public class GuildKey {
             return "Whether members can use " + CM.transfer.resources.cmd.toSlashMention() + " or " + Settings.commandPrefix(true) + "grant` to access their own funds (true/false)";
         }
     }.setupRequirements(f -> f.requiresCoalition(Coalition.OFFSHORE).requiresOffshore());
-    public static GuildSetting<Boolean> MEMBER_CAN_WITHDRAW_WARTIME = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildBooleanSetting MEMBER_CAN_WITHDRAW_WARTIME = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -869,7 +869,7 @@ public class GuildKey {
             return "Whether members can withdraw during wartime (true/false)";
         }
     }.setupRequirements(f -> f.requiresCoalition(Coalition.OFFSHORE).requiresOffshore());
-    public static GuildSetting<Boolean> MEMBER_CAN_WITHDRAW_IGNORES_GRANTS = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildBooleanSetting MEMBER_CAN_WITHDRAW_IGNORES_GRANTS = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -882,7 +882,7 @@ public class GuildKey {
             return "Whether members's withdraw limit ignores their grants (true/false)";
         }
     }.setupRequirements(f -> f.requiresCoalition(Coalition.OFFSHORE).requiresOffshore());
-    public static GuildSetting<Boolean> DISPLAY_ITEMIZED_DEPOSITS = new GuildBooleanSetting(GuildSettingCategory.BANK_INFO) {
+    public static GuildBooleanSetting DISPLAY_ITEMIZED_DEPOSITS = new GuildBooleanSetting(GuildSettingCategory.BANK_INFO) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1064,7 +1064,7 @@ public class GuildKey {
                     "Defaults to `0`";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
-    public static GuildSetting<Boolean> AUTOROLE_ALLY_GOV = new GuildBooleanSetting(GuildSettingCategory.ROLE) {
+    public static GuildBooleanSetting AUTOROLE_ALLY_GOV = new GuildBooleanSetting(GuildSettingCategory.ROLE) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1094,7 +1094,7 @@ public class GuildKey {
                     "(this is intended for coalition servers to give gov roles to allies)";
         }
     }.setupRequirements(f -> f.requires(AUTOROLE_ALLY_GOV).requiresCoalition(Coalition.ALLIES).requiresNot(ALLIANCE_ID, false));
-    public static GuildSetting<Boolean> ENABLE_WAR_ROOMS = new GuildBooleanSetting(GuildSettingCategory.WAR_ROOM) {
+    public static GuildBooleanSetting ENABLE_WAR_ROOMS = new GuildBooleanSetting(GuildSettingCategory.WAR_ROOM) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1263,7 +1263,7 @@ public class GuildKey {
             return "The guild to defer coalitions to";
         }
     };
-    public static GuildSetting<Boolean> RESOURCE_CONVERSION = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildBooleanSetting RESOURCE_CONVERSION = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1278,7 +1278,7 @@ public class GuildKey {
                     "Use `#cash` as the note when depositing or transferring funds";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
-    public static GuildSetting<Boolean> DEPOSIT_INTEREST = new GuildBooleanSetting(GuildSettingCategory.BANK_INFO) {
+    public static GuildBooleanSetting DEPOSIT_INTEREST = new GuildBooleanSetting(GuildSettingCategory.BANK_INFO) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1866,7 +1866,7 @@ public class GuildKey {
             return "A comma separated list of audit types to ignore: " + StringMan.getString(AutoAuditType.values());
         }
     }.setupRequirements(f -> f.requires(MEMBER_AUDIT_ALERTS).requireValidAlliance());
-    public static GuildSetting<Map<ResourceType, Double>> REWARD_REFERRAL = new GuildResourceSetting(GuildSettingCategory.REWARD) {
+    public static GuildResourceSetting REWARD_REFERRAL = new GuildResourceSetting(GuildSettingCategory.REWARD) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1879,7 +1879,7 @@ public class GuildKey {
             return "The reward (resources) for referring a nation in the form `{food=1,money=3.2}`";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requireValidAlliance().requires(INTERVIEW_PENDING_ALERTS));
-    public static GuildSetting<Map<ResourceType, Double>> REWARD_MENTOR = new GuildResourceSetting(GuildSettingCategory.REWARD) {
+    public static GuildResourceSetting REWARD_MENTOR = new GuildResourceSetting(GuildSettingCategory.REWARD) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -1891,7 +1891,7 @@ public class GuildKey {
             return "The reward (resources) for mentoring a nation in the form `{food=1,money=3.2}`";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID).requireValidAlliance().requires(INTERVIEW_PENDING_ALERTS));
-    public static GuildSetting<Boolean> PUBLIC_OFFSHORING = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+    public static GuildBooleanSetting PUBLIC_OFFSHORING = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)

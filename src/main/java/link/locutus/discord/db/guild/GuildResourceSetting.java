@@ -9,7 +9,7 @@ import link.locutus.discord.util.math.ArrayUtil;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
-public abstract class GuildResourceSetting extends GuildSetting<Map<ResourceType, Double>> {
+public abstract class GuildResourceSetting extends GuildSetting<Map<ResourceType, Double>, Map<ResourceType, Double>> {
     public GuildResourceSetting(GuildSettingCategory category) {
         super(category, Map.class, ResourceType.class, Double.class);
     }

@@ -2,7 +2,7 @@ package link.locutus.discord.db.guild;
 
 import link.locutus.discord.commands.manager.v2.binding.Key;
 
-public abstract class GuildDoubleSetting extends GuildSetting<Double> {
+public abstract class GuildDoubleSetting extends GuildSetting<Double, Double> {
     public GuildDoubleSetting(GuildSettingCategory category) {
         super(category, Key.of(Double.class));
     }

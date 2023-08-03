@@ -5,7 +5,7 @@ import link.locutus.discord.db.GuildDB;
 import net.dv8tion.jda.api.entities.IMentionable;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
-public abstract class GuildChannelSetting extends GuildSetting<MessageChannel> {
+public abstract class GuildChannelSetting extends GuildSetting<MessageChannel, Long> {
     public GuildChannelSetting(GuildSettingCategory category) {
         super(category, Key.of(MessageChannel.class));
     }

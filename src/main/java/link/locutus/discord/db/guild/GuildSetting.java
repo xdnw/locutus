@@ -45,7 +45,7 @@ import java.util.function.Consumer;
 
 import static com.google.gson.internal.$Gson$Preconditions.checkNotNull;
 
-public abstract class GuildSetting<T> {
+public abstract class GuildSetting<T, I> {
     private final Set<GuildSetting> requires = new LinkedHashSet<>();
     private final Set<Coalition> requiresCoalition = new LinkedHashSet<>();
 
@@ -56,7 +56,7 @@ public abstract class GuildSetting<T> {
     private final GuildSettingCategory category;
     private String name;
 
-    private Queue<Consumer<GuildSetting<T>>> setupRequirements = new ConcurrentLinkedQueue<>();
+    private Queue<Consumer<GuildSetting<T, I>>> setupRequirements = new ConcurrentLinkedQueue<>();
 
     public GuildSetting(GuildSettingCategory category, Type a, Type... subArgs) {
         this(category, TypeToken.getParameterized(a, subArgs).getType());
@@ -95,17 +95,17 @@ public abstract class GuildSetting<T> {
 
     public abstract String toString(T value);
 
-    public GuildSetting<T> setName(String name) {
+    public GuildSetting<T, I> setName(String name) {
         this.name = name;
         return this;
     }
 
-    public GuildSetting<T> requires(GuildSetting other) {
+    public GuildSetting<T, I> requires(GuildSetting other) {
         requires.add(other);
         return this;
     }
 
-    public GuildSetting<T> requiresCoalition(Coalition coalition) {
+    public GuildSetting<T, I> requiresCoalition(Coalition coalition) {
         requiresCoalition.add(coalition);
         return this;
     }
@@ -198,6 +198,9 @@ public abstract class GuildSetting<T> {
         return (T) parser.apply(locals, input);
     }
 
+    public abstract I parseFromDB(String value);
+    public abstract T parseFromIntermediary(I value);
+
     public String toString() {
         return name() + "\n> " + help() + "\n";
     }
@@ -236,7 +239,7 @@ public abstract class GuildSetting<T> {
 
     public boolean allowed(GuildDB db, boolean throwException) {
         while (!setupRequirements.isEmpty()) {
-            Consumer<GuildSetting<T>> poll = setupRequirements.poll();
+            Consumer<GuildSetting<T, I>> poll = setupRequirements.poll();
             if (poll != null) poll.accept(this);
         }
         List<String> errors = new ArrayList<>();
@@ -293,7 +296,7 @@ public abstract class GuildSetting<T> {
         return true;
     }
 
-    public GuildSetting<T> requiresOffshore() {
+    public GuildSetting<T, I> requiresOffshore() {
         this.requiresFunction.add((db, throwError) -> {
             if (db.getOffshoreDB() == null) {
                 throw new IllegalArgumentException("No bank is setup (see: " + CM.offshore.add.cmd.toSlashCommand() + ")");
@@ -303,18 +306,18 @@ public abstract class GuildSetting<T> {
         return this;
     }
 
-    public GuildSetting<T> setupRequirements(Consumer<GuildSetting<T>> consumer) {
+    public GuildSetting<T, I> setupRequirements(Consumer<GuildSetting<T, I>> consumer) {
         setupRequirements.add(consumer);
         return this;
     }
 
-    public GuildSetting<T> requiresRole(Roles role, boolean allowAllianceRole) {
+    public GuildSetting<T, I> requiresRole(Roles role, boolean allowAllianceRole) {
         checkNotNull(role);
         this.requiresRole.put(role, allowAllianceRole);
         return this;
     }
 
-    public GuildSetting<T> requiresWhitelisted() {
+    public GuildSetting<T, I> requiresWhitelisted() {
         this.requiresFunction.add(new BiPredicate<GuildDB, Boolean>() {
             @Override
             public boolean test(GuildDB db, Boolean throwError) {
@@ -327,7 +330,7 @@ public abstract class GuildSetting<T> {
         return this;
     }
 
-    public GuildSetting<T> nonPublic() {
+    public GuildSetting<T, I> nonPublic() {
         this.requiresFunction.add(new BiPredicate<GuildDB, Boolean>() {
             @Override
             public boolean test(GuildDB db, Boolean throwError) {
@@ -364,7 +367,7 @@ public abstract class GuildSetting<T> {
         return category;
     }
 
-    public GuildSetting<T> requireValidAlliance() {
+    public GuildSetting<T, I> requireValidAlliance() {
         requiresFunction.add((db, throwError) -> {
             if (!db.isValidAlliance()) {
                 throw new IllegalArgumentException("No valid alliance is setup (see: " + GuildKey.ALLIANCE_ID.getCommandMention() + ")");
@@ -374,11 +377,11 @@ public abstract class GuildSetting<T> {
         return this;
     }
 
-    public GuildSetting<T> requiresNot(GuildSetting setting) {
+    public GuildSetting<T, I> requiresNot(GuildSetting setting) {
         return requiresNot(setting, true);
     }
 
-    public GuildSetting<T> requiresNot(GuildSetting setting, boolean checkDelegate) {
+    public GuildSetting<T, I> requiresNot(GuildSetting setting, boolean checkDelegate) {
         requiresFunction.add((db, throwError) -> {
             if (setting.getOrNull(db, checkDelegate) != null) {
                 throw new IllegalArgumentException("Cannot be used with " + setting.name() + " set. Unset via " + CM.settings.info.cmd.toSlashMention());
@@ -388,7 +391,7 @@ public abstract class GuildSetting<T> {
         return this;
     }
 
-    public GuildSetting<T> requireFunction(Consumer<GuildDB> predicate) {
+    public GuildSetting<T, I> requireFunction(Consumer<GuildDB> predicate) {
         this.requiresFunction.add((guildDB, throwError) -> {
             try {
                 predicate.accept(guildDB);
@@ -449,7 +452,7 @@ public abstract class GuildSetting<T> {
     }
 
 
-    public GuildSetting<T> requireActiveGuild() {
+    public GuildSetting<T, I> requireActiveGuild() {
         requireFunction(db -> {
             checkRegisteredOwnerOrActiveAlliance(db);
         });
@@ -492,7 +495,7 @@ public abstract class GuildSetting<T> {
         return set(db, value);
     }
 
-    public GuildSetting<T> requiresAllies() {
+    public GuildSetting<T, I> requiresAllies() {
         this.requireFunction(db -> {
             if (!db.isValidAlliance()) {
                 boolean hasValidAllies = false;

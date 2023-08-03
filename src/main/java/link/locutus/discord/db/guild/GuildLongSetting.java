@@ -3,7 +3,7 @@ package link.locutus.discord.db.guild;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.util.MathMan;
 
-public abstract class GuildLongSetting extends GuildSetting<Long> {
+public abstract class GuildLongSetting extends GuildSetting<Long, Long> {
     public GuildLongSetting(GuildSettingCategory category) {
         this(category, null);
     }
