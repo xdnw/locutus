@@ -2906,7 +2906,10 @@ public class NationDB extends DBMainV2 {
         }
     }
 
+    private ConcurrentHashMap<Integer, Long> turnActivityCache = new ConcurrentHashMap<>();
+
     public void setActivity(int nationId, long turn) {
+        if (turnActivityCache.computeIfAbsent(nationId, f -> 0L) >= turn) return; // already set (or newer
         update("INSERT OR REPLACE INTO `ACTIVITY` (`nation`, `turn`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
             stmt.setLong(2, turn);
