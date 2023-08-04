@@ -1,20 +1,15 @@
 package link.locutus.discord.db;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.longs.Long2LongOpenCustomHashMap;
 import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
 import link.locutus.discord.gpt.imps.EmbeddingInfo;
-import link.locutus.discord.gpt.imps.EmbeddingType;
-import link.locutus.discord.gpt.pwembed.PWAdapter;
-import link.locutus.discord.gpt.pwembed.PWGPTHandler;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
@@ -28,7 +23,6 @@ import java.io.Closeable;
 import java.math.BigInteger;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -80,7 +74,7 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
             }
             return;
         }
-        Set<Long> existing = textHashBySource.get(source);
+        Set<Long> existing = textHashBySource.get(source.source_id);
         if (existing == null) {
             existing = new LongOpenHashSet();
             textHashBySource.put(source.source_id, existing);
@@ -352,13 +346,13 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
             // store
             if (save) {
                 saveVector(embeddingHash, existing);
+                saveVectorText(embeddingHash, embeddingText);
             }
         }
         if (save) {
             Set<Long> hashes = textHashBySource.get(source.source_id);
             if (hashes == null || !hashes.contains(embeddingHash)) {
                 saveVectorSources(embeddingHash, source.source_id);
-                saveVectorText(embeddingHash, embeddingText);
             }
             if (fullContent != null) {
                 String full = fullContent.get();
@@ -396,7 +390,7 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
         // sort ascending
         hashesSorted.addAll(hashes);
         hashesSorted.sort(Long::compareTo);
-        String query = "SELECT hash, description FROM vector_text WHERE hash IN (" + hashes.stream().map(String::valueOf).collect(Collectors.joining(",")) + ")";
+        String query = "SELECT hash, description FROM vector_text WHERE hash IN (" + hashesSorted.stream().map(String::valueOf).collect(Collectors.joining(",")) + ")";
         ctx().fetch(query).forEach(r -> {
             long hash = r.get("hash", Long.class);
             String description = r.get("description", String.class);
@@ -439,10 +433,10 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
     @Override
     public List<EmbeddingInfo> getClosest(EmbeddingSource inputSource, String input, int top, Set<EmbeddingSource> allowedTypes, BiPredicate<EmbeddingSource, Long> sourceHashPredicate, ThrowingConsumer<String> moderate) {
         checkArgument(top > 0, "top must be > 0");
-        Queue<EmbeddingInfo> largest = new PriorityQueue<>(top, new Comparator<EmbeddingInfo>() {
+        PriorityQueue<EmbeddingInfo> largest = new PriorityQueue<>(top, new Comparator<EmbeddingInfo>() {
             @Override
             public int compare(EmbeddingInfo o1, EmbeddingInfo o2) {
-                return Double.compare(o2.distance, o1.distance);
+                return Double.compare(o1.distance, o2.distance);
             }
         });
 
@@ -450,12 +444,16 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
 
         for (EmbeddingSource source : allowedTypes) {
             Set<Long> hashes = textHashBySource.get(source.source_id);
+            if (hashes == null || hashes.isEmpty()) {
+                System.out.println("No hashes for " + source.source_name + " | " + source.source_id);
+                continue;
+            }
             for (long hash : hashes) {
                 if (!sourceHashPredicate.test(source, hash)) continue;
                 float[] vector = vectors.get(hash);
                 double diff = ArrayUtil.cosineSimilarity(vector, compareTo);
 
-                if (largest.size() < top || largest.peek().distance < diff) {
+                if (largest.size() < top || largest.poll().distance < diff) {
                     if (largest.size() == top)
                         largest.remove();
                     EmbeddingInfo result = new EmbeddingInfo(hash, vector, source, diff);
@@ -464,6 +462,13 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
             }
         }
 
-        return new ArrayList<>(largest);
+        ObjectArrayList<EmbeddingInfo> list = new ObjectArrayList<>(largest.size());
+        // poll and add
+        while (!largest.isEmpty()) {
+            list.add(largest.poll());
+        }
+        // reverse
+        Collections.reverse(list);
+        return list;
     }
 }

@@ -497,13 +497,13 @@ public class IACommands {
         return mentor(command, io, db, me, mentee, force);
     }
 
-    @Command(desc = "List mentors and their respective mentees", aliases = {"mymentees"})
+    @Command(desc = "List mentees, grouped by their respective mentors", aliases = {"mymentees"})
     @RolePermission(value=Roles.INTERNAL_AFFAIRS)
     public String myMentees(@Me Guild guild, @Me GuildDB db, @Me DBNation me, @Default("*") Set<DBNation> mentees, @Arg("Activity requirements for mentors") @Default("2w") @Timediff long timediff) throws InterruptedException, ExecutionException, IOException {
         return listMentors(guild, db, me,Collections.singleton(me), mentees, timediff, db.isWhitelisted(), true, false);
     }
 
-    @Command(desc = "List mentors and their respective mentees", aliases = {"listMentors", "mentors", "mentees"})
+    @Command(desc = "List mentors, grouped by their respective mentees", aliases = {"listMentors", "mentors", "mentees"})
     @RolePermission(value=Roles.INTERNAL_AFFAIRS)
     public String listMentors(@Me Guild guild, @Me GuildDB db, @Me DBNation me, @Default("*") Set<DBNation> mentors, @Default("*") Set<DBNation> mentees,
                               @Arg("Activity requirements for mentors") @Default("2w") @Timediff long timediff,

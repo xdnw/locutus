@@ -1,7 +1,9 @@
 package link.locutus.discord.db.guild;
 
 import com.google.gson.reflect.TypeToken;
+import com.knuddels.jtokkit.api.ModelType;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
+import com.theokanning.openai.service.OpenAiService;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -24,6 +26,11 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.EnemyAlertChannelMode;
 import link.locutus.discord.db.entities.MMRMatcher;
 import link.locutus.discord.db.entities.TaxBracket;
+import link.locutus.discord.gpt.GPTModerator;
+import link.locutus.discord.gpt.ModerationResult;
+import link.locutus.discord.gpt.copilot.CopilotDeviceAuthenticationData;
+import link.locutus.discord.gpt.imps.CopilotText2Text;
+import link.locutus.discord.gpt.imps.GPTText2Text;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
@@ -46,9 +53,11 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -193,6 +202,128 @@ public class GuildKey {
             return StringMan.join(value, ",");
         }
     };
+
+    public static final GuildSetting<String> OPENAI_KEY = new GuildStringSetting(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE) {
+
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String register_openai_key(@Me GuildDB db, @Me User user, String apiKey) {
+            return OPENAI_KEY.set(db, apiKey);
+        }
+
+        @Override
+        public String validate(GuildDB db, String apiKey) {
+            if (apiKey == null || apiKey.isEmpty()) {
+                throw new IllegalArgumentException("Please provide an API key");
+            }
+            OpenAiService service = new OpenAiService(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI_API_KEY, Duration.ofSeconds(50));
+            GPTModerator moderator = new GPTModerator(service);
+            List<ModerationResult> result = moderator.moderate("Hello World");
+            if (result.size() == 0) {
+                throw new IllegalArgumentException("Invalid API key. No result returned");
+            }
+            ModerationResult modResult = result.get(0);
+            if (modResult.isError()) {
+                throw new IllegalArgumentException("Invalid API key. Error returned: " + modResult.getMessage());
+            }
+            return apiKey;
+        }
+
+        @Override
+        public String parse(GuildDB db, String input) {
+            return input;
+        }
+
+        @Override
+        public String toReadableString(GuildDB db, String value) {
+            if (value != null && value.length() > 7) {
+                return value.substring(0, 3) + "..." + value.substring(value.length() - 4);
+            }
+            return "Invalid key";
+        }
+
+        @Override
+        public String help() {
+            return "OpenAI API key\n" +
+                    "Used for chat responses and completion\n" +
+                    "Get a key from: <https://platform.openai.com/account/api-keys>";
+        }
+    }.setupRequirements(f -> f.requireValidAlliance());
+
+    public static final GuildSetting<ModelType> OPENAI_MODEL = new GuildSetting<ModelType>(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE, ModelType.class) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String register_openai_key(@Me GuildDB db, @Me User user, ModelType model) {
+            return OPENAI_MODEL.set(db, model);
+        }
+
+        @Override
+        public ModelType validate(GuildDB db, ModelType model) {
+            return switch (model) {
+                case GPT_4, GPT_4_32K, GPT_3_5_TURBO, GPT_3_5_TURBO_16K -> model;
+                default -> throw new IllegalArgumentException("Invalid chat model type: " + model);
+            };
+        }
+
+        @Override
+        public ModelType parse(GuildDB db, String input) {
+            return ModelType.valueOf(input);
+        }
+
+        @Override
+        public String help() {
+            return "OpenAI model type\n" +
+                    "Used for chat responses and completion\n" +
+                    "Valid values: " + StringMan.join(ModelType.values(), ", ");
+        }
+
+        @Override
+        public String toString(ModelType value) {
+            return value.name();
+        }
+    }.setupRequirements(f -> f.requires(OPENAI_KEY));
+
+    public static GuildSetting<Boolean> ENABLE_GITHUB_COPILOT = new GuildBooleanSetting(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String ENABLE_GITHUB_COPILOT(@Me GuildDB db, @Me User user, boolean value) {
+            return ENABLE_GITHUB_COPILOT.setAndValidate(db, user, value);
+        }
+
+        @Override
+        public Boolean validate(GuildDB db, Boolean value) {
+            if (value == Boolean.TRUE) {
+                CopilotDeviceAuthenticationData[] authData = new CopilotDeviceAuthenticationData[1];
+
+
+                CopilotText2Text copilot = new CopilotText2Text("tokens" + File.separator + db.getIdLong(), new Consumer<CopilotDeviceAuthenticationData>() {
+                    @Override
+                    public void accept(CopilotDeviceAuthenticationData data) {
+                        authData[0] = data;
+                    }
+                });
+                try {
+                    copilot.generate("Hello W");
+                } catch (Throwable e) {
+                    if (authData[0] != null) {
+                        throw new IllegalArgumentException("Open URL " + authData[0].Url + " to enter the device code: " + authData[0].UserCode);
+                    }
+                    throw e;
+                }
+            }
+            return value;
+        }
+
+        @Override
+        public String help() {
+            return "Enable GitHub Copilot for generating AI text responses\n" +
+                    "See: <https://github.com/features/copilot>\n" +
+                    "This is an alternative to an open ai key";
+        }
+    }.requireValidAlliance();
 
     public static final GuildSetting<List<String>> API_KEY = new GuildSetting<List<String>>(GuildSettingCategory.DEFAULT, List.class, String.class) {
         @NoFormat
@@ -737,7 +868,7 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "Whether to show offensive war alerts for allies (true/false)";
+            return "Whether to show defensive war alerts for allies (true/false)";
         }
     }.setupRequirements(f -> f.requires(DEFENSE_WAR_CHANNEL).requiresCoalition(Coalition.ALLIES));
     public static GuildSetting<NationFilter> MENTION_MILCOM_FILTER = new GuildNationFilterSetting(GuildSettingCategory.WAR_ALERTS) {
@@ -1519,7 +1650,7 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "The channel to receive alerts when a bounty is placed";
+            return "The channel to receive alerts when a treasure moves to another nation or is about to reset";
         }
     }.setupRequirements(f -> f.requireValidAlliance().requireActiveGuild());
     public static GuildSetting<MessageChannel> MEMBER_REBUY_INFRA_ALERT = new GuildChannelSetting(GuildSettingCategory.AUDIT) {

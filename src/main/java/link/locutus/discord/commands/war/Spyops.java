@@ -13,6 +13,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.battle.SpyBlitzGenerator;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -61,7 +62,7 @@ public class Spyops extends Command {
 
     @Override
     public boolean checkPermission(Guild server, User user) {
-        return (super.checkPermission(server, user));
+        return Roles.MEMBER.has(user, server);
     }
 
     @Override

@@ -3030,7 +3030,7 @@ public class DBNation implements NationOrAlliance {
         return total / arr.length;
     }
 
-    @Command(desc = "Decimal pct of turns they login")
+    @Command(desc = "Decimal pct of times they login during UTC daychange")
     public double login_daychange() {
         Activity activity = getActivity(12 * 14);
         double[] arr = activity.getByDayTurn();
@@ -5142,17 +5142,17 @@ public class DBNation implements NationOrAlliance {
         return Locutus.imp().getWarDb().getBounties(nation_id).stream().filter(f -> f.getType() == WarType.NUCLEAR).mapToLong(DBBounty::getAmount).sum();
     }
 
-    @Command(desc = "Sum of all nuke bounties placed on them")
+    @Command(desc = "Sum of all raid bounties placed on them")
     public double raidBountyValue() {
         return Locutus.imp().getWarDb().getBounties(nation_id).stream().filter(f -> f.getType() == WarType.RAID).mapToLong(DBBounty::getAmount).sum();
     }
 
-    @Command(desc = "Sum of all nuke bounties placed on them")
+    @Command(desc = "Sum of all ordinary bounties placed on them")
     public double ordinaryBountyValue() {
         return Locutus.imp().getWarDb().getBounties(nation_id).stream().filter(f -> f.getType() == WarType.ORD).mapToLong(DBBounty::getAmount).sum();
     }
 
-    @Command(desc = "Sum of all nuke bounties placed on them")
+    @Command(desc = "Sum of all attrition bounties placed on them")
     public double attritionBountyValue() {
         return Locutus.imp().getWarDb().getBounties(nation_id).stream().filter(f -> f.getType() == WarType.ATT).mapToLong(DBBounty::getAmount).sum();
     }

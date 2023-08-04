@@ -1184,7 +1184,7 @@ public class UtilityCommands {
         return response.toString();
     }
 
-    @Command(desc = "Auto rank users on discord")
+    @Command(desc = "Add or remove the configured auto roles to all users in this discord guild")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public static String autoroleall(@Me User author, @Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command, @Switch("f") boolean force) {
         IAutoRoleTask task = db.getAutoRoleTask();
@@ -1224,7 +1224,7 @@ public class UtilityCommands {
         return null;
     }
 
-    @Command(desc = "Auto rank users on discord")
+    @Command(desc = "Give the configured bot auto roles to a user on discord")
     public static String autorole(@Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command, Member member, @Switch("f") boolean force) {
         IAutoRoleTask task = db.getAutoRoleTask();
         task.syncDB();

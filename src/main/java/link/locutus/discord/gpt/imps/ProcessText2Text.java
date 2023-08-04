@@ -7,7 +7,9 @@ import com.theokanning.openai.service.OpenAiService;
 import com.theokanning.openai.completion.CompletionChoice;
 import com.theokanning.openai.completion.CompletionRequest;
 import com.theokanning.openai.completion.CompletionResult;
+import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
+import link.locutus.discord.gpt.ISummarizer;
 import link.locutus.discord.util.StringMan;
 
 import java.io.BufferedReader;
@@ -16,7 +18,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class ProcessText2Text implements IText2Text{
     private final File file;
@@ -28,7 +32,13 @@ public class ProcessText2Text implements IText2Text{
     }
 
     @Override
-    public String generate(String text) {
+    public String getId() {
+        return "process";
+    }
+
+    @Override
+    public String generate(Map<String, String> options, String text) {
+        setOptions(options);
         String encodedString = Base64.getEncoder().encodeToString(text.getBytes());
         List<String> lines = new ArrayList<>();
         String command = venvExe == null ? "python" : venvExe.getAbsolutePath();
@@ -51,6 +61,27 @@ public class ProcessText2Text implements IText2Text{
         } else {
             System.err.println(result);
             throw new IllegalArgumentException("Unknown process result (see console)");
+        }
+    }
+
+    @Override
+    public int getSize(String text) {
+        return GPTUtil.getTokens(text, ModelType.GPT_3_5_TURBO);
+    }
+
+    @Override
+    public int getSizeCap() {
+        return 8192;
+    }
+
+    @Override
+    public Map<String, String> getOptions() {
+        return Collections.emptyMap();
+    }
+
+    public void setOptions(Map<String, String> options) {
+        if (options != null && !options.isEmpty()) {
+            throw new IllegalArgumentException("Options not supported");
         }
     }
 }

@@ -1940,7 +1940,7 @@ public class BankCommands {
         return null;
     }
 
-    @Command(desc = "Get a sheet of ingame transfers for nations")
+    @Command(desc = "Get a sheet of ingame transfers for nations, filtered by the sender")
     @RolePermission(value = Roles.ECON)
     public String IngameNationTransfersBySender(@Me IMessageIO channel, @Me GuildDB db, Set<NationOrAlliance> senders, @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKeys.BANK_TRANSACTION_SHEET);
@@ -1951,7 +1951,7 @@ public class BankCommands {
         return null;
     }
 
-    @Command(desc = "Get a sheet of ingame transfers for nations")
+    @Command(desc = "Get a sheet of ingame transfers for nations, filtered by the receiver")
     @RolePermission(value = Roles.ECON)
     public String IngameNationTransfersByReceiver(@Me IMessageIO channel, @Me GuildDB db, Set<NationOrAlliance> receivers, @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKeys.BANK_TRANSACTION_SHEET);

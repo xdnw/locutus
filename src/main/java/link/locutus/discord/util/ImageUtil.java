@@ -218,10 +218,12 @@ public class ImageUtil {
     }
 
     public static String getText(String imageUrl) {
-        try {
-            return getTextAPI(imageUrl);
-        } catch (IOException | IllegalArgumentException e) {
-            e.printStackTrace();
+        if (!Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OCR_SPACE_KEY.isEmpty()) {
+            try {
+                return getTextAPI(imageUrl);
+            } catch (IOException | IllegalArgumentException e) {
+                e.printStackTrace();
+            }
         }
         return getTextLocal(imageUrl, ImageType.CLEAR);
     }

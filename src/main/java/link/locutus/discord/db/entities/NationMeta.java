@@ -105,7 +105,6 @@ public enum NationMeta {
     RECRUIT_AD_COUNT,
 
     RECRUIT_GOV_MESSAGE,
-
     LOGIN_NOTIFY,
 
     ;

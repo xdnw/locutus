@@ -144,7 +144,11 @@ public enum Roles {
 
     ENEMY_BEIGE_ALERT_AUDITOR(36, "Role to receive pings when an enemy gets beiged", GuildKey.ENEMY_BEIGED_ALERT_VIOLATIONS),
 
-    GROUND_MILITARIZE_ROLE(37, "Role to receive pings when alliances militarize", GuildKey.AA_GROUND_UNIT_ALERTS),
+    GROUND_MILITARIZE_ALERT(37, "Role to receive pings when alliances militarize", GuildKey.AA_GROUND_UNIT_ALERTS, "GROUND_MILITARIZE_ROLE"),
+
+    AI_COMMAND_ACCESS(37, "Access to AI commands on the discord server", GuildKey.AA_GROUND_UNIT_ALERTS),
+
+
     ;
 
 

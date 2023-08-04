@@ -44,7 +44,7 @@ public class SettingCommands {
         return map;
     }
 
-    @Command(desc = "Configure alliance or guild settings")
+    @Command(desc = "Delete an alliance or guild setting")
     @RolePermission(any = true, value = {Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS})
     public String delete( @Me GuildDB db, @Me User author, @Default GuildSetting key) {
         if (!key.hasPermission(db, author, null)) {
@@ -176,7 +176,7 @@ public class SettingCommands {
         }
     }
 
-    @Command(desc = "Configure alliance or guild settings")
+    @Command(desc = "View set or delete alliance or guild google sheets")
     @RolePermission(any = true, value = {Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS})
     public String sheets(@Me GuildDB db, @Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me) throws Exception {
         Map<SheetKeys, String> sheets = getSheets(db);

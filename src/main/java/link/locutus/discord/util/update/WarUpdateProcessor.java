@@ -77,10 +77,7 @@ public class WarUpdateProcessor {
                     double maxScore = enemy.getScore() / 0.75;
 
                     for (Member member : members) {
-                        PNWUser pnwUser = Locutus.imp().getDiscordDB().getUserFromDiscordId(member.getIdLong());
-                        if (pnwUser == null) continue;
-
-                        DBNation nation = Locutus.imp().getNationDB().getNation(pnwUser.getNationId());
+                        DBNation nation = DiscordUtil.getNation(member.getUser());
                         if (nation == null) continue;
 
                         if (nation.getScore() >= minScore && nation.getScore() <= maxScore) {

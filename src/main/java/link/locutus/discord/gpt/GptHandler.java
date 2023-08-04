@@ -7,44 +7,30 @@ import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
 import com.knuddels.jtokkit.api.ModelType;
-import com.theokanning.openai.moderation.Moderation;
-import com.theokanning.openai.moderation.ModerationRequest;
 import com.theokanning.openai.service.OpenAiService;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.EmbeddingSource;
+import link.locutus.discord.gpt.copilot.CopilotDeviceAuthenticationData;
 import link.locutus.discord.gpt.imps.AdaEmbedding;
-import link.locutus.discord.gpt.imps.GPTSummarizer;
+import link.locutus.discord.gpt.imps.CopilotText2Text;
 import link.locutus.discord.gpt.imps.GPTText2Text;
 import link.locutus.discord.gpt.imps.IText2Text;
-import link.locutus.discord.gpt.imps.MiniEmbedding;
-import link.locutus.discord.gpt.imps.ProcessSummarizer;
 import link.locutus.discord.gpt.imps.ProcessText2Text;
-import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
-import org.apache.commons.lang3.ArrayUtils;
-import org.eclipse.jetty.util.ArrayUtil;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
-import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static com.pusher.client.util.internal.Preconditions.checkArgument;
@@ -55,12 +41,9 @@ public class GptHandler {
     private final EncodingRegistry registry;
     private final OpenAiService service;
     private final Platform platform;
-
-    //
     public final IEmbeddingDatabase embeddingDatabase;
-    private final ISummarizer summarizer;
     private final IModerator moderator;
-    private final IText2Text text2text;
+    private final ProcessText2Text processT2;
 
     public GptHandler() throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
         this.registry = Encodings.newDefaultEncodingRegistry();
@@ -84,23 +67,12 @@ public class GptHandler {
         if (!venvExe.exists()) {
             throw new RuntimeException("venv not found: " + venvExe.getAbsolutePath());
         }
-
 //        this.summarizer = new ProcessSummarizer(venvExe, gpt4freePath, ModelType.GPT_3_5_TURBO, 8192);
-//        this.text2text = new ProcessText2Text(venvExe, gpt4freePath);
-        this.summarizer = new GPTSummarizer(registry, service);
-        this.text2text = new GPTText2Text(registry, service, embeddingDatabase);
-    }
-
-    public IText2Text getText2text() {
-        return text2text;
+        this.processT2 = new ProcessText2Text(venvExe, gpt4freePath);
     }
 
     public IModerator getModerator() {
         return moderator;
-    }
-
-    public ISummarizer getSummarizer() {
-        return summarizer;
     }
 
     public OpenAiService getService() {
@@ -144,9 +116,8 @@ public class GptHandler {
         checkNotNull(source, "source must not be null");
         ThrowingConsumer<String> moderateFunc = moderate ? this::checkModeration : null;
 
-        Set<String> duplicateCheck = new HashSet<>();
-
         Set<Long> hashesSet = new LongLinkedOpenHashSet();
+        List<Long> hashes = new LongArrayList();
         // iterate over descriptionAndExpandedStream
         descriptionAndExpandedStream.forEach(new Consumer<Map.Entry<String, String>>() {
             @Override
@@ -155,19 +126,33 @@ public class GptHandler {
                 String expandedDescription = entry.getValue();
 
                 long hash = embeddingDatabase.getHash(description);
-                if (!hashesSet.add(hash)) {
-                    throw new IllegalArgumentException("duplicate hash: " + hash + " for description: ```\n" + description + "\n```");
+                if (hashesSet.add(hash)) {
+                    float[] vector = embeddingDatabase.getOrCreateEmbedding(hash, description, expandedDescription == null ? null : () -> expandedDescription, source, true, moderateFunc);
+                } else {
+                    System.out.println("Skipping duplicate description: ```\n" + description + "\n```");
                 }
-                float[] vector = embeddingDatabase.getOrCreateEmbedding(hash, description, () -> expandedDescription, source, true, moderateFunc);
+                hashes.add(hash);
             }
         });
         if (deleteMissing) {
             embeddingDatabase.registerHashes(source, hashesSet, deleteMissing);
         }
-        return new LongArrayList(hashesSet);
+        return hashes;
     }
 
     public float[] getEmbedding(EmbeddingSource source, String text) {
         return embeddingDatabase.getEmbedding(source, text, this::checkModeration);
+    }
+
+    public IText2Text createOpenAiText2Text(String openAiKey, ModelType model) {
+        return new GPTText2Text(openAiKey, model);
+    }
+
+    public IText2Text createCopilotText2Text(String path, Consumer<CopilotDeviceAuthenticationData> deviceAuthDataConsumer) {
+        return new CopilotText2Text(path, deviceAuthDataConsumer);
+    }
+
+    public IText2Text getProcessText2Text() {
+        return processT2;
     }
 }

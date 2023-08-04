@@ -18,6 +18,8 @@ public enum GuildSettingCategory {
     BOUNTY,
     TRADE,
 
+    ARTIFICIAL_INTELLIGENCE
+
     ;
 
 

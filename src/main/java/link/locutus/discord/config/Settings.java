@@ -525,6 +525,9 @@ public class Settings extends Config {
         @Comment({"Your API key from <https://platform.openai.com/account/api-keys> (optional)"})
         public String OPENAI_API_KEY = "";
 
+        @Comment({"Allow use of github copilot as on option for chat completions"})
+        public boolean ENABLE_GITHUB_COPILOT = false;
+
     }
 
     public static class DATABASE {
