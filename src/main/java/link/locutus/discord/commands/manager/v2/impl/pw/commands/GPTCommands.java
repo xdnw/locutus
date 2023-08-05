@@ -10,7 +10,9 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.EmbeddingSource;
+import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.gpt.pwembed.GPTProvider;
 import link.locutus.discord.gpt.pwembed.PWGPTHandler;
@@ -23,10 +25,12 @@ import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -223,7 +227,20 @@ public class GPTCommands {
 
     @Command
     @RolePermission(Roles.AI_COMMAND_ACCESS)
-    public String setChatProviders(PWGPTHandler pwGpt, @Me GuildDB db, @Me User user, Set<ProviderType> providerTypes) {
+    public String setChatProviders(PWGPTHandler pwGpt, @Me GuildDB db, @Me User user, @Me DBNation nation, Set<ProviderType> providerTypes) {
+        ByteBuffer existingBuf = nation.getMeta(NationMeta.GPT_PROVIDER);
+        Set<ProviderType> existing = new HashSet<>();
+        if (existingBuf != null) {
+            long mask = existingBuf.getLong();
+            for (ProviderType type : ProviderType.values()) {
+                // ordinal
+                if ((mask & (1L << type.ordinal())) != 0) {
+                    existing.add(type);
+                }
+            }
+        }
+
+        StringBuilder response = new StringBuilder();
 
     }
 
