@@ -1235,7 +1235,9 @@ public class DBNation implements NationOrAlliance {
                 if (eventConsumer != null) eventConsumer.accept(new NationChangeUnitEvent(copyOriginal, this, MilitaryUnit.SPIES));
                 dirty = true;
             }
-
+        }
+        if (nation.getSpy_attacks() != null) {
+            setSpyAttacks(nation.getSpy_attacks());
         }
         if (nation.getVacation_mode_turns() != null && this.getVm_turns() != nation.getVacation_mode_turns()) {
             long turnEnd = TimeUtil.getTurn() + nation.getVacation_mode_turns();
@@ -1353,6 +1355,30 @@ public class DBNation implements NationOrAlliance {
 //        }
         return dirty;
     }
+
+    private void setSpyAttacks(int spyAttacks) {
+        ByteBuffer lastSpyOpDayBuf = getMeta(NationMeta.SPY_OPS_DAY);
+        long currentDay = TimeUtil.getDay();
+        long lastOpDay = lastSpyOpDayBuf == null ? 0L : lastSpyOpDayBuf.getLong();
+        if (lastOpDay != currentDay) {
+            setMeta(NationMeta.SPY_OPS_DAY, currentDay);
+        }
+        int lastAmt;
+        if (currentDay == lastOpDay) {
+            ByteBuffer dailyOpAmt = getMeta(NationMeta.SPY_OPS_AMOUNT_DAY);
+            lastAmt = dailyOpAmt == null ? 0 : dailyOpAmt.getInt();
+        } else {
+            lastAmt = 0;
+        }
+        int newOps = spyAttacks - lastAmt;
+        if (newOps > 0) {
+            setMeta(NationMeta.SPY_OPS_AMOUNT_DAY, spyAttacks);
+            ByteBuffer totalOpAmtBuf = getMeta(NationMeta.SPY_OPS_AMOUNT_TOTAL);
+            int total = totalOpAmtBuf == null ? 0 : totalOpAmtBuf.getInt();
+            setMeta(NationMeta.SPY_OPS_AMOUNT_TOTAL, total + newOps);
+        }
+    }
+
     public DBAlliancePosition getAlliancePosition() {
         if (alliance_id == 0 || rank.id <= Rank.APPLICANT.id) return null;
         DBAlliancePosition pos = Locutus.imp().getNationDB().getPosition(alliancePosition, alliance_id, false);
@@ -3468,9 +3494,20 @@ public class DBNation implements NationOrAlliance {
         response.append(toMarkdown(true, false, true, true, false, false));
         response.append(toMarkdown(true, false, false, false, true, true));
 
+
+
         response.append(" ```")
-                .append(String.format("%6s", getVm_turns())).append(" \uD83C\uDFD6\ufe0f").append(" | ")
-                .append(String.format("%6s", getColor())).append(" | ")
+                .append(String.format("%6s", getVm_turns())).append(" \uD83C\uDFD6\ufe0f").append(" | ");
+
+        if (color == NationColor.BEIGE) {
+            int turns = getBeigeTurns();
+            long diff = TimeUnit.MILLISECONDS.toMinutes(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() + turns) - System.currentTimeMillis());
+            String beigeStr = TimeUtil.secToTime(TimeUnit.MINUTES, diff);
+            response.append(" beige:" + beigeStr);
+        } else {
+            response.append(String.format("%6s", getColor()));
+        }
+        response.append(" | ")
                 .append(String.format("%4s", getAgeDays())).append("day").append(" | ")
                 .append(String.format("%6s", getContinent()))
                 .append("```");
@@ -3627,13 +3664,6 @@ public class DBNation implements NationOrAlliance {
                         .append(String.format("%8s", getWarPolicy())).append(" | ")
                         .append(String.format("%1s", getOff())).append("\uD83D\uDDE1").append(" | ")
                         .append(String.format("%1s", getDef())).append("\uD83D\uDEE1").append(" | ");
-
-                if (color == NationColor.BEIGE) {
-                    int turns = getBeigeTurns();
-                    long diff = TimeUnit.MILLISECONDS.toMinutes(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() + turns) - System.currentTimeMillis());
-                    String beigeStr = TimeUtil.secToTime(TimeUnit.MINUTES, diff);
-                    response.append(color == NationColor.BEIGE ? " beige:" + beigeStr : "");
-                }
             }
             String str = response.toString();
             if (str.endsWith(" | ")) response = new StringBuilder(str.substring(0, str.length() - 3));

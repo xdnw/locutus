@@ -81,6 +81,7 @@ import net.dv8tion.jda.api.requests.restaction.InviteAction;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -110,10 +111,12 @@ public class UnsortedCommands {
             @Arg("Number of spies required")
             @Switch("s") Integer requireSpies,
             @Switch("sheet") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+        if (nations == null) nations = new SimpleNationList(db.getAllianceList().getNations());
 
         List<DBNation> invalidNations = new ArrayList<>();
         AllianceList aaList = db.getAllianceList();
-        Set<DBNation> aaNations = aaList.getNations(f -> f.getPositionEnum().id >= Rank.APPLICANT.id && f.getVm_turns() == 0 && nations.contains(f));
+        NationList finalNations = nations;
+        Set<DBNation> aaNations = aaList.getNations(f -> f.getPositionEnum().id >= Rank.APPLICANT.id && f.getVm_turns() == 0 && finalNations.contains(f));
         if (aaNations.isEmpty()) {
             throw new IllegalArgumentException("No nations in alliances " + StringMan.getString(aaList.getIds()) + " matched `nations` (vacation mode or applicants are ignored)");
         }
@@ -131,7 +134,9 @@ public class UnsortedCommands {
                         "{score}",
                         "{cities}",
                         "{spies}",
-                        "{free_spy_ops}"
+                        "{free_spy_ops}",
+                        "{days_since_op}",
+                        "{ops_alltime}"
                 )
         );
         if (addColumns != null) columns.addAll(addColumns);
@@ -154,16 +159,38 @@ public class UnsortedCommands {
             if (requireXFreeOps != null && free < requireXFreeOps) continue;
             if (requireSpies != null && nation.getSpies() < requireSpies) continue;
 
-            locals.addProvider(Key.of(DBNation.class, Me.class), nation);
-            locals.addProvider(Key.of(User.class, Me.class), nation.getUser());
-            for (int i = 0; i < columns.size(); i++) {
-                String arg = columns.get(i);
-                arg = arg.replace("{free_spy_ops}", String.valueOf(free));
-                arg = arg.replace("{used_spy_ops}", String.valueOf(usedSlots));
-                String formatted = placeholders.format(locals, arg);
-
-                header.set(i, formatted);
+            int opsAllTime = 0;
+            long daysSinceOp = 0;
+            ByteBuffer allTimeBuf = nation.getMeta(NationMeta.SPY_OPS_AMOUNT_TOTAL);
+            if (allTimeBuf != null) {
+                opsAllTime = allTimeBuf.getInt();
             }
+            long currentDay = TimeUtil.getDay();
+            ByteBuffer dayLastOpBuf = nation.getMeta(NationMeta.SPY_OPS_DAY);
+            if (dayLastOpBuf != null) {
+                long dayLastOp = dayLastOpBuf.getLong();
+                daysSinceOp = currentDay - dayLastOp;
+            }
+
+            header.set(0, "=HYPERLINK(\"politicsandwar.com/nation/id={nation_id}\", \"{nation}\")"
+                    .replace("{nation_id}", nation.getId() + "")
+                    .replace("{nation}", nation.getName()));
+
+            header.set(1, "=HYPERLINK(\"politicsandwar.com/alliance/id={alliance_id}\", \"{alliancename}\")"
+                    .replace("{alliance_id}", nation.getAlliance_id() + "")
+                    .replace("{alliancename}", nation.getAllianceName()));
+
+            header.set(2, nation.getScore() + "");
+
+            header.set(3, nation.getCities() + "");
+
+            header.set(4, nation.getSpies() + "");
+
+            header.set(5, free + "");
+
+            header.set(6, daysSinceOp + "");
+
+            header.set(7, opsAllTime + "");
 
             sheet.addRow(new ArrayList<>(header));
         }
@@ -751,10 +778,21 @@ public class UnsortedCommands {
                           @Switch("t") boolean includeUntaxable,
                           @Arg("Exclude the new nation bonus")
                           @Switch("b") boolean excludeNationBonus) throws Exception {
+        if (nations.getNations().size() == 1) includeUntaxable = true;
+
         ArrayList<DBNation> filtered = new ArrayList<>(nations.getNations());
+        int removed = 0;
         if (!includeUntaxable) {
+            int size = filtered.size();
             filtered.removeIf(f -> f.getAlliance_id() == 0 || f.getVm_turns() != 0);
             filtered.removeIf(f -> f.isGray() || f.isBeige() || f.getPosition() <= 1);
+            removed = size - filtered.size();
+        }
+        if (filtered.size() == 0) {
+            if (removed > 0) {
+                throw new IllegalArgumentException("No nations to tax, all " + removed + " nations are untaxable. Use `includeUntaxable` to include them");
+            }
+            throw new IllegalArgumentException("No nations provided");
         }
         double[] cityProfit = new double[ResourceType.values.length];
         double[] milUp = new double[ResourceType.values.length];
@@ -788,6 +826,11 @@ public class UnsortedCommands {
         } else {
             response.append("\n`warn: Revenue is not sustainable`");
         }
+
+        if (removed > 0) {
+            response.append("\n`warn: " + removed + " untaxable nations removed. Use 'includeUntaxable: True' to include them.`");
+        }
+
         response.send();
         return null;
     }
@@ -1166,41 +1209,60 @@ public class UnsortedCommands {
             if (!noRoles.isEmpty()) {
                 throw new IllegalArgumentException("You do not have the required roles to use this command: `" + StringMan.join(noRoles, ",") + "`");
             }
+
+            String value = db.getCopyPasta(key, true);
+
+            Set<String> missingRoles = null;
+            if (value == null) {
+                Map<String, String> map = db.getCopyPastas(member);
+                for (Map.Entry<String, String> entry : map.entrySet()) {
+                    String otherKey = entry.getKey();
+                    String[] split = otherKey.split("\\.");
+                    if (!split[split.length - 1].equalsIgnoreCase(key)) continue;
+
+                    Set<String> localMissing = db.getMissingCopypastaPerms(otherKey, guild.getMember(author));
+
+                    if (!localMissing.isEmpty()) {
+                        missingRoles = localMissing;
+                        continue;
+                    }
+
+                    value = entry.getValue();
+                    missingRoles = null;
+                }
+            } else {
+                missingRoles = db.getMissingCopypastaPerms(key, guild.getMember(author));
+            }
+            if (missingRoles != null && !missingRoles.isEmpty()) {
+                throw new IllegalArgumentException("You do not have the required roles to use this command: `" + StringMan.join(missingRoles, ",") + "`");
+            }
+            if (value == null) return "No message set for `" + key + "`. Plase use " + CM.copyPasta.cmd.toSlashMention() + "";
+
+            value = placeholders.format(store, value);
+
+            return value;
         } else if (!Roles.INTERNAL_AFFAIRS.has(author, guild)) {
             return "Missing role: " + Roles.INTERNAL_AFFAIRS;
         }
 
-        String value = db.getCopyPasta(key, true);
+        if (!Roles.INTERNAL_AFFAIRS.has(author, guild)) return "No permission.";
 
-        Set<String> missingRoles = null;
-        if (value == null) {
-            Map<String, String> map = db.getCopyPastas(member);
-            for (Map.Entry<String, String> entry : map.entrySet()) {
-                String otherKey = entry.getKey();
-                String[] split = otherKey.split("\\.");
-                if (!split[split.length - 1].equalsIgnoreCase(key)) continue;
+        String setKey = key;
+        if (requiredRolesAny != null && !requiredRolesAny.isEmpty()) {
+            setKey = requiredRolesAny.stream().map(Role::getId).collect(Collectors.joining(".")) + "." + key;
+        }
 
-                Set<String> localMissing = db.getMissingCopypastaPerms(otherKey, guild.getMember(author));
-
-                if (!localMissing.isEmpty()) {
-                    missingRoles = localMissing;
-                    continue;
-                }
-
-                value = entry.getValue();
-                missingRoles = null;
-            }
+        if (message.isEmpty() || message.equalsIgnoreCase("null")) {
+            db.deleteCopyPasta(key);
+            db.deleteCopyPasta(setKey);
+            return "Deleted message for `" + Settings.commandPrefix(true) + "copypasta " + key + "`";
         } else {
-            missingRoles = db.getMissingCopypastaPerms(key, guild.getMember(author));
+            db.setCopyPasta(setKey, message);
+            return "Added message for `" + Settings.commandPrefix(true) + "copypasta " + setKey + "`\n" +
+                    "Remove using `" + Settings.commandPrefix(true) + "copypasta " + setKey + " null`";
         }
-        if (missingRoles != null && !missingRoles.isEmpty()) {
-            throw new IllegalArgumentException("You do not have the required roles to use this command: `" + StringMan.join(missingRoles, ",") + "`");
-        }
-        if (value == null) return "No message set for `" + key + "`. Plase use " + CM.copyPasta.cmd.toSlashMention() + "";
 
-        value = placeholders.format(store, value);
 
-        return value;
     }
 
     @Command(desc = "Generate an audit report of a list of nations")

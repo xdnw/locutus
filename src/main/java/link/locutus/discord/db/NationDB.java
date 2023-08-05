@@ -765,6 +765,7 @@ public class NationDB extends DBMainV2 {
     public List<Integer> getMostActiveNationIds(int amt) {
         List<Map.Entry<Integer, Long>> nationIdActive = new ArrayList<>();
 
+        long turn = TimeUtil.getTurn();
         Set<Integer> visited = new HashSet<>();
         for (int i = 0; i < amt && !dirtyNations.isEmpty(); i++) {
             try {
@@ -777,13 +778,16 @@ public class NationDB extends DBMainV2 {
             } catch (NoSuchElementException ignore) {}
         }
 
+        long now = System.currentTimeMillis();
         if (nationIdActive.size() < amt) {
             synchronized (nationsById) {
                 for (DBNation nation : nationsById.values()) {
-                    if (nation.getVm_turns() > 0) continue;
+                    if (nation.getLeaving_vm() > turn) continue;
 
+                    long lastFetched = nation.getLastFetchedUnitsMs();
                     long active = nation.lastActiveMs();
-                    nationIdActive.add(Map.entry(nation.getNation_id(), active));
+                    long diff = Math.max(active - lastFetched, 0) + Math.max(now - lastFetched, 0);
+                    nationIdActive.add(Map.entry(nation.getNation_id(), diff));
                 }
             }
         }
@@ -824,7 +828,7 @@ public class NationDB extends DBMainV2 {
             ids = new ArrayList<>(dirtyNations);
             dirtyNations.clear();
         }
-        System.out.println("Ids " + ids.size());
+        System.out.println("Dirty nation Ids " + ids.size());
         updateNations(ids, eventConsumer);
     }
 
@@ -1764,12 +1768,17 @@ public class NationDB extends DBMainV2 {
     }
 
     public void markDirtyIncorrectNations(boolean score, boolean cities) {
+        int originalSize = dirtyNations.size();
         for (DBNation nation : getNationsMatching(f -> f.getVm_turns() == 0)) {
             if (score && Math.round(100 * (nation.estimateScore() - nation.getScore())) > 0.01) {
                 dirtyNations.add(nation.getNation_id());
             } else if (cities && nation.getCities() != getCitiesV3(nation.getNation_id()).size()) {
                 dirtyNations.add(nation.getNation_id());
             }
+        }
+        int added = dirtyNations.size() - originalSize;
+        if (added > 10) {
+            System.out.println("Added " + added + " nations to dirty list");
         }
     }
 

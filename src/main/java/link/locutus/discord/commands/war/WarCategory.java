@@ -2,6 +2,7 @@ package link.locutus.discord.commands.war;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
+import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -236,6 +237,9 @@ public class WarCategory {
     }
 
     public void update(AbstractCursor attack) {
+        if (attack.getAttack_type() == AttackType.PEACE) {
+            return;
+        }
         int attackerId = attack.getAttacker_id();
         int defenderId = attack.getDefender_id();
         WarRoom roomTmp = warRoomMap.get(attackerId);
@@ -343,7 +347,7 @@ public class WarCategory {
             }
             if (showInfra && attack.getInfra_destroyed() != 0) {
                 double worth = PnwUtil.calculateInfra(attack.getCity_infra_before() - attack.getInfra_destroyed(), attack.getCity_infra_before());
-                message += ". " + attack.getInfra_destroyed() + " infra worth $" + MathMan.format(worth) + " was destroyed";
+                message += ". " + MathMan.format(attack.getInfra_destroyed()) + " infra worth $" + MathMan.format(worth) + " was destroyed";
             }
             if (showCasualties) {
                 Map<MilitaryUnit, Integer> attLosses = attack.getUnitLosses(true);
@@ -682,7 +686,7 @@ public class WarCategory {
                 body.append(target.toMarkdown(true, true, false, false, true, false));
                 body.append("\n");
 
-                List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(target.getNation_id(), WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);
+                List<DBWar> wars = target.getActiveWars();
                 for (DBWar war : wars) {
                     boolean defensive = war.attacker_id == target.getNation_id();
                     DBNation participant = Locutus.imp().getNationDB().getNation(war.attacker_id == target.getNation_id() ? war.defender_id : war.attacker_id);

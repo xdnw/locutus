@@ -329,29 +329,28 @@ public class SpyCount {
             try {
                 long lastOpDay = 0;
                 long currentDay = TimeUtil.getDay();
-                if (numOps != 0) {
-                    ByteBuffer lastSpyOpDayBuf = reportBy.getMeta(NationMeta.SPY_OPS_DAY);
-                    lastOpDay = lastSpyOpDayBuf == null ? 0L : lastSpyOpDayBuf.getLong();
-                    if (lastOpDay != currentDay) {
-                        reportBy.setMeta(NationMeta.SPY_OPS_DAY, currentDay);
-                    }
-
-                    int amt = 0;
-                    if (currentDay == lastOpDay) {
-                        ByteBuffer dailyOpAmt = reportBy.getMeta(NationMeta.SPY_OPS_AMOUNT_DAY);
-                        amt = dailyOpAmt == null ? 0 : dailyOpAmt.getInt();
-                    }
-                    amt++;
-                    reportBy.setMeta(NationMeta.SPY_OPS_AMOUNT_DAY, amt);
-
-                    if (amt <= 2) {
-                        ByteBuffer totalOpAmtBuf = reportBy.getMeta(NationMeta.SPY_OPS_AMOUNT_TOTAL);
-                        int total = totalOpAmtBuf == null ? 0 : totalOpAmtBuf.getInt();
-                        reportBy.setMeta(NationMeta.SPY_OPS_AMOUNT_TOTAL, total + 1);
-                    }
-                    new SpyReportEvent(reportBy, target, loot, lastOpDay, amt).post();
-
-                }
+//                if (numOps != 0) {
+//                    ByteBuffer lastSpyOpDayBuf = reportBy.getMeta(NationMeta.SPY_OPS_DAY);
+//                    lastOpDay = lastSpyOpDayBuf == null ? 0L : lastSpyOpDayBuf.getLong();
+//                    if (lastOpDay != currentDay) {
+//                        reportBy.setMeta(NationMeta.SPY_OPS_DAY, currentDay);
+//                    }
+//
+//                    int amt = 0;
+//                    if (currentDay == lastOpDay) {
+//                        ByteBuffer dailyOpAmt = reportBy.getMeta(NationMeta.SPY_OPS_AMOUNT_DAY);
+//                        amt = dailyOpAmt == null ? 0 : dailyOpAmt.getInt();
+//                    }
+//                    amt++;
+//                    reportBy.setMeta(NationMeta.SPY_OPS_AMOUNT_DAY, amt);
+//
+//                    if (amt <= 2) {
+//                        ByteBuffer totalOpAmtBuf = reportBy.getMeta(NationMeta.SPY_OPS_AMOUNT_TOTAL);
+//                        int total = totalOpAmtBuf == null ? 0 : totalOpAmtBuf.getInt();
+//                        reportBy.setMeta(NationMeta.SPY_OPS_AMOUNT_TOTAL, total + 1);
+//                    }
+//                    new SpyReportEvent(reportBy, target, loot, lastOpDay, amt).post();
+//                }
             } catch (Throwable e) {
                 e.printStackTrace();
             }

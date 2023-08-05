@@ -1448,12 +1448,14 @@ public class WarDB extends DBMainV2 {
                 if (war.getNation(true) != null && war.getNation(false) != null) {
                     notDeleted++;
                 }
-                DBWar copy = eventConsumer != null ? new DBWar(war) : null;
-                war.status = WarStatus.EXPIRED;
-                activeWars.makeWarInactive(war);
-                warsToSave.add(war);
-                if (eventConsumer != null) {
-                    warsToProcess.add(new AbstractMap.SimpleEntry<>(copy, war));
+                if (war.status != WarStatus.EXPIRED && war.isActive()) {
+                    DBWar copy = eventConsumer != null ? new DBWar(war) : null;
+                    war.status = WarStatus.EXPIRED;
+                    activeWars.makeWarInactive(war);
+                    warsToSave.add(war);
+                    if (eventConsumer != null) {
+                        warsToProcess.add(new AbstractMap.SimpleEntry<>(copy, war));
+                    }
                 }
             }
 
@@ -1583,12 +1585,14 @@ public class WarDB extends DBMainV2 {
                 if (war.getNation(true) != null && war.getNation(false) != null) {
                     notDeleted++;
                 }
-                DBWar copy = eventConsumer != null ? new DBWar(war) : null;
-                war.status = WarStatus.EXPIRED;
-                activeWars.makeWarInactive(war);
-                warsToSave.add(war);
-                if (eventConsumer != null) {
-                    warsToProcess.add(new AbstractMap.SimpleEntry<>(copy, war));
+                if (war.status != WarStatus.EXPIRED && war.isActive()) {
+                    DBWar copy = eventConsumer != null ? new DBWar(war) : null;
+                    war.status = WarStatus.EXPIRED;
+                    activeWars.makeWarInactive(war);
+                    warsToSave.add(war);
+                    if (eventConsumer != null) {
+                        warsToProcess.add(new AbstractMap.SimpleEntry<>(copy, war));
+                    }
                 }
             }
 
