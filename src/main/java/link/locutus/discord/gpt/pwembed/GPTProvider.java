@@ -23,6 +23,10 @@ public abstract class GPTProvider implements Closeable {
         return text2Text;
     }
 
+    public abstract String toString(GuildDB db, User user);
+
+    public abstract void setUsageLimits(int turnLimit, int dayLimit, int guildTurnLimit, int guildDayLimit);
+
     public abstract boolean hasPermission(GuildDB db, User user, boolean checkLimits);
     public abstract Future<String> submit(GuildDB db, User user, Map<String, String> options, String input);
 

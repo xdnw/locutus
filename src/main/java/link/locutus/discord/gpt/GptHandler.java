@@ -47,7 +47,7 @@ public class GptHandler {
 
     public GptHandler() throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
         this.registry = Encodings.newDefaultEncodingRegistry();
-        this.service = new OpenAiService(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI_API_KEY, Duration.ofSeconds(50));
+        this.service = new OpenAiService(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, Duration.ofSeconds(50));
 
         this.chatEncoder = registry.getEncodingForModel(ModelType.GPT_3_5_TURBO);
 

@@ -19,7 +19,6 @@ import org.jooq.SelectLimitStep;
 import org.jooq.SortField;
 import org.jooq.TableLike;
 import org.jooq.impl.DSL;
-import org.springframework.data.mongodb.core.mapreduce.GroupBy;
 
 import java.io.Closeable;
 import java.io.File;

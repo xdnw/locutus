@@ -120,6 +120,8 @@ public class PWGPTHandler {
             ModelType expectedModel = GuildKey.OPENAI_MODEL.getOrNull(db);
             if (expectedModel == null) expectedModel = ModelType.GPT_3_5_TURBO;
 
+            int[] limits = GuildKey.GPT_USAGE_LIMITS.getOrNull(db);
+
             GPTProvider existing = result.get(ProviderType.OPENAI);
             if (openAiKey == null || (existing != null && ((GPTText2Text) existing.getText2Text()).getModel() != expectedModel)) {
                 GPTProvider removed = result.remove(ProviderType.OPENAI);
@@ -136,8 +138,8 @@ public class PWGPTHandler {
                     IText2Text newProvider = handler.createOpenAiText2Text(openAiKey, finalExpectedModel);
                     return new SimpleGPTProvider(ProviderType.OPENAI, newProvider, handler.getModerator(), true, logger);
                 });
+                if (limits != null) provider.setUsageLimits(limits[0], limits[1], limits[2], limits[3]);
                 providers.add(provider);
-
             }
 
             Boolean enableCopilot = GuildKey.ENABLE_GITHUB_COPILOT.getOrNull(db);
@@ -164,6 +166,7 @@ public class PWGPTHandler {
                     });
                     return new SimpleGPTProvider(ProviderType.COPILOT, newProvider, handler.getModerator(), true, logger);
                 });
+                if (limits != null) provider.setUsageLimits(limits[0], limits[1], limits[2], limits[3]);
                 providers.add(provider);
             }
         }
@@ -199,16 +202,7 @@ public class PWGPTHandler {
 //        registerPageSectionBindings("Wiki Page");
 //        registerTutorialBindings("Tutorial");
 
-        if (Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI_API_KEY != null) {
-            SimpleGPTProvider provider = new SimpleGPTProvider(
-                    ProviderType.OPENAI,
-                    handler.createOpenAiText2Text(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI_API_KEY, ModelType.GPT_3_5_TURBO),
-                    handler.getModerator(),
-                    true,
-                    logger);
-            globalProviders.put(ProviderType.OPENAI, provider);
-        }
-        if (Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.ENABLE_GITHUB_COPILOT) {
+        if (Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.ENABLED) {
             SimpleGPTProvider provider = new SimpleGPTProvider(
                     ProviderType.COPILOT,
                     handler.createCopilotText2Text("tokens", authData -> {
@@ -217,7 +211,28 @@ public class PWGPTHandler {
                     handler.getModerator(),
                     true,
                     logger);
+            provider.setTurnLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.USER_TURN_LIMIT);
+            provider.setDayLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.USER_DAY_LIMIT);
+            provider.setGuildTurnLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.GUILD_TURN_LIMIT);
+            provider.setGuildDayLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.GUILD_DAY_LIMIT);
+
             globalProviders.put(ProviderType.COPILOT, provider);
+        }
+
+        if (Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY != null) {
+            SimpleGPTProvider provider = new SimpleGPTProvider(
+                    ProviderType.OPENAI,
+                    handler.createOpenAiText2Text(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, ModelType.GPT_3_5_TURBO),
+                    handler.getModerator(),
+                    true,
+                    logger);
+
+            provider.setTurnLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.USER_TURN_LIMIT);
+            provider.setDayLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.USER_DAY_LIMIT);
+            provider.setGuildTurnLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.GUILD_TURN_LIMIT);
+            provider.setGuildDayLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.GUILD_DAY_LIMIT);
+
+            globalProviders.put(ProviderType.OPENAI, provider);
         }
 
         if (handler.getProcessText2Text() != null) {

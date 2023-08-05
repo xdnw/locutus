@@ -75,7 +75,7 @@ public class CommandManager2 {
 
         this.commands = CommandGroup.createRoot(store, validators);
 
-        if (!Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI_API_KEY.isEmpty()) {
+        if (!Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY.isEmpty()) {
             try {
                 pwgptHandler = new PWGPTHandler(this);
             } catch (SQLException | ClassNotFoundException | ModelNotFoundException | MalformedModelException |

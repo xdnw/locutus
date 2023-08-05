@@ -217,7 +217,7 @@ public class GuildKey {
             if (apiKey == null || apiKey.isEmpty()) {
                 throw new IllegalArgumentException("Please provide an API key");
             }
-            OpenAiService service = new OpenAiService(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI_API_KEY, Duration.ofSeconds(50));
+            OpenAiService service = new OpenAiService(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, Duration.ofSeconds(50));
             GPTModerator moderator = new GPTModerator(service);
             List<ModerationResult> result = moderator.moderate("Hello World");
             if (result.size() == 0) {
@@ -282,6 +282,61 @@ public class GuildKey {
         @Override
         public String toString(ModelType value) {
             return value.name();
+        }
+    }.setupRequirements(f -> f.requires(OPENAI_KEY));
+
+    public static GuildSetting<int[]> GPT_USAGE_LIMITS = new GuildSetting<int[]>(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE, int[].class) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String GPT_USAGE_LIMITS(@Me GuildDB db, @Me User user, int userTurnLimit, int userDayLimit, int guildTurnLimit, int guildDayLimit) {
+            int[] combined = new int[]{userTurnLimit, userDayLimit, guildTurnLimit, guildDayLimit};
+            return GPT_USAGE_LIMITS.set(db, combined);
+        }
+
+        @Override
+        public int[] validate(GuildDB db, int[] limits) {
+            // ensure length = 4
+            if (limits.length != 4) {
+                throw new IllegalArgumentException("Invalid limits. Expected 4 values, got " + limits.length);
+            }
+            // ensure all > 0
+            for (int limit : limits) {
+                if (limit < 0) {
+                    throw new IllegalArgumentException("Invalid limit. Must be >= 0");
+                }
+            }
+            return limits;
+        }
+
+        @Override
+        public int[] parse(GuildDB db, String input) {
+            // 4 numbers, comma separated
+            String[] split = input.split(",");
+            if (split.length != 4) {
+                throw new IllegalArgumentException("Invalid limits. Expected 4 values, got " + split.length);
+            }
+            int[] limits = new int[4];
+            for (int i = 0; i < 4; i++) {
+                try {
+                    limits[i] = Integer.parseInt(split[i]);
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException("Invalid limit. Must be a number, not: `" + split[i] + "`");
+                }
+            }
+            return limits;
+        }
+
+        @Override
+        public String help() {
+            return "gpt user and guild usage limits, by turn and day\n" +
+                    "Used to limit costs incurred from excessive usage" +
+                    "Usage is only tracked per session, and is reset each time the bot restarts";
+        }
+
+        @Override
+        public String toString(int[] value) {
+            return StringMan.join(value, ",");
         }
     }.setupRequirements(f -> f.requires(OPENAI_KEY));
 

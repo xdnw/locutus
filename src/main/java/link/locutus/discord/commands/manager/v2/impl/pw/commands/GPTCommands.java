@@ -12,11 +12,14 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.gpt.pwembed.GPTProvider;
 import link.locutus.discord.gpt.pwembed.PWGPTHandler;
+import link.locutus.discord.gpt.pwembed.ProviderType;
 import link.locutus.discord.gpt.test.ExtractText;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
+import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -100,7 +103,7 @@ public class GPTCommands {
     }
 
     @Command
-    @RolePermission(value = Roles.ADMIN)
+    @RolePermission(value = Roles.AI_COMMAND_ACCESS)
     public String list_documents(@Me GuildDB db, @Default boolean listRoot) {
         Set<EmbeddingSource> sources = gpt.getSources(db.getGuild(), listRoot);
         StringBuilder result = new StringBuilder();
@@ -201,4 +204,33 @@ public class GPTCommands {
 
         return "Registered " + embeddings.size() + " embeddings for `" + document_description + "` See: TODO CM ref";
     }
+
+    @Command
+    @RolePermission(Roles.AI_COMMAND_ACCESS)
+    public String listChatProviders(PWGPTHandler pwGpt, @Me GuildDB db, @Me User user) {
+        Set<GPTProvider> providers = pwGpt.getProviders(db);
+
+        if (providers.isEmpty()) {
+            return "No providers found";
+        }
+
+        StringBuilder result = new StringBuilder();
+        for (GPTProvider provider : providers) {
+            result.append(provider.toString(db, user) + "\n");
+        }
+        return result.toString();
+    }
+
+    @Command
+    @RolePermission(Roles.AI_COMMAND_ACCESS)
+    public String setChatProviders(PWGPTHandler pwGpt, @Me GuildDB db, @Me User user, Set<ProviderType> providerTypes) {
+
+    }
+
+
+    @Command
+    @RolePermission(Roles.AI_COMMAND_ACCESS)
+    public String view_source()
+
+
 }

@@ -122,8 +122,8 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
 
 
-    implementation "org.springframework.boot:spring-boot-starter-web:2.4.4"
-    implementation "org.springframework.boot:spring-boot-starter-data-mongodb:2.4.4"
+//    implementation "org.springframework.boot:spring-boot-starter-web:2.4.4"
+//    implementation "org.springframework.boot:spring-boot-starter-data-mongodb:2.4.4"
 
     implementation "com.graphql-java-kickstart:graphql-spring-boot-starter:11.0.0"
     implementation "com.graphql-java-kickstart:graphiql-spring-boot-starter:11.0.0"

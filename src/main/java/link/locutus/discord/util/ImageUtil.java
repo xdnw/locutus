@@ -54,7 +54,7 @@ public class ImageUtil {
     }
 
     public static String getTextLocal(String imageUrl, ImageType type) {
-        String pathStr = Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.TESSERACT_LOCATION;
+        String pathStr = Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OCR.TESSERACT_LOCATION;
         EasyOCR ocr = new EasyOCR(pathStr);
         ocr.setTesseractOptions(EasyOCR.OPTION_LANG_ENG);
         File fileTmp = null; // 50MB limit
