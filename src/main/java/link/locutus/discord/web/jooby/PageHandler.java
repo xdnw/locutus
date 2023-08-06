@@ -20,6 +20,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.GPTBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBinding;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.SheetBindings;
@@ -91,6 +92,7 @@ public class PageHandler implements Handler {
         new PrimitiveBindings().register(store);
         new DiscordBindings().register(store);
         new PWBindings().register(store);
+        new GPTBindings().register(store);
         new SheetBindings().register(store);
 //        new StockBinding().register(store);
 

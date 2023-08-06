@@ -60,7 +60,7 @@ public class GPTCommands {
             "When the command is run, the document is added to the queue, and the user will be alerted when the conversion finishes.\n" +
             "Users have the option to check the progress of the conversion using a command.")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS, root = true)
-    public synchronized String generate_factsheet(@Me GuildDB db, @Me IMessageIO io, JSONObject command, String googleDocumentUrl, String document_description, @Switch("s") SpreadSheet sheet, @Switch("f") boolean confirm) throws GeneralSecurityException, IOException {
+    public synchronized String generate_factsheet(@Me GuildDB db, @Me IMessageIO io, @Me JSONObject command, String googleDocumentUrl, String document_description, @Switch("s") SpreadSheet sheet, @Switch("f") boolean confirm) throws GeneralSecurityException, IOException {
         // to markdown
         String baseUrl = "https://docs.google.com/document/d/";
         if (!googleDocumentUrl.startsWith(baseUrl)) {

@@ -1,6 +1,8 @@
 package link.locutus.discord.db.entities;
 
 import link.locutus.discord.db.AEmbeddingDatabase;
+import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
 
 public class EmbeddingSource {
     public final int source_id;
@@ -21,6 +23,10 @@ public class EmbeddingSource {
         if (!(o instanceof EmbeddingSource)) return false;
         EmbeddingSource that = (EmbeddingSource) o;
         return source_id == that.source_id;
+    }
+
+    public String getQualifiedName() {
+        return guild_id + "/" + source_name;
     }
 
     @Override

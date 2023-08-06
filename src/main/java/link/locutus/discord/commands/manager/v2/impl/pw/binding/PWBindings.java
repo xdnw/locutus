@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
+import com.knuddels.jtokkit.api.ModelType;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -48,6 +49,7 @@ import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.gpt.pwembed.PWGPTHandler;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
@@ -1238,6 +1240,7 @@ public class PWBindings extends BindingHelper {
         if (bracket != null) return bracket;
         throw new IllegalArgumentException("Bracket " + taxId + " not found for alliance: " + StringMan.getString(db.getAllianceIds()));
     }
+
 
 //    @Binding(examples = "'Error 404' 'Arrgh' 45d")
 //    @Me

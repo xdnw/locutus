@@ -10,6 +10,7 @@ import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.autocomplete.DiscordCompleter;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete.GPTCompleter;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete.PWCompleter;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MathMan;
@@ -216,6 +217,7 @@ public class SlashCommandManager extends ListenerAdapter {
         new PrimitiveCompleter().register(commands.getStore());
         new DiscordCompleter().register(commands.getStore());
         new PWCompleter().register(commands.getStore());
+        new GPTCompleter().register(commands.getStore());
 
 
         List<SlashCommandData> toRegister = new ArrayList<>();
