@@ -71,7 +71,7 @@ public class ProcessText2Text implements IText2Text{
 
     @Override
     public int getSizeCap() {
-        return 8192;
+        return 4096;
     }
 
     @Override

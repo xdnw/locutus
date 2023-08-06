@@ -65,19 +65,23 @@ public class SimpleGPTProvider extends GPTProvider {
         }
     }
 
+    @Override
     public void pause(Throwable e) {
         pauseError = e;
         paused = true;
     }
 
+    @Override
     public boolean isPaused() {
         return paused;
     }
 
+    @Override
     public Throwable getPauseError() {
         return pauseError;
     }
 
+    @Override
     public void resume() {
         lock.lock();
         try {
@@ -174,16 +178,25 @@ public class SimpleGPTProvider extends GPTProvider {
 
         try {
             if (hasPermission(db, user, false)) {
-                result.append("Permission: True\n");
+                result.append("Permission: `True`\n");
             } else {
-                result.append("Permission: False\n");
+                result.append("Permission: `False`\n");
             }
         } catch (IllegalArgumentException e) {
             result.append("Permission: `").append(e.getMessage() + "`\n");
         }
 
+        if (!getOptions().isEmpty()) {
+            result.append("Default Options: `").append(getOptions()).append("`\n");
+        }
+
         DBNation nation = DiscordUtil.getNation(user);
         if (nation != null) {
+            Map<String, String> myOptions = Locutus.imp().getCommandManager().getV2().getPwgptHandler().getOptions(nation, this);
+            if (!myOptions.isEmpty()) {
+                result.append("Your Options: `").append(myOptions).append("`\n");
+            }
+
             int turnUse = getUsesThisTurn(db, nation);
             int dayUse = getUsesToday(db, nation);
             result.append("User Usage: {turn: " + turnUse + (turnLimit == 0 ? "" : "/" + turnLimit) + ", day: " + dayUse + (dayLimit == 0 ? "" : "/" + dayLimit) + "}\n");
@@ -191,10 +204,10 @@ public class SimpleGPTProvider extends GPTProvider {
 
         int guildUse = getUsesThisTurn(db);
         int guildDayUse = getUsesToday(db);
-        result.append("Guild Usage: {turn: " + guildUse + (guildTurnLimit == 0 ? "" : "/" + guildTurnLimit) + ", day: " + guildDayUse + (guildDayLimit == 0 ? "" : "/" + guildDayLimit) + "}\n");
+        result.append("Guild Usage: `{turn: " + guildUse + (guildTurnLimit == 0 ? "" : "/" + guildTurnLimit) + ", day: " + guildDayUse + (guildDayLimit == 0 ? "" : "/" + guildDayLimit) + "}`\n");
 
-        result.append("Execution Time: {Average: " + Math.round(getAverageExecutionTime()) + "ms, Median: " + getMedianExecutionTime() + "ms , Latest: " + getLatestExecutionTime() + "ms}\n");
-        result.append("Execution Delay: {Average: " + Math.round(getAverageExecutionDelay()) + "ms, Median: " + getMedianExecutionDelay() + "ms , Latest: " + getLatestExecutionDelay() + "ms}\n");
+        result.append("Execution Time (ms): `{Average: " + Math.round(getAverageExecutionTime()) + ", Median: " + getMedianExecutionTime() + " , Latest: " + getLatestExecutionTime() + "}`\n");
+        result.append("Execution Delay (ms): `{Average: " + Math.round(getAverageExecutionDelay()) + ", Median: " + getMedianExecutionDelay() + " , Latest: " + getLatestExecutionDelay() + "}`\n");
 
         return result.toString();
     }
@@ -249,6 +262,36 @@ public class SimpleGPTProvider extends GPTProvider {
     @Override
     public ProviderType getType() {
         return type;
+    }
+
+    @Override
+    public boolean checkAdminPermission(GuildDB db, User user, boolean throwError) {
+        if (requireGuild > 0) {
+            if (db.getIdLong() != requireGuild) {
+                if (throwError) {
+                    throw new IllegalArgumentException("This command is only available in guild " + requireGuild);
+                } else {
+                    return false;
+                }
+            }
+            if (!Roles.ADMIN.has(user, db.getGuild())) {
+                if (throwError) {
+                    throw new IllegalArgumentException("Missing role: " + Roles.ADMIN.toDiscordRoleNameElseInstructions(db.getGuild()));
+                } else {
+                    return false;
+                }
+            }
+        }
+        if (!Roles.ADMIN.hasOnRoot(user)) {
+            if (throwError) {
+                throw new IllegalArgumentException("Missing role on the root server (" +
+                        Locutus.imp().getRootDb().getGuild() + "): " +
+                        Roles.ADMIN.toDiscordRoleNameElseInstructions(db.getGuild()));
+            } else {
+                return false;
+            }
+        }
+        return true;
     }
 
     public SimpleGPTProvider requireGuild(Guild guild) {

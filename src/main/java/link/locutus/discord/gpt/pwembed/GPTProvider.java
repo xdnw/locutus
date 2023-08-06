@@ -47,4 +47,14 @@ public abstract class GPTProvider implements Closeable {
     }
 
     public abstract ProviderType getType();
+
+    public abstract boolean checkAdminPermission(GuildDB db, User user, boolean throwError);
+
+    public abstract boolean isPaused();
+
+    public abstract Throwable getPauseError();
+
+    public abstract void resume();
+
+    public abstract void pause(Throwable e);
 }

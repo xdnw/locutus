@@ -4,26 +4,21 @@ import ai.djl.MalformedModelException;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.knuddels.jtokkit.api.ModelType;
-import com.theokanning.openai.embedding.EmbeddingResult;
-import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.v2.binding.Key;
-import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.EmbeddingSource;
+import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.gpt.GPTUtil;
-import link.locutus.discord.gpt.ModerationResult;
-import link.locutus.discord.gpt.copilot.CopilotDeviceAuthenticationData;
-import link.locutus.discord.gpt.imps.EmbeddingAdapter;
 import link.locutus.discord.gpt.imps.EmbeddingInfo;
 import link.locutus.discord.gpt.imps.EmbeddingType;
 import link.locutus.discord.gpt.GptHandler;
@@ -31,15 +26,12 @@ import link.locutus.discord.gpt.imps.GPTText2Text;
 import link.locutus.discord.gpt.imps.IEmbeddingAdapter;
 import link.locutus.discord.gpt.imps.IText2Text;
 import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.math.ArrayUtil;
-import link.locutus.discord.util.scheduler.TriConsumer;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.logging.log4j.core.config.builder.api.AppenderComponentBuilder;
-import org.apache.logging.log4j.core.config.builder.api.Component;
 import org.apache.logging.log4j.core.config.builder.api.ComponentBuilder;
 import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilder;
 import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory;
@@ -51,24 +43,18 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiPredicate;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public class PWGPTHandler {
 
@@ -109,10 +95,45 @@ public class PWGPTHandler {
         this.logger = LoggerFactory.getLogger("gpt");
     }
 
+    public Map<String, Map<String, String>> getConfiguration(DBNation nation) {
+        Gson gson = new Gson();
+        ByteBuffer gptOptBuf = nation.getMeta(NationMeta.GPT_OPTIONS);
+        Map<String, Map<String, String>> gptOptions = new HashMap<>();
+        if (gptOptBuf != null) {
+            String json = new String(gptOptBuf.array(), StandardCharsets.UTF_8);
+            gptOptions = gson.fromJson(json, new TypeToken<Map<String, Map<String, String>>>(){}.getType());
+        }
+        return gptOptions;
+    }
+
+    public void setOptions(DBNation nation, Map<String, Map<String, String>> options) {
+        Gson gson = new Gson();
+        String json = gson.toJson(options);
+        byte[] data = json.getBytes(StandardCharsets.UTF_8);
+        nation.setMeta(NationMeta.GPT_OPTIONS, data);
+    }
+
+    public Map<String, Map<String, String>> setAndValidateOptions(DBNation nation, GPTProvider provider, Map<String, String> options) {
+        Map<String, String> allowed = provider.getOptions();
+        // ensure all options are in allowed (as keys)
+        for (String key : options.keySet()) {
+            if (!allowed.containsKey(key)) {
+                throw new IllegalArgumentException("Option `" + key + "` is not allowed for provider `" + provider.getId() + "`. Example options:\n```json\n" + allowed + "\n```");
+            }
+        }
+        Map<String, Map<String, String>> config = getConfiguration(nation);
+        config.put(provider.getId(), options);
+        setOptions(nation, config);
+        return config;
+    }
+
+    public Map<String, String> getOptions(DBNation nation, GPTProvider provider) {
+        Map<String, Map<String, String>> allOptions = getConfiguration(nation);
+        return allOptions.getOrDefault(provider.getId(), new HashMap<>());
+    }
+
     public Set<GPTProvider> getProviders(GuildDB db) {
-        Set<GPTProvider> providers = new HashSet<>();
-        // add global
-        providers.addAll(globalProviders.values());
+        Set<GPTProvider> providers = new LinkedHashSet<>();
         // add guild
         Map<ProviderType, GPTProvider> result = guildProviders.computeIfAbsent(db.getIdLong(), k -> new ConcurrentHashMap<>());
         synchronized (result) {
@@ -170,6 +191,9 @@ public class PWGPTHandler {
                 providers.add(provider);
             }
         }
+
+        // add global
+        providers.addAll(globalProviders.values());
 
         return providers;
     }
@@ -402,5 +426,50 @@ public class PWGPTHandler {
 
     public List<String> convertDocument(String markdown, String documentDescription) {
         throw new UnsupportedOperationException("Not implemented");
+    }
+
+    public Set<ProviderType> getProviderTypes(DBNation nation) {
+        ByteBuffer existingBuf = nation.getMeta(NationMeta.GPT_PROVIDER);
+        Set<ProviderType> existing = new HashSet<>();
+        long mask = existingBuf == null ? 0 : existingBuf.getLong();
+        if (mask == 0) mask = -1;
+        for (ProviderType type : ProviderType.values()) {
+            if ((mask & (1L << type.ordinal())) != 0) {
+                existing.add(type);
+            }
+        }
+        return existing;
+    }
+
+    public void setProviderTypes(DBNation nation, Set<ProviderType> types) {
+        long mask = 0;
+        for (ProviderType type : types) {
+            mask |= (1L << type.ordinal());
+        }
+        ByteBuffer buf = ByteBuffer.allocate(Long.BYTES);
+        nation.setMeta(NationMeta.GPT_PROVIDER, mask);
+    }
+
+    public GPTProvider getDefaultProvider(GuildDB db, User user, DBNation nation) {
+        Set<ProviderType> types = getProviderTypes(nation);
+        Set<GPTProvider> providers = getProviders(db);
+        // remove if not type
+        if (!types.isEmpty()) {
+            providers.removeIf(provider -> !types.contains(provider.getType()));
+        }
+        if (providers.isEmpty()) {
+            throw new IllegalArgumentException("No providers available. See: TODO CM Ref for set provider types and list providers");
+        }
+        List<String> noPermsMessages = new ArrayList<>();
+        for (GPTProvider provider : providers) {
+            try {
+                if (provider.hasPermission(db, user, true)) {
+                    return provider;
+                }
+            } catch (IllegalArgumentException ignore) {
+                noPermsMessages.add(provider.getId() + ": " + ignore.getMessage());
+            }
+        }
+        throw new IllegalArgumentException("No providers available. Errors:\n- " + String.join("\n- ", noPermsMessages) + "\n\nSee TODO CM Ref (like above)");
     }
 }

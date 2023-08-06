@@ -218,7 +218,7 @@ public class ImageUtil {
     }
 
     public static String getText(String imageUrl) {
-        if (!Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OCR_SPACE_KEY.isEmpty()) {
+        if (!Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OCR.OCR_SPACE_KEY.isEmpty()) {
             try {
                 return getTextAPI(imageUrl);
             } catch (IOException | IllegalArgumentException e) {
@@ -230,7 +230,7 @@ public class ImageUtil {
 
     // Example usage:
     public static String getTextAPI(String imageUrl) throws IOException {
-        String endpoint = "https://api.ocr.space/parse/imageurl?apikey=" + Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OCR_SPACE_KEY + "&isTable=true&OCREngine=2&url=";
+        String endpoint = "https://api.ocr.space/parse/imageurl?apikey=" + Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OCR.OCR_SPACE_KEY + "&isTable=true&OCREngine=2&url=";
 
         String url = endpoint + imageUrl;
         String jsonStr = FileUtil.readStringFromURL(PagePriority.API_OCR.ordinal(), url);

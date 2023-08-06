@@ -1,31 +1,41 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
+import com.google.gson.reflect.TypeToken;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.gpt.imps.IText2Text;
 import link.locutus.discord.gpt.pwembed.GPTProvider;
 import link.locutus.discord.gpt.pwembed.PWGPTHandler;
 import link.locutus.discord.gpt.pwembed.ProviderType;
 import link.locutus.discord.gpt.test.ExtractText;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.User;
+import org.apache.commons.lang3.SerializationUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,7 +54,11 @@ public class GPTCommands {
         this.gpt = gpt;
     }
 
-    @Command
+    @Command(desc = "This command allows you to convert a public Google document (of document type) into a Google spreadsheet of facts.\n" +
+            "The output format will have a single column with a header row labeled \"facts.\" Each fact will be standalone and not order dependent.\n" +
+            "The information is extracted using the user's configured GPT provider.\n" +
+            "When the command is run, the document is added to the queue, and the user will be alerted when the conversion finishes.\n" +
+            "Users have the option to check the progress of the conversion using a command.")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS, root = true)
     public synchronized String generate_factsheet(@Me GuildDB db, @Me IMessageIO io, JSONObject command, String googleDocumentUrl, String document_description, @Switch("s") SpreadSheet sheet, @Switch("f") boolean confirm) throws GeneralSecurityException, IOException {
         // to markdown
@@ -106,7 +120,10 @@ public class GPTCommands {
         return null;
     }
 
-    @Command
+    @Command(desc = "This command provides a list of accessible embedding datasets used for prompting GPT.\n" +
+            "Embedding datasets consist of vectors representing text strings, allowing for comparison between different strings.\n" +
+            "See: <https://github.com/xdnw/locutus/wiki> or <https://politicsandwar.fandom.com/wiki/Politics_and_War_Wiki>\n" +
+            "To view a specific dataset see: TODO CM ref.")
     @RolePermission(value = Roles.AI_COMMAND_ACCESS)
     public String list_documents(@Me GuildDB db, @Default boolean listRoot) {
         Set<EmbeddingSource> sources = gpt.getSources(db.getGuild(), listRoot);
@@ -122,24 +139,19 @@ public class GPTCommands {
         return result.toString();
     }
 
-    @Command
+    @Command(desc = "Delete your custom datasets.\n" +
+            "Default datasets cannot be deleted, and if a custom dataset is deleted, tasks will fall back to using the base datasets.")
     @RolePermission(value = Roles.ADMIN)
-    public String delete_document(@Me GuildDB db, @Me IMessageIO io, @Me JSONObject command, String name, @Switch("f") boolean force) {
-        name = name.replaceAll("[^a-z0-9_]", "").toLowerCase(Locale.ROOT);
-        if (name.isEmpty()) {
-            throw new IllegalArgumentException("Name must be at least 1 character long and alphanumerical");
-        }
-
-        EmbeddingSource source = gpt.getHandler().getEmbeddings().getSource(name, db.getIdLong());
-        if (source == null) {
-            throw new IllegalArgumentException("No document with name `" + name + "` found");
+    public String delete_document(@Me GuildDB db, @Me IMessageIO io, @Me JSONObject command, EmbeddingSource source, @Switch("f") boolean force) {
+        if (source.guild_id != db.getIdLong()) {
+            throw new IllegalArgumentException("Document `" + source.source_name + "` is not owned by this guild");
         }
 
         // confirm overwrite
         if (!force) {
             String title = "Delete document?";
             StringBuilder body = new StringBuilder();
-            body.append("This will delete the document with the name `" + name + "`.\n");
+            body.append("This will delete the document with the name `" + source.source_name + "`.\n");
             int numVectors = gpt.getHandler().getEmbeddings().countVectors(source);
             body.append("Vectors: `").append(numVectors).append("`.\n");
             io.create().confirmation(title, body.toString(), command).send();
@@ -147,10 +159,20 @@ public class GPTCommands {
         }
 
         gpt.getHandler().getEmbeddings().deleteSource(source);
-        return "Deleted document `" + name + "`";
+        return "Deleted document `" + source.source_name + "`";
     }
 
-    @Command
+    @Command(desc = "Save Google spreadsheet contents to a named embedding dataset.\n" +
+            "Requires two columns labeled \"fact\" or \"question\" and \"answer\" for vectors.\n" +
+            "Search finds nearest fact, or searches questions and returns corresponding answers if two columns.")
+    @RolePermission(value = Roles.AI_COMMAND_ACCESS)
+    public String view_document(@Me IMessageIO io, @Me GuildDB db, EmbeddingSource source) {
+        return "TODO";
+    }
+
+    @Command(desc = "Save Google spreadsheet contents to a named embedding dataset.\n" +
+            "Requires two columns labeled \"fact\" or \"question\" and \"answer\" for vectors.\n" +
+            "Search finds nearest fact, or searches questions and returns corresponding answers if two columns.")
     @RolePermission(value = Roles.ADMIN)
     public String save_embeddings(@Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, SpreadSheet sheet, String document_description, @Switch("f") boolean force) {
         document_description = document_description.replaceAll("[^a-z0-9_ ]", "").toLowerCase(Locale.ROOT).trim();
@@ -209,7 +231,8 @@ public class GPTCommands {
         return "Registered " + embeddings.size() + " embeddings for `" + document_description + "` See: TODO CM ref";
     }
 
-    @Command
+    @Command(desc = "List available chat providers, and their information.\n" +
+            "This includes status, rate limits, execution time, model, permissions, options.")
     @RolePermission(Roles.AI_COMMAND_ACCESS)
     public String listChatProviders(PWGPTHandler pwGpt, @Me GuildDB db, @Me User user) {
         Set<GPTProvider> providers = pwGpt.getProviders(db);
@@ -225,29 +248,168 @@ public class GPTCommands {
         return result.toString();
     }
 
-    @Command
+    @Command(desc = "Configure chat provider types used for conversations.\n" +
+            "Settings applies to all new messages.\n" +
+            "Use provider list command to view types.")
     @RolePermission(Roles.AI_COMMAND_ACCESS)
     public String setChatProviders(PWGPTHandler pwGpt, @Me GuildDB db, @Me User user, @Me DBNation nation, Set<ProviderType> providerTypes) {
-        ByteBuffer existingBuf = nation.getMeta(NationMeta.GPT_PROVIDER);
-        Set<ProviderType> existing = new HashSet<>();
-        if (existingBuf != null) {
-            long mask = existingBuf.getLong();
-            for (ProviderType type : ProviderType.values()) {
-                // ordinal
-                if ((mask & (1L << type.ordinal())) != 0) {
-                    existing.add(type);
-                }
-            }
+        Set<ProviderType> existing = pwGpt.getProviderTypes(nation);
+        // if equal, return
+        if (existing.equals(providerTypes)) {
+            return "You are already using these providers";
         }
 
         StringBuilder response = new StringBuilder();
+        for (ProviderType type : ProviderType.values()) {
+            if (providerTypes.contains(type)) {
+                if (!existing.contains(type)) {
+                    response.append("Enabled " + type.name() + "\n");
+                }
+            } else {
+                if (existing.contains(type)) {
+                    response.append("Disabled " + type.name() + "\n");
+                }
+            }
+        }
+        pwGpt.setProviderTypes(nation, providerTypes);
+
+        return response.toString();
+    }
+
+    @Command(desc = "Customize options for a chat provider.\n" +
+            "Defaults apply if not set.\n" +
+            "Configurations for all new messages.\n" +
+            "Refer to API docs for details: <https://platform.openai.com/docs/api-reference/chat/create>")
+    @RolePermission(Roles.AI_COMMAND_ACCESS)
+    public String chatProviderConfigure(PWGPTHandler pwGpt, @Me GuildDB db, @Me User user, @Me DBNation nation, GPTProvider provider, Map<String, String> options) {
+        Map<String, Map<String, String>> config = pwGpt.setAndValidateOptions(nation, provider, options);
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        String json = gson.toJson(config);
+        return "Set options for " + provider.getId() + ".\nCurrent configuration:\n```json\n" + json + "\n```";
+    }
+
+    @Command(desc = "Resume paused chat provider (i.e. manual/error).\n" +
+            "Check provider status with list command.")
+    @RolePermission(value = Roles.ADMIN)
+    public String chatResume(@Me GuildDB db, @Me User user, GPTProvider provider) {
+        if (!provider.checkAdminPermission(db, user, true)) {
+            return "You do not have permission to resume this provider";
+        }
+
+        if (!provider.isPaused()) {
+            return "Provider is not paused:\n```\n" + provider.toString(db, user) + "\n```";
+        }
+        Throwable e = provider.getPauseError();
+        provider.resume();
+        String msg = "Resumed provider: `" + provider.getId() + "`.";
+        if (e != null) {
+            // append previous error information
+            msg += "\nPrevious error:\n```\n" + ExceptionUtils.getStackTrace(e) + "\n```";
+        }
+        return msg;
+    }
+
+    @Command(desc = "Pause a chat provider.\n" +
+            "Other providers will not be paused.\n" +
+            "Halts document conversion using this provider.\n" +
+            "Providers may be resumed.")
+    @RolePermission(value = Roles.ADMIN)
+    public String chatPause(@Me GuildDB db, @Me User user, GPTProvider provider) {
+        if (!provider.checkAdminPermission(db, user, true)) {
+            return "You do not have permission to pause this provider";
+        }
+
+        if (provider.isPaused()) {
+            return "Provider is already paused:\n```\n" + provider.toString(db, user) + "\n```";
+        }
+        provider.pause(new IllegalStateException("Paused by " + user.getAsTag()));
+        return "Paused provider: `" + provider.getId() + "`.";
+    }
+
+    @Command(desc = "Locate a command you are looking for.\n" +
+            "Use keywords for relevant results, or ask a question.")
+    @RolePermission
+    public String find_command2(ValueStore store, PWGPTHandler pwGpt, @Me GuildDB db, @Me User user, String search) {
+        DBNation nation = DiscordUtil.getNation(user);
+        if (nation != null) {
+            GPTProvider provider = pwGpt.getDefaultProvider(db, user, nation);
+            if (provider != null) {
+                int cap = provider.getSizeCap();
+
+                String prompt = """
+                        You will return:
+                        - Full syntax and description of the commands that the user is looking for
+                        - Answers to any questions if you know the answer
+                        - Instruct the user to use `/help command_usage` for more information
+                          
+                        The command list is sorted by text similarity to the query
+                        Do not paraphrase, use exact text
+                        Do not make anything up
+                        
+                        User query
+                        ```
+                        {query}
+                        ```
+                        
+                        Command list
+                        ```
+                        {commands}
+                        ```""";
+
+                prompt = prompt.replace("{query}", search);
+                String promptWithoutPlaceholders = prompt.replaceAll("\\{.*?\\}", "");
+                int promptLength = provider.getSize(promptWithoutPlaceholders);
+
+                int responseLength = 1572;
+                int remaining = cap - responseLength;
+
+                List<String> commandTexts = new ArrayList<>();
+
+                List<ParametricCallable> closest = pwGpt.getClosestCommands(store, search, 100);
+                int i = 0;
+                boolean full = true;
+                for (ParametricCallable command : closest) {
+                    i++;
+                    if (i > 5) full = false;
+                    String fullText = "# " + command.toBasicMarkdown(store, null, "/", false, false);
+                    String shortText;
+                    {
+                        String path = command.getFullPath();
+                        String help = command.help(store).replaceFirst(path, "").trim();
+                        String desc = command.simpleDesc();
+                        shortText = "# " + path;
+                        if (!help.isEmpty()) {
+                            shortText += " " + help;
+                        }
+                        if (desc != null && !desc.isEmpty()) {
+                            shortText += "\n" + desc;
+                        }
+                    }
+
+                    int fullTextLength = provider.getSize(fullText);
+                    int shortTextLength = provider.getSize(shortText);
+                    if (remaining > fullTextLength && full) {
+                        commandTexts.add(fullText);
+                        remaining -= fullTextLength;
+                    } else if (remaining > shortTextLength) {
+                        full = false;
+                        commandTexts.add(shortText);
+                        remaining -= shortTextLength;
+                    } else {
+                        break;
+                    }
+                }
+                prompt = prompt.replace("{commands}", String.join("\n\n", commandTexts));
+
+                Map<String, String> options = pwGpt.getOptions(nation, provider);
+
+                provider.submit(db, user, null, prompt);
+            }
+        }
+        return "TODO";
 
     }
 
-
-    @Command
-    @RolePermission(Roles.AI_COMMAND_ACCESS)
-    public String view_source()
 
 
 }

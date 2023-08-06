@@ -217,6 +217,7 @@ public class CommandManager2 {
         this.commands.registerMethod(new AdminCommands(), List.of("announcement"), "find_invite", "find_invite");
         this.commands.registerMethod(new UnsortedCommands(), List.of("announcement"), "sendInvite", "invite");
 
+
         for (GuildSetting setting : GuildKey.values()) {
             List<String> path = List.of("settings_" + setting.getCategory().name().toLowerCase(Locale.ROOT));
 
@@ -243,15 +244,68 @@ public class CommandManager2 {
 
         this.commands.registerMethod(help, List.of("help"), "command", "command");
 
-//        if (pwgptHandler != null) {
-//            this.commands.registerMethod(help, List.of("help"), "find_command", "find_command");
-//            this.commands.registerMethod(help, List.of("help"), "find_setting", "find_setting");
-//
-//            this.commands.registerMethod(help, List.of("help"), "moderation_check", "moderation_check");
-//            this.commands.registerMethod(help, List.of("help"), "query", "query");
-//
-//            pwgptHandler.registerDefaults();
-//        }
+        if (pwgptHandler != null) {
+            this.commands.registerMethod(help, List.of("help"), "find_command", "find_command");
+            this.commands.registerMethod(help, List.of("help"), "find_setting", "find_setting");
+
+            this.commands.registerMethod(help, List.of("help"), "moderation_check", "moderation_check");
+            this.commands.registerMethod(help, List.of("help"), "query", "query");
+
+            GPTCommands gptCommands = new GPTCommands(pwgptHandler);
+// Method names:
+// generate_factsheet - Converts a google document to a google spreadsheet of facts
+// list_documents - Lists all the embedding datasets used for GPT (only the ones you can access)
+// delete_document - Delete a dataset (that you have permission for)
+// save_embeddings - Save a spreadsheet to an embedding dataset
+// listChatProviders - List the chat providers (like GPT-3.5, Copilot)
+// setChatProviders - Set the chat providers you want to use
+// chatProviderConfigure - Configure your options for a chat provider
+// chatResume - Resume a chat provider (which was paused manually or due to an error)
+// chatPause - Pause a chat provider
+// find_command2 - Find a command for search query
+
+// Final command names
+            //  document to spreadsheet conversion:
+            //
+            /// chat/spreadsheet/convert <arguments>
+            // Embedding Datasets:
+            //
+            ///chat/embedding/list (Lists all accessible embedding datasets used for GPT)
+            ///chat/embedding/view <dataset> (View a specific embedding dataset)
+            //Dataset Management:
+            //
+            ///chat/dataset/delete <dataset> (Delete a custom dataset the user has permission for)
+            //Spreadsheet to Dataset Conversion:
+            //
+            ///chat/spreadsheet/save <arguments> (Save a spreadsheet to an embedding dataset)
+            //Chat Providers:
+            //
+            ///chat/providers/list (List all available chat providers)
+            ///chat/providers/set <provider> (Set the chat provider for new messages)
+            ///chat/providers/configure <provider> <options> (Configure options for a chat provider)
+            ///chat/providers/resume <provider> (Resume a paused chat provider)
+            ///chat/providers/pause <provider> (Pause a chat provider)
+            //Command Search:
+            //
+            ///chat/command/search <query> (Find a command for a search query)
+
+            this.commands.registerMethod(gptCommands, List.of("chat", "spreadsheet"), "generate_factsheet", "convert");
+            this.commands.registerMethod(gptCommands, List.of("chat", "embedding"), "list_documents", "list");
+            this.commands.registerMethod(gptCommands, List.of("chat", "embedding"), "view_document", "view");
+            this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "delete_document", "delete");
+            this.commands.registerMethod(gptCommands, List.of("chat", "spreadsheet"), "save_embeddings", "save");
+            this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "listChatProviders", "list");
+            this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "setChatProviders", "set");
+            this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatProviderConfigure", "configure");
+            this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatResume", "resume");
+            this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatPause", "pause");
+            this.commands.registerMethod(gptCommands, List.of("chat", "search"), "find_command2", "command");
+
+
+
+
+            pwgptHandler.registerDefaults();
+        }
 
 
 
