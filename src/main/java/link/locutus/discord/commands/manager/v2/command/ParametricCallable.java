@@ -436,6 +436,7 @@ public class ParametricCallable implements ICommand {
             return method.invoke(instance == null ? this.object : instance, paramVals);
         } catch (IllegalArgumentException e) {
             e.printStackTrace();
+            System.out.println(e.getMessage());
             throw new CommandUsageException(this, e.getMessage());
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);

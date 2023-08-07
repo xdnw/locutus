@@ -9,6 +9,7 @@ import com.theokanning.openai.service.OpenAiService;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.util.StringMan;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -22,7 +23,7 @@ public class GPTText2Text implements IText2Text{
     private final ModelType model;
 
     public GPTText2Text(String openAiKey, ModelType model) {
-        this(new OpenAiService(openAiKey), model);
+        this(new OpenAiService(openAiKey, Duration.ofSeconds(120)), model);
     }
 
     public GPTText2Text(OpenAiService service, ModelType model) {
@@ -57,6 +58,9 @@ public class GPTText2Text implements IText2Text{
         if (frequencyPenalty != null) {
             builder = builder.frequencyPenalty(frequencyPenalty);
         }
+        if (maxTokens != null) {
+            builder.maxTokens(maxTokens);
+        }
 
         builder = builder.temperature(temperature);
 
@@ -81,7 +85,8 @@ public class GPTText2Text implements IText2Text{
                 "stop_sequences", "\n\n",
                 "top_p", "1",
                 "presence_penalty", "0",
-                "frequency_penalty", "0"
+                "frequency_penalty", "0",
+                "max_tokens", "2000"
         );
     }
 
@@ -90,6 +95,7 @@ public class GPTText2Text implements IText2Text{
     private Double topP = null;
     private Double presencePenalty = null;
     private Double frequencyPenalty = null;
+    private Integer maxTokens = null;
 
     public void setOptions(Map<String, String> options) {
         // reset options
@@ -98,6 +104,7 @@ public class GPTText2Text implements IText2Text{
         topP = null;
         presencePenalty = null;
         frequencyPenalty = null;
+        maxTokens = null;
 
         if (options != null) {
             for (Map.Entry<String, String> entry : options.entrySet()) {
@@ -121,6 +128,10 @@ public class GPTText2Text implements IText2Text{
                     case "frequency_penalty":
                         frequencyPenalty = Double.parseDouble(entry.getValue());
                         checkArgument(frequencyPenalty >= -2 && frequencyPenalty <= 2, "frequency_penalty must be between -2 and 2");
+                        break;
+                    case "max_tokens":
+                        maxTokens = Integer.parseInt(entry.getValue());
+                        checkArgument(maxTokens >= 1 && maxTokens <= getSizeCap(), "max_tokens must be between 1 and " + getSizeCap());
                         break;
                     default:
                         throw new IllegalArgumentException("Unknown option: " + entry.getKey() + ". Valid options are: " + StringMan.getString(getOptions()));

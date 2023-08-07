@@ -1761,48 +1761,10 @@ public class GrantCommands {
     @WhitelistPermission
     @Command
     @RolePermission(value = {Roles.ECON_STAFF, Roles.ECON, Roles.ECON_GRANT_SELF})
-    public String approveEscrowed(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Me User author, DBNation receiver, Map<ResourceType, Double> deposits, Map<ResourceType, Double> escrowed) throws IOException {
-        /*
-        Member: Can only send funds in their deposits
-         */
-
+    public String withdrawEscrowed(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Me User author, DBNation receiver, Map<ResourceType, Double> amount) throws IOException {
         boolean memberCanApprove = db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW) == Boolean.TRUE && (db.getCoalition(Coalition.ENEMIES).isEmpty() || db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW_WARTIME) == Boolean.TRUE);
-        boolean checkDepoValue = !Roles.ECON_STAFF.has(author, db.getGuild());
-        boolean checkDepoResource = db.getOrNull(GuildKey.RESOURCE_CONVERSION) != Boolean.TRUE;
-        boolean allowExtra = Roles.ECON.has(author, db.getGuild());
 
-        double[] expectedDeposits = PnwUtil.resourcesToArray(deposits);
-        double[] actualDeposits;
-        boolean depositsMatch = true;
-        synchronized (OffshoreInstance.BANK_LOCK) {
-            actualDeposits = receiver.getNetDeposits(db, false);
 
-            for (int i = 0; i < actualDeposits.length; i++) {
-                if (actualDeposits[i] < expectedDeposits[i]) {
-                    depositsMatch = false;
-                }
-            }
-
-            if (depositsMatch) {
-
-            }
-        }
-
-        if (!depositsMatch) {
-            String title = "[Error] Outdated. Please try again";
-
-            String body = db.generateEscrowedCard(receiver);
-            body += "\nCommand run by: " + author.getAsMention();
-//            db.getEscrowed()
-            CM.bank.escrow.approve cmd = CM.bank.escrow.approve.cmd.create(receiver.getNationUrl(), PnwUtil.resourcesToString(actualDeposits), PnwUtil.resourcesToString(escrowed));
-
-            String emoji = "Send";
-            channel.create().embed(title, body).commandButton(cmd, emoji).send();
-            return null;
-        }
-        return null;
-
-        // check deposits match provided deposits
     }
 
     @WhitelistPermission

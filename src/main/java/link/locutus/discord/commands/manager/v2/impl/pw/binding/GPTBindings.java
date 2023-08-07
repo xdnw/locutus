@@ -10,8 +10,10 @@ import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.pwembed.GPTProvider;
 import link.locutus.discord.gpt.pwembed.PWGPTHandler;
 import link.locutus.discord.gpt.pwembed.ProviderType;
+import link.locutus.discord.util.PnwUtil;
 import net.dv8tion.jda.api.entities.Guild;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -54,5 +56,11 @@ public class GPTBindings extends BindingHelper {
         }
         String names = handler.getProviders(db).stream().map(f -> f.getId()).collect(Collectors.joining(", "));
         throw new IllegalArgumentException("No provider found with name " + input + "\nOptions: " + names);
+    }
+
+    @Binding
+    public Map<String, String> map(String input) {
+        Map<String, String> map = PnwUtil.parseMap(input);
+        return map;
     }
 }

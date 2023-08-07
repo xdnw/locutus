@@ -842,10 +842,10 @@ public class BankCommands {
     }
 
     @Command(desc = "Queue funds to be sent (with approval) when the receiver's blockade lifts")
-    @RolePermission(Roles.MEMBER)
+    @RolePermission(Roles.ECON)
     @IsAlliance
     @HasOffshore
-    public String escrow(@Me GuildDB db, @Me User author, @Me DBNation me, DBNation receiver, @Arg("Amount to send") Map<ResourceType, Double> resources,
+    public String addEscrow(@Me GuildDB db, @Me User author, @Me DBNation me, DBNation receiver, @Arg("Amount to send") Map<ResourceType, Double> resources,
                          @Arg("Ignore this request if the blockade is not lifted within the timeframe\nRecommended: 5d") @Timediff long expireAfter,
                          @Arg("Send only the funds the receiver has below the amount") @Switch("t") boolean topUp) throws IOException {
         if (me.getNation_id() != receiver.getNation_id() && !Roles.ECON_STAFF.has(author, db.getGuild())) {
@@ -1023,7 +1023,7 @@ public class BankCommands {
     @RolePermission(Roles.MEMBER)
     @IsAlliance
     @HasOffshore
-    public String escrowDisburse(@Me GuildDB db, @Me User author, @Me DBNation me, DBNation receiver, @Arg("Number of days to disburse for") @Range(min=1, max=10) int days, @Timediff long expireAfter) throws IOException {
+    public String allowanceConsumption(@Me GuildDB db, @Me User author, @Me DBNation me, DBNation receiver, @Arg("Number of days to disburse for") @Range(min=1, max=10) int days, @Timediff long expireAfter) throws IOException {
         if (days <= 0) return "Days must be positive";
         if (me.getNation_id() != receiver.getNation_id() && !Roles.ECON_STAFF.has(author, db.getGuild())) {
             return "You do not have permisssion to disburse to other nations";

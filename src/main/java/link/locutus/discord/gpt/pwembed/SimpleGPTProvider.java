@@ -1,5 +1,6 @@
 package link.locutus.discord.gpt.pwembed;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -26,7 +27,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class SimpleGPTProvider extends GPTProvider {
@@ -126,12 +129,18 @@ public class SimpleGPTProvider extends GPTProvider {
 
     private int getLatestExecutionTime() {
         synchronized (executionTimes) {
+            if (executionTimes.isEmpty()) {
+                return 0;
+            }
             return executionTimes.get(executionTimes.size() - 1);
         }
     }
 
     private int getLatestExecutionDelay() {
         synchronized (executionDelays) {
+            if (executionDelays.isEmpty()) {
+                return 0;
+            }
             return executionDelays.get(executionDelays.size() - 1);
         }
     }
@@ -167,7 +176,7 @@ public class SimpleGPTProvider extends GPTProvider {
         result.append("\n");
 
         if (paused) {
-            result.append("Status: `Paused` (Use: TODO CM ref to resume)");
+            result.append("Status: `Paused` (Use: " + CM.chat.providers.resume.cmd.toSlashMention() + ")");
             if (pauseError != null) {
                 result.append(" (`").append(pauseError.getMessage()).append("`)");
             }
@@ -212,36 +221,48 @@ public class SimpleGPTProvider extends GPTProvider {
         return result.toString();
     }
 
+    private final Map<Integer, Object> userLocks = new Int2ObjectOpenHashMap<>();
+
     @Override
-    public Future<String> submit(GuildDB db, User user, Map<String, String> options, String input) {
+    public Future<String> submit(GuildDB db, User user, DBNation nation, Map<String, String> options, String input) {
         if (paused) {
             throw new IllegalStateException("Executor is paused, cannot submit new task." + getPauseStr());
         }
-        if (!lock.tryLock()) {
-            throw new IllegalStateException("Executor lock is not available, cannot submit new task." + getPauseStr());
+        // check if task is running via userLocks
+        synchronized (userLocks) {
+            Object lock = userLocks.get(nation.getId());
+            if (lock != null) {
+                throw new IllegalStateException("You already have a task running, please wait for it to finish.");
+            }
+            userLocks.put(nation.getId(), new Object());
         }
-
-        long start = System.currentTimeMillis();
-
-        List<ModerationResult> modResult = moderator.moderate(input);
-        GPTUtil.checkThrowModeration(modResult, input);
-
-        logger.info("GPT-{}: {} ({}) - {}", type, db.getId(), user.getName(), input);
-
+        addUse(db, nation);
         try {
+            long start = System.currentTimeMillis();
+
+            List<ModerationResult> modResult = moderator.moderate(input);
+            GPTUtil.checkThrowModeration(modResult, input);
+
+            System.out.println("Moderation: " + modResult);
+            logger.info("GPT-{}: {} ({}) - {}", type, db.getId(), user.getName(), input);
+
             return executor.submit(() -> {
                 try {
                     long delay = System.currentTimeMillis() - start;
-                    lock.lock();
-                    while (paused) {
-                        condition.await();
+                    try {
+                        lock.lock();
+                        while (paused) {
+                            condition.await();
+                        }
+                    } finally {
+                        lock.unlock();
                     }
                     long start2 = System.currentTimeMillis();
                     IText2Text t2 = getText2Text();
                     String result = t2.generate(options, input);
                     long execTime = System.currentTimeMillis() - start2;
                     addExecutionTime((int) execTime);
-                    addExecutionDelay((int) (execTime - delay));
+                    addExecutionDelay((int) (delay));
                     return result;
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -250,11 +271,15 @@ public class SimpleGPTProvider extends GPTProvider {
                     pause(e);
                     throw e;
                 } finally {
-                    lock.unlock();
+                    synchronized (userLocks) {
+                        userLocks.remove(nation.getId());
+                    }
                 }
             });
         } catch (Throwable t) {
-            lock.unlock();
+            synchronized (userLocks) {
+                userLocks.remove(nation.getId());
+            }
             throw t;
         }
     }

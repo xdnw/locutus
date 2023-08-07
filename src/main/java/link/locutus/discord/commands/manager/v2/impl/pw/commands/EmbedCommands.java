@@ -109,7 +109,7 @@ Click  to find unprotected nations (be careful with this)
 *ping a gov member if you'd like any help/advice
 Results are sorted best to last in <#995168236213633024>" "<#995168236213633024> ~!raid 10" "<#995168236213633024> ~!raid * 25" "<#995168236213633024> ~!raid * 25 -beige<24" "<#995168236213633024> ~!raid #tank%<20,#soldier%<40,* 25 -a -w" "<#995168236213633024> ~!raid #tank%<20,#soldier%<40,* 25 -2d -w" "<#995168236213633024> ~!raid #def>0,#strength<1,* 25 -a -w" "<#995168236213633024> ~$unprotected * -a -c 90"
      */
-    @Command(desc="Raid finder discord embed template")
+    @Command(desc="Makes a raid panel, which is a discord embed with buttons for different options for finding raid targets")
     @RolePermission(Roles.ADMIN)
     public void raid(@Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel) {
         Long channelId = outputChannel == null ? null : outputChannel.getIdLong();

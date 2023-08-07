@@ -50,6 +50,7 @@ import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
+import rocker.guild.ia.message;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -429,10 +430,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public String generateEscrowedCard(DBNation nation) throws IOException {
-        double[] disburse = getEscrowed(nation, true, false, false);
-        double[] topUp = getEscrowed(nation, false, true, false);
-        double[] extra = getEscrowed(nation, false, false, true);
-        double[] escrowed = getEscrowed(nation, false, false, true);
+        double[] total = getEscrowed(nation);
+        if (total == null || ResourceType.isZero(total)) {
+            return "No escrowed resources found. See: TODO CM Ref";
+        }
 
         double[] deposits = nation.getNetDeposits(this, false);
 
@@ -478,89 +479,41 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         body.append("**Deposits:**\n`" + PnwUtil.resourcesToString(deposits) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(deposits)) + "\n");
         body.append(StringMan.repeat("\u2501", 8) + "\n");
         int typesEscrowed = 0;
-        if (disburse != null) {
-            typesEscrowed++;
-            ByteBuffer escrowedDisburseBuf = getNationMeta(nation.getNation_id(), NationMeta.ESCROWED_DISBURSE_DAYS);
-            int days = escrowedDisburseBuf.get() & 0xFF;
-            body.append("**Disburse " + days + "d:**\n`" + PnwUtil.resourcesToString(disburse) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(disburse)) + "\n");
-        }
-        if (topUp != null) {
-            typesEscrowed++;
-            body.append("**Top Up:**\n`" + PnwUtil.resourcesToString(topUp) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(topUp)) + "\n");
-        }
         if (escrowed != null) {
             typesEscrowed++;
             body.append("**Additional:**\n`" + PnwUtil.resourcesToString(extra) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(extra)) + "\n");
         }
-        if (typesEscrowed > 1 || true) {
-            body.append(StringMan.repeat("\u2501", 8) + "\n");
-            body.append("**Total**:\n");
-            for (int i = 0; i < escrowed.length; i++) {
-                if (escrowed[i] == 0) continue;
-                body.append(ResourceType.values[i].name().toLowerCase() + "=");
-                boolean underline = escrowed[i] < deposits[i];
-                if (underline) body.append("__");
-                body.append(MathMan.format(escrowed[i]));
-                if (underline) body.append("__");
-                body.append("\n");
-            }
-            double totalValue = PnwUtil.convertedTotal(topUp);
-            body.append("Total Worth: $" + MathMan.format(totalValue));
-            if (totalValue + 1> PnwUtil.convertedTotal(deposits)) {
-                body.append(" (insufficient deposits)");
-            }
-
-            body.append("**Total:**\n`" + PnwUtil.resourcesToString(escrowed) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(escrowed)) + "\n");
+        body.append(StringMan.repeat("\u2501", 8) + "\n");
+        body.append("**Total**:\n");
+        for (int i = 0; i < escrowed.length; i++) {
+            if (escrowed[i] == 0) continue;
+            body.append(ResourceType.values[i].name().toLowerCase() + "=");
+            boolean underline = escrowed[i] < deposits[i];
+            if (underline) body.append("__");
+            body.append(MathMan.format(escrowed[i]));
+            if (underline) body.append("__");
+            body.append("\n");
         }
+        double totalValue = PnwUtil.convertedTotal(topUp);
+        body.append("Total Worth: $" + MathMan.format(totalValue));
+        if (totalValue + 1> PnwUtil.convertedTotal(deposits)) {
+            body.append(" (insufficient deposits)");
+        }
+
+        body.append("**Total:**\n`" + PnwUtil.resourcesToString(escrowed) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(escrowed)) + "\n");
         body.append("\nPress `Send` to confirm transfer");
         return body.toString();
     }
 
     public double[] getEscrowed(DBNation nation) throws IOException {
-        return getEscrowed(nation, true, true, true);
-    }
-
-    public double[] getEscrowed(DBNation nation, boolean disburse, boolean topUp, boolean extra) throws IOException {
         ByteBuffer escrowedBuf = getNationMeta(nation.getNation_id(), NationMeta.ESCROWED);
-        ByteBuffer escrowedTopBuf = getNationMeta(nation.getNation_id(), NationMeta.ESCROWED_UP_TO);
-        ByteBuffer escrowedDisburseBuf = getNationMeta(nation.getNation_id(), NationMeta.ESCROWED_DISBURSE_DAYS);
 
-        if (escrowedBuf == null && escrowedTopBuf == null && escrowedDisburseBuf == null) {
-            return null;
+        if (escrowedBuf == null) {
+            return ResourceType.getBuffer();
         }
 
         long now = System.currentTimeMillis();
         double[] toSend = ResourceType.getBuffer();
-        Map<ResourceType, Double> stockpile = null;
-        if (escrowedDisburseBuf != null) {
-            long expire = escrowedDisburseBuf.getLong();
-            if (expire > now) {
-                int days = escrowedDisburseBuf.get() & 0xFF;
-                if (stockpile == null) stockpile = nation.getStockpile();
-                Map<ResourceType, Double> resources = nation.getResourcesNeeded(stockpile, days, false);
-                for (Map.Entry<ResourceType, Double> entry : resources.entrySet()) {
-                    toSend[entry.getKey().ordinal()] += entry.getValue();
-                }
-            } else {
-                deleteMeta(nation.getNation_id(), NationMeta.ESCROWED_DISBURSE_DAYS);
-            }
-        }
-        if (escrowedTopBuf != null) {
-            long expire = escrowedTopBuf.getLong();
-            if (expire > now) {
-                double[] resources = ResourceType.read(escrowedBuf, null);
-                if (stockpile == null) stockpile = nation.getStockpile();
-                for (ResourceType type : ResourceType.values) {
-                    double amt = resources[type.ordinal()];
-                    amt = Math.min(amt, stockpile.getOrDefault(type, 0d));
-                    if (amt > 0) {
-                        toSend[type.ordinal()] = amt;
-                    }
-                }
-            } else {
-                deleteMeta(nation.getNation_id(), NationMeta.ESCROWED_UP_TO);
-            }
-        }
         if (escrowedBuf != null) {
             long expire = escrowedBuf.getLong();
             if (expire > now) {
@@ -877,7 +830,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     @Override
     public void createTables() {
         {
-
             StringBuilder query = new StringBuilder("CREATE TABLE IF NOT EXISTS `INTERNAL_TRANSACTIONS2` (" +
                     "`tx_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
                     "tx_datetime BIGINT NOT NULL, " +
@@ -1003,8 +955,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 e.printStackTrace();
             }
         };
-        { // grants
-
+        {
+            // Escroew
+            String create = "";
         }
 
 

@@ -217,7 +217,7 @@ public class GuildKey {
             if (apiKey == null || apiKey.isEmpty()) {
                 throw new IllegalArgumentException("Please provide an API key");
             }
-            OpenAiService service = new OpenAiService(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, Duration.ofSeconds(50));
+            OpenAiService service = new OpenAiService(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, Duration.ofSeconds(120));
             GPTModerator moderator = new GPTModerator(service);
             List<ModerationResult> result = moderator.moderate("Hello World");
             if (result.size() == 0) {

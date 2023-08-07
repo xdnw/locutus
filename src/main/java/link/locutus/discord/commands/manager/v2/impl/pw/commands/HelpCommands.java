@@ -7,6 +7,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -80,7 +81,21 @@ public class HelpCommands {
         if (body.length() > 4096) {
             return "#" + title + "\n" + body;
         }
-        io.create().embed(title, body).send();
+
+        IMessageBuilder embed = io.create().embed(title, body);
+
+        PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+        if (gpt != null && command instanceof ParametricCallable pc) {
+            List<ParametricCallable> closest = gpt.getClosestCommands(store, pc, 6);
+            for (ParametricCallable callable : closest) {
+                if (callable.getMethod().equals(pc.getMethod())) continue;
+                embed = embed.commandButton(CommandBehavior.DELETE_MESSAGE,
+                    CM.help.command.cmd.create(callable.getFullPath()),
+                    callable.getFullPath());
+            }
+        }
+
+        embed.send();
         return null;
     }
 
@@ -144,6 +159,7 @@ public class HelpCommands {
                 msg.append("> " + command.simpleDesc().replaceAll("\n", "\n > "));
                 msg.append("\n");
             }
+            msg.send();
         } catch (IllegalArgumentException e) {
             io.send(e.getMessage());
         } catch (Throwable e) {

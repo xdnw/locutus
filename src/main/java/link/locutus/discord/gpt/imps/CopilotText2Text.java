@@ -32,7 +32,7 @@ public class CopilotText2Text implements IText2Text {
         this.tokensPath = tokensPath;
         HttpClient httpClient = HttpClient.newBuilder()
 //                .authenticator()
-                .connectTimeout(Duration.ofSeconds(50))
+                .connectTimeout(Duration.ofSeconds(120))
                 .build();
         HttpClientWrapper wrapper = new HttpClientWrapper(httpClient);
 
@@ -57,19 +57,22 @@ public class CopilotText2Text implements IText2Text {
         return Map.of(
                 "temperature", "0.7",
                 "stop_sequences", "\n\n",
-                "top_p", "1"
+                "top_p", "1",
+                "max_tokens", "2000"
         );
     }
 
     private float temperature = 0.7F;
     private String[] stopChars = new String[]{"\n\n"};
     private float top_p = 1F;
+    private Integer maxTokens = 2000;
 
     public void setOptions(Map<String, String> options) {
         // reset options
         temperature = 0.7F;
         stopChars = new String[]{"\n\n"};
         top_p = 1F;
+        maxTokens = 2000;
 
         if (options != null) {
             for (Map.Entry<String, String> entry : options.entrySet()) {
@@ -84,6 +87,9 @@ public class CopilotText2Text implements IText2Text {
                     case "top_p":
                         top_p = Float.parseFloat(entry.getValue());
                         break;
+                    case "max_tokens":
+                        maxTokens = Integer.parseInt(entry.getValue());
+                        break;
                     default:
                         throw new IllegalArgumentException("Unknown option: " + entry.getKey() + ". Valid options are: " + StringMan.getString(getOptions()));
                 }
@@ -96,7 +102,7 @@ public class CopilotText2Text implements IText2Text {
         setOptions(options);
         CopilotParameters parameters = new CopilotParameters();
 
-        parameters.MaxTokens = 2000;
+        parameters.MaxTokens = maxTokens;
         parameters.Temperature = temperature;
         parameters.Stop = stopChars;
         parameters.TopP = top_p;

@@ -23,12 +23,14 @@ import java.util.List;
 import java.util.Map;
 
 public class ProcessText2Text implements IText2Text{
-    private final File file;
+    private final String scriptPath;
     private final File venvExe;
+    private final File workingDirectory;
 
-    public ProcessText2Text(File venvExe, File file) {
+    public ProcessText2Text(File venvExe, String scriptPath, File workingDirectory) {
         this.venvExe = venvExe;
-        this.file = file;
+        this.scriptPath = scriptPath;
+        this.workingDirectory = workingDirectory;
     }
 
     @Override
@@ -42,7 +44,7 @@ public class ProcessText2Text implements IText2Text{
         String encodedString = Base64.getEncoder().encodeToString(text.getBytes());
         List<String> lines = new ArrayList<>();
         String command = venvExe == null ? "python" : venvExe.getAbsolutePath();
-        ProcessBuilder pb = new ProcessBuilder(command, file.getAbsolutePath(), encodedString).redirectErrorStream(true);
+        ProcessBuilder pb = new ProcessBuilder(command, "-m", scriptPath, encodedString).redirectErrorStream(true).directory(workingDirectory);
         try {
             Process p = pb.start();
             BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
@@ -56,7 +58,14 @@ public class ProcessText2Text implements IText2Text{
         String result = StringMan.join(lines, "\n");
         if (result.contains("result:")) {
             result = result.substring(result.indexOf("result:") + 7);
-            result = result.replace("\\n", "\n");
+            result = result.replace("\\n", "\n").trim();
+            // remove starting b' and ending '
+            if (result.startsWith("b'")) {
+                result = result.substring(2);
+            }
+            if (result.endsWith("'")) {
+                result = result.substring(0, result.length() - 1);
+            }
             return result;
         } else {
             System.err.println(result);

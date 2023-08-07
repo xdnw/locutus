@@ -453,7 +453,7 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
                 float[] vector = vectors.get(hash);
                 double diff = ArrayUtil.cosineSimilarity(vector, compareTo);
 
-                if (largest.size() < top || largest.poll().distance < diff) {
+                if (largest.size() < top || largest.peek().distance < diff) {
                     if (largest.size() == top)
                         largest.remove();
                     EmbeddingInfo result = new EmbeddingInfo(hash, vector, source, diff);

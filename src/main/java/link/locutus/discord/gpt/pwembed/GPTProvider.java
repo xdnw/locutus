@@ -1,6 +1,7 @@
 package link.locutus.discord.gpt.pwembed;
 
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.gpt.ISummarizer;
 import link.locutus.discord.gpt.imps.IText2Text;
 import net.dv8tion.jda.api.entities.User;
@@ -28,7 +29,7 @@ public abstract class GPTProvider implements Closeable {
     public abstract void setUsageLimits(int turnLimit, int dayLimit, int guildTurnLimit, int guildDayLimit);
 
     public abstract boolean hasPermission(GuildDB db, User user, boolean checkLimits);
-    public abstract Future<String> submit(GuildDB db, User user, Map<String, String> options, String input);
+    public abstract Future<String> submit(GuildDB db, User user, DBNation nation, Map<String, String> options, String input);
 
     public String getId() {
         return text2Text.getId();

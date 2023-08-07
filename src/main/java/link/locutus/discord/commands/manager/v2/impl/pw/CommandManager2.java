@@ -247,13 +247,13 @@ public class CommandManager2 {
         this.commands.registerMethod(help, List.of("help"), "command", "command");
 
         if (pwgptHandler != null) {
-            this.commands.registerMethod(help, List.of("help"), "find_command", "find_command");
+//            this.commands.registerMethod(help, List.of("help"), "find_command", "find_command");
             this.commands.registerMethod(help, List.of("help"), "find_setting", "find_setting");
 
             this.commands.registerMethod(help, List.of("help"), "moderation_check", "moderation_check");
             this.commands.registerMethod(help, List.of("help"), "query", "query");
 
-            GPTCommands gptCommands = new GPTCommands(pwgptHandler);
+            GPTCommands gptCommands = new GPTCommands();
 
             this.commands.registerMethod(gptCommands, List.of("chat", "spreadsheet"), "generate_factsheet", "convert");
             this.commands.registerMethod(gptCommands, List.of("chat", "embedding"), "list_documents", "list");
@@ -265,47 +265,12 @@ public class CommandManager2 {
             this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatProviderConfigure", "configure");
             this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatResume", "resume");
             this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatPause", "pause");
-            this.commands.registerMethod(gptCommands, List.of("chat", "search"), "find_command2", "command");
+
+            this.commands.registerMethod(gptCommands, List.of("help"), "find_command2", "find_command");
 
             pwgptHandler.registerDefaults();
         }
 
-
-
-//        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "intel", "intel");
-
-//        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "spyEnemy", "spy_enemy");
-
-//        this.commands.registerSubCommands(new BuildCommands(), "build");
-//        this.commands.registerMethod(new StatCommands(), List.of("stats_other"), "radiationByTurn", null);
-//
-//        this.commands.registerMethod(new WarCommands(), List.of("sheets_milcom"), "convertTKRSpySheet", "convertTKRSpySheet");
-//        this.commands.registerMethod(new WarCommands(), List.of("spy", "sheet"), "convertTKRSpySheet", "convertTKR");
-//
-//        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncLootFromAttacks", "syncLootFromAttacks");
-//        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncTreasures", "treasures");
-//        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncDiscordWithLocutus", "discord");
-//
-//        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertAbsolute", "price");
-//        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertMistrade", "mistrade");
-//        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertDisparity", "margin");
-//        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertNoOffer", "no_offers");
-//        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertUndercut", "undercut");
-//        this.commands.registerMethod(new AdminCommands(), List.of("admin"), "removeInvalidOffshoring", "removeinvalidoffshoring");
-//        this.commands.registerMethod(new AdminCommands(), List.of("admin"), "leaveServer", "leaveServer");
-//        this.commands.registerMethod(new UtilityCommands(), List.of("color"), "calculateColorRevenue", "revenue");
-//
-//        this.commands.registerMethod(new UnsortedCommands(), List.of("sheets_econ"), "taxRevenueSheet", "taxRevenue");
-//
-//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "sellOffer", "sell");
-//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "buyOffer", "buy");
-//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "deleteOffer", "delete");
-//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "offerInfo", "info");
-//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "updateOffer", "update");
-//
-//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "buyList", "buy_list");
-//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "sellList", "sell_list");
-//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "myOffers", "my_offers");
 
         StringBuilder output = new StringBuilder();
         this.commands.generatePojo("", output, 0);
@@ -516,6 +481,7 @@ public class CommandManager2 {
                         } catch (RuntimeException e) {
                             Throwable e2 = e;
                             while (e2.getCause() != null && e2.getCause() != e2) e2 = e2.getCause();
+                            e2.printStackTrace();
                             throw new CommandUsageException(callable, e2.getMessage());
                         }
                     });

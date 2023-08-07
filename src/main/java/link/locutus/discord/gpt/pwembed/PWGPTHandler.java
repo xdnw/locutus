@@ -8,6 +8,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.knuddels.jtokkit.api.ModelType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
@@ -338,9 +339,6 @@ public class PWGPTHandler {
         Set<Method> methods = new HashSet<>();
         Set<ParametricCallable> registerCommands = new HashSet<>();
         for (ParametricCallable callable : cmdManager.getCommands().getParametricCallables(f -> true)) {
-            if (callable.getPrimaryCommandId().toLowerCase().contains("nationsheet")) {
-                System.out.println("Found nationsheet: " + (callable.simpleDesc().isEmpty()) + " | " + methods.contains(callable.getMethod()));
-            }
             if (callable.simpleDesc().isEmpty()) continue;
             if (methods.contains(callable.getMethod())) continue;
             methods.add(callable.getMethod());
@@ -373,6 +371,12 @@ public class PWGPTHandler {
         Set<NationAttribute> metrics = new HashSet<>(cmdManager.getNationPlaceholders().getMetrics(cmdManager.getStore()));
         NationAttributeAdapter adapter = new NationAttributeAdapter(source, metrics);
         adapter.createEmbeddings(handler);
+    }
+
+    public List<ParametricCallable> getClosestCommands(ValueStore store, ParametricCallable command, int top) {
+        CommandEmbeddingAdapter adapter = (CommandEmbeddingAdapter) adapterMap2.get(sourceMap.get(EmbeddingType.Command));
+        String text = adapter.getDescription(command);
+        return getClosestCommands(store, text, top);
     }
 
     public List<ParametricCallable> getClosestCommands(ValueStore store, String input, int top) {
@@ -458,7 +462,7 @@ public class PWGPTHandler {
             providers.removeIf(provider -> !types.contains(provider.getType()));
         }
         if (providers.isEmpty()) {
-            throw new IllegalArgumentException("No providers available. See: TODO CM Ref for set provider types and list providers");
+            throw new IllegalArgumentException("No providers available. See: " + CM.chat.providers.list.cmd.toSlashMention() + " and " + CM.chat.providers.set.cmd.toSlashMention());
         }
         List<String> noPermsMessages = new ArrayList<>();
         for (GPTProvider provider : providers) {
@@ -470,6 +474,6 @@ public class PWGPTHandler {
                 noPermsMessages.add(provider.getId() + ": " + ignore.getMessage());
             }
         }
-        throw new IllegalArgumentException("No providers available. Errors:\n- " + String.join("\n- ", noPermsMessages) + "\n\nSee TODO CM Ref (like above)");
+        throw new IllegalArgumentException("No providers available. Errors:\n- " + String.join("\n- ", noPermsMessages) + "\n\nSee " +  CM.chat.providers.list.cmd.toSlashMention() + " and " + CM.chat.providers.set.cmd.toSlashMention());
     }
 }

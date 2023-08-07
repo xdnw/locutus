@@ -26,7 +26,7 @@ public class CommandEmbeddingAdapter extends PWAdapter<ParametricCallable> {
 
     @Override
     public String getDescription(ParametricCallable obj) {
-        return getType() + ": " + obj.simpleDesc();
+        return getType() + ": " + obj.getFullPath() + " - " + obj.simpleDesc();
     }
 
     @Override

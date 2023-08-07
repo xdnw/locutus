@@ -17,6 +17,7 @@ import link.locutus.discord.gpt.imps.AdaEmbedding;
 import link.locutus.discord.gpt.imps.CopilotText2Text;
 import link.locutus.discord.gpt.imps.GPTText2Text;
 import link.locutus.discord.gpt.imps.IText2Text;
+import link.locutus.discord.gpt.imps.MiniEmbedding;
 import link.locutus.discord.gpt.imps.ProcessText2Text;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 
@@ -47,28 +48,29 @@ public class GptHandler {
 
     public GptHandler() throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
         this.registry = Encodings.newDefaultEncodingRegistry();
-        this.service = new OpenAiService(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, Duration.ofSeconds(50));
+        this.service = new OpenAiService(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, Duration.ofSeconds(120));
 
         this.chatEncoder = registry.getEncodingForModel(ModelType.GPT_3_5_TURBO);
 
         this.platform = Platform.detectPlatform("pytorch");
 
         this.moderator = new GPTModerator(service);
-        this.embeddingDatabase = new AdaEmbedding(registry, service);
+//        this.embeddingDatabase = new AdaEmbedding(registry, service);
         // TODO change ^ that to mini
-//        this.embeddingDatabase = new MiniEmbedding(platform);
+        this.embeddingDatabase = new MiniEmbedding(platform);
 
-        File gpt4freePath = new File("../gpt4free/my_project/gpt3_5_turbo.py");
+        File scriptPath = new File("../gpt4free/my_project/gpt3_5_turbo.py");
         File venvExe = new File("../gpt4free/venv/Scripts/python.exe");
+        File workingDirectory = new File("../gpt4free");
         // ensure files exist
-        if (!gpt4freePath.exists()) {
-            throw new RuntimeException("gpt4free not found: " + gpt4freePath.getAbsolutePath());
+        if (!scriptPath.exists()) {
+            throw new RuntimeException("gpt4free not found: " + scriptPath.getAbsolutePath());
         }
         if (!venvExe.exists()) {
             throw new RuntimeException("venv not found: " + venvExe.getAbsolutePath());
         }
 //        this.summarizer = new ProcessSummarizer(venvExe, gpt4freePath, ModelType.GPT_3_5_TURBO, 8192);
-        this.processT2 = new ProcessText2Text(venvExe, gpt4freePath);
+        this.processT2 = new ProcessText2Text(venvExe, "my_project.gpt3_5_turbo", workingDirectory);
     }
 
     public IModerator getModerator() {
