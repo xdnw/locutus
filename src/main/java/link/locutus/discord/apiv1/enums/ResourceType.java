@@ -148,6 +148,15 @@ public enum ResourceType {
         return true;
     }
 
+    public static boolean equals(double[] rss1, double[] rss2) {
+        for (ResourceType type : ResourceType.values) {
+            if (Math.round(100 * (rss1[type.ordinal()] - rss2[type.ordinal()])) != 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public double[] toArray(double amt) {
         double[] result = getBuffer();
         result[ordinal()] = amt;

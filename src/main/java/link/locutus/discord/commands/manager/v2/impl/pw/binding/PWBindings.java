@@ -857,7 +857,7 @@ public class PWBindings extends BindingHelper {
     @Me
     public OffshoreInstance offshore(@Me GuildDB db) {
         OffshoreInstance offshore = db.getOffshore();
-        if (offshore == null) throw new IllegalArgumentException("No offshore is set");
+        if (offshore == null) throw new IllegalArgumentException("No offshore is set. See: " + CM.offshore.add.cmd.toSlashMention());
         return offshore;
     }
 

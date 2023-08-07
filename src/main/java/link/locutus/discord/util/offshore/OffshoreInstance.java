@@ -67,6 +67,8 @@ import java.util.stream.Collectors;
 
 public class OffshoreInstance {
     public static final Object BANK_LOCK = new Object();
+    public static final ConcurrentHashMap<Integer, Object> NATION_LOCKS = new ConcurrentHashMap<>();
+
     public static final boolean DISABLE_TRANSFERS = false;
     private final int allianceId;
 

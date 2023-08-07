@@ -53,6 +53,8 @@ import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import rocker.guild.ia.message;
 
 import javax.annotation.Nullable;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
@@ -77,6 +79,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -478,29 +481,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
         body.append("**Deposits:**\n`" + PnwUtil.resourcesToString(deposits) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(deposits)) + "\n");
         body.append(StringMan.repeat("\u2501", 8) + "\n");
-        int typesEscrowed = 0;
-        if (escrowed != null) {
-            typesEscrowed++;
-            body.append("**Additional:**\n`" + PnwUtil.resourcesToString(extra) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(extra)) + "\n");
-        }
-        body.append(StringMan.repeat("\u2501", 8) + "\n");
-        body.append("**Total**:\n");
-        for (int i = 0; i < escrowed.length; i++) {
-            if (escrowed[i] == 0) continue;
-            body.append(ResourceType.values[i].name().toLowerCase() + "=");
-            boolean underline = escrowed[i] < deposits[i];
-            if (underline) body.append("__");
-            body.append(MathMan.format(escrowed[i]));
-            if (underline) body.append("__");
-            body.append("\n");
-        }
-        double totalValue = PnwUtil.convertedTotal(topUp);
-        body.append("Total Worth: $" + MathMan.format(totalValue));
-        if (totalValue + 1> PnwUtil.convertedTotal(deposits)) {
-            body.append(" (insufficient deposits)");
-        }
 
-        body.append("**Total:**\n`" + PnwUtil.resourcesToString(escrowed) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(escrowed)) + "\n");
+        body.append("**Total:**\n`" + PnwUtil.resourcesToString(total) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(total)) + "\n");
         body.append("\nPress `Send` to confirm transfer");
         return body.toString();
     }
@@ -2508,6 +2490,32 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public Throwable getWarCatError() {
         return warCatError;
+    }
+
+    public void setEscrowed(DBNation nation, double[] amount, long expire) {
+        Object lock = OffshoreInstance.NATION_LOCKS.computeIfAbsent(nation.getId(), k -> new Object());
+        synchronized (lock) {
+            if (amount == null) {
+                nation.deleteMeta(NationMeta.ESCROWED);
+            } else {
+                try {
+                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    DataOutputStream dout = new DataOutputStream(out);
+                    dout.writeLong(expire);
+                    for (ResourceType type : ResourceType.values) {
+                        double amt = amount[type.ordinal()];
+                        dout.writeDouble(amt);
+                    }
+                    NationMeta meta = NationMeta.ESCROWED;
+                    setMeta(nation.getNation_id(), meta, out.toByteArray());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+
+        if (amount == null)
+
     }
 
     public enum AutoNickOption {

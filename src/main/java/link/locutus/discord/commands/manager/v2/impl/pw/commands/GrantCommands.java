@@ -7,6 +7,7 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -1760,10 +1761,107 @@ public class GrantCommands {
 
     @WhitelistPermission
     @Command
+    @HasOffshore
     @RolePermission(value = {Roles.ECON_STAFF, Roles.ECON, Roles.ECON_GRANT_SELF})
-    public String withdrawEscrowed(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Me User author, DBNation receiver, Map<ResourceType, Double> amount) throws IOException {
-        boolean memberCanApprove = db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW) == Boolean.TRUE && (db.getCoalition(Coalition.ENEMIES).isEmpty() || db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW_WARTIME) == Boolean.TRUE);
+    public String withdrawEscrowed(OffshoreInstance offshore, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Me User author, DBNation receiver, Map<ResourceType, Double> amount) throws IOException {
+        // Require ECON_STAFF if receiver is not me
+        if (receiver.getId() != me.getId()) {
+            if (!Roles.ECON_STAFF.has(author, db.getGuild())) {
+                return "You cannot withdraw escrowed resources for other nations. Missing role: " + Roles.ECON_STAFF.toDiscordRoleNameElseInstructions(db.getGuild());
+            }
+        }
+        // Ensure none of amount is negative
+        double[] amtArr = PnwUtil.resourcesToArray(amount);
+        for (ResourceType type : ResourceType.values) {
+            if (amtArr[type.ordinal()] < 0) {
+                return "Cannot withdraw negative amount of " + type.getName() + "=" + MathMan.format(amtArr[type.ordinal()]);
+            }
+        }
 
+
+        if (TimeUtil.checkTurnChange()) {
+            return "Cannot withdraw escrowed resources close to turn change";
+        }
+        // get a lock for nation
+        final Object lock = OffshoreInstance.NATION_LOCKS.computeIfAbsent(receiver.getId(), f -> new Object());
+        synchronized (lock) {
+            double[] escrowed = db.getEscrowed(receiver);
+            if (escrowed == null || ResourceType.isZero(escrowed)) {
+                return "No escrowed resources found for " + receiver.getNation();
+            }
+            // Ensure transfer amount is <= escrowed
+            for (ResourceType type : ResourceType.values) {
+                if (Math.round(amtArr[type.ordinal()] * 100) > Math.round(escrowed[type.ordinal()] * 100)) {
+                    return "Cannot withdraw more than escrowed for " + type.getName() + "=" + MathMan.format(amtArr[type.ordinal()]) + " > " + MathMan.format(escrowed[type.ordinal()]) + "\n" +
+                            "See: " + CM.deposits.check.cmd.toSlashMention();
+                }
+            }
+            //  - Deduct from escrowed
+            double[] newEscrowed = new double[ResourceType.values.length];
+            boolean hasEscrowed = false;
+            for (ResourceType type : ResourceType.values) {
+                long newAmtCents = Math.round((escrowed[type.ordinal()] - amtArr[type.ordinal()]) * 100);
+                hasEscrowed |= newAmtCents > 0;
+                newEscrowed[type.ordinal()] = newAmtCents * 0.01;
+            }
+            StringBuilder message = new StringBuilder();
+            message.append("Deducted `"  + PnwUtil.resourcesToString(amtArr) + "` from escrow account for " + receiver.getNation() + "\n");
+            if (!hasEscrowed) {
+                db.setEscrowed(receiver, null);
+            } else {
+                db.setEscrowed(receiver, newEscrowed);
+            }
+            { // - Ensure amt is deducted
+                double[] checkEscrowed = db.getEscrowed(receiver);
+                if (checkEscrowed == null) {
+                    checkEscrowed = new double[ResourceType.values.length];
+                }
+                for (ResourceType type : ResourceType.values) {
+                    if (Math.round(checkEscrowed[type.ordinal()] * 100) != Math.round(newEscrowed[type.ordinal()] * 100)) {
+                        message.append("Failed to deduct escrowed resources for " + type.getName() + "=" + MathMan.format(amtArr[type.ordinal()]) + " > " + MathMan.format(escrowed[type.ordinal()]));
+                        message.append("\n");
+                        // add amount deducted
+                        message.append("Funds were deducted but the in-game transfer was aborted. Econ gov may need to correct your escrow balance via TODO CM Ref.\n");
+                        message.append("Original escrowed: `" + PnwUtil.resourcesToString(escrowed) + "`\n");
+                        message.append("Expected escrowed: `" + PnwUtil.resourcesToString(checkEscrowed) + "`\n");
+                        message.append("Current escrowed: `" + PnwUtil.resourcesToString(newEscrowed) + "`\n");
+                        message.append("The `expected` and `new` should match, but something went wrong when deducting the balance.\n");
+                        // econ role mention
+                        Role role = Roles.ECON.toRole(db);
+                        if (role != null) {
+                            message.append(role.getAsMention());
+                        }
+                        message.append("Admin command: TODO cm ref for adding escrowed resources\n");
+                        return message.toString();
+                    }
+                }
+            }
+            // - Send to self via #ignore
+            Map.Entry<OffshoreInstance.TransferStatus, String> result = offshore.transferFromAllianceDeposits(me, db, db::isAllianceId, receiver, amtArr, "#ignore");
+            switch (result.getKey()) {
+                case ALLIANCE_BANK:
+                case SUCCESS: {
+                    message.append("Successfully withdrew " + PnwUtil.resourcesToString(amtArr) + " from escrowed resources for " + receiver.getNation()  +"\n" +
+                            result.getKey() + " -> " + result.getValue());
+                    return message.toString();
+                }
+                case TURN_CHANGE:
+                case OTHER: {
+                    message.append("Failed to withdraw " + PnwUtil.resourcesToString(amtArr) + " from escrowed resources for " + receiver.getNation() + "\n" +
+                            result.getKey() + " -> " + result.getValue());
+                    return message.toString();
+                }
+                default: {
+                    // add balance back
+                    db.setEscrowed(receiver, escrowed);
+                    message.append("Failed to withdraw " + PnwUtil.resourcesToString(amtArr) + " from escrowed resources for " + receiver.getNation() + "\n" +
+                            result.getKey() + " -> " + result.getValue());
+                    // message for adding back, same as deduct one but add back
+                    message.append("Adding back `" + PnwUtil.resourcesToString(amtArr) + "` to escrow account for " + receiver.getNation() + "\n");
+                    return message.toString();
+                }
+            }
+        }
 
     }
 
