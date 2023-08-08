@@ -1766,7 +1766,8 @@ public class GrantCommands {
     @Command
     @HasOffshore
     @RolePermission(value = {Roles.ECON_STAFF, Roles.ECON, Roles.ECON_GRANT_SELF})
-    public String withdrawEscrowed(@Me OffshoreInstance offshore, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Me User author, DBNation receiver, Map<ResourceType, Double> amount) throws IOException {
+    public String withdrawEscrowed(@Me OffshoreInstance offshore, @Me IMessageIO channel, @Me JSONObject command, @Me GuildDB db, @Me DBNation me, @Me User author, DBNation receiver, Map<ResourceType, Double> amount,
+                                   @Switch("f") boolean force) throws IOException {
         // Require ECON_STAFF if receiver is not me
         if (receiver.getId() != me.getId()) {
             if (!Roles.ECON_STAFF.has(author, db.getGuild())) {
@@ -1782,9 +1783,34 @@ public class GrantCommands {
         }
 
 
-        if (TimeUtil.checkTurnChange()) {
+        if (!TimeUtil.checkTurnChange()) {
             return "Cannot withdraw escrowed resources close to turn change";
         }
+
+        if (receiver.getVm_turns() > 0) {
+            throw new IllegalArgumentException("Receiver " + receiver.getUrl() + "is in Vacation Mode");
+        }
+        if (receiver.isBlockaded() && !force) {
+            channel.create().confirmation("Error: Nation is blockaded!", "Do you want to try sending anyway?", command).send();
+            return null;
+        }
+
+        if (!force) {
+            String title = "Send escrowed to " + receiver.getNation();
+            StringBuilder body = new StringBuilder();
+            if (db.isAlliance() && !receiver.isAlliance()) {
+                body.append("**Warning: **`Not in alliance`\n");
+            }
+            if (receiver.active_m() > 2880) {
+                body.append("**Warning: **`Inactive for ").append(TimeUtil.secToTime(TimeUnit.MINUTES, receiver.active_m())).append("`\n");
+            }
+            body.append(receiver.getNationUrlMarkup(true) + " | " + receiver.getAllianceUrlMarkup(true)).append("\n");
+            channel.create().confirmation(title, body.toString(), command).send();
+            return null;
+        }
+
+
+
         // get a lock for nation
         final Object lock = OffshoreInstance.NATION_LOCKS.computeIfAbsent(receiver.getId(), f -> new Object());
         synchronized (lock) {
@@ -1832,9 +1858,8 @@ public class GrantCommands {
                         // econ role mention
                         Role role = Roles.ECON.toRole(db);
                         if (role != null) {
-                            message.append(role.getAsMention());
+//                            message.append(role.getAsMention());
                         }
-                        message.append("Admin command: " + CM.escrow.add.cmd.toSlashMention());
                         return message.toString();
                     }
                 }

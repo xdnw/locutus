@@ -151,6 +151,8 @@ public class CommandManager2 {
 
         this.commands.registerCommandsWithMapping(CM.class, false, false);
 
+        this.commands.registerMethod(new BankCommands(), List.of("escrow"), "escrowSheet", "view_sheet");
+
         for (GuildSetting setting : GuildKey.values()) {
             List<String> path = List.of("settings_" + setting.getCategory().name().toLowerCase(Locale.ROOT));
 

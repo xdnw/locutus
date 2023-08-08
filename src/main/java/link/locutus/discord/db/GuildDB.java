@@ -2497,8 +2497,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     public void setEscrowed(DBNation nation, double[] amount, long expire) {
         Object lock = OffshoreInstance.NATION_LOCKS.computeIfAbsent(nation.getId(), k -> new Object());
         synchronized (lock) {
-            if (amount == null) {
-                nation.deleteMeta(NationMeta.ESCROWED);
+            if (amount == null || ResourceType.isZero(amount)) {
+                deleteMeta(nation.getId(), NationMeta.ESCROWED);
             } else {
                 try {
                     ByteArrayOutputStream out = new ByteArrayOutputStream();

@@ -987,8 +987,8 @@ public class BankCommands {
                     warnings.add(nation.getName() + " is inactive for " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m()));
                     continue;
                 }
-                if (db.isAllianceId(nation.getAlliance_id())) {
-                    warnings.add(nation.getName() + " is not in a member");
+                if (!db.isAllianceId(nation.getAlliance_id())) {
+                    warnings.add(nation.getName() + " is not a member");
                     continue;
                 }
                 if (nation.getPositionEnum() == Rank.APPLICANT) {
@@ -1012,7 +1012,7 @@ public class BankCommands {
                 }
             } else {
                 SimpleNationList nations = new SimpleNationList(amountToSetOrAdd.keySet());
-                body.append("To: `" + nationsName + " (" + nations.getNations().size() + " nations in " + nations.getAllianceIds().size() + " alliances)\n");
+                body.append("To: `" + nationsName + "` (" + nations.getNations().size() + " nations in " + nations.getAllianceIds().size() + " alliances)\n");
                 if (blockaded > 0) {
                     body.append(" | " + blockaded + " blockaded");
                 }
@@ -1088,7 +1088,7 @@ public class BankCommands {
                 }
                 double[] newAmount;
                 if (isAdd) {
-                    newAmount = ResourceType.add(current, amount);
+                    newAmount = ResourceType.add(current.clone(), amount);
                 } else {
                     newAmount = amount;
                 }
@@ -1143,10 +1143,35 @@ public class BankCommands {
         if (subtractStockpile) {
             for (DBNation nation : nations.getNations()) {
                 if (!db.isAllianceId(nation.getAlliance_id())) {
-                    return "Nation: " + nation.getName() + "(alliance id:" + nation.getAlliance_id() + ") is not in a member of this guild's alliances: " + db.getAllianceIds();
+                    return "Nation: " + nation.getName() + "(alliance id:" + nation.getAlliance_id() + ") is not a member of this guild's alliances: " + db.getAllianceIds();
                 }
             }
             memberStockpile = db.getAllianceList().subList(nations.getNations()).getMemberStockpile();
+        }
+
+        if (!isAdd) {
+            // ensure all are positive amounts
+            if (amountBase != null) {
+                for (Map.Entry<ResourceType, Double> entry : amountBase.entrySet()) {
+                    if (entry.getValue() < 0) {
+                        throw new IllegalArgumentException("`amountBase` is invalid. Cannot set negative escrow amounts: " + entry.getKey() + " = " + MathMan.format(entry.getValue()));
+                    }
+                }
+            }
+            if (amountPerCity != null) {
+                for (Map.Entry<ResourceType, Double> entry : amountPerCity.entrySet()) {
+                    if (entry.getValue() < 0) {
+                        throw new IllegalArgumentException("`amountPerCity` is invalid. Cannot set negative escrow amounts: " + entry.getKey() + " = " + MathMan.format(entry.getValue()));
+                    }
+                }
+            }
+            if (amountExtra != null) {
+                for (Map.Entry<ResourceType, Double> entry : amountExtra.entrySet()) {
+                    if (entry.getValue() < 0) {
+                        throw new IllegalArgumentException("`amountExtra` is invalid. Cannot set negative escrow amounts: " + entry.getKey() + " = " + MathMan.format(entry.getValue()));
+                    }
+                }
+            }
         }
 
         Map<DBNation, double[]> amountToSetOrAdd = new LinkedHashMap<>();
@@ -2079,7 +2104,54 @@ public class BankCommands {
         return null;
     }
 
-    private static Map.Entry<SpreadSheet, double[]> escrowSheet(GuildDB db, Collection<DBNation> nations) throws GeneralSecurityException, IOException {
+    @Command
+    @RolePermission(Roles.ECON)
+    public String escrowSheet(@Me IMessageIO io, @Me GuildDB db, @Me Guild guild, @Default Set<DBNation> nations, @Switch("p") Set<Integer> includePastDepositors, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+        if (nations == null) {
+            Set<Integer> aaIds = db.getAllianceIds();
+            if (!aaIds.isEmpty()) {
+                nations = new LinkedHashSet<>(Locutus.imp().getNationDB().getNations(aaIds));
+                if (includePastDepositors == null || includePastDepositors.isEmpty()) nations.removeIf(n -> n.getPosition() <= 1);
+
+                if (includePastDepositors != null && !includePastDepositors.isEmpty()) {
+                    Set<Integer> ids = Locutus.imp().getBankDB().getReceiverNationIdFromAllianceReceivers(includePastDepositors);
+                    for (int id : ids) {
+                        DBNation nation = Locutus.imp().getNationDB().getNation(id);
+                        if (nation != null) nations.add(nation);
+                    }
+                }
+            } else {
+                if (includePastDepositors != null && !includePastDepositors.isEmpty()) {
+                    throw new IllegalArgumentException("`usePastDepositors` is only for alliances");
+                }
+                Role role = Roles.MEMBER.toRole(guild);
+                if (role == null) throw new IllegalArgumentException("No " + GuildKey.ALLIANCE_ID.getCommandMention() + " set, or " +
+                        "" + CM.role.setAlias.cmd.create(Roles.MEMBER.name(), "", null, null) + " set");
+                nations = new LinkedHashSet<>();
+                for (Member member : guild.getMembersWithRoles(role)) {
+                    DBNation nation = DiscordUtil.getNation(member.getUser());
+                    if (nation != null) {
+                        nations.add(nation);
+                    }
+                }
+                if (nations.isEmpty()) return "No members found";
+
+            }
+        } else if (includePastDepositors != null && !includePastDepositors.isEmpty()) {
+            throw new IllegalArgumentException("`usePastDepositors` cannot be set when nations are provided");
+        }
+        Map.Entry<SpreadSheet, double[]> sheetPair = escrowSheet(db, nations, sheet);
+        sheet = sheetPair.getKey();
+        double[] totalEscrowed = sheetPair.getValue();
+
+        sheet.clearAll();
+        sheet.set(0, 0);
+        // appent resource string and worth
+        sheet.attach(io.create()).append("Total Escrowed: `" + PnwUtil.resourcesToString(totalEscrowed) + "` | worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalEscrowed))).send();
+        return null;
+    }
+
+    private static Map.Entry<SpreadSheet, double[]> escrowSheet(GuildDB db, Collection<DBNation> nations, SpreadSheet sheetOrNull) throws GeneralSecurityException, IOException {
         double[] totalEscrowed = ResourceType.getBuffer();
         List<Object> escrowHeader = new ArrayList<>(Arrays.asList(
                 "nation",
@@ -2093,7 +2165,7 @@ public class BankCommands {
             if (type == ResourceType.CREDITS) continue;
             escrowHeader.add(type.name());
         }
-        SpreadSheet escrowSheet = SpreadSheet.create(db, SheetKeys.ESCROW_SHEET);
+        SpreadSheet escrowSheet = sheetOrNull != null ? sheetOrNull : SpreadSheet.create(db, SheetKeys.ESCROW_SHEET);
         escrowSheet.setHeader(escrowHeader);
 
         for (DBNation nation : nations) {
@@ -2297,7 +2369,7 @@ public class BankCommands {
         sheet.attach(msg);
 
         if (!noEscrowSheet) {
-            Map.Entry<SpreadSheet, double[]> pair = escrowSheet(db, nations);
+            Map.Entry<SpreadSheet, double[]> pair = escrowSheet(db, nations, null);
             SpreadSheet escrowSheet = pair.getKey();
             // attach sheet
             sheet.clearAll();
