@@ -85,6 +85,7 @@ import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -1433,17 +1434,19 @@ public class BankCommands {
     @Command(desc = "Resets a nations deposits to net zero (of the specific note categories)")
     @RolePermission(Roles.ECON)
     public String resetDeposits(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
-                                DBNation nation,
+                                NationList nations,
                                 @Arg("Do NOT reset grants") @Switch("g") boolean ignoreGrants,
                                 @Arg("Do NOT reset loans") @Switch("l") boolean ignoreLoans,
                                 @Arg("Do NOT reset taxes") @Switch("t") boolean ignoreTaxes,
                                 @Arg("Do NOT reset deposits") @Switch("d") boolean ignoreBankDeposits,
-                                @Arg("Reset escrow balance") @Switch("e") boolean resetEscrow,
+                                @Arg("Do NOT reset escrow") @Switch("e") boolean ignoreEscrow,
                                 @Switch("f") boolean force) throws IOException {
-        Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, force ? 0L : -1L, 0);
+        if (nations.getNations().size() > 300) {
+            throw new IllegalArgumentException("Due to performance issues, you can only reset up to 300 nations at a time");
+        }
 
         long now = System.currentTimeMillis();
-        StringBuilder response = new StringBuilder("Resetting deposits for " + nation.getNation() + "\n");
+        StringBuilder response = new StringBuilder("Resetting deposits for `" + nations.getFilter() + "`\n");
 
         double[] totalDeposits = ResourceType.getBuffer();
         double[] totalTax = ResourceType.getBuffer();
@@ -1451,87 +1454,93 @@ public class BankCommands {
         double[] totalExpire = ResourceType.getBuffer();
         double[] totalEscrow = ResourceType.getBuffer();
 
-        double[] deposits = depoByType.get(DepositType.DEPOSIT);
-        if (deposits != null && !ignoreBankDeposits && !ResourceType.isZero(deposits)) {
-            response.append("Subtracting `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(deposits) + " #deposit`\n");
-            ResourceType.subtract(totalDeposits, deposits);
-            if (force) db.subBalance(now, nation, me.getNation_id(), "#deposit", deposits);
-        }
+        for (DBNation nation : nations.getNations()) {
+            Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, force ? 0L : -1L, 0);
 
-        double[] tax = depoByType.get(DepositType.TAX);
-        if (tax != null && !ignoreTaxes && !ResourceType.isZero(tax)) {
-            response.append("Subtracting `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(tax) + " #tax`\n");
-            ResourceType.subtract(totalTax, tax);
-            if (force) db.subBalance(now, nation, me.getNation_id(), "#tax", tax);
-        }
+            double[] deposits = depoByType.get(DepositType.DEPOSIT);
+            if (deposits != null && !ignoreBankDeposits && !ResourceType.isZero(deposits)) {
+                response.append("Subtracting `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(deposits) + " #deposit`\n");
+                ResourceType.subtract(totalDeposits, deposits);
+                if (force) db.subBalance(now, nation, me.getNation_id(), "#deposit", deposits);
+            }
 
-        double[] loan = depoByType.get(DepositType.LOAN);
-        if (loan != null && !ignoreLoans && !ResourceType.isZero(loan)) {
-            response.append("Subtracting `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(loan) + " #loan`\n");
-            ResourceType.subtract(totalLoan, loan);
-            if (force) db.subBalance(now, nation, me.getNation_id(), "#loan", loan);
-        }
+            double[] tax = depoByType.get(DepositType.TAX);
+            if (tax != null && !ignoreTaxes && !ResourceType.isZero(tax)) {
+                response.append("Subtracting `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(tax) + " #tax`\n");
+                ResourceType.subtract(totalTax, tax);
+                if (force) db.subBalance(now, nation, me.getNation_id(), "#tax", tax);
+            }
 
-        if (depoByType.containsKey(DepositType.GRANT) && !ignoreGrants) {
-            List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, -1, 0);
-            for (Map.Entry<Integer, Transaction2> entry : transactions) {
-                Transaction2 tx = entry.getValue();
-                if (tx.note == null || !tx.note.contains("#expire") || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id())) continue;
-                if (tx.sender_id == tx.receiver_id) continue;
-                Map<String, String> notes = PnwUtil.parseTransferHashNotes(tx.note);
-                String expire = notes.get("#expire");
-                long expireEpoch = tx.tx_datetime + TimeUtil.timeToSec_BugFix1(expire, tx.tx_datetime) * 1000L;
-                if (expireEpoch > now) {
-                    String noteCopy = tx.note.replaceAll("#expire=[a-zA-Z0-9:]+", "");
-                    noteCopy += " #expire=" + "timestamp:" + expireEpoch;
-                    noteCopy = noteCopy.trim();
+            double[] loan = depoByType.get(DepositType.LOAN);
+            if (loan != null && !ignoreLoans && !ResourceType.isZero(loan)) {
+                response.append("Subtracting `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(loan) + " #loan`\n");
+                ResourceType.subtract(totalLoan, loan);
+                if (force) db.subBalance(now, nation, me.getNation_id(), "#loan", loan);
+            }
 
-                    tx.tx_datetime = System.currentTimeMillis();
-                    int sign = entry.getKey();
-                    if (sign == 1) {
-                        response.append("Subtracting `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(tx.resources) + " " + noteCopy + "`\n");
-                        ResourceType.subtract(totalExpire, tx.resources);
-                        if (confirm) db.subBalance(now, nation, me.getNation_id(), noteCopy, tx.resources);
-                    } else if (sign == -1) {
-                        response.append("Adding `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(tx.resources) + " " + noteCopy + "`\n");
-                        ResourceType.add(totalExpire, tx.resources);
-                        if (confirm) db.addBalance(now, nation, me.getNation_id(), noteCopy, tx.resources);
+            if (depoByType.containsKey(DepositType.GRANT) && !ignoreGrants) {
+                List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, -1, 0);
+                for (Map.Entry<Integer, Transaction2> entry : transactions) {
+                    Transaction2 tx = entry.getValue();
+                    if (tx.note == null || !tx.note.contains("#expire") || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id()))
+                        continue;
+                    if (tx.sender_id == tx.receiver_id) continue;
+                    Map<String, String> notes = PnwUtil.parseTransferHashNotes(tx.note);
+                    String expire = notes.get("#expire");
+                    long expireEpoch = tx.tx_datetime + TimeUtil.timeToSec_BugFix1(expire, tx.tx_datetime) * 1000L;
+                    if (expireEpoch > now) {
+                        String noteCopy = tx.note.replaceAll("#expire=[a-zA-Z0-9:]+", "");
+                        noteCopy += " #expire=" + "timestamp:" + expireEpoch;
+                        noteCopy = noteCopy.trim();
+
+                        tx.tx_datetime = System.currentTimeMillis();
+                        int sign = entry.getKey();
+                        if (sign == 1) {
+                            response.append("Subtracting `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(tx.resources) + " " + noteCopy + "`\n");
+                            ResourceType.subtract(totalExpire, tx.resources);
+                            if (force) db.subBalance(now, nation, me.getNation_id(), noteCopy, tx.resources);
+                        } else if (sign == -1) {
+                            response.append("Adding `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(tx.resources) + " " + noteCopy + "`\n");
+                            ResourceType.add(totalExpire, tx.resources);
+                            if (force) db.addBalance(now, nation, me.getNation_id(), noteCopy, tx.resources);
+                        }
                     }
                 }
             }
-        }
 
-        if (resetEscrow) {
-            try {
-                double[] escrowed = db.getEscrowed(nation);
-                if (escrowed != null && !ResourceType.isZero(escrowed)) {
-                    response.append("Subtracting escrow: `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(escrowed) + "`\n");
-                    ResourceType.subtract(totalEscrow, escrowed);
-                    if (force) db.setEscrowed(nation, null);
+            if (!ignoreEscrow) {
+                try {
+                    double[] escrowed = db.getEscrowed(nation);
+                    if (escrowed != null && !ResourceType.isZero(escrowed)) {
+                        response.append("Subtracting escrow: `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(escrowed) + "`\n");
+                        ResourceType.subtract(totalEscrow, escrowed);
+                        if (force) db.setEscrowed(nation, null, 0);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    response.append("Failed to reset escrow balance: " + e.getMessage() + "\n");
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
-                response.append("Failed to reset escrow balance: " + e.getMessage() + "\n");
             }
         }
 
         if (!force) {
-            String title = "Reset deposits for " + nation.getNation();
+            String name = nations.getFilter();
+            String title = "Reset deposits for " + name;
             StringBuilder body = new StringBuilder();
             if (!ResourceType.isZero(totalDeposits)) {
-                body.append("Net Adding `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(totalDeposits) + " #deposit`\n");
+                body.append("Net Adding `" + name + " " + PnwUtil.resourcesToString(totalDeposits) + " #deposit`\n");
             }
             if (!ResourceType.isZero(totalTax)) {
-                body.append("Net Adding `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(totalTax) + " #tax`\n");
+                body.append("Net Adding `" + name + " " + PnwUtil.resourcesToString(totalTax) + " #tax`\n");
             }
             if (!ResourceType.isZero(totalLoan)) {
-                body.append("Net Adding `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(totalLoan) + " #loan`\n");
+                body.append("Net Adding `" + name + " " + PnwUtil.resourcesToString(totalLoan) + " #loan`\n");
             }
             if (!ResourceType.isZero(totalExpire)) {
-                body.append("Net Adding `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(totalExpire) + " #expire`\n");
+                body.append("Net Adding `" + name + " " + PnwUtil.resourcesToString(totalExpire) + " #expire`\n");
             }
             if (!ResourceType.isZero(totalEscrow)) {
-                body.append("Deleting Escrow: `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(totalEscrow) + "`\n");
+                body.append("Deleting Escrow: `" + name + " " + PnwUtil.resourcesToString(totalEscrow) + "`\n");
             }
 
             double[] total = ResourceType.getBuffer();
@@ -1540,7 +1549,7 @@ public class BankCommands {
             total = ResourceType.add(total, totalLoan);
             total = ResourceType.add(total, totalExpire);
             total = ResourceType.subtract(total, totalEscrow);
-            body.append("Total Net: `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(total) + "`\n");
+            body.append("Total Net: `" + name + " " + PnwUtil.resourcesToString(total) + "`\n");
             body.append("\n\nSee attached file for transaction details\n");
 
             io.create().confirmation(title, body.toString(), command)
@@ -1747,6 +1756,42 @@ public class BankCommands {
         return null;
     }
 
+    private Map.Entry<SpreadSheet, double[]> escrowSheet(GuildDB db, Collection<DBNation> nations) throws GeneralSecurityException, IOException {
+        double[] totalEscrowed = ResourceType.getBuffer();
+        List<Object> escrowHeader = new ArrayList<>(Arrays.asList(
+                "nation",
+                "cities",
+                "age",
+                "escrow"
+        ));
+        for (ResourceType type : ResourceType.values()) {
+            if (type == ResourceType.CREDITS) continue;
+            escrowHeader.add(type.name());
+        }
+        SpreadSheet escrowSheet = SpreadSheet.create(db, SheetKeys.ESCROW_SHEET);
+        escrowSheet.setHeader(escrowHeader);
+
+        for (DBNation nation : nations) {
+            double[] escrowed = db.getEscrowed(nation);
+            if (escrowed == null || ResourceType.isZero(escrowed)) continue;
+            ResourceType.add(totalEscrowed, escrowed);
+
+            escrowHeader.set(0, MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
+            escrowHeader.set(1, nation.getCities());
+            escrowHeader.set(2, nation.getAgeDays());
+            double value = PnwUtil.convertedTotal(escrowed);
+            escrowHeader.set(3, MathMan.format(value));
+            for (ResourceType type : ResourceType.values) {
+                if (type == ResourceType.CREDITS) continue;
+                escrowHeader.set(4 + type.ordinal(), MathMan.format(escrowed[type.ordinal()]));
+            }
+
+            escrowSheet.addRow(escrowHeader);
+        }
+
+        return Map.entry(escrowSheet, totalEscrowed);
+    }
+
     @Command(aliases = {"depositSheet", "depositsSheet"}, desc =
             "Get a sheet with member nations and their deposits\n" +
                     "Each nation's safekeep should match the total balance given by deposits command" +
@@ -1761,16 +1806,17 @@ public class BankCommands {
 
     )
     @RolePermission(Roles.ECON)
-    public String depositSheet(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db,
+    public static String depositSheet(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db,
                                @Default Set<DBNation> nations,
                                @Arg("The alliances to track transfers from") @Default Set<DBAlliance> offshores,
                                @Arg("use 0/0 as the tax base") @Switch("b") boolean ignoreTaxBase,
                                @Arg("Do NOT include any manual deposit offesets") @Switch("o") boolean ignoreOffsets,
                                @Arg("Do NOT include taxes") @Switch("t") boolean noTaxes,
                                @Arg("Do NOT include loans") @Switch("l") boolean noLoans,
-                                 @Arg("Do NOT include grants") @Switch("g") boolean noGrants,
-                                 @Arg("Do NOT include deposits") @Switch("d") boolean noDeposits,
-                                 @Arg("Include past depositors") @Switch("p") Set<Integer> includePastDepositors,
+                               @Arg("Do NOT include grants") @Switch("g") boolean noGrants,
+                               @Arg("Do NOT include deposits") @Switch("d") boolean noDeposits,
+                               @Arg("Include past depositors") @Switch("p") Set<Integer> includePastDepositors,
+                               @Arg("Do NOT include escrow sheet") @Switch("d") boolean noEscrowSheet,
                                @Switch("f") boolean force
 
     ) throws GeneralSecurityException, IOException {
@@ -1911,10 +1957,27 @@ public class BankCommands {
             sheet.addRow(header);
         }
 
+        StringBuilder footer = new StringBuilder();
+
         sheet.clearAll();
         sheet.set(0, 0);
 
-        StringBuilder footer = new StringBuilder();
+        IMessageBuilder msg = channel.create();
+        sheet.attach(msg);
+
+        if (!noEscrowSheet) {
+            Map.Entry<SpreadSheet, double[]> pair = escrowSheet(db, nations);
+            SpreadSheet escrowSheet = pair.getKey();
+            // attach sheet
+            sheet.clearAll();
+            sheet.set(0, 0);
+            escrowSheet.attach(msg);
+
+            double[] escrowTotal = pair.getValue();
+            aaTotalPositive = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, aaTotalPositive, escrowTotal);
+            aaTotalNet = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, aaTotalNet, escrowTotal);
+        }
+
         footer.append(PnwUtil.resourcesToFancyString(aaTotalPositive, "Nation Deposits (" + nations.size() + " nations)"));
 
         String type = "";
@@ -1932,16 +1995,16 @@ public class BankCommands {
                 for (int i = 0; i < aaDeposits.length; i++) {
                     aaTotalNet[i] = aaDeposits[i] - aaTotalNet[i];
                     aaTotalPositive[i] = aaDeposits[i] - aaTotalPositive[i];
-
                 }
-                footer.append("\n**Total " + type + "- nation deposits (negatives normalized)**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalPositive)) + "\n`" + PnwUtil.resourcesToString(aaTotalPositive) + "`");
-                footer.append("\n**Total " + type + "- nation deposits**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
+                String natDepTypes = noEscrowSheet ? "deposits" : "deposits (with escrow)";
+                footer.append("\n**Total " + type + "- nation " + natDepTypes + " (negatives normalized)**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalPositive)) + "\n`" + PnwUtil.resourcesToString(aaTotalPositive) + "`");
+                footer.append("\n**Total " + type + "- nation " + natDepTypes + "**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
             } else {
                 footer.append("\n**No funds are currently " + type + "**");
             }
         }
 
-        sheet.attach(channel.create()).embed("Nation Deposits (With Alliance)", footer.toString())
+        msg.embed("Nation Deposits (With Alliance)", footer.toString())
                 .send();
         return null;
     }
