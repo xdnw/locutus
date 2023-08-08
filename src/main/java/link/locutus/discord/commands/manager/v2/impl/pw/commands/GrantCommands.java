@@ -1820,7 +1820,8 @@ public class GrantCommands {
                         message.append("Failed to deduct escrowed resources for " + type.getName() + "=" + MathMan.format(checkEscrowed[type.ordinal()]) + " != " + MathMan.format(newEscrowed[type.ordinal()]));
                         message.append("\n");
                         // add amount deducted
-                        message.append("Funds were deducted but the in-game transfer was aborted. Econ gov may need to correct your escrow balance via TODO CM Ref.\n");
+                        message.append("Funds were deducted but the in-game transfer was aborted\n");
+                        message.append("Econ gov may need to correct your escrow balance via " + CM.escrow.add.cmd.toSlashMention() + "\n");
                         message.append("Original escrowed: `" + PnwUtil.resourcesToString(escrowedPair.getKey()) + "`\n");
                         message.append("Expected escrowed: `" + PnwUtil.resourcesToString(newEscrowed) + "`\n");
                         message.append("Current escrowed: `" + PnwUtil.resourcesToString(checkEscrowed) + "`\n");
@@ -1830,7 +1831,7 @@ public class GrantCommands {
                         if (role != null) {
                             message.append(role.getAsMention());
                         }
-                        message.append("Admin command: TODO cm ref for adding escrowed resources\n");
+                        message.append("Admin command: " + CM.escrow.add.cmd.toSlashMention());
                         return message.toString();
                     }
                 }

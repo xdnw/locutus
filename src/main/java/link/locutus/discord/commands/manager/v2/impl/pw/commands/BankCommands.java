@@ -5,6 +5,7 @@ import com.politicsandwar.graphql.model.Bankrec;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.AccessType;
+import link.locutus.discord.apiv1.enums.EscrowMode;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -664,12 +665,12 @@ public class BankCommands {
                         responses.add("`note: set an internal taxrate with `" + CM.nation.set.taxinternal.cmd.toSlashMention() + "` or globally with `" + CM.settings.info.cmd.toSlashMention() + "` and key: " + GuildKey.TAX_BASE.name() + "`");
                     }
                     responses.add("\nTo view alliance wide bracket tax totals, use: " +
-                        CM.deposits.check.cmd.create("tax_id=" + bracket.taxId, null, null, null, null, "true", null, null, null));
+                        CM.deposits.check.cmd.create("tax_id=" + bracket.taxId, null, null, null, null, "true", null, null, null, null));
                 }
             }
         }
 
-        CM.deposits.check checkCmd = CM.deposits.check.cmd.create(nation.getId() + "", null, null, null, null, "true", null, null, null);
+        CM.deposits.check checkCmd = CM.deposits.check.cmd.create(nation.getId() + "", null, null, null, null, "true", null, null, null, null);
         responses.add("\nTo view a breakdown of your deposits, use: " + checkCmd);
 
         String title = "Tax info for " + nation.getName();
@@ -1233,6 +1234,7 @@ public class BankCommands {
                            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
                            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
                            @Arg("Have the transfer valued as cash in nation holdings")@Switch("m") boolean convertToMoney,
+                           @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
                            @Switch("b") boolean bypassChecks,
                            @Switch("f") boolean force) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
         Set<DBNation> nations = new HashSet<>(nationList.getNations());
@@ -1330,12 +1332,13 @@ public class BankCommands {
                     Boolean.FALSE.toString(),
                     expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
                     null,
+                    escrow_mode == null ? null : escrow_mode.name(),
                     String.valueOf(convertToMoney),
                     String.valueOf(bypassChecks),
                     null
             ).toJson();
 
-            return transfer(io, command, author, me, db, nation, transfer, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, false, expire, null, convertToMoney, bypassChecks, force);
+            return transfer(io, command, author, me, db, nation, transfer, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, false, expire, null, convertToMoney, escrow_mode, bypassChecks, force);
         } else {
             UUID key = UUID.randomUUID();
             TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, new LinkedHashMap<>()).build();
@@ -1352,11 +1355,12 @@ public class BankCommands {
                     Boolean.FALSE.toString(),
                     expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
                     String.valueOf(force),
+                    escrow_mode == null ? null : escrow_mode.name(),
                     null,
                     key.toString()
             ).toJson();
 
-            return transferBulk(io, command, author, me, db, sheet, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, convertToMoney, bypassChecks, force, key);
+            return transferBulk(io, command, author, me, db, sheet, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, convertToMoney, escrow_mode, bypassChecks, force, key);
         }
     }
 
@@ -1693,9 +1697,9 @@ public class BankCommands {
                            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
                            @Arg("Only send funds the receiver is lacking from the amount") @Switch("m") boolean onlyMissingFunds,
                            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
-
                            @Switch("g") UUID token,
                            @Arg("Transfer valued at cash equivalent in nation holdings") @Switch("c") boolean convertCash,
+                           @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
                            @Switch("b") boolean bypassChecks,
                            @Switch("f") boolean force
     ) throws IOException {
@@ -1709,7 +1713,9 @@ public class BankCommands {
                 expire,
                 token,
                 convertCash,
-                bypassChecks, force);
+                escrow_mode,
+                bypassChecks,
+                force);
     }
 
     @Command(desc = "Bulk shift resources in a nations holdings to another note category")
@@ -1887,11 +1893,11 @@ public class BankCommands {
                                   @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
                                   @Arg("Only send funds the receiver is lacking from the amount") @Switch("m") boolean onlyMissingFunds,
                                   @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
-                           @Switch("g") UUID token,
-                           @Arg("Transfer valued at cash equivalent in nation holdings") @Switch("c") boolean convertCash,
-
-                           @Switch("b") boolean bypassChecks,
-                           @Switch("f") boolean force) throws IOException {
+                                  @Switch("g") UUID token,
+                                  @Arg("Transfer valued at cash equivalent in nation holdings") @Switch("c") boolean convertCash,
+                                  @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
+                                  @Switch("b") boolean bypassChecks,
+                                  @Switch("f") boolean force) throws IOException {
         if (existingTaxAccount) {
             if (taxAccount != null) throw new IllegalArgumentException("You can't specify both `tax_id` and `existingTaxAccount`");
             if (!receiver.isNation()) throw new IllegalArgumentException("You can only specify `existingTaxAccount` for a nation");
@@ -1909,7 +1915,7 @@ public class BankCommands {
             DBNation nation = receiver.asNation();
             if (nation.getVm_turns() > 0) forceErrors.add("Receiver is in Vacation Mode");
             if (nation.isGray()) forceErrors.add("Receiver is Gray");
-            if (nation.getNumWars() > 0 && receiver.asNation().isBlockaded()) forceErrors.add("Receiver is blockaded");
+            if (nation.getNumWars() > 0 && receiver.asNation().isBlockaded() && (escrow_mode == null || escrow_mode == EscrowMode.NEVER)) forceErrors.add("Receiver is blockaded");
             if (nation.getActive_m() > 10000) forceErrors.add(("!! **WARN**: Receiver is " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m())) + " inactive");
         } else if (receiver.isAlliance()) {
             DBAlliance alliance = receiver.asAlliance();
@@ -2010,6 +2016,7 @@ public class BankCommands {
                     expire,
                     null,
                     convertCash,
+                    escrow_mode,
                     !force,
                     bypassChecks
             );
@@ -2587,12 +2594,12 @@ public class BankCommands {
                                       @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
                                       @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
                                       @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
-
                                       @Switch("m") boolean convertToMoney,
+                                      @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
                                       @Switch("b") boolean bypassChecks,
                                       @Switch("f") boolean force,
                                       @Switch("k") UUID key) throws IOException {
-        return transferBulkWithErrors(io, command, user, me, db, sheet, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, convertToMoney, bypassChecks, force, key, new HashMap<>());
+        return transferBulkWithErrors(io, command, user, me, db, sheet, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, convertToMoney, escrow_mode, bypassChecks, force, key, new HashMap<>());
     }
 
 
@@ -2604,6 +2611,7 @@ public class BankCommands {
                                         @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
                                         @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
                                       @Switch("m") boolean convertToMoney,
+                                                @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
                                       @Switch("b") boolean bypassChecks,
                                       @Switch("f") boolean force,
                                       @Switch("k") UUID key,
@@ -2727,6 +2735,7 @@ public class BankCommands {
                             expire,
                             null,
                             convertToMoney,
+                            escrow_mode,
                             false,
                             bypassChecks
                     );
@@ -3132,7 +3141,8 @@ public class BankCommands {
         }
     }
 
-    @Command(desc="Calculate a nations deposits/loans/taxes")
+    @Command(desc="Displays the account balance for a nation, alliance or guild\n" +
+            "Balance info includes deposits, loans, grants, taxes and escrow")
     @RolePermission(Roles.MEMBER)
     public static String deposits(@Me Guild guild, @Me GuildDB db, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildHandler handler,
                            @Arg("Account to check holdings for") NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild,
@@ -3330,7 +3340,7 @@ public class BankCommands {
             }
         }
         if (escrowed != null && !ResourceType.isZero(escrowed)) {
-            footers.add("Use TODO CM ref to withdraw escrowed");
+            footers.add("Use: " + CM.escrow.withdraw.cmd.toSlashMention());
         }
 
         if (!footers.isEmpty()) {
@@ -3738,7 +3748,7 @@ public class BankCommands {
                 body.append("Changing offshores will close the account with your previous offshore provider\n");
                 body.append("Your current offshore is set to: " + currentOffshore.getAllianceId() + "\n");
                 body.append("To check your funds with the current offshore, use " +
-                        CM.deposits.check.cmd.create(idStr, null, null, null, null, null, null, null, null));
+                        CM.deposits.check.cmd.create(idStr, null, null, null, null, null, null, null, null, null));
                 body.append("\nIt is recommended to withdraw all funds from the current offshore before changing, as Locutus may not be able to access the account after closing it`");
 
                 confirmButton.embed(title, body.toString()).send();

@@ -838,6 +838,11 @@ public class PWBindings extends BindingHelper {
         return StringMan.parseUpper(DepositType.class, input.toUpperCase(Locale.ROOT));
     }
 
+    @Binding(value = "The mode for escrowing funds for a transfer, such as when a receiver is blockaded")
+    public static EscrowMode EscrowMode(String input) {
+        return emum(EscrowMode.class, input);
+    }
+
     @Binding(value = "A war declaration type")
     public WarType warType(String warType) {
         return WarType.parse(warType);

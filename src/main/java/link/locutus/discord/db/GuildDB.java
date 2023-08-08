@@ -435,7 +435,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     public String generateEscrowedCard(DBNation nation) throws IOException {
         Map.Entry<double[], Long> totalPair = getEscrowed(nation);
         if (totalPair == null || ResourceType.isZero(totalPair.getKey())) {
-            return "No escrowed resources found. See: TODO CM Ref";
+            return "No escrowed resources found.";
         }
 
         double[] deposits = nation.getNetDeposits(this, false);
@@ -2005,7 +2005,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             try {
                 checkDeposits(guildDepo, amount, senderAlliance != null ? "Alliance" : "Guild", accountName);
             } catch (IllegalArgumentException e) {
-                CM.deposits.check cmd = CM.deposits.check.cmd.create(accountName, null, null, null, null, null, null, null, null);
+                CM.deposits.check cmd = CM.deposits.check.cmd.create(accountName, null, null, null, null, null, null, null, null, null);
                 throw new IllegalArgumentException(e.getMessage() + "\n" + "See: " + cmd);
             }
 

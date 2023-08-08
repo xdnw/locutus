@@ -861,8 +861,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="view_document")
             public static class view extends CommandRef {
                 public static final view cmd = new view();
-                public view create(String source) {
-                    return createArgs("source", source);
+                public view create(String source, String getAnswers, String sheet) {
+                    return createArgs("source", source, "getAnswers", getAnswers, "sheet", sheet);
                 }
             }
         }
@@ -1060,8 +1060,8 @@ public class CM {
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="deposits")
         public static class check extends CommandRef {
             public static final check cmd = new check();
-            public check create(String nationOrAllianceOrGuild, String offshores, String timeCutoff, String includeBaseTaxes, String ignoreInternalOffsets, String showTaxesSeparately, String replyInDMs, String includeExpired, String includeIgnored) {
-                return createArgs("nationOrAllianceOrGuild", nationOrAllianceOrGuild, "offshores", offshores, "timeCutoff", timeCutoff, "includeBaseTaxes", includeBaseTaxes, "ignoreInternalOffsets", ignoreInternalOffsets, "showTaxesSeparately", showTaxesSeparately, "replyInDMs", replyInDMs, "includeExpired", includeExpired, "includeIgnored", includeIgnored);
+            public check create(String nationOrAllianceOrGuild, String offshores, String timeCutoff, String includeBaseTaxes, String ignoreInternalOffsets, String showTaxesSeparately, String replyInDMs, String includeExpired, String includeIgnored, String hideEscrowed) {
+                return createArgs("nationOrAllianceOrGuild", nationOrAllianceOrGuild, "offshores", offshores, "timeCutoff", timeCutoff, "includeBaseTaxes", includeBaseTaxes, "ignoreInternalOffsets", ignoreInternalOffsets, "showTaxesSeparately", showTaxesSeparately, "replyInDMs", replyInDMs, "includeExpired", includeExpired, "includeIgnored", includeIgnored, "hideEscrowed", hideEscrowed);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="convertNegativeDeposits")
@@ -1081,15 +1081,15 @@ public class CM {
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="resetDeposits")
         public static class reset extends CommandRef {
             public static final reset cmd = new reset();
-            public reset create(String nation, String ignoreGrants, String ignoreLoans, String ignoreTaxes, String ignoreBankDeposits) {
-                return createArgs("nation", nation, "ignoreGrants", ignoreGrants, "ignoreLoans", ignoreLoans, "ignoreTaxes", ignoreTaxes, "ignoreBankDeposits", ignoreBankDeposits);
+            public reset create(String nations, String ignoreGrants, String ignoreLoans, String ignoreTaxes, String ignoreBankDeposits, String ignoreEscrow, String force) {
+                return createArgs("nations", nations, "ignoreGrants", ignoreGrants, "ignoreLoans", ignoreLoans, "ignoreTaxes", ignoreTaxes, "ignoreBankDeposits", ignoreBankDeposits, "ignoreEscrow", ignoreEscrow, "force", force);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="depositSheet")
         public static class sheet extends CommandRef {
             public static final sheet cmd = new sheet();
-            public sheet create(String nations, String offshores, String ignoreTaxBase, String ignoreOffsets, String noTaxes, String noLoans, String noGrants, String noDeposits, String includePastDepositors, String force) {
-                return createArgs("nations", nations, "offshores", offshores, "ignoreTaxBase", ignoreTaxBase, "ignoreOffsets", ignoreOffsets, "noTaxes", noTaxes, "noLoans", noLoans, "noGrants", noGrants, "noDeposits", noDeposits, "includePastDepositors", includePastDepositors, "force", force);
+            public sheet create(String nations, String offshores, String ignoreTaxBase, String ignoreOffsets, String noTaxes, String noLoans, String noGrants, String noDeposits, String includePastDepositors, String noEscrowSheet, String force) {
+                return createArgs("nations", nations, "offshores", offshores, "ignoreTaxBase", ignoreTaxBase, "ignoreOffsets", ignoreOffsets, "noTaxes", noTaxes, "noLoans", noLoans, "noGrants", noGrants, "noDeposits", noDeposits, "includePastDepositors", includePastDepositors, "noEscrowSheet", noEscrowSheet, "force", force);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="shiftDeposits")
@@ -1192,6 +1192,36 @@ public class CM {
             public static final update cmd = new update();
             public update create(String requiredRole, String color, String title, String desc) {
                 return createArgs("requiredRole", requiredRole, "color", color, "title", title, "desc", desc);
+            }
+        }
+    }
+    public static class escrow{
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="addEscrow")
+        public static class add extends CommandRef {
+            public static final add cmd = new add();
+            public add create(String nations, String amountBase, String amountPerCity, String amountExtra, String subtractStockpile, String subtractNationsUnits, String subtractDeposits, String expireAfter, String force) {
+                return createArgs("nations", nations, "amountBase", amountBase, "amountPerCity", amountPerCity, "amountExtra", amountExtra, "subtractStockpile", subtractStockpile, "subtractNationsUnits", subtractNationsUnits, "subtractDeposits", subtractDeposits, "expireAfter", expireAfter, "force", force);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="setEscrow")
+        public static class set extends CommandRef {
+            public static final set cmd = new set();
+            public set create(String nations, String amountBase, String amountPerCity, String amountExtra, String subtractStockpile, String subtractNationsUnits, String subtractDeposits, String expireAfter, String force) {
+                return createArgs("nations", nations, "amountBase", amountBase, "amountPerCity", amountPerCity, "amountExtra", amountExtra, "subtractStockpile", subtractStockpile, "subtractNationsUnits", subtractNationsUnits, "subtractDeposits", subtractDeposits, "expireAfter", expireAfter, "force", force);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="setEscrowSheet")
+        public static class set_sheet extends CommandRef {
+            public static final set_sheet cmd = new set_sheet();
+            public set_sheet create(String sheet, String expireAfter, String force) {
+                return createArgs("sheet", sheet, "expireAfter", expireAfter, "force", force);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="withdrawEscrowed")
+        public static class withdraw extends CommandRef {
+            public static final withdraw cmd = new withdraw();
+            public withdraw create(String receiver, String amount) {
+                return createArgs("receiver", receiver, "amount", amount);
             }
         }
     }
@@ -1333,6 +1363,13 @@ public class CM {
             public static final command cmd = new command();
             public command create(String command) {
                 return createArgs("command", command);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="find_command2")
+        public static class find_command extends CommandRef {
+            public static final find_command cmd = new find_command();
+            public find_command create(String search, String instructions, String useGPT, String numResults) {
+                return createArgs("search", search, "instructions", instructions, "useGPT", useGPT, "numResults", numResults);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.HelpCommands.class,method="find_setting")
@@ -3534,8 +3571,8 @@ public class CM {
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="transferBulk")
         public static class bulk extends CommandRef {
             public static final bulk cmd = new bulk();
-            public bulk create(String sheet, String depositType, String depositsAccount, String useAllianceBank, String useOffshoreAccount, String taxAccount, String existingTaxAccount, String expire, String convertToMoney, String bypassChecks, String force, String key) {
-                return createArgs("sheet", sheet, "depositType", depositType, "depositsAccount", depositsAccount, "useAllianceBank", useAllianceBank, "useOffshoreAccount", useOffshoreAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "expire", expire, "convertToMoney", convertToMoney, "bypassChecks", bypassChecks, "force", force, "key", key);
+            public bulk create(String sheet, String depositType, String depositsAccount, String useAllianceBank, String useOffshoreAccount, String taxAccount, String existingTaxAccount, String expire, String convertToMoney, String escrow_mode, String bypassChecks, String force, String key) {
+                return createArgs("sheet", sheet, "depositType", depositType, "depositsAccount", depositsAccount, "useAllianceBank", useAllianceBank, "useOffshoreAccount", useOffshoreAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "expire", expire, "convertToMoney", convertToMoney, "escrow_mode", escrow_mode, "bypassChecks", bypassChecks, "force", force, "key", key);
             }
         }
         public static class internal{
@@ -3564,29 +3601,29 @@ public class CM {
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="disburse")
         public static class raws extends CommandRef {
             public static final raws cmd = new raws();
-            public raws create(String nationList, String daysDefault, String depositType, String noDailyCash, String noCash, String depositsAccount, String useAllianceBank, String useOffshoreAccount, String taxAccount, String existingTaxAccount, String expire, String convertToMoney, String bypassChecks, String force) {
-                return createArgs("nationList", nationList, "daysDefault", daysDefault, "depositType", depositType, "noDailyCash", noDailyCash, "noCash", noCash, "depositsAccount", depositsAccount, "useAllianceBank", useAllianceBank, "useOffshoreAccount", useOffshoreAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "expire", expire, "convertToMoney", convertToMoney, "bypassChecks", bypassChecks, "force", force);
+            public raws create(String nationList, String daysDefault, String depositType, String noDailyCash, String noCash, String depositsAccount, String useAllianceBank, String useOffshoreAccount, String taxAccount, String existingTaxAccount, String expire, String convertToMoney, String escrow_mode, String bypassChecks, String force) {
+                return createArgs("nationList", nationList, "daysDefault", daysDefault, "depositType", depositType, "noDailyCash", noDailyCash, "noCash", noCash, "depositsAccount", depositsAccount, "useAllianceBank", useAllianceBank, "useOffshoreAccount", useOffshoreAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "expire", expire, "convertToMoney", convertToMoney, "escrow_mode", escrow_mode, "bypassChecks", bypassChecks, "force", force);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="transfer")
         public static class resources extends CommandRef {
             public static final resources cmd = new resources();
-            public resources create(String receiver, String transfer, String depositType, String nationAccount, String senderAlliance, String allianceAccount, String taxAccount, String existingTaxAccount, String onlyMissingFunds, String expire, String token, String convertCash, String bypassChecks, String force) {
-                return createArgs("receiver", receiver, "transfer", transfer, "depositType", depositType, "nationAccount", nationAccount, "senderAlliance", senderAlliance, "allianceAccount", allianceAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "onlyMissingFunds", onlyMissingFunds, "expire", expire, "token", token, "convertCash", convertCash, "bypassChecks", bypassChecks, "force", force);
+            public resources create(String receiver, String transfer, String depositType, String nationAccount, String senderAlliance, String allianceAccount, String taxAccount, String existingTaxAccount, String onlyMissingFunds, String expire, String token, String convertCash, String escrow_mode, String bypassChecks, String force) {
+                return createArgs("receiver", receiver, "transfer", transfer, "depositType", depositType, "nationAccount", nationAccount, "senderAlliance", senderAlliance, "allianceAccount", allianceAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "onlyMissingFunds", onlyMissingFunds, "expire", expire, "token", token, "convertCash", convertCash, "escrow_mode", escrow_mode, "bypassChecks", bypassChecks, "force", force);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="withdraw")
         public static class self extends CommandRef {
             public static final self cmd = new self();
-            public self create(String transfer, String depositType, String depositsAccount, String useAllianceBank, String useOffshoreAccount, String taxAccount, String existingTaxAccount, String onlyMissingFunds, String expire, String token, String convertCash, String bypassChecks, String force) {
-                return createArgs("transfer", transfer, "depositType", depositType, "depositsAccount", depositsAccount, "useAllianceBank", useAllianceBank, "useOffshoreAccount", useOffshoreAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "onlyMissingFunds", onlyMissingFunds, "expire", expire, "token", token, "convertCash", convertCash, "bypassChecks", bypassChecks, "force", force);
+            public self create(String transfer, String depositType, String depositsAccount, String useAllianceBank, String useOffshoreAccount, String taxAccount, String existingTaxAccount, String onlyMissingFunds, String expire, String token, String convertCash, String escrow_mode, String bypassChecks, String force) {
+                return createArgs("transfer", transfer, "depositType", depositType, "depositsAccount", depositsAccount, "useAllianceBank", useAllianceBank, "useOffshoreAccount", useOffshoreAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "onlyMissingFunds", onlyMissingFunds, "expire", expire, "token", token, "convertCash", convertCash, "escrow_mode", escrow_mode, "bypassChecks", bypassChecks, "force", force);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="warchest")
         public static class warchest extends CommandRef {
             public static final warchest cmd = new warchest();
-            public warchest create(String nations, String resourcesPerCity, String note, String skipStockpile, String depositsAccount, String useAllianceBank, String useOffshoreAccount, String taxAccount, String existingTaxAccount, String expire, String convertToMoney, String bypassChecks, String force) {
-                return createArgs("nations", nations, "resourcesPerCity", resourcesPerCity, "note", note, "skipStockpile", skipStockpile, "depositsAccount", depositsAccount, "useAllianceBank", useAllianceBank, "useOffshoreAccount", useOffshoreAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "expire", expire, "convertToMoney", convertToMoney, "bypassChecks", bypassChecks, "force", force);
+            public warchest create(String nations, String resourcesPerCity, String note, String skipStockpile, String depositsAccount, String useAllianceBank, String useOffshoreAccount, String taxAccount, String existingTaxAccount, String expire, String convertToMoney, String escrow_mode, String bypassChecks, String force) {
+                return createArgs("nations", nations, "resourcesPerCity", resourcesPerCity, "note", note, "skipStockpile", skipStockpile, "depositsAccount", depositsAccount, "useAllianceBank", useAllianceBank, "useOffshoreAccount", useOffshoreAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "expire", expire, "convertToMoney", convertToMoney, "escrow_mode", escrow_mode, "bypassChecks", bypassChecks, "force", force);
             }
         }
     }

@@ -1170,7 +1170,7 @@ public class IACommands {
                     String title = "Disburse 3 days";
                     String body = "Use this once they have a suitable city build & color to send resources for the next 3 days";
 
-                    CM.transfer.raws cmd = CM.transfer.raws.cmd.create(nation.getNation_id() + "", "3", "#deposit", null, null, nation.getNation_id() + "", null, null, null, null, null, null, "true", null);
+                    CM.transfer.raws cmd = CM.transfer.raws.cmd.create(nation.getNation_id() + "", "3", "#deposit", null, null, nation.getNation_id() + "", null, null, null, null, null, null, null, "true", null);
                     channel.create().embed(title, body)
                             .commandButton(cmd, "Disburse 3 days")
                             .send();

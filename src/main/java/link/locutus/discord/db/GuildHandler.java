@@ -2595,8 +2595,6 @@ public class GuildHandler {
                     User receiverUser = receiver.getUser();
                     if (receiverUser != null) mentions.add(receiverUser.getAsMention());
 
-                    double[] actualDeposits = receiver.getNetDeposits(db, false);
-
                     String title = "Approve Queued Transfer";
                     String body = db.generateEscrowedCard(receiver);
                     body += "\n\nTODO CMD ref for escrow withdraw";

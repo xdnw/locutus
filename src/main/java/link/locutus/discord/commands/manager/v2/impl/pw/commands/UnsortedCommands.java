@@ -8,6 +8,7 @@ import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.EscrowMode;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -1337,8 +1338,9 @@ public class UnsortedCommands {
                           @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
                           @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
                           @Arg("Have the transfer valued as cash in nation holdings")@Switch("m") boolean convertToMoney,
-                           @Switch("b") boolean bypassChecks,
-                           @Switch("f") boolean force) throws Exception {
+                          @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
+                          @Switch("b") boolean bypassChecks,
+                          @Switch("f") boolean force) throws Exception {
         if (existingTaxAccount) {
             if (taxAccount != null) throw new IllegalArgumentException("You can't specify both `tax_id` and `existingTaxAccount`");
         }
@@ -1423,12 +1425,13 @@ public class UnsortedCommands {
                 existingTaxAccount + "",
                 Boolean.FALSE.toString(),
                 expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
+                escrow_mode == null ? null : escrow_mode.name(),
                 String.valueOf(force),
                 null,
                 key.toString()
         ).toJson();
 
-        return BankCommands.transferBulkWithErrors(io, command, author, me, db, sheet, note, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, convertToMoney, bypassChecks, force, key, errors);
+        return BankCommands.transferBulkWithErrors(io, command, author, me, db, sheet, note, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, convertToMoney, escrow_mode, bypassChecks, force, key, errors);
     }
 
     @Command(desc = "Check if a nation is a reroll and print their reroll date")
