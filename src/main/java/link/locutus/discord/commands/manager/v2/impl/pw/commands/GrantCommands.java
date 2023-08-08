@@ -1763,7 +1763,7 @@ public class GrantCommands {
     @Command
     @HasOffshore
     @RolePermission(value = {Roles.ECON_STAFF, Roles.ECON, Roles.ECON_GRANT_SELF})
-    public String withdrawEscrowed(OffshoreInstance offshore, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Me User author, DBNation receiver, Map<ResourceType, Double> amount) throws IOException {
+    public String withdrawEscrowed(@Me OffshoreInstance offshore, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Me User author, DBNation receiver, Map<ResourceType, Double> amount) throws IOException {
         // Require ECON_STAFF if receiver is not me
         if (receiver.getId() != me.getId()) {
             if (!Roles.ECON_STAFF.has(author, db.getGuild())) {
@@ -1785,14 +1785,15 @@ public class GrantCommands {
         // get a lock for nation
         final Object lock = OffshoreInstance.NATION_LOCKS.computeIfAbsent(receiver.getId(), f -> new Object());
         synchronized (lock) {
-            double[] escrowed = db.getEscrowed(receiver);
-            if (escrowed == null || ResourceType.isZero(escrowed)) {
+            Map.Entry<double[], Long> escrowedPair = db.getEscrowed(receiver);
+            if (escrowedPair == null || ResourceType.isZero(escrowedPair.getKey())) {
                 return "No escrowed resources found for " + receiver.getNation();
             }
+            long escrowDate = escrowedPair.getValue();
             // Ensure transfer amount is <= escrowed
             for (ResourceType type : ResourceType.values) {
-                if (Math.round(amtArr[type.ordinal()] * 100) > Math.round(escrowed[type.ordinal()] * 100)) {
-                    return "Cannot withdraw more than escrowed for " + type.getName() + "=" + MathMan.format(amtArr[type.ordinal()]) + " > " + MathMan.format(escrowed[type.ordinal()]) + "\n" +
+                if (Math.round(amtArr[type.ordinal()] * 100) > Math.round(escrowedPair.getKey()[type.ordinal()] * 100)) {
+                    return "Cannot withdraw more than escrowed for " + type.getName() + "=" + MathMan.format(amtArr[type.ordinal()]) + " > " + MathMan.format(escrowedPair.getKey()[type.ordinal()]) + "\n" +
                             "See: " + CM.deposits.check.cmd.toSlashMention();
                 }
             }
@@ -1800,31 +1801,29 @@ public class GrantCommands {
             double[] newEscrowed = new double[ResourceType.values.length];
             boolean hasEscrowed = false;
             for (ResourceType type : ResourceType.values) {
-                long newAmtCents = Math.round((escrowed[type.ordinal()] - amtArr[type.ordinal()]) * 100);
+                long newAmtCents = Math.round((escrowedPair.getKey()[type.ordinal()] - amtArr[type.ordinal()]) * 100);
                 hasEscrowed |= newAmtCents > 0;
                 newEscrowed[type.ordinal()] = newAmtCents * 0.01;
             }
             StringBuilder message = new StringBuilder();
             message.append("Deducted `"  + PnwUtil.resourcesToString(amtArr) + "` from escrow account for " + receiver.getNation() + "\n");
             if (!hasEscrowed) {
-                db.setEscrowed(receiver, null);
+                db.setEscrowed(receiver, null, escrowDate);
             } else {
-                db.setEscrowed(receiver, newEscrowed);
+                db.setEscrowed(receiver, newEscrowed, escrowDate);
             }
             { // - Ensure amt is deducted
-                double[] checkEscrowed = db.getEscrowed(receiver);
-                if (checkEscrowed == null) {
-                    checkEscrowed = new double[ResourceType.values.length];
-                }
+                Map.Entry<double[], Long> checkEscrowedPair = db.getEscrowed(receiver);
+                double[] checkEscrowed = checkEscrowedPair == null ? ResourceType.getBuffer() : checkEscrowedPair.getKey();
                 for (ResourceType type : ResourceType.values) {
                     if (Math.round(checkEscrowed[type.ordinal()] * 100) != Math.round(newEscrowed[type.ordinal()] * 100)) {
-                        message.append("Failed to deduct escrowed resources for " + type.getName() + "=" + MathMan.format(amtArr[type.ordinal()]) + " > " + MathMan.format(escrowed[type.ordinal()]));
+                        message.append("Failed to deduct escrowed resources for " + type.getName() + "=" + MathMan.format(checkEscrowed[type.ordinal()]) + " != " + MathMan.format(newEscrowed[type.ordinal()]));
                         message.append("\n");
                         // add amount deducted
                         message.append("Funds were deducted but the in-game transfer was aborted. Econ gov may need to correct your escrow balance via TODO CM Ref.\n");
-                        message.append("Original escrowed: `" + PnwUtil.resourcesToString(escrowed) + "`\n");
-                        message.append("Expected escrowed: `" + PnwUtil.resourcesToString(checkEscrowed) + "`\n");
-                        message.append("Current escrowed: `" + PnwUtil.resourcesToString(newEscrowed) + "`\n");
+                        message.append("Original escrowed: `" + PnwUtil.resourcesToString(escrowedPair.getKey()) + "`\n");
+                        message.append("Expected escrowed: `" + PnwUtil.resourcesToString(newEscrowed) + "`\n");
+                        message.append("Current escrowed: `" + PnwUtil.resourcesToString(checkEscrowed) + "`\n");
                         message.append("The `expected` and `new` should match, but something went wrong when deducting the balance.\n");
                         // econ role mention
                         Role role = Roles.ECON.toRole(db);
@@ -1853,7 +1852,7 @@ public class GrantCommands {
                 }
                 default: {
                     // add balance back
-                    db.setEscrowed(receiver, escrowed);
+                    db.setEscrowed(receiver, escrowedPair.getKey(), escrowDate);
                     message.append("Failed to withdraw " + PnwUtil.resourcesToString(amtArr) + " from escrowed resources for " + receiver.getNation() + "\n" +
                             result.getKey() + " -> " + result.getValue());
                     // message for adding back, same as deduct one but add back

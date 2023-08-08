@@ -219,6 +219,10 @@ public class CommandManager2 {
         this.commands.registerMethod(new AdminCommands(), List.of("announcement"), "find_invite", "find_invite");
         this.commands.registerMethod(new UnsortedCommands(), List.of("announcement"), "sendInvite", "invite");
 
+        this.commands.registerMethod(new GrantCommands(), List.of("escrow"), "withdrawEscrowed", "withdraw");
+        this.commands.registerMethod(new BankCommands(), List.of("escrow"), "addEscrow", "add");
+        this.commands.registerMethod(new BankCommands(), List.of("escrow"), "setEscrow", "set");
+        this.commands.registerMethod(new BankCommands(), List.of("escrow"), "setEscrowSheet", "set_sheet");
 
         for (GuildSetting setting : GuildKey.values()) {
             List<String> path = List.of("settings_" + setting.getCategory().name().toLowerCase(Locale.ROOT));

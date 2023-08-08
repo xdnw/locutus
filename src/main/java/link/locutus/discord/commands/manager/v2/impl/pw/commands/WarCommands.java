@@ -634,7 +634,8 @@ public class WarCommands {
             double[] escrowed = null;
             GuildDB otherDb = Locutus.imp().getGuildDBByAA(ally.getAlliance_id());
             if (otherDb != null) {
-                escrowed = otherDb.getEscrowed(ally);
+                Map.Entry<double[], Long> escrowedPair = otherDb.getEscrowed(ally);
+                escrowed = escrowedPair != null ? escrowedPair.getKey() : null;
             }
 
             double value;

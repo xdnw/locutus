@@ -433,8 +433,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public String generateEscrowedCard(DBNation nation) throws IOException {
-        double[] total = getEscrowed(nation);
-        if (total == null || ResourceType.isZero(total)) {
+        Map.Entry<double[], Long> totalPair = getEscrowed(nation);
+        if (totalPair == null || ResourceType.isZero(totalPair.getKey())) {
             return "No escrowed resources found. See: TODO CM Ref";
         }
 
@@ -482,29 +482,31 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         body.append("**Deposits:**\n`" + PnwUtil.resourcesToString(deposits) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(deposits)) + "\n");
         body.append(StringMan.repeat("\u2501", 8) + "\n");
 
-        body.append("**Total:**\n`" + PnwUtil.resourcesToString(total) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(total)) + "\n");
+        body.append("**Total:**\n`" + PnwUtil.resourcesToString(totalPair.getKey()) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalPair.getKey())) + "\n");
+        if (totalPair.getValue() > 0) {
+            body.append("Expires: " + DiscordUtil.timestamp(totalPair.getValue(), null) + "\n");
+        }
         body.append("\nPress `Send` to confirm transfer");
         return body.toString();
     }
 
-    public double[] getEscrowed(DBNation nation) throws IOException {
+    public Map.Entry<double[], Long> getEscrowed(DBNation nation) throws IOException {
         ByteBuffer escrowedBuf = getNationMeta(nation.getNation_id(), NationMeta.ESCROWED);
 
         if (escrowedBuf == null) {
-            return ResourceType.getBuffer();
+            return null;
         }
 
         long now = System.currentTimeMillis();
         double[] toSend = ResourceType.getBuffer();
-        if (escrowedBuf != null) {
-            long expire = escrowedBuf.getLong();
-            if (expire > now) {
-                ResourceType.read(escrowedBuf, toSend);
-            } else {
-                deleteMeta(nation.getNation_id(), NationMeta.ESCROWED);
-            }
+        long expire = escrowedBuf.getLong();
+        if (expire == 0 || expire > now) {
+            ResourceType.read(escrowedBuf, toSend);
+        } else {
+            deleteMeta(nation.getNation_id(), NationMeta.ESCROWED);
+            return null;
         }
-        return toSend;
+        return Map.entry(toSend, expire);
     }
 
     public void setMeta(long userId, NationMeta key, byte[] value) {
@@ -2513,9 +2515,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 }
             }
         }
-
-        if (amount == null)
-
     }
 
     public enum AutoNickOption {

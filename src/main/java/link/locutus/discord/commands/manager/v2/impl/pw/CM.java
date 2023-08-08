@@ -613,29 +613,6 @@ public class CM {
                 return createArgs("nations", nations, "sheetAmounts", sheetAmounts, "amount", amount, "rawsDays", rawsDays, "rawsNoDailyCash", rawsNoDailyCash, "rawsNoCash", rawsNoCash, "keepWarchestFactor", keepWarchestFactor, "keepPerCity", keepPerCity, "keepTotal", keepTotal, "unitResources", unitResources, "note", note, "customMessage", customMessage, "mailResults", mailResults, "dm", dm, "useApi", useApi, "force", force);
             }
         }
-        public static class escrow{
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="approveEscrowed")
-            public static class approve extends CommandRef {
-                public static final approve cmd = new approve();
-                public approve create(String receiver, String deposits, String escrowed) {
-                    return createArgs("receiver", receiver, "deposits", deposits, "escrowed", escrowed);
-                }
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="escrow")
-            public static class create extends CommandRef {
-                public static final create cmd = new create();
-                public create create(String receiver, String resources, String expireAfter, String topUp) {
-                    return createArgs("receiver", receiver, "resources", resources, "expireAfter", expireAfter, "topUp", topUp);
-                }
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="escrowDisburse")
-            public static class disburse extends CommandRef {
-                public static final disburse cmd = new disburse();
-                public disburse create(String receiver, String days, String expireAfter) {
-                    return createArgs("receiver", receiver, "days", days, "expireAfter", expireAfter);
-                }
-            }
-        }
         public static class limits{
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="setTransferLimit")
             public static class setTransferLimit extends CommandRef {

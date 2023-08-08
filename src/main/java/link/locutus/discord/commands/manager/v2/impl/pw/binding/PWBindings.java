@@ -765,6 +765,10 @@ public class PWBindings extends BindingHelper {
         return emumSet(AttackType.class, input);
     }
 
+    @Binding(examples = "SOLDIER,TANK,AIRCRAFT,SHIP,MISSILE,NUKE", value = "A comma separated list of military units")
+    public Set<MilitaryUnit> MilitaryUnits(String input) {
+        return emumSet(MilitaryUnit.class, input);
+    }
 
     @Binding(examples = {"aluminum", "money", "`*`", "manu", "raws", "!food"}, value = "A comma separated list of resource types")
     public static List<ResourceType> rssTypes(String input) {

@@ -2577,9 +2577,10 @@ public class GuildHandler {
         if (channel != null) {
             try {
                 boolean positive = false;
-                double[] escrowed = getDb().getEscrowed(receiver);
-                if (escrowed == null) return;
+                Map.Entry<double[], Long> escrowedPair = getDb().getEscrowed(receiver);
+                if (escrowedPair == null || ResourceType.isZero(escrowedPair.getKey())) return;
 
+                double[] escrowed = escrowedPair.getKey();
                 for (int i = 0; i < escrowed.length; i++) {
                     double amt = escrowed[i];
                     if (amt < 0) escrowed[i] = 0;
@@ -2598,10 +2599,10 @@ public class GuildHandler {
 
                     String title = "Approve Queued Transfer";
                     String body = db.generateEscrowedCard(receiver);
-                    CM.bank.escrow.approve cmd = CM.bank.escrow.approve.cmd.create(receiver.getNationUrl(), PnwUtil.resourcesToString(actualDeposits), PnwUtil.resourcesToString(escrowed));
+                    body += "\n\nTODO CMD ref for escrow withdraw";
 
                     IMessageIO io = new DiscordChannelIO(channel);
-                    io.create().embed(title, body).commandButton(cmd, "Approve").send();
+                    io.create().embed(title, body).send();
                 }
 
             } catch (IOException e) {
