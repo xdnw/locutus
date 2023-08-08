@@ -2,11 +2,13 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.apiv1.enums.AccessType;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.EscrowMode;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -34,6 +36,7 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -45,6 +48,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 public class GrantCommands {
 
@@ -53,9 +57,7 @@ public class GrantCommands {
     public void templateList(@Me GuildDB db, @Me Guild guild, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io, @Default TemplateTypes category, @Switch("d") boolean listDisabled) {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         Set<AGrantTemplate> templates = new HashSet<>(category == null ? manager.getTemplates() : manager.getTemplates(category));
-        if (!listDisabled) {
-            templates.removeIf(f -> !f.isEnabled());
-        }
+        int numDisabled = templates.stream().mapToInt(t -> t.isEnabled() ? 0 : 1).sum();
 
         if (templates.isEmpty()) {
             String msg = "No templates found for category: " + category + "\n" +
@@ -71,6 +73,7 @@ public class GrantCommands {
 
         List<AGrantTemplate> grantOthers = new ArrayList<>();
         List<AGrantTemplate> grantSelf = new ArrayList<>();
+        List<AGrantTemplate> disabled = new ArrayList<>();
         List<AGrantTemplate> noAccess = new ArrayList<>();
 
         for (AGrantTemplate template : templates) {
@@ -78,6 +81,8 @@ public class GrantCommands {
                 grantOthers.add(template);
             } else if (template.isEnabled() && template.hasSelfRole(member)) {
                 grantSelf.add(template);
+            } else if (!template.isEnabled() && (template.hasRole(member) || template.hasSelfRole(member))) {
+                disabled.add(template);
             } else {
                 noAccess.add(template);
             }
@@ -93,6 +98,12 @@ public class GrantCommands {
         if (!grantSelf.isEmpty()) {
             result.append("### Grant Self:\n");
             for (AGrantTemplate template : grantSelf) {
+                result.append("- ").append(template.toListString()).append("\n");
+            }
+        }
+        if (!disabled.isEmpty()) {
+            result.append("### Disabled:\n");
+            for (AGrantTemplate template : disabled) {
                 result.append("- ").append(template.toListString()).append("\n");
             }
         }
@@ -295,8 +306,8 @@ public class GrantCommands {
     public String templateCreateCity(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
                                      String name,
                                      NationFilter allowedRecipients,
-                                     @Switch("c") Integer minCity,
-                                     @Switch("m") Integer maxCity,
+                                     Integer minCity,
+                                     Integer maxCity,
                                      @Switch("e") Role econRole,
                                      @Switch("s") Role selfRole,
                                      @Switch("b")TaxBracket bracket,
@@ -358,7 +369,7 @@ public class GrantCommands {
     public String templateCreateInfra(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
                                       String name,
                                       NationFilter allowedRecipients,
-                                      @Switch("l") Integer level,
+                                      Integer level,
                                       @Switch("n") boolean onlyNewCities,
                                       @Switch("o") Integer requireNOffensives,
                                       @Switch("a") boolean allowRebuild,
@@ -441,7 +452,7 @@ public class GrantCommands {
     public String templateCreateLand(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
                                      String name,
                                      NationFilter allowedRecipients,
-                                     @Switch("l") Integer level,
+                                     Integer level,
                                      @Switch("n") boolean onlyNewCities,
 
                                      @Switch("e") Role econRole,
@@ -644,6 +655,7 @@ public class GrantCommands {
                                AGrantTemplate template,
                                DBNation receiver,
                                @Switch("p") String customValue,
+                               @Switch("em") EscrowMode escrowMode,
                                @Switch("f") boolean force) throws IOException {
         Role econRole = template.getEconRole();
         if (econRole == null) {
@@ -668,18 +680,18 @@ public class GrantCommands {
         String instructions = template.getInstructions(me, receiver, customValue);
 
         // validate requirements
-        List<Grant.Requirement> failedRequirements = new ArrayList<>();
-        requirements = template.getDefaultRequirements(me, receiver, customValue);
-        boolean canOverride = Roles.ECON.has(selfMember);
-        for (Grant.Requirement requirement : requirements) {
-            if (!requirement.apply(receiver.asNation())) {
-                failedRequirements.add(requirement);
-                if (requirement.canOverride() && canOverride) continue;
-                else {
-                    return "Failed requirement: " + requirement.getMessage();
-                }
-            }
-        }
+//        List<Grant.Requirement> failedRequirements = new ArrayList<>();
+//        requirements = template.getDefaultRequirements(me, receiver, customValue);
+//        boolean canOverride = Roles.ECON.has(selfMember);
+//        for (Grant.Requirement requirement : requirements) {
+//            if (!requirement.apply(receiver.asNation())) {
+//                failedRequirements.add(requirement);
+//                if (requirement.canOverride() && canOverride) continue;
+//                else {
+//                    return "Failed requirement: " + requirement.getMessage();
+//                }
+//            }
+//        }
 
         for (int i = 0; i < cost.length; i++) {
             if (cost[i] < 0)
@@ -700,13 +712,13 @@ public class GrantCommands {
             // add failedRequirements to message
             String title = "Send grant: " + template.getName();
             StringBuilder body = new StringBuilder();
-            if (!failedRequirements.isEmpty()) {
-                body.append("### Failed requirements:\n");
-                for (Grant.Requirement requirement : failedRequirements) {
-                    body.append("- ").append(requirement.getMessage()).append("\n");
-                }
-                body.append("\n\n");
-            }
+//            if (!failedRequirements.isEmpty()) {
+//                body.append("### Failed requirements:\n");
+//                for (Grant.Requirement requirement : failedRequirements) {
+//                    body.append("- ").append(requirement.getMessage()).append("\n");
+//                }
+//                body.append("\n\n");
+//            }
             body.append(template.toFullString(me, receiver, parsed));
             io.create().confirmation(title, body.toString(), command).send();
             return null;
@@ -726,6 +738,26 @@ public class GrantCommands {
             }
         }
 
+        GrantTemplateManager manager = db.getGrantTemplateManager();
+
+        Map<Long, Double> rankLimits = GuildKey.GRANT_TEMPLATE_LIMITS.getOrNull(db);
+        Double limit = null;
+        if (rankLimits != null && !rankLimits.isEmpty()) {
+            Member myRoles = selfMember;
+            for (Map.Entry<Long, Double> entry : rankLimits.entrySet()) {
+                Role role = db.getGuild().getRoleById(entry.getKey());
+                if (role == null) continue;
+                if (myRoles.getRoles().contains(role)) {
+                    if (limit == null) limit = 0d;
+                    limit = Math.max(limit, entry.getValue());
+                }
+            }
+            if (limit == null) {
+                throw new IllegalArgumentException("Grant template limits are set (see: " + CM.settings.info.cmd.toSlashMention() + " with key " + GuildKey.GRANT_TEMPLATE_LIMITS.name() + ")\n" +
+                        "However you have none of the roles set in the limits.");
+            }
+        }
+
         Map.Entry<OffshoreInstance.TransferStatus, String> status;
         synchronized (OffshoreInstance.BANK_LOCK) {
             for (Grant.Requirement requirement : requirements) {
@@ -734,6 +766,34 @@ public class GrantCommands {
                     return "Failed requirement (2): " + requirement.getMessage();
                 }
             }
+            { // limits
+
+                Long duration = GuildKey.GRANT_LIMIT_DELAY.getOrNull(db);
+                if (duration == null) duration = TimeUnit.DAYS.toMillis(1);
+                // if duration < 2h
+                if (duration < TimeUnit.HOURS.toMillis(2)) {
+                    throw new IllegalArgumentException("Grant template limits are set (see: " + CM.settings.info.cmd.toSlashMention() + " with key " + GuildKey.GRANT_LIMIT_DELAY.name() + ")\n" +
+                            "However the duration is less than 2 hours.");
+                }
+                // get grants in past timeframe
+                List<GrantTemplateManager.GrantSendRecord> records = manager.getRecordsBySender(me.getNation_id());
+                long cutoff = System.currentTimeMillis() - duration;
+                double totalOverDuration = 0;
+                for (GrantTemplateManager.GrantSendRecord record : records) {
+                    if (record.date < cutoff) continue;
+                    totalOverDuration += PnwUtil.convertedTotal(record.amount);
+                }
+                double total = totalOverDuration + PnwUtil.convertedTotal(cost);
+                if (total > limit) {
+                    throw new IllegalArgumentException("You have a grant template limit of ~$" + MathMan.format(limit) +
+                            " however have withdrawn ~$" + MathMan.format(totalOverDuration) + " over the past `" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "` " +
+                            " and are requesting ~$" + MathMan.format(PnwUtil.convertedTotal(cost)) +
+                            " which exceeds your limit by ~$" + MathMan.format(total - limit) + "\n" +
+                            "`note: Figures are equivalent market value, not straight cash`\n" +
+                            "See: " + GuildKey.GRANT_TEMPLATE_LIMITS.getCommandMention());
+                }
+            }
+
             status = offshore.transferFromNationAccountWithRoleChecks(
                     () -> accessType,
                     selfMember.getUser(),
@@ -748,6 +808,7 @@ public class GrantCommands {
                     null,
                     null,
                     false,
+                    escrowMode,
                     false,
                     false);
 
@@ -1703,49 +1764,108 @@ public class GrantCommands {
 
     @WhitelistPermission
     @Command
+    @HasOffshore
     @RolePermission(value = {Roles.ECON_STAFF, Roles.ECON, Roles.ECON_GRANT_SELF})
-    public String approveEscrowed(@Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Me User author, DBNation receiver, Map<ResourceType, Double> deposits, Map<ResourceType, Double> escrowed) throws IOException {
-        /*
-        Member: Can only send funds in their deposits
-         */
+    public String withdrawEscrowed(@Me OffshoreInstance offshore, @Me IMessageIO channel, @Me GuildDB db, @Me DBNation me, @Me User author, DBNation receiver, Map<ResourceType, Double> amount) throws IOException {
+        // Require ECON_STAFF if receiver is not me
+        if (receiver.getId() != me.getId()) {
+            if (!Roles.ECON_STAFF.has(author, db.getGuild())) {
+                return "You cannot withdraw escrowed resources for other nations. Missing role: " + Roles.ECON_STAFF.toDiscordRoleNameElseInstructions(db.getGuild());
+            }
+        }
+        // Ensure none of amount is negative
+        double[] amtArr = PnwUtil.resourcesToArray(amount);
+        for (ResourceType type : ResourceType.values) {
+            if (amtArr[type.ordinal()] < 0) {
+                return "Cannot withdraw negative amount of " + type.getName() + "=" + MathMan.format(amtArr[type.ordinal()]);
+            }
+        }
 
-        boolean memberCanApprove = db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW) == Boolean.TRUE && (db.getCoalition(Coalition.ENEMIES).isEmpty() || db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW_WARTIME) == Boolean.TRUE);
-        boolean checkDepoValue = !Roles.ECON_STAFF.has(author, db.getGuild());
-        boolean checkDepoResource = db.getOrNull(GuildKey.RESOURCE_CONVERSION) != Boolean.TRUE;
-        boolean allowExtra = Roles.ECON.has(author, db.getGuild());
 
-        double[] expectedDeposits = PnwUtil.resourcesToArray(deposits);
-        double[] actualDeposits;
-        boolean depositsMatch = true;
-        synchronized (OffshoreInstance.BANK_LOCK) {
-            actualDeposits = receiver.getNetDeposits(db, false);
-
-            for (int i = 0; i < actualDeposits.length; i++) {
-                if (actualDeposits[i] < expectedDeposits[i]) {
-                    depositsMatch = false;
+        if (TimeUtil.checkTurnChange()) {
+            return "Cannot withdraw escrowed resources close to turn change";
+        }
+        // get a lock for nation
+        final Object lock = OffshoreInstance.NATION_LOCKS.computeIfAbsent(receiver.getId(), f -> new Object());
+        synchronized (lock) {
+            Map.Entry<double[], Long> escrowedPair = db.getEscrowed(receiver);
+            if (escrowedPair == null || ResourceType.isZero(escrowedPair.getKey())) {
+                return "No escrowed resources found for " + receiver.getNation();
+            }
+            long escrowDate = escrowedPair.getValue();
+            // Ensure transfer amount is <= escrowed
+            for (ResourceType type : ResourceType.values) {
+                if (Math.round(amtArr[type.ordinal()] * 100) > Math.round(escrowedPair.getKey()[type.ordinal()] * 100)) {
+                    return "Cannot withdraw more than escrowed for " + type.getName() + "=" + MathMan.format(amtArr[type.ordinal()]) + " > " + MathMan.format(escrowedPair.getKey()[type.ordinal()]) + "\n" +
+                            "See: " + CM.deposits.check.cmd.toSlashMention();
                 }
             }
-
-            if (depositsMatch) {
-
+            //  - Deduct from escrowed
+            double[] newEscrowed = new double[ResourceType.values.length];
+            boolean hasEscrowed = false;
+            for (ResourceType type : ResourceType.values) {
+                long newAmtCents = Math.round((escrowedPair.getKey()[type.ordinal()] - amtArr[type.ordinal()]) * 100);
+                hasEscrowed |= newAmtCents > 0;
+                newEscrowed[type.ordinal()] = newAmtCents * 0.01;
+            }
+            StringBuilder message = new StringBuilder();
+            message.append("Deducted `"  + PnwUtil.resourcesToString(amtArr) + "` from escrow account for " + receiver.getNation() + "\n");
+            if (!hasEscrowed) {
+                db.setEscrowed(receiver, null, escrowDate);
+            } else {
+                db.setEscrowed(receiver, newEscrowed, escrowDate);
+            }
+            { // - Ensure amt is deducted
+                Map.Entry<double[], Long> checkEscrowedPair = db.getEscrowed(receiver);
+                double[] checkEscrowed = checkEscrowedPair == null ? ResourceType.getBuffer() : checkEscrowedPair.getKey();
+                for (ResourceType type : ResourceType.values) {
+                    if (Math.round(checkEscrowed[type.ordinal()] * 100) != Math.round(newEscrowed[type.ordinal()] * 100)) {
+                        message.append("Failed to deduct escrowed resources for " + type.getName() + "=" + MathMan.format(checkEscrowed[type.ordinal()]) + " != " + MathMan.format(newEscrowed[type.ordinal()]));
+                        message.append("\n");
+                        // add amount deducted
+                        message.append("Funds were deducted but the in-game transfer was aborted\n");
+                        message.append("Econ gov may need to correct your escrow balance via " + CM.escrow.add.cmd.toSlashMention() + "\n");
+                        message.append("Original escrowed: `" + PnwUtil.resourcesToString(escrowedPair.getKey()) + "`\n");
+                        message.append("Expected escrowed: `" + PnwUtil.resourcesToString(newEscrowed) + "`\n");
+                        message.append("Current escrowed: `" + PnwUtil.resourcesToString(checkEscrowed) + "`\n");
+                        message.append("The `expected` and `new` should match, but something went wrong when deducting the balance.\n");
+                        // econ role mention
+                        Role role = Roles.ECON.toRole(db);
+                        if (role != null) {
+                            message.append(role.getAsMention());
+                        }
+                        message.append("Admin command: " + CM.escrow.add.cmd.toSlashMention());
+                        return message.toString();
+                    }
+                }
+            }
+            // - Send to self via #ignore
+            Map.Entry<OffshoreInstance.TransferStatus, String> result = offshore.transferFromAllianceDeposits(me, db, db::isAllianceId, receiver, amtArr, "#ignore");
+            switch (result.getKey()) {
+                case ALLIANCE_BANK:
+                case SUCCESS: {
+                    message.append("Successfully withdrew " + PnwUtil.resourcesToString(amtArr) + " from escrowed resources for " + receiver.getNation()  +"\n" +
+                            result.getKey() + " -> " + result.getValue());
+                    return message.toString();
+                }
+                case TURN_CHANGE:
+                case OTHER: {
+                    message.append("Failed to withdraw " + PnwUtil.resourcesToString(amtArr) + " from escrowed resources for " + receiver.getNation() + "\n" +
+                            result.getKey() + " -> " + result.getValue());
+                    return message.toString();
+                }
+                default: {
+                    // add balance back
+                    db.setEscrowed(receiver, escrowedPair.getKey(), escrowDate);
+                    message.append("Failed to withdraw " + PnwUtil.resourcesToString(amtArr) + " from escrowed resources for " + receiver.getNation() + "\n" +
+                            result.getKey() + " -> " + result.getValue());
+                    // message for adding back, same as deduct one but add back
+                    message.append("Adding back `" + PnwUtil.resourcesToString(amtArr) + "` to escrow account for " + receiver.getNation() + "\n");
+                    return message.toString();
+                }
             }
         }
 
-        if (!depositsMatch) {
-            String title = "[Error] Outdated. Please try again";
-
-            String body = db.generateEscrowedCard(receiver);
-            body += "\nCommand run by: " + author.getAsMention();
-//            db.getEscrowed()
-            CM.bank.escrow.approve cmd = CM.bank.escrow.approve.cmd.create(receiver.getNationUrl(), PnwUtil.resourcesToString(actualDeposits), PnwUtil.resourcesToString(escrowed));
-
-            String emoji = "Send";
-            channel.create().embed(title, body).commandButton(cmd, emoji).send();
-            return null;
-        }
-        return null;
-
-        // check deposits match provided deposits
     }
 
     @WhitelistPermission

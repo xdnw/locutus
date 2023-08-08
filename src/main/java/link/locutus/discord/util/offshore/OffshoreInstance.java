@@ -5,6 +5,7 @@ import com.politicsandwar.graphql.model.Bankrec;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.AccessType;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.EscrowMode;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -61,12 +62,15 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class OffshoreInstance {
     public static final Object BANK_LOCK = new Object();
+    public static final ConcurrentHashMap<Integer, Object> NATION_LOCKS = new ConcurrentHashMap<>();
+
     public static final boolean DISABLE_TRANSFERS = false;
     private final int allianceId;
 
@@ -464,18 +468,22 @@ public class OffshoreInstance {
 
     public final Map<Integer, Long> disabledNations = new ConcurrentHashMap<>();
 
-    public Map.Entry<TransferStatus, String> transferFromNationAccountWithRoleChecks(User banker, DBNation nationAccount, DBAlliance allianceAccount, TaxBracket taxAccount, GuildDB senderDB, Long senderChannel, NationOrAlliance receiver, double[] amount, DepositType.DepositTypeInfo depositType, Long expire, UUID grantToken, boolean convertCash, boolean requireConfirmation, boolean bypassChecks) throws IOException {
+    public Map.Entry<TransferStatus, String> transferFromNationAccountWithRoleChecks(User banker, DBNation nationAccount, DBAlliance allianceAccount, TaxBracket taxAccount, GuildDB senderDB, Long senderChannel, NationOrAlliance receiver, double[] amount, DepositType.DepositTypeInfo depositType, Long expire, UUID grantToken, boolean convertCash, EscrowMode escrowMode, boolean requireConfirmation, boolean bypassChecks) throws IOException {
         Supplier<Map<Long, AccessType>> allowedIdsGet = ArrayUtil.memorize(new Supplier<Map<Long, AccessType>>() {
             @Override
             public Map<Long, AccessType> get() {
                return senderDB.getAllowedBankAccountsOrThrow(banker, receiver, senderChannel);
             }
         });
-        return transferFromNationAccountWithRoleChecks(allowedIdsGet, banker, nationAccount, allianceAccount, taxAccount, senderDB, senderChannel, receiver, amount, depositType, expire, grantToken, convertCash, requireConfirmation, bypassChecks);
+        return transferFromNationAccountWithRoleChecks(allowedIdsGet, banker, nationAccount, allianceAccount, taxAccount, senderDB, senderChannel, receiver, amount, depositType, expire, grantToken, convertCash, escrowMode, requireConfirmation, bypassChecks);
     }
 
-    public Map.Entry<TransferStatus, String> transferFromNationAccountWithRoleChecks(Supplier<Map<Long, AccessType>> allowedIdsGet, User banker, DBNation nationAccount, DBAlliance allianceAccount, TaxBracket taxAccount, GuildDB senderDB, Long senderChannel, NationOrAlliance receiver, double[] amount, DepositType.DepositTypeInfo depositType, Long expire, UUID grantToken, boolean convertCash, boolean requireConfirmation, boolean bypassChecks) throws IOException {
+    public Map.Entry<TransferStatus, String> transferFromNationAccountWithRoleChecks(Supplier<Map<Long, AccessType>> allowedIdsGet, User banker, DBNation nationAccount, DBAlliance allianceAccount, TaxBracket taxAccount, GuildDB senderDB, Long senderChannel, NationOrAlliance receiver, double[] amount, DepositType.DepositTypeInfo depositType, Long expire, UUID grantToken, boolean convertCash, EscrowMode escrowMode, boolean requireConfirmation, boolean bypassChecks) throws IOException {
         if (!TimeUtil.checkTurnChange()) return Map.entry(TransferStatus.TURN_CHANGE, "You cannot transfer close to turn change");
+
+        if (escrowMode == EscrowMode.ALWAYS && !receiver.isNation()) {
+            return Map.entry(TransferStatus.INVALID_DESTINATION, "You set escrow_mode=ALWAYS but the receiver is not a nation: " + receiver.getUrl());
+        }
 
         if (nationAccount != null) nationAccount = new DBNation(nationAccount); // Copy to avoid external mutation
 
@@ -486,11 +494,14 @@ public class OffshoreInstance {
             return Map.entry(TransferStatus.INVALID_NOTE, "Please use `" + DepositType.IGNORE + "` as the depositType when transferring to alliances");
         }
 
+        boolean allowEscrow = escrowMode == EscrowMode.ALWAYS || (escrowMode == EscrowMode.WHEN_BLOCKADED && receiver.isNation());
+        boolean escrowFunds = receiver.isNation() && receiver.asNation().isBlockaded();
+
         if (!bypassChecks && receiver.isNation()) {
             DBNation nation = receiver.asNation();
             if (nation.getVm_turns() > 0) return Map.entry(TransferStatus.VACATION_MODE, TransferStatus.VACATION_MODE.msg + " (set the `force` parameter to bypass)");
             if (nation.isGray()) return Map.entry(TransferStatus.GRAY, TransferStatus.GRAY.msg + " (set the `force` parameter to bypass)");
-            if (nation.getNumWars() > 0 && nation.isBlockaded()) return Map.entry(TransferStatus.BLOCKADE, TransferStatus.BLOCKADE.msg + " (set the `force` parameter to bypass)");
+            if (!allowEscrow && nation.getNumWars() > 0 && nation.isBlockaded()) return Map.entry(TransferStatus.BLOCKADE, TransferStatus.BLOCKADE.msg + " (set the `force` parameter to bypass. set `escrow_mode` to escrow)");
             if (nation.getActive_m() > 11520) return Map.entry(TransferStatus.INACTIVE, TransferStatus.INACTIVE.msg + " (set the `force` parameter to bypass)");
         }
 
@@ -659,9 +670,9 @@ public class OffshoreInstance {
                     if (missing != null) {
                         if (!rssConversion) {
                             String msg = nationAccount.getNation() + " is missing `" + PnwUtil.resourcesToString(missing) + "`. (see " +
-                                    CM.deposits.check.cmd.create(nationAccount.getNation(), null, null, null, null, null, null, null, null) +
+                                    CM.deposits.check.cmd.create(nationAccount.getNation(), null, null, null, null, null, null, null, null, null) +
                                     " ). RESOURCE_CONVERSION is disabled (see " +
-                                    GuildKey.RESOURCE_CONVERSION.getCommandObj(true) +
+                                    GuildKey.RESOURCE_CONVERSION.getCommandObj(senderDB, true) +
                                     ")";
                             allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                             if (allowedIds.isEmpty()) {
@@ -710,9 +721,9 @@ public class OffshoreInstance {
                 if (missing != null) {
                     if (!rssConversion) {
                         String msg = taxAccount.getQualifiedName() + " is missing `" + PnwUtil.resourcesToString(missing) + "`. (see " +
-                                CM.deposits.check.cmd.create(taxAccount.getQualifiedName(), null, null, null, null, null, null, null, null) +
+                                CM.deposits.check.cmd.create(taxAccount.getQualifiedName(), null, null, null, null, null, null, null, null, null) +
                                 " ). RESOURCE_CONVERSION is disabled (see " +
-                                GuildKey.RESOURCE_CONVERSION.getCommandObj(true) +
+                                GuildKey.RESOURCE_CONVERSION.getCommandObj(senderDB, true) +
                                 ")";
                         allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                         if (allowedIds.isEmpty()) {
@@ -769,6 +780,11 @@ public class OffshoreInstance {
                     }
 
                     body.append("**Receiver:** " + nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true) + "\n");
+                    if (escrowFunds) {
+                        body.append("`Funds will be escrowed due to blockade`\n");
+                    } else if (allowEscrow) {
+                        body.append("`Funds will be escrowed if blockaded`\n");
+                    }
                 } else {
                     DBAlliance alliance = receiver.asAlliance();
                     if (alliance.getNations(f -> f.active_m() < 7200 && f.getPositionEnum().id >= Rank.HEIR.id && f.getVm_turns() == 0).isEmpty()) {
@@ -859,7 +875,24 @@ public class OffshoreInstance {
 
             }
 
-            Map.Entry<TransferStatus, String> result = transferFromAllianceDeposits(bankerNation, senderDB, f -> allowedIds.containsKey(f.longValue()), receiver, amount, ingameNote);
+            Map.Entry<TransferStatus, String> result = null;
+            if (!escrowFunds) {
+                result = transferFromAllianceDeposits(bankerNation, senderDB, f -> allowedIds.containsKey(f.longValue()), receiver, amount, ingameNote);
+            }
+            if (escrowFunds || (result.getKey() == TransferStatus.BLOCKADE && allowEscrow)) {
+                // add escrow funds
+                Object lock = NATION_LOCKS.computeIfAbsent(receiver.getId(), k -> new Object());
+                synchronized (lock) {
+                    Map.Entry<double[], Long> balanceOrNull = senderDB.getEscrowed(receiver.asNation());
+                    double[] balance = balanceOrNull == null ? ResourceType.getBuffer() : balanceOrNull.getKey();
+                    long escrowDate = balanceOrNull == null ? 0 : balanceOrNull.getValue();
+                    for (int i = 0; i < amount.length; i++) {
+                        balance[i] += amount[i];
+                    }
+                    senderDB.setEscrowed(receiver.asNation(), balance, escrowDate);
+                }
+                result = Map.entry(TransferStatus.SUCCESS, "Escrowed `" + PnwUtil.resourcesToString(amount) + "` for " + receiver.getName() + ". use " + CM.escrow.withdraw.cmd.toSlashMention() + " to withdraw.");
+            }
             switch (result.getKey()) {
                 default: {
                     if (isInternalTransfer) {

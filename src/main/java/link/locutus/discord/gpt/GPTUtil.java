@@ -9,6 +9,7 @@ import com.theokanning.openai.moderation.ModerationRequest;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 public class GPTUtil {
@@ -16,6 +17,8 @@ public class GPTUtil {
 //    public static float[] average(List<float[]> input, List<Double> weighting) {
 //        // see https://github.com/openai/openai-cookbook/blob/main/examples/Embedding_long_inputs.ipynb
 //    }
+
+    private static EncodingRegistry REGISTRY = Encodings.newDefaultEncodingRegistry();
 
     public static void checkThrowModeration2(List<Moderation> moderations, String text) {
         for (Moderation result : moderations) {
@@ -41,16 +44,16 @@ public class GPTUtil {
         }
     }
 
+    private static final ConcurrentHashMap<ModelType, Encoding> ENCODER_CACHE = new ConcurrentHashMap<>();
+
     public static int getTokens(String input, ModelType type) {
-        EncodingRegistry registry = Encodings.newDefaultEncodingRegistry();
-        Encoding enc = registry.getEncodingForModel(type);
-        return enc.encode(input).size();
+        Encoding enc = ENCODER_CACHE.computeIfAbsent(type, REGISTRY::getEncodingForModel);
+        return enc.countTokens(input);
     }
 
     public static List<String> getChunks(String input, ModelType type, int tokenSizeCap) {
-        EncodingRegistry registry = Encodings.newDefaultEncodingRegistry();
-        Encoding enc = registry.getEncodingForModel(type);
-        return getChunks(input, tokenSizeCap, s -> enc.encode(s).size());
+        Encoding enc = ENCODER_CACHE.computeIfAbsent(type, REGISTRY::getEncodingForModel);
+        return getChunks(input, tokenSizeCap, enc::countTokens);
     }
 
     public static List<String> getChunks(String input, int tokenSizeCap, Function<String, Integer> getSize) {

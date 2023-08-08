@@ -133,9 +133,10 @@ public abstract class AGrantTemplate<T> {
         // sender or receiver may be null
         StringBuilder data = new StringBuilder();
         if (!enabled) {
-            data.append("**disabled**\n");
+            data.append("`disabled: enable with `" + CM.grant_template.enable.cmd.toSlashMention());
         }
-        data.append("### ").append(getName()).append("\n");
+        data.append("Name: `").append(getName()).append("`\n");
+        data.append("Type: `").append(this.getType().name()).append("`\n");
         data.append("Allowed: `" + nationFilter.getFilter() + "`\n");
         if (econRole > 0) {
             Role role = getEconRole();
@@ -210,6 +211,14 @@ public abstract class AGrantTemplate<T> {
             String instructions = this.getInstructions(sender, receiver, parsed);
             if (instructions != null && !instructions.isEmpty()) {
                 data.append("Instructions:\n>>> ").append(instructions).append("\n");
+            }
+        } else {
+            List<Grant.Requirement> requirements = getDefaultRequirements(sender, receiver, parsed);
+            if (!requirements.isEmpty()) {
+                data.append("\n**Requirements:**\n");
+                for (Grant.Requirement requirement : requirements) {
+                    data.append("- " + requirement.getMessage()).append("\n");
+                }
             }
         }
 

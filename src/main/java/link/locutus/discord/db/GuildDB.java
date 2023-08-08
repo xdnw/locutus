@@ -50,8 +50,11 @@ import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
+import rocker.guild.ia.message;
 
 import javax.annotation.Nullable;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
@@ -76,6 +79,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -429,10 +433,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public String generateEscrowedCard(DBNation nation) throws IOException {
-        double[] disburse = getEscrowed(nation, true, false, false);
-        double[] topUp = getEscrowed(nation, false, true, false);
-        double[] extra = getEscrowed(nation, false, false, true);
-        double[] escrowed = getEscrowed(nation, false, false, true);
+        Map.Entry<double[], Long> totalPair = getEscrowed(nation);
+        if (totalPair == null || ResourceType.isZero(totalPair.getKey())) {
+            return "No escrowed resources found.";
+        }
 
         double[] deposits = nation.getNetDeposits(this, false);
 
@@ -477,99 +481,32 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
         body.append("**Deposits:**\n`" + PnwUtil.resourcesToString(deposits) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(deposits)) + "\n");
         body.append(StringMan.repeat("\u2501", 8) + "\n");
-        int typesEscrowed = 0;
-        if (disburse != null) {
-            typesEscrowed++;
-            ByteBuffer escrowedDisburseBuf = getNationMeta(nation.getNation_id(), NationMeta.ESCROWED_DISBURSE_DAYS);
-            int days = escrowedDisburseBuf.get() & 0xFF;
-            body.append("**Disburse " + days + "d:**\n`" + PnwUtil.resourcesToString(disburse) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(disburse)) + "\n");
-        }
-        if (topUp != null) {
-            typesEscrowed++;
-            body.append("**Top Up:**\n`" + PnwUtil.resourcesToString(topUp) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(topUp)) + "\n");
-        }
-        if (escrowed != null) {
-            typesEscrowed++;
-            body.append("**Additional:**\n`" + PnwUtil.resourcesToString(extra) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(extra)) + "\n");
-        }
-        if (typesEscrowed > 1 || true) {
-            body.append(StringMan.repeat("\u2501", 8) + "\n");
-            body.append("**Total**:\n");
-            for (int i = 0; i < escrowed.length; i++) {
-                if (escrowed[i] == 0) continue;
-                body.append(ResourceType.values[i].name().toLowerCase() + "=");
-                boolean underline = escrowed[i] < deposits[i];
-                if (underline) body.append("__");
-                body.append(MathMan.format(escrowed[i]));
-                if (underline) body.append("__");
-                body.append("\n");
-            }
-            double totalValue = PnwUtil.convertedTotal(topUp);
-            body.append("Total Worth: $" + MathMan.format(totalValue));
-            if (totalValue + 1> PnwUtil.convertedTotal(deposits)) {
-                body.append(" (insufficient deposits)");
-            }
 
-            body.append("**Total:**\n`" + PnwUtil.resourcesToString(escrowed) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(escrowed)) + "\n");
+        body.append("**Total:**\n`" + PnwUtil.resourcesToString(totalPair.getKey()) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalPair.getKey())) + "\n");
+        if (totalPair.getValue() > 0) {
+            body.append("Expires: " + DiscordUtil.timestamp(totalPair.getValue(), null) + "\n");
         }
         body.append("\nPress `Send` to confirm transfer");
         return body.toString();
     }
 
-    public double[] getEscrowed(DBNation nation) throws IOException {
-        return getEscrowed(nation, true, true, true);
-    }
-
-    public double[] getEscrowed(DBNation nation, boolean disburse, boolean topUp, boolean extra) throws IOException {
+    public Map.Entry<double[], Long> getEscrowed(DBNation nation) throws IOException {
         ByteBuffer escrowedBuf = getNationMeta(nation.getNation_id(), NationMeta.ESCROWED);
-        ByteBuffer escrowedTopBuf = getNationMeta(nation.getNation_id(), NationMeta.ESCROWED_UP_TO);
-        ByteBuffer escrowedDisburseBuf = getNationMeta(nation.getNation_id(), NationMeta.ESCROWED_DISBURSE_DAYS);
 
-        if (escrowedBuf == null && escrowedTopBuf == null && escrowedDisburseBuf == null) {
+        if (escrowedBuf == null) {
             return null;
         }
 
         long now = System.currentTimeMillis();
         double[] toSend = ResourceType.getBuffer();
-        Map<ResourceType, Double> stockpile = null;
-        if (escrowedDisburseBuf != null) {
-            long expire = escrowedDisburseBuf.getLong();
-            if (expire > now) {
-                int days = escrowedDisburseBuf.get() & 0xFF;
-                if (stockpile == null) stockpile = nation.getStockpile();
-                Map<ResourceType, Double> resources = nation.getResourcesNeeded(stockpile, days, false);
-                for (Map.Entry<ResourceType, Double> entry : resources.entrySet()) {
-                    toSend[entry.getKey().ordinal()] += entry.getValue();
-                }
-            } else {
-                deleteMeta(nation.getNation_id(), NationMeta.ESCROWED_DISBURSE_DAYS);
-            }
+        long expire = escrowedBuf.getLong();
+        if (expire == 0 || expire > now) {
+            ResourceType.read(escrowedBuf, toSend);
+        } else {
+            deleteMeta(nation.getNation_id(), NationMeta.ESCROWED);
+            return null;
         }
-        if (escrowedTopBuf != null) {
-            long expire = escrowedTopBuf.getLong();
-            if (expire > now) {
-                double[] resources = ResourceType.read(escrowedBuf, null);
-                if (stockpile == null) stockpile = nation.getStockpile();
-                for (ResourceType type : ResourceType.values) {
-                    double amt = resources[type.ordinal()];
-                    amt = Math.min(amt, stockpile.getOrDefault(type, 0d));
-                    if (amt > 0) {
-                        toSend[type.ordinal()] = amt;
-                    }
-                }
-            } else {
-                deleteMeta(nation.getNation_id(), NationMeta.ESCROWED_UP_TO);
-            }
-        }
-        if (escrowedBuf != null) {
-            long expire = escrowedBuf.getLong();
-            if (expire > now) {
-                ResourceType.read(escrowedBuf, toSend);
-            } else {
-                deleteMeta(nation.getNation_id(), NationMeta.ESCROWED);
-            }
-        }
-        return toSend;
+        return Map.entry(toSend, expire);
     }
 
     public void setMeta(long userId, NationMeta key, byte[] value) {
@@ -877,7 +814,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     @Override
     public void createTables() {
         {
-
             StringBuilder query = new StringBuilder("CREATE TABLE IF NOT EXISTS `INTERNAL_TRANSACTIONS2` (" +
                     "`tx_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
                     "tx_datetime BIGINT NOT NULL, " +
@@ -1003,8 +939,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 e.printStackTrace();
             }
         };
-        { // grants
-
+        {
+            // Escroew
+            String create = "";
         }
 
 
@@ -1641,7 +1578,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             if (getOrNull(GuildKey.MEMBER_CAN_WITHDRAW) == Boolean.TRUE) {
                 if (!aaIds.isEmpty() && !getCoalition(Coalition.ENEMIES).isEmpty() && getOrNull(GuildKey.MEMBER_CAN_WITHDRAW_WARTIME) != Boolean.TRUE) {
                     if (throwError) {
-                        throw new IllegalArgumentException("You cannot withdraw during wartime. `" + GuildKey.MEMBER_CAN_WITHDRAW_WARTIME.name() + "` is false (see " + GuildKey.MEMBER_CAN_WITHDRAW.getCommandObj(true) + ") and `enemies` is set (see: " + CM.coalition.add.cmd.toSlashMention() + " | " + CM.coalition.remove.cmd.toSlashMention() + " | " + CM.coalition.list.cmd.toSlashMention() + ")");
+                        throw new IllegalArgumentException("You cannot withdraw during wartime. `" + GuildKey.MEMBER_CAN_WITHDRAW_WARTIME.name() + "` is false (see " + GuildKey.MEMBER_CAN_WITHDRAW.getCommandObj(this, true) + ") and `enemies` is set (see: " + CM.coalition.add.cmd.toSlashMention() + " | " + CM.coalition.remove.cmd.toSlashMention() + " | " + CM.coalition.list.cmd.toSlashMention() + ")");
                     }
                 } else if (aaIds.isEmpty()) {
                     if (channelWithdrawAccounts.isEmpty() || !channelWithdrawAccounts.contains(getIdLong())) {
@@ -2068,7 +2005,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             try {
                 checkDeposits(guildDepo, amount, senderAlliance != null ? "Alliance" : "Guild", accountName);
             } catch (IllegalArgumentException e) {
-                CM.deposits.check cmd = CM.deposits.check.cmd.create(accountName, null, null, null, null, null, null, null, null);
+                CM.deposits.check cmd = CM.deposits.check.cmd.create(accountName, null, null, null, null, null, null, null, null, null);
                 throw new IllegalArgumentException(e.getMessage() + "\n" + "See: " + cmd);
             }
 
@@ -2291,7 +2228,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         Boolean enabled = getOrNull(GuildKey.ENABLE_WAR_ROOMS, false);
         if (enabled == Boolean.FALSE || enabled == null) {
             if (throwException) {
-                String msg = "War rooms are not enabled " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(true) + " in guild " + getGuild();
+                String msg = "War rooms are not enabled " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(this, true) + " in guild " + getGuild();
                 if (warCatError != null) {
                     msg += msg + "\nPreviously disabled due to error: " + warCatError.getMessage();
                 }
@@ -2340,7 +2277,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                                 if (warCatError != null) {
                                     message += warCatError.getMessage() + "\n```" + StringMan.stacktraceToString(warCatError) + "```";
                                 }
-                                message += "\nTry setting " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(true) + " and attempting this command again once the issue has been resolved.";
+                                message += "\nTry setting " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(this, true) + " and attempting this command again once the issue has been resolved.";
                                 throw new IllegalArgumentException(message);
                             }
                             throw new IllegalArgumentException("This guild does not have permission to use war channels");
@@ -2356,7 +2293,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         } catch (Throwable e) {
             warCatError = e;
             if (throwException) throw new IllegalArgumentException("There was an error creating war channels: " + e.getMessage() + "\n```" + StringMan.stacktraceToString(e) + "```\n" +
-                    "\nTry setting " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(true) + " and attempting this command again once the issue has been resolved.");
+                    "\nTry setting " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(this, true) + " and attempting this command again once the issue has been resolved.");
             return null;
         }
     }
@@ -2555,6 +2492,29 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 
     public Throwable getWarCatError() {
         return warCatError;
+    }
+
+    public void setEscrowed(DBNation nation, double[] amount, long expire) {
+        Object lock = OffshoreInstance.NATION_LOCKS.computeIfAbsent(nation.getId(), k -> new Object());
+        synchronized (lock) {
+            if (amount == null) {
+                nation.deleteMeta(NationMeta.ESCROWED);
+            } else {
+                try {
+                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    DataOutputStream dout = new DataOutputStream(out);
+                    dout.writeLong(expire);
+                    for (ResourceType type : ResourceType.values) {
+                        double amt = amount[type.ordinal()];
+                        dout.writeDouble(amt);
+                    }
+                    NationMeta meta = NationMeta.ESCROWED;
+                    setMeta(nation.getNation_id(), meta, out.toByteArray());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
     }
 
     public enum AutoNickOption {

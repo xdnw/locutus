@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw;
 
+import ai.djl.MalformedModelException;
+import ai.djl.repository.zoo.ModelNotFoundException;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -14,6 +16,7 @@ import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.GPTBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBinding;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.SheetBindings;
@@ -37,6 +40,7 @@ import org.json.JSONObject;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.util.*;
@@ -58,6 +62,7 @@ public class CommandManager2 {
         new PrimitiveBindings().register(store);
         new DiscordBindings().register(store);
         new PWBindings().register(store);
+        new GPTBindings().register(store);
         new SheetBindings().register(store);
 //        new StockBinding().register(store);
 
@@ -72,10 +77,11 @@ public class CommandManager2 {
 
         this.commands = CommandGroup.createRoot(store, validators);
 
-        if (!Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI_API_KEY.isEmpty()) {
+        if (!Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY.isEmpty()) {
             try {
                 pwgptHandler = new PWGPTHandler(this);
-            } catch (SQLException | ClassNotFoundException e) {
+            } catch (SQLException | ClassNotFoundException | ModelNotFoundException | MalformedModelException |
+                     IOException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -145,74 +151,6 @@ public class CommandManager2 {
 
         this.commands.registerCommandsWithMapping(CM.class, false, false);
 
-        GrantCommands grantCmds = new GrantCommands();
-        this.commands.registerMethod(grantCmds, List.of("grant_template"), "templateList", "list");
-        this.commands.registerMethod(grantCmds, List.of("grant_template"), "templateInfo", "info");
-        this.commands.registerMethod(grantCmds, List.of("grant_template"), "templateDelete", "delete");
-        this.commands.registerMethod(grantCmds, List.of("grant_template"), "templateDisable", "disable");
-        this.commands.registerMethod(grantCmds, List.of("grant_template"), "templateEnabled", "enable");
-        this.commands.registerMethod(grantCmds, List.of("grant_template", "create"), "templateCreateProject", "project");
-        this.commands.registerMethod(grantCmds, List.of("grant_template", "create"), "templateCreateBuild", "build");
-        this.commands.registerMethod(grantCmds, List.of("grant_template", "create"), "templateCreateCity", "city");
-        this.commands.registerMethod(grantCmds, List.of("grant_template", "create"), "templateCreateInfra", "infra");
-        this.commands.registerMethod(grantCmds, List.of("grant_template", "create"), "templateCreateLand", "land");
-        this.commands.registerMethod(grantCmds, List.of("grant_template", "create"), "templateCreateRaws", "raws");
-        this.commands.registerMethod(grantCmds, List.of("grant_template", "create"), "templateCreateWarchest", "warchest");
-        this.commands.registerMethod(grantCmds, List.of("grant_template"), "templateSend", "send");
-
-        this.commands.registerMethod(new TestCommands(), List.of("modal"), "modal", "create");
-        this.commands.registerMethod(new BankCommands(), List.of("tax"), "taxInfo", "info");
-
-        this.commands.registerMethod(new BankCommands(), List.of("bank"), "depositResources", "deposit");
-
-        this.commands.registerMethod(new UnsortedCommands(), List.of("alerts"), "loginNotifier", "login");
-        this.commands.registerMethod(new IACommands(), List.of("sheets_ia"), "dayChangeSheet", "daychange");
-
-        this.commands.registerMethod(new WarCommands(), List.of("sheets_milcom"), "convertDtCSpySheet", "convertdtcspysheet");
-        this.commands.registerMethod(new WarCommands(), List.of("spy", "sheet"), "convertDtCSpySheet", "convertdtc");
-        this.commands.registerMethod(new WarCommands(), List.of("war", "find"), "findTreasureNations", "treasure");
-        this.commands.registerMethod(new WarCommands(), List.of("war", "find"), "findBountyNations", "bounty");
-
-        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "raid", "raid");
-        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "warWinning", "war_winning");
-        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "spyEnemy", "spy_enemy");
-        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "warContestedRange", "war_contested_range");
-        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "warGuerilla", "guerilla");
-        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "unblockadeRequests", "unblockade_requests");
-        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "allyEnemySheets", "ally_enemy_sheets");
-        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "spySheets", "spy_sheets");
-        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "memberEconPanel", "member_econ");
-        this.commands.registerMethod(new WarCommands(), List.of("war", "room"), "warRoomSheet", "from_sheet");
-        this.commands.registerMethod(new UnsortedCommands(), List.of("alerts"), "loginNotifier", "login");
-
-        this.commands.registerMethod(new UnsortedCommands(), List.of("spy", "sheet"), "freeSpyOpsSheet", "free_ops");
-
-        this.commands.registerMethod(new AttackCommands(), List.of("simulate"), "casualties", "casualties");
-
-        this.commands.registerMethod(new AdminCommands(), List.of("admin", "wiki"), "dumpWiki", "save");
-        this.commands.registerMethod(new AdminCommands(), List.of("admin", "conflicts"), "checkActiveConflicts", "check");
-        this.commands.registerMethod(new AdminCommands(), List.of("admin", "alliance"), "runMilitarizationAlerts", "military_alerts");
-        this.commands.registerMethod(new AdminCommands(), List.of("admin", "queue"), "showFileQueue", "file");
-        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncCitiesTest", "cities");
-
-        this.commands.registerMethod(new SettingCommands(), List.of("settings"), "delete", "delete");
-        this.commands.registerMethod(new SettingCommands(), List.of("settings"), "sheets", "sheets");
-        this.commands.registerMethod(new SettingCommands(), List.of("settings"), "info", "info");
-
-        this.commands.registerMethod(new AdminCommands(), List.of("admin"), "loginTimes", "list_login_times");
-
-        this.commands.registerMethod(new StatCommands(), List.of("stats_war"), "warAttacksByDay", "warattacksbyday");
-        this.commands.registerMethod(new FunCommands(), List.of("fun"), "stealBorgsCity", "stealborgscity");
-
-        this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "audit"), "auditAlertOptOut", "optout");
-        this.commands.registerMethod(new PlayerSettingCommands(), List.of("alerts", "enemy"), "enemyAlertOptOut", "optout");
-        this.commands.registerMethod(new PlayerSettingCommands(), List.of("announcement"), "viewAnnouncement", "view");
-
-        this.commands.registerMethod(new TestCommands(), List.of("announcement"), "ocr", "ocr");
-        this.commands.registerMethod(new AdminCommands(), List.of("announcement"), "find_announcement", "find");
-        this.commands.registerMethod(new AdminCommands(), List.of("announcement"), "find_invite", "find_invite");
-        this.commands.registerMethod(new UnsortedCommands(), List.of("announcement"), "sendInvite", "invite");
-
         for (GuildSetting setting : GuildKey.values()) {
             List<String> path = List.of("settings_" + setting.getCategory().name().toLowerCase(Locale.ROOT));
 
@@ -239,52 +177,31 @@ public class CommandManager2 {
 
         this.commands.registerMethod(help, List.of("help"), "command", "command");
 
-//        if (pwgptHandler != null) {
+        if (pwgptHandler != null) {
 //            this.commands.registerMethod(help, List.of("help"), "find_command", "find_command");
-//            this.commands.registerMethod(help, List.of("help"), "find_setting", "find_setting");
-//
-//            this.commands.registerMethod(help, List.of("help"), "moderation_check", "moderation_check");
-//            this.commands.registerMethod(help, List.of("help"), "query", "query");
-//
-//            pwgptHandler.registerDefaults();
-//        }
+            this.commands.registerMethod(help, List.of("help"), "find_setting", "find_setting");
 
+            this.commands.registerMethod(help, List.of("help"), "moderation_check", "moderation_check");
+            this.commands.registerMethod(help, List.of("help"), "query", "query");
 
+            GPTCommands gptCommands = new GPTCommands();
 
-//        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "intel", "intel");
+            this.commands.registerMethod(gptCommands, List.of("chat", "spreadsheet"), "generate_factsheet", "convert");
+            this.commands.registerMethod(gptCommands, List.of("chat", "embedding"), "list_documents", "list");
+            this.commands.registerMethod(gptCommands, List.of("chat", "embedding"), "view_document", "view");
+            this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "delete_document", "delete");
+            this.commands.registerMethod(gptCommands, List.of("chat", "spreadsheet"), "save_embeddings", "save");
+            this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "listChatProviders", "list");
+            this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "setChatProviders", "set");
+            this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatProviderConfigure", "configure");
+            this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatResume", "resume");
+            this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatPause", "pause");
 
-//        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "spyEnemy", "spy_enemy");
+            this.commands.registerMethod(gptCommands, List.of("help"), "find_command2", "find_command");
 
-//        this.commands.registerSubCommands(new BuildCommands(), "build");
-//        this.commands.registerMethod(new StatCommands(), List.of("stats_other"), "radiationByTurn", null);
-//
-//        this.commands.registerMethod(new WarCommands(), List.of("sheets_milcom"), "convertTKRSpySheet", "convertTKRSpySheet");
-//        this.commands.registerMethod(new WarCommands(), List.of("spy", "sheet"), "convertTKRSpySheet", "convertTKR");
-//
-//        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncLootFromAttacks", "syncLootFromAttacks");
-//        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncTreasures", "treasures");
-//        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncDiscordWithLocutus", "discord");
-//
-//        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertAbsolute", "price");
-//        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertMistrade", "mistrade");
-//        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertDisparity", "margin");
-//        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertNoOffer", "no_offers");
-//        this.commands.registerMethod(new TradeCommands(), List.of("alerts", "trade"), "tradeAlertUndercut", "undercut");
-//        this.commands.registerMethod(new AdminCommands(), List.of("admin"), "removeInvalidOffshoring", "removeinvalidoffshoring");
-//        this.commands.registerMethod(new AdminCommands(), List.of("admin"), "leaveServer", "leaveServer");
-//        this.commands.registerMethod(new UtilityCommands(), List.of("color"), "calculateColorRevenue", "revenue");
-//
-//        this.commands.registerMethod(new UnsortedCommands(), List.of("sheets_econ"), "taxRevenueSheet", "taxRevenue");
-//
-//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "sellOffer", "sell");
-//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "buyOffer", "buy");
-//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "deleteOffer", "delete");
-//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "offerInfo", "info");
-//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "updateOffer", "update");
-//
-//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "buyList", "buy_list");
-//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "sellList", "sell_list");
-//        this.commands.registerMethod(new TradeCommands(), List.of("trade", "offer"), "myOffers", "my_offers");
+            pwgptHandler.registerDefaults();
+        }
+
 
         StringBuilder output = new StringBuilder();
         this.commands.generatePojo("", output, 0);
@@ -495,6 +412,7 @@ public class CommandManager2 {
                         } catch (RuntimeException e) {
                             Throwable e2 = e;
                             while (e2.getCause() != null && e2.getCause() != e2) e2 = e2.getCause();
+                            e2.printStackTrace();
                             throw new CommandUsageException(callable, e2.getMessage());
                         }
                     });

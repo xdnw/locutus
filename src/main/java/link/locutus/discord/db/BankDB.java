@@ -112,7 +112,6 @@ import static org.example.jooq.bank.Tables.TRANSACTIONS_2;
 import static org.example.jooq.bank.Tables.TRANSACTIONS_ALLIANCE_2;
 import static org.example.jooq.web.Tables.TOKENS3;
 import static org.jooq.impl.DSL.lower;
-import static org.springframework.data.mongodb.core.query.Update.update;
 
 public class BankDB extends DBMainV3 {
     private final Map<Long, Set<Transaction2>> transactionCache = new ConcurrentHashMap<>();

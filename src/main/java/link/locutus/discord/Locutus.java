@@ -15,6 +15,7 @@ import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.stock.StockDB;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.config.yaml.Config;

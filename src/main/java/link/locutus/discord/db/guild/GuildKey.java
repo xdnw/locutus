@@ -1,7 +1,9 @@
 package link.locutus.discord.db.guild;
 
 import com.google.gson.reflect.TypeToken;
+import com.knuddels.jtokkit.api.ModelType;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
+import com.theokanning.openai.service.OpenAiService;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -10,6 +12,8 @@ import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
@@ -22,12 +26,18 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.EnemyAlertChannelMode;
 import link.locutus.discord.db.entities.MMRMatcher;
 import link.locutus.discord.db.entities.TaxBracket;
+import link.locutus.discord.gpt.GPTModerator;
+import link.locutus.discord.gpt.ModerationResult;
+import link.locutus.discord.gpt.copilot.CopilotDeviceAuthenticationData;
+import link.locutus.discord.gpt.imps.CopilotText2Text;
+import link.locutus.discord.gpt.imps.GPTText2Text;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AutoAuditType;
 import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
@@ -43,9 +53,11 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -157,7 +169,7 @@ public class GuildKey {
                                         "2. Scroll down to where it says Alliance Description:\n" +
                                         "3. Put your guild id `" + db.getIdLong() + "` somewhere in the text\n" +
                                         "4. Click save\n" +
-                                        "5. Run the command " + getCommandObj(aaIds) + " again\n" +
+                                        "5. Run the command " + getCommandObj(db, aaIds) + " again\n" +
                                         "(note: you can remove the id after setup)";
                                 throw new IllegalArgumentException(msg);
                             }
@@ -190,6 +202,183 @@ public class GuildKey {
             return StringMan.join(value, ",");
         }
     };
+
+    public static final GuildSetting<String> OPENAI_KEY = new GuildStringSetting(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE) {
+
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String register_openai_key(@Me GuildDB db, @Me User user, String apiKey) {
+            return OPENAI_KEY.set(db, apiKey);
+        }
+
+        @Override
+        public String validate(GuildDB db, String apiKey) {
+            if (apiKey == null || apiKey.isEmpty()) {
+                throw new IllegalArgumentException("Please provide an API key");
+            }
+            OpenAiService service = new OpenAiService(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, Duration.ofSeconds(120));
+            GPTModerator moderator = new GPTModerator(service);
+            List<ModerationResult> result = moderator.moderate("Hello World");
+            if (result.size() == 0) {
+                throw new IllegalArgumentException("Invalid API key. No result returned");
+            }
+            ModerationResult modResult = result.get(0);
+            if (modResult.isError()) {
+                throw new IllegalArgumentException("Invalid API key. Error returned: " + modResult.getMessage());
+            }
+            return apiKey;
+        }
+
+        @Override
+        public String parse(GuildDB db, String input) {
+            return input;
+        }
+
+        @Override
+        public String toReadableString(GuildDB db, String value) {
+            if (value != null && value.length() > 7) {
+                return value.substring(0, 3) + "..." + value.substring(value.length() - 4);
+            }
+            return "Invalid key";
+        }
+
+        @Override
+        public String help() {
+            return "OpenAI API key\n" +
+                    "Used for chat responses and completion\n" +
+                    "Get a key from: <https://platform.openai.com/account/api-keys>";
+        }
+    }.setupRequirements(f -> f.requireValidAlliance());
+
+    public static final GuildSetting<ModelType> OPENAI_MODEL = new GuildSetting<ModelType>(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE, ModelType.class) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String register_openai_key(@Me GuildDB db, @Me User user, ModelType model) {
+            return OPENAI_MODEL.set(db, model);
+        }
+
+        @Override
+        public ModelType validate(GuildDB db, ModelType model) {
+            return switch (model) {
+                case GPT_4, GPT_4_32K, GPT_3_5_TURBO, GPT_3_5_TURBO_16K -> model;
+                default -> throw new IllegalArgumentException("Invalid chat model type: " + model);
+            };
+        }
+
+        @Override
+        public ModelType parse(GuildDB db, String input) {
+            return ModelType.valueOf(input);
+        }
+
+        @Override
+        public String help() {
+            return "OpenAI model type\n" +
+                    "Used for chat responses and completion\n" +
+                    "Valid values: " + StringMan.join(ModelType.values(), ", ");
+        }
+
+        @Override
+        public String toString(ModelType value) {
+            return value.name();
+        }
+    }.setupRequirements(f -> f.requires(OPENAI_KEY));
+
+    public static GuildSetting<int[]> GPT_USAGE_LIMITS = new GuildSetting<int[]>(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE, int[].class) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String GPT_USAGE_LIMITS(@Me GuildDB db, @Me User user, int userTurnLimit, int userDayLimit, int guildTurnLimit, int guildDayLimit) {
+            int[] combined = new int[]{userTurnLimit, userDayLimit, guildTurnLimit, guildDayLimit};
+            return GPT_USAGE_LIMITS.set(db, combined);
+        }
+
+        @Override
+        public int[] validate(GuildDB db, int[] limits) {
+            // ensure length = 4
+            if (limits.length != 4) {
+                throw new IllegalArgumentException("Invalid limits. Expected 4 values, got " + limits.length);
+            }
+            // ensure all > 0
+            for (int limit : limits) {
+                if (limit < 0) {
+                    throw new IllegalArgumentException("Invalid limit. Must be >= 0");
+                }
+            }
+            return limits;
+        }
+
+        @Override
+        public int[] parse(GuildDB db, String input) {
+            // 4 numbers, comma separated
+            String[] split = input.split(",");
+            if (split.length != 4) {
+                throw new IllegalArgumentException("Invalid limits. Expected 4 values, got " + split.length);
+            }
+            int[] limits = new int[4];
+            for (int i = 0; i < 4; i++) {
+                try {
+                    limits[i] = Integer.parseInt(split[i]);
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException("Invalid limit. Must be a number, not: `" + split[i] + "`");
+                }
+            }
+            return limits;
+        }
+
+        @Override
+        public String help() {
+            return "gpt user and guild usage limits, by turn and day\n" +
+                    "Used to limit costs incurred from excessive usage" +
+                    "Usage is only tracked per session, and is reset each time the bot restarts";
+        }
+
+        @Override
+        public String toString(int[] value) {
+            return StringMan.join(value, ",");
+        }
+    }.setupRequirements(f -> f.requires(OPENAI_KEY));
+
+    public static GuildSetting<Boolean> ENABLE_GITHUB_COPILOT = new GuildBooleanSetting(GuildSettingCategory.ARTIFICIAL_INTELLIGENCE) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String ENABLE_GITHUB_COPILOT(@Me GuildDB db, @Me User user, boolean value) {
+            return ENABLE_GITHUB_COPILOT.setAndValidate(db, user, value);
+        }
+
+        @Override
+        public Boolean validate(GuildDB db, Boolean value) {
+            if (value == Boolean.TRUE) {
+                CopilotDeviceAuthenticationData[] authData = new CopilotDeviceAuthenticationData[1];
+
+
+                CopilotText2Text copilot = new CopilotText2Text("tokens" + File.separator + db.getIdLong(), new Consumer<CopilotDeviceAuthenticationData>() {
+                    @Override
+                    public void accept(CopilotDeviceAuthenticationData data) {
+                        authData[0] = data;
+                    }
+                });
+                try {
+                    copilot.generate("Hello W");
+                } catch (Throwable e) {
+                    if (authData[0] != null) {
+                        throw new IllegalArgumentException("Open URL " + authData[0].Url + " to enter the device code: " + authData[0].UserCode);
+                    }
+                    throw e;
+                }
+            }
+            return value;
+        }
+
+        @Override
+        public String help() {
+            return "Enable GitHub Copilot for generating AI text responses\n" +
+                    "See: <https://github.com/features/copilot>\n" +
+                    "This is an alternative to an open ai key";
+        }
+    }.requireValidAlliance();
 
     public static final GuildSetting<List<String>> API_KEY = new GuildSetting<List<String>>(GuildSettingCategory.DEFAULT, List.class, String.class) {
         @NoFormat
@@ -305,7 +494,7 @@ public class GuildKey {
         }
 
         @Override
-        public String toReadableString(List<String> value) {
+        public String toReadableString(GuildDB db, List<String> value) {
             List<String> redacted = new ArrayList<>();
             for (String key : value) {
                 String startWith = key.charAt(0) + "";
@@ -492,7 +681,7 @@ public class GuildKey {
         }
 
         @Override
-        public String toReadableString(Long value) {
+        public String toReadableString(GuildDB db, Long value) {
             return TimeUtil.secToTime(TimeUnit.MILLISECONDS, value);
         }
 
@@ -617,7 +806,7 @@ public class GuildKey {
         }
 
         @Override
-        public String toReadableString(Map<ResourceType, Double> value) {
+        public String toReadableString(GuildDB db, Map<ResourceType, Double> value) {
             return PnwUtil.resourcesToString(value);
         }
 
@@ -677,7 +866,7 @@ public class GuildKey {
         }
 
         @Override
-        public String toReadableString(Map<Role, Set<Role>> map) {
+        public String toReadableString(GuildDB db, Map<Role, Set<Role>> map) {
             List<String> lines = new ArrayList<>();
             for (Map.Entry<Role, Set<Role>> entry : map.entrySet()) {
                 String key = entry.getKey().getName();
@@ -734,7 +923,7 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "Whether to show offensive war alerts for allies (true/false)";
+            return "Whether to show defensive war alerts for allies (true/false)";
         }
     }.setupRequirements(f -> f.requires(DEFENSE_WAR_CHANNEL).requiresCoalition(Coalition.ALLIES));
     public static GuildSetting<NationFilter> MENTION_MILCOM_FILTER = new GuildNationFilterSetting(GuildSettingCategory.WAR_ALERTS) {
@@ -1134,7 +1323,7 @@ public class GuildKey {
         }
 
         @Override
-        public String toReadableString(Guild value) {
+        public String toReadableString(GuildDB db, Guild value) {
             return value.toString();
         }
 
@@ -1254,7 +1443,7 @@ public class GuildKey {
         }
 
         @Override
-        public String toReadableString(GuildDB value) {
+        public String toReadableString(GuildDB db, GuildDB value) {
             return value.getName();
         }
 
@@ -1516,7 +1705,7 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "The channel to receive alerts when a bounty is placed";
+            return "The channel to receive alerts when a treasure moves to another nation or is about to reset";
         }
     }.setupRequirements(f -> f.requireValidAlliance().requireActiveGuild());
     public static GuildSetting<MessageChannel> MEMBER_REBUY_INFRA_ALERT = new GuildChannelSetting(GuildSettingCategory.AUDIT) {
@@ -1813,7 +2002,7 @@ public class GuildKey {
         }
 
         @Override
-        public String toReadableString(Long value) {
+        public String toReadableString(GuildDB db, Long value) {
             return TimeUtil.secToTime(TimeUnit.MILLISECONDS, value);
         }
 
@@ -1952,7 +2141,7 @@ public class GuildKey {
         }
 
         @Override
-        public String toReadableString(Set<Integer> value) {
+        public String toReadableString(GuildDB db, Set<Integer> value) {
 
             List<String> names = new ArrayList<>();
 
@@ -2011,6 +2200,105 @@ public class GuildKey {
             return "Only do alliance ground unit alerts for the top X alliances (by active member score)";
         }
     }.setupRequirements(f -> f.requireActiveGuild());
+
+    public static GuildSetting<Map<Long, Double>> GRANT_TEMPLATE_LIMITS = new GuildSetting<Map<Long,Double>>(GuildSettingCategory.ORBIS_ALERTS, Map.class, Long.class, Double.class) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String addGrantTemplateLimit(@Me GuildDB db, @Me User user, Role role, @Range(min=1) Double marketValue) {
+            // get existing
+            Map<Long, Double> limits = GRANT_TEMPLATE_LIMITS.getOrNull(db, false);
+            if (limits == null)
+                limits = new LinkedHashMap<>();
+            // add new
+            limits.put(role.getIdLong(), marketValue);
+            return GRANT_TEMPLATE_LIMITS.setAndValidate(db, user, limits);
+        }
+
+        @Override
+        public Map<Long, Double> parse(GuildDB db, String input) {
+            // split newline
+            Map<Long, Double> result = new LinkedHashMap<>();
+            // Discord JDA role id -> PnwUtil resources to array (parse resources)
+
+            String[] split = input.split("[\n;\\n]");
+            Guild guild = db.getGuild();
+            for (String line : split) {
+                String[] roleRss = line.split("[:=]", 2);
+                // role id
+                String roleStr = roleRss[0];
+                Role role = DiscordBindings.role(guild, roleStr);
+                double value = PrimitiveBindings.Double(roleRss[1]);
+                result.put(role.getIdLong(), value);
+            }
+            return result;
+        }
+
+        @Override
+        public String toString(Map<Long, Double> value) {
+            List<String> lines = new ArrayList<>();
+            for (Map.Entry<Long, Double> entry : value.entrySet()) {
+                lines.add(entry.getKey() + ":" + entry.getValue());
+            }
+            return String.join("\n", lines);
+        }
+
+        @Override
+        public String toReadableString(GuildDB db, Map<Long, Double> value) {
+            List<String> lines = new ArrayList<>();
+            Guild guild = db.getGuild();
+            for (Map.Entry<Long, Double> entry : value.entrySet()) {
+                long roleId = entry.getKey();
+                Role roleOrNull = guild.getRoleById(roleId);
+                String roleNameOrId = roleOrNull == null ? roleId + "" : roleOrNull.getName();
+                lines.add(roleNameOrId + "=" + MathMan.format(entry.getValue()));
+            }
+            return String.join("\n", lines);
+        }
+
+        @Override
+        public String help() {
+            return "The global grant template send limits for each role, limiting how much each granter can send per interval.\n" +
+                    "This applies in addition to any limits set in the individual template.\n" +
+                    "The ECON role overrides grant template limits. See: " + CM.role.setAlias.cmd.toSlashMention() + "\n" +
+                    "The highest value for each resource will be used" +
+                    "Format: `role_id:resource1,resource2,resource3`";
+        }
+    }.setupRequirements(f -> f.requireValidAlliance().requiresOffshore());
+
+    // add a limit interval
+    public static GuildSetting<Long> GRANT_LIMIT_DELAY = new GuildLongSetting(GuildSettingCategory.RECRUIT) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String GRANT_LIMIT_DELAY(@Me GuildDB db, @Me User user, @Timediff Long timediff) {
+            if (timediff < TimeUnit.HOURS.toMillis(2)) {
+                return "The interval must be at least 2 hours";
+            }
+            return GRANT_LIMIT_DELAY.setAndValidate(db, user, timediff);
+        }
+
+        // fix legacy
+        @Override
+        public Long parse(GuildDB db, String input) {
+            // if info contains letters
+            if (input.matches(".*[a-zA-Z]+.*")) {
+                input = "" + (TimeUtil.timeToSec(input) * 1000);
+            }
+            return super.parse(db, input);
+        }
+
+        @Override
+        public String toReadableString(GuildDB db, Long value) {
+            return TimeUtil.secToTime(TimeUnit.MILLISECONDS, value);
+        }
+
+        @Override
+        public String help() {
+            return "The timeframe the " + GRANT_TEMPLATE_LIMITS.name() + " is for, which restricts max funds that a user can grant using templates over this timeframe.";
+        }
+
+    }.setupRequirements(f -> f.requireValidAlliance().requires(RECRUIT_MESSAGE_OUTPUT).requires(ALLIANCE_ID));
 
     //AA_GROUND_THRESHOLD - Double (min=0, max=100, default: 40)
 //    public static GuildSetting<Double> AA_GROUND_THRESHOLD = new GuildDoubleSetting(GuildSettingCategory.ORBIS_ALERTS) {

@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
+import com.knuddels.jtokkit.api.ModelType;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -48,6 +49,7 @@ import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.gpt.pwembed.PWGPTHandler;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
@@ -763,6 +765,10 @@ public class PWBindings extends BindingHelper {
         return emumSet(AttackType.class, input);
     }
 
+    @Binding(examples = "SOLDIER,TANK,AIRCRAFT,SHIP,MISSILE,NUKE", value = "A comma separated list of military units")
+    public Set<MilitaryUnit> MilitaryUnits(String input) {
+        return emumSet(MilitaryUnit.class, input);
+    }
 
     @Binding(examples = {"aluminum", "money", "`*`", "manu", "raws", "!food"}, value = "A comma separated list of resource types")
     public static List<ResourceType> rssTypes(String input) {
@@ -832,6 +838,11 @@ public class PWBindings extends BindingHelper {
         return StringMan.parseUpper(DepositType.class, input.toUpperCase(Locale.ROOT));
     }
 
+    @Binding(value = "The mode for escrowing funds for a transfer, such as when a receiver is blockaded")
+    public static EscrowMode EscrowMode(String input) {
+        return emum(EscrowMode.class, input);
+    }
+
     @Binding(value = "A war declaration type")
     public WarType warType(String warType) {
         return WarType.parse(warType);
@@ -855,7 +866,7 @@ public class PWBindings extends BindingHelper {
     @Me
     public OffshoreInstance offshore(@Me GuildDB db) {
         OffshoreInstance offshore = db.getOffshore();
-        if (offshore == null) throw new IllegalArgumentException("No offshore is set");
+        if (offshore == null) throw new IllegalArgumentException("No offshore is set. See: " + CM.offshore.add.cmd.toSlashMention());
         return offshore;
     }
 
@@ -1144,7 +1155,7 @@ public class PWBindings extends BindingHelper {
     @Binding
     public WarCategory warChannelBinding(@Me GuildDB db) {
         WarCategory warChannel = db.getWarChannel(true);
-        if (warChannel == null) throw new IllegalArgumentException("War channels are not enabled. " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(true) + "");
+        if (warChannel == null) throw new IllegalArgumentException("War channels are not enabled. " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(db, true) + "");
         return warChannel;
     }
 
@@ -1238,6 +1249,7 @@ public class PWBindings extends BindingHelper {
         if (bracket != null) return bracket;
         throw new IllegalArgumentException("Bracket " + taxId + " not found for alliance: " + StringMan.getString(db.getAllianceIds()));
     }
+
 
 //    @Binding(examples = "'Error 404' 'Arrgh' 45d")
 //    @Me

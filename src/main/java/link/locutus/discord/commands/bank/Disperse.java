@@ -2,6 +2,7 @@ package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.EscrowMode;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -51,11 +52,15 @@ public class Disperse extends Command {
                 "Add e.g. `alliance:blah` to specify an alliance account\n" +
                 "Add e.g. `offshore:blah` to specify an offshore account\n" +
                 "Add e.g. `tax_id:blah` to specify a tax bracket\n" +
-                "Use `-t` to specify receiver's tax account";
+                "Use `-t` to specify receiver's tax account\n" +
+                "Add `escrow=WHEN_BLOCKADED` or `escrow=ALWAYS` to escrow the transfer\n";
     }
 
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
+        String escrowModeStr = DiscordUtil.parseArg(args, "escrow");
+        EscrowMode escrowMode = escrowModeStr != null ? PWBindings.EscrowMode(escrowModeStr) : null;
+
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
         DBNation nationAccount = null;
         DBAlliance allianceAccount = null;
@@ -123,6 +128,7 @@ public class Disperse extends Command {
                 flags.contains('t'),
                 null,
                 flags.contains('m'),
+                escrowMode,
                 flags.contains('b'),
                 flags.contains('f'));
     }

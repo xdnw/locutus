@@ -3,7 +3,7 @@ package link.locutus.discord.gpt.imps;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;
 import com.knuddels.jtokkit.api.ModelType;
-import com.theokanning.openai.OpenAiService;
+import com.theokanning.openai.service.OpenAiService;
 import com.theokanning.openai.embedding.Embedding;
 import com.theokanning.openai.embedding.EmbeddingRequest;
 import com.theokanning.openai.embedding.EmbeddingResult;

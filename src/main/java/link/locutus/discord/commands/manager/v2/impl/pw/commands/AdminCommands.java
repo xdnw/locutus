@@ -316,7 +316,7 @@ public class AdminCommands {
         return (archive ? "Archived" : "Unarchived") + " announcement with id: #" + announcementId;
     }
 
-    @Command(desc = "Find the announcement closest matching a message")
+    @Command(desc = "Find the announcement for the closest matching invite")
     @RolePermission(Roles.ADMIN)
     @NoFormat
     public String find_invite(@Me GuildDB db, String invite) throws IOException {
@@ -858,7 +858,7 @@ public class AdminCommands {
         return "Done! (see console)";
     }
 
-    @Command(desc = "Check if current api keys are valid")
+    @Command(desc = "Import api keys from the guild API_KEY setting, so they can be validated")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String importGuildKeys() {
         StringBuilder response = new StringBuilder();

@@ -2,6 +2,7 @@ package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.EscrowMode;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
@@ -93,6 +94,9 @@ public class GrantCmd extends Command {
         if (flags.contains('e')) {
             expire = TimeUnit.DAYS.toMillis(60);
         }
+
+        String escrowModeStr = DiscordUtil.parseArg(args, "escrow");
+        EscrowMode escrowMode = escrowModeStr != null ? PWBindings.EscrowMode(escrowModeStr) : null;
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
 
         boolean ignore = false;
@@ -269,6 +273,7 @@ public class GrantCmd extends Command {
                 String.valueOf(flags.contains('o')),
                 expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null,
                 uuid.toString(),
+                escrowMode == null ? null : escrowMode.name(),
                 String.valueOf(flags.contains('c')),
                 String.valueOf(flags.contains('f')),
                 "false"

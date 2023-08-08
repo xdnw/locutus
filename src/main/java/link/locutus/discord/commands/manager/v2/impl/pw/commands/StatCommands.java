@@ -974,7 +974,7 @@ public class StatCommands {
         ranks.build(channel, command, title, uploadFile);
     }
 
-    @Command(desc = "Rank of nations by challenge baseball game earnings")
+    @Command(desc = "Rank of nations by challenge baseball challenge earnings")
     public void baseballChallengeEarningsRanking(BaseballDB db, @Me IMessageIO channel, @Me JSONObject command, @Switch("f") boolean uploadFile,
                                                  @Arg("Group the rankings by alliance instead of nations")
                                                  @Switch("a") boolean byAlliance) {
@@ -1231,7 +1231,7 @@ public class StatCommands {
         return null;
     }
 
-    @Command(desc = "Graph an alliance metric over time for a coalition")
+    @Command(desc = "Compare the metric over time between multiple alliances")
     public String allianceMetricsCompareByTurn(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db, AllianceMetric metric, Set<DBAlliance> alliances,
                                                @Arg("Date to start from")
                                                @Timestamp long time) throws IOException {
@@ -1359,7 +1359,7 @@ public class StatCommands {
         return "Done!";
     }
 
-    @Command(desc = "Graph an alliance metric over time for a coalition")
+    @Command(desc = "Graph the metric over time for a coalition")
     public String allianceMetricsByTurn(@Me IMessageIO channel, @Me User user, @Me Guild guild, @Me GuildDB db, AllianceMetric metric, Set<DBAlliance> coalition,
                                         @Arg("Date to start from")
                                         @Timestamp long time) throws IOException {

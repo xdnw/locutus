@@ -509,21 +509,48 @@ public class Settings extends Config {
     })
     public static class ARTIFICIAL_INTELLIGENCE {
 
-        @Comment({
-                "The directory of the tesseract files.",
-                "Tesseract is used for optical character recognition (OCR) to read text from images",
-                "To install tesseract, see:",
-                "macOS: `brew install tesseract` and `brew install tesseract-lang`",
-                "linux: `yum install tesseract` and `yum install tesseract-langpack-eng`",
-                "windows: `https://github.com/UB-Mannheim/tesseract/wiki`"
-        })
-        public String TESSERACT_LOCATION = "src/main/java/tessdata";
+        @Create
+        public OCR OCR;
 
-        @Comment({"Your API key for <ocr.space> (optional)"})
-        public String OCR_SPACE_KEY = "";
+        public static final class OCR {
+            @Comment({
+                    "The directory of the tesseract files.",
+                    "Tesseract is used for optical character recognition (OCR) to read text from images",
+                    "To install tesseract, see:",
+                    "macOS: `brew install tesseract` and `brew install tesseract-lang`",
+                    "linux: `yum install tesseract` and `yum install tesseract-langpack-eng`",
+                    "windows: `https://github.com/UB-Mannheim/tesseract/wiki`"
+            })
+            public String TESSERACT_LOCATION = "src/main/java/tessdata";
 
-        @Comment({"Your API key from <https://platform.openai.com/account/api-keys> (optional)"})
-        public String OPENAI_API_KEY = "";
+            @Comment({"Your API key for <ocr.space> (optional)"})
+            public String OCR_SPACE_KEY = "";
+        }
+
+        @Create
+        public COPILOT COPILOT;
+
+        public static final class COPILOT {
+            @Comment({"Allow use of github copilot as on option for chat completions"})
+            public boolean ENABLED = false;
+
+            public int USER_TURN_LIMIT = 10;
+            public int USER_DAY_LIMIT = 25;
+            public int GUILD_TURN_LIMIT = 10;
+            public int GUILD_DAY_LIMIT = 25;
+        }
+
+        @Create
+        public OPENAI OPENAI;
+
+        public static final class OPENAI {
+            @Comment({"Your API key from <https://platform.openai.com/account/api-keys> (optional)"})
+            public String API_KEY = "";
+            public int USER_TURN_LIMIT = 10;
+            public int USER_DAY_LIMIT = 25;
+            public int GUILD_TURN_LIMIT = 10;
+            public int GUILD_DAY_LIMIT = 25;
+        }
 
     }
 

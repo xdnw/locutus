@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete;
 
 import com.google.gson.reflect.TypeToken;
+import com.knuddels.jtokkit.api.ModelType;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.Continent;
@@ -32,6 +33,7 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.gpt.pwembed.PWGPTHandler;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
@@ -437,6 +439,14 @@ public class PWCompleter extends BindingHelper {
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     return StringMan.autocompleteCommaEnum(AttackType.class, input.toString(), OptionData.MAX_CHOICES);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, MilitaryUnit.class).getType(), Autocomplete.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(MilitaryUnit.class, input.toString(), OptionData.MAX_CHOICES);
                 }));
             });
         }

@@ -868,6 +868,7 @@ public class PoliticsAndWarV3 {
 
                 projection.nation_name(); // m
                 projection.leader_name(); // m
+                projection.spies();
 
                 projection.last_active();
                 projection.score();

@@ -46,8 +46,9 @@ import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.LoggerFactory;;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.sql.PreparedStatement;
@@ -65,7 +66,7 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class NationDB extends DBMainV2 {
-    private static final Logger LOGGER = LogManager.getLogger(NationDB.class.getSimpleName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(NationDB.class.getSimpleName());
     private final Map<Integer, DBNation> nationsById = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Map<Integer, DBNation>> nationsByAlliance = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, DBAlliance> alliancesById = new Int2ObjectOpenHashMap<>();

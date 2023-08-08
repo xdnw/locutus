@@ -34,6 +34,7 @@ public class MiniEmbedding extends AEmbeddingDatabase {
 
     @Override
     public float[] fetchEmbedding(String text) {
+        System.out.println("fetchEmbedding: " + text);
         try {
             return predictor.predict(text);
         } catch (TranslateException e) {

@@ -5,6 +5,7 @@ import com.politicsandwar.graphql.model.Bankrec;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.AccessType;
+import link.locutus.discord.apiv1.enums.EscrowMode;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -77,6 +78,7 @@ import org.json.JSONObject;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.security.GeneralSecurityException;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -85,6 +87,7 @@ import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -662,12 +665,12 @@ public class BankCommands {
                         responses.add("`note: set an internal taxrate with `" + CM.nation.set.taxinternal.cmd.toSlashMention() + "` or globally with `" + CM.settings.info.cmd.toSlashMention() + "` and key: " + GuildKey.TAX_BASE.name() + "`");
                     }
                     responses.add("\nTo view alliance wide bracket tax totals, use: " +
-                        CM.deposits.check.cmd.create("tax_id=" + bracket.taxId, null, null, null, null, "true", null, null, null));
+                        CM.deposits.check.cmd.create("tax_id=" + bracket.taxId, null, null, null, null, "true", null, null, null, null));
                 }
             }
         }
 
-        CM.deposits.check checkCmd = CM.deposits.check.cmd.create(nation.getId() + "", null, null, null, null, "true", null, null, null);
+        CM.deposits.check checkCmd = CM.deposits.check.cmd.create(nation.getId() + "", null, null, null, null, "true", null, null, null, null);
         responses.add("\nTo view a breakdown of your deposits, use: " + checkCmd);
 
         String title = "Tax info for " + nation.getName();
@@ -841,38 +844,377 @@ public class BankCommands {
         return StringMan.join(lines, "\n");
     }
 
-    @Command(desc = "Queue funds to be sent (with approval) when the receiver's blockade lifts")
-    @RolePermission(Roles.MEMBER)
+    @Command(desc = "Set the escrow account balances for nation to the values in a spreadshet\n" +
+            "The sheet must have a `nation` column, and then a column for each resource type\n" +
+            "Escrow funds can be withdrawn at a later date by the receiver, such as when a blockade ends\n" +
+            "Use the deposits sheet command to get a spreadsheet of the current escrow balances")
+    @RolePermission(Roles.ECON)
     @IsAlliance
     @HasOffshore
-    public String escrow(@Me GuildDB db, @Me User author, @Me DBNation me, DBNation receiver, @Arg("Amount to send") Map<ResourceType, Double> resources,
-                         @Arg("Ignore this request if the blockade is not lifted within the timeframe\nRecommended: 5d") @Timediff long expireAfter,
-                         @Arg("Send only the funds the receiver has below the amount") @Switch("t") boolean topUp) throws IOException {
-        if (me.getNation_id() != receiver.getNation_id() && !Roles.ECON_STAFF.has(author, db.getGuild())) {
-            return "You do not have permisssion to send to other nations";
+    public String setEscrowSheet(@Me GuildDB db, @Me User author, @Me DBNation me,
+                                 @Me IMessageIO io,
+                                 @Me JSONObject command,
+                                    TransferSheet sheet,
+                                 @Default @Timediff Long expireAfter,
+                                 @Switch("f") boolean force) throws IOException {
+
+        Map<DBAlliance, Map<ResourceType, Double>> aaTransfers = sheet.getAllianceTransfers();
+        if (aaTransfers.isEmpty()) {
+            // cannot escrow for alliance (print the alliance names)
+            List<String> aaNames = aaTransfers.keySet().stream().map(DBAlliance::getName).collect(Collectors.toList());
+            throw new IllegalArgumentException("Alliances cannot have escrow balances: " + StringMan.join(aaNames, ", ") + " please remove them from the sheet and try again");
+        }
+
+        Map<DBNation, Map<ResourceType, Double>> transfers = sheet.getNationTransfers();
+        Map<DBNation, Set<ResourceType>> negativesByNation = new LinkedHashMap<>();
+        for (Map.Entry<DBNation, Map<ResourceType, Double>> entry : transfers.entrySet()) {
+            // ensure no negative values (map of nation: resource1,resource2 etc)
+            Set<ResourceType> negatives = entry.getValue().entrySet().stream().filter(f -> f.getValue() < 0).map(Map.Entry::getKey).collect(Collectors.toSet());
+            if (!negatives.isEmpty()) {
+                negativesByNation.put(entry.getKey(), negatives);
+            }
+        }
+        if (!negativesByNation.isEmpty()) {
+            StringBuilder response = new StringBuilder();
+            response.append("Nations cannot have negative escrow balances:\n");
+            for (Map.Entry<DBNation, Set<ResourceType>> entry : negativesByNation.entrySet()) {
+                response.append("- " + entry.getKey().getName()).append(": ").append(StringMan.join(entry.getValue(), ", ")).append("\n");
+            }
+            throw new IllegalArgumentException(response.toString());
+        }
+
+        Map<DBNation, double[]> transfersArr = new LinkedHashMap<>();
+        for (Map.Entry<DBNation, Map<ResourceType, Double>> entry : transfers.entrySet()) {
+            transfersArr.put(entry.getKey(), PnwUtil.resourcesToArray(entry.getValue()));
+        }
+
+        return confirmAddOrSetEscrow(
+                false,
+                io,
+                db,
+                command,
+                new HashMap<>(),
+                "sheet:" + sheet.getSheet().getSpreadsheetId(),
+                transfersArr,
+                expireAfter,
+                force
+        );
+    }
+
+    @Command(desc = "Add funds to the escrow account for a set of nations\n" +
+            "Escrow funds can be withdrawn at a later date by the receiver, such as when a blockade ends\n" +
+            "To transfer funds from a nation's deposits into their escrow, see the transfer command")
+    @RolePermission(Roles.ECON)
+    @IsAlliance
+    @HasOffshore
+    public String addEscrow(@Me GuildDB db, @Me User author, @Me DBNation me,
+                            @Me IMessageIO io,
+                            @Me JSONObject command,
+                            NationList nations,
+                            @Switch("b") @Arg("The base amount of resources to escrow\n" +
+                                    "If per city is set, the highest value of each resource is chosen") Map<ResourceType, Double> amountBase,
+                            @Switch("p") @Arg("Amount of resources to escrow for each city the receiver has\n" +
+                                    "If base is set, the highest value of each resource is chosen\n" +
+                                    "This uses the city count now, not when the funds are withdrawn later") Map<ResourceType, Double> amountPerCity,
+                            @Switch("e") @Arg("Additional resources to escrow\n" +
+                                    "If a base or per city are set, this adds to what is calculated for that") Map<ResourceType, Double> amountExtra,
+                            @Arg("Don't add escrow resources that the nation has in their stockpile") @Switch("s") boolean subtractStockpile,
+                            @Arg("When the nation has these units, don't add the resources equivalent to their cost\n" +
+                                    "Useful to only give resources to those missing units")
+                            @Switch("m") Set<MilitaryUnit> subtractNationsUnits,
+
+                            @Arg("Do not add escrow resources that the nation has in their deposits")
+                            @Switch("d") boolean subtractDeposits,
+
+
+                            @Arg("Delete all receiver escrow after a time period\nRecommended: 5d") @Default @Timediff Long expireAfter,
+                            @Switch("f") boolean force) throws IOException {
+        return addOrSetEscrow(true, db, author, me, io, command, nations, amountBase, amountPerCity, amountExtra, subtractStockpile, subtractNationsUnits, subtractDeposits, expireAfter, force);
+    }
+
+    @Command(desc = "Set the escrow account balances for a set of nations\n" +
+            "Escrow funds can be withdrawn at a later date by the receiver, such as when a blockade ends\n" +
+            "To transfer funds from a nation's deposits into their escrow, see the transfer command")
+    @RolePermission(Roles.ECON)
+    @IsAlliance
+    @HasOffshore
+    public String setEscrow(@Me GuildDB db, @Me User author, @Me DBNation me,
+                            @Me IMessageIO io,
+                            @Me JSONObject command,
+                            NationList nations,
+                            @Switch("b") @Arg("The base amount of resources to escrow\n" +
+                                    "If per city is set, the highest value of each resource is chosen") Map<ResourceType, Double> amountBase,
+                            @Switch("p") @Arg("Amount of resources to escrow for each city the receiver has\n" +
+                                    "If base is set, the highest value of each resource is chosen\n" +
+                                    "This uses the city count now, not when the funds are withdrawn later") Map<ResourceType, Double> amountPerCity,
+                            @Switch("e") @Arg("Additional resources to escrow\n" +
+                                    "If a base or per city are set, this adds to what is calculated for that") Map<ResourceType, Double> amountExtra,
+                            @Arg("Don't add escrow resources that the nation has in their stockpile") @Switch("s") boolean subtractStockpile,
+                            @Arg("When the nation has these units, don't add the resources equivalent to their cost\n" +
+                                    "Useful to only give resources to those missing units")
+                            @Switch("m") Set<MilitaryUnit> subtractNationsUnits,
+                            @Arg("Do not add escrow resources that the nation has in their deposits")
+                            @Switch("d") boolean subtractDeposits,
+                            @Arg("Delete all receiver escrow after a time period\nRecommended: 5d") @Default @Timediff Long expireAfter,
+                            @Switch("f") boolean force) throws IOException {
+        return addOrSetEscrow(false, db, author, me, io, command, nations, amountBase, amountPerCity, amountExtra, subtractStockpile, subtractNationsUnits, subtractDeposits, expireAfter, force);
+    }
+
+    public String confirmAddOrSetEscrow(boolean isAdd, IMessageIO io, GuildDB db, JSONObject command, Map<DBNation, OffshoreInstance.TransferStatus> errors, String nationsName, Map<DBNation, double[]> amountToSetOrAdd, Long expireAfter, boolean force) throws IOException {
+        long expireEpoch = expireAfter == null ? 0 : System.currentTimeMillis() + expireAfter;
+
+        if (!force || amountToSetOrAdd.isEmpty()) {
+            String title;
+            if (isAdd) {
+                title = "Add to Escrow to " + nationsName;
+            } else {
+                title = "Set escrow for " + nationsName;
+            }
+            List<String> warnings = new ArrayList<>();
+            int blockaded = 0;
+            int unblockaded = 0;
+            for (DBNation nation : amountToSetOrAdd.keySet()) {
+                if (nation.isBlockaded()) {
+                    blockaded++;
+                } else {
+                    unblockaded++;
+                }
+                if (nation.getVm_turns() > 0) {
+                    warnings.add(nation.getName() + " is in VM mode");
+                    continue;
+                }
+                if (nation.active_m() > 2880) {
+                    warnings.add(nation.getName() + " is inactive for " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m()));
+                    continue;
+                }
+                if (db.isAllianceId(nation.getAlliance_id())) {
+                    warnings.add(nation.getName() + " is not in a member");
+                    continue;
+                }
+                if (nation.getPositionEnum() == Rank.APPLICANT) {
+                    warnings.add(nation.getName() + " is an applicant");
+                    continue;
+                }
+                if (nation.isGray()) {
+                    warnings.add(nation.getName() + " is gray");
+                    continue;
+                }
+            }
+
+            StringBuilder body = new StringBuilder();
+            if (amountToSetOrAdd.size() == 1) {
+                DBNation nation = amountToSetOrAdd.keySet().iterator().next();
+                body.append(nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true) + "\n");
+                if (nation.isBlockaded()) {
+                    body.append("`BLOCKADED`\n");
+                } else {
+                    body.append("`NOT BLOCKADED`\n");
+                }
+            } else {
+                SimpleNationList nations = new SimpleNationList(amountToSetOrAdd.keySet());
+                body.append("To: `" + nationsName + " (" + nations.getNations().size() + " nations in " + nations.getAllianceIds().size() + " alliances)\n");
+                if (blockaded > 0) {
+                    body.append(" | " + blockaded + " blockaded");
+                }
+                if (unblockaded > 0) {
+                    body.append(" | " + unblockaded + " unblockaded");
+                }
+                body.append("\n");
+            }
+            String verb = isAdd ? "adding to Escrow" : "setting Escrow to ";
+            double[] total = ResourceType.getBuffer();
+            for (double[] amount : amountToSetOrAdd.values()) {
+                ResourceType.add(total, amount);
+            }
+            body.append("\nTotal " + verb + ":\n`" + PnwUtil.resourcesToString(total) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(total)) + "\n");
+
+            if (expireAfter != null) {
+                body.append("\nSetting the expiry for all escrowed to " + DiscordUtil.timestamp(expireEpoch, null)).append("\n");
+            } else {
+                body.append("\nSetting all receiver escrow to not expire. Use `expireAfter` to set an expiry\n");
+            }
+
+            String bodyStr = body.toString();
+
+            if (!warnings.isEmpty()) {
+                body.append("\n**Warnings**:\n");
+                for (String warning : warnings) {
+                    body.append("- " + warning).append("\n");
+                }
+            }
+
+            if (!errors.isEmpty()) {
+                body.append("\n**Errors**:\n");
+                for (Map.Entry<DBNation, OffshoreInstance.TransferStatus> entry : errors.entrySet()) {
+                    body.append("- " + entry.getKey().getName() + ": " + entry.getValue()).append("\n");
+                }
+            }
+
+            IMessageBuilder msg = io.create();
+
+            if (body.length() > bodyStr.length() && body.length() > 4000) {
+                bodyStr += "\n\nWarnings: " + warnings.size() + "\nErrors: " + errors.size() + "\n";
+                bodyStr += "(see attached file)";
+                msg.file("errors.txt", StringMan.join(errors.entrySet(), "\n"));
+                msg.file("warnings.txt", StringMan.join(warnings, "\n"));
+            } else {
+                bodyStr = body.toString();
+            }
+
+            if (amountToSetOrAdd.isEmpty()) {
+                msg.append(body.toString()).send();
+                return null;
+            }
+
+            msg.confirmation(title, body.toString(), command).send();
+            return null;
+        }
+
+        List<String> response = new ArrayList<>();
+        // add all errors
+        for (Map.Entry<DBNation, OffshoreInstance.TransferStatus> entry : errors.entrySet()) {
+            response.add(entry.getKey().getName() + ": " + entry.getValue());
+        }
+        for (Map.Entry<DBNation, double[]> entry : amountToSetOrAdd.entrySet()) {
+            DBNation nation = entry.getKey();
+            double[] amount = entry.getValue();
+            Object lock = OffshoreInstance.NATION_LOCKS.computeIfAbsent(entry.getKey().getId(), k -> new Object());
+            synchronized (lock) {
+                Map.Entry<double[], Long> currentPair = db.getEscrowed(nation);
+                double[] current = currentPair == null ? ResourceType.getBuffer() : currentPair.getKey();
+                long expireEpochNation = expireEpoch;
+                if (expireEpochNation == 0) {
+                    expireEpochNation = currentPair == null ? 0 : currentPair.getValue();
+                }
+                double[] newAmount;
+                if (isAdd) {
+                    newAmount = ResourceType.add(current, amount);
+                } else {
+                    newAmount = amount;
+                }
+                if (ResourceType.equals(current, newAmount)) {
+                    response.add("No changes for " + nation.getName());
+                    continue;
+                }
+                db.setEscrowed(nation, newAmount, expireEpochNation);
+                response.add(nation.getName() + ": `" + PnwUtil.resourcesToString(amount) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(amount)) + " added to escrow. New escrowed: `" + PnwUtil.resourcesToString(newAmount) + "`");
+            }
+        }
+
+        return StringMan.join(response, "\n") + "\n\nSee also: " + CM.deposits.reset.cmd.toSlashMention();
+    }
+
+    public String addOrSetEscrow(boolean isAdd,
+                            @Me GuildDB db, @Me User author, @Me DBNation me,
+                            @Me IMessageIO io,
+                            @Me JSONObject command,
+                            NationList nations,
+                            @Switch("b") @Arg("The base amount of resources to escrow\n" +
+                                    "If per city is set, the highest value of each resource is chosen") Map<ResourceType, Double> amountBase,
+                            @Switch("p") @Arg("Amount of resources to escrow for each city the receiver has\n" +
+                                    "If base is set, the highest value of each resource is chosen\n" +
+                                    "This uses the city count now, not when the funds are withdrawn later") Map<ResourceType, Double> amountPerCity,
+                            @Switch("e") @Arg("Additional resources to escrow\n" +
+                                    "If a base or per city are set, this adds to what is calculated for that") Map<ResourceType, Double> amountExtra,
+                            @Arg("Don't add escrow resources that the nation has in their stockpile") @Switch("s") boolean subtractStockpile,
+                            @Arg("When the nation has these units, don't add the resources equivalent to their cost\n" +
+                                    "Useful to only give resources to those missing units")
+                            @Switch("m") Set<MilitaryUnit> subtractNationsUnits,
+
+                            @Arg("Do not add escrow resources that the nation has in their deposits")
+                            @Switch("d") boolean subtractDeposits,
+
+
+                            @Arg("Delete all receiver escrow after a time period\nRecommended: 5d") @Default @Timediff Long expireAfter,
+                            @Switch("f") boolean force) throws IOException {
+        if (nations.getNations().size() > 300) {
+            return "Too many nations: " + nations.getNations().size() + " (max: 300)";
+        }
+        if (amountBase == null && amountPerCity == null && amountExtra == null) {
+            return "No amount specified. Please specify at least one of: `amountBase`, `amountPerCity`, `amountExtra`";
         }
         if (db.getOrNull(GuildKey.RESOURCE_REQUEST_CHANNEL) == null) {
             return "No resource request channel set. See " + GuildKey.RESOURCE_REQUEST_CHANNEL.getCommandMention() + "";
         }
-        if (!receiver.isBlockaded()) return "You are not currently blockaded";
 
-        long expireEpoch = System.currentTimeMillis() + expireAfter;
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        DataOutputStream dout = new DataOutputStream(out);
-        dout.writeLong(expireEpoch);
+        Map<DBNation, OffshoreInstance.TransferStatus> errors = new LinkedHashMap<>();
+        Map<DBNation, Map<ResourceType, Double>> memberStockpile = null;
 
-        for (ResourceType type : ResourceType.values) {
-            double amt = resources.getOrDefault(type, 0d);
-            if (amt <= 0) return "Amount cannot be negative";
-            dout.writeDouble(amt);
+        if (subtractStockpile) {
+            for (DBNation nation : nations.getNations()) {
+                if (!db.isAllianceId(nation.getAlliance_id())) {
+                    return "Nation: " + nation.getName() + "(alliance id:" + nation.getAlliance_id() + ") is not in a member of this guild's alliances: " + db.getAllianceIds();
+                }
+            }
+            memberStockpile = db.getAllianceList().subList(nations.getNations()).getMemberStockpile();
         }
 
-        NationMeta meta = topUp ? NationMeta.ESCROWED_UP_TO : NationMeta.ESCROWED;
-        synchronized (OffshoreInstance.BANK_LOCK) {
-            db.setMeta(receiver.getNation_id(), meta, out.toByteArray());
+        Map<DBNation, double[]> amountToSetOrAdd = new LinkedHashMap<>();
+
+        for (DBNation nation : nations.getNations()) {
+            double[] amount = ResourceType.getBuffer();
+            if (amountBase != null) {
+                amount = PnwUtil.resourcesToArray(amountBase);
+            }
+            if (amountPerCity != null) {
+                int cities = nation.getCities();
+                double[] perCity = PnwUtil.resourcesToArray(amountPerCity);
+                for (int i = 0; i < perCity.length; i++) {
+                    amount[i] = Math.max(perCity[i] * cities, amount[i]);
+                }
+            }
+            if (amountExtra != null) {
+                double[] extra = PnwUtil.resourcesToArray(amountExtra);
+                ResourceType.add(amount, extra);
+            }
+
+            if (subtractStockpile) {
+                Map<ResourceType, Double> stockpile = memberStockpile.get(nation);
+                if (stockpile == null) {
+                    errors.put(nation, OffshoreInstance.TransferStatus.ALLIANCE_ACCESS);
+                    continue;
+                }
+                double[] stockpileArr = PnwUtil.resourcesToArray(stockpile);
+                for (int i = 0; i < stockpileArr.length; i++) {
+                    amount[i] = Math.max(Math.min(0, amount[i]), amount[i] - stockpileArr[i]);
+                }
+            }
+
+            if (subtractNationsUnits != null && !subtractNationsUnits.isEmpty()) {
+                for (MilitaryUnit unit : subtractNationsUnits) {
+                    int numUnits = nation.getUnits(unit);
+                    double[] cost = unit.getCost(numUnits);
+                    for (int i = 0; i < cost.length; i++) {
+                        amount[i] = Math.max(Math.min(0, amount[i]), amount[i] - cost[i]);
+                    }
+                }
+            }
+
+            if (subtractDeposits) {
+                double[] deposits = nation.getNetDeposits(db, -1L);
+                for (int i = 0; i < deposits.length; i++) {
+                    double amt = deposits[i];
+                    if (amt > 0) {
+                        amount[i] = Math.max(Math.min(0, amount[i]), amount[i] - deposits[i]);
+                    }
+                }
+            }
+            PnwUtil.max(amount, ResourceType.getBuffer());
+
+            amountToSetOrAdd.put(nation, amount);
         }
-        return "Queued " + (topUp ? "top up " : "") + "transfer for `" + PnwUtil.resourcesToString(resources) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(resources)) + " when you next leave blockade." +
-                "\nExpires in " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, expireAfter);
+
+        return confirmAddOrSetEscrow(
+                isAdd,
+                io,
+                db,
+                command,
+                errors,
+                nations.getFilter(),
+                amountToSetOrAdd,
+                expireAfter,
+                force
+        );
     }
 
     @Command(desc = "Disburse raw resources needed to operate cities", aliases = {"disburse", "disperse"})
@@ -892,6 +1234,7 @@ public class BankCommands {
                            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
                            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
                            @Arg("Have the transfer valued as cash in nation holdings")@Switch("m") boolean convertToMoney,
+                           @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
                            @Switch("b") boolean bypassChecks,
                            @Switch("f") boolean force) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
         Set<DBNation> nations = new HashSet<>(nationList.getNations());
@@ -989,12 +1332,13 @@ public class BankCommands {
                     Boolean.FALSE.toString(),
                     expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
                     null,
+                    escrow_mode == null ? null : escrow_mode.name(),
                     String.valueOf(convertToMoney),
                     String.valueOf(bypassChecks),
                     null
             ).toJson();
 
-            return transfer(io, command, author, me, db, nation, transfer, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, false, expire, null, convertToMoney, bypassChecks, force);
+            return transfer(io, command, author, me, db, nation, transfer, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, false, expire, null, convertToMoney, escrow_mode, bypassChecks, force);
         } else {
             UUID key = UUID.randomUUID();
             TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, new LinkedHashMap<>()).build();
@@ -1011,40 +1355,13 @@ public class BankCommands {
                     Boolean.FALSE.toString(),
                     expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
                     String.valueOf(force),
+                    escrow_mode == null ? null : escrow_mode.name(),
                     null,
                     key.toString()
             ).toJson();
 
-            return transferBulk(io, command, author, me, db, sheet, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, convertToMoney, bypassChecks, force, key);
+            return transferBulk(io, command, author, me, db, sheet, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, convertToMoney, escrow_mode, bypassChecks, force, key);
         }
-    }
-
-    @Command(desc = "Queue funds to be disbursed when your blockade lifts", aliases = {"queueDisburse", "qdisburse"})
-    @RolePermission(Roles.MEMBER)
-    @IsAlliance
-    @HasOffshore
-    public String escrowDisburse(@Me GuildDB db, @Me User author, @Me DBNation me, DBNation receiver, @Arg("Number of days to disburse for") @Range(min=1, max=10) int days, @Timediff long expireAfter) throws IOException {
-        if (days <= 0) return "Days must be positive";
-        if (me.getNation_id() != receiver.getNation_id() && !Roles.ECON_STAFF.has(author, db.getGuild())) {
-            return "You do not have permisssion to disburse to other nations";
-        }
-        if (db.getOrNull(GuildKey.RESOURCE_REQUEST_CHANNEL) == null) {
-            return "No resource request channel set. See " + GuildKey.RESOURCE_REQUEST_CHANNEL.getCommandMention() + "";
-        }
-        if (!receiver.isBlockaded()) return "You are not currently blockaded";
-
-        long expireEpoch = System.currentTimeMillis() + expireAfter;
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        DataOutputStream dout = new DataOutputStream(out);
-        dout.writeLong(expireEpoch);
-        dout.writeInt(days);
-
-        synchronized (OffshoreInstance.BANK_LOCK) {
-            db.setMeta(receiver.getNation_id(), NationMeta.ESCROWED_DISBURSE_DAYS, out.toByteArray());
-        }
-
-        return "Queued disburse (" + days + " days) when you next leave blockade." +
-                "\nExpires in " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, expireAfter);
     }
 
     @Command(desc = "Get a sheet of members and their revenue (compared to optimal city builds)")
@@ -1380,9 +1697,9 @@ public class BankCommands {
                            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
                            @Arg("Only send funds the receiver is lacking from the amount") @Switch("m") boolean onlyMissingFunds,
                            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
-
                            @Switch("g") UUID token,
                            @Arg("Transfer valued at cash equivalent in nation holdings") @Switch("c") boolean convertCash,
+                           @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
                            @Switch("b") boolean bypassChecks,
                            @Switch("f") boolean force
     ) throws IOException {
@@ -1396,12 +1713,14 @@ public class BankCommands {
                 expire,
                 token,
                 convertCash,
-                bypassChecks, force);
+                escrow_mode,
+                bypassChecks,
+                force);
     }
 
     @Command(desc = "Bulk shift resources in a nations holdings to another note category")
     @RolePermission(Roles.ECON)
-    public String shiftDeposits(@Me GuildDB db, @Me DBNation me, DBNation nation, @Arg("The note to change FROM") DepositType from, @Arg("The new note to use") DepositType to, @Arg("Only transfers after this timeframe") @Default @Timestamp Long timediff) {
+    public String shiftDeposits(@Me GuildDB db, @Me IMessageIO io, @Me DBNation me, DBNation nation, @Arg("The note to change FROM") DepositType from, @Arg("The new note to use") DepositType to, @Arg("Only transfers after this timeframe") @Default @Timestamp Long timediff) throws IOException {
         if (from == to) throw new IllegalArgumentException("From and to must be a different category.");
         if (timediff != null && to != DepositType.GRANT) {
             throw new IllegalArgumentException("The grant expiry timediff is only needed if converted to the grant category");
@@ -1424,7 +1743,8 @@ public class BankCommands {
         }
         long now = System.currentTimeMillis();
         if (from == DepositType.GRANT) {
-            resetDeposits(db, me, nation, false, true, true, true);
+            SimpleNationList nationList = new SimpleNationList(Collections.singleton(nation));
+            resetDeposits(db, me, io, null, nationList, false, true, true, true, false, true);
         } else {
             String noteFrom = "#" + from.name().toLowerCase(Locale.ROOT);
             db.subBalance(now, nation, me.getNation_id(), noteFrom, toAdd);
@@ -1435,51 +1755,131 @@ public class BankCommands {
 
     @Command(desc = "Resets a nations deposits to net zero (of the specific note categories)")
     @RolePermission(Roles.ECON)
-    public String resetDeposits(@Me GuildDB db, @Me DBNation me, DBNation nation, @Arg("Do NOT reset grants") @Switch("g") boolean ignoreGrants, @Arg("Do NOT reset loans") @Switch("l") boolean ignoreLoans, @Arg("Do NOT reset taxes") @Switch("t") boolean ignoreTaxes, @Arg("Do NOT reset deposits") @Switch("d") boolean ignoreBankDeposits) {
-        Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, 0, 0);
+    public String resetDeposits(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
+                                NationList nations,
+                                @Arg("Do NOT reset grants") @Switch("g") boolean ignoreGrants,
+                                @Arg("Do NOT reset loans") @Switch("l") boolean ignoreLoans,
+                                @Arg("Do NOT reset taxes") @Switch("t") boolean ignoreTaxes,
+                                @Arg("Do NOT reset deposits") @Switch("d") boolean ignoreBankDeposits,
+                                @Arg("Do NOT reset escrow") @Switch("e") boolean ignoreEscrow,
+                                @Switch("f") boolean force) throws IOException {
+        if (nations.getNations().size() > 300) {
+            throw new IllegalArgumentException("Due to performance issues, you can only reset up to 300 nations at a time");
+        }
 
         long now = System.currentTimeMillis();
+        StringBuilder response = new StringBuilder("Resetting deposits for `" + nations.getFilter() + "`\n");
 
-        double[] deposits = depoByType.get(DepositType.DEPOSIT);
-        if (deposits != null && !ignoreBankDeposits) {
-            db.subBalance(now, nation, me.getNation_id(), "#deposit", deposits);
-        }
+        double[] totalDeposits = ResourceType.getBuffer();
+        double[] totalTax = ResourceType.getBuffer();
+        double[] totalLoan = ResourceType.getBuffer();
+        double[] totalExpire = ResourceType.getBuffer();
+        double[] totalEscrow = ResourceType.getBuffer();
 
-        double[] tax = depoByType.get(DepositType.TAX);
-        if (tax != null && !ignoreTaxes) {
-            db.subBalance(now, nation, me.getNation_id(), "#tax", tax);
-        }
+        for (DBNation nation : nations.getNations()) {
+            Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, force ? 0L : -1L, 0);
 
-        double[] loan = depoByType.get(DepositType.LOAN);
-        if (loan != null && !ignoreLoans) {
-            db.subBalance(now, nation, me.getNation_id(), "#loan", loan);
-        }
+            double[] deposits = depoByType.get(DepositType.DEPOSIT);
+            if (deposits != null && !ignoreBankDeposits && !ResourceType.isZero(deposits)) {
+                response.append("Subtracting `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(deposits) + " #deposit`\n");
+                ResourceType.subtract(totalDeposits, deposits);
+                if (force) db.subBalance(now, nation, me.getNation_id(), "#deposit", deposits);
+            }
 
-        if (depoByType.containsKey(DepositType.GRANT) && !ignoreGrants) {
-            List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, -1, 0);
-            for (Map.Entry<Integer, Transaction2> entry : transactions) {
-                Transaction2 tx = entry.getValue();
-                if (tx.note == null || !tx.note.contains("#expire") || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id())) continue;
-                if (tx.sender_id == tx.receiver_id) continue;
-                Map<String, String> notes = PnwUtil.parseTransferHashNotes(tx.note);
-                String expire = notes.get("#expire");
-                long expireEpoch = tx.tx_datetime + TimeUtil.timeToSec_BugFix1(expire, tx.tx_datetime) * 1000L;
-                if (expireEpoch > now) {
-                    String noteCopy = tx.note.replaceAll("#expire=[a-zA-Z0-9:]+", "");
-                    noteCopy += " #expire=" + "timestamp:" + expireEpoch;
-                    noteCopy = noteCopy.trim();
+            double[] tax = depoByType.get(DepositType.TAX);
+            if (tax != null && !ignoreTaxes && !ResourceType.isZero(tax)) {
+                response.append("Subtracting `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(tax) + " #tax`\n");
+                ResourceType.subtract(totalTax, tax);
+                if (force) db.subBalance(now, nation, me.getNation_id(), "#tax", tax);
+            }
 
-                    tx.tx_datetime = System.currentTimeMillis();
-                    int sign = entry.getKey();
-                    if (sign == 1) {
-                        db.subBalance(now, nation, me.getNation_id(), noteCopy, tx.resources);
-                    } else if (sign == -1) {
-                        db.addBalance(now, nation, me.getNation_id(), noteCopy, tx.resources);
+            double[] loan = depoByType.get(DepositType.LOAN);
+            if (loan != null && !ignoreLoans && !ResourceType.isZero(loan)) {
+                response.append("Subtracting `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(loan) + " #loan`\n");
+                ResourceType.subtract(totalLoan, loan);
+                if (force) db.subBalance(now, nation, me.getNation_id(), "#loan", loan);
+            }
+
+            if (depoByType.containsKey(DepositType.GRANT) && !ignoreGrants) {
+                List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, -1, 0);
+                for (Map.Entry<Integer, Transaction2> entry : transactions) {
+                    Transaction2 tx = entry.getValue();
+                    if (tx.note == null || !tx.note.contains("#expire") || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id()))
+                        continue;
+                    if (tx.sender_id == tx.receiver_id) continue;
+                    Map<String, String> notes = PnwUtil.parseTransferHashNotes(tx.note);
+                    String expire = notes.get("#expire");
+                    long expireEpoch = tx.tx_datetime + TimeUtil.timeToSec_BugFix1(expire, tx.tx_datetime) * 1000L;
+                    if (expireEpoch > now) {
+                        String noteCopy = tx.note.replaceAll("#expire=[a-zA-Z0-9:]+", "");
+                        noteCopy += " #expire=" + "timestamp:" + expireEpoch;
+                        noteCopy = noteCopy.trim();
+
+                        tx.tx_datetime = System.currentTimeMillis();
+                        int sign = entry.getKey();
+                        if (sign == 1) {
+                            response.append("Subtracting `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(tx.resources) + " " + noteCopy + "`\n");
+                            ResourceType.subtract(totalExpire, tx.resources);
+                            if (force) db.subBalance(now, nation, me.getNation_id(), noteCopy, tx.resources);
+                        } else if (sign == -1) {
+                            response.append("Adding `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(tx.resources) + " " + noteCopy + "`\n");
+                            ResourceType.add(totalExpire, tx.resources);
+                            if (force) db.addBalance(now, nation, me.getNation_id(), noteCopy, tx.resources);
+                        }
                     }
                 }
             }
+
+            if (!ignoreEscrow) {
+                try {
+                    Map.Entry<double[], Long> escrowedPair = db.getEscrowed(nation);
+                    if (escrowedPair != null && !ResourceType.isZero(escrowedPair.getKey())) {
+                        response.append("Subtracting escrow: `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(escrowedPair.getKey()) + "`\n");
+                        ResourceType.subtract(totalEscrow, escrowedPair.getKey());
+                        if (force) db.setEscrowed(nation, null, 0);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    response.append("Failed to reset escrow balance: " + e.getMessage() + "\n");
+                }
+            }
         }
-        return "Reset deposits for " + nation.getNation();
+
+        if (!force) {
+            String name = nations.getFilter();
+            String title = "Reset deposits for " + name;
+            StringBuilder body = new StringBuilder();
+            if (!ResourceType.isZero(totalDeposits)) {
+                body.append("Net Adding `" + name + " " + PnwUtil.resourcesToString(totalDeposits) + " #deposit`\n");
+            }
+            if (!ResourceType.isZero(totalTax)) {
+                body.append("Net Adding `" + name + " " + PnwUtil.resourcesToString(totalTax) + " #tax`\n");
+            }
+            if (!ResourceType.isZero(totalLoan)) {
+                body.append("Net Adding `" + name + " " + PnwUtil.resourcesToString(totalLoan) + " #loan`\n");
+            }
+            if (!ResourceType.isZero(totalExpire)) {
+                body.append("Net Adding `" + name + " " + PnwUtil.resourcesToString(totalExpire) + " #expire`\n");
+            }
+            if (!ResourceType.isZero(totalEscrow)) {
+                body.append("Deleting Escrow: `" + name + " " + PnwUtil.resourcesToString(totalEscrow) + "`\n");
+            }
+
+            double[] total = ResourceType.getBuffer();
+            total = ResourceType.add(total, totalDeposits);
+            total = ResourceType.add(total, totalTax);
+            total = ResourceType.add(total, totalLoan);
+            total = ResourceType.add(total, totalExpire);
+            total = ResourceType.subtract(total, totalEscrow);
+            body.append("Total Net: `" + name + " " + PnwUtil.resourcesToString(total) + "`\n");
+            body.append("\n\nSee attached file for transaction details\n");
+
+            io.create().confirmation(title, body.toString(), command)
+                    .file("transaction.txt", response.toString()).send();
+            return null;
+        }
+
+        return response.toString();
     }
 
     @Command(desc = "Transfer from the alliance bank (alliance deposits)")
@@ -1493,11 +1893,11 @@ public class BankCommands {
                                   @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
                                   @Arg("Only send funds the receiver is lacking from the amount") @Switch("m") boolean onlyMissingFunds,
                                   @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
-                           @Switch("g") UUID token,
-                           @Arg("Transfer valued at cash equivalent in nation holdings") @Switch("c") boolean convertCash,
-
-                           @Switch("b") boolean bypassChecks,
-                           @Switch("f") boolean force) throws IOException {
+                                  @Switch("g") UUID token,
+                                  @Arg("Transfer valued at cash equivalent in nation holdings") @Switch("c") boolean convertCash,
+                                  @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
+                                  @Switch("b") boolean bypassChecks,
+                                  @Switch("f") boolean force) throws IOException {
         if (existingTaxAccount) {
             if (taxAccount != null) throw new IllegalArgumentException("You can't specify both `tax_id` and `existingTaxAccount`");
             if (!receiver.isNation()) throw new IllegalArgumentException("You can only specify `existingTaxAccount` for a nation");
@@ -1515,7 +1915,7 @@ public class BankCommands {
             DBNation nation = receiver.asNation();
             if (nation.getVm_turns() > 0) forceErrors.add("Receiver is in Vacation Mode");
             if (nation.isGray()) forceErrors.add("Receiver is Gray");
-            if (nation.getNumWars() > 0 && receiver.asNation().isBlockaded()) forceErrors.add("Receiver is blockaded");
+            if (nation.getNumWars() > 0 && receiver.asNation().isBlockaded() && (escrow_mode == null || escrow_mode == EscrowMode.NEVER)) forceErrors.add("Receiver is blockaded");
             if (nation.getActive_m() > 10000) forceErrors.add(("!! **WARN**: Receiver is " + TimeUtil.secToTime(TimeUnit.MINUTES, nation.active_m())) + " inactive");
         } else if (receiver.isAlliance()) {
             DBAlliance alliance = receiver.asAlliance();
@@ -1616,6 +2016,7 @@ public class BankCommands {
                     expire,
                     null,
                     convertCash,
+                    escrow_mode,
                     !force,
                     bypassChecks
             );
@@ -1678,6 +2079,50 @@ public class BankCommands {
         return null;
     }
 
+    private static Map.Entry<SpreadSheet, double[]> escrowSheet(GuildDB db, Collection<DBNation> nations) throws GeneralSecurityException, IOException {
+        double[] totalEscrowed = ResourceType.getBuffer();
+        List<Object> escrowHeader = new ArrayList<>(Arrays.asList(
+                "nation",
+                "cities",
+                "age",
+                "expires",
+                "value"
+
+        ));
+        for (ResourceType type : ResourceType.values()) {
+            if (type == ResourceType.CREDITS) continue;
+            escrowHeader.add(type.name());
+        }
+        SpreadSheet escrowSheet = SpreadSheet.create(db, SheetKeys.ESCROW_SHEET);
+        escrowSheet.setHeader(escrowHeader);
+
+        for (DBNation nation : nations) {
+            Map.Entry<double[], Long> escrowedPair = db.getEscrowed(nation);
+            if (escrowedPair == null || ResourceType.isZero(escrowedPair.getKey())) continue;
+            ResourceType.add(totalEscrowed, escrowedPair.getKey());
+
+            escrowHeader.set(0, MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
+            escrowHeader.set(1, nation.getCities());
+            escrowHeader.set(2, nation.getAgeDays());
+
+            long expireEpoch = escrowedPair.getValue();
+            String expires = expireEpoch == 0 ? "never" : TimeUtil.YYYY_MM_DD_HH_MM_SS.format(expireEpoch);
+            escrowHeader.set(3, expires);
+
+            double value = PnwUtil.convertedTotal(escrowedPair.getKey());
+            escrowHeader.set(4, MathMan.format(value));
+            int i = 0;
+            for (ResourceType type : ResourceType.values) {
+                if (type == ResourceType.CREDITS) continue;
+                escrowHeader.set(5 + (i++), MathMan.format(escrowedPair.getKey()[type.ordinal()]));
+            }
+
+            escrowSheet.addRow(escrowHeader);
+        }
+
+        return Map.entry(escrowSheet, totalEscrowed);
+    }
+
     @Command(aliases = {"depositSheet", "depositsSheet"}, desc =
             "Get a sheet with member nations and their deposits\n" +
                     "Each nation's safekeep should match the total balance given by deposits command" +
@@ -1692,16 +2137,17 @@ public class BankCommands {
 
     )
     @RolePermission(Roles.ECON)
-    public String depositSheet(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db,
+    public static String depositSheet(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db,
                                @Default Set<DBNation> nations,
                                @Arg("The alliances to track transfers from") @Default Set<DBAlliance> offshores,
                                @Arg("use 0/0 as the tax base") @Switch("b") boolean ignoreTaxBase,
                                @Arg("Do NOT include any manual deposit offesets") @Switch("o") boolean ignoreOffsets,
                                @Arg("Do NOT include taxes") @Switch("t") boolean noTaxes,
                                @Arg("Do NOT include loans") @Switch("l") boolean noLoans,
-                                 @Arg("Do NOT include grants") @Switch("g") boolean noGrants,
-                                 @Arg("Do NOT include deposits") @Switch("d") boolean noDeposits,
-                                 @Arg("Include past depositors") @Switch("p") Set<Integer> includePastDepositors,
+                               @Arg("Do NOT include grants") @Switch("g") boolean noGrants,
+                               @Arg("Do NOT include deposits") @Switch("d") boolean noDeposits,
+                               @Arg("Include past depositors") @Switch("p") Set<Integer> includePastDepositors,
+                               @Arg("Do NOT include escrow sheet") @Switch("d") boolean noEscrowSheet,
                                @Switch("f") boolean force
 
     ) throws GeneralSecurityException, IOException {
@@ -1842,10 +2288,27 @@ public class BankCommands {
             sheet.addRow(header);
         }
 
+        StringBuilder footer = new StringBuilder();
+
         sheet.clearAll();
         sheet.set(0, 0);
 
-        StringBuilder footer = new StringBuilder();
+        IMessageBuilder msg = channel.create();
+        sheet.attach(msg);
+
+        if (!noEscrowSheet) {
+            Map.Entry<SpreadSheet, double[]> pair = escrowSheet(db, nations);
+            SpreadSheet escrowSheet = pair.getKey();
+            // attach sheet
+            sheet.clearAll();
+            sheet.set(0, 0);
+            escrowSheet.attach(msg);
+
+            double[] escrowTotal = pair.getValue();
+            aaTotalPositive = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, aaTotalPositive, escrowTotal);
+            aaTotalNet = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, aaTotalNet, escrowTotal);
+        }
+
         footer.append(PnwUtil.resourcesToFancyString(aaTotalPositive, "Nation Deposits (" + nations.size() + " nations)"));
 
         String type = "";
@@ -1863,16 +2326,16 @@ public class BankCommands {
                 for (int i = 0; i < aaDeposits.length; i++) {
                     aaTotalNet[i] = aaDeposits[i] - aaTotalNet[i];
                     aaTotalPositive[i] = aaDeposits[i] - aaTotalPositive[i];
-
                 }
-                footer.append("\n**Total " + type + "- nation deposits (negatives normalized)**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalPositive)) + "\n`" + PnwUtil.resourcesToString(aaTotalPositive) + "`");
-                footer.append("\n**Total " + type + "- nation deposits**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
+                String natDepTypes = noEscrowSheet ? "deposits" : "deposits (with escrow)";
+                footer.append("\n**Total " + type + "- nation " + natDepTypes + " (negatives normalized)**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalPositive)) + "\n`" + PnwUtil.resourcesToString(aaTotalPositive) + "`");
+                footer.append("\n**Total " + type + "- nation " + natDepTypes + "**:  Worth: $" + MathMan.format(PnwUtil.convertedTotal(aaTotalNet)) + "\n`" + PnwUtil.resourcesToString(aaTotalNet) + "`");
             } else {
                 footer.append("\n**No funds are currently " + type + "**");
             }
         }
 
-        sheet.attach(channel.create()).embed("Nation Deposits (With Alliance)", footer.toString())
+        msg.embed("Nation Deposits (With Alliance)", footer.toString())
                 .send();
         return null;
     }
@@ -1940,7 +2403,7 @@ public class BankCommands {
         return null;
     }
 
-    @Command(desc = "Get a sheet of ingame transfers for nations")
+    @Command(desc = "Get a sheet of ingame transfers for nations, filtered by the sender")
     @RolePermission(value = Roles.ECON)
     public String IngameNationTransfersBySender(@Me IMessageIO channel, @Me GuildDB db, Set<NationOrAlliance> senders, @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKeys.BANK_TRANSACTION_SHEET);
@@ -1951,7 +2414,7 @@ public class BankCommands {
         return null;
     }
 
-    @Command(desc = "Get a sheet of ingame transfers for nations")
+    @Command(desc = "Get a sheet of ingame transfers for nations, filtered by the receiver")
     @RolePermission(value = Roles.ECON)
     public String IngameNationTransfersByReceiver(@Me IMessageIO channel, @Me GuildDB db, Set<NationOrAlliance> receivers, @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKeys.BANK_TRANSACTION_SHEET);
@@ -2131,12 +2594,12 @@ public class BankCommands {
                                       @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
                                       @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
                                       @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
-
                                       @Switch("m") boolean convertToMoney,
+                                      @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
                                       @Switch("b") boolean bypassChecks,
                                       @Switch("f") boolean force,
                                       @Switch("k") UUID key) throws IOException {
-        return transferBulkWithErrors(io, command, user, me, db, sheet, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, convertToMoney, bypassChecks, force, key, new HashMap<>());
+        return transferBulkWithErrors(io, command, user, me, db, sheet, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, convertToMoney, escrow_mode, bypassChecks, force, key, new HashMap<>());
     }
 
 
@@ -2148,6 +2611,7 @@ public class BankCommands {
                                         @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
                                         @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
                                       @Switch("m") boolean convertToMoney,
+                                                @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
                                       @Switch("b") boolean bypassChecks,
                                       @Switch("f") boolean force,
                                       @Switch("k") UUID key,
@@ -2271,6 +2735,7 @@ public class BankCommands {
                             expire,
                             null,
                             convertToMoney,
+                            escrow_mode,
                             false,
                             bypassChecks
                     );
@@ -2676,14 +3141,15 @@ public class BankCommands {
         }
     }
 
-    @Command(desc="Calculate a nations deposits/loans/taxes")
+    @Command(desc="Displays the account balance for a nation, alliance or guild\n" +
+            "Balance info includes deposits, loans, grants, taxes and escrow")
     @RolePermission(Roles.MEMBER)
-    public String deposits(@Me Guild guild, @Me GuildDB db, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildHandler handler,
+    public static String deposits(@Me Guild guild, @Me GuildDB db, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildHandler handler,
                            @Arg("Account to check holdings for") NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild,
                            @Arg("The alliances to check transfers from\nOtherwise the guild configured ones will be used")
                            @Switch("o") Set<DBAlliance> offshores,
                            @Arg("Only include transfers after this time")
-                           @Switch("c") Long timeCutoff,
+                           @Switch("c") @Timestamp Long timeCutoff,
                             @Arg("Include all taxes in account balance")
                            @Switch("b") boolean includeBaseTaxes,
                             @Arg("Do NOT include manual offsets in account balance")
@@ -2694,20 +3160,23 @@ public class BankCommands {
                            @Arg("Include expired transfers")
                            @Switch("e") boolean includeExpired,
                            @Arg("Include transfers marked as ignore")
-                           @Switch("e") boolean includeIgnored
+                           @Switch("i") boolean includeIgnored,
+                           @Arg("Hide the escrow balance ") @Switch("h") boolean hideEscrowed
     ) throws IOException {
         if (timeCutoff == null) timeCutoff = 0L;
         Set<Long> offshoreIds = offshores == null ? null : offshores.stream().map(f -> f.getIdLong()).collect(Collectors.toSet());
         if (offshoreIds != null) offshoreIds = PnwUtil.expandCoalition(offshoreIds);
 
-        boolean hasAdmin = Roles.ECON.has(author, guild);
-        AllianceList allowed = Roles.ECON.getAllianceList(author, db);
+//        boolean hasAdmin = Roles.ECON.has(author, guild);
+//        AllianceList allowed = Roles.ECON.getAllianceList(author, db);
 
         StringBuilder response = new StringBuilder();
         response.append("**" + nationOrAllianceOrGuild.getQualifiedName() + "**:\n");
         List<String> footers = new ArrayList<>();
 
         Map<DepositType, double[]> accountDeposits = new HashMap<>();
+        double[] escrowed = null;
+        long escrowExpire = 0;
 
         if (nationOrAllianceOrGuild.isAlliance()) {
             DBAlliance alliance = nationOrAllianceOrGuild.asAlliance();
@@ -2753,6 +3222,16 @@ public class BankCommands {
             if (nation != me && !Roles.INTERNAL_AFFAIRS.has(author, guild) && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild) && !Roles.ECON.has(author, guild)) return "You do not have permission to check other nation's deposits";
             // txList
             accountDeposits = nation.getDeposits(db, offshoreIds, !includeBaseTaxes, !ignoreInternalOffsets, 0L, timeCutoff, includeIgnored, includeExpired, f -> true);
+            if (!hideEscrowed) {
+                Map.Entry<double[], Long> escoredPair = db.getEscrowed(nation);
+                if (escoredPair != null) {
+                    if (escrowed == null) {
+                        escrowed = ResourceType.getBuffer();
+                    }
+                    ResourceType.add(escrowed, escoredPair.getKey());
+                    escrowExpire = escoredPair.getValue();
+                }
+            }
         } else if (nationOrAllianceOrGuild.isTaxid()) {
             TaxBracket bracket = nationOrAllianceOrGuild.asBracket();
             Map<DepositType, double[]> deposits = db.getTaxBracketDeposits(bracket.taxId, timeCutoff, includeExpired, includeIgnored);
@@ -2767,7 +3246,7 @@ public class BankCommands {
             footers.add("See " + CM.deposits.add.cmd.create("tax_id=" + nationOrAllianceOrGuild.getId(), null, "#TAX", null).toSlashCommand(false));
         }
 
-        double[] total = new double[ResourceType.values.length];
+        double[] total = escrowed != null ? escrowed.clone() : new double[ResourceType.values.length];
         double[] totalNoGrants = new double[ResourceType.values.length];
         double[] taxAndDeposits = new double[ResourceType.values.length];
         Map<DepositType, double[]> categorized = new HashMap<>();
@@ -2810,6 +3289,13 @@ public class BankCommands {
                 response.append("#EXPIRE (worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.GRANT))) + ")");
                 response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.GRANT))).append("``` ");
             }
+            if (escrowed != null && !ResourceType.isZero(escrowed)) {
+                response.append("ESCROWED: (worth: $" + MathMan.format(PnwUtil.convertedTotal(escrowed)) + ")");
+                if (escrowExpire > 0) {
+                    response.append(" expires: " + DiscordUtil.timestamp(escrowExpire, null));
+                }
+                response.append("\n```").append(PnwUtil.resourcesToString(escrowed)).append("``` ");
+            }
             if (categorized.size() > 1) {
                 response.append("Total: (worth: $" + MathMan.format(PnwUtil.convertedTotal(total)) + ")");
                 response.append("\n```").append(PnwUtil.resourcesToString(total)).append("``` ");
@@ -2833,6 +3319,13 @@ public class BankCommands {
 
             response.append((hasPriorCategory ? safekeepTitle : totalTitle) + MathMan.format(PnwUtil.convertedTotal(taxAndDeposits)) + ")");
             response.append("\n```").append(PnwUtil.resourcesToString(taxAndDeposits)).append("``` ");
+            if (escrowed != null && !ResourceType.isZero(escrowed)) {
+                response.append("\nEscrowed: (worth: $" + MathMan.format(PnwUtil.convertedTotal(escrowed)) + ")");
+                if (escrowExpire > 0) {
+                    response.append(" expires: " + DiscordUtil.timestamp(escrowExpire, null));
+                }
+                response.append("\n```").append(PnwUtil.resourcesToString(escrowed)).append("``` ");
+            }
         }
         if (me != null && nationOrAllianceOrGuild == me) {
             footers.add("Funds default to #deposit if no other note is used");
@@ -2845,6 +3338,9 @@ public class BankCommands {
                     footers.add("To withdraw, use: `" + CM.transfer.self.cmd.toSlashMention() + "` ");
                 }
             }
+        }
+        if (escrowed != null && !ResourceType.isZero(escrowed)) {
+            footers.add("Use: " + CM.escrow.withdraw.cmd.toSlashMention());
         }
 
         if (!footers.isEmpty()) {
@@ -3252,7 +3748,7 @@ public class BankCommands {
                 body.append("Changing offshores will close the account with your previous offshore provider\n");
                 body.append("Your current offshore is set to: " + currentOffshore.getAllianceId() + "\n");
                 body.append("To check your funds with the current offshore, use " +
-                        CM.deposits.check.cmd.create(idStr, null, null, null, null, null, null, null, null));
+                        CM.deposits.check.cmd.create(idStr, null, null, null, null, null, null, null, null, null));
                 body.append("\nIt is recommended to withdraw all funds from the current offshore before changing, as Locutus may not be able to access the account after closing it`");
 
                 confirmButton.embed(title, body.toString()).send();
@@ -3350,9 +3846,9 @@ public class BankCommands {
                     if (root.getOrNull(GuildKey.WAR_ALERT_FOR_OFFSHORES) == null) {
                         if (offshoreDB.getOrNull(GuildKey.PUBLIC_OFFSHORING) == Boolean.TRUE) {
                             GuildKey.WAR_ALERT_FOR_OFFSHORES.set(root, false);
-                            response.append("\nNote: Offshore War alerts are disabled. Enable using: " + GuildKey.WAR_ALERT_FOR_OFFSHORES.getCommandObj(true));
+                            response.append("\nNote: Offshore War alerts are disabled. Enable using: " + GuildKey.WAR_ALERT_FOR_OFFSHORES.getCommandObj(root, true));
                         } else {
-                            response.append("\nNote: Disable offshore war alerts using: " + GuildKey.WAR_ALERT_FOR_OFFSHORES.getCommandObj(false));
+                            response.append("\nNote: Disable offshore war alerts using: " + GuildKey.WAR_ALERT_FOR_OFFSHORES.getCommandObj(root, false));
                         }
                     }
                 }

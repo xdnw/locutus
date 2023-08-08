@@ -2,6 +2,7 @@ package link.locutus.discord.commands.bank;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.EscrowMode;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -73,6 +74,9 @@ public class Warchest extends Command {
         DBAlliance offshoreAccount = null;
         TaxBracket taxAccount = null;
 
+        String escrowModeStr = DiscordUtil.parseArg(args, "escrow");
+        EscrowMode escrowMode = escrowModeStr != null ? PWBindings.EscrowMode(escrowModeStr) : null;
+
         String nationAccountStr = DiscordUtil.parseArg(args, "nation");
         if (nationAccountStr != null) {
             nationAccount = PWBindings.nation(author, nationAccountStr);
@@ -139,6 +143,7 @@ public class Warchest extends Command {
                 flags.contains('t'),
                 null,
                 flags.contains('m'),
+                escrowMode,
                 flags.contains('b'),
                 flags.contains('f'));
     }

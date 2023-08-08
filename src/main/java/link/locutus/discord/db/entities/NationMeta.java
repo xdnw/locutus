@@ -90,9 +90,9 @@ public enum NationMeta {
 
     BEIGE_ALERT_SCORE_LEEWAY,
 
-    ESCROWED_UP_TO, //
+    ALLOWANCE_UP_TO, //
 
-    ESCROWED_DISBURSE_DAYS,
+    ALLOWANCE_DISBURSE_DAYS,
 
     LAST_CHECKED_AUDITS,
 
@@ -105,8 +105,11 @@ public enum NationMeta {
     RECRUIT_AD_COUNT,
 
     RECRUIT_GOV_MESSAGE,
-
     LOGIN_NOTIFY,
+
+    GPT_PROVIDER,
+
+    GPT_OPTIONS,
 
     ;
 

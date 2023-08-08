@@ -54,7 +54,7 @@ public class ImageUtil {
     }
 
     public static String getTextLocal(String imageUrl, ImageType type) {
-        String pathStr = Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.TESSERACT_LOCATION;
+        String pathStr = Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OCR.TESSERACT_LOCATION;
         EasyOCR ocr = new EasyOCR(pathStr);
         ocr.setTesseractOptions(EasyOCR.OPTION_LANG_ENG);
         File fileTmp = null; // 50MB limit
@@ -218,17 +218,19 @@ public class ImageUtil {
     }
 
     public static String getText(String imageUrl) {
-        try {
-            return getTextAPI(imageUrl);
-        } catch (IOException | IllegalArgumentException e) {
-            e.printStackTrace();
+        if (!Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OCR.OCR_SPACE_KEY.isEmpty()) {
+            try {
+                return getTextAPI(imageUrl);
+            } catch (IOException | IllegalArgumentException e) {
+                e.printStackTrace();
+            }
         }
         return getTextLocal(imageUrl, ImageType.CLEAR);
     }
 
     // Example usage:
     public static String getTextAPI(String imageUrl) throws IOException {
-        String endpoint = "https://api.ocr.space/parse/imageurl?apikey=" + Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OCR_SPACE_KEY + "&isTable=true&OCREngine=2&url=";
+        String endpoint = "https://api.ocr.space/parse/imageurl?apikey=" + Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OCR.OCR_SPACE_KEY + "&isTable=true&OCREngine=2&url=";
 
         String url = endpoint + imageUrl;
         String jsonStr = FileUtil.readStringFromURL(PagePriority.API_OCR.ordinal(), url);

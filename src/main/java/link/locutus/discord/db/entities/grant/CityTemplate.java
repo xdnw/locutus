@@ -77,8 +77,8 @@ public class CityTemplate extends AGrantTemplate<Integer> {
     public String toInfoString(DBNation sender, DBNation receiver,  Integer parsed) {
 
         StringBuilder message = new StringBuilder();
-        message.append("Min City: " + min_city);
-        message.append("Max City: " + max_city);
+        message.append("Min City: `" + min_city + "`\n");
+        message.append("Max City: `" + max_city + "`");
 
         return message.toString();
     }
