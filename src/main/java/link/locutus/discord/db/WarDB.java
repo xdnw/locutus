@@ -515,16 +515,29 @@ public class WarDB extends DBMainV2 {
 
     public void loadWars(int days) {
         if (days != 0) {
-            long date = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
+            List<DBWar> saveWars = new ArrayList<>();
+
+            long now = System.currentTimeMillis();
+            long date = now - TimeUnit.DAYS.toMillis(days);
             String whereClause = days > 0 ? " WHERE date > " + date : "";
             query("SELECT * FROM wars" + whereClause, f -> {
             }, (ThrowingConsumer<ResultSet>) rs -> {
                 while (rs.next()) {
+
                     DBWar war = create(rs);
+//                    if (war.status == WarStatus.EXPIRED && now < war.possibleEndDate()) {
+//                        war.status = WarStatus.ACTIVE;
+//                        saveWars.add(war);
+//                    }
                     setWar(war);
                 }
             });
+            if (!saveWars.isEmpty()) {
+                saveWars(saveWars);
+            }
+
         }
+
 
         List<DBWar> wars = getWarByStatus(WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);
 
@@ -1519,7 +1532,7 @@ public class WarDB extends DBMainV2 {
             });
 
             List<DBWar> wars = warsQL.stream().map(DBWar::new).collect(Collectors.toList());
-            updateWars(wars, idsSorted, eventConsumer);
+            updateWars(wars, subList, eventConsumer);
         }
     }
 
@@ -1627,33 +1640,34 @@ public class WarDB extends DBMainV2 {
         long currentTurn = TimeUtil.getTurn();
         for (DBWar war : activeWars.getActiveWars().values()) {
             // Handle deleted wars
-            if (expectedIds.contains(war.getWarId()) && !idsFetched.contains(war.getWarId())) {
+            if (expectedIds != null && expectedIds.contains(war.getWarId()) && !idsFetched.contains(war.getWarId())) {
                 prevWars.add(new DBWar(war));
                 war.status = WarStatus.EXPIRED;
                 newWars.add(war);
                 continue;
             }
 
-            // Expire other wars
-            if (!newWarIds.add(war.getWarId())) continue;
-
-            long warTurn = TimeUtil.getTurn(war.date);
-
-            if (currentTurn - warTurn >= 60 && false) { // TODO disable
-                prevWars.add(new DBWar(war));
-                war.status = WarStatus.EXPIRED;
-                newWars.add(war);
-
-            } else if (war.status != WarStatus.EXPIRED){
-                DBNation attacker = Locutus.imp().getNationDB().getNation(war.attacker_id);
-                DBNation defender = Locutus.imp().getNationDB().getNation(war.defender_id);
-                if ((attacker == null || defender == null) && war.date < System.currentTimeMillis() - TimeUnit.HOURS.toMillis(2)) {
-
-                    prevWars.add(new DBWar(war));
-                    war.status = WarStatus.EXPIRED;
-                    newWars.add(war);
-                }
-            }
+//            // Expire other wars
+//            if (!newWarIds.add(war.getWarId())) continue;
+//
+//            long warTurn = TimeUtil.getTurn(war.date);
+//
+//            if (currentTurn - warTurn >= 60 && false) { // TODO disable
+//                prevWars.add(new DBWar(war));
+//                war.status = WarStatus.EXPIRED;
+//                newWars.add(war);
+//
+////            } else
+////                if (war.status != WarStatus.EXPIRED){
+////                DBNation attacker = Locutus.imp().getNationDB().getNation(war.attacker_id);
+////                DBNation defender = Locutus.imp().getNationDB().getNation(war.defender_id);
+////                if ((attacker == null || defender == null) && war.date < System.currentTimeMillis() - TimeUnit.HOURS.toMillis(2)) {
+////
+////                    prevWars.add(new DBWar(war));
+////                    war.status = WarStatus.EXPIRED;
+////                    newWars.add(war);
+////                }
+//            }
         }
 
         saveWars(newWars);
@@ -1710,8 +1724,6 @@ public class WarDB extends DBMainV2 {
                 nationSnapshots.add(Map.entry(war.getWarId(), defender));
             }
         }
-
-        System.out.println("Done save war snaptshots");
 
         String query = "INSERT OR REPLACE INTO `wars`(`id`, `attacker_id`, `defender_id`, `attacker_aa`, `defender_aa`, `war_type`, `status`, `date`) VALUES(?, ?, ?, ?, ?, ?, ?, ?)";
 
