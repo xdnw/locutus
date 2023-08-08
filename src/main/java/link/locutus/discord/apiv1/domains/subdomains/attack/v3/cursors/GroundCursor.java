@@ -28,7 +28,7 @@ public class GroundCursor extends UnitCursor {
         this.defcas1 = legacy.getDefcas1();
         this.defcas2 = legacy.getDefcas2();
         this.defcas3 = legacy.getDefcas3();
-        this.money_looted_cents = (long) Math.round(legacy.getMoney_looted() * 100);
+        this.money_looted_cents = Math.round(legacy.getMoney_looted() * 100);
     }
 
     @Override
@@ -49,7 +49,7 @@ public class GroundCursor extends UnitCursor {
         this.defcas1 = attack.getDef_soldiers_lost();
         this.defcas2 = attack.getDef_tanks_lost();
         this.defcas3 = attack.getDef_aircraft_lost();
-        this.money_looted_cents = (long) (attack.getMoney_looted() * 100);
+        this.money_looted_cents = (long) (attack.getMoney_stolen() * 100);
     }
 
     private static final MilitaryUnit[] UNITS = {MilitaryUnit.SOLDIER, MilitaryUnit.TANK, MilitaryUnit.AIRCRAFT};
