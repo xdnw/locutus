@@ -1428,14 +1428,11 @@ public class WarDB extends DBMainV2 {
         }
 
         List<DBWar> dbWars = wars.stream().map(DBWar::new).collect(Collectors.toList());
-        updateWars(dbWars, eventConsumer);
         int numActive = activeWarsToFetch.size();
         for (DBWar war : dbWars) {
             activeWarsToFetch.remove(war.getWarId());
         }
-
-        List<Map.Entry<DBWar, DBWar>> warsToProcess = new ObjectArrayList<>();
-        List<DBWar> warsToSave = new ArrayList<>();
+        updateWars(dbWars, null, eventConsumer);
 
         if (activeWarsToFetch.size() > 0) {
             int notDeleted = 0;
@@ -1448,18 +1445,6 @@ public class WarDB extends DBMainV2 {
                 if (war.getNation(true) != null && war.getNation(false) != null) {
                     notDeleted++;
                 }
-                DBWar copy = eventConsumer != null ? new DBWar(war) : null;
-                war.status = WarStatus.EXPIRED;
-                activeWars.makeWarInactive(war);
-                warsToSave.add(war);
-                if (eventConsumer != null) {
-                    warsToProcess.add(new AbstractMap.SimpleEntry<>(copy, war));
-                }
-            }
-
-            saveWars(warsToSave);
-            if (eventConsumer != null) {
-                WarUpdateProcessor.processWars(warsToProcess, eventConsumer);
             }
 
             if (notDeleted > 0) {
@@ -1500,7 +1485,7 @@ public class WarDB extends DBMainV2 {
             dbWars.add(newWar);
         }
 
-        boolean result = updateWars(dbWars, eventConsumer);
+        boolean result = updateWars(dbWars, null, eventConsumer);
         return result;
     }
 
@@ -1512,10 +1497,46 @@ public class WarDB extends DBMainV2 {
                 return updateAllWars(eventConsumer);
             }
         }
-        return updateActiveWars2(eventConsumer);
+
+        List<Integer> ids = activeWars.getActiveWars().keySet().stream().toList();
+        fetchWarsById(ids, eventConsumer);
+        return true;
     }
 
-    public boolean updateActiveWars2(Consumer<Event> eventConsumer) throws IOException {
+    public void fetchWarsById(Collection<Integer> ids, Consumer<Event> eventConsumer) {
+        List<Integer> idsSorted = new ArrayList<>(ids);
+        Collections.sort(idsSorted);
+
+        int chunkSize = PoliticsAndWarV3.WARS_PER_PAGE;
+        for (int i = 0; i < idsSorted.size(); i += chunkSize) {
+            int end = Math.min(i + chunkSize, idsSorted.size());
+            List<Integer> subList = idsSorted.subList(i, end);
+
+            PoliticsAndWarV3 api = Locutus.imp().getV3();
+            List<War> warsQL = api.fetchWarsWithInfo(r -> {
+                r.setId(subList);
+                r.setActive(false);
+            });
+
+            List<DBWar> wars = warsQL.stream().map(DBWar::new).collect(Collectors.toList());
+            updateWars(wars, idsSorted, eventConsumer);
+        }
+    }
+
+    public void fetchNewWars(Consumer<Event> eventConsumer) {
+        int maxId = activeWars.getActiveWars().keySet().stream().mapToInt(i -> i).max().orElse(0);
+        if (maxId == 0) return;
+        PoliticsAndWarV3 api = Locutus.imp().getV3();
+        List<War> warsQl = api.fetchWarsWithInfo(r -> {
+            r.setMin_id(maxId + 1);
+            r.setActive(false);
+        });
+        if (warsQl.isEmpty()) return;
+        List<DBWar> wars = warsQl.stream().map(DBWar::new).collect(Collectors.toList());
+        updateWars(wars, null, eventConsumer);
+    }
+
+    public boolean updateMostActiveWars(Consumer<Event> eventConsumer) throws IOException {
         int newWarsToFetch = 100;
         int numToUpdate = Math.min(999, PoliticsAndWarV3.WARS_PER_PAGE);
 
@@ -1563,51 +1584,15 @@ public class WarDB extends DBMainV2 {
         }
 
         List<DBWar> dbWars = wars.stream().map(DBWar::new).collect(Collectors.toList());
-        updateWars(dbWars, eventConsumer);
-        int numActive = activeWarsToFetch.size();
-        for (DBWar war : dbWars) {
-            activeWarsToFetch.remove(war.getWarId());
-        }
-
-        List<DBWar> warsToSave = new ArrayList<>();
-        List<Map.Entry<DBWar, DBWar>> warsToProcess = new ArrayList<>();
-
-        if (activeWarsToFetch.size() > 0) {
-            int notDeleted = 0;
-            for (int warId : activeWarsToFetch) {
-                DBWar war = activeWars.getWar(warId);
-                if (war == null) {
-                    // no issue
-                    continue;
-                }
-                if (war.getNation(true) != null && war.getNation(false) != null) {
-                    notDeleted++;
-                }
-                DBWar copy = eventConsumer != null ? new DBWar(war) : null;
-                war.status = WarStatus.EXPIRED;
-                activeWars.makeWarInactive(war);
-                warsToSave.add(war);
-                if (eventConsumer != null) {
-                    warsToProcess.add(new AbstractMap.SimpleEntry<>(copy, war));
-                }
-            }
-
-            saveWars(warsToSave);
-            if (eventConsumer != null) {
-                WarUpdateProcessor.processWars(warsToProcess, eventConsumer);
-            }
-
-            if (notDeleted > 0) {
-                AlertUtil.error("Unable to fetch " + notDeleted + "/" + numActive + " active wars:", new RuntimeException("Ignore if these wars correspond to deleted nations:\n" + StringMan.getString(activeWarsToFetch)));
-            }
-        }
+        updateWars(dbWars, warIdsToUpdate, eventConsumer);
 
         return true;
     }
 
-    public boolean updateWars(List<DBWar> dbWars, Consumer<Event> eventConsumer) {
+    public boolean updateWars(List<DBWar> dbWars, Collection<Integer> expectedIds, Consumer<Event> eventConsumer) {
         List<DBWar> prevWars = new ArrayList<>();
         List<DBWar> newWars = new ArrayList<>();
+        Set<Integer> idsFetched = dbWars.stream().map(DBWar::getWarId).collect(Collectors.toSet());
         Set<Integer> newWarIds = new LinkedHashSet<>();
 
         for (DBWar war : dbWars) {
@@ -1641,6 +1626,15 @@ public class WarDB extends DBMainV2 {
 
         long currentTurn = TimeUtil.getTurn();
         for (DBWar war : activeWars.getActiveWars().values()) {
+            // Handle deleted wars
+            if (expectedIds.contains(war.getWarId()) && !idsFetched.contains(war.getWarId())) {
+                prevWars.add(new DBWar(war));
+                war.status = WarStatus.EXPIRED;
+                newWars.add(war);
+                continue;
+            }
+
+            // Expire other wars
             if (!newWarIds.add(war.getWarId())) continue;
 
             long warTurn = TimeUtil.getTurn(war.date);

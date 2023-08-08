@@ -59,7 +59,7 @@ public class Multi extends Command {
             }
         }
 
-        msg.file(title, result);
+        msg.file(title + ".txt", result);
 
         msg.append("""
             ```Disclaimer:

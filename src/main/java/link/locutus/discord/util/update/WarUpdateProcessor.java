@@ -674,7 +674,7 @@ public class WarUpdateProcessor {
                             } else if (defender.getAircraft() <= 10) {
                                 String message = AttackTypeSubCategory.AIRSTRIKE_AIRCRAFT_LOW.message
                                         .replace("{amt_att}", attAir + "")
-                                        .replace("{amt_def}", defender.getAircraft() + "");
+                                        .replace("{amt_def}", (defender.getAircraft() + root.getDefcas1()) + "");
                                 return Map.entry(AttackTypeSubCategory.AIRSTRIKE_AIRCRAFT_LOW, message);
                             }
                         }

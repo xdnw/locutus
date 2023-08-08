@@ -24,6 +24,7 @@ import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.User;
+import org.jooq.Condition;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -731,16 +732,15 @@ public class TradeDB extends DBMainV2 {
         List<Integer> sorted = new ArrayList<>(nationIds);
         sorted.sort(Comparator.naturalOrder());
         Object[] nationIdsArr = sorted.toArray();
-        List<DBTrade> result = getTrades(f -> f.where(QueryCondition.greater("date", startDate))
-                .where(QueryCondition.in("seller", nationIdsArr).or(QueryCondition.in("buyer", nationIdsArr)))
-        );
+        List<DBTrade> result = getTrades(f -> f.where(
+                QueryCondition.greater("date", startDate)
+                        .and(QueryCondition.in("seller", nationIdsArr).or(QueryCondition.in("buyer", nationIdsArr)))));
         return result;
     }
 
     public List<DBTrade> getTrades(int nationId, long startDate) {
-        List<DBTrade> result = getTrades(f -> f.where(QueryCondition.greater("date", startDate))
-                .where(QueryCondition.equals("seller", nationId).or(QueryCondition.equals("buyer", nationId)))
-        );
+        List<DBTrade> result = getTrades(f -> f.where(QueryCondition.greater("date", startDate)
+                        .and(QueryCondition.equals("seller", nationId).or(QueryCondition.equals("buyer", nationId)))));
         result.removeIf(f -> f.getSeller() == 0 || f.getBuyer() == 0);
         return result;
     }

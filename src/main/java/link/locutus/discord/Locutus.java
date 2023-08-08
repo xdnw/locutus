@@ -742,9 +742,7 @@ public final class Locutus extends ListenerAdapter {
             if (Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS > 0) {
                 SpyUpdater spyUpdate = new SpyUpdater();
                 addTaskSeconds(() -> {
-
                     spyUpdate.run();
-
                 }, Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS);
             }
 
@@ -753,33 +751,32 @@ public final class Locutus extends ListenerAdapter {
                     System.out.println("Start update wars 1");
                     long start = System.currentTimeMillis();
                     runEventsAsync(f -> warDb.updateActiveWars(f, false));
-                    System.out.println("Update wars 1.1 took " + ( - start + (start = System.currentTimeMillis())));
+                    runEventsAsync(warDb::fetchNewWars);
                     runEventsAsync(warDb::updateAttacks);
-                    System.out.println("Update wars 1.2 took " + ( - start + (start = System.currentTimeMillis())));
                 }
             }, Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS);
 
-            addTaskSeconds(() -> {
-                synchronized (warUpdateLock) {
-                    System.out.println("Start update wars");
-                    long start1 = System.currentTimeMillis();
-                    runEventsAsync(warDb::updateAllWars);
-                    runEventsAsync(warDb::updateAttacks);
-                    long diff1 = System.currentTimeMillis() - start1;
-                    {
-                        System.out.println("Update wars took " + diff1);
-                    }
-
-                    if (Settings.INSTANCE.TASKS.ESCALATION_ALERTS) {
-                        long start = System.currentTimeMillis();
-                        WarUpdateProcessor.checkActiveConflicts();
-                        long diff = System.currentTimeMillis() - start;
-                        if (diff > 500) {
-                            AlertUtil.error("Took too long for checkActiveConflicts (" + diff + "ms)", new Exception());
-                        }
-                    }
-                }
-            }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS);
+//            addTaskSeconds(() -> {
+//                synchronized (warUpdateLock) {
+//                    System.out.println("Start update wars");
+//                    long start1 = System.currentTimeMillis();
+//                    runEventsAsync(warDb::updateAllWars);
+//                    runEventsAsync(warDb::updateAttacks);
+//                    long diff1 = System.currentTimeMillis() - start1;
+//                    {
+//                        System.out.println("Update wars took " + diff1);
+//                    }
+//
+//                    if (Settings.INSTANCE.TASKS.ESCALATION_ALERTS) {
+//                        long start = System.currentTimeMillis();
+//                        WarUpdateProcessor.checkActiveConflicts();
+//                        long diff = System.currentTimeMillis() - start;
+//                        if (diff > 500) {
+//                            AlertUtil.error("Took too long for checkActiveConflicts (" + diff + "ms)", new Exception());
+//                        }
+//                    }
+//                }
+//            }, Settings.INSTANCE.TASKS.ALL_WAR_SECONDS);
 
             checkMailTasks();
 

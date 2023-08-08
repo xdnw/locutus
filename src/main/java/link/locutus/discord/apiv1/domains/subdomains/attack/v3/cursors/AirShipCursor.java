@@ -33,7 +33,7 @@ public class AirShipCursor extends UnitCursor {
         super.load(attack);
         this.attcas1 = attack.getAtt_aircraft_lost();
         this.defcas1 = attack.getDef_aircraft_lost();
-        this.defcas2 = attack.getDef_tanks_lost();
+        this.defcas2 = attack.getDef_ships_lost();
     }
 
     private static final MilitaryUnit[] UNITS = {MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP};

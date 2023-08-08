@@ -1333,7 +1333,10 @@ public class DBAlliance implements NationList, NationOrAlliance {
             if (nation.getEspionage_available() != (dbNation.isEspionageAvailable())) {
                 dbNation.setEspionageFull(!nation.getEspionage_available());
             }
-            ops.put(dbNation, nation.getSpy_attacks());
+            if (nation.getSpy_attacks() != null) {
+                nation.setSpy_attacks(nation.getSpy_attacks());
+                ops.put(dbNation, nation.getSpy_attacks());
+            }
         }
         return ops;
     }

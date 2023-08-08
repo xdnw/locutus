@@ -80,7 +80,7 @@ public class ALootCursor extends FailedCursor {
             looted[ResourceType.FOOD.ordinal()] = attack.getFood_looted();
 
             AtomicInteger allianceId = new AtomicInteger();
-            loot_percent_cents = (int) (DBAttack.parseBankLoot(note, allianceId, null) * 100);
+            loot_percent_cents = (int) (DBAttack.parseBankLoot(note, allianceId, null) * 100 * 100);
             this.alliance_id = allianceId.get();
             if (alliance_id == 0) {
                 DBWar war = getWar();
