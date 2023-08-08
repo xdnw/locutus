@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.apiv1.enums.AccessType;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.EscrowMode;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
@@ -654,6 +655,7 @@ public class GrantCommands {
                                AGrantTemplate template,
                                DBNation receiver,
                                @Switch("p") String customValue,
+                               @Switch("em") EscrowMode escrowMode,
                                @Switch("f") boolean force) throws IOException {
         Role econRole = template.getEconRole();
         if (econRole == null) {
@@ -806,6 +808,7 @@ public class GrantCommands {
                     null,
                     null,
                     false,
+                    escrowMode,
                     false,
                     false);
 
