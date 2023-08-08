@@ -2104,9 +2104,9 @@ public class BankCommands {
         return null;
     }
 
-    @Command
+    @Command(desc = "Create a google sheet of escrowed resources amounts for a set of nations")
     @RolePermission(Roles.ECON)
-    public String escrowSheet(@Me IMessageIO io, @Me GuildDB db, @Me Guild guild, @Default Set<DBNation> nations, @Switch("p") Set<Integer> includePastDepositors, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+    public String escrowSheetCmd(@Me IMessageIO io, @Me GuildDB db, @Me Guild guild, @Default Set<DBNation> nations, @Switch("p") Set<Integer> includePastDepositors, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (nations == null) {
             Set<Integer> aaIds = db.getAllianceIds();
             if (!aaIds.isEmpty()) {

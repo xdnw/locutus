@@ -132,8 +132,8 @@ public class TransferCommand extends Command {
                 String.valueOf(onlyMissingFunds),
                 expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
                 token == null ? null : token.toString(),
-                escrowMode == null ? null : escrowMode.name(),
                 String.valueOf(convertCash),
+                escrowMode == null ? null : escrowMode.name(),
                 String.valueOf(bypassChecks),
                 null
         ).toJson();

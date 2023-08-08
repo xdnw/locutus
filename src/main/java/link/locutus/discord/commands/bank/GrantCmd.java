@@ -273,8 +273,8 @@ public class GrantCmd extends Command {
                 String.valueOf(flags.contains('o')),
                 expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null,
                 uuid.toString(),
-                escrowMode == null ? null : escrowMode.name(),
                 String.valueOf(flags.contains('c')),
+                escrowMode == null ? null : escrowMode.name(),
                 String.valueOf(flags.contains('f')),
                 "false"
         ).toJson();
