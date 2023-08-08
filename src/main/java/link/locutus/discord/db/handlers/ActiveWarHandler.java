@@ -247,7 +247,7 @@ public class ActiveWarHandler {
     }
 
     public void removeBlockade(int attacker, int defender, long date, Consumer<Event> eventConsumer) {
-        List<Event> events = null;
+        Event event = null;
         synchronized (blockadeLock) {
             // remove from both maps, only if the date >= existing date
             Map<Integer, Long> defenders = blockaderToDefender.get(attacker);
@@ -262,15 +262,14 @@ public class ActiveWarHandler {
                         if (defenderMap.isEmpty()) {
                             defenderToBlockader.remove(defender);
                             if (eventConsumer != null) {
-                                events = new LinkedList<>();
-                                events.add(new NationBlockadedEvent(defender, attacker));
+                                event = new NationUnblockadedEvent(defender, attacker);
                             }
                         }
                     }
                 }
             }
         }
-        if (events != null) events.forEach(eventConsumer);
+        if (event != null) eventConsumer.accept(event);
     }
 
     public void syncBlockades() {

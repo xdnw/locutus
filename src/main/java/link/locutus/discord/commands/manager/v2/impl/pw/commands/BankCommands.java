@@ -2661,6 +2661,9 @@ public class BankCommands {
             IMessageBuilder msg = io.create();
             desc.append("Total: `" + PnwUtil.resourcesToString(totalRss) + "`\n");
             desc.append("Note: `" + depositType + "`\n\n");
+            if (escrow_mode != null && escrow_mode != EscrowMode.NEVER) {
+                desc.append("Escrow Mode: `" + escrow_mode + "`\n");
+            }
             sheet.getSheet().attach(msg, desc, true, desc.length());
 
             key = UUID.randomUUID();
