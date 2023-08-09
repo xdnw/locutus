@@ -15,9 +15,13 @@ import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.EmbeddingSource;
@@ -30,6 +34,7 @@ import link.locutus.discord.gpt.pwembed.PWGPTHandler;
 import link.locutus.discord.gpt.pwembed.ProviderType;
 import link.locutus.discord.gpt.test.ExtractText;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.DocPrinter2;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -389,23 +394,52 @@ public class GPTCommands {
             "Use keywords for relevant results, or ask a question.")
     @RolePermission(Roles.AI_COMMAND_ACCESS)
     public String find_command2(@Me IMessageIO io, ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT, @Switch("n") Integer numResults) {
+        Function<Integer, List<ParametricCallable>> getClosest = integer -> {
+            PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+            return pwGpt.getClosestCommands(store, search, 100);
+        };
+
+        Function<ParametricCallable, String> getMention = command -> {
+            String mention = SlashCommandManager.getSlashMention(command.getFullPath());
+            String path = command.getFullPath();
+            if (mention == null) {
+                mention = "**/" + path + "**";
+            }
+            return mention;
+        };
+
+        Function<List<String>, ParametricCallable> getCommand = strings -> {
+            CommandCallable callable = Locutus.imp().getCommandManager().getV2().getCommands().get(strings);
+            return callable instanceof ParametricCallable ? (ParametricCallable) callable : null;
+        };
+
+        String footer = "For command usage: " + CM.help.command.cmd.toSlashMention();
+
+        return find_callable(io, store, db, user, search, instructions, useGPT, numResults,
+                getClosest,
+                getCommand,
+                getMention,
+                footer);
+    }
+
+    public String find_callable(@Me IMessageIO io, ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT, @Switch("n") Integer numResults,
+                                      Function<Integer, List<ParametricCallable>> getClosest,
+                                      Function<List<String>, ParametricCallable> getCommand,
+                                      Function<ParametricCallable, String> getMention,
+                                String footer) {
         if (instructions != null) useGPT = true;
         PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
         if (numResults == null) numResults = 8;
         if (numResults > 25) {
             numResults = 25;
         }
-        Function<CommandCallable, String> getDescription = new Function<CommandCallable, String>() {
+        Function<ParametricCallable, String> getDescription = new Function<ParametricCallable, String>() {
             @Override
-            public String apply(CommandCallable command) {
+            public String apply(ParametricCallable command) {
                 StringBuilder msg = new StringBuilder();
-                String mention = Locutus.imp().getSlashCommands().getSlashMention(command.getFullPath());
                 String path = command.getFullPath();
-                if (mention == null) {
-                    mention = "**/" + path + "**";
-                }
                 String help = command.help(store).replaceFirst(path, "").trim();
-                msg.append(mention);
+                msg.append(getMention.apply(command));
                 if (!help.isEmpty()) {
                     msg.append(" " + help);
                 }
@@ -422,7 +456,7 @@ public class GPTCommands {
         if (nation != null && useGPT && pwGpt != null) {
             GPTProvider provider = pwGpt.getDefaultProvider(db, user, nation);
             if (provider != null) {
-                closest = pwGpt.getClosestCommands(store, search, 100);
+                closest = getClosest.apply(100);
                 int cap = provider.getSizeCap();
 
                 String prompt = """
@@ -522,7 +556,6 @@ public class GPTCommands {
                 System.out.println(resultStr);
                 List<String> lines = Arrays.asList(resultStr.split("\n"));
 
-                CommandManager2 cmdManager = Locutus.imp().getCommandManager().getV2();
 
                 int error = 0;
                 int success = 0;
@@ -538,7 +571,7 @@ public class GPTCommands {
                     // cap at 3
                     if (commandPath.size() > 3) commandPath = commandPath.subList(0, 3);
                     try {
-                        CommandCallable command = cmdManager.getCallable(commandPath);
+                        ParametricCallable command = getCommand.apply(commandPath);
                         if (command != null) {
                             if (!(command instanceof ParametricCallable)) error++;
                             else success++;
@@ -555,7 +588,7 @@ public class GPTCommands {
 
                 if (found.size() > 0 && success > 0) {
                     resultStr = String.join("\n", found);
-                    resultStr += "\n\nFor command usage: " + CM.help.command.cmd.toSlashMention();
+                    resultStr += "\n\n" + footer;
                     if (error > 0) {
                         resultStr += "\n\n" + "These results may not be accurate. Please try another query, or set `useGPT: False`";
                     }
@@ -567,7 +600,7 @@ public class GPTCommands {
         }
 
         if (closest == null) {
-            closest = pwGpt.getClosestCommands(store, search, numResults);
+            closest = getClosest.apply(numResults);
         }
         IMessageBuilder msg = io.create();
         if (useGPT) {
@@ -579,9 +612,36 @@ public class GPTCommands {
             msg.append(getDescription.apply(command));
             msg.append("\n");
         }
-        msg.append("\n\nFor command usage: " + CM.help.command.cmd.toSlashMention());
+        msg.append("\n\n" + footer);
         msg.send();
         return null;
+    }
+
+    @Command(desc = "Locate a nation placeholder you are looking for.\n" +
+            "Use keywords for relevant results, or ask a question.")
+    @RolePermission(Roles.AI_COMMAND_ACCESS)
+    public String find_placeholder(NationPlaceholders placeholders, @Me IMessageIO io, ValueStore store, @Me GuildDB db, @Me User user, String search, @Default String instructions, @Switch("g") boolean useGPT, @Switch("n") Integer numResults) {
+        Function<Integer, List<ParametricCallable>> getClosest = integer -> {
+            PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+            return pwGpt.getClosestNationAttributes(store, search, 100);
+        };
+
+        Function<ParametricCallable, String> getMention = command -> {
+            return "#" + command.getFullPath();
+        };
+
+        Function<List<String>, ParametricCallable> getCommand = strings -> {
+            String arg = strings.get(0);
+            return placeholders.get(arg);
+        };
+
+        String footer = DocPrinter2.PLACEHOLDER_HEADER.replaceAll("\n+", "\n");
+
+        return find_callable(io, store, db, user, search, instructions, useGPT, numResults,
+                getClosest,
+                getCommand,
+                getMention,
+                footer);
     }
 
 

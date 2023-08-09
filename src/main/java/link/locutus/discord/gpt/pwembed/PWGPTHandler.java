@@ -7,6 +7,7 @@ import com.google.common.collect.HashBiMap;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.knuddels.jtokkit.api.ModelType;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
@@ -364,19 +365,30 @@ public class PWGPTHandler {
 
         SettingEmbeddingAdapter adapter = new SettingEmbeddingAdapter(source, settings);
         adapter.createEmbeddings(handler);
+
+        adapterMap2.put(source, adapter);
     }
 
     private void registerNationMetricBindings() {
         EmbeddingSource source = sourceMap.get(EmbeddingType.Nation_Statistic);
-        Set<NationAttribute> metrics = new HashSet<>(cmdManager.getNationPlaceholders().getMetrics(cmdManager.getStore()));
+        Set<ParametricCallable> metrics = new HashSet<>(cmdManager.getNationPlaceholders().getParametricCallables());
         NationAttributeAdapter adapter = new NationAttributeAdapter(source, metrics);
         adapter.createEmbeddings(handler);
+
+        adapterMap2.put(source, adapter);
     }
 
     public List<ParametricCallable> getClosestCommands(ValueStore store, ParametricCallable command, int top) {
         CommandEmbeddingAdapter adapter = (CommandEmbeddingAdapter) adapterMap2.get(sourceMap.get(EmbeddingType.Command));
         String text = adapter.getDescription(command);
         return getClosestCommands(store, text, top);
+    }
+
+    public List<ParametricCallable> getClosestNationAttributes(ValueStore store, NationAttribute attribute, int top) {
+        NationAttributeAdapter adapter = (NationAttributeAdapter) adapterMap2.get(sourceMap.get(EmbeddingType.Nation_Statistic));
+        ParametricCallable cmd = Locutus.imp().getCommandManager().getV2().getNationPlaceholders().get(attribute.getName());
+        String text = adapter.getDescription(cmd);
+        return getClosestNationAttributes(store, text, top);
     }
 
     public List<ParametricCallable> getClosestCommands(ValueStore store, String input, int top) {
@@ -389,6 +401,18 @@ public class PWGPTHandler {
             commands.add(callable);
         }
         return commands;
+    }
+
+    public List<ParametricCallable> getClosestNationAttributes(ValueStore store, String input, int top) {
+        EmbeddingSource typeSource = sourceMap.get(EmbeddingType.Nation_Statistic);
+        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(typeSource));
+        List<ParametricCallable> list = new ArrayList<>();
+        NationAttributeAdapter adapter = (NationAttributeAdapter) adapterMap2.get(typeSource);
+        for (EmbeddingInfo info : closest) {
+            ParametricCallable obj = adapter.getObject(info.hash);
+            list.add(obj);
+        }
+        return list;
     }
 
     public List<GuildSetting> getClosestSettings(ValueStore store, String input, int top) {

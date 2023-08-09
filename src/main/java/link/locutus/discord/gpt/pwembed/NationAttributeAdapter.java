@@ -1,6 +1,7 @@
 package link.locutus.discord.gpt.pwembed;
 
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.db.entities.EmbeddingSource;
@@ -9,8 +10,8 @@ import link.locutus.discord.util.StringMan;
 
 import java.util.Set;
 
-public class NationAttributeAdapter extends PWAdapter<NationAttribute> {
-    public NationAttributeAdapter(EmbeddingSource source, Set<NationAttribute> objects) {
+public class NationAttributeAdapter extends PWAdapter<ParametricCallable> {
+    public NationAttributeAdapter(EmbeddingSource source, Set<ParametricCallable> objects) {
         super(source, objects);
     }
 
@@ -20,17 +21,17 @@ public class NationAttributeAdapter extends PWAdapter<NationAttribute> {
     }
 
     @Override
-    public boolean hasPermission(NationAttribute obj, ValueStore store, CommandManager2 manager) {
+    public boolean hasPermission(ParametricCallable obj, ValueStore store, CommandManager2 manager) {
         return true;
     }
 
     @Override
-    public String getDescription(NationAttribute obj) {
-        return StringMan.classNameToSimple(obj.getType().toString()) + " " + obj.getDesc().replaceAll("\n", " ");
+    public String getDescription(ParametricCallable obj) {
+        return getType() + ": " + obj.getFullPath() + " - " + obj.simpleDesc();
     }
 
     @Override
-    public String getExpanded(EmbeddingSource source, NationAttribute obj) {
+    public String getExpanded(EmbeddingSource source, ParametricCallable obj) {
         return null;
     }
 }

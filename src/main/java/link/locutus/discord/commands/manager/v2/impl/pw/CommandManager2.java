@@ -151,6 +151,8 @@ public class CommandManager2 {
 
         this.commands.registerCommandsWithMapping(CM.class, false, false);
 
+        this.commands.registerMethod(new GPTCommands(), List.of("help"), "find_placeholder", "find_nation_placeholder");
+
         for (GuildSetting setting : GuildKey.values()) {
             List<String> path = List.of("settings_" + setting.getCategory().name().toLowerCase(Locale.ROOT));
 
@@ -176,6 +178,8 @@ public class CommandManager2 {
         HelpCommands help = new HelpCommands();
 
         this.commands.registerMethod(help, List.of("help"), "command", "command");
+        this.commands.registerMethod(help, List.of("help"), "nation_placeholder", "nation_placeholder");
+
 
         if (pwgptHandler != null) {
 //            this.commands.registerMethod(help, List.of("help"), "find_command", "find_command");

@@ -38,8 +38,8 @@ import java.util.Objects;
 import java.util.Set;
 
 public class DocPrinter2 {
-    public static String printPlaceholders(Placeholders placeholders, ValueStore store) throws InvocationTargetException, IllegalAccessException {
-        String header = """
+
+    public static String PLACEHOLDER_HEADER = """
 ## Placeholder Syntax
 
  - `<arg>` - A required parameter
@@ -59,7 +59,10 @@ For placeholders `{getLand}`
 
 For filters `#getLand>30`
 
-Use round brackets for arguments `myFunction(123)`
+Use round brackets for arguments `#myFunction(123)`""";
+
+    public static String printPlaceholders(Placeholders placeholders, ValueStore store) throws InvocationTargetException, IllegalAccessException {
+        String header = PLACEHOLDER_HEADER + """
 
 ---
 

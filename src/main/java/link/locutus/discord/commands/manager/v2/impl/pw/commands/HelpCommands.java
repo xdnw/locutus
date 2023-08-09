@@ -14,6 +14,8 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.guild.GuildSetting;
@@ -90,8 +92,32 @@ public class HelpCommands {
             for (ParametricCallable callable : closest) {
                 if (callable.getMethod().equals(pc.getMethod())) continue;
                 embed = embed.commandButton(CommandBehavior.DELETE_MESSAGE,
-                    CM.help.command.cmd.create(callable.getFullPath()),
-                    callable.getFullPath());
+                        CM.help.command.cmd.create(callable.getFullPath()),
+                        callable.getFullPath());
+            }
+        }
+
+        embed.send();
+        return null;
+    }
+
+    @Command
+    public String nation_placeholder(@Me IMessageIO io, NationPlaceholders placeholders, ValueStore store, PermissionHandler permisser, NationAttribute attribute) {
+        ParametricCallable command = placeholders.get(attribute.getName());
+        String body = command.toBasicMarkdown(store, permisser, "/", false, true);
+        String title = "/" + command.getFullPath();
+        if (body.length() > 4096) {
+            return "#" + title + "\n" + body;
+        }
+
+        IMessageBuilder embed = io.create().embed(title, body);
+
+        PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+        if (gpt != null) {
+            List<ParametricCallable> closest = gpt.getClosestNationAttributes(store, attribute, 6);
+            for (ParametricCallable other : closest) {
+//                embed = embed.commandButton(CommandBehavior.DELETE_MESSAGE,
+//                        CM.help.attribute.cmd.create(other.getName()), other.getName());
             }
         }
 
