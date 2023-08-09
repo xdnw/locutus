@@ -25,12 +25,12 @@ public interface Parser<T> {
         return apply(stack);
     }
 
-    default String getNameDescriptionAndExamples(boolean keyName, boolean backTicks, boolean printErrors) {
+    default String getNameDescriptionAndExamples(boolean keyName, boolean markdownEscape, boolean backTicks, boolean printErrors) {
         StringBuilder result = new StringBuilder();
         Key key = getKey();
 
         if (keyName) {
-            String name = key.keyNameMarkdown();
+            String name = markdownEscape ? key.keyNameMarkdown() : key.toSimpleString();
             if (backTicks) {
                 result.append("`" + name + "`\n");
             } else {

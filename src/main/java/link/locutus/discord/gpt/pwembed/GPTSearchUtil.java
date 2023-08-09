@@ -189,11 +189,16 @@ public class GPTSearchUtil {
                 int lineIndex = 1;
                 for (int j = 0; j < lines.size(); j++) {
                     String line = lines.get(j);
-                    int index = line.indexOf("/");
-                    // skip if index not found
-                    if (!(index >= 0)) continue;
-                    String commandStr = line.substring(index + 1).trim();
-                    List<String> commandPath = Arrays.asList(commandStr.split(" "));
+                    if (line.length() < 4) continue;
+                    if (line.indexOf('.') != 1 || !Character.isDigit(line.charAt(0))) {
+                        continue;
+                    }
+                    line = line.replace("`", "");
+                    line = line.substring(3).trim();
+                    if (line.startsWith("/")) {
+                        line = line.substring(1).trim();
+                    }
+                    List<String> commandPath = Arrays.asList(line.split(" "));
                     // cap at 3
                     if (commandPath.size() > 3) commandPath = commandPath.subList(0, 3);
                     try {
@@ -205,7 +210,7 @@ public class GPTSearchUtil {
                             continue;
                         }
                     } catch (IllegalArgumentException e) {
-                        System.out.println(commandStr);
+                        System.out.println(line);
                         e.printStackTrace();
                     }
                     error++;

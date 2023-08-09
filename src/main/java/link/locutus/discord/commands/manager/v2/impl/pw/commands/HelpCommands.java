@@ -88,8 +88,8 @@ public class HelpCommands {
     @Command
     public void argument(@Me IMessageIO io, ValueStore store, PermissionHandler permisser, Parser argument, @Switch("s") boolean skipOptionalArgs) {
         Key key = argument.getKey();
-        String title = key.keyNameMarkdown();
-        StringBuilder body = new StringBuilder(argument.getNameDescriptionAndExamples(false, true, true));
+        String title = "`" + key.toSimpleString() + "`";
+        StringBuilder body = new StringBuilder(argument.getNameDescriptionAndExamples(false, true, true, true));
 
         CommandManager2 cmdManager = Locutus.imp().getCommandManager().getV2();
         Set<ParametricCallable> allCommands = cmdManager.getCommands().getParametricCallables(f -> true);
@@ -118,11 +118,11 @@ public class HelpCommands {
             String commandStr = callable.getSlashMention();
             commandListStr.add(commandStr);
         }
+        body.append("\n" + MarkupUtil.markdownUrl("Arguments Wiki Page", "https://github.com/xdnw/locutus/wiki/Arguments"));
 
         if (!commandListStr.isEmpty()) {
             body.append("\n\nCommands that use this argument:\n- " + String.join("\n- ", commandListStr));
         }
-        body.append("\n" + MarkupUtil.markdownUrl("More info", "https://github.com/xdnw/locutus/wiki/Arguments"));
 
         io.create().embed(title, body.toString()).send();
     }

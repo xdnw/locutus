@@ -343,7 +343,7 @@ public class PWCompleter extends BindingHelper {
     @Binding(types={Parser.class})
     public List<String> Parser(ValueStore store, String input) {
         Map<Key, Parser> parsers = store.getParsers();
-        List<String> options = parsers.keySet().stream().map(Key::keyNameMarkdown).collect(Collectors.toList());
+        List<String> options = parsers.keySet().stream().map(Key::toSimpleString).collect(Collectors.toList());
         return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);
     }
 

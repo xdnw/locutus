@@ -30,7 +30,7 @@ public class PrimitiveBindings extends BindingHelper {
                 continue;
             }
             Key key = entry.getKey();
-            if (key.keyNameMarkdown().equalsIgnoreCase(argument)) {
+            if (key.toSimpleString().equalsIgnoreCase(argument)) {
                 return parser;
             }
         }
