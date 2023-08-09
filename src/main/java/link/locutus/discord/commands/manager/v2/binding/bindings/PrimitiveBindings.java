@@ -1,6 +1,9 @@
 package link.locutus.discord.commands.manager.v2.binding.bindings;
 
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
+import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.Parser;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
@@ -13,15 +16,26 @@ import link.locutus.discord.util.TimeUtil;
 import java.awt.*;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.LinkedHashSet;
+import java.util.*;
 import java.util.List;
-import java.util.Locale;
-import java.util.Set;
-import java.util.UUID;
 
 public class PrimitiveBindings extends BindingHelper {
+
+    @Binding(examples = {"boolean", "String", "Set<Integer>"})
+    public Parser Parser(ValueStore store, String argument) {
+        Map<Key, Parser> parsers = store.getParsers();
+        for (Map.Entry<Key, Parser> entry : parsers.entrySet()) {
+            Parser parser = entry.getValue();
+            if (!parser.isConsumer(store)) {
+                continue;
+            }
+            Key key = entry.getKey();
+            if (key.keyNameMarkdown().equalsIgnoreCase(argument)) {
+                return parser;
+            }
+        }
+        throw new IllegalArgumentException("No parser found for `" + argument = "` see <https://github.com/xdnw/locutus/wiki/Arguments> for a complete list");
+    }
 
     /**
      * Gets a type from a {@link Binding}.

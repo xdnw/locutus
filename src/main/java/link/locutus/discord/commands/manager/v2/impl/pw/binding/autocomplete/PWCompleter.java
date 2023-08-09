@@ -12,10 +12,7 @@ import link.locutus.discord.apiv1.enums.WarType;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
-import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
-import link.locutus.discord.commands.manager.v2.binding.FunctionConsumerParser;
-import link.locutus.discord.commands.manager.v2.binding.Key;
-import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NationAttributeCallable;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
@@ -339,6 +336,14 @@ public class PWCompleter extends BindingHelper {
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
         List<String> options = placeholders.getMetricsDouble(stack.getStore())
                 .stream().map(NationAttribute::getName).collect(Collectors.toList());
+        return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);
+    }
+
+    @Autocomplete
+    @Binding(types={Parser.class})
+    public List<String> Parser(ValueStore store, String input) {
+        Map<Key, Parser> parsers = store.getParsers();
+        List<String> options = parsers.keySet().stream().map(Key::keyNameMarkdown).collect(Collectors.toList());
         return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);
     }
 

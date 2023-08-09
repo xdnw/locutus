@@ -78,6 +78,48 @@ public class HelpCommands {
     }
 
     @Command
+    public void argument(@Me IMessageIO io, ValueStore store, PermissionHandler permisser, Parser argument, @Switch("s") boolean skipOptionalArgs) {
+        Key key = argument.getKey();
+        String title = key.keyNameMarkdown();
+        StringBuilder body = new StringBuilder(parser.getNameDescriptionAndExamples(false, true, true)));
+
+        CommandManager2 cmdManager = Locutus.imp().getCommandManager().getV2();
+        Set<ParametricCallabls> allCommands = cmdManager.getCommands().getParametricCallables(f -> true);
+
+        List<ParametricCallable> hasArgument = new ArrayList<>();
+        Set<Method> methods = new HashSet<>();
+        for (ParametricCallable callable : allCommands) {
+            Method method = callable.getMethod();
+            // add / skip if method already checked
+            if (methods.contains(method)) continue;
+            methods.add(method);
+
+            for (ParameterData userParam : callable.getUserParameters()) {
+                if (skipOptionalArgs && userParam.isOptional()) continue;
+
+                Key userKey = userParam.getParser().getKey();
+                if (userKey.equals(key)) {
+                    hasArgument.add(callable);
+                    break;
+                }
+            }
+        }
+
+        List<String> commandListStr = new ArrayList<>();
+        for (ParametricCallable callable : hasArgument) {
+            String commandStr = callable.getSlashMention();
+            commandListStr.add(commandStr);
+        }
+
+        if (!commandListStr.isEmpty()) {
+            body.append("\n\nCommands that use this argument:\n- " + String.join("\n- ", commandListStr));
+        }
+        body.append("\n" + MarkupUtil.markdownUrl("More info", "https://github.com/xdnw/locutus/wiki/Arguments"));
+
+        io.create().embed(title, body).send();
+    }
+
+    @Command
     public String command(@Me IMessageIO io, ValueStore store, PermissionHandler permisser, ICommand command) {
         String body = command.toBasicMarkdown(store, permisser, "/", false, true);
         String title = "/" + command.getFullPath();
