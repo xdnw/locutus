@@ -3552,7 +3552,7 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "Renamed to `cityurl`")
     @Deprecated
     public String city(int index) {
-        throw new IllegalArgumentException("Please use `cityurl` instead");
+        return cityUrl(index);
     }
 
     @Command(desc = "Get the city url by index")

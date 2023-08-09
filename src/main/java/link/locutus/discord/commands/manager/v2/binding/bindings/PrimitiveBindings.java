@@ -34,7 +34,7 @@ public class PrimitiveBindings extends BindingHelper {
                 return parser;
             }
         }
-        throw new IllegalArgumentException("No parser found for `" + argument = "` see <https://github.com/xdnw/locutus/wiki/Arguments> for a complete list");
+        throw new IllegalArgumentException("No parser found for `" + argument + "` see <https://github.com/xdnw/locutus/wiki/Arguments> for a complete list");
     }
 
     /**

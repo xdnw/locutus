@@ -1,6 +1,8 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -12,9 +14,11 @@ import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
@@ -24,11 +28,15 @@ import link.locutus.discord.gpt.imps.EmbeddingType;
 import link.locutus.discord.gpt.ModerationResult;
 import link.locutus.discord.gpt.pwembed.PWGPTHandler;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -81,10 +89,10 @@ public class HelpCommands {
     public void argument(@Me IMessageIO io, ValueStore store, PermissionHandler permisser, Parser argument, @Switch("s") boolean skipOptionalArgs) {
         Key key = argument.getKey();
         String title = key.keyNameMarkdown();
-        StringBuilder body = new StringBuilder(parser.getNameDescriptionAndExamples(false, true, true)));
+        StringBuilder body = new StringBuilder(argument.getNameDescriptionAndExamples(false, true, true));
 
         CommandManager2 cmdManager = Locutus.imp().getCommandManager().getV2();
-        Set<ParametricCallabls> allCommands = cmdManager.getCommands().getParametricCallables(f -> true);
+        Set<ParametricCallable> allCommands = cmdManager.getCommands().getParametricCallables(f -> true);
 
         List<ParametricCallable> hasArgument = new ArrayList<>();
         Set<Method> methods = new HashSet<>();
@@ -97,7 +105,7 @@ public class HelpCommands {
             for (ParameterData userParam : callable.getUserParameters()) {
                 if (skipOptionalArgs && userParam.isOptional()) continue;
 
-                Key userKey = userParam.getParser().getKey();
+                Key userKey = userParam.getBinding().getKey();
                 if (userKey.equals(key)) {
                     hasArgument.add(callable);
                     break;
@@ -116,7 +124,7 @@ public class HelpCommands {
         }
         body.append("\n" + MarkupUtil.markdownUrl("More info", "https://github.com/xdnw/locutus/wiki/Arguments"));
 
-        io.create().embed(title, body).send();
+        io.create().embed(title, body.toString()).send();
     }
 
     @Command
