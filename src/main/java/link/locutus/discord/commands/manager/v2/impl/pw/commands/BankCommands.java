@@ -1377,10 +1377,10 @@ public class BankCommands {
                     useOffshoreAccount != null ? useOffshoreAccount.getUrl() : null,
                     taxAccount != null ? taxAccount.getQualifiedName() : null,
                     existingTaxAccount + "",
-                    Boolean.FALSE.toString(),
                     expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
-                    String.valueOf(force),
+                    Boolean.FALSE.toString(),
                     escrow_mode == null ? null : escrow_mode.name(),
+                    String.valueOf(force),
                     null,
                     key.toString()
             ).toJson();
