@@ -1357,8 +1357,8 @@ public class BankCommands {
                     Boolean.FALSE.toString(),
                     expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
                     null,
-                    escrow_mode == null ? null : escrow_mode.name(),
                     String.valueOf(convertToMoney),
+                    escrow_mode == null ? null : escrow_mode.name(),
                     String.valueOf(bypassChecks),
                     null
             ).toJson();
