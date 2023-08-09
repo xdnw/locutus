@@ -31,6 +31,7 @@ import link.locutus.discord.commands.account.HasRole;
 import link.locutus.discord.commands.account.RunAllNations;
 import link.locutus.discord.commands.account.Runall;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.sync.SyncTreaties;
 import link.locutus.discord.commands.info.CounterStats;
@@ -138,7 +139,6 @@ import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -186,10 +186,6 @@ public class CommandManager {
     }
 
     public boolean run(Guild guild, IMessageIO channel, final User msgUser, String command, final boolean async, final boolean noPermMsg) {
-//        if (Settings.INSTANCE.ENABLED_COMPONENTS.TAG) {
-//            getTag().checkTag(event);
-//        }
-
         if (msgUser.isSystem() || msgUser.isBot()) {
             return false;
         }
@@ -199,9 +195,11 @@ public class CommandManager {
             return false;
         }
 
+        boolean returnNotFound = (!(channel instanceof DiscordChannelIO)) || command.contains(Settings.INSTANCE.APPLICATION_ID + "");
+
         if (content.equalsIgnoreCase(Settings.commandPrefix(true) + "threads")) {
             threadDump();
-            return false;
+            return true;
         }
 
         boolean jsonCommand = (content.startsWith("{") && content.endsWith("}"));
@@ -211,11 +209,11 @@ public class CommandManager {
 
             if (content.contains("You successfully gathered intelligence about")) {
                 handleIntelOp(guild, msgUser, channel, content);
-                return false;
+                return true;
             }
             if (content.contains("of your spies were captured and executed.")) {
                 handleSpyOp(guild, msgUser, channel, content);
-                return false;
+                return true;
             }
 
             return false;
@@ -230,7 +228,7 @@ public class CommandManager {
         // Channel blacklisting / whitelisting
         if (char0 == prefix2 || jsonCommand) {
             try {
-                modernized.run(guild, channel, msgUser, content, async);
+                modernized.run(guild, channel, msgUser, content, async, returnNotFound);
             } catch (Throwable e) {
                 e.printStackTrace();
             }
@@ -248,7 +246,17 @@ public class CommandManager {
                 arg0 = arg0.substring(1);
 
                 Command cmd = commandMap.get(arg0.toLowerCase());
-                if (cmd == null) return;
+                if (cmd == null) {
+                    if (returnNotFound) {
+                        List<String> validIds = new ArrayList<>(commandMap.keySet());
+                        List<String> closest = StringMan.getClosest(arg0, validIds, false);
+                        if (closest.size() > 5) closest = closest.subList(0, 5);
+                        channel.send("No command found for `" + StringMan.getString(arg0) + "`\n" +
+                                "Did you mean:\n- " + StringMan.join(closest, "\n- ") +
+                                "\n\nSee also: " + CM.help.find_command.cmd.toSlashMention());
+                    }
+                    return;
+                }
 
                 if (!cmd.checkPermission(guild, msgUser)) {
                     if (noPermMsg) {
