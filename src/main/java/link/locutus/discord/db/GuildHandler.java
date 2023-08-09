@@ -2597,7 +2597,7 @@ public class GuildHandler {
 
                     String title = "Approve Queued Transfer";
                     String body = db.generateEscrowedCard(receiver);
-                    body += "\n\nTODO CMD ref for escrow withdraw";
+                    body += "\n\nSee: " + CM.escrow.withdraw.cmd.toSlashMention();
 
                     IMessageIO io = new DiscordChannelIO(channel);
                     io.create().embed(title, body).send();
