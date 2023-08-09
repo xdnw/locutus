@@ -23,8 +23,9 @@ public class ArgumentEmbeddingAdapter extends PWAdapter<Parser> {
     public ArgumentEmbeddingAdapter(EmbeddingSource source, Map<Key, Parser> parsers) {
         super(source, new HashSet<>(parsers.values()));
         for (Parser value : parsers.values()) {
-            String name = value.getKey().keyNameMarkdown();
-            parsersByName.put(name.toLowerCase(Locale.ROOT), value);
+            Key key = value.getKey();
+            parsersByName.put(key.keyNameMarkdown().toLowerCase(Locale.ROOT), value);
+            parsersByName.put(key.toSimpleString().toLowerCase(Locale.ROOT), value);
         }
     }
 
@@ -44,7 +45,7 @@ public class ArgumentEmbeddingAdapter extends PWAdapter<Parser> {
 
     @Override
     public String getDescription(Parser parser) {
-        return getType() + ": " + parser.getNameDescriptionAndExamples(true, false, false);
+        return getType() + ": " + parser.getNameDescriptionAndExamples(true, false,false, false);
     }
 
     @Override

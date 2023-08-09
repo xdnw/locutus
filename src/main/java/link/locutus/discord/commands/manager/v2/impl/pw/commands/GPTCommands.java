@@ -474,8 +474,9 @@ public class GPTCommands {
 
         Function<List<String>, Parser> getCommand = strings -> {
             String arg = StringMan.join(strings, " ");
-            System.out.println(arg);
+            arg = arg.replaceFirst("[1-8]\\.[ ]", "").trim();
             arg = arg.replace("`", "");
+            System.out.println(arg);
             PWGPTHandler pwGpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
             ArgumentEmbeddingAdapter adapter = (ArgumentEmbeddingAdapter) pwGpt.getAdapter(EmbeddingType.Argument);
             Parser parser = adapter.getParser(arg);
@@ -483,7 +484,7 @@ public class GPTCommands {
                 System.out.println("No parser found for " + arg);
                 System.out.println("Valid parsers are: ");
                 for (Parser value : adapter.getObjectsByHash().values()) {
-                    System.out.println("- `" + value.getKey().keyNameMarkdown() + "`");
+                    System.out.println("- `" + value.getKey().toSimpleString() + "`");
                 }
 
             }
@@ -493,7 +494,7 @@ public class GPTCommands {
         TriFunction<Parser, GPTProvider, Integer, Map.Entry<String, Integer>> getPromptText = new TriFunction<Parser, GPTProvider, Integer, Map.Entry<String, Integer>>() {
             @Override
             public Map.Entry<String, Integer> apply(Parser parser, GPTProvider provider, Integer remaining) {
-                String text = "# " + parser.getNameDescriptionAndExamples(true, true, false);
+                String text = "# " + parser.getNameDescriptionAndExamples(true, false,true, false);
                 int length = provider.getSize(text);
                 if (remaining < length) return null;
                 return Map.entry(text, length);
@@ -503,12 +504,11 @@ public class GPTCommands {
         Function<Parser, String> getDescription = new Function<Parser, String>() {
             @Override
             public String apply(Parser parser) {
-                return parser.getNameDescriptionAndExamples(true, true, false);
+                return parser.getNameDescriptionAndExamples(true, false, true, false);
             }
         };
 
-        String footer = DocPrinter2.PLACEHOLDER_HEADER.replaceAll("\n+", "\n");
-//        footer += "\nFor detailed info for a specific argument: " + CM.help.nation_placeholder.cmd.toSlashMention();
+        String footer = "For detailed info for a specific argument: " + CM.help.argument.cmd.toSlashMention();
         footer += "\nFor a complete list: <https://github.com/xdnw/locutus/wiki/Arguments>";
 
         return GPTSearchUtil.gptSearchCommand(

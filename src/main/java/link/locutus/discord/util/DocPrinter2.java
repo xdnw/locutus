@@ -164,8 +164,7 @@ Message: `$who Rose -l`
         for (Map.Entry<Key, Parser> entry : parsers.entrySet()) {
             Parser parser = entry.getValue();
             if (!parser.isConsumer(store)) continue;
-            Key key = entry.getKey();
-            result.append("## " + parser.getNameDescriptionAndExamples(true, true, true));
+            result.append("## " + parser.getNameDescriptionAndExamples(true, true,true, true));
             result.append("---\n");
         }
 

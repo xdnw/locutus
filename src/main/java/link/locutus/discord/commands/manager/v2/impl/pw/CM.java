@@ -1365,11 +1365,25 @@ public class CM {
         }
     }
     public static class help{
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.HelpCommands.class,method="argument")
+        public static class argument extends CommandRef {
+            public static final argument cmd = new argument();
+            public argument create(String argument, String skipOptionalArgs) {
+                return createArgs("argument", argument, "skipOptionalArgs", skipOptionalArgs);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.HelpCommands.class,method="command")
         public static class command extends CommandRef {
             public static final command cmd = new command();
             public command create(String command) {
                 return createArgs("command", command);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="find_argument")
+        public static class find_argument extends CommandRef {
+            public static final find_argument cmd = new find_argument();
+            public find_argument create(String search, String instructions, String useGPT, String numResults) {
+                return createArgs("search", search, "instructions", instructions, "useGPT", useGPT, "numResults", numResults);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="find_command2")
