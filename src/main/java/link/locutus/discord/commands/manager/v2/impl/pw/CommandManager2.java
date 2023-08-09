@@ -270,7 +270,7 @@ public class CommandManager2 {
         return new AbstractMap.SimpleEntry<>(root, StringMan.join(path, " "));
     }
 
-    public void run(Guild guild, IMessageIO io, User author, String command, boolean async) {
+    public void run(Guild guild, IMessageIO io, User author, String command, boolean async, boolean returnNotFound) {
         String fullCmdStr = DiscordUtil.trimContent(command).trim();
         if (fullCmdStr.startsWith(Settings.commandPrefix(false))) {
             fullCmdStr = fullCmdStr.substring(Settings.commandPrefix(false).length());
@@ -282,7 +282,7 @@ public class CommandManager2 {
             message = dio.getUserMessage();
             channel = dio.getChannel();
         }
-        run(guild, channel, author, message, io, fullCmdStr, async);
+        run(guild, channel, author, message, io, fullCmdStr, async, returnNotFound);
     }
 
     private LocalValueStore createLocals(@Nullable LocalValueStore<Object> existingLocals, @Nullable Guild guild, @Nullable MessageChannel channel, @Nullable User user, @Nullable Message message, IMessageIO io, @Nullable Map<String, String> fullCmdStr) {
@@ -331,12 +331,12 @@ public class CommandManager2 {
         return locals;
     }
 
-    public void run(@Nullable Guild guild, @Nullable MessageChannel channel, @Nullable User user, @Nullable Message message, IMessageIO io, String fullCmdStr, boolean async) {
+    public void run(@Nullable Guild guild, @Nullable MessageChannel channel, @Nullable User user, @Nullable Message message, IMessageIO io, String fullCmdStr, boolean async, boolean returnNotFound) {
         LocalValueStore existingLocals = createLocals(null, guild, channel, user, message, io, null);
-        run(existingLocals, io, fullCmdStr, async);
+        run(existingLocals, io, fullCmdStr, async, returnNotFound);
     }
 
-    public void run(LocalValueStore<Object> existingLocals, IMessageIO io, String fullCmdStr, boolean async) {
+    public void run(LocalValueStore<Object> existingLocals, IMessageIO io, String fullCmdStr, boolean async, boolean returnNotFound) {
         Runnable task = () -> {
             if (fullCmdStr.startsWith("{")) {
                 JSONObject json = new JSONObject(fullCmdStr);
@@ -354,7 +354,16 @@ public class CommandManager2 {
             List<String> original = new ArrayList<>(args);
             CommandCallable callable = commands.getCallable(args, true);
             if (callable == null) {
-                System.out.println("No cmd found for " + StringMan.getString(original));
+                if (returnNotFound) {
+                    List<String> validIds = new ArrayList<>(getCommands().primarySubCommandIds());
+                    List<String> closest = StringMan.getClosest(args.get(0), validIds, false);
+                    if (closest.size() > 5) closest = closest.subList(0, 5);
+                    io.send("No command found for `" + StringMan.getString(args.get(0)) + "`\n" +
+                            "Did you mean:\n- " + StringMan.join(closest, "\n- ") +
+                            "\n\nSee also: " + CM.help.find_command.cmd.toSlashMention());
+                } else {
+                    System.out.println("No cmd found for " + StringMan.getString(original));
+                }
                 return;
             }
 

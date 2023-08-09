@@ -217,7 +217,7 @@ public class PageHandler implements Handler {
                 LocalValueStore<Object> locals = new LocalValueStore<>(store);
                 setupLocals(locals, ctx, null);
                 String cmdStr = cmds.get(0);
-                v2.run(locals, io, cmdStr, false);
+                v2.run(locals, io, cmdStr, false, true);
             } else {
                 sseMessage(sse, "Too many commands: " + StringMan.getString(cmds), false);
             }
