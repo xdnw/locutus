@@ -2372,8 +2372,8 @@ public class BankCommands {
             Map.Entry<SpreadSheet, double[]> pair = escrowSheet(db, nations, null);
             SpreadSheet escrowSheet = pair.getKey();
             // attach sheet
-            sheet.clearAll();
-            sheet.set(0, 0);
+            escrowSheet.clearAll();
+            escrowSheet.set(0, 0);
             escrowSheet.attach(msg);
 
             double[] escrowTotal = pair.getValue();
@@ -3345,7 +3345,7 @@ public class BankCommands {
 
         footers.add("value is based on current market prices");
 
-        if (showTaxesSeparately == Boolean.TRUE || (showTaxesSeparately == null &&  db.getOrNull(GuildKey.DISPLAY_ITEMIZED_DEPOSITS) == Boolean.TRUE)) {
+        if (showTaxesSeparately == Boolean.TRUE || (db.getOrNull(GuildKey.DISPLAY_ITEMIZED_DEPOSITS) == Boolean.TRUE)) {
             if (categorized.containsKey(DepositType.DEPOSIT)) {
                 response.append("#DEPOSIT: (worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.DEPOSIT))) + ")");
                 response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.DEPOSIT))).append("``` ");
