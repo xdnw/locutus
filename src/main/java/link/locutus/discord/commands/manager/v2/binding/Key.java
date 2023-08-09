@@ -40,6 +40,12 @@ public class Key<T> {
         this.annotations = null;
     }
 
+    public String keyNameMarkdown() {
+        String keyStr = toSimpleString();
+        return keyStr.replace("[", "\\[").replace("]", "\\]").replaceAll("([<|, ])([a-zA-Z_0-9]+)([>|, ])", "$1[$2](#$2)$3");
+    }
+
+
     public boolean isDefault() {
         return isDefault;
     }

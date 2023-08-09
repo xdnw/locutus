@@ -181,6 +181,8 @@ public class CommandManager2 {
         this.commands.registerMethod(help, List.of("help"), "command", "command");
         this.commands.registerMethod(help, List.of("help"), "nation_placeholder", "nation_placeholder");
 
+        this.commands.registerMethod(new GPTCommands(), List.of("help"), "find_argument", "find_argument");
+
 
         if (pwgptHandler != null) {
 //            this.commands.registerMethod(help, List.of("help"), "find_command", "find_command");

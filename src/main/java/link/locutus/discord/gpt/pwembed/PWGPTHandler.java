@@ -8,6 +8,8 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.knuddels.jtokkit.api.ModelType;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
@@ -221,8 +223,7 @@ public class PWGPTHandler {
         registerCommandEmbeddings();
         registerSettingEmbeddings();
         registerNationMetricBindings();
-
-//        registerArgumentBindings("Command Argument");
+        registerArgumentBindings();
 //        registerFormulaBindings("Formula");
 //        registerAcronymBindings("Acronym");
 //        registerPageSectionBindings("Wiki Page");
@@ -378,6 +379,24 @@ public class PWGPTHandler {
         adapterMap2.put(source, adapter);
     }
 
+    private void registerArgumentBindings() {
+        EmbeddingSource source = sourceMap.get(EmbeddingType.Argument);
+        ValueStore store = this.cmdManager.getStore();
+        Map<Key, Parser> parsers = store.getParsers();
+
+        Map<Key, Parser> consumeParsers = new HashMap<>();
+        for (Map.Entry<Key, Parser> entry : parsers.entrySet()) {
+            Parser parser = entry.getValue();
+            if (!parser.isConsumer(store)) continue;
+            consumeParsers.put(entry.getKey(), parser);
+        }
+
+        ArgumentEmbeddingAdapter adapter = new ArgumentEmbeddingAdapter(source, consumeParsers);
+        adapter.createEmbeddings(handler);
+
+        adapterMap2.put(source, adapter);
+    }
+
     public List<ParametricCallable> getClosestCommands(ValueStore store, ParametricCallable command, int top) {
         CommandEmbeddingAdapter adapter = (CommandEmbeddingAdapter) adapterMap2.get(sourceMap.get(EmbeddingType.Command));
         String text = adapter.getDescription(command);
@@ -414,6 +433,18 @@ public class PWGPTHandler {
         return list;
     }
 
+    public List<Parser> getClosestArguments(ValueStore store, String input, int top) {
+        EmbeddingSource commandSource = sourceMap.get(EmbeddingType.Argument);
+        List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(commandSource));
+        List<Parser> commands = new ArrayList<>();
+        ArgumentEmbeddingAdapter adapter = (ArgumentEmbeddingAdapter) adapterMap2.get(commandSource);
+        for (EmbeddingInfo info : closest) {
+            Parser callable = adapter.getObject(info.hash);
+            commands.add(callable);
+        }
+        return commands;
+    }
+
     public List<GuildSetting> getClosestSettings(ValueStore store, String input, int top) {
         EmbeddingSource settingSource = sourceMap.get(EmbeddingType.Configuration);
         List<EmbeddingInfo> closest = getClosest(store, input, top, Set.of(settingSource));
@@ -424,6 +455,12 @@ public class PWGPTHandler {
             settings.add(setting);
         }
         return settings;
+    }
+
+    public IEmbeddingAdapter getAdapter(EmbeddingType type) {
+        EmbeddingSource source = sourceMap.get(type);
+        if (source == null) return null;
+        return adapterMap2.get(source);
     }
 
     public IEmbeddingAdapter getAdapter(EmbeddingSource source) {

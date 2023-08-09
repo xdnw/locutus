@@ -147,10 +147,6 @@ Message: `$who Rose -l`
         return result.toString();
     }
 
-    public static String keyName(Key key) {
-        String keyStr = key.toSimpleString();
-        return keyStr.replace("[", "\\[").replace("]", "\\]").replaceAll("([<|, ])([a-zA-Z_0-9]+)([>|, ])", "$1[$2](#$2)$3");
-    }
 
     public static String printParsers(ValueStore store) {
         StringBuilder result = new StringBuilder();
@@ -169,42 +165,7 @@ Message: `$who Rose -l`
             Parser parser = entry.getValue();
             if (!parser.isConsumer(store)) continue;
             Key key = entry.getKey();
-            result.append("## " + keyName(key) + "\n");
-            Type type = key.getType();
-            if (parser.getDescription().isEmpty()) {
-                result.append("`No description provided`\n\n");
-            } else {
-                result.append(parser.getDescription() + "\n\n");
-            }
-            boolean printExamples = true;
-            if (type instanceof Class typeClass) {
-                if (typeClass.isEnum()) {
-                    Object[] options = typeClass.getEnumConstants();
-                    result.append("Options:\n");
-                    for (Object option : options) {
-                        String optionStr = option.toString();
-                        if (optionStr.contains("\n")) {
-                            optionStr = "**" + optionStr.replaceFirst("\n", "**\n");
-                        } else {
-                            optionStr = "**" + optionStr + "**";
-                        }
-                        result.append("- " + optionStr + "\n");
-                    }
-                    printExamples = false;
-                }
-            }
-            if (printExamples) {
-                Binding binding = key.getBinding();
-                if (binding.examples() != null && binding.examples().length > 0) {
-                    result.append("Examples:\n");
-                    for (String example : binding.examples()) {
-                        result.append("- " + example + "\n");
-                    }
-                } else {
-                    result.append("`No examples provided`\n\n");
-                }
-            }
-
+            result.append("## " + parser.getNameDescriptionAndExamples(true, true, true));
             result.append("---\n");
         }
 

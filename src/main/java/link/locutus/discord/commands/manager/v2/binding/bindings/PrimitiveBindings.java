@@ -1,6 +1,8 @@
 package link.locutus.discord.commands.manager.v2.binding.bindings;
 
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
+import link.locutus.discord.commands.manager.v2.binding.Parser;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
@@ -22,6 +24,11 @@ import java.util.Set;
 import java.util.UUID;
 
 public class PrimitiveBindings extends BindingHelper {
+
+//    @Binding(examples = {"boolean", "String", "Set<Integer>"})
+//    public Parser Parser(ValueStore store, String argument) {
+//
+//    }
 
     /**
      * Gets a type from a {@link Binding}.
