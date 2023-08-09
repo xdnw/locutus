@@ -17,6 +17,7 @@ import link.locutus.discord.commands.manager.v2.binding.FunctionConsumerParser;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NationAttributeCallable;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
@@ -338,6 +339,15 @@ public class PWCompleter extends BindingHelper {
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
         List<String> options = placeholders.getMetricsDouble(stack.getStore())
                 .stream().map(NationAttribute::getName).collect(Collectors.toList());
+        return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);
+    }
+
+    @Autocomplete
+    @NationAttributeCallable
+    @Binding(types={ParametricCallable.class})
+    public List<String> NationPlaceholderCommand(NationPlaceholders placeholders, String input) {
+        List<String> options = placeholders.getParametricCallables()
+                .stream().map(CommandCallable::getFullPath).collect(Collectors.toList());
         return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);
     }
 

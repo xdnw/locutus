@@ -1217,11 +1217,18 @@ public class CM {
                 return createArgs("sheet", sheet, "expireAfter", expireAfter, "force", force);
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="escrowSheetCmd")
+        public static class view_sheet extends CommandRef {
+            public static final view_sheet cmd = new view_sheet();
+            public view_sheet create(String nations, String includePastDepositors, String sheet) {
+                return createArgs("nations", nations, "includePastDepositors", includePastDepositors, "sheet", sheet);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="withdrawEscrowed")
         public static class withdraw extends CommandRef {
             public static final withdraw cmd = new withdraw();
-            public withdraw create(String receiver, String amount) {
-                return createArgs("receiver", receiver, "amount", amount);
+            public withdraw create(String receiver, String amount, String force) {
+                return createArgs("receiver", receiver, "amount", amount, "force", force);
             }
         }
     }
@@ -1352,8 +1359,8 @@ public class CM {
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="templateSend")
         public static class send extends CommandRef {
             public static final send cmd = new send();
-            public send create(String template, String receiver, String customValue, String force) {
-                return createArgs("template", template, "receiver", receiver, "customValue", customValue, "force", force);
+            public send create(String template, String receiver, String customValue, String escrowMode, String force) {
+                return createArgs("template", template, "receiver", receiver, "customValue", customValue, "escrowMode", escrowMode, "force", force);
             }
         }
     }
@@ -1372,6 +1379,13 @@ public class CM {
                 return createArgs("search", search, "instructions", instructions, "useGPT", useGPT, "numResults", numResults);
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="find_placeholder")
+        public static class find_nation_placeholder extends CommandRef {
+            public static final find_nation_placeholder cmd = new find_nation_placeholder();
+            public find_nation_placeholder create(String search, String instructions, String useGPT, String numResults) {
+                return createArgs("search", search, "instructions", instructions, "useGPT", useGPT, "numResults", numResults);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.HelpCommands.class,method="find_setting")
         public static class find_setting extends CommandRef {
             public static final find_setting cmd = new find_setting();
@@ -1384,6 +1398,13 @@ public class CM {
             public static final moderation_check cmd = new moderation_check();
             public moderation_check create(String input) {
                 return createArgs("input", input);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.HelpCommands.class,method="nation_placeholder")
+        public static class nation_placeholder extends CommandRef {
+            public static final nation_placeholder cmd = new nation_placeholder();
+            public nation_placeholder create(String command) {
+                return createArgs("command", command);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.HelpCommands.class,method="query")

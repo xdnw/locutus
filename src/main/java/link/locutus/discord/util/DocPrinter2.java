@@ -59,7 +59,8 @@ For placeholders `{getLand}`
 
 For filters `#getLand>30`
 
-Use round brackets for arguments `#myFunction(123)`""";
+Use round brackets for arguments `#myFunction(123)`
+""";
 
     public static String printPlaceholders(Placeholders placeholders, ValueStore store) throws InvocationTargetException, IllegalAccessException {
         String header = PLACEHOLDER_HEADER + """

@@ -636,6 +636,8 @@ public class GPTCommands {
         };
 
         String footer = DocPrinter2.PLACEHOLDER_HEADER.replaceAll("\n+", "\n");
+        footer += "\nFor detailed info for a specific placeholder: " + CM.help.nation_placeholder.cmd.toSlashMention();
+        footer += "\nFor a complete list: <https://github.com/xdnw/locutus/wiki/nation_placeholders>";
 
         return find_callable(io, store, db, user, search, instructions, useGPT, numResults,
                 getClosest,

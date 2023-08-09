@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NationAttributeCallable;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
@@ -102,8 +103,7 @@ public class HelpCommands {
     }
 
     @Command
-    public String nation_placeholder(@Me IMessageIO io, NationPlaceholders placeholders, ValueStore store, PermissionHandler permisser, NationAttribute attribute) {
-        ParametricCallable command = placeholders.get(attribute.getName());
+    public String nation_placeholder(@Me IMessageIO io, NationPlaceholders placeholders, ValueStore store, PermissionHandler permisser, @NationAttributeCallable ParametricCallable command) {
         String body = command.toBasicMarkdown(store, permisser, "/", false, true);
         String title = "/" + command.getFullPath();
         if (body.length() > 4096) {
@@ -114,10 +114,11 @@ public class HelpCommands {
 
         PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
         if (gpt != null) {
-            List<ParametricCallable> closest = gpt.getClosestNationAttributes(store, attribute, 6);
+            List<ParametricCallable> closest = gpt.getClosestNationAttributes(store, command, 6);
             for (ParametricCallable other : closest) {
-//                embed = embed.commandButton(CommandBehavior.DELETE_MESSAGE,
-//                        CM.help.attribute.cmd.create(other.getName()), other.getName());
+                if (other.getMethod().equals(command.getMethod())) continue;
+                embed = embed.commandButton(CommandBehavior.DELETE_MESSAGE,
+                        CM.help.nation_placeholder.cmd.create(other.getFullPath()), other.getFullPath());
             }
         }
 

@@ -384,9 +384,8 @@ public class PWGPTHandler {
         return getClosestCommands(store, text, top);
     }
 
-    public List<ParametricCallable> getClosestNationAttributes(ValueStore store, NationAttribute attribute, int top) {
+    public List<ParametricCallable> getClosestNationAttributes(ValueStore store, ParametricCallable cmd, int top) {
         NationAttributeAdapter adapter = (NationAttributeAdapter) adapterMap2.get(sourceMap.get(EmbeddingType.Nation_Statistic));
-        ParametricCallable cmd = Locutus.imp().getCommandManager().getV2().getNationPlaceholders().get(attribute.getName());
         String text = adapter.getDescription(cmd);
         return getClosestNationAttributes(store, text, top);
     }

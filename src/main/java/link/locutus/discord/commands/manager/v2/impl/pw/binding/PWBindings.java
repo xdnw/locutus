@@ -11,6 +11,7 @@ import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.AllowDeleted;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NationAttributeCallable;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
@@ -86,6 +87,18 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class PWBindings extends BindingHelper {
+
+    @Binding(value = "The name of a nation attribute\n" +
+            "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>", examples = {"color", "war_policy", "continent"})
+    @NationAttributeCallable
+    public ParametricCallable nationAttribute(NationPlaceholders placeholders, ValueStore store, String input) {
+        List<ParametricCallable> options = placeholders.getParametricCallables();
+        ParametricCallable metric = placeholders.get(input);
+        if (metric == null) {
+            throw new IllegalArgumentException("Invalid attribute: `" + input + "`. See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>");
+        }
+        return metric;
+    }
 
     @Binding(value = "A discord slash command reference for the bot")
     public ICommand slashCommand(String input) {
@@ -1181,7 +1194,9 @@ public class PWBindings extends BindingHelper {
         return StringMan.parseUpper(NationMeta.BeigeAlertRequiredStatus.class, input);
     }
 
-    @Binding(value = "A numeric nation attribute. See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>", examples = {"score", "ships", "land"})
+    @Binding(value = "A completed nation attribute that accepts no arguments and returns a number\n" +
+            "To get the attribute for an attribute with arguments, you must provide a value in brackets\n" +
+            "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>", examples = {"score", "ships", "land", "getCitiesSince(5d)"})
     public NationAttributeDouble nationMetricDouble(ValueStore store, String input) {
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
         NationAttributeDouble metric = placeholders.getMetricDouble(store, input);
@@ -1192,7 +1207,9 @@ public class PWBindings extends BindingHelper {
         return metric;
     }
 
-    @Binding(value = "A nation attribute. See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>", examples = {"color", "war_policy", "continent"})
+    @Binding(value = "A completed nation attribute that accepts no arguments, returns an object, typically a string, number, boolean or enum\n" +
+            "To get the attribute for an attribute with arguments, you must provide a value in brackets\n" +
+            "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>", examples = {"color", "war_policy", "continent", "city(1)"})
     public NationAttribute nationMetric(ValueStore store, String input) {
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
         NationAttribute metric = placeholders.getMetric(store, input, false);
