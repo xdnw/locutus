@@ -3383,6 +3383,35 @@ public class DBNation implements NationOrAlliance {
 //        return PnwUtil.convertedTotal(knownResources);
     }
 
+    @Command(desc = "If this nation has a previous ban attached to their nation or discord id")
+    public boolean hasPriorBan() {
+        List<DBBan> bans = getBans();
+        return bans != null && !bans.isEmpty();
+    }
+
+    private List<DBBan> getBans() {
+        PNWUser user = getDBUser();
+        List<DBBan> bans;
+        if (user != null) {
+            bans = Locutus.imp().getNationDB().getBansForUser(user.getDiscordId());
+        } else {
+            bans = Locutus.imp().getNationDB().getBansForNation(nation_id);
+        }
+        return bans;
+    }
+
+    @Command(desc = "If this nation has a ban attached to their nation or discord id that has not expired")
+    public boolean isBanEvading() {
+        List<DBBan> bans = getBans();
+        for (DBBan ban : bans) {
+            long expireDate = ban.date + TimeUnit.DAYS.toMillis(ban.days_left);
+            if (expireDate > System.currentTimeMillis()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public PNWUser getDBUser() {
         return Locutus.imp().getDiscordDB().getUserFromNationId(nation_id);
     }

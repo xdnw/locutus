@@ -2231,37 +2231,38 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    public DBBan getBan(int nationId) {
+    public List<DBBan> getBansForNation(int nationId) {
+        List<DBBan> results = new ObjectArrayList<>();
         String select = "SELECT * FROM banned_nations WHERE nation_id = ?";
         try (PreparedStatement stmt = getConnection().prepareStatement(select)) {
             stmt.setInt(1, nationId);
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
                 DBBan ban = new DBBan(rs);
-                return ban;
+                results.add(ban);
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return null;
+        return results;
     }
 
-    public List<DBBan> getBans(long discordId) {
-        List<DBBan> result = new ArrayList<>();
+    public List<DBBan> getBansForUser(long discordId) {
+        List<DBBan> results = new ObjectArrayList<>();
         DBNation nation = DiscordUtil.getNation(discordId);
-        if (nation != null) {
-            DBBan natBan = getBan(nation.getId());
-            if (natBan != null) {
-                result.add(natBan);
-            }
-        }
         String select = "SELECT * FROM banned_nations WHERE discord_id = ?";
+        if (nation != null) {
+            select += " OR nation_id = ?";
+        }
         try (PreparedStatement stmt = getConnection().prepareStatement(select)) {
             stmt.setLong(1, discordId);
+            if (nation != null) {
+                stmt.setInt(2, nation.getId());
+            }
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
                 DBBan ban = new DBBan(rs);
-                result.add(ban);
+                results.add(ban);
             }
         } catch (SQLException e) {
             e.printStackTrace();

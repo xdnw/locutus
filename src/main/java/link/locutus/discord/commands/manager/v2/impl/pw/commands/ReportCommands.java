@@ -39,7 +39,7 @@ public class ReportCommands {
 
 
         ReportManager.ReportHeader header = new ReportManager.ReportHeader();
-        List<String> column = new ArrayList<>(Arrays.asList(header.getHeaderNames());
+        List<String> column = new ArrayList<>(Arrays.asList(header.getHeaderNames()));
         sheet.addRow(column);
 
         for (ReportManager.Report report : reports) {
@@ -88,62 +88,62 @@ public class ReportCommands {
 //
 //    }
 
-    @Command(desc = "List the user reports made to the bot for a nation or user")
-    public String list(@Switch("n") DBNation nation, @Switch("u") long discordId, @Switch("n") int nationId) throws GeneralSecurityException, IOException, NoSuchFieldException, IllegalAccessException {
-
-    }
-
-    @Command(desc = "Report a nation to the bot")
-    public String create(@Me DBNation me, @Me User author, @Me GuildDB db,
-                         ReportType type,
-                         @Arg("Nation to report") DBNation target,
-                         @Arg("Description of report") @TextArea String message,
-                         @Arg("Image evidence of report") @Switch("i") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String imageEvidenceUrl,
-                         @Arg("User to report") @Switch("u") User user,
-                         @Arg("Link to relevant forum post") @Switch("f") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String forumPost,
-                         @Arg("Link to relevant news post") @Switch("m") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String newsReport,
-                         @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, NoSuchFieldException, IllegalAccessException {
-        if (sheet == null) sheet = SpreadSheet.create(REPORT_SHEET);
-        if (message.charAt(0) == '=') return "Invalid message.";
-        if (message.length() < 25) return "Message is too short (25 characters minimum)";
-        if (forumPost != null && !forumPost.toLowerCase().contains("forums.politicsandwar.com/"))
-            throw new IllegalArgumentException("`forumPost` must be a valid forum post URL. Provided: `" + forumPost + "`");
-        if (newsReport != null && !newsReport.toLowerCase().contains("https://discord.com/channels/"))
-            throw new IllegalArgumentException("`newsReport` must be a valid discord message URL. Provided: `" + newsReport + "`");
-
-        List<List<Object>> values = sheet.loadValues();
-        List<Object> headerRow;
-        if (values.isEmpty()) {
-            headerRow = new ArrayList<>();
-            for (Field field : ReportHeader.class.getDeclaredFields()) {
-                headerRow.add(field.getName());
-            }
-            sheet.addRow(headerRow);
-        } else {
-            headerRow = values.get(0);
-        }
-        ReportHeader header = sheet.loadHeader(new ReportHeader(), headerRow);
-
-        List<Object> addRow = new ArrayList<>(headerRow);
-
-        UUID id = UUID.randomUUID();
-        addRow.set(header.report_id, id.toString());
-        addRow.set(header.nation_id, target.getId());
-        addRow.set(header.discord_id, user != null ? user.getId() : "0");
-        addRow.set(header.report_type, type.name());
-        addRow.set(header.reporter_nation_id, me.getId());
-        addRow.set(header.reporter_discord_id, author.getId());
-        addRow.set(header.reporter_alliance_id, me.getAlliance_id());
-        addRow.set(header.reporter_guild_id, db.getGuild().getId());
-        addRow.set(header.report_message, message);
-        addRow.set(header.image_url, Optional.ofNullable(imageEvidenceUrl).orElse(""));
-        addRow.set(header.forum_url, Optional.ofNullable(forumPost).orElse(""));
-        addRow.set(header.news_url, Optional.ofNullable(newsReport).orElse(""));
-
-        sheet.set(0, 0);
-
-        return "Created report with id: `" + id + "`";
-    }
+//    @Command(desc = "List the user reports made to the bot for a nation or user")
+//    public String list(@Switch("n") DBNation nation, @Switch("u") long discordId, @Switch("n") int nationId) throws GeneralSecurityException, IOException, NoSuchFieldException, IllegalAccessException {
+//
+//    }
+//
+//    @Command(desc = "Report a nation to the bot")
+//    public String create(@Me DBNation me, @Me User author, @Me GuildDB db,
+//                         ReportType type,
+//                         @Arg("Nation to report") DBNation target,
+//                         @Arg("Description of report") @TextArea String message,
+//                         @Arg("Image evidence of report") @Switch("i") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String imageEvidenceUrl,
+//                         @Arg("User to report") @Switch("u") User user,
+//                         @Arg("Link to relevant forum post") @Switch("f") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String forumPost,
+//                         @Arg("Link to relevant news post") @Switch("m") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String newsReport,
+//                         @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, NoSuchFieldException, IllegalAccessException {
+//        if (sheet == null) sheet = SpreadSheet.create(REPORT_SHEET);
+//        if (message.charAt(0) == '=') return "Invalid message.";
+//        if (message.length() < 25) return "Message is too short (25 characters minimum)";
+//        if (forumPost != null && !forumPost.toLowerCase().contains("forums.politicsandwar.com/"))
+//            throw new IllegalArgumentException("`forumPost` must be a valid forum post URL. Provided: `" + forumPost + "`");
+//        if (newsReport != null && !newsReport.toLowerCase().contains("https://discord.com/channels/"))
+//            throw new IllegalArgumentException("`newsReport` must be a valid discord message URL. Provided: `" + newsReport + "`");
+//
+//        List<List<Object>> values = sheet.loadValues();
+//        List<Object> headerRow;
+//        if (values.isEmpty()) {
+//            headerRow = new ArrayList<>();
+//            for (Field field : ReportHeader.class.getDeclaredFields()) {
+//                headerRow.add(field.getName());
+//            }
+//            sheet.addRow(headerRow);
+//        } else {
+//            headerRow = values.get(0);
+//        }
+//        ReportHeader header = sheet.loadHeader(new ReportHeader(), headerRow);
+//
+//        List<Object> addRow = new ArrayList<>(headerRow);
+//
+//        UUID id = UUID.randomUUID();
+//        addRow.set(header.report_id, id.toString());
+//        addRow.set(header.nation_id, target.getId());
+//        addRow.set(header.discord_id, user != null ? user.getId() : "0");
+//        addRow.set(header.report_type, type.name());
+//        addRow.set(header.reporter_nation_id, me.getId());
+//        addRow.set(header.reporter_discord_id, author.getId());
+//        addRow.set(header.reporter_alliance_id, me.getAlliance_id());
+//        addRow.set(header.reporter_guild_id, db.getGuild().getId());
+//        addRow.set(header.report_message, message);
+//        addRow.set(header.image_url, Optional.ofNullable(imageEvidenceUrl).orElse(""));
+//        addRow.set(header.forum_url, Optional.ofNullable(forumPost).orElse(""));
+//        addRow.set(header.news_url, Optional.ofNullable(newsReport).orElse(""));
+//
+//        sheet.set(0, 0);
+//
+//        return "Created report with id: `" + id + "`";
+//    }
 
 
 

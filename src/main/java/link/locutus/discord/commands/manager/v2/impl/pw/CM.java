@@ -1687,22 +1687,6 @@ public class CM {
                 return createArgs("nation", nation, "time", time, "forceUpdate", forceUpdate, "addBalance", addBalance);
             }
         }
-        public static class report{
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="create")
-            public static class create extends CommandRef {
-                public static final create cmd = new create();
-                public create create(String type, String target, String message, String imageEvidenceUrl, String user, String forumPost, String newsReport, String sheet) {
-                    return createArgs("type", type, "target", target, "message", message, "imageEvidenceUrl", imageEvidenceUrl, "user", user, "forumPost", forumPost, "newsReport", newsReport, "sheet", sheet);
-                }
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="list")
-            public static class list extends CommandRef {
-                public static final list cmd = new list();
-                public list create(String nation, String user) {
-                    return createArgs("nation", nation, "user", user);
-                }
-            }
-        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="reroll")
         public static class reroll extends CommandRef {
             public static final reroll cmd = new reroll();
