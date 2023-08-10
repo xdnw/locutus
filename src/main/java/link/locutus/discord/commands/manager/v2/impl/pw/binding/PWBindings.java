@@ -311,6 +311,9 @@ public class PWBindings extends BindingHelper {
             build = city.toJavaCity(nation == null ? f -> false : nation::hasProject).toCityBuild();
         }
         if (json != null && !json.isBlank()) {
+            for (Building building : Buildings.values()) {
+                json = json.replace(building.name(), building.nameSnakeCase());
+            }
             CityBuild build2 = CityBuild.of(json, true);
             if (build != null) {
                 json = build2.toString().replace("}", "") + "," + build.toString().replace("{", "");
