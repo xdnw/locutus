@@ -190,11 +190,12 @@ public class GPTSearchUtil {
                 for (int j = 0; j < lines.size(); j++) {
                     String line = lines.get(j);
                     if (line.length() < 4) continue;
-                    if (line.indexOf('.') != 1 || !Character.isDigit(line.charAt(0))) {
+                    int dotIndex = line.indexOf('.');
+                    if ((dotIndex != 1 && dotIndex != 2) || !Character.isDigit(line.charAt(0))) {
                         continue;
                     }
+                    line = line.substring(dotIndex + 1).trim();
                     line = line.replace("`", "");
-                    line = line.substring(3).trim();
                     if (line.startsWith("/")) {
                         line = line.substring(1).trim();
                     }

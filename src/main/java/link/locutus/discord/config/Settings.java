@@ -195,10 +195,10 @@ public class Settings extends Config {
 
         @Comment("Unload wars after days (-1 = load all wars)")
         public int UNLOAD_WARS_AFTER_DAYS = -1;
-
-        @Comment({"If escalation alerts are run every time all wars are updated",
-                "Requires ALL_WAR_SECONDS to be enabled"})
-        public boolean ESCALATION_ALERTS = true;
+//
+//        @Comment({"If escalation alerts are run every time all wars are updated",
+//                "Requires ALL_WAR_SECONDS to be enabled"})
+//        public boolean ESCALATION_ALERTS = true;
 
         @Comment("Fetches most active nations (default 1 minute)")
         public int ACTIVE_NATION_SECONDS = 60;
@@ -282,11 +282,11 @@ public class Settings extends Config {
             public boolean ALLIANCE_METRICS = true;
             @Comment("TODO: Not finished")
             public boolean MAP_FULL_ALERT = true;
-
-            @Comment({"Fetches spies in the background via the api (default: false)",
-                    "If disabled, spies will be fetched when needed",
-                    "*Requires setting the `trackspies` coalition in the root server"})
-            public boolean FETCH_SPIES_BACKGROUND_API = false;
+//
+//            @Comment({"Fetches spies in the background via the api (default: false)",
+//                    "If disabled, spies will be fetched when needed",
+//                    "*Requires setting the `trackspies` coalition in the root server"})
+//            public boolean FETCH_SPIES_BACKGROUND_API = false;
         }
     }
 
