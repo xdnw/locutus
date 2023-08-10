@@ -2,6 +2,8 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.NationColor;
+import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -30,6 +32,7 @@ import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.NationScoreMap;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.pnw.SimpleNationList;
+import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -1936,5 +1939,31 @@ public Map<ParametricCallable, String> getEndpoints() {
 
         channel.create().embed(title, response.toString()).send();
         return null;
+    }
+
+    @Command(desc = "Get the cost a specific amount of buildings")
+    public static String buildingCost(CityBuild build) {
+        JavaCity jc = new JavaCity(build);
+        jc.setInfra(0d);
+        jc.setLand(0d);
+
+        JavaCity origin = new JavaCity();
+        double[] cost = jc.calculateCost(origin);
+
+        StringBuilder response = new StringBuilder();
+        // buildings
+        Map<Building, Integer> buildings = new LinkedHashMap<>();
+        for (Building building : Buildings.values()) {
+            int amt = jc.get(building);
+            if (amt > 0) {
+                buildings.put(building, amt);
+            }
+        }
+        // Append buildings
+        response.append("**Buildings:**\n```json\n" + buildings + "\n```");
+        // append cost
+        response.append("\n**Cost:** ~$" + MathMan.format(PnwUtil.convertedTotal(cost)));
+        response.append("\n```json\n" + PnwUtil.resourcesToString(cost) + "\n```");
+        return response.toString();
     }
 }

@@ -35,6 +35,8 @@ public class DBBan {
     }
 
     public long getTimeRemaining() {
+        if (days_left == -1) return Integer.MAX_VALUE;
+
         long now = System.currentTimeMillis();
         long expire = date + TimeUnit.DAYS.toMillis(days_left);
         return Math.max(0, expire - now);

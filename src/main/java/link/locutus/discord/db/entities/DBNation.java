@@ -3393,7 +3393,7 @@ public class DBNation implements NationOrAlliance {
         PNWUser user = getDBUser();
         List<DBBan> bans;
         if (user != null) {
-            bans = Locutus.imp().getNationDB().getBansForUser(user.getDiscordId());
+            bans = Locutus.imp().getNationDB().getBansForUser(user.getDiscordId(), nation_id);
         } else {
             bans = Locutus.imp().getNationDB().getBansForNation(nation_id);
         }
@@ -3404,8 +3404,7 @@ public class DBNation implements NationOrAlliance {
     public boolean isBanEvading() {
         List<DBBan> bans = getBans();
         for (DBBan ban : bans) {
-            long expireDate = ban.date + TimeUnit.DAYS.toMillis(ban.days_left);
-            if (expireDate > System.currentTimeMillis()) {
+            if (ban.getTimeRemaining() > 0) {
                 return true;
             }
         }

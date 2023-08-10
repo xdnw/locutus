@@ -2248,16 +2248,25 @@ public class NationDB extends DBMainV2 {
     }
 
     public List<DBBan> getBansForUser(long discordId) {
+        return getBansForUser(discordId, null);
+    }
+
+    public List<DBBan> getBansForUser(long discordId, Integer nationIdOrNull) {
         List<DBBan> results = new ObjectArrayList<>();
-        DBNation nation = DiscordUtil.getNation(discordId);
+        if (nationIdOrNull == null) {
+            DBNation nation = DiscordUtil.getNation(discordId);
+            if (nation != null) {
+                nationIdOrNull = nation.getId();
+            }
+        }
         String select = "SELECT * FROM banned_nations WHERE discord_id = ?";
-        if (nation != null) {
+        if (nationIdOrNull != null) {
             select += " OR nation_id = ?";
         }
         try (PreparedStatement stmt = getConnection().prepareStatement(select)) {
             stmt.setLong(1, discordId);
-            if (nation != null) {
-                stmt.setInt(2, nation.getId());
+            if (nationIdOrNull != null) {
+                stmt.setInt(2, nationIdOrNull);
             }
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
