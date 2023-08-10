@@ -34,6 +34,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -55,6 +56,8 @@ public class PoliticsAndWarV3 {
     public static int BOUNTIES_PER_PAGE = 1000;
     public static int BASEBALL_PER_PAGE = 1000;
     public static int EMBARGO_PER_PAGE = 1000;
+
+    public static int BANS_PER_PAGE = 500;
 
     private final String endpoint;
     private final RestTemplate restTemplate;
@@ -265,6 +268,59 @@ public class PoliticsAndWarV3 {
         if (e instanceof HttpClientErrorException.Unauthorized unauthorized) {
             throw HttpClientErrorException.create(msg, unauthorized.getStatusCode(), unauthorized.getStatusText(), unauthorized.getResponseHeaders(), unauthorized.getResponseBodyAsByteArray(), /* charset utf-8 */ StandardCharsets.UTF_8);
         }
+    }
+
+    public List<BannedNation> getBansSince(long date) {
+        return getBansSince(date, null);
+    }
+
+    public List<BannedNation> getBansSince(long date, Consumer<Banned_nationsQueryRequest> filter) {
+        List<BannedNation> allResults = new ArrayList<>();
+        AtomicBoolean stopPaginating = new AtomicBoolean(false);
+        int perPage = BANS_PER_PAGE;
+        handlePagination(PagePriority.API_BANS, page -> {
+            Banned_nationsQueryRequest request = new Banned_nationsQueryRequest();
+            request.setOrderBy(List.of(
+                    QueryBannedNationsOrderByOrderByClause.builder()
+                            .setOrder(SortOrder.DESC)
+                            .setColumn(QueryBannedNationsOrderByColumn.DATE)
+                            .build()
+            ));
+            if (filter != null) filter.accept(request);
+            request.setFirst(perPage);
+            request.setPage(page);
+
+            BannedNationResponseProjection respProj = new BannedNationResponseProjection();
+            respProj.nation_id();
+            respProj.date();
+            respProj.days_left();
+            respProj.reason();
+
+            BannedNationPaginatorResponseProjection pagRespProj = new BannedNationPaginatorResponseProjection()
+                    .paginatorInfo(new PaginatorInfoResponseProjection()
+                    .hasMorePages())
+                    .data(respProj);
+
+            return new GraphQLRequest(request, pagRespProj);
+        }, f -> ErrorResponse.THROW, Banned_nationsQueryResponse.class,
+        response -> {
+            BannedNationPaginator paginator = response.banned_nations();
+            PaginatorInfo pageInfo = paginator != null ? paginator.getPaginatorInfo() : null;
+            return pageInfo != null && pageInfo.getHasMorePages() && !stopPaginating.get();
+        }, result -> {
+            BannedNationPaginator paginator = result.banned_nations();
+            if (paginator != null) {
+                List<BannedNation> txs = paginator.getData();
+                for (BannedNation tx : txs) {
+                    if (tx.getDate().toEpochMilli() <= date) {
+                        stopPaginating.set(true);
+                        continue;
+                    }
+                    allResults.add(tx);
+                }
+            }
+        });
+        return allResults;
     }
 
     public <T extends GraphQLResult<?>> void handlePagination(PagePriority priority, Function<Integer, GraphQLRequest> requestFactory, Function<GraphQLError, ErrorResponse> errorBehavior, Class<T> resultBody, Predicate<T> hasMorePages, Consumer<T> onEachResult) {

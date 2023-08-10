@@ -74,6 +74,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.security.GeneralSecurityException;
+import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -106,6 +107,13 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     public String checkActiveConflicts() {
         WarUpdateProcessor.checkActiveConflicts();
+        return "Done! (see console)";
+    }
+
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String syncBans() throws SQLException {
+        Locutus.imp().getNationDB().updateBans(Event::post);
         return "Done! (see console)";
     }
 

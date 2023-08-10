@@ -848,6 +848,7 @@ public final class Locutus extends ListenerAdapter {
 
                 runEventsAsync(nationDB::deleteExpiredTreaties);
                 runEventsAsync(nationDB::updateTreaties);
+                runEventsAsync(nationDB::updateBans);
 
                 nationDB.saveAllCities(); // TODO save all cities
 

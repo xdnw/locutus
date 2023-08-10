@@ -1,8 +1,15 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.ReportManager;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.User;
 
@@ -12,10 +19,62 @@ import java.security.GeneralSecurityException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class ReportCommands {
-    public static String REPORT_SHEET = "1HoENcKOBgc9lkdNEPvAyDT_SVtU6qYxOL4CYHwPNaHU";
-    public static String VOTE_SHEET = "17suZfmU6T2qWcJi0zYsdPDzt5e1EJZY6QcEjrr3gmXM";
+import static link.locutus.discord.util.MarkupUtil.sheetUrl;
+import static link.locutus.discord.util.PnwUtil.getAllianceUrl;
+import static link.locutus.discord.util.PnwUtil.getName;
+import static link.locutus.discord.util.PnwUtil.getNationUrl;
+import static link.locutus.discord.util.discord.DiscordUtil.getGuildName;
+import static link.locutus.discord.util.discord.DiscordUtil.getGuildUrl;
+import static link.locutus.discord.util.discord.DiscordUtil.getUserName;
+import static link.locutus.discord.util.discord.DiscordUtil.userUrl;
 
+public class ReportCommands {
+    @Command(desc=  "Get a sheet of all the community reports for players")
+    public String reportSheet(@Me IMessageIO io, @Me GuildDB db, ReportManager manager, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException, NoSuchFieldException, IllegalAccessException {
+        List<ReportManager.Report> reports = manager.loadReports(null);
+
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKeys.REPORTS_SHEET);
+        }
+
+
+        ReportManager.ReportHeader header = new ReportManager.ReportHeader();
+        List<String> column = new ArrayList<>(Arrays.asList(header.getHeaderNames());
+        sheet.addRow(column);
+
+        for (ReportManager.Report report : reports) {
+
+            String natUrl = sheetUrl(getName(report.nationId, false), getNationUrl(report.nationId));
+            String discordUrl = sheetUrl(getUserName(report.discordId), userUrl(report.discordId, false));
+
+            String reporterNatUrl = sheetUrl(getName(report.reporterNationId, false), getNationUrl(report.reporterNationId));
+            String reporterDiscordUrl = sheetUrl(getUserName(report.reporterDiscordId), userUrl(report.reporterDiscordId, false));
+
+            String reporterAlliance = sheetUrl(getName(report.reporterAllianceId, true), getAllianceUrl(report.reporterAllianceId));
+            String reporterGuild = sheetUrl(getGuildName(report.reporterGuildId), getGuildUrl(report.reporterGuildId));
+
+            column.set(0, report.reportId + "");
+            column.set(1, natUrl + "");
+            column.set(2, discordUrl + "");
+            column.set(3, report.reportType.name());
+            column.set(4, reporterNatUrl + "");
+            column.set(5, reporterDiscordUrl + "");
+            column.set(6, reporterAlliance + "");
+            column.set(7, reporterGuild + "");
+            column.set(8, report.reportMessage);
+            column.set(9, report.imageUrl);
+            column.set(10, report.forumUrl);
+            column.set(11, report.newsUrl);
+            column.set(12, report.date + "");
+
+            sheet.addRow(column);
+        }
+        sheet.clearAll();
+        sheet.set(0, 0);
+
+        sheet.attach(io.create()).send();
+        return null;
+    }
 
     // TODO
     // manage
@@ -30,12 +89,8 @@ public class ReportCommands {
 //    }
 
     @Command(desc = "List the user reports made to the bot for a nation or user")
-    public String list(@Switch("n") DBNation nation, @Switch("u") User user) throws GeneralSecurityException, IOException, NoSuchFieldException, IllegalAccessException {
-        if (nation == null || user == null) throw new IllegalArgumentException("Please specify a user or nation.");
-        List<String> reportList = getReports().stream().filter(f -> f.nationId == nation.getId() && f.discordId == user.getIdLong()).map(Objects::toString).collect(Collectors.toList());
-        if (reportList.isEmpty()) return "No reports founds.";
+    public String list(@Switch("n") DBNation nation, @Switch("u") long discordId, @Switch("n") int nationId) throws GeneralSecurityException, IOException, NoSuchFieldException, IllegalAccessException {
 
-        return "**" + reportList.size() + " reports**:\n" + String.join("\n", reportList);
     }
 
     @Command(desc = "Report a nation to the bot")
@@ -90,147 +145,7 @@ public class ReportCommands {
         return "Created report with id: `" + id + "`";
     }
 
-    public List<Report> getReports() throws NoSuchFieldException, IllegalAccessException, GeneralSecurityException, IOException {
-        List<Report> result = new ArrayList<>();
-        SpreadSheet sheet = SpreadSheet.create(REPORT_SHEET);
-        List<List<Object>> values = sheet.loadValues();
 
-        if (values.isEmpty()) return result;
 
-        List<Object> headerRow = values.get(0);
-        if (headerRow.isEmpty()) return result;
 
-        ReportHeader header = sheet.loadHeader(new ReportHeader(), headerRow);
-        for (int i = 1; i < values.size(); i++) {
-            List<Object> row = values.get(i);
-            if (row.isEmpty()) continue;
-
-            Report report = new Report(header, row);
-            result.add(report);
-        }
-
-        return result;
-    }
-
-    public List<Vote> getVotes() throws GeneralSecurityException, IOException, NoSuchFieldException, IllegalAccessException {
-        List<Vote> result = new ArrayList<>();
-        SpreadSheet sheet = SpreadSheet.create(VOTE_SHEET);
-        List<List<Object>> values = sheet.loadValues();
-
-        if (values.isEmpty()) return result;
-
-        List<Object> headerRow = values.get(0);
-        if (headerRow.isEmpty()) return result;
-
-        VoteHeader header = sheet.loadHeader(new VoteHeader(), headerRow);
-        for (int i = 1; i < values.size(); i++) {
-            List<Object> row = values.get(i);
-            if (row.isEmpty()) continue;
-
-            Vote report = new Vote(header, row);
-            result.add(report);
-        }
-
-        return result;
-
-    }
-
-    public enum ReportType {
-        MULTI,
-        REROLL,
-        STEALING,
-        DEFAULT,
-        LEAKING,
-        BEHAVIOR,
-        FA_BLUNDER
-
-    }
-
-    public static class Report {
-
-        public UUID reportId;
-        public int nationId;
-        public long discordId;
-        public ReportType reportType;
-        public int reporterNationId;
-        public long reporterDiscordId;
-        public int reporterAllianceId;
-        public long reporterGuildId;
-        public String reportMessage;
-        public String imageUrl;
-        public String forumUrl;
-        public String newsUrl;
-
-        public Report(ReportHeader header, List<Object> row) {
-            reportId = UUID.fromString(row.get(header.report_id).toString());
-            nationId = Integer.parseInt(row.get(header.nation_id).toString());
-            discordId = Long.parseLong(row.get(header.discord_id).toString());
-            reportType = ReportType.valueOf(row.get(header.report_type).toString());
-            reporterNationId = Integer.parseInt(row.get(header.reporter_nation_id).toString());
-            reporterDiscordId = Long.parseLong(row.get(header.reporter_discord_id).toString());
-            reporterAllianceId = Integer.parseInt(row.get(header.reporter_alliance_id).toString());
-            reporterGuildId = Long.parseLong(row.get(header.reporter_guild_id).toString());
-            reportMessage = row.get(header.report_message).toString();
-            imageUrl = row.get(header.image_url).toString();
-            forumUrl = row.get(header.forum_url).toString();
-            newsUrl = row.get(header.news_url).toString();
-        }
-
-        @Override
-        public String toString() {
-            return "Report{" +
-                    "reportId=" + reportId +
-                    ", nationId=" + nationId +
-                    ", discordId=" + discordId +
-                    ", reportType=" + reportType +
-                    ", reporterNationId=" + reporterNationId +
-                    ", reporterDiscordId=" + reporterDiscordId +
-                    ", reporterAllianceId=" + reporterAllianceId +
-                    ", reporterGuildId=" + reporterGuildId +
-                    ", reportMessage='" + reportMessage + '\'' +
-                    ", imageUrl='" + imageUrl + '\'' +
-                    ", forumUrl='" + forumUrl + '\'' +
-                    ", newsUrl='" + newsUrl + '\'' +
-                    '}';
-        }
-    }
-
-    public static class ReportHeader {
-        public int report_id;
-        public int nation_id;
-        public int discord_id;
-        public int report_type;
-        public int reporter_nation_id;
-        public int reporter_discord_id;
-        public int reporter_alliance_id;
-        public int reporter_guild_id;
-        public int report_message;
-        public int image_url;
-        public int forum_url;
-        public int news_url;
-    }
-
-    public static class VoteHeader {
-        public int report_id;
-        public int nation_id;
-        public int discord_id;
-        public int vote;
-        public int comment;
-    }
-
-    public static class Vote {
-        public UUID report_id;
-        public int nationId;
-        public long discordId;
-        public int vote;
-        public String comment;
-
-        public Vote(VoteHeader header, List<Object> row) {
-            report_id = UUID.fromString(row.get(header.report_id).toString());
-            nationId = Integer.parseInt(row.get(header.nation_id).toString());
-            discordId = Long.parseLong(row.get(header.discord_id).toString());
-            vote = Integer.parseInt(row.get(header.vote).toString());
-            comment = row.get(header.comment).toString();
-        }
-    }
 }
