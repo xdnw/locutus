@@ -2267,7 +2267,7 @@ public class NationDB extends DBMainV2 {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return result;
+        return results;
     }
 
     private long getLatestBanDate() {
