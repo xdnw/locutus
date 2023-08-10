@@ -28,6 +28,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommand
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.ReportManager;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
@@ -764,9 +765,9 @@ public class WebPWBindings extends WebBindingHelper {
     }
 
     @HtmlInput
-    @Binding(types= ReportCommands.ReportType.class)
+    @Binding(types= ReportManager.ReportType.class)
     public String ReportType(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(ReportCommands.ReportType.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
+        return multipleSelect(param, Arrays.asList(ReportManager.ReportType.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
     }
 
     @HtmlInput

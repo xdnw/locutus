@@ -105,6 +105,27 @@ public class DiscordUtil {
         return content;
     }
 
+    public static String userUrl(long discordId, boolean redirect) {
+        if (redirect) {
+            return "https://tinyurl.com/3xbkmzjm/" + discordId;
+        }
+        return "discord://discordapp.com/users/" + discordId;
+    }
+
+    public static String getGuildName(long id) {
+        Guild guild = Locutus.imp().getDiscordApi().getGuildById(id);
+        return guild == null ? id + "" : guild.getName() + "/" + id;
+    }
+
+    public static String getGuildUrl(long id) {
+        return "https://discordapp.com/channels/" + id;
+    }
+
+    public static String getUserName(long id) {
+        User user = Locutus.imp().getDiscordApi().getUserById(id);
+        return user == null ? "<@" + id + ">" : getFullUsername(user);
+    }
+
     public static CompletableFuture<Message> upload(MessageChannel channel, String title, String body) {
         if (!title.contains(".")) title += ".txt";
         return RateLimitUtil.queue(channel.sendFiles(FileUpload.fromData(body.getBytes(StandardCharsets.ISO_8859_1), title)));

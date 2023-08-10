@@ -49,6 +49,7 @@ public enum PagePriority {
     DELETION_ALERT_BAN,
     API_TREASURES,
     API_BOUNTIES,
+    API_BANS,
     ESPIONAGE_ODDS_AUTO,
     API_BASEBALL,
     API_EMBARGO_GET,

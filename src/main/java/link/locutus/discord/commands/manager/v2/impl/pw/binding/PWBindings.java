@@ -1021,8 +1021,8 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding
-    public ReportCommands.ReportType reportType(String input) {
-        return emum(ReportCommands.ReportType.class, input);
+    public ReportManager.ReportType reportType(String input) {
+        return emum(ReportManager.ReportType.class, input);
     }
 
     @Binding(value = "One of the default in-game position levels")

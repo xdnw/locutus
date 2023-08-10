@@ -1180,9 +1180,23 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "The channel to receive alerts when a nation deletes (in all of orbis)";
+            return "The channel to receive alerts when any nation in the game deletes";
         }
     }.nonPublic().requireActiveGuild();
+
+    public static GuildSetting<MessageChannel> BAN_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String BAN_ALERT_CHANNEL(@Me GuildDB db, @Me User user, MessageChannel channel) {
+            return BAN_ALERT_CHANNEL.setAndValidate(db, user, channel);
+        }
+        @Override
+        public String help() {
+            return "The channel to receive alerts when any nation in the game is banned)";
+        }
+    }.nonPublic().requireActiveGuild();
+
     public static GuildSetting<GuildDB.AutoNickOption> AUTONICK = new GuildEnumSetting<GuildDB.AutoNickOption>(GuildSettingCategory.ROLE, GuildDB.AutoNickOption.class) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2299,33 +2313,18 @@ public class GuildKey {
         }
 
     }.setupRequirements(f -> f.requireValidAlliance().requires(RECRUIT_MESSAGE_OUTPUT).requires(ALLIANCE_ID));
-
-    //AA_GROUND_THRESHOLD - Double (min=0, max=100, default: 40)
-//    public static GuildSetting<Double> AA_GROUND_THRESHOLD = new GuildDoubleSetting(GuildSettingCategory.ORBIS_ALERTS) {
-//        @NoFormat
-//        @Command(descMethod = "help")
-//        @RolePermission(Roles.ADMIN)
-//        public String AA_GROUND_THRESHOLD(@Me GuildDB db, @Me User user, double threshold) {
-//            return AA_GROUND_THRESHOLD.setAndValidate(db, user, threshold);
-//        }
-//        @Override
-//        public String help() {
-//            return "The minimum threshold percent for the average ground buildings or units for an alliance to trigger an alert";
-//        }
-//    }.setupRequirements(f -> f.requires(ALLIANCE_ID).requireValidAlliance());
-//    //AA_GROUND_FILTER - NationFilter
-//    public static GuildSetting<NationFilter> AA_GROUND_FILTER = new GuildNationFilterSetting(GuildSettingCategory.ORBIS_ALERTS) {
-//        @NoFormat
-//        @Command(descMethod = "help")
-//        @RolePermission(Roles.ADMIN)
-//        public String AA_GROUND_FILTER(@Me GuildDB db, @Me User user, NationFilter filter) {
-//            return AA_GROUND_FILTER.setAndValidate(db, user, filter);
-//        }
-//        @Override
-//        public String help() {
-//            return "The nation filter to limit which nations to calculate the average ground buildings or units for an alliance to trigger an alert";
-//        }
-//    }.setupRequirements(f -> f.requires(ALLIANCE_ID).requireValidAlliance());
+    public static GuildSetting<MessageChannel> PLAYER_REPORT_ALERTS = new GuildChannelSetting(GuildSettingCategory.FOREIGN_AFFAIRS) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String PLAYER_REPORT_ALERTS(@Me GuildDB db, @Me User user, MessageChannel channel) {
+            return PLAYER_REPORT_ALERTS.setAndValidate(db, user, channel);
+        }
+        @Override
+        public String help() {
+            return "The #channel to receive alerts when a player report is submitted by the community";
+        }
+    };
 
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 

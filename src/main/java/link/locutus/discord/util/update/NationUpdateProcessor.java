@@ -1,6 +1,7 @@
 package link.locutus.discord.util.update;
 
 import com.google.common.eventbus.Subscribe;
+import com.politicsandwar.graphql.model.BannedNation;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -61,10 +62,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static link.locutus.discord.db.guild.GuildKey.BAN_ALERT_CHANNEL;
 
 public class NationUpdateProcessor {
     private static Map<Integer, Integer> ACTIVITY_ALERTS = new PassiveExpiringMap<Integer, Integer>(240, TimeUnit.MINUTES);
@@ -272,13 +276,85 @@ public class NationUpdateProcessor {
         }
     }
 
+    private Map<Integer, DBNation> deletedNationCache = new ConcurrentHashMap<>();
+
     @Subscribe
     public void onNationDelete(NationDeleteEvent event) {
         DBNation previous = event.getPrevious();
         DBNation current = event.getCurrent();
 
+        if (previous != null && current == null) {
+            DBNation copy = new DBNation(previous);
+            deletedNationCache.put(previous.getNation_id(), copy);
+        }
+
         handleOfficerDelete(previous, current);
         processDeletion(previous, current);
+    }
+
+    @Subscribe
+    public void onNationBan(NationBanEvent event) {
+        DBBan ban = event.getBan();
+        DBNation nation = DBNation.getById(ban.nation_id);
+        if (nation == null) {
+            nation = deletedNationCache.remove(ban.nation_id);
+        }
+
+        List<String> adminInfo = new ArrayList<>();
+
+        StringBuilder body = new StringBuilder();
+        if (nation != null) {
+            body.append(nation.toEmbedString());
+
+            if (nation.getAlliance_id() != 0 && nation.getPosition() > Rank.APPLICANT.id) {
+                GuildDB db = Locutus.imp().getGuildDBByAA(nation.getAlliance_id());
+                if (db != null && db.getOffshore() == Locutus.imp().getRootBank()) {
+                    body.append("\n" + nation.getAllianceUrlMarkup(true) + " " + nation.getPositionEnum());
+                    Locutus.imp().getRootDb().addCoalition(nation.getAlliance_id(), Coalition.FROZEN_FUNDS);
+                    adminInfo.add(nation.getAllianceUrlMarkup(true));
+                    AlertUtil.error(nation.getAlliance_id() + " frozen", nation.getAllianceUrlMarkup(true) + " " + nation.getPositionEnum() + " " + nation.getNationUrlMarkup(true) + " " + nation.getNation());
+                }
+            }
+        } else {
+            body.append("Nation ID: " + ban.nation_id);
+        }
+        body.append("\n" + ban.reason + "\nDays Left: `" + ban.days_left + "`\n");
+
+        String title = "Nation Banned: " + PnwUtil.getName(ban.nation_id, true) + "/" + ban.nation_id;
+
+        if (ban.discord_id != 0) {
+            User user = DiscordUtil.getUser(ban.discord_id);
+            if (user != null) {
+                for (Guild guild : user.getMutualGuilds()) {
+                    Member member = guild.getMember(user);
+                    if (member != null && member.hasPermission(Permission.ADMINISTRATOR)) {
+                        GuildDB db = Locutus.imp().getGuildDB(guild);
+                        if (db != null && db.getOffshore() == Locutus.imp().getRootBank()) {
+                            Locutus.imp().getRootDb().addCoalition(guild.getIdLong(), Coalition.FROZEN_FUNDS);
+                            body.append("\nguild: " + guild);
+                            adminInfo.add(guild.toString());
+                            String alertMsg = guild.toString() + " <@" + ban.discord_id + "> " + ban.reason;
+                            if (nation != null) {
+                                alertMsg += "\n" + nation.getNationUrlMarkup(true) + " " + nation.getNation();
+                            }
+                            AlertUtil.error(guild.getIdLong() + " frozen", alertMsg);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!adminInfo.isEmpty()) {
+            MessageChannel channel = Locutus.imp().getRootDb().getResourceChannel(0);
+            if (channel != null) {
+                String newBody = body + "<@217897994375266304>\n" +
+                        "See " + CM.offshore.unlockTransfers.cmd.toSlashMention() + "\n" +
+                        "See `!coalitions FROZEN_FUNDS`";
+                new DiscordChannelIO(channel).create().embed(title, newBody).send();
+            }
+        }
+
+        AlertUtil.forEachChannel(f -> true, BAN_ALERT_CHANNEL, (channel, guildDB) -> DiscordUtil.createEmbedCommand(channel, title, body.toString()));
     }
 
     @Subscribe
@@ -810,47 +886,10 @@ public class NationUpdateProcessor {
         if (previous.getActive_m() < 14400 && current == null) {
             processVMTransfers(previous, previous);
 
-            List<String> adminInfo = new ArrayList<>();
-
             String type = "DELETION";
-            String body = previous.toEmbedString();
-            String url = previous.getNationUrl();
-            try {
-                String html = FileUtil.readStringFromURL(PagePriority.DELETION_ALERT_BAN.ordinal(), url);
-                Document dom = Jsoup.parse(html);
-                String alert = PnwUtil.getAlert(dom);
-                if (alert != null && alert.startsWith("This nation was banned")) {
-                    alert = alert.replace("Visit your nation, or go to the search page.",  "");
-                    type = "BAN";
-                    body += "\n" + alert;
-
-                    if (previous.getAlliance_id() != 0 && previous.getPosition() > Rank.APPLICANT.id) {
-                        GuildDB db = Locutus.imp().getGuildDBByAA(previous.getAlliance_id());
-                        if (db != null && db.getOffshore() == Locutus.imp().getRootBank()) {
-                            body += "\n" + previous.getAllianceUrlMarkup(true) + " " + previous.getPositionEnum();
-                            Locutus.imp().getRootDb().addCoalition(previous.getAlliance_id(), Coalition.FROZEN_FUNDS);
-                            adminInfo.add(previous.getAllianceUrlMarkup(true));
-                            AlertUtil.error(previous.getAlliance_id() + " frozen", previous.getAllianceUrlMarkup(true) + " " + previous.getPositionEnum() + " " + previous.getNationUrlMarkup(true) + " " + previous.getNation());
-                        }
-                    }
-                    User user = previous.getUser();
-                    for (Guild guild : user.getMutualGuilds()) {
-                        Member member = guild.getMember(user);
-                        if (member != null && member.hasPermission(Permission.ADMINISTRATOR)) {
-                            GuildDB db = Locutus.imp().getGuildDB(guild);
-                            if (db != null && db.getOffshore() == Locutus.imp().getRootBank()) {
-                                Locutus.imp().getRootDb().addCoalition(guild.getIdLong(), Coalition.FROZEN_FUNDS);
-                                body += "\nguild: " + guild;
-                                adminInfo.add(guild.toString());
-                                AlertUtil.error(guild.getIdLong() + " frozen", guild.toString() + " " + previous.getNationUrlMarkup(true) + " " + previous.getNation());
-                            }
-                        }
-                    }
-                }
-            } catch (Throwable ignore) {}
-
+            StringBuilder body = new StringBuilder(previous.toEmbedString());
             String finalType = type;
-            String finalBody = body;
+            String finalBody = body.toString();
             String title = "Detected " + finalType + ": " + previous.getNation() + " | " + "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + previous.getNation_id() + " | " + previous.getAllianceName();
             AlertUtil.forEachChannel(BankAlerts.class, GuildKey.DELETION_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
                 @Override
@@ -858,16 +897,6 @@ public class NationUpdateProcessor {
                     AlertUtil.displayChannel(title, finalBody, channel.getIdLong());
                 }
             });
-
-            if (!adminInfo.isEmpty()) {
-                MessageChannel channel = Locutus.imp().getRootDb().getResourceChannel(0);
-                if (channel != null) {
-                    String newBody = finalBody + "<@217897994375266304>\n" +
-                            "See " + CM.offshore.unlockTransfers.cmd.toSlashMention() + "\n" +
-                            "See `!coalitions FROZEN_FUNDS`";
-                    new DiscordChannelIO(channel).create().embed(title, newBody).send();
-                }
-            }
         }
     }
 }

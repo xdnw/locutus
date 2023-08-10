@@ -33,6 +33,7 @@ import link.locutus.discord.event.position.PositionCreateEvent;
 import link.locutus.discord.event.position.PositionDeleteEvent;
 import link.locutus.discord.event.treasure.TreasureUpdateEvent;
 import link.locutus.discord.event.treaty.*;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.*;
@@ -79,9 +80,14 @@ public class NationDB extends DBMainV2 {
 
     private final Map<Integer, DBTreasure> treasuresByNation = new Int2ObjectOpenHashMap<>();
     private final Map<String, DBTreasure> treasuresByName = new ConcurrentHashMap<>();
+    private ReportManager reportManager;
 
     public NationDB() throws SQLException, ClassNotFoundException {
         super("nations");
+    }
+
+    public ReportManager getReportManager() {
+        return reportManager;
     }
 
     public void load() throws SQLException {
@@ -2041,8 +2047,11 @@ public class NationDB extends DBMainV2 {
 
             // add gdp column to NATIONS2 BIGINT NOT NULL default 0
             try {
-                try (PreparedStatement close = prepareQuery("ALTER TABLE NATIONS2 ADD COLUMN `gdp` BIGINT NOT NULL DEFAULT 0" )) {close.execute();}
-            } catch (SQLException ignore) {}
+                try (PreparedStatement close = prepareQuery("ALTER TABLE NATIONS2 ADD COLUMN `gdp` BIGINT NOT NULL DEFAULT 0")) {
+                    close.execute();
+                }
+            } catch (SQLException ignore) {
+            }
 
             update("DROP TABLE IF EXISTS NATIONS_WAR_SNAPSHOT");
 
@@ -2085,7 +2094,8 @@ public class NationDB extends DBMainV2 {
                     .buildQuery(getDb().getType());
             nationLoot = nationLoot.replace(");", ", PRIMARY KEY(id, type));");
             getDb().executeUpdate(nationLoot);
-        };
+        }
+        ;
 
         {
             String query = "CREATE TABLE IF NOT EXISTS `BEIGE_REMINDERS` (`target` INT NOT NULL, `attacker` INT NOT NULL, `turn` BIGINT NOT NULL, PRIMARY KEY(target, attacker))";
@@ -2101,7 +2111,8 @@ public class NationDB extends DBMainV2 {
             } catch (SQLException e) {
                 e.printStackTrace();
             }
-        };
+        }
+        ;
         {
             String milup = "CREATE TABLE IF NOT EXISTS `NATION_MIL_HISTORY` (`id` INT NOT NULL, `date` BIGINT NOT NULL, `unit` INT NOT NULL, `amount` INT NOT NULL, PRIMARY KEY(id,date))";
             try (Statement stmt = getConnection().createStatement()) {
@@ -2111,15 +2122,17 @@ public class NationDB extends DBMainV2 {
             } catch (SQLException e) {
                 e.printStackTrace();
             }
-        };
+        }
+        ;
         executeStmt("CREATE INDEX IF NOT EXISTS index_mil_unit ON NATION_MIL_HISTORY (unit);");
         executeStmt("CREATE INDEX IF NOT EXISTS index_mil_amount ON NATION_MIL_HISTORY (amount);");
         executeStmt("CREATE INDEX IF NOT EXISTS index_mil_date ON NATION_MIL_HISTORY (date);");
         {
             executeStmt("CREATE TABLE IF NOT EXISTS `CITY_BUILDS` (`id` INT NOT NULL PRIMARY KEY, `nation` INT NOT NULL, `created` BIGINT NOT NULL, `infra` INT NOT NULL, `land` INT NOT NULL, `powered` BOOLEAN NOT NULL, `improvements` BLOB NOT NULL, `update_flag` BIGINT NOT NULL, nuke_date BIGINT NOT NULL)");
-            try (PreparedStatement stmt = getConnection().prepareStatement("ALTER TABLE CITY_BUILDS ADD COLUMN nuke_date BIGINT NOT NULL DEFAULT 0")){
+            try (PreparedStatement stmt = getConnection().prepareStatement("ALTER TABLE CITY_BUILDS ADD COLUMN nuke_date BIGINT NOT NULL DEFAULT 0")) {
                 stmt.executeUpdate();
-            } catch (SQLException ignore) {}
+            } catch (SQLException ignore) {
+            }
         }
 
         String kicks = "CREATE TABLE IF NOT EXISTS `KICKS` (`nation` INT NOT NULL, `alliance` INT NOT NULL, `date` BIGINT NOT NULL, `type` INT NOT NULL)";
@@ -2186,7 +2199,101 @@ public class NationDB extends DBMainV2 {
 
         executeStmt("CREATE TABLE IF NOT EXISTS TREASURES4 (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, color INT, continent INT, bonus INT NOT NULL, spawn_date BIGINT NOT NULL, nation_id INT NOT NULL, respawn_alert BIGINT NOT NULL)");
 
+        // banned_nations
+        //   nation_id: Int
+        //  reason: String
+        //  date: DateTimeAuto
+        //  days_left: Int
+        executeStmt("CREATE TABLE IF NOT EXISTS banned_nations (nation_id INT NOT NULL PRIMARY KEY, discord_id BIGINT NOT NULL, reason TEXT NOT NULL, date BIGINT NOT NULL, days_left INT NOT NULL)");
+        executeStmt("CREATE INDEX IF NOT EXISTS index_banned_nations_discord_id ON banned_nations (discord_id);");
+
         purgeOldBeigeReminders();
+
+        this.reportManager = new ReportManager(this);
+    }
+
+
+    public void addBans(List<DBBan> bans, Consumer<Event> eventConsumer) {
+        String query = "INSERT OR REPLACE INTO banned_nations (nation_id, discord_id, reason, date, days_left) VALUES (?, ?, ?, ?, ?)";
+        executeBatch(bans, query, (ThrowingBiConsumer<DBBan, PreparedStatement>) (ban, stmt) -> {
+            // use fields, not getters for ban
+            stmt.setInt(1, ban.nation_id);
+            stmt.setLong(2, ban.discord_id);
+            stmt.setString(3, ban.reason);
+            stmt.setLong(4, ban.date);
+            stmt.setInt(5, ban.days_left);
+        });
+
+        if (eventConsumer != null) {
+            for (DBBan ban : bans) {
+                eventConsumer.accept(new NationBanEvent(ban));
+            }
+        }
+    }
+
+    public List<DBBan> getBansForNation(int nationId) {
+        List<DBBan> results = new ObjectArrayList<>();
+        String select = "SELECT * FROM banned_nations WHERE nation_id = ?";
+        try (PreparedStatement stmt = getConnection().prepareStatement(select)) {
+            stmt.setInt(1, nationId);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                DBBan ban = new DBBan(rs);
+                results.add(ban);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return results;
+    }
+
+    public List<DBBan> getBansForUser(long discordId) {
+        List<DBBan> results = new ObjectArrayList<>();
+        DBNation nation = DiscordUtil.getNation(discordId);
+        String select = "SELECT * FROM banned_nations WHERE discord_id = ?";
+        if (nation != null) {
+            select += " OR nation_id = ?";
+        }
+        try (PreparedStatement stmt = getConnection().prepareStatement(select)) {
+            stmt.setLong(1, discordId);
+            if (nation != null) {
+                stmt.setInt(2, nation.getId());
+            }
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                DBBan ban = new DBBan(rs);
+                results.add(ban);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return results;
+    }
+
+    private long getLatestBanDate() {
+        String select = "SELECT MAX(date) FROM banned_nations";
+        try (PreparedStatement stmt = getConnection().prepareStatement(select)) {
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                return rs.getLong(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    public void updateBans(Consumer<Event> eventConsumer) throws SQLException {
+        // get latest date from bans
+        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
+        long latestBanDate = getLatestBanDate();
+        List<BannedNation> newBans = v3.getBansSince(latestBanDate);
+        List<DBBan> bans = new ArrayList<>();
+        for (BannedNation newBan : newBans) {
+            DBBan ban = new DBBan(newBan);
+            bans.add(ban);
+        }
+        addBans(bans, eventConsumer);
     }
 
     public void updateTreasures(Consumer<Event> eventConsumer) {

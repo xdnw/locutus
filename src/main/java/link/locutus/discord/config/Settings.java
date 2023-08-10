@@ -229,9 +229,6 @@ public class Settings extends Config {
         @Comment("Fetches the bounties (default 13 minutes)")
         public int TREASURE_UPDATE_SECONDS = 60 * 13;
 
-        @Comment("Fetches the treaties (default 6 minutes)")
-        public int TREATY_UPDATE_SECONDS = 60 * 6;
-
         @Comment("Fetches trades (default: 15 minutes)")
         public int COMPLETED_TRADES_SECONDS = 15 * 60;
 
