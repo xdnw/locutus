@@ -4,10 +4,12 @@ import com.politicsandwar.graphql.model.BBGame;
 import com.ptsmods.mysqlw.query.QueryCondition;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.db.entities.DBBan;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -43,6 +45,8 @@ public class MultiReport {
     private final Map<Integer, Integer> challengeGames = new LinkedHashMap<>();
     private final Map<Integer, Set<Transaction2>> illegalTransfers = new HashMap<>();
     private final Map<Integer, Set<Map.Entry<Transaction2, Transaction2>>> illegalIndirectTransfers = new HashMap<>();
+
+    private final Map<Integer, List<DBBan>> bansByNation = new HashMap<>();
 
     @Override
     public String toString() {
@@ -113,6 +117,19 @@ public class MultiReport {
                 response.append("shared wars: " + (simple ? "" : "\n"));
                 response.append(StringMan.getString(simpleList)).append("\n");
                 if (!simple) response.append('\n');
+            }
+
+            List<DBBan> bans = bansByNation.get(nationId);
+            if (bans != null && !bans.isEmpty()) {
+                for (DBBan ban : bans) {
+                    if (simple) {
+                        response.append(" BAN: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, ban.getTimeRemaining()) + "\n");
+                    } else {
+                        response.append("ban: " + ban.reason + " | " +
+                                "<@" + ban.discord_id + "> | " +
+                                "remaining:" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, ban.getTimeRemaining()) + "\n");
+                    }
+                }
             }
 
             Set<DBTrade> trades = illegalTradesByMulti.get(nationId);
@@ -209,6 +226,21 @@ public class MultiReport {
 
         diffMap = new HashMap<>();
 
+        Map<Long, List<DBBan>> userIdsChecked = new HashMap<>();
+        PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(nationId);
+        if (user != null) {
+            List<DBBan> bans = Locutus.imp().getNationDB().getBansForUser(user.getDiscordId());
+            if (!bans.isEmpty()) {
+                bansByNation.put(nationId, bans);
+            }
+            userIdsChecked.put(user.getDiscordId(), bans);
+        } else {
+            List<DBBan> bans = Locutus.imp().getNationDB().getBansForNation(nationId);
+            if (!bans.isEmpty()) {
+                bansByNation.put(nationId, bans);
+            }
+        }
+
         for (Integer multi : multis) {
             Map<BigInteger, List<Map.Entry<Long, Long>>> multiUuids = Locutus.imp().getDiscordDB().getUuids(multi);
 
@@ -243,6 +275,20 @@ public class MultiReport {
             }
             if (!myDiffMap.isEmpty()) {
                 diffMap.put(multi, myDiffMap);
+            }
+            PNWUser otherUser = Locutus.imp().getDiscordDB().getUserFromNationId(multi);
+            if (otherUser != null && !userIdsChecked.containsKey(otherUser.getDiscordId())) {
+                List<DBBan> bans = Locutus.imp().getNationDB().getBansForUser(otherUser.getDiscordId());
+                if (!bans.isEmpty()) {
+                    bansByNation.put(multi, bans);
+                }
+                userIdsChecked.put(otherUser.getDiscordId(), bans);
+            } else {
+                if (otherUser != null) {
+                    bansByNation.put(multi, userIdsChecked.get(otherUser.getDiscordId()));
+                }
+                List<DBBan> bans = Locutus.imp().getNationDB().getBansForNation(multi);
+                bansByNation.computeIfAbsent(multi, i -> new ArrayList<>()).addAll(bans);
             }
         }
 

@@ -6,6 +6,7 @@ import link.locutus.discord.pnw.PNWUser;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.concurrent.TimeUnit;
 
 public class DBBan {
     public int nation_id;
@@ -31,5 +32,11 @@ public class DBBan {
         this.reason = banQl.getReason();
         this.date = banQl.getDate().toEpochMilli();
         this.days_left = banQl.getDays_left() == null ? Integer.MAX_VALUE : banQl.getDays_left();
+    }
+
+    public long getTimeRemaining() {
+        long now = System.currentTimeMillis();
+        long expire = date + TimeUnit.DAYS.toMillis(days_left);
+        return Math.max(0, expire - now);
     }
 }
