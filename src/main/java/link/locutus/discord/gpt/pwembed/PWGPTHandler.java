@@ -353,7 +353,7 @@ public class PWGPTHandler {
     }
 
     public Set<EmbeddingSource> getSources(Guild guild, boolean allowRoot) {
-        return handler.getEmbeddings().getSources(guildId -> (allowRoot && guildId == 0) || guildId == guild.getIdLong(), src -> true);
+        return handler.getEmbeddings().getSources(guildId -> (allowRoot && (guildId == 0 || guildId == Settings.INSTANCE.ROOT_SERVER || guildId == Settings.INSTANCE.ROOT_COALITION_SERVER || guildId == Settings.INSTANCE.FORUM_FEED_SERVER)) || guildId == guild.getIdLong(), src -> true);
     }
 
     private void registerSettingEmbeddings() {
