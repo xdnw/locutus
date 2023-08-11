@@ -1814,6 +1814,9 @@ public class GrantCommands {
         // get a lock for nation
         final Object lock = OffshoreInstance.NATION_LOCKS.computeIfAbsent(receiver.getId(), f -> new Object());
         synchronized (lock) {
+            if (OffshoreInstance.FROZEN_ESCROW.containsKey(receiver.getId())) {
+                return "Cannot withdraw escrowed resources for " + receiver.getNation() + " because it is frozen. Please have an admin use " + CM.offshore.unlockTransfers.cmd.toSlashMention();
+            }
             Map.Entry<double[], Long> escrowedPair = db.getEscrowed(receiver);
             if (escrowedPair == null || ResourceType.isZero(escrowedPair.getKey())) {
                 return "No escrowed resources found for " + receiver.getNation();
@@ -1846,6 +1849,7 @@ public class GrantCommands {
                 double[] checkEscrowed = checkEscrowedPair == null ? ResourceType.getBuffer() : checkEscrowedPair.getKey();
                 for (ResourceType type : ResourceType.values) {
                     if (Math.round(checkEscrowed[type.ordinal()] * 100) != Math.round(newEscrowed[type.ordinal()] * 100)) {
+                        OffshoreInstance.FROZEN_ESCROW.put(receiver.getId(), true);
                         message.append("Failed to deduct escrowed resources for " + type.getName() + "=" + MathMan.format(checkEscrowed[type.ordinal()]) + " != " + MathMan.format(newEscrowed[type.ordinal()]));
                         message.append("\n");
                         // add amount deducted
@@ -1873,13 +1877,31 @@ public class GrantCommands {
                             result.getKey() + " -> " + result.getValue());
                     return message.toString();
                 }
+                default:
                 case TURN_CHANGE:
                 case OTHER: {
                     message.append("Failed to withdraw " + PnwUtil.resourcesToString(amtArr) + " from escrowed resources for " + receiver.getNation() + "\n" +
                             result.getKey() + " -> " + result.getValue());
                     return message.toString();
                 }
-                default: {
+                case BLOCKADE:
+                case MULTI:
+                case INSUFFICIENT_FUNDS:
+                case INVALID_DESTINATION:
+                case VACATION_MODE:
+                case NOTHING_WITHDRAWN:
+                case INVALID_API_KEY:
+                case ALLIANCE_ACCESS:
+                case APPLICANT:
+                case INACTIVE:
+                case BEIGE:
+                case GRAY:
+                case NOT_MEMBER:
+                case INVALID_NOTE:
+                case INVALID_TOKEN:
+                case GRANT_REQUIREMENT:
+                case AUTHORIZATION:
+                case CONFIRMATION: {
                     // add balance back
                     db.setEscrowed(receiver, escrowedPair.getKey(), escrowDate);
                     message.append("Failed to withdraw " + PnwUtil.resourcesToString(amtArr) + " from escrowed resources for " + receiver.getNation() + "\n" +
@@ -1890,7 +1912,6 @@ public class GrantCommands {
                 }
             }
         }
-
     }
 
     @WhitelistPermission
