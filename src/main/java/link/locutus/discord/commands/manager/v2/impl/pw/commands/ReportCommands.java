@@ -1,14 +1,20 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.ReportManager;
+import link.locutus.discord.db.entities.DBLoan;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.LoanManager;
 import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.User;
@@ -30,6 +36,7 @@ import static link.locutus.discord.util.discord.DiscordUtil.userUrl;
 
 public class ReportCommands {
     @Command(desc=  "Get a sheet of all the community reports for players")
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
     public String reportSheet(@Me IMessageIO io, @Me GuildDB db, ReportManager manager, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException, NoSuchFieldException, IllegalAccessException {
         List<ReportManager.Report> reports = manager.loadReports(null);
 
@@ -71,11 +78,168 @@ public class ReportCommands {
         }
         sheet.clearAll();
         sheet.set(0, 0);
-
         sheet.attach(io.create()).send();
         return null;
     }
 
+    @Command(desc = "Get all loan information banks and alliances have submitted")
+    @RolePermission(Roles.ECON_STAFF)
+    public String getLoanSheet(@Me IMessageIO io, @Me GuildDB db, LoanManager manager, @Default Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("l") Set<DBLoan.Status> loanStatus) throws GeneralSecurityException, IOException {
+        List<DBLoan> loans;
+        Set<Integer> nationIds = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
+        if (nations.size() >= 1000) {
+            loans = manager.getLoansByStatus(loanStatus); // get all loans and then filter
+            // remove if not
+             loans.removeIf(f -> !f.isAlliance && !nationIds.contains(f.nationOrAllianceId));
+            // get all loans and then filter
+        } else {
+            loans = manager.getLoansByNations(nationIds, loanStatus);
+        }
+
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKeys.LOANS_SHEET);
+        }
+
+//        public int loanId;
+//        public long loanerGuildOrAA;
+//        public int loanerNation;
+//        public int nationOrAllianceId;
+//        public boolean isAlliance;
+//        public double[] principal;
+//        public double[] remaining;
+//        public Status status;
+//        public long dueDate;
+//        public long loanDate;
+//        public long date_submitted;
+
+        List<String> header = Arrays.asList(
+                "Loan ID",
+                "Loaner Guild/AA",
+                "Loaner Nation",
+                "Receiver",
+                "Principal",
+                "Remaining",
+                "Status",
+                "Due Date",
+                "Loan Date",
+                "Date Submitted"
+        );
+
+        sheet.addRow(header);
+
+        // sort loans by status then date
+        loans.sort(Comparator.comparing(DBLoan::getStatus).thenComparing(DBLoan::getLoanDate));
+
+        for (DBLoan loan : loans) {
+            header.set(0, loan.loanId + "");
+            String loanerName = loan.loanerGuildOrAA > Integer.MAX_VALUE ? DiscordUtil.getGuildName(loan.loanerGuildOrAA) : PnwUtil.getName(loan.loanerGuildOrAA, true);
+            String loanerUrl = loan.loanerGuildOrAA > Integer.MAX_VALUE ? DiscordUtil.getGuildUrl(loan.loanerGuildOrAA) : PnwUtil.getAllianceUrl((int) loan.loanerGuildOrAA);
+            String loanerMarkup = sheetUrl(loanerName, loanerUrl);
+            header.set(1, loanerMarkup + "");
+            header.set(2, sheetUrl(PnwUtil.getName(loan.loanerNation, false), PnwUtil.getNationUrl(loan.loanerNation)) + "");
+            String name = PnwUtil.getName(loan.nationOrAllianceId, loan.isAlliance);
+            String url = loan.isAlliance ? PnwUtil.getAllianceUrl(loan.nationOrAllianceId) : PnwUtil.getNationUrl(loan.nationOrAllianceId);
+            String receiverMarkup = sheetUrl(name, url);
+            header.set(3, receiverMarkup + "");
+            header.set(4, PnwUtil.resourcesToString(loan.principal) + "");
+            header.set(5, PnwUtil.resourcesToString(loan.remaining) + "");
+            header.set(6, loan.status.name());
+            header.set(7, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(loan.dueDate)));
+            header.set(8, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(loan.loanDate)));
+            header.set(9, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(loan.date_submitted)));
+
+            sheet.addRow(header);
+        }
+
+        sheet.clearAll();
+        sheet.set(0, 0);
+        sheet.attach(io.create()).send();
+        return null;
+    }
+
+    @Command
+    public String importLoans(SpreadSheet sheet) {
+        List<List<Object>> rows = sheet.getValues();
+        if (rows.isEmpty()) {
+            return "No rows found: " + sheet.getURL();
+        }
+        List<Object> header = rows.get(0);
+        int receiverIndex = -1;
+        int principalIndex = -1;
+        int remainingIndex = -1;
+        int statusIndex = -1;
+        int dueDateIndex = -1;
+        int loanDateIndex = -1;
+
+        for (Object cell : header) {
+            if (cell == null) continue;
+            String cellString = cell.toString().toLowerCase();
+
+            switch (cellString) {
+                case "receiver":
+                    receiverIndex = header.indexOf(cell);
+                    break;
+                case "principal":
+                    principalIndex = header.indexOf(cell);
+                    break;
+                case "remaining":
+                    remainingIndex = header.indexOf(cell);
+                    break;
+                case "status":
+                    statusIndex = header.indexOf(cell);
+                    break;
+                case "due date":
+                    dueDateIndex = header.indexOf(cell);
+                    break;
+                case "date":
+                case "loan date":
+                    loanDateIndex = header.indexOf(cell);
+                    break;
+            }
+        }
+
+        if (receiverIndex == -1) {
+            return "`receiver` column not found on first row";
+        }
+        if (principalIndex == -1) {
+            return "`principal` column not found on first row";
+        }
+        if (remainingIndex == -1) {
+            return "`remaining` column not found on first row";
+        }
+        if (statusIndex == -1) {
+            return "`status` column not found on first row";
+        }
+        if (dueDateIndex == -1) {
+            return "`due date` column not found on first row";
+        }
+        if (loanDateIndex == -1) {
+            return "`loan date` column not found on first row";
+        }
+
+        List<DBLoan> loans = new ArrayList<>();
+        for (int row = 1; row < rows.size(); row++) {
+            List<Object> cells = rows.get(row);
+            if (cells.size() < 6) {
+                continue;
+            }
+            String receiverStr = cells.get(receiverIndex).toString();
+            String principalStr = cells.get(principalIndex).toString();
+            String remainingStr = cells.get(remainingIndex).toString();
+            String statusStr = cells.get(statusIndex).toString();
+            String dueDateStr = cells.get(dueDateIndex).toString();
+            String loanDateStr = cells.get(loanDateIndex).toString();
+
+            int receiverId;
+            boolean isRecieverAA = false;
+
+            Map<ResourceType, Double> principal = PnwUtil.parseResources(principalStr);
+            Map<ResourceType, Double> remaining = PnwUtil.parseResources(remainingStr);
+            DBLoan.Status status = DBLoan.Status.valueOf(statusStr.toUpperCase());
+            // parse google sheet date format
+//            long dueDate = TimeUtil.YYYY_MM_DD_HH_MM_SS;/
+        }
+        return "TODO: Not finished";
     // TODO
     // manage
     // vote
