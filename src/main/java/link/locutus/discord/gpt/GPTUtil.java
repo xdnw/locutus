@@ -35,7 +35,7 @@ public class GPTUtil {
     public static void checkThrowModeration(List<ModerationResult> moderations, String text) {
         for (ModerationResult result : moderations) {
             if (result.isFlagged()) {
-                String message = "Your submission has been flagged as inappropriate:\n" +
+                String message = "Your submission was flagged as inappropriate:\n" +
                         "```json\n" + result.toString() + "\n```\n" +
                         "The content submitted:\n" +
                         "```json\n" + text.replaceAll("```", "\\`\\`\\`") + "\n```";

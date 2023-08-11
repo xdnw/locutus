@@ -849,8 +849,7 @@ public class CM {
                     return createArgs("source", source, "force", force);
                 }
             }
-        }
-        public static class embedding{
+
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="list_documents")
             public static class list extends CommandRef {
                 public static final list cmd = new list();

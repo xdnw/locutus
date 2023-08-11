@@ -6,6 +6,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.IModerator;
 import link.locutus.discord.gpt.ModerationResult;
@@ -20,6 +21,8 @@ import net.dv8tion.jda.api.entities.User;
 import org.slf4j.Logger;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -228,6 +231,11 @@ public class SimpleGPTProvider extends GPTProvider {
         if (paused) {
             throw new IllegalStateException("Executor is paused, cannot submit new task." + getPauseStr());
         }
+        ByteBuffer moderatedBuf = nation.getMeta(NationMeta.GPT_MODERATED);
+        if (moderatedBuf != null) {
+            throw new IllegalStateException("No permission. Please open a ticket to appeal your automatic ban.\n" + new String(moderatedBuf.array(), StandardCharsets.ISO_8859_1) + ")");
+        }
+
         // check if task is running via userLocks
         synchronized (userLocks) {
             Object lock = userLocks.get(nation.getId());
@@ -241,7 +249,13 @@ public class SimpleGPTProvider extends GPTProvider {
             long start = System.currentTimeMillis();
 
             List<ModerationResult> modResult = moderator.moderate(input);
-            GPTUtil.checkThrowModeration(modResult, input);
+            try {
+                GPTUtil.checkThrowModeration(modResult, input);
+            } catch (IllegalArgumentException e) {
+                nation.setMeta(NationMeta.GPT_MODERATED, e.getMessage());
+                // Add user to deny list
+                throw e;
+            }
 
             System.out.println("Moderation: " + modResult);
             logger.info("GPT-{}: {} ({}) - {}", type, db.getId(), user.getName(), input);

@@ -200,6 +200,9 @@ public class GPTCommands {
             "Search finds nearest fact, or searches questions and returns corresponding answers if two columns.")
     @RolePermission(value = Roles.ADMIN)
     public String view_document(PWGPTHandler handler, @Me IMessageIO io, @Me GuildDB db, EmbeddingSource source, final @Switch("a") boolean getAnswers, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+        if (source == handler.getSource(EmbeddingType.User_Input)) {
+            return "Cannot view " + EmbeddingType.User_Input.name() + " source";
+        }
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKeys.ANSWER_SHEET);
         }
@@ -521,6 +524,30 @@ public class GPTCommands {
         );
     }
 
-
+    @Command(desc = "Remove a nation from the /chat commands deny list\n" +
+            "i.e. If they were automatically added for submitting inappropriate content")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String unban(@Me IMessageIO io, @Me JSONObject command, DBNation nation, @Switch("f") boolean force) {
+        ByteBuffer modReasonBuf = nation.getMeta(NationMeta.GPT_MODERATED);
+        if (modReasonBuf == null) {
+            return "Nation is not banned from chat tools";
+        }
+        if (!force) {
+            String modReason = new String(modReasonBuf.array(), StandardCharsets.ISO_8859_1);
+            String title = "Confirm unban: " + nation.getName();
+            StringBuilder body = new StringBuilder();
+            User user = nation.getUser();
+            if (user != null) {
+                // add mention
+                body.append(user.getAsMention() + " | ");
+            }
+            body.append(nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true)).append("\n");
+            body.append("Reason: ").append(modReason).append("\n");
+            io.create().confirmation(title, body.toString(), command).send();
+            return null;
+        }
+        nation.deleteMeta(NationMeta.GPT_MODERATED);
+        return "Unbanned " + nation.getName() + " from chat tools";
+    }
 
 }

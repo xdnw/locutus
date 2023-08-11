@@ -12,7 +12,6 @@ import link.locutus.discord.util.StringMan;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -21,6 +20,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class GPTText2Text implements IText2Text{
     private final OpenAiService service;
     private final ModelType model;
+
+    private OpenAiOptions defaultOptions = new OpenAiOptions();
 
     public GPTText2Text(String openAiKey, ModelType model) {
         this(new OpenAiService(openAiKey, Duration.ofSeconds(120)), model);
@@ -38,31 +39,31 @@ public class GPTText2Text implements IText2Text{
 
     @Override
     public String generate(Map<String, String> options, String text) {
-        setOptions(options);
+        OpenAiOptions optObj = options == null || options.isEmpty() ? defaultOptions : new OpenAiOptions().setOptions(this, options);
         ChatCompletionRequest.ChatCompletionRequestBuilder builder = ChatCompletionRequest.builder()
                 .messages(List.of(new ChatMessage("user", text)))
                 .model(this.model.getName());
 
-        if (temperature != null) {
-            builder = builder.temperature(temperature);
+        if (optObj.temperature != null) {
+            builder = builder.temperature(optObj.temperature);
         }
-        if (stopSequences != null) {
-            builder = builder.stop(Arrays.asList(stopSequences));
+        if (optObj.stopSequences != null) {
+            builder = builder.stop(Arrays.asList(optObj.stopSequences));
         }
-        if (topP != null) {
-            builder = builder.topP(topP);
+        if (optObj.topP != null) {
+            builder = builder.topP(optObj.topP);
         }
-        if (presencePenalty != null) {
-            builder = builder.presencePenalty(presencePenalty);
+        if (optObj.presencePenalty != null) {
+            builder = builder.presencePenalty(optObj.presencePenalty);
         }
-        if (frequencyPenalty != null) {
-            builder = builder.frequencyPenalty(frequencyPenalty);
+        if (optObj.frequencyPenalty != null) {
+            builder = builder.frequencyPenalty(optObj.frequencyPenalty);
         }
-        if (maxTokens != null) {
-            builder.maxTokens(maxTokens);
+        if (optObj.maxTokens != null) {
+            builder.maxTokens(optObj.maxTokens);
         }
 
-        builder = builder.temperature(temperature);
+        builder = builder.temperature(optObj.temperature);
 
 
         ChatCompletionRequest completionRequest = builder.build();
@@ -90,53 +91,56 @@ public class GPTText2Text implements IText2Text{
         );
     }
 
-    private Double temperature = 0.7;
-    private String[] stopSequences = null;
-    private Double topP = null;
-    private Double presencePenalty = null;
-    private Double frequencyPenalty = null;
-    private Integer maxTokens = null;
+    private static class OpenAiOptions {
+        public Double temperature = 0.7;
+        public String[] stopSequences = null;
+        public Double topP = null;
+        public Double presencePenalty = null;
+        public Double frequencyPenalty = null;
+        public Integer maxTokens = null;
 
-    public void setOptions(Map<String, String> options) {
-        // reset options
-        temperature = 0.7;
-        stopSequences = null;
-        topP = null;
-        presencePenalty = null;
-        frequencyPenalty = null;
-        maxTokens = null;
+        public OpenAiOptions setOptions(GPTText2Text parent, Map<String, String> options) {
+            // reset options
+            temperature = 0.7;
+            stopSequences = null;
+            topP = null;
+            presencePenalty = null;
+            frequencyPenalty = null;
+            maxTokens = null;
 
-        if (options != null) {
-            for (Map.Entry<String, String> entry : options.entrySet()) {
-                switch (entry.getKey().toLowerCase()) {
-                    case "temperature":
-                        temperature = Double.parseDouble(entry.getValue());
-                        checkArgument(temperature >= 0 && temperature <= 2, "Temperature must be between 0 and 2");
-                        break;
-                    case "stop_sequences":
-                        stopSequences = entry.getValue().replace("\\n", "\n").split(",");
-                        checkArgument(stopSequences.length > 0 && stopSequences.length <= 4, "stop_sequences must be between 1 and 4 sequences, separated by commas");
-                        break;
-                    case "top_p":
-                        topP = Double.parseDouble(entry.getValue());
-                        checkArgument(topP >= 0 && topP <= 1, "top_p must be between 0 and 1");
-                        break;
-                    case "presence_penalty":
-                        presencePenalty = Double.parseDouble(entry.getValue());
-                        checkArgument(presencePenalty >= -2 && presencePenalty <= 2, "presence_penalty must be between -2 and 2");
-                        break;
-                    case "frequency_penalty":
-                        frequencyPenalty = Double.parseDouble(entry.getValue());
-                        checkArgument(frequencyPenalty >= -2 && frequencyPenalty <= 2, "frequency_penalty must be between -2 and 2");
-                        break;
-                    case "max_tokens":
-                        maxTokens = Integer.parseInt(entry.getValue());
-                        checkArgument(maxTokens >= 1 && maxTokens <= getSizeCap(), "max_tokens must be between 1 and " + getSizeCap());
-                        break;
-                    default:
-                        throw new IllegalArgumentException("Unknown option: " + entry.getKey() + ". Valid options are: " + StringMan.getString(getOptions()));
+            if (options != null) {
+                for (Map.Entry<String, String> entry : options.entrySet()) {
+                    switch (entry.getKey().toLowerCase()) {
+                        case "temperature":
+                            temperature = Double.parseDouble(entry.getValue());
+                            checkArgument(temperature >= 0 && temperature <= 2, "Temperature must be between 0 and 2");
+                            break;
+                        case "stop_sequences":
+                            stopSequences = entry.getValue().replace("\\n", "\n").split(",");
+                            checkArgument(stopSequences.length > 0 && stopSequences.length <= 4, "stop_sequences must be between 1 and 4 sequences, separated by commas");
+                            break;
+                        case "top_p":
+                            topP = Double.parseDouble(entry.getValue());
+                            checkArgument(topP >= 0 && topP <= 1, "top_p must be between 0 and 1");
+                            break;
+                        case "presence_penalty":
+                            presencePenalty = Double.parseDouble(entry.getValue());
+                            checkArgument(presencePenalty >= -2 && presencePenalty <= 2, "presence_penalty must be between -2 and 2");
+                            break;
+                        case "frequency_penalty":
+                            frequencyPenalty = Double.parseDouble(entry.getValue());
+                            checkArgument(frequencyPenalty >= -2 && frequencyPenalty <= 2, "frequency_penalty must be between -2 and 2");
+                            break;
+                        case "max_tokens":
+                            maxTokens = Integer.parseInt(entry.getValue());
+                            checkArgument(maxTokens >= 1 && maxTokens <= parent.getSizeCap(), "max_tokens must be between 1 and " + parent.getSizeCap());
+                            break;
+                        default:
+                            throw new IllegalArgumentException("Unknown option: " + entry.getKey() + ". Valid options are: " + StringMan.getString(parent.getOptions()));
+                    }
                 }
             }
+            return this;
         }
     }
 
