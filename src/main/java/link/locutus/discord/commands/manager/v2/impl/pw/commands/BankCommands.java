@@ -2843,13 +2843,20 @@ public class BankCommands {
             "Accounts are automatically locked if there is an error accessing the api, a game captcha, or if an admin of the account is banned in-game\n" +
             "Only locks from game bans persist across restarts")
     @RolePermission(value = Roles.ADMIN)
-    public String unlockTransfers(@Me GuildDB db, NationOrAllianceOrGuild alliance) {
+    public String unlockTransfers(@Me GuildDB db, NationOrAllianceOrGuild nationOrAllianceOrGuild) {
+        NationOrAllianceOrGuild alliance = nationOrAllianceOrGuild;
         if (alliance.isNation()) {
             return "You can only unlock transfers for an alliance or guild";
         }
         OffshoreInstance offshore = db.getOffshore();
         if (offshore == null) return "No offshore is set";
-        if (!alliance.isNation() && offshore.getGuildDB() != db) return "Please run in the offshore server";
+        if (!alliance.isNation() && offshore.getGuildDB() != db) {
+            if (!OffshoreInstance.FROZEN_ESCROW.containsKey(alliance.getId())) {
+                return "The nation: " + alliance.getUrl() + " is not frozen";
+            }
+            OffshoreInstance.FROZEN_ESCROW.remove(alliance.getId());
+            return "Removed the frozen escrow for " + alliance.getUrl();
+        }
         Set<Long> coalition = offshore.getGuildDB().getCoalitionRaw(Coalition.FROZEN_FUNDS);
         if (alliance.isAlliance()) {
             if (coalition.contains((long) alliance.getAlliance_id())) return "Please use `!removecoalition FROZEN_FUNDS " +  alliance.getAlliance_id() + "`";
