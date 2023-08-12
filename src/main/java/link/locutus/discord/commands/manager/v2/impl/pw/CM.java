@@ -913,8 +913,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="save_embeddings")
             public static class save extends CommandRef {
                 public static final save cmd = new save();
-                public save create(String sheet, String document_description, String force) {
-                    return createArgs("sheet", sheet, "document_description", document_description, "force", force);
+                public save create(String sheet, String document_name, String force) {
+                    return createArgs("sheet", sheet, "document_name", document_name, "force", force);
                 }
             }
         }

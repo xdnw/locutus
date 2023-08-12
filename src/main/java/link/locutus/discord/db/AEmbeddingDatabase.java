@@ -9,6 +9,8 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
+import link.locutus.discord.gpt.imps.ConvertingDocument;
+import link.locutus.discord.gpt.imps.DocumentChunk;
 import link.locutus.discord.gpt.imps.EmbeddingInfo;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -196,6 +198,54 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
         ctx().execute("CREATE TABLE IF NOT EXISTS sources (source_id INTEGER PRIMARY KEY AUTOINCREMENT, source_name VARCHAR NOT NULL, date_added BIGINT NOT NULL, guild_id BIGINT NOT NULL)");
     }
 
+    private void createDocumentQueueTable() {
+        // document_queue: source_id int, prompt string, converted bool, use_global_context bool, gpt_provider: int, user: long, error: string, date: long
+        ctx().execute("CREATE TABLE IF NOT EXISTS document_queue (" +
+                "source_id INTEGER NOT NULL, " +
+                "prompt VARCHAR NOT NULL, " +
+                "converted BOOLEAN NOT NULL, " +
+                "use_global_context BOOLEAN NOT NULL, " +
+                "provider_type INTEGER NOT NULL, " +
+                "user BIGINT NOT NULL, " +
+                "error VARCHAR, " +
+                "date BIGINT NOT NULL, PRIMARY KEY (source_id))");
+    }
+
+    private void createChunksTable() {
+        // document_chunks: source_id int, chunk_index int, converted: bool, text: string, primary key (source_id, chunk_index)
+        ctx().execute("CREATE TABLE IF NOT EXISTS document_chunks (" +
+                "source_id INTEGER NOT NULL, " +
+                "chunk_index INTEGER NOT NULL, " +
+                "converted BOOLEAN NOT NULL, " +
+                "text VARCHAR NOT NULL, PRIMARY KEY (source_id, chunk_index))");
+    }
+
+    public List<ConvertingDocument> getUnconvertedDocuments() {
+        return ctx().selectFrom("document_queue").where("converted = ?", false).fetchInto(ConvertingDocument.class);
+    }
+
+    public void addConvertingDocument(List<ConvertingDocument> documents) {
+        ctx().transaction(() -> {
+            for (ConvertingDocument document : documents) {
+                ctx().execute("INSERT OR REPLACE INTO document_queue (source_id, prompt, converted, use_global_context, provider_type, user, error, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                        document.source_id, document.prompt, document.converted, document.use_global_context, document.provider_type, document.user, document.error, document.date);
+            }
+        });
+    }
+
+    public void addChunks(List<DocumentChunk> chunks) {
+            ctx().transaction(() -> {
+            for (DocumentChunk chunk : chunks) {
+                ctx().execute("INSERT OR REPLACE INTO document_chunks (source_id, chunk_index, converted, text) VALUES (?, ?, ?, ?)",
+                        chunk.source_id, chunk.chunk_index, chunk.converted, chunk.text);
+            }
+        });
+    }
+
+    public List<DocumentChunk> getChunks(int source_id) {
+        return ctx().selectFrom("document_chunks").where("source_id = ?", source_id).fetchInto(DocumentChunk.class);
+    }
+
     @Override
     public Map<Long, Set<EmbeddingSource>> getEmbeddingSources() {
         return embeddingSourcesByGuild;
@@ -293,6 +343,10 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
         createVectorSourcesTable();
 //        sources: long source_id, String source_name, long date_added, long guild_id
         createSourcesTable();
+        // document_queue: source_id, prompt, converted, use_global_context, gpt_provider, user, error, date
+        createDocumentQueueTable();
+        // document_chunks: source_id, chunk_index, converted, text
+        createChunksTable();
     }
 
     public void loadExpandedTextMeta() {

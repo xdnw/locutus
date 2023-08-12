@@ -23,6 +23,8 @@ import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.gpt.IEmbeddingDatabase;
+import link.locutus.discord.gpt.imps.ConvertingDocument;
 import link.locutus.discord.gpt.imps.EmbeddingInfo;
 import link.locutus.discord.gpt.imps.EmbeddingType;
 import link.locutus.discord.gpt.GptHandler;
@@ -59,6 +61,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiPredicate;
+import java.util.stream.Collectors;
 
 public class PWGPTHandler {
 
@@ -488,8 +491,17 @@ public class PWGPTHandler {
         return result;
     }
 
+    public void initDocumentConversion() {
+        IEmbeddingDatabase embeddings = getHandler().getEmbeddings();
+        List<ConvertingDocument> documents = embeddings.getUnconvertedDocuments();
+
+        // add these documents to the queue
+
+        // while free, submit
+    }
+
     public List<String> convertDocument(String markdown, String documentDescription) {
-        throw new UnsupportedOperationException("Not implemented");
+
     }
 
     public Set<ProviderType> getProviderTypes(DBNation nation) {
@@ -535,5 +547,80 @@ public class PWGPTHandler {
             }
         }
         throw new IllegalArgumentException("No providers available. Errors:\n- " + String.join("\n- ", noPermsMessages) + "\n\nSee " +  CM.chat.providers.list.cmd.toSlashMention() + " and " + CM.chat.providers.set.cmd.toSlashMention());
+    }
+
+    public Set<EmbeddingSource> setSources(DBNation nation,
+                                           Guild guild,
+                                           Set<EmbeddingType> excludeTypes,
+                                           Set<String> includeWikiCategories,
+                                           Set<String> excludeWikiCategories,
+                                           Set<EmbeddingSource> excludeSources,
+                                           Set<EmbeddingSource> addSources) {
+        if (excludeSources != null && addSources != null) {
+            throw new IllegalArgumentException("Cannot exclude and add sources at the same time. Please use only one of the two arguments.");
+        }
+        Map<String, List<String>> configurationMap = new HashMap<>();
+        if (excludeTypes != null && !excludeTypes.isEmpty()) {
+            configurationMap.put("types", excludeTypes.stream().map(Enum::name).collect(Collectors.toList()));
+        }
+        if (includeWikiCategories != null && !includeWikiCategories.isEmpty()) {
+            configurationMap.put("allow_wiki", new ArrayList<>(includeWikiCategories));
+        }
+        if (excludeWikiCategories != null && !excludeWikiCategories.isEmpty()) {
+            configurationMap.put("deny_wiki", new ArrayList<>(excludeWikiCategories));
+        }
+        if (excludeSources != null && !excludeSources.isEmpty()) {
+            configurationMap.put("deny_sources", excludeSources.stream().map(f -> f.source_id + "").collect(Collectors.toList()));
+        }
+        if (addSources != null && !addSources.isEmpty()) {
+            configurationMap.put("allow_sources", addSources.stream().map(f -> f.source_id + "").collect(Collectors.toList()));
+        }
+
+        // to json
+        String json = new Gson().toJson(configurationMap);
+        nation.setMeta(NationMeta.GPT_SOURCES, json);
+
+        Set<Integer> excludeSourceIds = excludeSources == null ? null : excludeSources.stream().map(f -> f.source_id).collect(Collectors.toSet());
+        Set<Integer> addSourceIds = addSources == null ? null : addSources.stream().map(f -> f.source_id).collect(Collectors.toSet());
+        return getSources(guild, true, excludeTypes, includeWikiCategories, excludeWikiCategories, excludeSourceIds, addSourceIds);
+    }
+
+    public Set<EmbeddingSource> getSelectedSources(Guild guild, DBNation nation, boolean allowRoot) {
+        ByteBuffer jsonBuffer = nation.getMeta(NationMeta.GPT_SOURCES);
+        if (jsonBuffer == null) {
+            return getSources(guild, allowRoot);
+        }
+        Map<String, List<String>> configuration = new Gson().fromJson(new String(jsonBuffer.array()), new TypeToken<Map<String, List<String>>>(){}.getType());
+        Set<EmbeddingType> excludeTypes = configuration.containsKey("types") ? configuration.get("types").stream().map(EmbeddingType::valueOf).collect(Collectors.toSet()) : null;
+        Set<String> includeWikiCategories = configuration.containsKey("allow_wiki") ? new HashSet<>(configuration.get("allow_wiki")) : null;
+        Set<String> excludeWikiCategories = configuration.containsKey("deny_wiki") ? new HashSet<>(configuration.get("deny_wiki")) : null;
+        Set<Integer> excludeSources = configuration.containsKey("deny_sources") ? configuration.get("deny_sources").stream().map(Integer::parseInt).collect(Collectors.toSet()) : null;
+        Set<Integer> addSources = configuration.containsKey("allow_sources") ? configuration.get("allow_sources").stream().map(Integer::parseInt).collect(Collectors.toSet()) : null;
+
+        return getSources(guild, allowRoot, excludeTypes, includeWikiCategories, excludeWikiCategories, excludeSources, addSources);
+    }
+
+    public Set<EmbeddingSource> getSources(Guild guild, boolean allowRoot,
+                                           Set<EmbeddingType> excludeTypes,
+                                           Set<String> includeWikiCategories,
+                                           Set<String> excludeWikiCategories,
+                                           Set<Integer> excludeSources,
+                                           Set<Integer> addSources) {
+        Set<EmbeddingSource> sources = new HashSet<>();
+        for (EmbeddingSource source : getSources(guild, allowRoot)) {
+            EmbeddingType type = sourceMap.inverse().get(source);
+            if (excludeTypes != null && excludeTypes.contains(type)) {
+                continue;
+            }
+            if (excludeSources != null && excludeSources.contains(source)) {
+                continue;
+            }
+            if (addSources != null && !addSources.contains(source)) {
+                continue;
+            }
+            sources.add(source);
+        }
+
+        return sources;
     }
 }

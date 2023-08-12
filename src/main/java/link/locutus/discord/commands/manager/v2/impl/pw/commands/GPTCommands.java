@@ -13,6 +13,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.WikiCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -25,6 +26,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.EmbeddingSource;
@@ -49,6 +51,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -83,7 +86,6 @@ public class GPTCommands {
             "Users have the option to check the progress of the conversion using a command.")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS, root = true)
     public synchronized String generate_factsheet(PWGPTHandler gpt, @Me GuildDB db, @Me IMessageIO io, @Me JSONObject command, String googleDocumentUrl, String document_description, @Switch("s") SpreadSheet sheet, @Switch("f") boolean confirm) throws GeneralSecurityException, IOException {
-        // to markdown
         String baseUrl = "https://docs.google.com/document/d/";
         if (!googleDocumentUrl.startsWith(baseUrl)) {
             return "Invalid Google Document URL. Expecting `https://docs.google.com/document/d/...`, received: `" + googleDocumentUrl + "`";
@@ -152,7 +154,7 @@ public class GPTCommands {
         if (sources.isEmpty()) {
             if (!listRoot) {
                 io.create().embed("No sources found", "Try `listRoot` to see the default sources")
-                        .commandButton(CommandBehavior.DELETE_MESSAGE, CM.chat.embedding.list.cmd.create(Boolean.TRUE + ""), "List Root")
+                        .commandButton(CommandBehavior.DELETE_MESSAGE, CM.chat.dataset.list.cmd.create(Boolean.TRUE + ""), "List Root")
                         .send();
                 return null;
             }
@@ -167,7 +169,7 @@ public class GPTCommands {
             String dateStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - source.date_added);
             result.append(" (added " + dateStr + " ago)\n");
         }
-        result.append("\nSee also: " + CM.chat.embedding.view.cmd.toSlashMention());
+        result.append("\nSee also: " + CM.chat.dataset.view.cmd.toSlashMention());
 
         return result.toString();
     }
@@ -177,10 +179,9 @@ public class GPTCommands {
     @RolePermission(value = Roles.ADMIN)
     public String delete_document(PWGPTHandler gpt, @Me GuildDB db, @Me IMessageIO io, @Me JSONObject command, EmbeddingSource source, @Switch("f") boolean force) {
         if (source.guild_id != db.getIdLong()) {
-            throw new IllegalArgumentException("Document `" + source.source_name + "` is not owned by this guild");
+            throw new IllegalArgumentException("Document `" + source.source_name + "` is owned another guild: `" + DiscordUtil.getGuildName(source.guild_id) + "`");
         }
 
-        // confirm overwrite
         if (!force) {
             String title = "Delete document?";
             StringBuilder body = new StringBuilder();
@@ -248,14 +249,22 @@ public class GPTCommands {
             "Requires two columns labeled \"fact\" or \"question\" and \"answer\" for vectors.\n" +
             "Search finds nearest fact, or searches questions and returns corresponding answers if two columns.")
     @RolePermission(value = Roles.ADMIN)
-    public String save_embeddings(PWGPTHandler gpt, @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, SpreadSheet sheet, String document_description, @Switch("f") boolean force) {
-        document_description = document_description.replaceAll("[^a-z0-9_ ]", "").toLowerCase(Locale.ROOT).trim();
-        if (document_description.isEmpty()) {
+    public String save_embeddings(PWGPTHandler gpt, @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, SpreadSheet sheet, String document_name, @Switch("f") boolean force) {
+        String originalName = document_name;
+        document_name = document_name.replaceAll("[^a-z0-9_ ]", "").toLowerCase(Locale.ROOT).trim();
+        if (!document_name.equalsIgnoreCase(originalName) || document_name.length() < 1) {
             throw new IllegalArgumentException("Name must be at least 1 character long and alphanumerical");
         }
 
-        EmbeddingSource source = gpt.getHandler().getEmbeddings().getSource(document_description, db.getIdLong());
+        EmbeddingSource source = gpt.getHandler().getEmbeddings().getSource(document_name, db.getIdLong());
+        if (source == null) {
+            source = gpt.getHandler().getEmbeddings().getSource(document_name, 0);
+            throw new IllegalArgumentException("Document `" + document_name + "` already exists and is a default source. It cannot be overwritten.");
+        }
         if (source != null) {
+            if (source.guild_id != db.getIdLong()) {
+                throw new IllegalArgumentException("Document `" + source.source_name + "` already exists and is owned by another guild: " + DiscordUtil.getGuildName(source.guild_id) + " (this guild: " + db.getGuild() + ")");
+            }
             // confirm overwrite
             if (!force) {
                 String title = "Overwrite existing document?";
@@ -297,12 +306,12 @@ public class GPTCommands {
         }
 
         if (source == null) {
-            source = gpt.getHandler().getEmbeddings().getOrCreateSource(document_description, db.getIdLong());
+            source = gpt.getHandler().getEmbeddings().getOrCreateSource(document_name, db.getIdLong());
         }
 
         List<Long> embeddings = gpt.getHandler().registerEmbeddings(source, descriptions, fullTexts, true, true);
 
-        return "Registered " + embeddings.size() + " embeddings for `" + document_description + "` See: " + CM.chat.embedding.view.cmd.toSlashMention() + " and " + CM.chat.embedding.list.cmd.toSlashMention();
+        return "Registered " + embeddings.size() + " embeddings for `" + document_name + "` See: " + CM.chat.dataset.view.cmd.toSlashMention() + " and " + CM.chat.dataset.list.cmd.toSlashMention();
     }
 
     @Command(desc = "List available chat providers, and their information.\n" +
@@ -548,6 +557,28 @@ public class GPTCommands {
         }
         nation.deleteMeta(NationMeta.GPT_MODERATED);
         return "Unbanned " + nation.getName() + " from chat tools";
+    }
+
+    @Command(desc = "Set the data sources you want to use to generate natural language responses for chat queries")
+    public String embeddingSelect(@Me IMessageIO io, @Me DBNation nation, @Me Guild guild, @Me GuildDB db, @Me User author,
+                                  PWGPTHandler pwGpt,
+                                  Set<EmbeddingType> excludeTypes,
+                                  @Switch("w") @WikiCategory Set<String> includeWikiCategories,
+                                  @Switch("n") @WikiCategory Set<String> excludeWikiCategories,
+                                  @Switch("e") Set<EmbeddingSource> excludeSources,
+                                  @Switch("a") Set<EmbeddingSource> addSources) {
+
+        Set<EmbeddingSource> selected = pwGpt.setSources(nation, guild, excludeTypes, includeWikiCategories, excludeWikiCategories, excludeSources, addSources);
+
+        StringBuilder body = new StringBuilder();
+        body.append("Selected `" + selected.size() + "` sources:\n");
+        for (EmbeddingSource source : selected) {
+            body.append("- " + source.getQualifiedName() + ": (id=" + source.source_id + ")\n");
+        }
+
+        body.append("\nFor a list of all sources: " + CM.chat.dataset.list.cmd.toSlashMention());
+
+        return body.toString();
     }
 
 }

@@ -5,6 +5,8 @@ import com.theokanning.openai.embedding.EmbeddingRequest;
 import com.theokanning.openai.embedding.EmbeddingResult;
 import link.locutus.discord.db.AEmbeddingDatabase;
 import link.locutus.discord.db.entities.EmbeddingSource;
+import link.locutus.discord.gpt.imps.ConvertingDocument;
+import link.locutus.discord.gpt.imps.DocumentChunk;
 import link.locutus.discord.gpt.imps.EmbeddingInfo;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
@@ -39,4 +41,8 @@ public interface IEmbeddingDatabase {
     List<EmbeddingInfo> getClosest(EmbeddingSource inputSource, String input, int top, Set<EmbeddingSource> allowedTypes, BiPredicate<EmbeddingSource, Long> sourceHashPredicate, ThrowingConsumer<String> moderate);
     int countVectors(EmbeddingSource existing);
     void deleteSource(EmbeddingSource source);
+    public List<ConvertingDocument> getUnconvertedDocuments();
+    public void addConvertingDocument(List<ConvertingDocument> documents);
+    public void addChunks(List<DocumentChunk> chunks);
+    public List<DocumentChunk> getChunks(int source_id);
 }
