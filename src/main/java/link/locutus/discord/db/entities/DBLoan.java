@@ -13,11 +13,38 @@ public class DBLoan {
     public int nationOrAllianceId;
     public boolean isAlliance;
     public double[] principal;
+    public double[] paid;
     public double[] remaining;
     public Status status;
     public long dueDate;
     public long loanDate;
     public long date_submitted;
+
+    public DBLoan(
+            long loanerGuildOrAA,
+            int loanerNation,
+            int nationOrAllianceId,
+            boolean isAlliance,
+            double[] principal,
+            double[] paid,
+            double[] remaining,
+            Status status,
+            long dueDate,
+            long loanDate,
+            long date_submitted
+    ) {
+        this.loanerGuildOrAA = loanerGuildOrAA;
+        this.loanerNation = loanerNation;
+        this.nationOrAllianceId = nationOrAllianceId;
+        this.isAlliance = isAlliance;
+        this.principal = principal;
+        this.paid = paid;
+        this.remaining = remaining;
+        this.status = status;
+        this.dueDate = dueDate;
+        this.loanDate = loanDate;
+        this.date_submitted = date_submitted;
+    }
 
     // constructor
     public DBLoan(ResultSet rs) throws SQLException {
@@ -33,6 +60,7 @@ public class DBLoan {
             this.nationOrAllianceId = (int) id;
         }
         this.principal = ArrayUtil.toDoubleArray(rs.getBytes("principal"));
+        this.principal = ArrayUtil.toDoubleArray(rs.getBytes("paid"));
         this.remaining = ArrayUtil.toDoubleArray(rs.getBytes("remaining"));
         this.status = Status.values()[rs.getInt("status")];
         this.dueDate = rs.getLong("due_date");

@@ -45,11 +45,16 @@ public class ReportManager {
     public enum ReportType {
         MULTI,
         REROLL,
-        STEALING,
-        DEFAULT,
+        FRAUD,
+        BANK_DEFAULT,
+        COUPING,
+        THREATS_COERCION,
         LEAKING,
-        BEHAVIOR,
-        FA_BLUNDER
+        DEFAMATION,
+        SPAMMING,
+        IMPERSONATING,
+        PHISHING,
+        BEHAVIOR_OOC,
 
     }
 
@@ -68,6 +73,32 @@ public class ReportManager {
         public String forumUrl;
         public String newsUrl;
         public long date;
+
+        public Report(int nationId,
+                      long discordId,
+                        ReportType reportType,
+                        int reporterNationId,
+                        long reporterDiscordId,
+                        int reporterAllianceId,
+                        long reporterGuildId,
+                        String reportMessage,
+                        String imageUrl,
+                        String forumUrl,
+                        String newsUrl,
+                        long date) {
+            this.nationId = nationId;
+            this.discordId = discordId;
+            this.reportType = reportType;
+            this.reporterNationId = reporterNationId;
+            this.reporterDiscordId = reporterDiscordId;
+            this.reporterAllianceId = reporterAllianceId;
+            this.reporterGuildId = reporterGuildId;
+            this.reportMessage = reportMessage;
+            this.imageUrl = imageUrl;
+            this.forumUrl = forumUrl;
+            this.newsUrl = newsUrl;
+            this.date = date;
+        }
 
         public Report(ReportHeader header, List<Object> row) {
             reportId = Integer.parseInt(row.get(header.report_id).toString());

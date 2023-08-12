@@ -18,14 +18,17 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.User;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.util.MarkupUtil.sheetUrl;
+import static link.locutus.discord.util.PnwUtil.add;
 import static link.locutus.discord.util.PnwUtil.getAllianceUrl;
 import static link.locutus.discord.util.PnwUtil.getName;
 import static link.locutus.discord.util.PnwUtil.getNationUrl;
@@ -82,6 +85,48 @@ public class ReportCommands {
         return null;
     }
 
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String importLegacyBlacklist(SpreadSheet sheet) {
+        List<List<Object>> rows = sheet.getValues();
+        List<Object> header = rows.get(0);
+
+        int discordIndex = header.indexOf("Discord ID");
+        int nationIdIndex = header.indexOf("Nation ID");
+        int reasonIndex = header.indexOf("Reason");
+
+        /*
+        public int nationId;
+        public long discordId;
+        public ReportType reportType;
+        public int reporterNationId;
+        public long reporterDiscordId;
+        public int reporterAllianceId;
+        public long reporterGuildId;
+        public String reportMessage;
+        public String imageUrl;
+        public String forumUrl;
+        public String newsUrl;
+        public long date;
+         */
+
+
+        List<ReportManager.Report> reports = new ArrayList<>();
+        // iterate rows
+
+        Report report = new ReportManager.Report(
+
+
+        );
+
+        // ignore reports already exists
+
+        // add
+
+        // return done, say to view reports
+
+    }
+
     @Command(desc = "Get all loan information banks and alliances have submitted")
     @RolePermission(Roles.ECON_STAFF)
     public String getLoanSheet(@Me IMessageIO io, @Me GuildDB db, LoanManager manager, @Default Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("l") Set<DBLoan.Status> loanStatus) throws GeneralSecurityException, IOException {
@@ -100,24 +145,13 @@ public class ReportCommands {
             sheet = SpreadSheet.create(db, SheetKeys.LOANS_SHEET);
         }
 
-//        public int loanId;
-//        public long loanerGuildOrAA;
-//        public int loanerNation;
-//        public int nationOrAllianceId;
-//        public boolean isAlliance;
-//        public double[] principal;
-//        public double[] remaining;
-//        public Status status;
-//        public long dueDate;
-//        public long loanDate;
-//        public long date_submitted;
-
         List<String> header = Arrays.asList(
                 "Loan ID",
                 "Loaner Guild/AA",
                 "Loaner Nation",
                 "Receiver",
                 "Principal",
+                "Paid",
                 "Remaining",
                 "Status",
                 "Due Date",
@@ -142,6 +176,7 @@ public class ReportCommands {
             String receiverMarkup = sheetUrl(name, url);
             header.set(3, receiverMarkup + "");
             header.set(4, PnwUtil.resourcesToString(loan.principal) + "");
+            header.set(4, PnwUtil.resourcesToString(loan.paid) + "");
             header.set(5, PnwUtil.resourcesToString(loan.remaining) + "");
             header.set(6, loan.status.name());
             header.set(7, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(loan.dueDate)));
@@ -157,8 +192,11 @@ public class ReportCommands {
         return null;
     }
 
-    @Command
-    public String importLoans(SpreadSheet sheet) {
+
+
+    @Command(desc = "Import loans from a spreadsheet")
+    @RolePermission(Roles.ECON_STAFF)
+    public String importLoans(LoanManager loanManager, @Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, SpreadSheet sheet, @Default DBLoan.Status defaultStatus, @Switch("o") boolean overwriteLoans, @Switch("m") boolean overwriteSameNation, @Switch("a") boolean addLoans) throws ParseException {
         List<List<Object>> rows = sheet.getValues();
         if (rows.isEmpty()) {
             return "No rows found: " + sheet.getURL();
@@ -170,18 +208,23 @@ public class ReportCommands {
         int statusIndex = -1;
         int dueDateIndex = -1;
         int loanDateIndex = -1;
+        int InterestIndex = -1;
+        int paidIndex = -1;
 
         for (Object cell : header) {
             if (cell == null) continue;
             String cellString = cell.toString().toLowerCase();
 
             switch (cellString) {
+                case "nation":
                 case "receiver":
                     receiverIndex = header.indexOf(cell);
                     break;
+                case "loan amount":
                 case "principal":
                     principalIndex = header.indexOf(cell);
                     break;
+                case "amount remaining":
                 case "remaining":
                     remainingIndex = header.indexOf(cell);
                     break;
@@ -195,27 +238,47 @@ public class ReportCommands {
                 case "loan date":
                     loanDateIndex = header.indexOf(cell);
                     break;
+                case "paid":
+                    paidIndex = header.indexOf(cell);
+                    break;
+                case "interest":
+                    InterestIndex = header.indexOf(cell);
+                    break;
             }
         }
 
+        long loanerGuildOrAA = db.getIdLong();
+        if (db.isAlliance()) {
+            loanerGuildOrAA = db.getAllianceIds().iterator().next();
+        }
+
+        List<String> warnings = new ArrayList<>();
         if (receiverIndex == -1) {
             return "`receiver` column not found on first row";
         }
         if (principalIndex == -1) {
             return "`principal` column not found on first row";
         }
-        if (remainingIndex == -1) {
-            return "`remaining` column not found on first row";
-        }
-        if (statusIndex == -1) {
-            return "`status` column not found on first row";
-        }
-        if (dueDateIndex == -1) {
-            return "`due date` column not found on first row";
-        }
         if (loanDateIndex == -1) {
             return "`loan date` column not found on first row";
         }
+        // due date is optional
+        if (dueDateIndex == -1) {
+            warnings.add("`due date` column not found on first row");
+        }
+        // remaining is optional
+        if (remainingIndex == -1) {
+            warnings.add("`remaining` column not found on first row");
+        }
+        if (statusIndex == -1) {
+            if (defaultStatus == null) {
+                return "`status` column not found on first row. Please specify a status for this command or add a `status` column";
+            } else {
+                warnings.add("`status` column not found on first row, using `" + defaultStatus.name() + "` as default");
+            }
+        }
+
+        long now = System.currentTimeMillis();
 
         List<DBLoan> loans = new ArrayList<>();
         for (int row = 1; row < rows.size(); row++) {
@@ -223,23 +286,118 @@ public class ReportCommands {
             if (cells.size() < 6) {
                 continue;
             }
+            // required
             String receiverStr = cells.get(receiverIndex).toString();
             String principalStr = cells.get(principalIndex).toString();
-            String remainingStr = cells.get(remainingIndex).toString();
-            String statusStr = cells.get(statusIndex).toString();
-            String dueDateStr = cells.get(dueDateIndex).toString();
             String loanDateStr = cells.get(loanDateIndex).toString();
 
+            // optional
+            String remainingStr = remainingIndex == -1 ? null : cells.get(remainingIndex).toString();
+            String statusStr = statusIndex == -1 ? null : cells.get(statusIndex).toString();
+            String dueDateStr = dueDateIndex == -1 ? null : cells.get(dueDateIndex).toString();
+            String interestStr = InterestIndex == -1 ? null : cells.get(InterestIndex).toString();
+            String paidStr = paidIndex == -1 ? null : cells.get(paidIndex).toString();
+
             int receiverId;
-            boolean isRecieverAA = false;
+            boolean isRecieverAA;
+            if (receiverStr.contains("/alliance") || receiverStr.toLowerCase().contains("aa:")) {
+                receiverId = PnwUtil.parseAllianceId(receiverStr);
+                isRecieverAA = true;
+            } else {
+                receiverId = DiscordUtil.parseNationId(receiverStr);
+                isRecieverAA = false;
+            }
 
             Map<ResourceType, Double> principal = PnwUtil.parseResources(principalStr);
-            Map<ResourceType, Double> remaining = PnwUtil.parseResources(remainingStr);
-            DBLoan.Status status = DBLoan.Status.valueOf(statusStr.toUpperCase());
-            // parse google sheet date format
-//            long dueDate = TimeUtil.YYYY_MM_DD_HH_MM_SS;/
+            Map<ResourceType, Double> remaining = remainingStr == null ? null : PnwUtil.parseResources(remainingStr);
+            Map<ResourceType, Double> paid = paidStr == null ? null : PnwUtil.parseResources(paidStr);
+            Map<ResourceType, Double> interest = interestStr == null ? null : PnwUtil.parseResources(interestStr);
+
+            if (paid == null && remaining != null) {
+                double[] principalArr = PnwUtil.resourcesToArray(principal);
+                double[] remainingArr = PnwUtil.resourcesToArray(remaining);
+                double[] interestArr = interest == null ? null : PnwUtil.resourcesToArray(interest);
+                if (interest != null) {
+                    // paid = principal - remaining + interest
+                    paid = PnwUtil.resourcesToMap(ResourceType.add(ResourceType.subtract(principalArr, remainingArr), interestArr));
+                } else {
+                    // paid = principal - remaining
+                    paid = PnwUtil.resourcesToMap(PnwUtil.max(ResourceType.getBuffer(), ResourceType.subtract(principalArr, remainingArr)));
+                }
+            }
+
+            DBLoan.Status status = statusStr == null || statusStr.isEmpty() ? defaultStatus : DBLoan.Status.valueOf(statusStr.toUpperCase());
+
+            long loanDate = TimeUtil.YYYY_MM_DD_HH_MM_SS.parse(loanDateStr).getTime();
+            long dueDate = dueDateStr == null ? 0 : TimeUtil.YYYY_MM_DD_HH_MM_SS.parse(dueDateStr).getTime();
+
+            DBLoan loan = new DBLoan(
+                    loanerGuildOrAA,
+                    me.getId(),
+                    receiverId,
+                    isRecieverAA,
+                    PnwUtil.resourcesToArray(principal),
+                    paid == null ? ResourceType.getBuffer() : PnwUtil.resourcesToArray(paid),
+                    remaining == null ? ResourceType.getBuffer() : PnwUtil.resourcesToArray(remaining),
+                    status,
+                    dueDate,
+                    loanDate,
+                    now
+            );
+            loans.add(loan);
         }
-        return "TODO: Not finished";
+
+        // only allow 1 option to be set, not multiple
+        int numSet = (overwriteLoans ? 1 : 0) + (addLoans ? 1 : 0) + (overwriteSameNation ? 1 : 0);
+        if (numSet > 1) {
+            return "Only 1 option can be set at a time. Please select one of `overwriteLoans`, `addLoans`, or `overwriteSameNation`";
+        }
+
+
+        if (overwriteLoans == false && addLoans == false && overwriteSameNation == false) {
+            String title = "Add or Overwrite loans";
+            StringBuilder body = new StringBuilder();
+            body.append(loans.size() + " loans will be added to the database\n");
+
+            List<DBLoan> existing = loanManager.getLoansByGuildOrAlliance(loanerGuildOrAA);
+            body.append("There are currently " + existing.size() + " loans already in the database\n");
+            body.append("\nPress `Add` to add the loans to the database\n");
+            body.append("Press `Same` to overwrite loans with the same receiver\n");
+            body.append("Press `Overwrite` to overwrite the existing loans with the new loans\n");
+            body.append("Press `View` to view the loans that will be added\n");
+
+            io.create().embed(title, body.toString())
+                    .confirmation(command, "addLoans", "Add")
+                    .confirmation(command, "overwriteSameNation", "Same")
+                    .confirmation(command, "overwriteLoans", "Overwrite")
+//                    .commandButton(TODO cm ref view)
+                    .send();
+            return null;
+        }
+        if (addLoans) {
+            loanManager.addLoans(loans);
+        } else if (overwriteSameNation) {
+            // delete matching loans
+            List<DBLoan> existing = loanManager.getLoansByGuildOrAlliance(loanerGuildOrAA);
+
+            Set<Integer> addNationIds = loans.stream().filter(f -> !f.isAlliance).map(f -> f.nationOrAllianceId).collect(Collectors.toSet());
+            Set<Integer> addAAIds = loans.stream().filter(f -> f.isAlliance).map(f -> f.nationOrAllianceId).collect(Collectors.toSet());
+
+            List<DBLoan> sameNationOrAA = existing.stream().filter(f ->
+                    (f.isAlliance && addAAIds.contains(f.nationOrAllianceId)) ||
+                            (!f.isAlliance && addNationIds.contains(f.nationOrAllianceId))).toList();
+
+            loanManager.deleteLoans(sameNationOrAA);
+
+            loanManager.addLoans(loans);
+        } else if (overwriteLoans) {
+            loanManager.setLoans(loanerGuildOrAA, loans);
+        }
+
+        return "Done, created `" + loans.size() + "` loans\n" +
+                "See: TODO CM ref to view current loans";
+    }
+
     // TODO
     // manage
     // vote

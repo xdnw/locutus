@@ -32,6 +32,7 @@ public class LoanManager {
                 "loaner_nation INT NOT NULL, " +
                 "receiver BIGINT NOT NULL, " +
                 "principal BLOB NOT NULL, " +
+                "paid BLOB NOT NULL, " +
                 "remaining BLOB NOT NULL, " +
                 "status INT NOT NULL, " +
                 "due_date BIGINT NOT NULL, " +
@@ -51,7 +52,7 @@ public class LoanManager {
 
 
     public void addLoans(List<DBLoan> loans) {
-        String query = "INSERT INTO LOANS (loaner_guild_or_aa, loaner_nation, receiver, principal, remaining, status, due_date, loan_date, date_submitted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String query = "INSERT INTO LOANS (loaner_guild_or_aa, loaner_nation, receiver, principal, paid, remaining, status, due_date, loan_date, date_submitted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         db.executeBatch(loans, query, new ThrowingBiConsumer<DBLoan, PreparedStatement>() {
             @Override
@@ -60,11 +61,12 @@ public class LoanManager {
                 stmt.setInt(2, loan.loanerNation);
                 stmt.setLong(3, getId(loan.nationOrAllianceId, loan.isAlliance));
                 stmt.setBytes(4, ArrayUtil.toByteArray(loan.principal));
-                stmt.setBytes(5, ArrayUtil.toByteArray(loan.remaining));
-                stmt.setInt(6, loan.status.ordinal());
-                stmt.setLong(7, loan.dueDate);
-                stmt.setLong(8, loan.loanDate);
-                stmt.setLong(9, loan.date_submitted);
+                stmt.setBytes(5, ArrayUtil.toByteArray(loan.paid));
+                stmt.setBytes(6, ArrayUtil.toByteArray(loan.remaining));
+                stmt.setInt(7, loan.status.ordinal());
+                stmt.setLong(8, loan.dueDate);
+                stmt.setLong(9, loan.loanDate);
+                stmt.setLong(10, loan.date_submitted);
             }
         });
     }
@@ -176,5 +178,10 @@ public class LoanManager {
             e.printStackTrace();
         }
         return null;
+    }
+
+    public void deleteLoans(List<DBLoan> loans) {
+        String query = "DELETE FROM LOANS WHERE loan_id = ?";
+        db.executeBatch(loans, query, (ThrowingBiConsumer<DBLoan, PreparedStatement>) (loan, stmt) -> stmt.setInt(1, loan.loanId));
     }
 }
