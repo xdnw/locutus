@@ -201,51 +201,6 @@ public class PnwUtil {
         return result;
     }
 
-    public static boolean isNoteFromDeposits(String note, long id, long date) {
-        // TODO also update processDeposit if this is updated
-        Map<String, String> notes = PnwUtil.parseTransferHashNotes(note);
-        for (Map.Entry<String, String> entry : notes.entrySet()) {
-            String tag = entry.getKey();
-            String value = entry.getValue();
-            switch (tag) {
-                case "#nation":
-                case "#alliance":
-                case "#guild":
-                case "#account":
-                case "#cash":
-                case "#expire":
-                    return false;
-                case "#ignore":
-                    return false;
-                case "#deposit":
-                case "#deposits":
-                case "#trade":
-                case "#trades":
-                case "#trading":
-                case "#credits":
-                case "#buy":
-                case "#sell":
-                case "#warchest":
-                case "#raws":
-                case "#raw":
-                case "#tax":
-                case "#taxes":
-                case "#disperse":
-                case "#disburse":
-                case "#loan":
-                case "#grant":
-                    if (value != null && !value.isEmpty() && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && MathMan.isInteger(value) && id != Long.parseLong(value)) {
-                        return false;
-                    }
-                default:
-                    return true;
-
-
-            }
-        }
-        return true;
-    }
-
     public static void processDeposit(Transaction2 record, GuildDB guildDB, Set<Long> tracked, int sign, Map<DepositType, double[]> result, double[] amount, String note, long date, Predicate<Transaction2> allowExpiry, boolean allowConversion, boolean allowArbitraryConversion, boolean ignoreMarkedDeposits, boolean includeIgnored) {
         /*
         allowConversion sender is nation and alliance has conversion enabled
