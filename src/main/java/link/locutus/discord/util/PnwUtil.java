@@ -9,6 +9,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 import com.google.common.hash.Hashing;
 import com.google.common.reflect.TypeToken;
@@ -427,6 +428,11 @@ public class PnwUtil {
     }
 
     public static Map<ResourceType, Double> parseResources(String arg) {
+        boolean allowBodmas = arg.contains("{") && StringMan.containsAny("+-*/^", arg.replaceAll("\\{[^}]+}", ""));
+        return parseResources(arg, allowBodmas);
+    }
+
+    public static Map<ResourceType, Double> parseResources(String arg, boolean allowBodmas) {
         if (arg.contains("\t") || arg.contains("    ")) {
             String[] split = arg.split("[\t]");
             if (split.length == 1) split = arg.split("[ ]{4}");
@@ -450,13 +456,13 @@ public class PnwUtil {
         arg = arg.replace('=', ':').replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
         arg = arg.replaceAll("([0-9.]+):([a-zA-Z]{3,})", "$2:$1");
         arg = arg.replace(" ", "");
-        double sign = 1;
-        if (arg.charAt(0) == '-') {
-            sign = -1;
-            arg = arg.substring(1);
-        }
-        if (arg.charAt(0) == '$') {
+        if (arg.startsWith("$") || arg.startsWith("-$")) {
             if (!arg.contains(",")) {
+                int sign = 1;
+                if (arg.startsWith("-")) {
+                    sign = -1;
+                    arg = arg.substring(1);
+                }
                 Map<ResourceType, Double> result = new LinkedHashMap<>();
                 result.put(ResourceType.MONEY, MathMan.parseDouble(arg) * sign);
                 return result;
@@ -473,32 +479,31 @@ public class PnwUtil {
         arg = arg.replace("CASH:", "MONEY:");
 
         Type type = new TypeToken<Map<ResourceType, Double>>() {}.getType();
-        if (arg.charAt(0) != '{' && arg.charAt(arg.length() - 1) != '}') {
+        if (!arg.contains("{") && !arg.contains("}")) {
             arg = "{" + arg + "}";
-        }
-
-        int preMultiply = arg.indexOf("*{");
-        int postMultiply = arg.indexOf("}*");
-        if (preMultiply != -1) {
-            String[] split = arg.split("\\*\\{", 2);
-            arg = "{" + split[1];
-            sign *= MathMan.parseDouble(split[0]);
-        }
-        if (postMultiply != -1) {
-            String[] split = arg.split("\\}\\*", 2);
-            arg = split[0] + "}";
-            sign *= MathMan.parseDouble(split[1]);
         }
 
         Map<ResourceType, Double> result;
         try {
-            JSONObject json = new JSONObject(arg);
-            json.remove("TRANSACTION_COUNT");
-            for (String rssType : json.keySet()) {
-                ResourceType.parse(rssType);
+            Function<String, Map<ResourceType, Double>> parse = f -> {
+                JSONObject json = new JSONObject(f);
+                json.remove("TRANSACTION_COUNT");
+                for (String rssType : json.keySet()) {
+                    ResourceType.parse(rssType);
+                }
+                return new Gson().fromJson(json.toString(), type);
+            };
+            if (allowBodmas) {
+                result = PnwUtil.resourcesToMap(ArrayUtil.calculate(arg, arg1 -> {
+                    Map<ResourceType, Double> map = parse.apply(arg1);
+                    double[] arr = resourcesToArray(map);
+                    return new ArrayUtil.DoubleArray(arr);
+                }).toArray());
+            } else {
+                result = parse.apply(arg);
             }
-            result = new Gson().fromJson(json.toString(), type);
         } catch (Exception e) {
+            e.printStackTrace();
             // [0-9]+[ASMGBILUOCF$]( [0-9]+[ASMGBILUOCF$])*
             if (original.toUpperCase(Locale.ROOT).matches("[0-9]+[ASMGBILUOCF$]([ ][0-9]+[ASMGBILUOCF$])*")) {
                 String[] split = original.split(" ");
@@ -515,11 +520,6 @@ public class PnwUtil {
         }
         if (result.containsKey(null)) {
             throw new IllegalArgumentException("Invalid resource type specified in map: `" + arg + "`");
-        }
-        if (sign != 1) {
-            for (Map.Entry<ResourceType, Double> entry : result.entrySet()) {
-                entry.setValue(entry.getValue() * sign);
-            }
         }
         return result;
     }
