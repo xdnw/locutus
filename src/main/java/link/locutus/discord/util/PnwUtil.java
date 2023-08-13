@@ -7,6 +7,7 @@ import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonParseException;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -542,7 +543,7 @@ public class PnwUtil {
             Map<ResourceType, Double> map = new LinkedHashMap<>();
             json.getAsJsonObject().entrySet().forEach(entry -> {
                 ResourceType key = ResourceType.valueOf(entry.getKey());
-                Double value = MathMan.parseDouble(entry.getValue().getAsString());
+                Double value = PrimitiveBindings.Double(entry.getValue().getAsString());
                 map.put(key, value);
             });
             return map;
