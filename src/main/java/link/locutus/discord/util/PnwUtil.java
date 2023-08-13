@@ -540,7 +540,6 @@ public class PnwUtil {
 
                 response.append("You entered `" + rssInput + "` which is not a valid resource.");
                 if (closest.size() > 0) {
-                    // Did you mean: " + closest.get(0)
                     response.append(" Did you mean: `").append(closest.get(0)).append("`");
                 }
                 response.append("\n");
@@ -558,11 +557,9 @@ public class PnwUtil {
                 Use k,m,b,t for thousands, millions, billions, trillions:
                 `food=10k,gas=20m,money=30b`
                 Use curly braces for operations:
-                `{food=3^(2+1),coal=-3}*{food=112,coal=2513}*1.5+{coal=1k}^0.5`""");
+                `{food=3*(2+1),coal=-3}*{food=112,coal=2513}*1.5+{coal=1k}^0.5`""");
         throw new IllegalArgumentException(response.toString());
     }
-
-
     private static Type RESOURCE_TYPE = new TypeToken<Map<ResourceType, Double>>() {}.getType();
     private static Gson RESOURCE_GSON = new GsonBuilder()
             .registerTypeAdapter(RESOURCE_TYPE, new DoubleDeserializer())
