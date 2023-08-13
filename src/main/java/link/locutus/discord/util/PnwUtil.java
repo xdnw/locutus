@@ -490,12 +490,12 @@ public class PnwUtil {
         Map<ResourceType, Double> result;
         try {
             Function<String, Map<ResourceType, Double>> parse = f -> {
-                JSONObject json = new JSONObject(f);
-                json.remove("TRANSACTION_COUNT");
-                for (String rssType : json.keySet()) {
-                    ResourceType.parse(rssType);
+                // remove TRANSACTION_COUNT pair
+                if (f.contains("TRANSACTION_COUNT")) {
+                    f = f.replaceAll("\"TRANSACTION_COUNT\":[0-9]+,", "");
+                    f = f.replaceAll(",\"TRANSACTION_COUNT\":[0-9]+", "");
                 }
-                return RESOURCE_GSON.fromJson(json.toString(), RESOURCE_TYPE);
+                return RESOURCE_GSON.fromJson(f, RESOURCE_TYPE);
             };
             if (allowBodmas) {
                 result = PnwUtil.resourcesToMap(ArrayUtil.calculate(arg, arg1 -> {

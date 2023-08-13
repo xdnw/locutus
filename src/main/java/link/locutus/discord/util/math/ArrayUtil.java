@@ -575,9 +575,6 @@ public class ArrayUtil {
         Deque<String> operatorStack = new ArrayDeque<>();
 
         String[] tokens = splitMathExpression(input);
-        for (String token : tokens) {
-            System.out.println(token);
-        }
 
         for (String token : tokens) {
             if (isOperator(token)) {
@@ -629,7 +626,7 @@ public class ArrayUtil {
                         break;
                 }
             } else {
-                if (NumberUtils.isNumber(token)) {
+                if (MathMan.parseDouble(token) != null) {
                     stack.push(new DoubleArray(new double[]{MathMan.parseDouble(token)}));
                     continue;
                 }
