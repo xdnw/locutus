@@ -63,7 +63,7 @@ public class ArgParser {
                         return null;
                     }
                 }
-                return ScriptUtil.getEngine().eval(msg) + "";
+                return ScriptUtil.evalNumber(msg) + "";
             }
         }));
 
