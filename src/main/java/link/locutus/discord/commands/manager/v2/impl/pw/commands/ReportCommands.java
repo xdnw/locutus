@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.config.Messages;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.ReportManager;
 import link.locutus.discord.db.entities.DBLoan;
@@ -12,6 +13,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.LoanManager;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.ImageUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
@@ -76,6 +78,7 @@ public class ReportCommands {
             column.set(10, report.forumUrl);
             column.set(11, report.newsUrl);
             column.set(12, report.date + "");
+            column.set(13, report.approved + "");
 
             sheet.addRow(column);
         }
@@ -87,44 +90,101 @@ public class ReportCommands {
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String importLegacyBlacklist(SpreadSheet sheet) {
+    public String importLegacyBlacklist(ReportManager reportManager, @Me GuildDB db, @Me DBNation me, @Me User author, SpreadSheet sheet) {
         List<List<Object>> rows = sheet.getValues();
         List<Object> header = rows.get(0);
 
         int discordIndex = header.indexOf("Discord ID");
         int nationIdIndex = header.indexOf("Nation ID");
         int reasonIndex = header.indexOf("Reason");
-
-        /*
-        public int nationId;
-        public long discordId;
-        public ReportType reportType;
-        public int reporterNationId;
-        public long reporterDiscordId;
-        public int reporterAllianceId;
-        public long reporterGuildId;
-        public String reportMessage;
-        public String imageUrl;
-        public String forumUrl;
-        public String newsUrl;
-        public long date;
-         */
-
+        int reportingEntityIndex = header.indexOf("Reporting Entity");
+        if (discordIndex == -1) {
+            return "`Discord ID` column not found";
+        }
+        if (nationIdIndex == -1) {
+            return "`Nation ID` column not found";
+        }
+        if (reasonIndex == -1) {
+            return "`Reason` column not found";
+        }
 
         List<ReportManager.Report> reports = new ArrayList<>();
         // iterate rows
 
-        Report report = new ReportManager.Report(
+        for (int i = 1; i < rows.size(); i++) {
+            List<Object> row = rows.get(i);
 
+            int nationId = Integer.parseInt(row.get(nationIdIndex).toString());
+            long discordId = Long.parseLong(row.get(discordIndex).toString());
 
-        );
+            String reason = row.get(reasonIndex).toString();
+            String reasonLower = reason.toLowerCase();
+
+            ReportManager.ReportType type;
+            // # Attacking
+            //Declaring war
+            //Attacking
+            //
+            //// Scam
+            //// $
+            //
+            //// Default
+            // multiple
+            // multi
+            if (reasonLower.contains("attacking") || reason.contains("declaring war")) {
+                type = ReportManager.ReportType.THREATS_COERCION;
+            } else if (reasonLower.contains("scam") || reasonLower.contains("$")) {
+                type = ReportManager.ReportType.FRAUD;
+            } else if (reasonLower.contains("default")) {
+                type = ReportManager.ReportType.BANK_DEFAULT;
+            } else if (reasonLower.contains("multi")) {
+                type = ReportManager.ReportType.MULTI;
+            } else {
+                type = ReportManager.ReportType.FRAUD;
+            }
+
+            String reasonFinal = reason + "\nnote: `legacy blacklist`";
+            if (reportingEntityIndex != -1) {
+                reasonFinal += "\nreporting entity: " + row.get(reportingEntityIndex);
+            }
+
+            ReportManager.Report report = new ReportManager.Report(
+                    nationId,
+                    discordId,
+                    type,
+                    me.getNation_id(),
+                    author.getIdLong(),
+                    me.getAlliance_id(),
+                    db.getIdLong(),
+                    reason,
+                    "",
+                    "",
+                    "",
+                    System.currentTimeMillis(),
+                    true
+            );
+            reports.add(report);
+        }
+
 
         // ignore reports already exists
+        List<ReportManager.Report> existing = reportManager.loadReports();
+        Map<Integer, Set<String>> existingMap = new HashMap<>();
+        for (ReportManager.Report report : existing) {
+            int nationId = report.nationId;
+            String msg = report.reportMessage;
+            existingMap.computeIfAbsent(nationId, k -> new HashSet<>()).add(msg);
+        }
 
-        // add
+        reports.removeIf(f -> existingMap.getOrDefault(f.nationId, Collections.emptySet()).contains(f.reportMessage));
 
-        // return done, say to view reports
+        if (reports.isEmpty()) {
+            return "No new reports to add";
+        }
 
+        reportManager.saveReports(reports);
+
+        return "Added " + reports.size() + " reports. Use TODO CMD ref to view all reports";
     }
 
     @Command(desc = "Get all loan information banks and alliances have submitted")
@@ -398,6 +458,111 @@ public class ReportCommands {
                 "See: TODO CM ref to view current loans";
     }
 
+    @Command(desc = "Report a nation to the bot")
+    public String createReport(@Me DBNation me, @Me User author, @Me GuildDB db,
+                         ReportManager reportManager,
+                         ReportManager.ReportType type,
+                         @Arg("Description of report") @TextArea String message,
+                         @Default @Arg("Nation to report") DBNation nation,
+                         @Default @Arg("Discord user to report") Long discord_user_id,
+                         @Arg("Image evidence of report") @Switch("i") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String imageEvidenceUrl,
+                         @Arg("Link to relevant forum post") @Switch("f") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String forum_post,
+                         @Arg("Link to relevant news post") @Switch("m") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String news_post,
+                               @Switch("f") boolean force) {
+        if (forumPost == null && newsReport == null) {
+            return "You must provide either a link to a forum post, or a link to a news report";
+        }
+        if (nation == null && discord_user_id == null) {
+            // say must provide one of either
+            // post link for how to get discord id <url>
+            return """
+                    You must provide either a `nation` or a `discord_user_id` to report
+                    To get a discord user id, right click on the user and select `Copy ID`
+                    See: <https://support.discord.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID->""";
+        }
+
+        // ensure forumPost starts with https://forums.politicsandwar.com/
+
+        // newsReport must be discord message link in one of:
+        // RON
+        // OCR
+        // P&W
+        // Micro Minute
+        // morf radio
+        // thalmor radio
+        // prompt user to DM borg with the news server link if it is not one of the above
+        // Post invites to these news servers
+
+        // At least one forum post or news report must be attached
+        Set<Long> supportedServers = new HashSet<>(Arrays.asList(
+                869424139037990912L, // Ducc News Network
+                446601982564892672L, // Royal Orbis News
+                821587932384067584L, // Orbis Crowned News
+                827905979575959629L, // Very Good Media
+                353730979816407052L, // Pirate Island Times
+                1022224780751011860L, // Micro Minute
+                580481635645128745L // Thalmoria
+        ));
+
+        if (forum_post == null && news_post == null) {
+            return "No argument provided\n" + Messages.FORUM_NEWS_ERROR;
+        }
+        if (forum_post != null && !forum_post.startsWith("https://forums.politicsandwar.com/")) {
+            return "Forum post must be on domain `https://forums.politicsandwar.com/`\n" + Messages.FORUM_NEWS_ERROR;
+        }
+        if (news_post != null) {
+            // https://discord.com/channels/SERVER_ID/992205932006228041/1073856622545346641
+            // remove the https://discord.com/channels/ part
+            String[] idsStr = news_post.substring("https://discord.com/channels/".length()).split("/");
+            if (idsStr.length != 3) {
+                return "News post must be discord message link in the format `https://discord.com/channels/SERVER_ID/CHANNEL_ID/MESSAGE_ID`\n" + Messages.FORUM_NEWS_ERROR;
+            }
+            try {
+                long serverId = Long.parseLong(idsStr[0]);
+                if (!supportedServers.contains(serverId)) {
+                    return "The news server you linked is not supported\n" + Messages.FORUM_NEWS_ERROR;
+                }
+            } catch (NumberFormatException e) {
+                return "News post must be discord message link in the format `https://discord.com/channels/SERVER_ID/CHANNEL_ID/MESSAGE_ID`\n" + Messages.FORUM_NEWS_ERROR;
+            }
+        }
+
+        if (imageEvidenceUrl != null) {
+            // ensure imageEvidenceUrl is discord image url
+            String imageOcr = ImageUtil.getText(imageEvidenceUrl);
+            if (imageOcr != null) {
+                message += "\nScreenshot transcript:\n```\n" + imageOcr + "\n```";
+            }
+        }
+
+        if (!force) {
+            String title = "Report " + type + " by " + author.getName() + " on " + db.getName();
+
+            StringBuilder body = new StringBuilder();
+
+            Integer nationId = nation == null ? null : nation.getId();
+
+            List<ReportManager.Report> existing = reportManager.loadReportsByNationOrUser(nationId, discordId);
+
+            // Please look at these existing reports
+            // if you are reporting the same thing, please add a comment to the existing report:
+            //` TODO CM ref comment
+
+            //  // TODO add disclaimer that if there is a rule violation report to P&W
+            //        // or if there is a violation of discord ToS report to discord
+            //
+            //        // if nation == null, set to nation with that user, if exist
+            //
+            //        // if discord_user_id == null, set to user with that nation, if exist
+
+            // confirm dialog JSONObject
+
+            return null;
+        }
+
+
+    }
+
     // TODO
     // manage
     // vote
@@ -417,13 +582,13 @@ public class ReportCommands {
 //
 //    @Command(desc = "Report a nation to the bot")
 //    public String create(@Me DBNation me, @Me User author, @Me GuildDB db,
-//                         ReportType type,
-//                         @Arg("Nation to report") DBNation target,
-//                         @Arg("Description of report") @TextArea String message,
-//                         @Arg("Image evidence of report") @Switch("i") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String imageEvidenceUrl,
-//                         @Arg("User to report") @Switch("u") User user,
-//                         @Arg("Link to relevant forum post") @Switch("f") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String forumPost,
-//                         @Arg("Link to relevant news post") @Switch("m") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String newsReport,
+////                         ReportType type,
+////                         @Arg("Nation to report") DBNation target,
+////                         @Arg("Description of report") @TextArea String message,
+////                         @Arg("Image evidence of report") @Switch("i") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String imageEvidenceUrl,
+////                         @Arg("User to report") @Switch("u") User user,
+////                         @Arg("Link to relevant forum post") @Switch("f") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String forumPost,
+////                         @Arg("Link to relevant news post") @Switch("m") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String newsReport,
 //                         @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, NoSuchFieldException, IllegalAccessException {
 //        if (sheet == null) sheet = SpreadSheet.create(REPORT_SHEET);
 //        if (message.charAt(0) == '=') return "Invalid message.";

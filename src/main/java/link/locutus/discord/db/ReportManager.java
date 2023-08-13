@@ -31,7 +31,8 @@ public class ReportManager {
                 "image_url VARCHAR NOT NULL, " +
                 "forum_url VARCHAR NOT NULL, " +
                 "news_url VARCHAR NOT NULL, " +
-                "date BIGINT NOT NULL)");
+                "date BIGINT NOT NULL," +
+                "approved BOOLEAN NOT NULL)");
 
         db.executeStmt("CREATE TABLE IF NOT EXISTS REPORT_VOTES (report_id INT NOT NULL, " +
                 "nation_id INT NOT NULL, " +
@@ -40,6 +41,9 @@ public class ReportManager {
                 "comment VARCHAR NOT NULL, " +
                 "date BIGINT NOT NULL, " +
                 "PRIMARY KEY(report_id, nation_id))");
+    }
+
+    public void saveReports(List<Report> reports) {
     }
 
     public enum ReportType {
@@ -73,6 +77,7 @@ public class ReportManager {
         public String forumUrl;
         public String newsUrl;
         public long date;
+        public boolean approved;
 
         public Report(int nationId,
                       long discordId,
@@ -85,7 +90,8 @@ public class ReportManager {
                         String imageUrl,
                         String forumUrl,
                         String newsUrl,
-                        long date) {
+                        long date,
+                        boolean approved) {
             this.nationId = nationId;
             this.discordId = discordId;
             this.reportType = reportType;
@@ -98,6 +104,7 @@ public class ReportManager {
             this.forumUrl = forumUrl;
             this.newsUrl = newsUrl;
             this.date = date;
+            this.approved = approved;
         }
 
         public Report(ReportHeader header, List<Object> row) {
@@ -114,6 +121,7 @@ public class ReportManager {
             forumUrl = row.get(header.forum_url).toString();
             newsUrl = row.get(header.news_url).toString();
             date = Long.parseLong(row.get(header.date).toString());
+            approved = Boolean.parseBoolean(row.get(header.approved).toString());
         }
 
         public Report(ReportHeader header, ResultSet rs) throws SQLException {
@@ -130,6 +138,7 @@ public class ReportManager {
             forumUrl = rs.getString(header.forum_url);
             newsUrl = rs.getString(header.news_url);
             date = rs.getLong(header.date);
+            approved = rs.getBoolean(header.approved);
         }
 
         @Override
@@ -148,6 +157,7 @@ public class ReportManager {
                     ", forumUrl='" + forumUrl + '\'' +
                     ", newsUrl='" + newsUrl + '\'' +
                     ", date=" + date +
+                    ", approved=" + approved +
                     '}';
         }
     }
@@ -168,8 +178,10 @@ public class ReportManager {
 
         public int date;
 
+        public int approved;
+
         public String[] getHeaderNames() {
-            return new String[]{"report_id", "nation_id", "discord_id", "report_type", "reporter_nation_id", "reporter_discord_id", "reporter_alliance_id", "reporter_guild_id", "report_message", "image_url", "forum_url", "news_url", "date"};
+            return new String[]{"report_id", "nation_id", "discord_id", "report_type", "reporter_nation_id", "reporter_discord_id", "reporter_alliance_id", "reporter_guild_id", "report_message", "image_url", "forum_url", "news_url", "date", "approved"};
         }
 
         public void setDefaultIndexes() {
@@ -186,6 +198,7 @@ public class ReportManager {
             forum_url = 11;
             news_url = 12;
             date = 13;
+            approved = 14;
         }
     }
 
@@ -279,6 +292,10 @@ public class ReportManager {
         }
 
         return result;
+    }
+
+    public List<Report> loadReports() {
+        return loadReports(null);
     }
 
     public List<Report> loadReports(String whereClauseOrNull) {

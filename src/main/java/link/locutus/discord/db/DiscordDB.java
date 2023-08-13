@@ -8,12 +8,14 @@ import link.locutus.discord.apiv1.entities.ApiRecord;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DiscordBan;
 import link.locutus.discord.db.entities.DiscordMeta;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.nation.NationRegisterEvent;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.offshore.EncryptionUtil;
 import com.google.api.client.util.Base64;
@@ -21,6 +23,7 @@ import com.google.api.client.util.Sets;
 import com.google.gson.Gson;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.codec.binary.Hex;
 
@@ -66,8 +69,53 @@ public class DiscordDB extends DBMainV2 {
 //        } catch (SQLException e) {
 //            throw new RuntimeException(e);
 //        }
+        // discord bans
+        // user long, server long, date long, reason string, mod long
+        executeStmt("CREATE TABLE IF NOT EXISTS `DISCORD_BANS`(`user` BIGINT NOT NULL, `server` BIGINT NOT NULL, `date` BIGINT NOT NULL, `reason` VARCHAR, PRIMARY KEY(`user`, `server`))");
 
         setupApiKeys();
+    }
+
+    public List<DiscordBan> getBans(long userId) {
+        try (PreparedStatement stmt = prepareQuery("SELECT * FROM `DISCORD_BANS` WHERE `user` = ?")) {
+            stmt.setLong(1, userId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                List<DiscordBan> bans = new ArrayList<>();
+                while (rs.next()) {
+                    bans.add(new DiscordBan(rs));
+                }
+                return bans;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public List<DiscordBan> getBans() {
+        try (PreparedStatement stmt = prepareQuery("SELECT * FROM `DISCORD_BANS`")) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                List<DiscordBan> bans = new ArrayList<>();
+                while (rs.next()) {
+                    bans.add(new DiscordBan(rs));
+                }
+                return bans;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void addBans(List<DiscordBan> bans) {
+        String query = "INSERT OR REPLACE INTO `DISCORD_BANS`(`user`, `server`, `date`, `reason`) VALUES (?, ?, ?, ?)";
+        executeBatch(bans, query, new ThrowingBiConsumer<DiscordBan, PreparedStatement>() {
+            @Override
+            public void acceptThrows(DiscordBan ban, PreparedStatement stmt) throws Exception {
+                stmt.setLong(1, ban.user);
+                stmt.setLong(2, ban.server);
+                stmt.setLong(3, ban.date);
+                stmt.setString(4, ban.reason);
+            }
+        });
     }
 
     public void migrateKeys() throws SQLException {
