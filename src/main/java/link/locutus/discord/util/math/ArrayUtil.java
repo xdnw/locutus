@@ -539,6 +539,9 @@ public class ArrayUtil {
             if (value.array.length == 1) {
                 return multiply(value.array[0]);
             }
+            if (this.array.length == 1) {
+                return value.multiply(this.array[0]);
+            }
             double[] result = new double[array.length];
             for (int i = 0; i < array.length; i++) {
                 result[i] = array[i] * value.array[i];
@@ -550,6 +553,9 @@ public class ArrayUtil {
             if (value.array.length == 1) {
                 return divide(value.array[0]);
             }
+            if (this.array.length == 1) {
+                return value.divide(this.array[0]);
+            }
             double[] result = new double[array.length];
             for (int i = 0; i < array.length; i++) {
                 result[i] = array[i] / value.array[i];
@@ -560,6 +566,9 @@ public class ArrayUtil {
         public DoubleArray power(DoubleArray value) {
             if (value.array.length == 1) {
                 return power(value.array[0]);
+            }
+            if (this.array.length == 1) {
+                return value.power(this.array[0]);
             }
             double[] result = new double[array.length];
             for (int i = 0; i < array.length; i++) {
