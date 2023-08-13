@@ -126,7 +126,7 @@ public class PrimitiveBindings extends BindingHelper {
         } catch (NumberFormatException ignored) {
         }
         try {
-            Object result = ScriptUtil.getEngine().eval(input);
+            Object result = ScriptUtil.evalNumber(input);
             if (result instanceof Boolean) return ((Boolean) result) ? 1 : 0;
             return (Number) result;
         } catch (Throwable e) {
