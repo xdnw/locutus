@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.util.BodmasTest;
 import link.locutus.discord.util.IOUtil;
+import link.locutus.discord.util.MathMan;
 import org.apache.commons.lang3.math.NumberUtils;
 
 import java.io.ByteArrayInputStream;
@@ -629,7 +630,7 @@ public class ArrayUtil {
                 }
             } else {
                 if (NumberUtils.isNumber(token)) {
-                    stack.push(new DoubleArray(new double[]{Double.parseDouble(token)}));
+                    stack.push(new DoubleArray(new double[]{MathMan.parseDouble(token)}));
                     continue;
                 }
                 stack.push(parseOrigin.apply(token));

@@ -1,6 +1,10 @@
 package link.locutus.discord.util;
 
 import com.google.common.math.DoubleMath;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonParseException;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.commands.stock.Exchange;
@@ -21,6 +25,7 @@ import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -478,7 +483,6 @@ public class PnwUtil {
         arg = arg.replace("ALUMINIUM:", "ALUMINUM:");
         arg = arg.replace("CASH:", "MONEY:");
 
-        Type type = new TypeToken<Map<ResourceType, Double>>() {}.getType();
         if (!arg.contains("{") && !arg.contains("}")) {
             arg = "{" + arg + "}";
         }
@@ -491,7 +495,7 @@ public class PnwUtil {
                 for (String rssType : json.keySet()) {
                     ResourceType.parse(rssType);
                 }
-                return new Gson().fromJson(json.toString(), type);
+                return RESOURCE_GSON.fromJson(json.toString(), RESOURCE_TYPE);
             };
             if (allowBodmas) {
                 result = PnwUtil.resourcesToMap(ArrayUtil.calculate(arg, arg1 -> {
@@ -524,6 +528,23 @@ public class PnwUtil {
         return result;
     }
 
+
+    private static Type RESOURCE_TYPE = new TypeToken<Map<ResourceType, Double>>() {}.getType();
+    private static Gson RESOURCE_GSON = new GsonBuilder()
+            .registerTypeAdapter(RESOURCE_TYPE, new DoubleDeserializer())
+            .create();
+    private static class DoubleDeserializer implements JsonDeserializer<Map<ResourceType, Double>> {
+        @Override
+        public Map<ResourceType, Double> deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
+            Map<ResourceType, Double> map = new LinkedHashMap<>();
+            json.getAsJsonObject().entrySet().forEach(entry -> {
+                ResourceType key = ResourceType.valueOf(entry.getKey());
+                Double value = MathMan.parseDouble(entry.getValue().getAsString());
+                map.put(key, value);
+            });
+            return map;
+        }
+    }
 
     public static Integer parseAllianceId(String arg) {
         if (arg.toLowerCase().startsWith("aa:")) arg = arg.substring(3);
