@@ -2,6 +2,7 @@ package link.locutus.discord.util.math;
 
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.util.BodmasTest;
 import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.MathMan;
@@ -659,11 +660,13 @@ public class ArrayUtil {
                         break;
                 }
             } else {
-                if (MathMan.parseDouble(token) != null) {
-                    stack.push(new DoubleArray(new double[]{MathMan.parseDouble(token)}));
-                    continue;
+                DoubleArray arr;
+                if (token.contains("{")) {
+                    arr = parseOrigin.apply(token);
+                } else {
+                    arr = new DoubleArray(new double[]{PrimitiveBindings.Double(token)});
                 }
-                stack.push(parseOrigin.apply(token));
+                stack.push(arr);
             }
         }
 
