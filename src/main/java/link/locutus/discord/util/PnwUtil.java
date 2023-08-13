@@ -456,8 +456,8 @@ public class PnwUtil {
         arg = arg.trim();
         String original = arg;
         if (!arg.contains(":") && !arg.contains("=")) {
-            arg = arg.replaceAll("([0-9])[ ]([a-zA-Z])", "$1:$2");
-            arg = arg.replaceAll("([a-zA-Z])[ ]([0-9])", "$1:$2");
+            arg = arg.replaceAll("([-0-9])[ ]([a-zA-Z])", "$1:$2");
+            arg = arg.replaceAll("([a-zA-Z])[ ]([-0-9])", "$1:$2");
         }
         arg = arg.replace('=', ':').replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
         arg = arg.replaceAll("([0-9.]+):([a-zA-Z]{3,})", "$2:$1");
@@ -511,8 +511,6 @@ public class PnwUtil {
                 result = parse.apply(arg);
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            // [0-9]+[ASMGBILUOCF$]( [0-9]+[ASMGBILUOCF$])*
             if (original.toUpperCase(Locale.ROOT).matches("[0-9]+[ASMGBILUOCF$]([ ][0-9]+[ASMGBILUOCF$])*")) {
                 String[] split = original.split(" ");
                 result = new LinkedHashMap<>();
@@ -523,13 +521,45 @@ public class PnwUtil {
                     result.put(type1, amount);
                 }
             } else {
-                throw new IllegalArgumentException("Invalid resource json: `" + arg + "` (" + e.getMessage() + ")");
+                return handleResourceError(arg, e);
             }
         }
         if (result.containsKey(null)) {
-            throw new IllegalArgumentException("Invalid resource type specified in map: `" + arg + "`");
+            return handleResourceError(arg, null);
         }
         return result;
+    }
+
+    private static Map<ResourceType, Double> handleResourceError(String arg, Exception e) {
+        StringBuilder response = new StringBuilder("Invalid resource amounts: `" + arg + "`\n");
+        if (e != null) {
+            String msg = e.getMessage();
+            if (msg.startsWith("No enum constant")) {
+                String rssInput = msg.substring(msg.lastIndexOf(".") + 1);
+                List<ResourceType> closest = StringMan.getClosest(rssInput, ResourceType.valuesList, false);
+
+                response.append("You entered `" + rssInput + "` which is not a valid resource.");
+                if (closest.size() > 0) {
+                    // Did you mean: " + closest.get(0)
+                    response.append(" Did you mean: `").append(closest.get(0)).append("`");
+                }
+                response.append("\n");
+            } else {
+                response.append("Error: `").append(e.getMessage()).append("`\n");
+            }
+        }
+        response.append("Valid resources are: `").append(StringMan.join(ResourceType.values, ", ")).append("`").append("\n");
+        response.append("""
+                You can enter a single resource like this:
+                `food=10`
+                `$15`
+                Use commas for multiple resources:
+                `food=10,gas=20,money=30`
+                Use k,m,b,t for thousands, millions, billions, trillions:
+                `food=10k,gas=20m,money=30b`
+                Use curly braces for operations:
+                `{food=3^(2+1),coal=-3}*{food=112,coal=2513}*1.5+{coal=1k}^0.5`""");
+        throw new IllegalArgumentException(response.toString());
     }
 
 
