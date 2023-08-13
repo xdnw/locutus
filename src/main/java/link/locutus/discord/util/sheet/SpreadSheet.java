@@ -127,7 +127,7 @@ public class SpreadSheet {
         this.clear("A:Z");
         try {
             this.set(0, 0);
-            return attach(channel.create()).send();
+            return attach(channel.create(), "transactions").send();
         } catch (Throwable e) {
             e.printStackTrace();
             return channel.create().file("transactions.csv", this.toCsv())
@@ -343,26 +343,26 @@ public class SpreadSheet {
         return getURL(false, false);
     }
 
-    public IMessageBuilder attach(IMessageBuilder msg, String append) {
-        return attach(msg).append(append);
+    public IMessageBuilder attach(IMessageBuilder msg, String name, String append) {
+        return attach(msg, name).append(append);
     }
 
-    public IMessageBuilder attach(IMessageBuilder msg) {
-        return attach(msg, null, false, 0);
+    public IMessageBuilder attach(IMessageBuilder msg, String name) {
+        return attach(msg, name, null, false, 0);
     }
 
-    public IMessageBuilder attach(IMessageBuilder msg, StringBuilder output, boolean allowInline, int currentLength) {
+    public IMessageBuilder attach(IMessageBuilder msg, String name, StringBuilder output, boolean allowInline, int currentLength) {
         String append = null;
         if (service == null) {
             String csv = toCsv();
             if (csv.length() + currentLength + 9 < 2000 && allowInline) {
-                append = "```csv\n" + csv + "```";
+                append = (name == null ? "" : name + "\n") + "```csv\n" + csv + "```";
             } else {
                 append = "(`sheet:" + spreadsheetId + "`)";
-                msg.file("sheet.csv", csv);
+                msg.file((name == null ? "sheet" : name) + ".csv", csv);
             }
         } else {
-            append = ("\n" + getURL(false, true));
+            append = ("\n" + (name == null ? "" : name + ": " + getURL(false, true)));
         }
         if (output != null) output.append(append);
         else msg.append(append);

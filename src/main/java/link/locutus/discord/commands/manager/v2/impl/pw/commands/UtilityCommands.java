@@ -1306,7 +1306,7 @@ public class UtilityCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "alliances").send();
         return null;
     }
 
@@ -1352,7 +1352,7 @@ public class UtilityCommands {
         sheet.clear("A:ZZ");
         sheet.set(0, 0);
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "nations").send();
     }
 
     @Command(desc = "Check if a nation shares networks with others\n" +
@@ -1714,7 +1714,7 @@ public Map<ParametricCallable, String> getEndpoints() {
 
         IMessageBuilder msg = channel.create();
         StringBuilder result = new StringBuilder();
-        sheet.attach(msg, result, false, 0);
+        sheet.attach(msg, "interest", result, false, 0);
 
         result.append("Total: `" + PnwUtil.resourcesToString(total) + "`" +
                 "\nWorth: $" + MathMan.format(PnwUtil.convertedTotal(total)));

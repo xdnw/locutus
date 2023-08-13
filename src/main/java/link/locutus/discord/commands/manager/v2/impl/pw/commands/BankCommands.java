@@ -463,7 +463,7 @@ public class BankCommands {
                 } else {
                     sheet = sheetAmounts.getSheet();
                 }
-                sheet.attach(msg, body, false, 0);
+                sheet.attach(msg, "deposit", body, false, 0);
             }
 
             // total / worth
@@ -1520,7 +1520,7 @@ public class BankCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "revenue").send();
         return null;
     }
 
@@ -1704,7 +1704,7 @@ public class BankCommands {
         response.append("Total Warchest: `" + PnwUtil.resourcesToString(totalWarchest) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalWarchest)) + "\n");
         response.append("Net Warchest Req (warchest- requirements): `" + PnwUtil.resourcesToString(totalNet) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalNet)));
 
-        sheet.attach(io.create(), response, false, 0).append(response.toString()).send();
+        sheet.attach(io.create(), "warchest", response, false, 0).append(response.toString()).send();
         return null;
     }
 
@@ -2100,7 +2100,7 @@ public class BankCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "projects").send();
         return null;
     }
 
@@ -2147,7 +2147,7 @@ public class BankCommands {
         sheet.clearAll();
         sheet.set(0, 0);
         // appent resource string and worth
-        sheet.attach(io.create()).append("Total Escrowed: `" + PnwUtil.resourcesToString(totalEscrowed) + "` | worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalEscrowed))).send();
+        sheet.attach(io.create(), "escrow").append("Total Escrowed: `" + PnwUtil.resourcesToString(totalEscrowed) + "` | worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalEscrowed))).send();
         return null;
     }
 
@@ -2366,7 +2366,7 @@ public class BankCommands {
         sheet.set(0, 0);
 
         IMessageBuilder msg = channel.create();
-        sheet.attach(msg);
+        sheet.attach(msg, "deposits");
 
         if (!noEscrowSheet) {
             Map.Entry<SpreadSheet, double[]> pair = escrowSheet(db, nations, null);
@@ -2374,7 +2374,7 @@ public class BankCommands {
             // attach sheet
             escrowSheet.clearAll();
             escrowSheet.set(0, 0);
-            escrowSheet.attach(msg);
+            escrowSheet.attach(msg, "escrow");
 
             double[] escrowTotal = pair.getValue();
             aaTotalPositive = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, aaTotalPositive, escrowTotal);
@@ -2736,7 +2736,7 @@ public class BankCommands {
             if (escrow_mode != null && escrow_mode != EscrowMode.NEVER) {
                 desc.append("Escrow Mode: `" + escrow_mode + "`\n");
             }
-            sheet.getSheet().attach(msg, desc, true, desc.length());
+            sheet.getSheet().attach(msg, "transfers", desc, true, desc.length());
 
             key = UUID.randomUUID();
             APPROVED_BULK_TRANSFER.put(key, transfers);
@@ -2973,7 +2973,7 @@ public class BankCommands {
 
         sheet.clear("A:Z");
         sheet.set(0, 0);
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "tax_rates").send();
         return null;
     }
 
@@ -3101,7 +3101,7 @@ public class BankCommands {
         }
         txSheet.write(transfers).build();
 
-        txSheet.getSheet().attach(io.create()).send();
+        txSheet.getSheet().attach(io.create(), "tax_deposits").send();
         return null;
     }
 
@@ -3141,7 +3141,7 @@ public class BankCommands {
         }
         sheet.clear("A:Z");
         sheet.set(0, 0);
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "tax_records").send();
         return null;
     }
 
@@ -3604,7 +3604,7 @@ public class BankCommands {
 
         String totalStr = PnwUtil.resourcesToFancyString(aaTotal);
         totalStr += "\n`note:total ignores nations with alliance info disabled`";
-        sheet.attach(channel.create().embed("Nation Stockpiles", totalStr)).send();
+        sheet.attach(channel.create().embed("Nation Stockpiles", totalStr), "stockpiles").send();
         return null;
     }
 
@@ -3683,7 +3683,7 @@ public class BankCommands {
         StringBuilder response = new StringBuilder();
         if (failedFetch) response.append("\nnote: Please set an api key with " + CM.credentials.addApiKey.cmd.toSlashMention() + " to view updated tax brackets");
 
-        sheet.attach(io.create(), response.toString()).send();
+        sheet.attach(io.create(), "tax_brackets", response.toString()).send();
         return null;
     }
 

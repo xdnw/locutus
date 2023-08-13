@@ -2019,7 +2019,7 @@ public class WarCommands {
         SpySheet.generateSpySheet(sheet, targets);
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "spy_intel").send();
         return null;
     }
 
@@ -2338,7 +2338,7 @@ public class WarCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "activity").send();
         return null;
     }
 
@@ -2499,7 +2499,7 @@ public class WarCommands {
         sheet.set(0, 0);
         String response = "";
         if (!forceUpdate) response += "\nNote: Results may be outdated, add `-f` to update.";
-        sheet.attach(io.create(), response).send();
+        sheet.attach(io.create(), "mmr", response).send();
         return null;
     }
 
@@ -2648,7 +2648,7 @@ public class WarCommands {
 
         sheet.clearAll();
         sheet.set(0, 0);
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "deserter").send();
         return null;
     }
 
@@ -2778,7 +2778,7 @@ public class WarCommands {
 
             sheet.set(0, 0);
 
-            sheet.attach(io.create()).send();
+            sheet.attach(io.create(), "combatant").send();
             return null;
         } catch (Throwable e) {
             e.printStackTrace();
@@ -3536,7 +3536,7 @@ public class WarCommands {
         sheet.clear("A:Z");
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "wars").send();
         return null;
     }
 
@@ -3791,7 +3791,7 @@ public class WarCommands {
 
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "counter").send();
         return null;
     }
 

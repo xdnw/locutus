@@ -212,7 +212,7 @@ public class MMRSheet extends Command {
             String response = "";
             if (!flags.contains('f')) response += "\nNote: Results may be outdated, add `-f` to update.";
 
-            sheet.attach(channel.create(), response).send();
+            sheet.attach(channel.create(), "mmr", response).send();
             return null;
         } catch (Throwable e) {
             e.printStackTrace();

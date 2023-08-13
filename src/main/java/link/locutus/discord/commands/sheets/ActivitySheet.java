@@ -100,7 +100,7 @@ public class ActivitySheet extends Command {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "activity").send();
         return null;
     }
 }

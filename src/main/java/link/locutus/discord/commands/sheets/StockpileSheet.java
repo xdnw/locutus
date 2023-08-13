@@ -99,7 +99,7 @@ public class StockpileSheet extends Command {
         totalStr += "\n`note:total ignores nations with alliance info disabled`";
         channel.create().embed("Nation Stockpiles", totalStr).send();
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "stockpiles").send();
         return null;
     }
 }

@@ -226,7 +226,7 @@ public class GrantCmd extends Command {
             sheet.set(0, 0);
 
             String totalStr = PnwUtil.resourcesToString(total) + " worth ~$" + MathMan.format(PnwUtil.convertedTotal(total));
-            sheet.attach(channel.create().append(totalStr), null, false, 0).send();
+            sheet.attach(channel.create().append(totalStr), "grant", null, false, 0).send();
             return null;
         }
 

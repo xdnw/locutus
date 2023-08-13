@@ -325,7 +325,7 @@ public class ROI extends Command {
             } catch (Throwable e) {
                 e.printStackTrace();
             }
-            sheet.attach(channel.create()).send();
+            sheet.attach(channel.create(), "roi").send();
             return null;
         } else {
             StringBuilder output = new StringBuilder("Weekly ROI (" + days + " days):\n");

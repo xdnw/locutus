@@ -236,7 +236,7 @@ public class WarCostSheet extends Command {
             e.printStackTrace();
         }
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "war_cost").send();
         return null;
     }
 

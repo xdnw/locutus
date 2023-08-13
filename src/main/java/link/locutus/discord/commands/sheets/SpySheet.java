@@ -321,7 +321,7 @@ public class SpySheet extends Command {
         generateSpySheet(sheet, opsAgainstNations);
         sheet.set(0, 0);
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "spy").send();
         return null;
     }
 

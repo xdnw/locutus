@@ -138,7 +138,7 @@ public class GPTCommands {
         sheet.clear("A:Z");
         sheet.set(0, 0);
 
-        sheet.attach(io.create(), null, false, 0).send();
+        sheet.attach(io.create(), "facts", null, false, 0).send();
         return null;
     }
 
@@ -237,7 +237,7 @@ public class GPTCommands {
         sheet.clear("A:Z");
         sheet.set(0, 0);
 
-        sheet.attach(io.create(), null, false, 0).send();
+        sheet.attach(io.create(), "embeddings", null, false, 0).send();
         return null;
     }
 

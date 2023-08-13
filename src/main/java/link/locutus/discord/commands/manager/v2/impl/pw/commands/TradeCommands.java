@@ -877,7 +877,7 @@ public class TradeCommands {
 
         sheet.set(0, 0);
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "trending").send();
         return null;
     }
 

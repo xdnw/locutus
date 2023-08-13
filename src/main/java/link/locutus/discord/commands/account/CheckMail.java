@@ -128,7 +128,7 @@ public class CheckMail extends Command {
         sheet.clear("A:Z");
         sheet.set(0, 0);
 
-        sheet.attach(channel.create(), null, false, 0).send();
+        sheet.attach(channel.create(), "mail", null, false, 0).send();
         return null;
     }
 }

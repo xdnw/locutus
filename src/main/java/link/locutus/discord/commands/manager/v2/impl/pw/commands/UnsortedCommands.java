@@ -199,7 +199,7 @@ public class UnsortedCommands {
         sheet.clear("A:ZZ");
         sheet.set(0, 0);
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "spy_free").send();
     }
 
     @Command(desc = "Get an alert on discord when a target logs in within the next 5 days\n" +
@@ -348,7 +348,7 @@ public class UnsortedCommands {
 
         IMessageBuilder msg = io.create();
         msg.append("Notes:\n- " + StringMan.join(messages, "\n- "));
-        sheet.attach(msg).send();
+        sheet.attach(msg, "tax_revenue").send();
         return null;
     }
 

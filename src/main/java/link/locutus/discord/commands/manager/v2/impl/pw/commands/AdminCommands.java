@@ -217,7 +217,7 @@ public class AdminCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "login_times").send();
         return null;
     }
 
