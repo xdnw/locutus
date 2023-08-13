@@ -534,6 +534,39 @@ public class ArrayUtil {
             return new DoubleArray(result);
         }
 
+        public DoubleArray multiply(DoubleArray value) {
+            if (value.array.length == 1) {
+                return multiply(value.array[0]);
+            }
+            double[] result = new double[array.length];
+            for (int i = 0; i < array.length; i++) {
+                result[i] = array[i] * value.array[i];
+            }
+            return new DoubleArray(result);
+        }
+
+        public DoubleArray divide(DoubleArray value) {
+            if (value.array.length == 1) {
+                return divide(value.array[0]);
+            }
+            double[] result = new double[array.length];
+            for (int i = 0; i < array.length; i++) {
+                result[i] = array[i] / value.array[i];
+            }
+            return new DoubleArray(result);
+        }
+
+        public DoubleArray power(DoubleArray value) {
+            if (value.array.length == 1) {
+                return power(value.array[0]);
+            }
+            double[] result = new double[array.length];
+            for (int i = 0; i < array.length; i++) {
+                result[i] = Math.pow(array[i], value.array[i]);
+            }
+            return new DoubleArray(result);
+        }
+
         public DoubleArray divide(double value) {
             if (value == 0) {
                 throw new ArithmeticException("Division by zero");
@@ -616,13 +649,13 @@ public class ArrayUtil {
                         stack.push(left.subtract(right));
                         break;
                     case "*":
-                        stack.push(left.multiply(right.array[0]));
+                        stack.push(left.multiply(right));
                         break;
                     case "/":
-                        stack.push(left.divide(right.array[0]));
+                        stack.push(left.divide(right));
                         break;
                     case "^":
-                        stack.push(left.power(right.array[0]));
+                        stack.push(left.power(right));
                         break;
                 }
             } else {

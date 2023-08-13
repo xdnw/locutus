@@ -486,11 +486,14 @@ public class PnwUtil {
         if (!arg.contains("{") && !arg.contains("}")) {
             arg = "{" + arg + "}";
         }
+        if (arg.startsWith("-{")) {
+            arg = "{}" + arg;
+        }
+        arg = arg.replace("(-{", "({}-{");
 
         Map<ResourceType, Double> result;
         try {
             Function<String, Map<ResourceType, Double>> parse = f -> {
-                // remove TRANSACTION_COUNT pair
                 if (f.contains("TRANSACTION_COUNT")) {
                     f = f.replaceAll("\"TRANSACTION_COUNT\":[0-9]+,", "");
                     f = f.replaceAll(",\"TRANSACTION_COUNT\":[0-9]+", "");
