@@ -120,6 +120,10 @@ public class ReportManager {
         });
     }
 
+    public void deleteReport(int reportId) {
+        db.update("DELETE FROM REPORTS WHERE report_id = ?", reportId);
+    }
+
     public enum ReportType {
         MULTI,
         REROLL,
@@ -275,14 +279,29 @@ public class ReportManager {
                 body.append("News: " + newsMarkup + "\n");
             }
 
-            if (includeComments) {
-                List<Vote> comments = Locutus.imp().getNationDB().getReportManager().loadVotesByReport(this.reportId);
-                // append num comments
-                if (!comments.isEmpty()) {
+            List<Vote> comments = Locutus.imp().getNationDB().getReportManager().loadVotesByReport(this.reportId);
+            if (!comments.isEmpty()) {
+                if (includeComments) {
+                    for (Vote comment : comments) {
+                        body.append("-" + comment.toMarkdown() + "\n");
+                    }
+                } else {
                     body.append(comments.size() + " comments, see: TODO CM ref\n");
                 }
             }
             return body.toString();
+        }
+
+        public String getTitle() {
+            String msg = "";
+            if (nationId != 0) {
+                msg += PnwUtil.getName(nationId, false);
+            }
+            if (discordId != 0) {
+                if (!msg.isEmpty()) msg += " | ";
+                msg += DiscordUtil.getUserName(discordId) + " | " + discordId;
+            }
+            return msg + " | " + type.name();
         }
     }
 
@@ -374,6 +393,14 @@ public class ReportManager {
             vote = rs.getInt(header.vote);
             comment = rs.getString(header.comment);
             date = rs.getLong(header.date);
+        }
+
+        public String toMarkdown() {
+            StringBuilder msg = new StringBuilder();
+            msg.append("[" + vote + " | " + DiscordUtil.timestamp(date, null) + "]");
+            msg.append("(by: " + PnwUtil.getName(nationId, false) + " | " + DiscordUtil.getUserName(discordId) + "):\n");
+            msg.append("> " + comment.replace("\n", "\n> "));
+            return msg.toString();
         }
     }
 
@@ -467,6 +494,12 @@ public class ReportManager {
 
     public List<Vote> loadVotesByReport(int reportId) {
         return loadVotes("report_id = " + reportId);
+    }
+
+    public Vote loadVotesByReportNation(int reportId, int nationId) {
+        List<Vote> votes = loadVotes("report_id = " + reportId + " AND nation_id = " + nationId);
+        if (votes.isEmpty()) return null;
+        return votes.get(0);
     }
 
     public List<Vote> loadVotes(String whereClauseOrNull) {

@@ -645,19 +645,59 @@ public class ReportCommands {
     }
 
     @Command
-    public String removeReport(ReportManager reportManager, @Me DBNation me, @Me User author, @Me GuildDB db, ReportManager.Report report, @Switch("f") boolean force) {
+    public String removeReport(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, ReportManager.Report report, @Switch("f") boolean force) {
         if (!report.hasPermission(me, author, db)) {
             return "You do not have permission to remove this report: `#" + report.reportId +
                     "` (owned by nation:" + PnwUtil.getName(report.reporterNationId, false) + ")\n" +
                     "To add a comment: TODO CM ref";
         }
         if (!force) {
-            // report type, and nation reported
             String title = "Remove " + report.type + " report";
-            StringBuilder body = new StringBuilder(report.toMarkdown());
+            StringBuilder body = new StringBuilder(report.toMarkdown(true));
+            io.create().confirmation(title, body.toString(), command).send();
+            return null;
         }
         reportManager.deleteReport(report.reportId);
         return "Report removed.";
+    }
+
+    @Command
+    @RolePermission(value = Roles.INTERNAL_AFFAIRS_STAFF, root = true)
+    public String approveReport(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, ReportManager.Report report, @Switch("f") boolean force) {
+        if (report.approved) {
+            return "Report #" + report.reportId + " is already approved.";
+        }
+        if (!force) {
+            String title = "Verify " + report.type + " report";
+            StringBuilder body = new StringBuilder(report.toMarkdown(false));
+            io.create().confirmation(title, body.toString(), command).send();
+            return null;
+        }
+        report.approved = true;
+        reportManager.saveReport(report);
+        return "Verified report #" + report.reportId;
+    }
+
+    @Command
+    public String comment(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, ReportManager.Report report, String comment, @Switch("f") boolean force) {
+        // check existing comment
+        ReportManager.Vote existing = reportManager.loadVotesByReportNation(report.reportId, me.getNation_id());
+
+        if (!force) {
+            String title = "Comment on " + report.getTitle();
+            StringBuilder body = new StringBuilder(report.toMarkdown(false));
+
+            String bodyString = "Your comment\n```\n" + comment + "\n```\n" + body.toString();
+            if (existing != null) {
+                bodyString = "Overwrite your existing comment:\n```\n" + existing.comment + "\n```\n" + bodyString;
+            }
+
+            io.create().confirmation(title, bodyString, command).send();
+            return null;
+        }
+        report.approved = true;
+        reportManager.saveReport(report);
+        return "Verified report #" + report.reportId;
     }
 
     // TODO
