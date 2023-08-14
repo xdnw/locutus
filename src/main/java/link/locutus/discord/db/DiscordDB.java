@@ -383,7 +383,7 @@ public class DiscordDB extends DBMainV2 {
             Map.Entry<Long, Long> firstTime = first.getValue().get(0);
             if (first.getKey().equals(uuid)) return;
         }
-        update("INSERT OR IGNORE INTO `UUIDS` (`nation_id`, `uuid`, `date`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        update("INSERT OR REPLACE INTO `UUIDS` (`nation_id`, `uuid`, `date`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
             stmt.setBytes(2, uuid.toByteArray());
             stmt.setLong(3, System.currentTimeMillis());
@@ -426,6 +426,32 @@ public class DiscordDB extends DBMainV2 {
             e.printStackTrace();
             return null;
         }
+    }
+
+    public Map<Integer, BigInteger> getLatestUidByNation() {
+        Map<Integer, BigInteger> latestUuidsMap = new HashMap<>();
+        String query = "SELECT t1.nation_id, t1.uuid\n" +
+                "FROM UUIDS t1\n" +
+                "INNER JOIN (\n" +
+                "    SELECT nation_id, MAX(date) AS max_date\n" +
+                "    FROM UUIDS\n" +
+                "    GROUP BY nation_id\n" +
+                ") t2 ON t1.nation_id = t2.nation_id AND t1.date = t2.max_date;";
+        try (PreparedStatement preparedStatement = prepareQuery(query);
+             ResultSet resultSet = preparedStatement.executeQuery()) {
+
+            while (resultSet.next()) {
+                int nationId = resultSet.getInt("nation_id");
+                byte[] uuidBytes = resultSet.getBytes("uuid");
+                BigInteger uuidBigInteger = new BigInteger(uuidBytes);
+
+                latestUuidsMap.put(nationId, uuidBigInteger);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+        return latestUuidsMap;
     }
 
     public Set<Integer> getVerified() {

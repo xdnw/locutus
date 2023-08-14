@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.politicsandwar.graphql.model.BannedNation;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -72,6 +73,7 @@ import rocker.guild.ia.message;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.security.GeneralSecurityException;
 import java.sql.SQLException;
@@ -90,6 +92,8 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -1362,6 +1366,129 @@ public class AdminCommands {
             result.append("\n");
         }
         return result.toString().trim();
+    }
+
+    @Command
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public synchronized String hasSameNetworkAsBan(@Me IMessageIO io, @Me User author, Set<DBNation> nations, @Switch("e") boolean listExpired, @Switch("f") boolean forceUpdate) throws IOException {
+        if (forceUpdate && nations.size() > 300 && !Roles.ADMIN.hasOnRoot(author)) {
+            throw new IllegalArgumentException("Too many nations to update");
+        }
+        Map<Integer, BigInteger> latestUids = Locutus.imp().getDiscordDB().getLatestUidByNation();
+        Map<BigInteger, Set<Integer>> uidsByNation = new HashMap<>();
+        Map<BigInteger, Set<DBNation>> uidsByNationExisting = new HashMap<>();
+        for (Map.Entry<Integer, BigInteger> entry : latestUids.entrySet()) {
+            BigInteger uid = entry.getValue();
+            int nationId = entry.getKey();
+            uidsByNation.computeIfAbsent(uid, k -> new HashSet<>()).add(nationId);
+            DBNation nation = DBNation.getById(nationId);
+            if (nation != null) {
+                uidsByNationExisting.computeIfAbsent(uid, k -> new HashSet<>()).add(nation);
+            }
+        }
+
+        // remove uidsBynationExisting when values size <= 1
+        uidsByNationExisting.entrySet().removeIf(entry -> entry.getValue().size() <= 1);
+        uidsByNationExisting.entrySet().removeIf(entry -> {
+            boolean contains = false;
+            for (DBNation nation : entry.getValue()) {
+                if (nations.contains(nation)) {
+                    contains = true;
+                    break;
+                }
+            }
+            return !contains;
+        });
+
+        if (forceUpdate && uidsByNationExisting.size() > 0) {
+            Set<DBNation> nationsToUpdate = new HashSet<>();
+
+            CompletableFuture<IMessageBuilder> msgFuture = io.sendMessage("Updating...");
+            IMessageBuilder msg = null;
+
+            long start = System.currentTimeMillis();
+            for (Set<DBNation> nationSet : uidsByNationExisting.values()) {
+                nationsToUpdate.addAll(nationSet);
+            }
+            int i = 1;
+            for (DBNation nation : nationsToUpdate) {
+                if (System.currentTimeMillis() - start > 10000) {
+                    msg = io.updateOptionally(msgFuture, "Updating " + nation.getNation() + "(" + i + "/" + nationsToUpdate.size() + ")");
+                    start = System.currentTimeMillis();
+                }
+                nation.fetchUid();
+                i++;
+            }
+            if (msg != null && msg.getId() > 0) {
+                io.delete(msg.getId());
+            }
+            return hasSameNetworkAsBan(io, author, nations, listExpired, false);
+        }
+
+        // get the bans
+        Map<Integer, DBBan> bans = Locutus.imp().getNationDB().getBansByNation();
+
+        Map<DBNation, Set<DBBan>> sameNetworkBans = new HashMap<>();
+
+        for (DBNation nation : nations) {
+            BigInteger uid = latestUids.get(nation.getId());
+            if (uid == null) continue;
+            Set<Integer> nationIds = uidsByNation.get(uid);
+
+            List<DBBan> natBans = nation.getBans();
+            if (!listExpired) natBans.removeIf(DBBan::isExpired);
+
+            if (!natBans.isEmpty()) {
+                sameNetworkBans.put(nation, new HashSet<>(natBans));
+            }
+
+            for (int id : nationIds) {
+                if (id == nation.getId()) continue;
+                DBBan ban = bans.get(id);
+                if (ban != null && (listExpired || !ban.isExpired())) {
+                    sameNetworkBans.computeIfAbsent(nation, k -> new HashSet<>()).add(ban);
+                }
+            }
+        }
+
+        StringBuilder response = new StringBuilder();
+
+        if (!uidsByNationExisting.isEmpty()) {
+            response.append("## Active nations sharing the same network:\n");
+            for (Map.Entry<BigInteger, Set<DBNation>> entry : uidsByNationExisting.entrySet()) {
+                response.append(entry.getKey().toString(16)).append(":\n");
+                for (DBNation nation : entry.getValue()) {
+                    response.append("- ").append(nation.getNationUrl()).append("\n");
+                }
+            }
+            response.append("\n");
+        }
+        if (!sameNetworkBans.isEmpty()) {
+            response.append("## Bans on the same network:\n");
+            for (Map.Entry<DBNation, Set<DBBan>> entry : sameNetworkBans.entrySet()) {
+                DBNation nation = entry.getKey();
+                if (!nations.contains(nation)) continue;
+                // Key then dot points, with nation url
+                response.append(entry.getKey().getNationUrl()).append(":\n");
+                for (DBBan ban : entry.getValue()) {
+                    StringBuilder banStr = new StringBuilder("nation:" + ban.nation_id);
+                    if (ban.discord_id > 0) {
+                        banStr.append(" discord:").append(ban.discord_id);
+                    }
+                    if (ban.isExpired()) {
+                        banStr.append(" (expired)");
+                    } else {
+                        banStr.append(" (expires ").append(TimeUtil.secToTime(TimeUnit.MILLISECONDS, ban.getTimeRemaining())).append(")");
+                    }
+                    banStr.append(": `" + ban.reason.replace("\n", " ") + "`");
+                    response.append("- ").append(banStr).append("\n");
+                }
+            }
+        }
+
+        response.append("\nDone!");
+
+        return response.toString();
     }
 
     @Command

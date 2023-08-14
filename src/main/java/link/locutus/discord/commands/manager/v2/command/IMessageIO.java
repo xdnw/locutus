@@ -7,6 +7,7 @@ import org.json.JSONObject;
 import javax.annotation.CheckReturnValue;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 public interface IMessageIO {
     IMessageBuilder getMessage();
@@ -41,6 +42,15 @@ public interface IMessageIO {
             inline = true;
         }
         return message.paginate(title, command, page, perPage, results, footer, inline);
+    }
+
+    default IMessageBuilder updateOptionally(CompletableFuture<IMessageBuilder> msgFuture, String message) {
+        if (msgFuture == null) return null;
+        IMessageBuilder msg = msgFuture.getNow(null);
+        if (msg != null && msg.getId() > 0) {
+            msg.clear().append(message).sendIfFree();
+        }
+        return msg;
     }
 
     long getIdLong();
