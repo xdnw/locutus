@@ -509,6 +509,8 @@ public class TradeCommands {
 
         String timeStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - time);
         MessageEmbed embed = new EmbedBuilder()
+                .appendDescription("low: `" + PnwUtil.resourcesToString(lowMap) + "`\n")
+                .appendDescription("high: `" + PnwUtil.resourcesToString(highMap) + "`\n")
                 .setTitle("Global Trade Average " + timeStr)
                 .addField("Resource", StringMan.join(resourceNames, "\n"), true)
                 .addField("Low", StringMan.join(low, "\n"), true)
@@ -692,6 +694,8 @@ public class TradeCommands {
 
         channel.create().embed(new EmbedBuilder()
                 .setTitle("Trade Price")
+                .appendDescription("low: `" + PnwUtil.resourcesToString(low) + "`\n")
+                .appendDescription("high: `" + PnwUtil.resourcesToString(high) + "`\n")
                 .addField("Resource", StringMan.join(resourceNames, "\n"), true)
                 .addField(lowKey, StringMan.join(lowList, "\n"), true)
                 .addField(highKey, StringMan.join(highList, "\n"), true)
@@ -877,7 +881,7 @@ public class TradeCommands {
 
         sheet.set(0, 0);
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "trending").send();
         return null;
     }
 

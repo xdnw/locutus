@@ -54,7 +54,7 @@ public class OptimalTrades extends Command {
         StringBuilder response = new StringBuilder();
 
         IMessageBuilder msg = channel.create();
-        task.getSheet().attach(msg, response, false, 0);
+        task.getSheet().attach(msg, "trades", response, false, 0);
         response.append('\n').append("Max Buy Threshold: ```" + PnwUtil.resourcesToString(task.getMaxPrice()) + "```");
         response.append('\n').append("Min Sell Threshold: ```" + PnwUtil.resourcesToString(task.getMinPrice()) + "```");
         response.append('\n').append("Profit: ").append(profit);

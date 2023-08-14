@@ -85,7 +85,7 @@ public class NoteSheet extends Command {
 
         sheet.set(0, 0);
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "notes").send();
         return null;
     }
 }

@@ -162,7 +162,7 @@ public class WarCostByAASheet extends Command {
         sheet.clear("A:Z");
         sheet.set(0, 0);
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "war_cost_aa").send();
         return null;
     }
 }

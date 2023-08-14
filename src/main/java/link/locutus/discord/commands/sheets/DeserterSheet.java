@@ -169,7 +169,7 @@ public class DeserterSheet extends Command {
         sheet.set(0, 0);
 
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "deserter").send();
         return null;
     }
 }

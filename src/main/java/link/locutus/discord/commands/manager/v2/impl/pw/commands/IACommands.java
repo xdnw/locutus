@@ -144,7 +144,7 @@ public class IACommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).append("Timezone is the UTC update timezone as displayed in-game on the account page").send();
+        sheet.attach(io.create(), "day_change").append("Timezone is the UTC update timezone as displayed in-game on the account page").send();
     }
 
     @Command(desc = "Add a discord role to all users in a server")
@@ -871,7 +871,7 @@ public class IACommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "loot").send();
         return null;
     }
 
@@ -1323,7 +1323,7 @@ public class IACommands {
         String title = "Send " + success + " messages";
         StringBuilder embed = new StringBuilder();
         IMessageBuilder msg = channel.create();
-        sheet.attach(msg, embed, false, 0);
+        sheet.attach(msg, "mail_command", embed, false, 0);
         embed.append("\nPress `confirm` to confirm");
         CM.mail.sheet cmd = CM.mail.sheet.cmd.create(sheet.getURL(), null);
 
@@ -1393,7 +1393,7 @@ public class IACommands {
             String title = "Send " + messageMap.size() + " to nations in " + alliances.size() + " alliances";
             StringBuilder body = new StringBuilder("Messages:");
             IMessageBuilder msg = io.create();
-            sheet.attach(msg, body, false, 0);
+            sheet.attach(msg, "mail", body, false, 0);
 
             if (inactive > 0) body.append("Inactive Receivers: " + inactive + "\n");
             if (vm > 0) body.append("vm Receivers: " + vm + "\n");

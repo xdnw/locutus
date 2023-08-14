@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.binding.bindings;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
@@ -126,7 +127,7 @@ public class PrimitiveBindings extends BindingHelper {
         } catch (NumberFormatException ignored) {
         }
         try {
-            Object result = ScriptUtil.getEngine().eval(input);
+            Object result = ScriptUtil.evalNumber(input);
             if (result instanceof Boolean) return ((Boolean) result) ? 1 : 0;
             return (Number) result;
         } catch (Throwable e) {

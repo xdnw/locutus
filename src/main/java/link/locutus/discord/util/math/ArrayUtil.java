@@ -2,7 +2,10 @@ package link.locutus.discord.util.math;
 
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.util.IOUtil;
+import link.locutus.discord.util.MathMan;
+import org.apache.commons.lang3.math.NumberUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -11,13 +14,16 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.AbstractMap;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -477,6 +483,277 @@ public class ArrayUtil {
                 }
             }
             return val;
+        };
+    }
+
+    public static class DoubleArray {
+        private double[] array;
+
+        public DoubleArray(double[] array) {
+            this.array = array;
+        }
+
+        public static DoubleArray parse(String input) {
+            String[] values = input.replaceAll("\\{", "").replaceAll("\\}", "").split(",");
+            double[] array = new double[values.length];
+            for (int i = 0; i < values.length; i++) {
+                array[i] = Double.parseDouble(values[i].trim());
+            }
+            return new DoubleArray(array);
+        }
+
+        public DoubleArray add(DoubleArray other) {
+            double[] result = new double[array.length];
+            for (int i = 0; i < array.length; i++) {
+                result[i] = array[i] + other.array[i];
+            }
+            return new DoubleArray(result);
+        }
+
+        public DoubleArray power(double value) {
+            double[] result = new double[array.length];
+            for (int i = 0; i < array.length; i++) {
+                result[i] = Math.pow(array[i], value);
+            }
+            return new DoubleArray(result);
+        }
+
+        public DoubleArray subtract(DoubleArray other) {
+            double[] result = new double[array.length];
+            for (int i = 0; i < array.length; i++) {
+                result[i] = array[i] - other.array[i];
+            }
+            return new DoubleArray(result);
+        }
+
+        public DoubleArray multiply(double value) {
+            double[] result = new double[array.length];
+            for (int i = 0; i < array.length; i++) {
+                result[i] = array[i] * value;
+            }
+            return new DoubleArray(result);
+        }
+
+        public DoubleArray multiply(DoubleArray value) {
+            if (value.array.length == 1) {
+                return multiply(value.array[0]);
+            }
+            if (this.array.length == 1) {
+                return value.multiply(this.array[0]);
+            }
+            double[] result = new double[array.length];
+            for (int i = 0; i < array.length; i++) {
+                result[i] = array[i] * value.array[i];
+            }
+            return new DoubleArray(result);
+        }
+
+        public DoubleArray divide(DoubleArray value) {
+            if (value.array.length == 1) {
+                return divide(value.array[0]);
+            }
+            if (this.array.length == 1) {
+                return value.divide(this.array[0]);
+            }
+            double[] result = new double[array.length];
+            for (int i = 0; i < array.length; i++) {
+                result[i] = array[i] / value.array[i];
+            }
+            return new DoubleArray(result);
+        }
+
+        public DoubleArray power(DoubleArray value) {
+            if (value.array.length == 1) {
+                return power(value.array[0]);
+            }
+            if (this.array.length == 1) {
+                return value.power(this.array[0]);
+            }
+            double[] result = new double[array.length];
+            for (int i = 0; i < array.length; i++) {
+                result[i] = Math.pow(array[i], value.array[i]);
+            }
+            return new DoubleArray(result);
+        }
+
+        public DoubleArray divide(double value) {
+            if (value == 0) {
+                throw new ArithmeticException("Division by zero");
+            }
+            double[] result = new double[array.length];
+            for (int i = 0; i < array.length; i++) {
+                result[i] = array[i] / value;
+            }
+            return new DoubleArray(result);
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder("{");
+            for (int i = 0; i < array.length; i++) {
+                sb.append(array[i]);
+                if (i < array.length - 1) {
+                    sb.append(",");
+                }
+            }
+            sb.append("}");
+            return sb.toString();
+        }
+
+        public double[] toArray() {
+            return array;
+        }
+    }
+
+    private static final String OPERATORS = "+-*/^";
+    private static final String LEFT_PAREN = "(";
+    private static final String RIGHT_PAREN = ")";
+
+    public static DoubleArray calculate(String input, Function<String, DoubleArray> parseOrigin) {
+        if (parseOrigin == null) {
+            parseOrigin = DoubleArray::parse;
+        }
+        Queue<String> outputQueue = new ArrayDeque<>();
+        Deque<String> operatorStack = new ArrayDeque<>();
+
+        String[] tokens = splitMathExpression(input);
+
+        for (String token : tokens) {
+            if (isOperator(token)) {
+                while (!operatorStack.isEmpty() && isOperator(operatorStack.peek())) {
+                    if ((isLeftAssociative(token) && comparePrecedence(token, operatorStack.peek()) <= 0)
+                            || (comparePrecedence(token, operatorStack.peek()) < 0)) {
+                        outputQueue.offer(operatorStack.pop());
+                        continue;
+                    }
+                    break;
+                }
+                operatorStack.push(token);
+            } else if (token.equals(LEFT_PAREN)) {
+                operatorStack.push(token);
+            } else if (token.equals(RIGHT_PAREN)) {
+                while (!operatorStack.isEmpty() && !operatorStack.peek().equals(LEFT_PAREN)) {
+                    outputQueue.offer(operatorStack.pop());
+                }
+                operatorStack.pop();
+            } else {
+                outputQueue.offer(token);
+            }
+        }
+
+        while (!operatorStack.isEmpty()) {
+            outputQueue.offer(operatorStack.pop());
+        }
+
+        Deque<DoubleArray> stack = new ArrayDeque<>();
+        for (String token : outputQueue) {
+            if (isOperator(token)) {
+                DoubleArray right = stack.pop();
+                DoubleArray left = stack.pop();
+                switch (token) {
+                    case "+":
+                        stack.push(left.add(right));
+                        break;
+                    case "-":
+                        stack.push(left.subtract(right));
+                        break;
+                    case "*":
+                        stack.push(left.multiply(right));
+                        break;
+                    case "/":
+                        stack.push(left.divide(right));
+                        break;
+                    case "^":
+                        stack.push(left.power(right));
+                        break;
+                }
+            } else {
+                DoubleArray arr;
+                if (token.contains("{")) {
+                    arr = parseOrigin.apply(token);
+                } else {
+                    arr = new DoubleArray(new double[]{PrimitiveBindings.Double(token)});
+                }
+                stack.push(arr);
+            }
+        }
+
+        return stack.pop();
+    }
+
+    private static boolean isOperator(String token) {
+        return OPERATORS.contains(token);
+    }
+
+    private static boolean isLeftAssociative(String token) {
+        return !token.equals("^");
+    }
+
+    private static int comparePrecedence(String token1, String token2) {
+        return getPrecedence(token1) - getPrecedence(token2);
+    }
+
+    public static String[] splitMathExpression(String input) {
+        Queue<String> tokens = new ArrayDeque<>();
+
+        StringBuilder currentToken = new StringBuilder();
+        boolean insideCurlyBraces = false;
+
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+
+            if (c == '{') {
+                insideCurlyBraces = true;
+                currentToken.append(c);
+            } else if (c == '}') {
+                insideCurlyBraces = false;
+                currentToken.append(c);
+                tokens.add(currentToken.toString());
+                currentToken = new StringBuilder();
+            } else if (insideCurlyBraces) {
+                currentToken.append(c);
+            } else if (c == '(' || isNonNegOperator(c)) {
+                if (currentToken.length() > 0) {
+                    tokens.add(currentToken.toString());
+                    currentToken = new StringBuilder();
+                }
+                currentToken.append(c);
+                tokens.add(currentToken.toString());
+                currentToken = new StringBuilder();
+
+                // Check if next character is a negative sign
+                if (i + 1 < input.length() && input.charAt(i + 1) == '-') {
+                    currentToken.append('-');
+                    i++; // Skip the negative sign
+                }
+            } else if (c == ')' || c == '-') {
+                if (currentToken.length() > 0) {
+                    tokens.add(currentToken.toString());
+                    currentToken = new StringBuilder();
+                }
+                tokens.add(String.valueOf(c));
+            } else if (!Character.isWhitespace(c)) {
+                currentToken.append(c);
+            }
+        }
+
+        if (currentToken.length() > 0) {
+            tokens.add(currentToken.toString());
+        }
+
+        return tokens.toArray(new String[0]);
+    }
+
+    private static boolean isNonNegOperator(char c) {
+        return c == '+' || c == '*' || c == '/' || c == '^';
+    }
+
+    private static int getPrecedence(String token) {
+        return switch (token) {
+            case "+", "-" -> 1;
+            case "*", "/" -> 2;
+            case "^" -> 3;
+            default -> 0;
         };
     }
 }

@@ -156,7 +156,7 @@ public class IASheet extends Command {
 
         sheet.set(0, 0);
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "ia").send();
         return null;
     }
 }

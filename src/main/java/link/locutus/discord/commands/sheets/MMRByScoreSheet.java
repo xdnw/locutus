@@ -81,7 +81,7 @@ public class MMRByScoreSheet extends Command {
 
         sheet.clearAll();
         sheet.set(0, 0);
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "mmr_score").send();
         return null;
 
 //        return super.onCommand(event, guild, author, me, args, flags);

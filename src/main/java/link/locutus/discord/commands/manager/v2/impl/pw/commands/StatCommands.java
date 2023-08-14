@@ -1191,7 +1191,7 @@ public class StatCommands {
             if (sheet != null) {
                 sheet.clear("A:Z");
                 sheet.set(0, 0);
-                sheet.attach(msg);
+                sheet.attach(msg, "mmr_tiering");
             }
 
             msg.append(response);
@@ -1345,7 +1345,7 @@ public class StatCommands {
         sheet.clear("A:ZZ");
         sheet.set(0, 0);
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "alliances").send();
         return null;
     }
 
@@ -1530,7 +1530,7 @@ public class StatCommands {
 
         sheet.set(0, 0);
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "war_cost_rss").send();
         return null;
     }
 
@@ -1638,7 +1638,7 @@ public class StatCommands {
         sheet.clear("A:Z");
         sheet.set(0, 0);
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "war_cost_aa").send();
         return null;
     }
 
@@ -1802,7 +1802,7 @@ public class StatCommands {
         sheet.clear("A:Z");
         sheet.set(0, 0);
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "war_cost").send();
         return null;
     }
 

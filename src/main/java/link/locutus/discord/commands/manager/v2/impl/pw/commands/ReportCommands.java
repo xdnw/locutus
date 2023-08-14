@@ -84,7 +84,7 @@ public class ReportCommands {
         }
         sheet.clearAll();
         sheet.set(0, 0);
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "reports").send();
         return null;
     }
 

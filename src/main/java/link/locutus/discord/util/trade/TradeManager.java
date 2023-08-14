@@ -196,6 +196,9 @@ public class TradeManager {
                 highTmp[trade.getResource().ordinal()] = Math.min(highTmp[trade.getResource().ordinal()], trade.getPpu());
             }
         }
+        lowTmp[ResourceType.MONEY.ordinal()] = 1;
+        highTmp[ResourceType.MONEY.ordinal()] = 1;
+
         System.out.println(StringMan.getString(lowTmp) + " | " + StringMan.getString(highTmp));
         low = lowTmp;
         high = highTmp;

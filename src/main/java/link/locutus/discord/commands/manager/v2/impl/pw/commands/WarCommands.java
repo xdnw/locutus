@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.war.RaidCommand;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.external.guild.WarRoom;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
@@ -301,9 +302,32 @@ public class WarCommands {
                        @Switch("d") boolean ignoreDNR,
                        @Switch("l") boolean ignoreBankLoot,
                        @Switch("c") boolean ignoreCityRevenue) {
-        throw new UnsupportedOperationException("This is a stub");
-    }
 
+        DBNation nation = DiscordUtil.getNation(user);
+        if (nation == null) return null;
+
+        boolean dms = false;
+
+        RaidCommand cmd = new RaidCommand();
+        Set<DBNation> allNations = new LinkedHashSet<>(Locutus.imp().getNationDB().getNations().values());
+        if (vmTurns == null) vmTurns = 0;
+        if (defensiveSlots == null) defensiveSlots = -1;
+        boolean active = activeTimeCutoff != null;
+        long minutesInactive = activeTimeCutoff == null ? 10000 : TimeUnit.MILLISECONDS.toMinutes(activeTimeCutoff);
+        double score = nationScore == null ? me.getScore() : nationScore;
+
+        if (nationScore != null && !Roles.MILCOM.has(user, guild)) {
+            return "You do not have permission to specify a score";
+        }
+        Set<Integer> ignoreAlliances = new HashSet<>();
+        boolean includeAlliances = false;
+        double minLoot = Double.NEGATIVE_INFINITY;
+        if (numResults == null) numResults = 5;
+        if (beigeTurns == null) beigeTurns = -1;
+
+        String result = cmd.onCommand2(channel, user, db, me, targets, allNations, weakground, dms, vmTurns, defensiveSlots, beigeTurns != null && beigeTurns > 0, !ignoreDNR, ignoreAlliances, includeAlliances, active, minutesInactive, score, minLoot, beigeTurns, ignoreBankLoot, ignoreCityRevenue, numResults);
+        return result;
+    }
     @Command(desc = "List your wars you are allowed to beige\n" +
             "As set by this guild's configured beige policy: `ALLOWED_BEIGE_REASONS`")
     @RolePermission(Roles.MEMBER)
@@ -2019,7 +2043,7 @@ public class WarCommands {
         SpySheet.generateSpySheet(sheet, targets);
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "spy_intel").send();
         return null;
     }
 
@@ -2338,7 +2362,7 @@ public class WarCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "activity").send();
         return null;
     }
 
@@ -2499,7 +2523,7 @@ public class WarCommands {
         sheet.set(0, 0);
         String response = "";
         if (!forceUpdate) response += "\nNote: Results may be outdated, add `-f` to update.";
-        sheet.attach(io.create(), response).send();
+        sheet.attach(io.create(), "mmr", response).send();
         return null;
     }
 
@@ -2648,7 +2672,7 @@ public class WarCommands {
 
         sheet.clearAll();
         sheet.set(0, 0);
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "deserter").send();
         return null;
     }
 
@@ -2778,7 +2802,7 @@ public class WarCommands {
 
             sheet.set(0, 0);
 
-            sheet.attach(io.create()).send();
+            sheet.attach(io.create(), "combatant").send();
             return null;
         } catch (Throwable e) {
             e.printStackTrace();
@@ -3536,7 +3560,7 @@ public class WarCommands {
         sheet.clear("A:Z");
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "wars").send();
         return null;
     }
 
@@ -3791,7 +3815,7 @@ public class WarCommands {
 
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "counter").send();
         return null;
     }
 

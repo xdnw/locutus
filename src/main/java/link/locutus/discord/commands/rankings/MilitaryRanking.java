@@ -263,7 +263,7 @@ public class MilitaryRanking extends Command {
         msg.append("> Each bar is segmented into four sections, from bottom to top: (soldiers, tanks, planes, ships)\n" +
                 "> Each alliance is grouped by sphere and color coded");
 
-        sheet.attach(msg).send();
+        sheet.attach(msg, "alliance_ranking").send();
         return null;
     }
 }
