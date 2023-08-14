@@ -38,7 +38,7 @@ import java.util.function.Consumer;
 
 public class SpyTracker {
     public SpyTracker() {
-        long delay = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1);
+        long delay = TimeUnit.MINUTES.toMillis(1);
         Locutus.imp().getCommandManager().getExecutor().schedule(new Runnable() {
             @Override
             public void run() {
