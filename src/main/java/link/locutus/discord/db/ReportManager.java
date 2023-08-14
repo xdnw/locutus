@@ -1,9 +1,16 @@
 package link.locutus.discord.db;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import link.locutus.discord.Locutus;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.sheet.SpreadSheet;
+import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -12,7 +19,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+
+import static link.locutus.discord.util.MarkupUtil.markdownUrl;
+import static link.locutus.discord.util.discord.DiscordUtil.getGuildName;
+import static link.locutus.discord.util.discord.DiscordUtil.getMessageGuild;
 
 public class ReportManager {
     private final NationDB db;
@@ -223,6 +235,55 @@ public class ReportManager {
                     ", approved=" + approved +
                     '}';
         }
+
+        public boolean hasPermission(DBNation me, User author, GuildDB db) {
+            if (me.getNation_id() == reporterNationId) return true;
+            if (author.getIdLong() == reporterDiscordId) return true;
+            if (db.getIdLong() == this.reporterDiscordId && Roles.ADMIN.has(author, db.getGuild())) {
+                return true;
+            }
+            if (db.isAllianceId(this.reporterAllianceId) && Roles.ADMIN.has(author, db.getGuild())) {
+                return true;
+            }
+            return Roles.INTERNAL_AFFAIRS_STAFF.hasOnRoot(author);
+        }
+
+        public String toMarkdown(boolean includeComments) {
+            StringBuilder body = new StringBuilder("Report #" + reportId + " - " + type + "\n");
+            if (nationId != 0) {
+                body.append("Nation: " + PnwUtil.getMarkdownUrl(nationId, false) + "\n");
+            }
+            if (discordId != 0) {
+                body.append("Discord: `" + DiscordUtil.getUserName(discordId) + "` | `" + discordId + "`\n");
+            }
+            String reporterNationLink = PnwUtil.getMarkdownUrl(reporterNationId, false);
+            String reporterAllianceLink = PnwUtil.getMarkdownUrl(reporterAllianceId, true);
+            String reporterGuildLink = markdownUrl(getGuildName(reporterGuildId), DiscordUtil.getGuildUrl(reporterGuildId));
+            body.append("Reported by: " + reporterNationLink + " | " + reporterAllianceLink  + " | <@" + reporterDiscordId + "> | " + reporterGuildLink + "\n");
+            body.append("```\n" + message + "\n```\n");
+            if (imageUrl != null && !imageUrl.isEmpty()) {
+                body.append("Image: " + imageUrl + "\n");
+            }
+            if (forumUrl != null && !forumUrl.isEmpty()) {
+                // https://forum.politicsandwar.com/index.php?/topic
+                String urlStub = forumUrl.replace("https://forum.politicsandwar.com/index.php?/topic/", "");
+                String idAndName = urlStub.split("/")[0];
+                body.append("Forum: " + MarkupUtil.markdownUrl(idAndName, forumUrl) + "\n");
+            }
+            if (newsUrl != null && !newsUrl.isEmpty()) {
+                String newsMarkup = markdownUrl(getGuildName(getMessageGuild(newsUrl)), newsUrl);
+                body.append("News: " + newsMarkup + "\n");
+            }
+
+            if (includeComments) {
+                List<Vote> comments = Locutus.imp().getNationDB().getReportManager().loadVotesByReport(this.reportId);
+                // append num comments
+                if (!comments.isEmpty()) {
+                    body.append(comments.size() + " comments, see: TODO CM ref\n");
+                }
+            }
+            return body.toString();
+        }
     }
 
     public static class ReportHeader {
@@ -383,6 +444,29 @@ public class ReportManager {
             e.printStackTrace();
         }
         return reports;
+    }
+
+    public List<Report> loadReportsByNationOrUser(Integer nationIdOrNull, Long discordUserIdOrNull) {
+        if (nationIdOrNull == null && discordUserIdOrNull == null) return Collections.emptyList();
+        String whereClause = "";
+        if (nationIdOrNull != null) {
+            whereClause += "nation_id = " + nationIdOrNull;
+        }
+        if (discordUserIdOrNull != null) {
+            if (!whereClause.isEmpty()) whereClause += " OR ";
+            whereClause += "discord_id = " + discordUserIdOrNull;
+        }
+        return loadReports(whereClause);
+    }
+
+    public Report getReport(int reportId) {
+        List<Report> reports = loadReports("report_id = " + reportId);
+        if (reports.isEmpty()) return null;
+        return reports.get(0);
+    }
+
+    public List<Vote> loadVotesByReport(int reportId) {
+        return loadVotes("report_id = " + reportId);
     }
 
     public List<Vote> loadVotes(String whereClauseOrNull) {

@@ -119,16 +119,6 @@ public class ReportCommands {
             String reasonLower = reason.toLowerCase();
 
             ReportManager.ReportType type;
-            // # Attacking
-            //Declaring war
-            //Attacking
-            //
-            //// Scam
-            //// $
-            //
-            //// Default
-            // multiple
-            // multi
             if (reasonLower.contains("attacking") || reason.contains("declaring war")) {
                 type = ReportManager.ReportType.THREATS_COERCION;
             } else if (reasonLower.contains("scam") || reasonLower.contains("$")) {
@@ -466,7 +456,7 @@ public class ReportCommands {
                          @Arg("Image evidence of report") @Switch("i") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String imageEvidenceUrl,
                          @Arg("Link to relevant forum post") @Switch("f") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String forum_post,
                          @Arg("Link to relevant news post") @Switch("m") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String news_post,
-                               @Switch("i") Integer reportId,
+                               @Switch("i") ReportManager.Report updateReport,
                                @Switch("f") boolean force) {
         if (forum_post == null && news_post == null) {
             return "You must provide either a link to a forum post, or a link to a news report";
@@ -494,8 +484,8 @@ public class ReportCommands {
         if (forum_post == null && news_post == null) {
             return "No argument provided\n" + Messages.FORUM_NEWS_ERROR;
         }
-        if (forum_post != null && !forum_post.startsWith("https://forums.politicsandwar.com/")) {
-            return "Forum post must be on domain `https://forums.politicsandwar.com/`\n" + Messages.FORUM_NEWS_ERROR;
+        if (forum_post != null && !forum_post.startsWith("https://forum.politicsandwar.com/index.php?/topic/")) {
+            return "Forum post must be on domain `https://forum.politicsandwar.com/index.php?/topic/`\n" + Messages.FORUM_NEWS_ERROR;
         }
         if (news_post != null) {
             // https://discord.com/channels/SERVER_ID/992205932006228041/1073856622545346641
@@ -553,13 +543,10 @@ public class ReportCommands {
         int reporterAlliance = me.getAlliance_id();
 
         ReportManager.Report existing = null;
-        if (reportId != null) {
-            existing = reportManager.getReport(reportId);
-            if (existing == null) {
-                return "Report with id `" + reportId + "` does not exist.";
-            }
-            if (existing.reporterDiscordId != author.getIdLong() && !Roles.INTERNAL_AFFAIRS_STAFF.hasOnRoot(author)) {
-                return "You do not have permission to edit this report: `#" + reportId +
+        if (updateReport != null) {
+            existing = updateReport;
+            if (existing.hasPermission(me, author, db)) {
+                return "You do not have permission to edit this report: `#" + updateReport.reportId +
                         "` (owned by nation:" + PnwUtil.getName(existing.reporterNationId, false) + ")\n" +
                         "To add a comment: TODO CM ref";
             }
@@ -594,7 +581,7 @@ public class ReportCommands {
 
         if (!force) {
             String reportedName = "";
-            String title = (reportId != null ? "Update " : "Report") +
+            String title = (existing != null ? "Update " : "Report") +
                     type + " report by " +
                     DiscordUtil.getUserName(reporterUserId) + " | " + PnwUtil.getName(reporterNationId, false);
 
@@ -653,8 +640,24 @@ public class ReportCommands {
 
         reportManager.saveReport(report);
 
-        return "Report " + (reportId == null ? "created" : "updated") + " with id `" + report.reportId + "`\n" +
+        return "Report " + (existing == null ? "created" : "updated") + " with id `" + report.reportId + "`\n" +
                 "See: TODO CM REf to view your report\";";
+    }
+
+    @Command
+    public String removeReport(ReportManager reportManager, @Me DBNation me, @Me User author, @Me GuildDB db, ReportManager.Report report, @Switch("f") boolean force) {
+        if (!report.hasPermission(me, author, db)) {
+            return "You do not have permission to remove this report: `#" + report.reportId +
+                    "` (owned by nation:" + PnwUtil.getName(report.reporterNationId, false) + ")\n" +
+                    "To add a comment: TODO CM ref";
+        }
+        if (!force) {
+            // report type, and nation reported
+            String title = "Remove " + report.type + " report";
+            StringBuilder body = new StringBuilder(report.toMarkdown());
+        }
+        reportManager.deleteReport(report.reportId);
+        return "Report removed.";
     }
 
     // TODO
