@@ -12,9 +12,9 @@ import link.locutus.discord.db.entities.DBLoan;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.LoanManager;
 import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.ImageUtil;
-import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -23,7 +23,6 @@ import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.*;
@@ -55,7 +54,6 @@ public class ReportCommands {
         sheet.addRow(column);
 
         for (ReportManager.Report report : reports) {
-
             String natUrl = sheetUrl(getName(report.nationId, false), getNationUrl(report.nationId));
             String discordUrl = sheetUrl(getUserName(report.discordId), userUrl(report.discordId, false));
 
@@ -68,12 +66,12 @@ public class ReportCommands {
             column.set(0, report.reportId + "");
             column.set(1, natUrl + "");
             column.set(2, discordUrl + "");
-            column.set(3, report.reportType.name());
+            column.set(3, report.type.name());
             column.set(4, reporterNatUrl + "");
             column.set(5, reporterDiscordUrl + "");
             column.set(6, reporterAlliance + "");
             column.set(7, reporterGuild + "");
-            column.set(8, report.reportMessage);
+            column.set(8, report.message);
             column.set(9, report.imageUrl);
             column.set(10, report.forumUrl);
             column.set(11, report.newsUrl);
@@ -172,11 +170,11 @@ public class ReportCommands {
         Map<Integer, Set<String>> existingMap = new HashMap<>();
         for (ReportManager.Report report : existing) {
             int nationId = report.nationId;
-            String msg = report.reportMessage;
+            String msg = report.message;
             existingMap.computeIfAbsent(nationId, k -> new HashSet<>()).add(msg);
         }
 
-        reports.removeIf(f -> existingMap.getOrDefault(f.nationId, Collections.emptySet()).contains(f.reportMessage));
+        reports.removeIf(f -> existingMap.getOrDefault(f.nationId, Collections.emptySet()).contains(f.message));
 
         if (reports.isEmpty()) {
             return "No new reports to add";
@@ -248,7 +246,7 @@ public class ReportCommands {
 
         sheet.clearAll();
         sheet.set(0, 0);
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "loans").send();
         return null;
     }
 
@@ -459,7 +457,7 @@ public class ReportCommands {
     }
 
     @Command(desc = "Report a nation to the bot")
-    public String createReport(@Me DBNation me, @Me User author, @Me GuildDB db,
+    public String createReport(@Me DBNation me, @Me User author, @Me GuildDB db, @Me IMessageIO io, @Me JSONObject command,
                          ReportManager reportManager,
                          ReportManager.ReportType type,
                          @Arg("Description of report") @TextArea String message,
@@ -468,8 +466,9 @@ public class ReportCommands {
                          @Arg("Image evidence of report") @Switch("i") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String imageEvidenceUrl,
                          @Arg("Link to relevant forum post") @Switch("f") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String forum_post,
                          @Arg("Link to relevant news post") @Switch("m") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String news_post,
+                               @Switch("i") Integer reportId,
                                @Switch("f") boolean force) {
-        if (forumPost == null && newsReport == null) {
+        if (forum_post == null && news_post == null) {
             return "You must provide either a link to a forum post, or a link to a news report";
         }
         if (nation == null && discord_user_id == null) {
@@ -480,18 +479,6 @@ public class ReportCommands {
                     To get a discord user id, right click on the user and select `Copy ID`
                     See: <https://support.discord.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID->""";
         }
-
-        // ensure forumPost starts with https://forums.politicsandwar.com/
-
-        // newsReport must be discord message link in one of:
-        // RON
-        // OCR
-        // P&W
-        // Micro Minute
-        // morf radio
-        // thalmor radio
-        // prompt user to DM borg with the news server link if it is not one of the above
-        // Post invites to these news servers
 
         // At least one forum post or news report must be attached
         Set<Long> supportedServers = new HashSet<>(Arrays.asList(
@@ -535,32 +522,139 @@ public class ReportCommands {
             }
         }
 
-        if (!force) {
-            String title = "Report " + type + " by " + author.getName() + " on " + db.getName();
-
-            StringBuilder body = new StringBuilder();
-
-            Integer nationId = nation == null ? null : nation.getId();
-
-            List<ReportManager.Report> existing = reportManager.loadReportsByNationOrUser(nationId, discordId);
-
-            // Please look at these existing reports
-            // if you are reporting the same thing, please add a comment to the existing report:
-            //` TODO CM ref comment
-
-            //  // TODO add disclaimer that if there is a rule violation report to P&W
-            //        // or if there is a violation of discord ToS report to discord
-            //
-            //        // if nation == null, set to nation with that user, if exist
-            //
-            //        // if discord_user_id == null, set to user with that nation, if exist
-
-            // confirm dialog JSONObject
-
-            return null;
+        if (discord_user_id != null && nation != null) {
+            PNWUser nationUser = Locutus.imp().getDiscordDB().getUserFromNationId(nation.getId());
+            DBNation userNation = DiscordUtil.getNation(discord_user_id);
+            if (nationUser != null && nationUser.getDiscordId() != discord_user_id) {
+                throw new IllegalArgumentException("The nation you provided is already linked to a different discord user `" + DiscordUtil.getUserName(nationUser.getDiscordId()) + "`.\n" +
+                        "Please create a separate report for this discord user.");
+            }
+            if (userNation != null && userNation.getId() != nation.getId()) {
+                throw new IllegalArgumentException("The discord user you provided is already linked to a different nation `" + userNation.getName() + "`.\n" +
+                        "Please create a separate report for this nation.");
+            }
         }
 
+        if (discord_user_id == null) {
+            PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(nation.getId());
+            if (user != null) {
+                discord_user_id = user.getDiscordId();
+            }
+        }
+        if (nation == null) {
+            nation = DiscordUtil.getNation(discord_user_id);
+        }
 
+        Integer nationId = nation == null ? null : nation.getId();
+
+        int reporterNationId = me.getId();
+        long reporterUserId = author.getIdLong();
+        long reporterGuildId = db.getIdLong();
+        int reporterAlliance = me.getAlliance_id();
+
+        ReportManager.Report existing = null;
+        if (reportId != null) {
+            existing = reportManager.getReport(reportId);
+            if (existing == null) {
+                return "Report with id `" + reportId + "` does not exist.";
+            }
+            if (existing.reporterDiscordId != author.getIdLong() && !Roles.INTERNAL_AFFAIRS_STAFF.hasOnRoot(author)) {
+                return "You do not have permission to edit this report: `#" + reportId +
+                        "` (owned by nation:" + PnwUtil.getName(existing.reporterNationId, false) + ")\n" +
+                        "To add a comment: TODO CM ref";
+            }
+            // set the missing fields to the values from this report
+            if (nationId == null) {
+                nationId = existing.reporterNationId;
+            }
+            if (discord_user_id == null) {
+                discord_user_id = existing.reporterDiscordId;
+            }
+            if (type == null) {
+                type = existing.type;
+            }
+            if (message == null) {
+                message = existing.message;
+            }
+            if (imageEvidenceUrl == null) {
+                imageEvidenceUrl = existing.imageUrl;
+            }
+            if (forum_post == null) {
+                forum_post = existing.forumUrl;
+            }
+            if (news_post == null) {
+                news_post = existing.newsUrl;
+            }
+            // Keep reporter info if updating
+            reporterNationId = existing.reporterNationId;
+            reporterUserId = existing.reporterDiscordId;
+            reporterGuildId = existing.reporterGuildId;
+            reporterAlliance = existing.reporterAllianceId;
+        }
+
+        if (!force) {
+            String reportedName = "";
+            String title = (reportId != null ? "Update " : "Report") +
+                    type + " report by " +
+                    DiscordUtil.getUserName(reporterUserId) + " | " + PnwUtil.getName(reporterNationId, false);
+
+            StringBuilder body = new StringBuilder();
+            if (nationId != null) {
+                body.append("Nation: " + PnwUtil.getMarkdownUrl(nationId, false) + "\n");
+            }
+            if (discord_user_id != null) {
+                body.append("Discord user: <@" + discord_user_id + ">\n");
+            }
+            body.append("Your message:\n```\n" + message + "\n```\n");
+            if (imageEvidenceUrl != null) {
+                body.append("Image evidence: " + imageEvidenceUrl + "\n");
+            }
+            if (forum_post != null) {
+                body.append("Forum post: " + forum_post + "\n");
+            }
+            if (news_post != null) {
+                body.append("News post: " + news_post + "\n");
+            }
+
+            List<ReportManager.Report> reportList = reportManager.loadReportsByNationOrUser(nationId, discord_user_id);
+            if (!reportList.isEmpty()) {
+                body.append("To add a comment: TODO CM Ref\n");
+                body.append("**Please look at these existing reports and add a comment instead if you are reporting the same thing**\n");
+                for (ReportManager.Report report : reportList) {
+                    body.append("#" + report.reportId +": ```\n" + report.message + "\n```\n");
+                }
+            }
+
+            io.create().embed(title, body.toString()).append("""
+                    If there is a game rule violation, create a report on the P&W discord, or forums
+                    If there is a violation of discord ToS, report to discord: 
+                    <https://discord.com/safety/360044103651-reporting-abusive-behavior-to-discord>""")
+                    .confirmation(command).send();
+            return null;
+        }
+        ReportManager.Report report = new ReportManager.Report(
+            nationId == null ? 0 : nationId,
+            discord_user_id == null ? 0 : discord_user_id,
+            type,
+            reporterNationId,
+            reporterUserId,
+            reporterAlliance,
+            reporterGuildId,
+            message,
+            imageEvidenceUrl == null ? "" : imageEvidenceUrl,
+            forum_post == null ? "" : forum_post,
+            news_post == null ? "" : news_post,
+            System.currentTimeMillis(),
+            Roles.INTERNAL_AFFAIRS_STAFF.hasOnRoot(author));
+
+        if (existing != null) {
+            report.reportId = existing.reportId;
+        }
+
+        reportManager.saveReport(report);
+
+        return "Report " + (reportId == null ? "created" : "updated") + " with id `" + report.reportId + "`\n" +
+                "See: TODO CM REf to view your report\";";
     }
 
     // TODO

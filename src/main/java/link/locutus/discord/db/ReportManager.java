@@ -2,6 +2,7 @@ package link.locutus.discord.db;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.sheet.SpreadSheet;
 
 import java.io.IOException;
@@ -10,8 +11,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 
 public class ReportManager {
     private final NationDB db;
@@ -43,7 +44,68 @@ public class ReportManager {
                 "PRIMARY KEY(report_id, nation_id))");
     }
 
+    private void setValues(PreparedStatement stmt, Report report, boolean reportId) throws SQLException {
+        ReportHeader header = new ReportHeader();
+        header.setDefaultIndexes(reportId);
+        if (reportId) {
+            stmt.setInt(1, report.reportId);
+        }
+        stmt.setInt(header.nation_id, report.nationId);
+        stmt.setLong(header.discord_id, report.discordId);
+        stmt.setInt(header.report_type, report.type.ordinal());
+        stmt.setInt(header.reporter_nation_id, report.reporterNationId);
+        stmt.setLong(header.reporter_discord_id, report.reporterDiscordId);
+        stmt.setInt(header.reporter_alliance_id, report.reporterAllianceId);
+        stmt.setLong(header.reporter_guild_id, report.reporterGuildId);
+        stmt.setString(header.report_message, report.message);
+        stmt.setString(header.image_url, report.imageUrl);
+        stmt.setString(header.forum_url, report.forumUrl);
+        stmt.setString(header.news_url, report.newsUrl);
+        stmt.setLong(header.date, report.date);
+        stmt.setBoolean(header.approved, report.approved);
+    }
+
+    public void saveReport(Report report) {
+        ReportHeader header = new ReportHeader();
+        header.setDefaultIndexes(false);
+        List<String> columns = new ArrayList<>(Arrays.asList(header.getHeaderNames()));
+
+        if (report.reportId == -1) {
+            columns.remove(0);
+        }
+        String query = "INSERT INTO REPORTS " +
+                "(" + StringMan.join(columns, ", ") + ")" +
+                " VALUES (" + StringMan.repeat("?, ", columns.size() - 1) + "?)";
+
+        synchronized (db) {
+            try (PreparedStatement stmt = db.getConnection().prepareStatement(query, PreparedStatement.RETURN_GENERATED_KEYS)) {
+                setValues(stmt, report, report.reportId != -1);
+
+                stmt.executeUpdate();
+                ResultSet rs = stmt.getGeneratedKeys();
+                if (rs.next()) {
+                    report.reportId = rs.getInt(1);
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     public void saveReports(List<Report> reports) {
+        ReportHeader header = new ReportHeader();
+        header.setDefaultIndexes(false);
+        List<String> columns = new ArrayList<>(Arrays.asList(header.getHeaderNames()));
+        columns.remove(0);
+        String query = "INSERT INTO REPORTS " +
+                "(" + StringMan.join(columns, ", ") + ")" +
+                " VALUES (" + StringMan.repeat("?, ", columns.size() - 1) + "?)";
+        db.executeBatch(reports, query, new ThrowingBiConsumer<Report, PreparedStatement>() {
+            @Override
+            public void acceptThrows(Report report, PreparedStatement stmt) throws Exception {
+                setValues(stmt, report, false);
+            }
+        });
     }
 
     public enum ReportType {
@@ -67,12 +129,12 @@ public class ReportManager {
         public int reportId;
         public int nationId;
         public long discordId;
-        public ReportType reportType;
+        public ReportType type;
         public int reporterNationId;
         public long reporterDiscordId;
         public int reporterAllianceId;
         public long reporterGuildId;
-        public String reportMessage;
+        public String message;
         public String imageUrl;
         public String forumUrl;
         public String newsUrl;
@@ -92,14 +154,15 @@ public class ReportManager {
                         String newsUrl,
                         long date,
                         boolean approved) {
+            reportId = -1;
             this.nationId = nationId;
             this.discordId = discordId;
-            this.reportType = reportType;
+            this.type = reportType;
             this.reporterNationId = reporterNationId;
             this.reporterDiscordId = reporterDiscordId;
             this.reporterAllianceId = reporterAllianceId;
             this.reporterGuildId = reporterGuildId;
-            this.reportMessage = reportMessage;
+            this.message = reportMessage;
             this.imageUrl = imageUrl;
             this.forumUrl = forumUrl;
             this.newsUrl = newsUrl;
@@ -111,12 +174,12 @@ public class ReportManager {
             reportId = Integer.parseInt(row.get(header.report_id).toString());
             nationId = Integer.parseInt(row.get(header.nation_id).toString());
             discordId = Long.parseLong(row.get(header.discord_id).toString());
-            reportType = ReportType.valueOf(row.get(header.report_type).toString());
+            type = ReportType.valueOf(row.get(header.report_type).toString());
             reporterNationId = Integer.parseInt(row.get(header.reporter_nation_id).toString());
             reporterDiscordId = Long.parseLong(row.get(header.reporter_discord_id).toString());
             reporterAllianceId = Integer.parseInt(row.get(header.reporter_alliance_id).toString());
             reporterGuildId = Long.parseLong(row.get(header.reporter_guild_id).toString());
-            reportMessage = row.get(header.report_message).toString();
+            message = row.get(header.report_message).toString();
             imageUrl = row.get(header.image_url).toString();
             forumUrl = row.get(header.forum_url).toString();
             newsUrl = row.get(header.news_url).toString();
@@ -128,12 +191,12 @@ public class ReportManager {
             reportId = rs.getInt(header.report_id);
             nationId = rs.getInt(header.nation_id);
             discordId = rs.getLong(header.discord_id);
-            reportType = ReportType.valueOf(rs.getString(header.report_type));
+            type = ReportType.valueOf(rs.getString(header.report_type));
             reporterNationId = rs.getInt(header.reporter_nation_id);
             reporterDiscordId = rs.getLong(header.reporter_discord_id);
             reporterAllianceId = rs.getInt(header.reporter_alliance_id);
             reporterGuildId = rs.getLong(header.reporter_guild_id);
-            reportMessage = rs.getString(header.report_message);
+            message = rs.getString(header.report_message);
             imageUrl = rs.getString(header.image_url);
             forumUrl = rs.getString(header.forum_url);
             newsUrl = rs.getString(header.news_url);
@@ -147,12 +210,12 @@ public class ReportManager {
                     "reportId=" + reportId +
                     ", nationId=" + nationId +
                     ", discordId=" + discordId +
-                    ", reportType=" + reportType +
+                    ", reportType=" + type +
                     ", reporterNationId=" + reporterNationId +
                     ", reporterDiscordId=" + reporterDiscordId +
                     ", reporterAllianceId=" + reporterAllianceId +
                     ", reporterGuildId=" + reporterGuildId +
-                    ", reportMessage='" + reportMessage + '\'' +
+                    ", reportMessage='" + message + '\'' +
                     ", imageUrl='" + imageUrl + '\'' +
                     ", forumUrl='" + forumUrl + '\'' +
                     ", newsUrl='" + newsUrl + '\'' +
@@ -183,22 +246,24 @@ public class ReportManager {
         public String[] getHeaderNames() {
             return new String[]{"report_id", "nation_id", "discord_id", "report_type", "reporter_nation_id", "reporter_discord_id", "reporter_alliance_id", "reporter_guild_id", "report_message", "image_url", "forum_url", "news_url", "date", "approved"};
         }
-
         public void setDefaultIndexes() {
-            report_id = 1;
-            nation_id = 2;
-            discord_id = 3;
-            report_type = 4;
-            reporter_nation_id = 5;
-            reporter_discord_id = 6;
-            reporter_alliance_id = 7;
-            reporter_guild_id = 8;
-            report_message = 9;
-            image_url = 10;
-            forum_url = 11;
-            news_url = 12;
-            date = 13;
-            approved = 14;
+            setDefaultIndexes(true);
+        }
+        public void setDefaultIndexes(boolean setReportId) {
+            report_id = setReportId ? 1 : -1;
+            nation_id = setReportId ? 2 : 1;
+            discord_id = setReportId ? 3 : 2;
+            report_type = setReportId ? 4 : 3;
+            reporter_nation_id = setReportId ? 5 : 4;
+            reporter_discord_id = setReportId ? 6 : 5;
+            reporter_alliance_id = setReportId ? 7 : 6;
+            reporter_guild_id = setReportId ? 8 : 7;
+            report_message = setReportId ? 9 : 8;
+            image_url = setReportId ? 10 : 9;
+            forum_url = setReportId ? 11 : 10;
+            news_url = setReportId ? 12 : 11;
+            date = setReportId ? 13 : 12;
+            approved = setReportId ? 14 : 13;
         }
     }
 
