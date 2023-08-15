@@ -8,9 +8,11 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.ReportManager;
+import link.locutus.discord.db.entities.DBBan;
 import link.locutus.discord.db.entities.DBLoan;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.LoanManager;
+import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
@@ -22,7 +24,11 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutput;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.*;
@@ -580,12 +586,14 @@ public class ReportCommands {
         }
 
         if (!force) {
-            String reportedName = "";
             String title = (existing != null ? "Update " : "Report") +
                     type + " report by " +
                     DiscordUtil.getUserName(reporterUserId) + " | " + PnwUtil.getName(reporterNationId, false);
 
             StringBuilder body = new StringBuilder();
+            if (existing != null && existing.approved) {
+                body.append("`This report will lose its approved status if you update it.`\n");
+            }
             if (nationId != null) {
                 body.append("Nation: " + PnwUtil.getMarkdownUrl(nationId, false) + "\n");
             }
@@ -645,7 +653,7 @@ public class ReportCommands {
     }
 
     @Command
-    public String removeReport(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, ReportManager.Report report, @Switch("f") boolean force) {
+    public String removeReport(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, @ReportPerms ReportManager.Report report, @Switch("f") boolean force) {
         if (!report.hasPermission(me, author, db)) {
             return "You do not have permission to remove this report: `#" + report.reportId +
                     "` (owned by nation:" + PnwUtil.getName(report.reporterNationId, false) + ")\n" +
@@ -663,7 +671,7 @@ public class ReportCommands {
 
     @Command
     @RolePermission(value = Roles.INTERNAL_AFFAIRS_STAFF, root = true)
-    public String approveReport(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, ReportManager.Report report, @Switch("f") boolean force) {
+    public String approveReport(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, @ReportPerms ReportManager.Report report, @Switch("f") boolean force) {
         if (report.approved) {
             return "Report #" + report.reportId + " is already approved.";
         }
@@ -700,76 +708,156 @@ public class ReportCommands {
         return "Verified report #" + report.reportId;
     }
 
-    // TODO
-    // manage
-    // vote
-    // clean up output
-    // resolve nation / discord in report and list
+    @Command
+    public String viewReports(ReportManager reportManager, @Switch("n") DBNation nation, @Switch("d") Long discordId, @Switch("u") User discordUser) {
+        if (discordUser != null && discordId != null) {
+            // can only do one, throw exception, pick one
+        }
+
+        if (nation == null && discordUser == null && discordId == null) {
+            // must do at least one, pick,. throw error
+        }
+        Integer nationId = nation == null ? null : nation.getNation_id();
+        if (discordUser != null) discordId = discordUser.getIdLong();
+        List<ReportManager.Report> reports = reportManager.loadReportsByNationOrUser(nationId, discordId);
+        if (reports.isEmpty()) {
+            return "No reports found";
+        }
+    }
+
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String purgeReports(@Me IMessageIO io, @Me JSONObject command, ReportManager reportManager, @Switch("n") Integer nationIdReported, @Switch("d") Long userIdReported, @Switch("i") Integer reportingNation, @Switch("u") Long reportingUser, @Switch("f") boolean force) {
+        List<ReportManager.Report> reports = reportManager.loadReports(nationIdReported, userIdReported, reportingNation, reportingUser);
+        if (reports.isEmpty()) {
+            return "No reports found";
+        }
+        if (!force) {
+            String title = "Purge " + reports.size() + " reports";
+            StringBuilder body = new StringBuilder();
+            // append each variable used
+            if (nationIdReported != null) {
+                DBNation nation = DBNation.getById(nationIdReported);
+                String aaName = nation == null ? "None" : nation.getAllianceUrlMarkup(true);
+                body.append("Nation reported: ").append(PnwUtil.getMarkdownUrl(nationIdReported, false) + " | " + aaName).append("\n");
+            }
+            if (userIdReported != null) {
+                body.append("User reported: ").append("<@" + userIdReported + ">").append("\n");
+            }
+            if (reportingNation != null) {
+                DBNation nation = DBNation.getById(reportingNation);
+                String aaName = nation == null ? "None" : nation.getAllianceUrlMarkup(true);
+                body.append("Reporting nation: ").append(PnwUtil.getMarkdownUrl(reportingNation, false) + " | " + aaName).append("\n");
+            }
+            if (reportingUser != null) {
+                body.append("Reporting user: ").append("<@" + reportingUser + ">").append("\n");
+            }
+            body.append("\n");
+            io.create().confirmation(title, body.toString(), command).send();
+            return null;
+        }
+        for (ReportManager.Report report : reports) {
+            reportManager.deleteReport(report.reportId);
+        }
+        return "Deleted " + reports.size() + " reports";
+    }
+
+    @Command(desc = "Ban a nation from submitting nation reports")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String ban(ReportManager reportManager, @Me IMessageIO io, @Me JSONObject command, DBNation nation, @Timestamp long timestamp, String reason, @Switch("f") boolean force) throws IOException {
+        if (!force) {
+            String title = "Ban " + nation.getName() + " from reporting";
+            StringBuilder body = new StringBuilder();
+            body.append("Nation: ").append(nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true)).append("\n");
+            body.append("Reason:\n```\n").append(reason).append("\n```\n");
+            body.append("Until: ").append(DiscordUtil.timestamp(timestamp, null)).append("\n");
+
+            Map.Entry<String, Long> ban = reportManager.getBan(nation);
+            if (ban != null) {
+                body.append("Existing ban:\n```\n").append(ban.getKey()).append("\n```\nuntil ").append(DiscordUtil.timestamp(ban.getValue(), null)).append("\n");
+            }
+
+            io.create().confirmation(title, body.toString(), command).send();
+            return null;
+        }
+        reportManager.setBanned(nation, timestamp, reason);
+        return "Banned " + nation.getName() + " from submitting nation reports";
+    }
+
+    @Command(desc = "Ban a nation from submitting nation reports")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String unban(ReportManager reportManager, @Me IMessageIO io, @Me JSONObject command, DBNation nation, @Switch("f") boolean force) throws IOException {
+        if (!force) {
+            String title = "Unban " + nation.getName() + " from reporting";
+            StringBuilder body = new StringBuilder();
+            body.append("Nation: ").append(nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true)).append("\n");
+            Map.Entry<String, Long> ban = reportManager.getBan(nation);
+            if (ban != null) {
+                body.append("Existing ban:\n```\n").append(ban.getKey()).append("\n```\nuntil ").append(DiscordUtil.timestamp(ban.getValue(), null)).append("\n");
+            }
+            io.create().confirmation(title, body.toString(), command).send();
+            return null;
+        }
+        nation.deleteMeta(NationMeta.REPORT_BAN);
+        return "Unbanned " + nation.getName() + " from submitting nation reports";
+    }
+
+    // report search
+    @Command
+    public String searchReports(@Me IMessageIO io, @Me JSONObject command, ReportManager reportManager, @Switch("n") Integer nationIdReported, @Switch("d") Long userIdReported, @Switch("i") Integer reportingNation, @Switch("u") Long reportingUser, @Switch("f") boolean force) {
+        List<ReportManager.Report> reports = reportManager.loadReports(nationIdReported, userIdReported, reportingNation, reportingUser);
+        // list reports matching
+        if (reports.isEmpty()) {
+            return "No reports found";
+        }
+        StringBuilder response = new StringBuilder();
+        response.append("# " + reports.size()).append(" reports found:\n");
+        for (ReportManager.Report report : reports) {
+            response.append("### ").append(report.toMarkdown(false)).append("\n");
+        }
+        return response.toString();
+    }
+
+    // report show, incl comments
+    @Command
+    public String showReport(@Me IMessageIO io, ReportManager.Report report) {
+        return "### " + report.toMarkdown(true);
+    }
+
+    @Command
+    public String riskFactors(ReportManager reportManager, DBNation nation) {
+        StringBuilder response = new StringBuilder();
+
+        // Get bans
+        List<DBBan> bans = nation.getBans();
+
+        // Get same network bans
+
+        // Get reports by same nation/discord
+        List<ReportManager.Report> reports = reportManager.loadReports(nation.getId(), nation.getUserId(), null, null);
+        // Say # reports, use TODO CM ref to show (X approved, X pending)
 
 
-//    @Command(desc = "List your own reports (and allow you to remove them)")
-//    public void manage(@Me DBNation me, @Me User user) {
-//
-//    }
-
-//    @Command(desc = "List the user reports made to the bot for a nation or user")
-//    public String list(@Switch("n") DBNation nation, @Switch("u") long discordId, @Switch("n") int nationId) throws GeneralSecurityException, IOException, NoSuchFieldException, IllegalAccessException {
-//
-//    }
-//
-//    @Command(desc = "Report a nation to the bot")
-//    public String create(@Me DBNation me, @Me User author, @Me GuildDB db,
-////                         ReportType type,
-////                         @Arg("Nation to report") DBNation target,
-////                         @Arg("Description of report") @TextArea String message,
-////                         @Arg("Image evidence of report") @Switch("i") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String imageEvidenceUrl,
-////                         @Arg("User to report") @Switch("u") User user,
-////                         @Arg("Link to relevant forum post") @Switch("f") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String forumPost,
-////                         @Arg("Link to relevant news post") @Switch("m") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String newsReport,
-//                         @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, NoSuchFieldException, IllegalAccessException {
-//        if (sheet == null) sheet = SpreadSheet.create(REPORT_SHEET);
-//        if (message.charAt(0) == '=') return "Invalid message.";
-//        if (message.length() < 25) return "Message is too short (25 characters minimum)";
-//        if (forumPost != null && !forumPost.toLowerCase().contains("forums.politicsandwar.com/"))
-//            throw new IllegalArgumentException("`forumPost` must be a valid forum post URL. Provided: `" + forumPost + "`");
-//        if (newsReport != null && !newsReport.toLowerCase().contains("https://discord.com/channels/"))
-//            throw new IllegalArgumentException("`newsReport` must be a valid discord message URL. Provided: `" + newsReport + "`");
-//
-//        List<List<Object>> values = sheet.loadValues();
-//        List<Object> headerRow;
-//        if (values.isEmpty()) {
-//            headerRow = new ArrayList<>();
-//            for (Field field : ReportHeader.class.getDeclaredFields()) {
-//                headerRow.add(field.getName());
-//            }
-//            sheet.addRow(headerRow);
-//        } else {
-//            headerRow = values.get(0);
-//        }
-//        ReportHeader header = sheet.loadHeader(new ReportHeader(), headerRow);
-//
-//        List<Object> addRow = new ArrayList<>(headerRow);
-//
-//        UUID id = UUID.randomUUID();
-//        addRow.set(header.report_id, id.toString());
-//        addRow.set(header.nation_id, target.getId());
-//        addRow.set(header.discord_id, user != null ? user.getId() : "0");
-//        addRow.set(header.report_type, type.name());
-//        addRow.set(header.reporter_nation_id, me.getId());
-//        addRow.set(header.reporter_discord_id, author.getId());
-//        addRow.set(header.reporter_alliance_id, me.getAlliance_id());
-//        addRow.set(header.reporter_guild_id, db.getGuild().getId());
-//        addRow.set(header.report_message, message);
-//        addRow.set(header.image_url, Optional.ofNullable(imageEvidenceUrl).orElse(""));
-//        addRow.set(header.forum_url, Optional.ofNullable(forumPost).orElse(""));
-//        addRow.set(header.news_url, Optional.ofNullable(newsReport).orElse(""));
-//
-//        sheet.set(0, 0);
-//
-//        return "Created report with id: `" + id + "`";
-//    }
 
 
+        // Get same network bans
 
+        //- Link to the multi command / multi buster
+        //- bans
+        //- reports
+        //- Leaves/joins
+        //- Multi information
+        //- Active loans (share_loan_info, or shared sheets)
+        //- loot factor risks (activity)
+        //- server bans
+        //- account age
 
+        //- proximity to banned or reported individuals (alliance history, trades, bank transfers)
+
+        // Print the following so user can check it
+        //      - nation description/city description
+        //        //- Has account description and profile picture
+        //        //- verified
+        //        //- vip
+    }
 }

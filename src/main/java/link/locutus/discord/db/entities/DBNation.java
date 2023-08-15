@@ -3389,7 +3389,7 @@ public class DBNation implements NationOrAlliance {
         return bans != null && !bans.isEmpty();
     }
 
-    private List<DBBan> getBans() {
+    public List<DBBan> getBans() {
         PNWUser user = getDBUser();
         List<DBBan> bans;
         if (user != null) {

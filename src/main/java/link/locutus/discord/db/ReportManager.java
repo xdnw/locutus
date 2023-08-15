@@ -3,6 +3,7 @@ package link.locutus.discord.db;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -12,15 +13,22 @@ import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.User;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static link.locutus.discord.util.MarkupUtil.markdownUrl;
 import static link.locutus.discord.util.discord.DiscordUtil.getGuildName;
@@ -122,6 +130,60 @@ public class ReportManager {
 
     public void deleteReport(int reportId) {
         db.update("DELETE FROM REPORTS WHERE report_id = ?", reportId);
+    }
+
+    public List<Report> loadReports(Integer nationIdReported, Long userIdReported, Integer reportingNation, Long reportingUser) {
+        // if all null throw error
+        if (nationIdReported == null && userIdReported == null && reportingNation == null && reportingUser == null) {
+            throw new IllegalArgumentException("At least one of the parameters must be provided");
+        }
+        // May be null
+
+        // Use where and clause for sql
+        String whereClause = "";
+        if (nationIdReported != null) {
+            whereClause += "nation_id = " + nationIdReported;
+        }
+        if (userIdReported != null) {
+            if (!whereClause.isEmpty()) {
+                whereClause += " AND ";
+            }
+            whereClause += "discord_id = " + userIdReported;
+        }
+        if (reportingNation != null) {
+            if (!whereClause.isEmpty()) {
+                whereClause += " AND ";
+            }
+            whereClause += "reporter_nation_id = " + reportingNation;
+        }
+        if (reportingUser != null) {
+            if (!whereClause.isEmpty()) {
+                whereClause += " AND ";
+            }
+            whereClause += "reporter_discord_id = " + reportingUser;
+        }
+        return loadReports(whereClause);
+    }
+
+    public void setBanned(DBNation nation, long timestamp, String reason) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        DataOutputStream dos = new DataOutputStream(out);
+        dos.writeLong(timestamp);
+        dos.writeUTF(reason);
+        nation.setMeta(NationMeta.REPORT_BAN, out.toByteArray());
+    }
+
+    public Map.Entry<String, Long> getBan(DBNation nation) {
+        ByteBuffer buf = nation.getMeta(NationMeta.REPORT_BAN);
+        if (buf == null) return null;
+        ByteArrayInputStream in = new ByteArrayInputStream(buf.array());
+        DataInputStream dis = new DataInputStream(in);
+        try {
+            return new AbstractMap.SimpleEntry<>(dis.readUTF(), dis.readLong());
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     public enum ReportType {
@@ -266,7 +328,7 @@ public class ReportManager {
             body.append("Reported by: " + reporterNationLink + " | " + reporterAllianceLink  + " | <@" + reporterDiscordId + "> | " + reporterGuildLink + "\n");
             body.append("```\n" + message + "\n```\n");
             if (imageUrl != null && !imageUrl.isEmpty()) {
-                body.append("Image: " + imageUrl + "\n");
+                body.append("Image: <" + imageUrl + ">\n");
             }
             if (forumUrl != null && !forumUrl.isEmpty()) {
                 // https://forum.politicsandwar.com/index.php?/topic
