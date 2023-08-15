@@ -2270,6 +2270,22 @@ public class NationDB extends DBMainV2 {
         return results;
     }
 
+    public Map<Integer, DBBan> getBansByNation() {
+        Map<Integer, DBBan> results = new Object2ObjectOpenHashMap<>();
+        String select = "SELECT * FROM banned_nations";
+        try (PreparedStatement stmt = getConnection().prepareStatement(select)) {
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                DBBan ban = new DBBan(rs);
+                results.put(ban.nation_id, ban);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return results;
+    }
+
+
     public List<DBBan> getBansForUser(long discordId) {
         return getBansForUser(discordId, null);
     }

@@ -289,7 +289,7 @@ public class WarCommands {
             "Sorted by best nation loot\n" +
             "Defaults to 7d inactive")
     @RolePermission(value = {Roles.MEMBER, Roles.APPLICANT}, any=true)
-    public String raid(@Me DBNation me, @Me GuildDB db, @Me Guild guild, @Me User user, @Me TextChannel channel,
+    public String raid(@Me DBNation me, @Me GuildDB db, @Me Guild guild, @Me User user, @Me IMessageIO channel,
                        @Default("*") Set<DBNation> targets,
                        @Switch("r") @Default("5") Integer numResults,
                        @Switch("a") @Timediff Long activeTimeCutoff,
@@ -301,7 +301,7 @@ public class WarCommands {
                        @Switch("s") Integer defensiveSlots,
                        @Switch("d") boolean ignoreDNR,
                        @Switch("l") boolean ignoreBankLoot,
-                       @Switch("c") boolean ignoreCityRevenue) {
+                       @Switch("c") boolean ignoreCityRevenue) throws ExecutionException, InterruptedException {
 
         DBNation nation = DiscordUtil.getNation(user);
         if (nation == null) return null;

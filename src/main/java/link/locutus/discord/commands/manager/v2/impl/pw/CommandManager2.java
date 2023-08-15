@@ -153,6 +153,7 @@ public class CommandManager2 {
 
         this.commands.registerMethod(new UtilityCommands(), List.of("building"), "buildingCost", "cost");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncBans", "bans");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "list"), "hasSameNetworkAsBan", "multis");
 
         this.commands.registerMethod(new GPTCommands(), List.of("help"), "find_placeholder", "find_nation_placeholder");
         this.commands.registerMethod(new BankCommands(), List.of("escrow"), "escrowSheetCmd", "view_sheet");

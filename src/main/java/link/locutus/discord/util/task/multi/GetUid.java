@@ -34,15 +34,17 @@ public class GetUid implements Callable<BigInteger> {
         try {
             Elements uuidTd = dom.select("td:contains(Unique ID)");
             if (!uuidTd.isEmpty()) {
-
                 String hexString = uuidTd.first().nextElementSibling().text();
                 this.uuid = new BigInteger(hexString, 16);
                 this.verified = dom.select(".fa-check-circle").size() > 0;
                 if (verified) {
                     Locutus.imp().getDiscordDB().addVerified(nation.getNation_id());
                 }
+                Locutus.imp().getDiscordDB().addUUID(nation.getNation_id(), uuid);
+                System.out.println("Fetched uid for " + nation.getNation_id() + " (" + uuid.toString(16) + ")");
+            } else {
+                System.out.println("Failed to fetch uid for " + nation.getNation_id() + " (not found)");
             }
-
             return uuid;
         } catch (Throwable e) {
             e.printStackTrace();
