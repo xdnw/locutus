@@ -38,11 +38,15 @@ public class DBBan {
         if (days_left == -1) return Integer.MAX_VALUE;
 
         long now = System.currentTimeMillis();
-        long expire = date + TimeUnit.DAYS.toMillis(days_left);
+        long expire = getEndDate();
         return Math.max(0, expire - now);
     }
 
     public boolean isExpired() {
         return getTimeRemaining() <= 0;
+    }
+
+    public long getEndDate() {
+        return date + date + TimeUnit.DAYS.toMillis(days_left);
     }
 }

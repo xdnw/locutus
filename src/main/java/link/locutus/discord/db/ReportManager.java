@@ -1,8 +1,12 @@
 package link.locutus.discord.db;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.Rank;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -27,8 +31,12 @@ import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static link.locutus.discord.util.MarkupUtil.markdownUrl;
 import static link.locutus.discord.util.discord.DiscordUtil.getGuildName;
@@ -184,6 +192,154 @@ public class ReportManager {
             e.printStackTrace();
             return null;
         }
+    }
+
+    private final Map<Integer, List<Map.Entry<Long, Map.Entry<Integer, Rank>>>> REMOVES_CACHE = new ConcurrentHashMap<>();
+
+    public List<Map.Entry<Long, Map.Entry<Integer, Rank>>> getCachedHistory(int nationId) {
+        synchronized (REMOVES_CACHE) {
+            if (REMOVES_CACHE.containsKey(nationId)) {
+                return REMOVES_CACHE.get(nationId);
+            }
+            List<Map.Entry<Long, Map.Entry<Integer, Rank>>> removes = Locutus.imp().getNationDB().getRankChanges(nationId);
+            REMOVES_CACHE.put(nationId, removes);
+            return removes;
+        }
+    }
+
+    public Map<Integer, Long> getBlackListProximity(DBNation nation, List<Map.Entry<Long, Map.Entry<Integer, Rank>>> history) {
+        Set<Integer> nationIds = getReportedNationIds(true);
+
+        Map<Integer, List<Map.Entry<Long, Long>>> allianceDurationMap = getAllianceDurationMap(history);
+
+        Map<Integer, Long> proximityMap = new HashMap<>();
+
+        for (int nationId : nationIds) {
+            if (nationId == nation.getId()) {
+                continue;  // Skip comparing with itself
+            }
+
+            List<Map.Entry<Long, Map.Entry<Integer, Rank>>> otherHistory = getCachedHistory(nationId);
+            Map<Integer, List<Map.Entry<Long, Long>>> otherAllianceDurationMap = getAllianceDurationMap(otherHistory);
+
+            long totalProximity = 0;
+
+            for (Map.Entry<Integer, List<Map.Entry<Long, Long>>> entry : allianceDurationMap.entrySet()) {
+                int allianceId = entry.getKey();
+                List<Map.Entry<Long, Long>> otherDurations = otherAllianceDurationMap.get(allianceId);
+                if (otherDurations.isEmpty()) continue;
+
+                List<Map.Entry<Long, Long>> durations = entry.getValue();
+
+                // Durations is a list of start -> end date (epoch millis)
+                // Get the time overlapped between durations and otherDurations
+                long overlapTime = calculateOverlapDuration(durations, otherDurations);
+                totalProximity += overlapTime;
+            }
+
+            if (totalProximity > 0) {
+                proximityMap.put(nationId, totalProximity);
+            }
+        }
+
+        return proximityMap;
+    }
+
+    public static long calculateOverlapDuration(List<Map.Entry<Long, Long>> list1, List<Map.Entry<Long, Long>> list2) {
+        long overlapDuration = 0;
+        int i = 0, j = 0;
+        while (i < list1.size() && j < list2.size()) {
+            Map.Entry<Long, Long> interval1 = list1.get(i);
+            Map.Entry<Long, Long> interval2 = list2.get(j);
+            if (interval1.getValue() < interval2.getKey()) {
+                i++;
+            } else if (interval2.getValue() < interval1.getKey()) {
+                j++;
+            } else {
+                long start = Math.max(interval1.getKey(), interval2.getKey());
+                long end = Math.min(interval1.getValue(), interval2.getValue());
+                overlapDuration += end - start;
+                if (interval1.getValue() < interval2.getValue()) {
+                    i++;
+                } else {
+                    j++;
+                }
+            }
+        }
+        return overlapDuration;
+    }
+    public Map<Integer, List<Map.Entry<Long, Long>>> getAllianceDurationMap(List<Map.Entry<Long, Map.Entry<Integer, Rank>>> history) {
+        Map<Integer, List<Map.Entry<Long, Long>>> allianceDurationMap = new HashMap<>();
+
+        long currentTime = System.currentTimeMillis();
+        int currentAllianceId = -1;
+        long currentStartTime = -1;
+
+        for (Map.Entry<Long, Map.Entry<Integer, Rank>> entry : history) {
+            long timestamp = entry.getKey();
+            int allianceId = entry.getValue().getKey();
+
+            if (allianceId != currentAllianceId) {
+                if (currentAllianceId != -1) {
+                    long endTime = timestamp;
+                    if (endTime > currentTime) {
+                        endTime = currentTime;
+                    }
+                    allianceDurationMap.computeIfAbsent(currentAllianceId, k -> new ArrayList<>())
+                            .add(new AbstractMap.SimpleEntry<>(currentStartTime, endTime));
+                }
+
+                currentAllianceId = allianceId;
+                currentStartTime = timestamp;
+            }
+        }
+
+        // Handle the last alliance entry
+        if (currentAllianceId != -1) {
+            long endTime = currentTime;
+            allianceDurationMap.computeIfAbsent(currentAllianceId, k -> new ArrayList<>())
+                    .add(new AbstractMap.SimpleEntry<>(currentStartTime, endTime));
+        }
+
+        return allianceDurationMap;
+    }
+
+    public List<Report> loadApprovedReports() {
+        return loadReports("approved = true");
+    }
+
+    public Map<Integer, Set<ReportType>> getApprovedReportTypesByNation(Set<Integer> nationIds) {
+        Map<Integer, Set<ReportType>> types = new HashMap<>();
+
+        List<Report> reports = loadReports("approved = true AND nation_id IN " + StringMan.getString(nationIds));
+        for (Report report : reports) {
+            types.computeIfAbsent(report.nationId, k -> new HashSet<>()).add(report.type);
+        }
+        return types;
+    }
+
+    public List<DBTrade> getBlacklistedTrades(DBNation nation) {
+        Set<Integer> reportedNationIds = getReportedNationIds(true);
+        reportedNationIds.add(nation.getNation_id());
+        List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(nation.getNation_id(), 0);
+        trades.removeIf(trade -> !reportedNationIds.contains(trade.getBuyer()) || !reportedNationIds.contains(trade.getSeller()));
+        return trades;
+    }
+
+    public Map<Integer, Double> getBlacklistedMoneyTrade(DBNation nation) {
+        List<DBTrade> trades = getBlacklistedTrades(nation);
+        // if (offer.getResource() == ResourceType.CREDITS) continue;
+        //            int max = offer.getResource() == ResourceType.FOOD ? 1000 : 10000;
+        //            if (offer.getPpu() > 1 && offer.getPpu() < max) continue;
+        Map<Integer, Double> moneyTrades = new HashMap<>();
+        for (DBTrade offer : trades) {
+            if (offer.getResource() == ResourceType.CREDITS) continue;
+            int max = offer.getResource() == ResourceType.FOOD ? 1000 : 10000;
+            if (offer.getPpu() > 1 && offer.getPpu() < max) continue;
+            double value = PnwUtil.convertedTotal(offer.getResource(), offer.getQuantity());
+            moneyTrades.compute(offer.getBuyer(), (k, v) -> v == null ? value : v + value);
+        }
+        return moneyTrades;
     }
 
     public enum ReportType {
@@ -533,6 +689,23 @@ public class ReportManager {
             e.printStackTrace();
         }
         return reports;
+    }
+
+    public Set<Integer> getReportedNationIds(boolean isApproved) {
+        String query = "SELECT DISTINCT nation_id FROM reports";
+        if (isApproved) {
+            query += " WHERE approved = 1";
+        }
+        Set<Integer> result = new ObjectOpenHashSet<>();
+        try (PreparedStatement stmt = db.getConnection().prepareStatement(query)) {
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                result.add(rs.getInt(1));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return result;
     }
 
     public List<Report> loadReportsByNationOrUser(Integer nationIdOrNull, Long discordUserIdOrNull) {

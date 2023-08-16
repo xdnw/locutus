@@ -30,6 +30,7 @@ import link.locutus.discord.event.nation.NationRegisterEvent;
 import link.locutus.discord.event.nation.*;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.NationOrAlliance;
+import link.locutus.discord.pnw.NationScoreMap;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
@@ -85,6 +86,7 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -1783,6 +1785,32 @@ public class DBNation implements NationOrAlliance {
         public String toString(double value) {
             return MathMan.format(value);
         }
+    }
+
+    public static Map<LoginFactor, Double> getLoginFactorPercents(DBNation nation) {
+        List<DBNation.LoginFactor> factors = DBNation.getLoginFactors(nation);
+
+        long turnNow = TimeUtil.getTurn();
+        int maxTurn = 30 * 12;
+        int candidateTurnInactive = (int) (turnNow - TimeUtil.getTurn(nation.lastActiveMs()));
+
+        Set<DBNation> nations1dInactive = Locutus.imp().getNationDB().getNationsMatching(f -> f.active_m() >= 1440 && f.getVm_turns() == 0 && f.active_m() <= TimeUnit.DAYS.toMinutes(30));
+        NationScoreMap<DBNation> inactiveByTurn = new NationScoreMap<DBNation>(nations1dInactive, f -> {
+            return (double) (turnNow - TimeUtil.getTurn(f.lastActiveMs()));
+        }, 1, 1);
+
+        Map<LoginFactor, Double> result = new LinkedHashMap<>();
+        for (DBNation.LoginFactor factor : factors) {
+            Predicate<DBNation> matches = f -> factor.matches(factor.get(nation), factor.get(f));
+            BiFunction<Integer, Integer, Integer> sumFactor = inactiveByTurn.getSummedFunction(matches);
+
+            int numCandidateActivity = sumFactor.apply(Math.min(maxTurn - 23, candidateTurnInactive), Math.min(maxTurn, candidateTurnInactive + 24));
+            int numInactive = Math.max(1, sumFactor.apply(14 * 12, 30 * 12) / (30 - 14));
+
+            double loginPct = Math.min(0.95, Math.max(0.05, numCandidateActivity > numInactive ? (1d - ((double) (numInactive) / (double) numCandidateActivity)) : 0)) * 100;
+            result.put(factor, loginPct);
+        }
+        return result;
     }
 
     public static List<LoginFactor> getLoginFactors(DBNation nationOptional) {

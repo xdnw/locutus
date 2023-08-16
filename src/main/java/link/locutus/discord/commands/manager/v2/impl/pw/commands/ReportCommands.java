@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -8,15 +9,19 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.ReportManager;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBBan;
 import link.locutus.discord.db.entities.DBLoan;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBTrade;
+import link.locutus.discord.db.entities.DiscordBan;
 import link.locutus.discord.db.entities.LoanManager;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.ImageUtil;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -28,10 +33,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.util.MarkupUtil.sheetUrl;
@@ -709,23 +716,6 @@ public class ReportCommands {
     }
 
     @Command
-    public String viewReports(ReportManager reportManager, @Switch("n") DBNation nation, @Switch("d") Long discordId, @Switch("u") User discordUser) {
-        if (discordUser != null && discordId != null) {
-            // can only do one, throw exception, pick one
-        }
-
-        if (nation == null && discordUser == null && discordId == null) {
-            // must do at least one, pick,. throw error
-        }
-        Integer nationId = nation == null ? null : nation.getNation_id();
-        if (discordUser != null) discordId = discordUser.getIdLong();
-        List<ReportManager.Report> reports = reportManager.loadReportsByNationOrUser(nationId, discordId);
-        if (reports.isEmpty()) {
-            return "No reports found";
-        }
-    }
-
-    @Command
     @RolePermission(value = Roles.ADMIN, root = true)
     public String purgeReports(@Me IMessageIO io, @Me JSONObject command, ReportManager reportManager, @Switch("n") Integer nationIdReported, @Switch("d") Long userIdReported, @Switch("i") Integer reportingNation, @Switch("u") Long reportingUser, @Switch("f") boolean force) {
         List<ReportManager.Report> reports = reportManager.loadReports(nationIdReported, userIdReported, reportingNation, reportingUser);
@@ -802,6 +792,28 @@ public class ReportCommands {
         return "Unbanned " + nation.getName() + " from submitting nation reports";
     }
 
+//    @Command
+//    public String viewReports(ReportManager reportManager, @Switch("n") DBNation nation, @Switch("d") Long discordId, @Switch("u") User discordUser) {
+//        if (discordUser != null && discordId != null) {
+//            // can only do one, throw exception, pick one
+//        }
+//
+//        if (nation == null && discordUser == null && discordId == null) {
+//            // must do at least one, pick,. throw error
+//        }
+//        Integer nationId = nation == null ? null : nation.getNation_id();
+//        if (discordUser != null) discordId = discordUser.getIdLong();
+//        List<ReportManager.Report> reports = reportManager.loadReportsByNationOrUser(nationId, discordId);
+//        if (reports.isEmpty()) {
+//            return "No reports found";
+//        }
+//
+//        StringBuilder response = new StringBuilder();
+//        // append each report incl comments
+//
+//        return null; // TODO CM REF (but not actually, i just put this here so it compiles, i need to finish this method)
+//    }
+
     // report search
     @Command
     public String searchReports(@Me IMessageIO io, @Me JSONObject command, ReportManager reportManager, @Switch("n") Integer nationIdReported, @Switch("d") Long userIdReported, @Switch("i") Integer reportingNation, @Switch("u") Long reportingUser, @Switch("f") boolean force) {
@@ -825,39 +837,187 @@ public class ReportCommands {
     }
 
     @Command
-    public String riskFactors(ReportManager reportManager, DBNation nation) {
+    public String riskFactors(ReportManager reportManager, LoanManager loanManager, DBNation nation) {
         StringBuilder response = new StringBuilder();
+        // Nation | Alliance (#AA Rank) | Position
+        response.append(nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true));
+        if (nation.getAlliance_id() > 0) {
+            DBAlliance alliance = nation.getAlliance();
+            response.append(" (#").append(alliance.getRank()).append(")");
+            response.append(" " + nation.getPositionEnum().name());
+        }
+        response.append("\n");
+        //- loot factor risks (activity)
+        response.append("Login factors:\n");
+        Map<DBNation.LoginFactor, Double> factors = DBNation.getLoginFactorPercents(nation);
+        for (Map.Entry<DBNation.LoginFactor, Double> entry : factors.entrySet()) {
+            DBNation.LoginFactor factor = entry.getKey();
+            double percent = entry.getValue();
+            response.append("- " + factor.name + "=" + factor.toString(factor.get(nation)) + ": " + MathMan.format(100 - percent) + "%\n");
+        }
 
-        // Get bans
-        List<DBBan> bans = nation.getBans();
 
-        // Get same network bans
+        //- Active loans (share_loan_info, or shared sheets)
+        List<DBLoan> loans = loanManager.getLoansByNation(nation.getId());
+        // remove completed loans
+        loans.removeIf(loan -> loan.status == DBLoan.Status.CLOSED);
+        if (!loans.isEmpty()) {
+            Map<DBLoan.Status, List<DBLoan>> loansByStatus = new HashMap<>();
+            for (DBLoan loan : loans) {
+                loansByStatus.computeIfAbsent(loan.status, k -> new ArrayList<>()).add(loan);
+            }
+            for (DBLoan.Status status : DBLoan.Status.values()) {
+                List<DBLoan> loansForStatus = loansByStatus.get(status);
+                if (loansForStatus == null) continue;
+                response.append(status.name() + " loans:\n");
+                for (DBLoan loan : loansForStatus) {
+                    double amt = PnwUtil.convertedTotal(loan.remaining);
+                    String amtStr = MathMan.format(amt);
+                    String loanerStr = loan.loanerGuildOrAA > Integer.MAX_VALUE ? DiscordUtil.getGuildName(loan.loanerGuildOrAA) : PnwUtil.getMarkdownUrl((int) loan.loanerGuildOrAA, true);
+                    String dateLoaned = DiscordUtil.timestamp(loan.loanDate, null);
+                    String dateSubmitted = DiscordUtil.timestamp(loan.date_submitted, null);
+                    response.append("- ~$" + amtStr + " from " + loanerStr + " on " + dateLoaned + " (submitted: " + dateSubmitted + ")\n");
+                }
+            }
+        }
+
 
         // Get reports by same nation/discord
         List<ReportManager.Report> reports = reportManager.loadReports(nation.getId(), nation.getUserId(), null, null);
-        // Say # reports, use TODO CM ref to show (X approved, X pending)
+        if (reports.size() > 0) {
+            int approved = (int) reports.stream().filter(report -> report.approved).count();
+            int pending = reports.size() - approved;
+            response.append("Reports: " + reports.size() + " (" + approved + " approved, " + pending + " pending)\n");
+            // use TODO CM ref to show (X approved, X pending)
+        }
 
+        //- server bans
+        User user = nation.getUser();
+        if (user == null) {
+            response.append("`Nation is not registered to a discord user`\n");
+        } else {
+            //- account age
+            long dateCreated = user.getTimeCreated().toEpochSecond() * 1000L;
+            response.append("Discord created: " + DiscordUtil.timestamp(dateCreated, null) + "\n");
 
+            List<DiscordBan> discordBans = Locutus.imp().getDiscordDB().getBans(user.getIdLong());
+            if (!discordBans.isEmpty()) {
+                response.append("Discord bans:\n");
+                for (DiscordBan ban : discordBans) {
+                    response.append("- " + DiscordUtil.getGuildName(ban.server) + " on " + DiscordUtil.timestamp(ban.date, null) + "\n");
+                }
+            }
+        }
 
+        // Get bans
+        List<DBBan> bans = nation.getBans();
+        List<DBBan> currentIpBans = new ArrayList<>();
+        List<DBBan> historicalIpBans = new ArrayList<>();
+
+        List<Integer> currentSharedNetwork = new ArrayList<>();
+        List<Integer> historicalSharedNetwork = new ArrayList<>();
 
         // Get same network bans
+        BigInteger latestUuid = Locutus.imp().getDiscordDB().getLatestUuid(nation.getNation_id());
+        if (latestUuid != null) {
+            Set<Integer> nations = Locutus.imp().getDiscordDB().getMultis(latestUuid);
+            for (int nationId : nations) {
+                BigInteger otherUuid = Locutus.imp().getDiscordDB().getLatestUuid(nation.getNation_id());
+                List<DBBan> nationBans = Locutus.imp().getNationDB().getBansForNation(nationId);
+                if (otherUuid == null || !otherUuid.equals(latestUuid)) {
+                    historicalIpBans.addAll(nationBans);
+                    historicalSharedNetwork.add(nationId);
+                } else {
+                    currentIpBans.addAll(nationBans);
+                    currentSharedNetwork.add(nationId);
+                }
+            }
+        }
+        currentSharedNetwork.remove(nation.getNation_id());
+        historicalSharedNetwork.remove(nation.getNation_id());
+        Set<DBNation> sharedNetworkActive = currentSharedNetwork.stream().map(DBNation::getById).collect(Collectors.toSet());
 
-        //- Link to the multi command / multi buster
-        //- bans
-        //- reports
-        //- Leaves/joins
-        //- Multi information
-        //- Active loans (share_loan_info, or shared sheets)
-        //- loot factor risks (activity)
-        //- server bans
-        //- account age
+        // add bans to response
+        if (!bans.isEmpty()) {
+            response.append("Game bans:\n");
+            for (DBBan ban : bans) {
+                response.append("- " + (ban.isExpired() ? "[Expired]" : "") +
+                        DiscordUtil.timestamp(ban.date, null) + " " +
+                        ban.reason.split("\n")[0] + "\n");
+            }
+        }
+        if (!currentIpBans.isEmpty()) {
+            response.append("Current network bans:\n");
+            for (DBBan ban : currentIpBans) {
+                response.append("- nation:" + ban.nation_id + "\n");
+            }
+        }
+        if (!historicalIpBans.isEmpty()) {
+            response.append("Historical network bans (unreliable):\n");
+            for (DBBan ban : historicalIpBans) {
+                response.append("- nation:" + ban.nation_id + "\n");
+            }
+        }
+
+        if (!bans.isEmpty() || !currentIpBans.isEmpty() || !historicalIpBans.isEmpty()) {
+            response.append("See TODO CM Ref for ban command\n");
+        }
+
+        // Add multi information
+        if (!sharedNetworkActive.isEmpty()) {
+            response.append("Sharing network with " + sharedNetworkActive.size() + " active nation" + (sharedNetworkActive.size() == 1 ? "" : "s") + ":\n");
+            for (DBNation other : sharedNetworkActive) {
+                response.append("- " + other.getNationUrlMarkup(true) + "\n");
+            }
+        }
+
+        // Alliance history
+        List<Map.Entry<Long, Map.Entry<Integer, Rank>>> history = reportManager.getCachedHistory(nation.getNation_id());
+//        Map<Integer, List<Map.Entry<Long, Long>>> durations = reportManager.getAllianceDurationMap(history);
+//        // Member in the following alliances
+//        response.append("Member in " + durations.size() + " alliance" + (durations.size() == 1 ? "" : "s") + ":\n");
+//        for (Map.Entry<Integer, List<Map.Entry<Long, Long>>> entry : durations.entrySet()) {
+//            int aaId = entry.getKey();
+//            List<Map.Entry<Long, Long>> aaHistory = entry.getValue();
+//            String aaName = PnwUtil.getMarkdownUrl(aaId, true);
+//            long duration = 0;
+//            for (Map.Entry<Long, Long> aaEntry : aaHistory) {
+//                duration += aaEntry.getValue() - aaEntry.getKey();
+//            }
+//            response.append("- " + aaName + ": " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, duration) + "\n");
+//        }
 
         //- proximity to banned or reported individuals (alliance history, trades, bank transfers)
+        // Map of Nation id -> Alliance -> duration
+        Map<Integer, Long> sameAAProximity = reportManager.getBlackListProximity(nation, history);
+        Map<Integer, Set<ReportManager.ReportType>> reportTypes = reportManager.getApprovedReportTypesByNation(sameAAProximity.keySet());
+        if (!sameAAProximity.isEmpty()) {
+            response.append("Proximity to reported individuals:\n");
+            for (Map.Entry<Integer, Long> entry : sameAAProximity.entrySet()) {
+                int nationId = entry.getKey();
+                String nationName = PnwUtil.getMarkdownUrl(nationId, false);
+                String reportListStr = reportTypes.get(nationId).stream().map(ReportManager.ReportType::name).collect(Collectors.joining(","));
+                response.append("- " + nationName + " | " + reportListStr + ": " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, entry.getValue()) + "\n");
+            }
+        }
+        // TODO CM Ref see aa history command
 
-        // Print the following so user can check it
-        //      - nation description/city description
-        //        //- Has account description and profile picture
-        //        //- verified
-        //        //- vip
+        Map<Integer, Double> trades = reportManager.getBlacklistedMoneyTrade(nation);
+        if (!trades.isEmpty()) {
+            response.append("Money Trades with reported individuals:\n");
+            for (Map.Entry<Integer, Double> entry : trades.entrySet()) {
+                int nationId = entry.getKey();
+                String nationName = PnwUtil.getMarkdownUrl(nationId, false);
+                response.append("- " + nationName + ": " + MathMan.format(entry.getValue()) + "\n");
+            }
+        }
+        return response.toString();
+//
+//        // Print the following so user can check it
+//        //      - nation description/city description
+//        //        //- Has account description and profile picture
+//        //        //- verified
+//        //        //- vip
+//        return null;
     }
 }

@@ -158,6 +158,8 @@ public class CommandManager2 {
         this.commands.registerMethod(new GPTCommands(), List.of("help"), "find_placeholder", "find_nation_placeholder");
         this.commands.registerMethod(new BankCommands(), List.of("escrow"), "escrowSheetCmd", "view_sheet");
 
+        this.commands.registerMethod(new UtilityCommands(), List.of("nation", "list"), "viewBans", "bans");
+
         for (GuildSetting setting : GuildKey.values()) {
             List<String> path = List.of("settings_" + setting.getCategory().name().toLowerCase(Locale.ROOT));
 
@@ -178,6 +180,25 @@ public class CommandManager2 {
                 String commandName = entry.getValue();
                 this.commands.registerMethod(setting, path, methodName, commandName);
             }
+        }
+
+        {
+            // report commands
+            ReportCommands reportCommands = new ReportCommands();
+            this.commands.registerMethod(reportCommands, List.of("report", "sheet"), "reportSheet", "generate");
+            this.commands.registerMethod(reportCommands, List.of("report", "import"), "importLegacyBlacklist", "legacy");
+            this.commands.registerMethod(reportCommands, List.of("report", "sheet"), "getLoanSheet", "loans");
+            this.commands.registerMethod(reportCommands, List.of("report", "import"), "importLoans", "loans");
+            this.commands.registerMethod(reportCommands, List.of("report"), "createReport", "create");
+            this.commands.registerMethod(reportCommands, List.of("report"), "removeReport", "remove");
+            this.commands.registerMethod(reportCommands, List.of("report"), "approveReport", "approve");
+            this.commands.registerMethod(reportCommands, List.of("report", "comment"), "comment", "add");
+            this.commands.registerMethod(reportCommands, List.of("report"), "purgeReports", "purge");
+            this.commands.registerMethod(reportCommands, List.of("report"), "ban", "ban");
+            this.commands.registerMethod(reportCommands, List.of("report"), "unban", "unban");
+            this.commands.registerMethod(reportCommands, List.of("report"), "searchReports", "search");
+            this.commands.registerMethod(reportCommands, List.of("report"), "showReport", "show");
+            this.commands.registerMethod(reportCommands, List.of("report"), "riskFactors", "analyze");
         }
 
         HelpCommands help = new HelpCommands();
