@@ -122,12 +122,24 @@ public class PWCompleter extends BindingHelper {
         return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);
     }
 
-    @Binding
+    @Autocomplete
     @ReportPerms
     @Binding(types={ReportManager.Report.class})
-    public List<Map.Entry<String, String>> reports(ReportManager manager, @Me DBation me, @Me User author, @Me GuildDB db, String input) {
-        List<ReportManager.Report> options = manager.getReports();
-        options.removeIf(f -> !f.hasPermission(me, user, db));
+    public List<Map.Entry<String, String>> reports(ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input) {
+        return reports(manager, me, author, db, input, true);
+    }
+
+    @Autocomplete
+    @Binding(types={ReportManager.Report.class})
+    public List<Map.Entry<String, String>> reportsAll(ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input) {
+        return reports(manager, me, author, db, input, false);
+    }
+
+    public List<Map.Entry<String, String>> reports(ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input, boolean checkPerms) {
+        List<ReportManager.Report> options = manager.loadReports(null);
+        if (checkPerms) {
+            options.removeIf(f -> !f.hasPermission(me, author, db));
+        }
 
         options = StringMan.getClosest(input, options, f -> "#" + f.reportId + " " + f.getTitle(), OptionData.MAX_CHOICES, true, true);
 
@@ -380,6 +392,12 @@ public class PWCompleter extends BindingHelper {
         return StringMan.completeEnum(input, UnsortedCommands.ClearRolesEnum.class);
     }
 
+    @Autocomplete
+    @Binding(types={DBLoan.Status.class})
+    public List<String> LoanStatus(String input) {
+        return StringMan.completeEnum(input, DBLoan.Status.class);
+    }
+
     {
         {
             Key key = Key.of(TypeToken.getParameterized(Set.class, DBAlliance.class).getType(), Autocomplete.class);
@@ -397,6 +415,16 @@ public class PWCompleter extends BindingHelper {
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     return StringMan.autocompleteCommaEnum(Roles.class, input.toString(), OptionData.MAX_CHOICES);
+                }));
+            });
+        }
+
+
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, DBLoan.Status.class).getType(), Autocomplete.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(DBLoan.Status.class, input.toString(), OptionData.MAX_CHOICES);
                 }));
             });
         }

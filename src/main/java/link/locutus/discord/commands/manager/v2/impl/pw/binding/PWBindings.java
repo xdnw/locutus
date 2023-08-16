@@ -112,25 +112,35 @@ public class PWBindings extends BindingHelper {
             examples = """
             c1-9:*
             c10+:INACTIVE,VACATION_MODE,APPLICANT""")
-        public Map<CityRanges, Set<BeigeReason>> beigeReasonMap(@Me GuildDB db, String input) {
-            input = input.replace("=", ":");
+    public Map<CityRanges, Set<BeigeReason>> beigeReasonMap(@Me GuildDB db, String input) {
+        input = input.replace("=", ":");
 
-            Map<CityRanges, Set<BeigeReason>> result = new LinkedHashMap<>();
-            String[] split = input.trim().split("\\r?\\n");
-            if (split.length == 1) split = StringMan.split(input.trim(), ' ').toArray(new String[0]);
-            for (String s : split) {
-                String[] pair = s.split(":");
-                if (pair.length != 2) throw new IllegalArgumentException("Invalid `CITY_RANGE:BEIGE_REASON` pair: `" + s + "`");
-                CityRanges range = CityRanges.parse(pair[0]);
-                List<BeigeReason> list = StringMan.parseEnumList(BeigeReason.class, pair[1]);
-                result.put(range, new HashSet<>(list));
-            }
-            return result;
+        Map<CityRanges, Set<BeigeReason>> result = new LinkedHashMap<>();
+        String[] split = input.trim().split("\\r?\\n");
+        if (split.length == 1) split = StringMan.split(input.trim(), ' ').toArray(new String[0]);
+        for (String s : split) {
+            String[] pair = s.split(":");
+            if (pair.length != 2) throw new IllegalArgumentException("Invalid `CITY_RANGE:BEIGE_REASON` pair: `" + s + "`");
+            CityRanges range = CityRanges.parse(pair[0]);
+            List<BeigeReason> list = StringMan.parseEnumList(BeigeReason.class, pair[1]);
+            result.put(range, new HashSet<>(list));
         }
+        return result;
+    }
 
     @Binding(value = "A comma separated list of beige reasons for defeating an enemy in war")
     public Set<BeigeReason> BeigeReasons(String input) {
         return emumSet(BeigeReason.class, input);
+    }
+
+    @Binding(value = "A comma separated list of the status of a nation's loan")
+    public Set<DBLoan.Status> LoanStatuses(String input) {
+        return emumSet(DBLoan.Status.class, input);
+    }
+
+    @Binding(value = "The status of a nation's loan")
+    public DBLoan.Status LoanStatus(String input) {
+        return emum(DBLoan.Status.class, input);
     }
 
     @Binding(value = "A reason beiging and defeating an enemy in war")
@@ -1277,12 +1287,12 @@ public class PWBindings extends BindingHelper {
     @Binding
     @ReportPerms
     public ReportManager.Report getReport(ReportManager manager, int id) {
-        return getReportAll(manager, id)
+        return getReportAll(manager, id);
     }
 
     @Binding
     public ReportManager.Report getReportAll(ReportManager manager, int id) {
-        ReportManager.Report report = managet.loadReport(id);
+        ReportManager.Report report = manager.getReport(id);
         if (report == null) {
             throw new IllegalArgumentException("No report found with id: `" + id + "`");
         }

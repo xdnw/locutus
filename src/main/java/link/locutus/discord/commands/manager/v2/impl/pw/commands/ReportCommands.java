@@ -102,7 +102,7 @@ public class ReportCommands {
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
     public String importLegacyBlacklist(ReportManager reportManager, @Me GuildDB db, @Me DBNation me, @Me User author, SpreadSheet sheet) {
-        List<List<Object>> rows = sheet.getValues();
+        List<List<Object>> rows = sheet.getAll();
         List<Object> header = rows.get(0);
 
         int discordIndex = header.indexOf("Discord ID");
@@ -125,8 +125,21 @@ public class ReportCommands {
         for (int i = 1; i < rows.size(); i++) {
             List<Object> row = rows.get(i);
 
-            int nationId = Integer.parseInt(row.get(nationIdIndex).toString());
-            long discordId = Long.parseLong(row.get(discordIndex).toString());
+            String nationIdStr = row.get(nationIdIndex).toString();
+            String discordIdsStr = row.get(discordIndex).toString();
+            int nationId = nationIdStr.equalsIgnoreCase("unknown") ||
+                    nationIdStr.equalsIgnoreCase("deleted") ||
+                    nationIdStr.isEmpty() ? 0 : Integer.parseInt(nationIdStr);
+            Set<Long> discordIds = new HashSet<>();
+            if (discordIds.isEmpty()) discordIds.add(0L);
+
+            if (!discordIdsStr.equalsIgnoreCase("unknown") &&
+                    !discordIdsStr.equalsIgnoreCase("deleted") &&
+                    !discordIdsStr.isEmpty()) {
+                for (String idStr : discordIdsStr.split(",")) {
+                    discordIds.add(Long.parseLong(idStr.trim()));
+                }
+            }
 
             String reason = row.get(reasonIndex).toString();
             String reasonLower = reason.toLowerCase();
@@ -145,26 +158,32 @@ public class ReportCommands {
             }
 
             String reasonFinal = reason + "\nnote: `legacy blacklist`";
-            if (reportingEntityIndex != -1) {
-                reasonFinal += "\nreporting entity: " + row.get(reportingEntityIndex);
+            if (reportingEntityIndex != -1 && reportingEntityIndex < row.size()) {
+                Object entityObj = row.get(reportingEntityIndex);
+                if (entityObj != null && !entityObj.toString().isEmpty()) {
+                    reasonFinal += "\nreporting entity: " + entityObj;
+                }
             }
+            for (long discordId : discordIds) {
+                if (nationId == 0 && discordId == 0) continue;
 
-            ReportManager.Report report = new ReportManager.Report(
-                    nationId,
-                    discordId,
-                    type,
-                    me.getNation_id(),
-                    author.getIdLong(),
-                    me.getAlliance_id(),
-                    db.getIdLong(),
-                    reason,
-                    "",
-                    "",
-                    "",
-                    System.currentTimeMillis(),
-                    true
-            );
-            reports.add(report);
+                ReportManager.Report report = new ReportManager.Report(
+                        nationId,
+                        discordId,
+                        type,
+                        me.getNation_id(),
+                        author.getIdLong(),
+                        me.getAlliance_id(),
+                        db.getIdLong(),
+                        reasonFinal,
+                        "",
+                        "",
+                        "",
+                        System.currentTimeMillis(),
+                        true
+                );
+                reports.add(report);
+            }
         }
 
 
@@ -258,7 +277,7 @@ public class ReportCommands {
     @Command(desc = "Import loans from a spreadsheet")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ECON}, any = true)
     public String importLoans(LoanManager loanManager, @Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, SpreadSheet sheet, @Default DBLoan.Status defaultStatus, @Switch("o") boolean overwriteLoans, @Switch("m") boolean overwriteSameNation, @Switch("a") boolean addLoans) throws ParseException {
-        List<List<Object>> rows = sheet.getValues();
+        List<List<Object>> rows = sheet.getAll();
         if (rows.isEmpty()) {
             return "No rows found: " + sheet.getURL();
         }
