@@ -53,7 +53,7 @@ import static link.locutus.discord.util.discord.DiscordUtil.userUrl;
 
 public class ReportCommands {
     @Command(desc=  "Get a sheet of all the community reports for players")
-    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String reportSheet(@Me IMessageIO io, @Me GuildDB db, ReportManager manager, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException, NoSuchFieldException, IllegalAccessException {
         List<ReportManager.Report> reports = manager.loadReports(null);
 
@@ -189,7 +189,7 @@ public class ReportCommands {
     }
 
     @Command(desc = "Get all loan information banks and alliances have submitted")
-    @RolePermission(Roles.ECON_STAFF)
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String getLoanSheet(@Me IMessageIO io, @Me GuildDB db, LoanManager manager, @Default Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("l") Set<DBLoan.Status> loanStatus) throws GeneralSecurityException, IOException {
         List<DBLoan> loans;
         Set<Integer> nationIds = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
@@ -256,7 +256,7 @@ public class ReportCommands {
 
 
     @Command(desc = "Import loans from a spreadsheet")
-    @RolePermission(Roles.ECON_STAFF)
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ECON}, any = true)
     public String importLoans(LoanManager loanManager, @Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, SpreadSheet sheet, @Default DBLoan.Status defaultStatus, @Switch("o") boolean overwriteLoans, @Switch("m") boolean overwriteSameNation, @Switch("a") boolean addLoans) throws ParseException {
         List<List<Object>> rows = sheet.getValues();
         if (rows.isEmpty()) {
@@ -460,6 +460,7 @@ public class ReportCommands {
     }
 
     @Command(desc = "Report a nation to the bot")
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String createReport(@Me DBNation me, @Me User author, @Me GuildDB db, @Me IMessageIO io, @Me JSONObject command,
                          ReportManager reportManager,
                          ReportManager.ReportType type,
@@ -660,6 +661,7 @@ public class ReportCommands {
     }
 
     @Command
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String removeReport(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, @ReportPerms ReportManager.Report report, @Switch("f") boolean force) {
         if (!report.hasPermission(me, author, db)) {
             return "You do not have permission to remove this report: `#" + report.reportId +
@@ -816,6 +818,7 @@ public class ReportCommands {
 
     // report search
     @Command
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String searchReports(@Me IMessageIO io, @Me JSONObject command, ReportManager reportManager, @Switch("n") Integer nationIdReported, @Switch("d") Long userIdReported, @Switch("i") Integer reportingNation, @Switch("u") Long reportingUser, @Switch("f") boolean force) {
         List<ReportManager.Report> reports = reportManager.loadReports(nationIdReported, userIdReported, reportingNation, reportingUser);
         // list reports matching
@@ -832,11 +835,13 @@ public class ReportCommands {
 
     // report show, incl comments
     @Command
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String showReport(@Me IMessageIO io, ReportManager.Report report) {
         return "### " + report.toMarkdown(true);
     }
 
     @Command
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String riskFactors(ReportManager reportManager, LoanManager loanManager, DBNation nation) {
         StringBuilder response = new StringBuilder();
         // Nation | Alliance (#AA Rank) | Position
