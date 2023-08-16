@@ -971,6 +971,16 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding
+    public ReportManager ReportManager() {
+        return Locutus.imp().getNationDB().getReportManager();
+    }
+
+    @Binding
+    public LoanManager loanManager() {
+        return Locutus.imp().getNationDB().getLoanManager();
+    }
+
+    @Binding
     @Me
     public GuildDB guildDB(@Me Guild guild) {
         return Locutus.imp().getGuildDB(guild);

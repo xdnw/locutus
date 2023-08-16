@@ -158,7 +158,7 @@ public class CommandManager2 {
         this.commands.registerMethod(new GPTCommands(), List.of("help"), "find_placeholder", "find_nation_placeholder");
         this.commands.registerMethod(new BankCommands(), List.of("escrow"), "escrowSheetCmd", "view_sheet");
 
-        this.commands.registerMethod(new UtilityCommands(), List.of("nation", "list"), "viewBans", "bans");
+        this.commands.registerMethod(new IACommands(), List.of("nation", "list"), "viewBans", "bans");
 
         for (GuildSetting setting : GuildKey.values()) {
             List<String> path = List.of("settings_" + setting.getCategory().name().toLowerCase(Locale.ROOT));
