@@ -9,10 +9,7 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.AllowDeleted;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.NationAttributeCallable;
-import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ICommandGroup;
@@ -31,10 +28,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.SimpleNationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
-import link.locutus.discord.commands.manager.v2.binding.annotation.AllianceDepositLimit;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.NationDepositLimit;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Operation;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
@@ -1278,6 +1272,21 @@ public class PWBindings extends BindingHelper {
         TaxBracket bracket = brackets.get(taxId);
         if (bracket != null) return bracket;
         throw new IllegalArgumentException("Bracket " + taxId + " not found for alliance: " + StringMan.getString(db.getAllianceIds()));
+    }
+
+    @Binding
+    @ReportPerms
+    public ReportManager.Report getReport(ReportManager manager, int id) {
+        return getReportAll(manager, id)
+    }
+
+    @Binding
+    public ReportManager.Report getReportAll(ReportManager manager, int id) {
+        ReportManager.Report report = managet.loadReport(id);
+        if (report == null) {
+            throw new IllegalArgumentException("No report found with id: `" + id + "`");
+        }
+        return report;
     }
 
 

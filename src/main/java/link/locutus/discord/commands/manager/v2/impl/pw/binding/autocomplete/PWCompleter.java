@@ -13,8 +13,7 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.*;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.NationAttributeCallable;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
@@ -27,6 +26,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeD
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.ReportManager;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.guild.GuildSetting;
@@ -43,10 +43,6 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AutoAuditType;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Autocomplete;
-import link.locutus.discord.commands.manager.v2.binding.annotation.AllianceDepositLimit;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.util.task.ia.IACheckup;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -124,6 +120,18 @@ public class PWCompleter extends BindingHelper {
             options.add(coalition);
         }
         return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true);
+    }
+
+    @Binding
+    @ReportPerms
+    @Binding(types={ReportManager.Report.class})
+    public List<Map.Entry<String, String>> reports(ReportManager manager, @Me DBation me, @Me User author, @Me GuildDB db, String input) {
+        List<ReportManager.Report> options = manager.getReports();
+        options.removeIf(f -> !f.hasPermission(me, user, db));
+
+        options = StringMan.getClosest(input, options, f -> "#" + f.reportId + " " + f.getTitle(), OptionData.MAX_CHOICES, true, true);
+
+        return options.stream().map(f -> Map.entry("#" + f.reportId + " " + f.getTitle(), f.reportId + "")).collect(Collectors.toList());
     }
 
     @Autocomplete
