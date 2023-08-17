@@ -830,38 +830,42 @@ public class WarUpdateProcessor {
             CounterStat stat = card.getCounterStat();
 
             DBAlliance defAA = defender.getAlliance();
-            ByteBuffer lastWarringBuf = defAA.getMeta(AllianceMeta.LAST_AT_WAR_TURN);
+            DBAlliance attAA = attacker.getAlliance();
+            if (defAA == null || attAA == null) return;
 
-            if (lastWarringBuf == null || TimeUtil.getTurn() - lastWarringBuf.getLong() > 24) {
-                if (stat != null && stat.type == CounterType.ESCALATION) {
+            ByteBuffer defWarringBuf = defAA.getMeta(AllianceMeta.IS_WARRING);
+            if (defWarringBuf != null && defWarringBuf.get() > 0) return;
+            ByteBuffer attWarringBuf = attAA.getMeta(AllianceMeta.IS_WARRING);
+            if (attWarringBuf != null && attWarringBuf.get() > 0) return;
+
+            if (stat != null && stat.type == CounterType.ESCALATION) {
+                AlertUtil.forEachChannel(f -> true, GuildKey.ESCALATION_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+                    @Override
+                    public void accept(MessageChannel channel, GuildDB guildDB) {
+                        card.embed(new DiscordChannelIO(channel), false, true);
+                    }
+                });
+            } else if (defender.getOff() > 0 && stat.type != CounterType.UNCONTESTED) {
+                List<DBWar> wars = defender.getActiveWars();
+                Set<DBWar> escalatedWars = null;
+                for (DBWar war : wars) {
+                    if (war.attacker_id != defender.getNation_id()) continue;
+
+                    DBNation warDef = DBNation.getById(war.defender_id);
+                    if (warDef == null || warDef.getPosition() < 1) continue;
+                    CounterStat stats = war.getCounterStat();
+                    if (stats != null && stats.type == CounterType.IS_COUNTER) {
+                        if (escalatedWars == null) escalatedWars = new HashSet<>();
+                        escalatedWars.add(war);
+                    }
+                }
+                if (escalatedWars != null && escalatedWars.size() > 2) {
                     AlertUtil.forEachChannel(f -> true, GuildKey.ESCALATION_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                         @Override
                         public void accept(MessageChannel channel, GuildDB guildDB) {
                             card.embed(new DiscordChannelIO(channel), false, true);
                         }
                     });
-                } else if (defender.getOff() > 0 && stat.type != CounterType.UNCONTESTED) {
-                    List<DBWar> wars = defender.getActiveWars();
-                    Set<DBWar> escalatedWars = null;
-                    for (DBWar war : wars) {
-                        if (war.attacker_id != defender.getNation_id()) continue;
-
-                        DBNation warDef = DBNation.getById(war.defender_id);
-                        if (warDef == null || warDef.getPosition() < 1) continue;
-                        CounterStat stats = war.getCounterStat();
-                        if (stats != null && stats.type == CounterType.IS_COUNTER) {
-                            if (escalatedWars == null) escalatedWars = new HashSet<>();
-                            escalatedWars.add(war);
-                        }
-                    }
-                    if (escalatedWars != null && escalatedWars.size() > 2) {
-                        AlertUtil.forEachChannel(f -> true, GuildKey.ESCALATION_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
-                            @Override
-                            public void accept(MessageChannel channel, GuildDB guildDB) {
-                                card.embed(new DiscordChannelIO(channel), false, true);
-                            }
-                        });
-                    }
                 }
             }
         } catch (Throwable e) {
