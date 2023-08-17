@@ -1195,7 +1195,7 @@ public class GuildKey {
         public String help() {
             return "The channel to receive alerts when any nation in the game is banned)";
         }
-    }.nonPublic().requireActiveGuild();
+    }.requireActiveGuild();
 
     public static GuildSetting<GuildDB.AutoNickOption> AUTONICK = new GuildEnumSetting<GuildDB.AutoNickOption>(GuildSettingCategory.ROLE, GuildDB.AutoNickOption.class) {
         @NoFormat

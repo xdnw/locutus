@@ -54,7 +54,7 @@ import static link.locutus.discord.util.discord.DiscordUtil.getUserName;
 import static link.locutus.discord.util.discord.DiscordUtil.userUrl;
 
 public class ReportCommands {
-    @Command(desc=  "Get a sheet of all the community reports for players")
+    @Command(desc=  "Generate a sheet of all the community reports for players")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String reportSheet(@Me IMessageIO io, @Me GuildDB db, ReportManager manager, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException, NoSuchFieldException, IllegalAccessException {
         List<ReportManager.Report> reports = manager.loadReports(null);
@@ -101,7 +101,8 @@ public class ReportCommands {
         return null;
     }
 
-    @Command
+    @Command(desc = "Import the legacy sheet of reports from a google sheet\n" +
+            "Expects the columns: `Discord ID`, `Nation ID`, `Reason`, `Reporting Entity`")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS}, root = true, any = true)
     public String importLegacyBlacklist(ReportManager reportManager, @Me GuildDB db, @Me DBNation me, @Me User author, SpreadSheet sheet) {
         List<List<Object>> rows = sheet.getAll();
@@ -210,7 +211,7 @@ public class ReportCommands {
         return "Added " + reports.size() + " reports. Use TODO CMD ref to view all reports";
     }
 
-    @Command(desc = "Get all loan information banks and alliances have submitted")
+    @Command(desc = "Generate a google sheet of all loan information banks and alliances have submitted")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String getLoanSheet(@Me IMessageIO io, @Me GuildDB db, LoanManager manager, @Default Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("l") Set<DBLoan.Status> loanStatus) throws GeneralSecurityException, IOException {
         List<DBLoan> loans;
@@ -277,7 +278,9 @@ public class ReportCommands {
 
 
 
-    @Command(desc = "Import loans from a spreadsheet")
+    @Command(desc = "Import loan report data from a google sheet\n" +
+            "Expects the columns: Receiver, Principal, Remaining, Status, Due Date, Loan Date, Paid, Interest\n" +
+            "This is not affect member balances and is solely for sharing information with the public")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ECON}, any = true)
     public String importLoans(LoanManager loanManager, @Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, SpreadSheet sheet, @Default DBLoan.Status defaultStatus, @Switch("o") boolean overwriteLoans, @Switch("m") boolean overwriteSameNation, @Switch("a") boolean addLoans) throws ParseException {
         List<List<Object>> rows = sheet.getAll();
@@ -481,7 +484,7 @@ public class ReportCommands {
                 "See: " + CM.report.sheet.loans.cmd.toSlashMention();
     }
 
-    @Command(desc = "Report a nation to the bot")
+    @Command(desc = "Report a nation or user's game behavior to the bot for things such as fraud")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String createReport(@Me DBNation me, @Me User author, @Me GuildDB db, @Me IMessageIO io, @Me JSONObject command,
                          ReportManager reportManager,
@@ -682,7 +685,7 @@ public class ReportCommands {
                 "See: " + CM.report.show.cmd.create(report.reportId + "").toSlashCommand(true);
     }
 
-    @Command
+    @Command(desc = "Remove a report of a nation or user")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String removeReport(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, @ReportPerms ReportManager.Report report, @Switch("f") boolean force) {
         if (!report.hasPermission(me, author, db)) {
@@ -701,6 +704,7 @@ public class ReportCommands {
     }
 
     @Command
+    @Command(desc = "Approv a report for a nation or user")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS}, root = true, any = true)
     public String approveReport(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, @ReportPerms ReportManager.Report report, @Switch("f") boolean force) {
         if (report.approved) {
@@ -717,7 +721,7 @@ public class ReportCommands {
         return "Verified report #" + report.reportId;
     }
 
-    @Command
+    @Command(desc = "Add a short comment to a report")
     public String comment(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, ReportManager.Report report, String comment, @Switch("f") boolean force) {
         // check existing comment
         ReportManager.Vote existing = reportManager.loadVotesByReportNation(report.reportId, me.getNation_id());
@@ -739,7 +743,7 @@ public class ReportCommands {
         return "Verified report #" + report.reportId;
     }
 
-    @Command
+    @Command(desc = "Mass delete reports about or submitted by a user or nation")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS}, root = true, any = true)
     public String purgeReports(@Me IMessageIO io, @Me JSONObject command, ReportManager reportManager, @Switch("n") Integer nationIdReported, @Switch("d") Long userIdReported, @Switch("i") Integer reportingNation, @Switch("u") Long reportingUser, @Switch("f") boolean force) {
         List<ReportManager.Report> reports = reportManager.loadReports(nationIdReported, userIdReported, reportingNation, reportingUser);
@@ -776,7 +780,9 @@ public class ReportCommands {
         return "Deleted " + reports.size() + " reports";
     }
 
-    @Command(desc = "Ban a nation from submitting nation reports")
+    @Command(desc = "Ban a nation from submitting new reports\n" +
+            "Reports they have already submitted will remain\n" +
+            "Use the purge command to delete existing reports")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS}, root = true, any = true)
     public String ban(ReportManager reportManager, @Me IMessageIO io, @Me JSONObject command, DBNation nation, @Timestamp long timestamp, String reason, @Switch("f") boolean force) throws IOException {
         if (!force) {
@@ -798,7 +804,7 @@ public class ReportCommands {
         return "Banned " + nation.getName() + " from submitting nation reports";
     }
 
-    @Command(desc = "Ban a nation from submitting nation reports")
+    @Command(desc = "Remove a ban on a nation submitting new reports")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS}, root = true, any = true)
     public String unban(ReportManager reportManager, @Me IMessageIO io, @Me JSONObject command, DBNation nation, @Switch("f") boolean force) throws IOException {
         if (!force) {
@@ -839,7 +845,7 @@ public class ReportCommands {
 //    }
 
     // report search
-    @Command
+    @Command(desc = "List all reports about or submitted by a nation or user")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String searchReports(@Me IMessageIO io, @Me JSONObject command, ReportManager reportManager, @Switch("n") Integer nationIdReported, @Switch("d") Long userIdReported, @Switch("i") Integer reportingNation, @Switch("u") Long reportingUser, @Switch("f") boolean force) {
         List<ReportManager.Report> reports = reportManager.loadReports(nationIdReported, userIdReported, reportingNation, reportingUser);
@@ -856,13 +862,13 @@ public class ReportCommands {
     }
 
     // report show, incl comments
-    @Command
+    @Command(desc = "View a report and its comments")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String showReport(@Me IMessageIO io, ReportManager.Report report) {
         return "### " + report.toMarkdown(true);
     }
 
-    @Command
+    @Command(desc = "Show an analysis of a nation's risk factors including: Reports, loans, discord & game bans, money trades and proximity with blacklisted nations, multi info, user account age, inactivity predictors")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String riskFactors(@Me IMessageIO io, ReportManager reportManager, LoanManager loanManager, DBNation nation) {
         long start = System.currentTimeMillis();
