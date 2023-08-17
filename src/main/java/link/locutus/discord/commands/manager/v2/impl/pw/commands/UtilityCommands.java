@@ -1087,13 +1087,6 @@ public class UtilityCommands {
                 double loginPct = (loginChance * 100);
                 extraInfo.add("Prior Week Login History (next 12 turns): " + MathMan.format(loginPct) + "%");
             }
-
-            // 100
-            // 10
-            // 90% will login
-
-            // 15
-            // 10
         }
 
         me.setMeta(NationMeta.INTERVIEW_LOOT, (byte) 1);
@@ -1125,35 +1118,13 @@ public class UtilityCommands {
         if (nationOrAlliance.isNation() && nationOrAlliance.asNation().active_m() > 1440 && nationOrAlliance.asNation().active_m() < 20160) {
             DBNation nation = nationOrAlliance.asNation();
             Locutus.imp().getExecutor().submit(() -> {
-                List<DBNation.LoginFactor> factors = DBNation.getLoginFactors(nation);
-
-                long turnNow = TimeUtil.getTurn();
-                int maxTurn = 30 * 12;
-                int candidateTurnInactive = (int) (turnNow - TimeUtil.getTurn(nation.lastActiveMs()));
-
-                //                Set<DBNation> activeNations = Locutus.imp().getNationDB().getNationsMatching(f -> f.getVm_turns() == 0 && f.active_m() < 1440);
-                Set<DBNation> nations1dInactive = Locutus.imp().getNationDB().getNationsMatching(f -> f.active_m() >= 1440 && f.getVm_turns() == 0 && f.active_m() <= TimeUnit.DAYS.toMinutes(30));
-                NationScoreMap<DBNation> inactiveByTurn = new NationScoreMap<DBNation>(nations1dInactive, f -> {
-                    return (double) (turnNow - TimeUtil.getTurn(f.lastActiveMs()));
-                }, 1, 1);
-
+                Map<DBNation.LoginFactor, Double> factors = DBNation.getLoginFactorPercents(nation);
                 List<String> append = new ArrayList<>();
-                for (DBNation.LoginFactor factor : factors) {
-                    Predicate<DBNation> matches = f -> factor.matches(factor.get(nation), factor.get(f));
-                    BiFunction<Integer, Integer, Integer> sumFactor = inactiveByTurn.getSummedFunction(matches);
-
-                    int numCandidateActivity = sumFactor.apply(Math.min(maxTurn - 23, candidateTurnInactive), Math.min(maxTurn, candidateTurnInactive + 24));
-                    int numInactive = Math.max(1, sumFactor.apply(14 * 12, 30 * 12) / (30 - 14));
-
-                    System.out.println(factor.name + " | " + numCandidateActivity + " | " + numInactive);
-                    System.out.println(":|| " + Math.min(maxTurn - 23, candidateTurnInactive) + " | " + Math.min(maxTurn, candidateTurnInactive + 24));
-                    System.out.println(inactiveByTurn.getMinScore() + " | " + inactiveByTurn.getMaxScore());
-
-                    double loginPct = Math.min(0.95, Math.max(0.05, numCandidateActivity > numInactive ? (1d - ((double) (numInactive) / (double) numCandidateActivity)) : 0)) * 100;
-
-                    append.add("quit chance (" + factor.name + "=" + factor.toString(factor.get(nation)) + "): " + MathMan.format(100 - loginPct) + "%");
+                for (Map.Entry<DBNation.LoginFactor, Double> entry : factors.entrySet()) {
+                    DBNation.LoginFactor factor = entry.getKey();
+                    double percent = entry.getValue();
+                    append.add("quit chance (" + factor.name + "=" + factor.toString(factor.get(nation)) + "): " + MathMan.format(100 - percent) + "%");
                 }
-
                 try {
                     msgFuture.get().append("\n`- " + StringMan.join(append, "`\n`- ") + "`").send();
                 } catch (InterruptedException | ExecutionException e) {

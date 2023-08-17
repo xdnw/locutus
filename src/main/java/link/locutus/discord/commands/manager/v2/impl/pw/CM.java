@@ -72,6 +72,15 @@ public class CM {
                 return createArgs("guildId", guildId);
             }
         }
+        public static class list{
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="hasSameNetworkAsBan")
+            public static class multis extends CommandRef {
+                public static final multis cmd = new multis();
+                public multis create(String nations, String listExpired, String forceUpdate) {
+                    return createArgs("nations", nations, "listExpired", listExpired, "forceUpdate", forceUpdate);
+                }
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="listAuthenticated")
         public static class listAuthenticated extends CommandRef {
             public static final listAuthenticated cmd = new listAuthenticated();
@@ -145,6 +154,13 @@ public class CM {
             }
         }
         public static class sync{
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="syncBans")
+            public static class bans extends CommandRef {
+                public static final bans cmd = new bans();
+                public bans create() {
+                    return createArgs();
+                }
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="syncCitiesTest")
             public static class cities extends CommandRef {
                 public static final cities cmd = new cities();
@@ -648,8 +664,8 @@ public class CM {
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="unlockTransfers")
         public static class unlockTransfers extends CommandRef {
             public static final unlockTransfers cmd = new unlockTransfers();
-            public unlockTransfers create(String alliance) {
-                return createArgs("alliance", alliance);
+            public unlockTransfers create(String nationOrAllianceOrGuild) {
+                return createArgs("nationOrAllianceOrGuild", nationOrAllianceOrGuild);
             }
         }
     }
@@ -724,6 +740,15 @@ public class CM {
             public static final listall cmd = new listall();
             public listall create() {
                 return createArgs();
+            }
+        }
+    }
+    public static class building{
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="buildingCost")
+        public static class cost extends CommandRef {
+            public static final cost cmd = new cost();
+            public cost create(String build) {
+                return createArgs("build", build);
             }
         }
     }
@@ -1651,6 +1676,13 @@ public class CM {
             }
         }
         public static class list{
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="viewBans")
+            public static class bans extends CommandRef {
+                public static final bans cmd = new bans();
+                public bans create(String nationId) {
+                    return createArgs("nationId", nationId);
+                }
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="inactive")
             public static class inactive extends CommandRef {
                 public static final inactive cmd = new inactive();
@@ -1887,8 +1919,8 @@ public class CM {
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="unlockTransfers")
         public static class unlockTransfers extends CommandRef {
             public static final unlockTransfers cmd = new unlockTransfers();
-            public unlockTransfers create(String alliance) {
-                return createArgs("alliance", alliance);
+            public unlockTransfers create(String nationOrAllianceOrGuild) {
+                return createArgs("nationOrAllianceOrGuild", nationOrAllianceOrGuild);
             }
         }
     }
@@ -1927,6 +1959,114 @@ public class CM {
         public static final register cmd = new register();
         public register create(String nation) {
             return createArgs("nation", nation);
+        }
+    }
+    public static class report{
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="riskFactors")
+        public static class analyze extends CommandRef {
+            public static final analyze cmd = new analyze();
+            public analyze create(String nation) {
+                return createArgs("nation", nation);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="approveReport")
+        public static class approve extends CommandRef {
+            public static final approve cmd = new approve();
+            public approve create(String report, String force) {
+                return createArgs("report", report, "force", force);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="ban")
+        public static class ban extends CommandRef {
+            public static final ban cmd = new ban();
+            public ban create(String nation, String timestamp, String reason, String force) {
+                return createArgs("nation", nation, "timestamp", timestamp, "reason", reason, "force", force);
+            }
+        }
+        public static class comment{
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="comment")
+            public static class add extends CommandRef {
+                public static final add cmd = new add();
+                public add create(String report, String comment, String force) {
+                    return createArgs("report", report, "comment", comment, "force", force);
+                }
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="createReport")
+        public static class create extends CommandRef {
+            public static final create cmd = new create();
+            public create create(String type, String message, String nation, String discord_user_id, String imageEvidenceUrl, String forum_post, String news_post, String updateReport, String force) {
+                return createArgs("type", type, "message", message, "nation", nation, "discord_user_id", discord_user_id, "imageEvidenceUrl", imageEvidenceUrl, "forum_post", forum_post, "news_post", news_post, "updateReport", updateReport, "force", force);
+            }
+        }
+
+        public static class upload {
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="importLegacyBlacklist")
+            public static class legacy_reports extends CommandRef {
+                public static final legacy_reports cmd = new legacy_reports();
+                public legacy_reports create(String sheet) {
+                    return createArgs("sheet", sheet);
+                }
+            }
+
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="importLoans")
+            public static class loan_sheet extends CommandRef {
+                public static final loan_sheet cmd = new loan_sheet();
+                public loan_sheet create(String sheet, String defaultStatus, String overwriteLoans, String overwriteSameNation, String addLoans) {
+                    return createArgs("sheet", sheet, "defaultStatus", defaultStatus, "overwriteLoans", overwriteLoans, "overwriteSameNation", overwriteSameNation, "addLoans", addLoans);
+                }
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="purgeReports")
+        public static class purge extends CommandRef {
+            public static final purge cmd = new purge();
+            public purge create(String nationIdReported, String userIdReported, String reportingNation, String reportingUser, String force) {
+                return createArgs("nationIdReported", nationIdReported, "userIdReported", userIdReported, "reportingNation", reportingNation, "reportingUser", reportingUser, "force", force);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="removeReport")
+        public static class remove extends CommandRef {
+            public static final remove cmd = new remove();
+            public remove create(String report, String force) {
+                return createArgs("report", report, "force", force);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="searchReports")
+        public static class search extends CommandRef {
+            public static final search cmd = new search();
+            public search create(String nationIdReported, String userIdReported, String reportingNation, String reportingUser, String force) {
+                return createArgs("nationIdReported", nationIdReported, "userIdReported", userIdReported, "reportingNation", reportingNation, "reportingUser", reportingUser, "force", force);
+            }
+        }
+        public static class sheet{
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="reportSheet")
+            public static class generate extends CommandRef {
+                public static final generate cmd = new generate();
+                public generate create(String sheet) {
+                    return createArgs("sheet", sheet);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="getLoanSheet")
+            public static class loans extends CommandRef {
+                public static final loans cmd = new loans();
+                public loans create(String nations, String sheet, String loanStatus) {
+                    return createArgs("nations", nations, "sheet", sheet, "loanStatus", loanStatus);
+                }
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="showReport")
+        public static class show extends CommandRef {
+            public static final show cmd = new show();
+            public show create(String report) {
+                return createArgs("report", report);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="unban")
+        public static class unban extends CommandRef {
+            public static final unban cmd = new unban();
+            public unban create(String nation, String force) {
+                return createArgs("nation", nation, "force", force);
+            }
         }
     }
     public static class role{
@@ -2405,6 +2545,13 @@ public class CM {
                 return createArgs("guild", guild);
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="PLAYER_REPORT_ALERTS", field="PLAYER_REPORT_ALERTS")
+        public static class PLAYER_REPORT_ALERTS extends CommandRef {
+            public static final PLAYER_REPORT_ALERTS cmd = new PLAYER_REPORT_ALERTS();
+            public PLAYER_REPORT_ALERTS create(String channel) {
+                return createArgs("channel", channel);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="TREATY_ALERTS", field="TREATY_ALERTS")
         public static class TREATY_ALERTS extends CommandRef {
             public static final TREATY_ALERTS cmd = new TREATY_ALERTS();
@@ -2455,6 +2602,13 @@ public class CM {
         public static class ACTIVITY_ALERTS extends CommandRef {
             public static final ACTIVITY_ALERTS cmd = new ACTIVITY_ALERTS();
             public ACTIVITY_ALERTS create(String channel) {
+                return createArgs("channel", channel);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="BAN_ALERT_CHANNEL", field="BAN_ALERT_CHANNEL")
+        public static class BAN_ALERT_CHANNEL extends CommandRef {
+            public static final BAN_ALERT_CHANNEL cmd = new BAN_ALERT_CHANNEL();
+            public BAN_ALERT_CHANNEL create(String channel) {
                 return createArgs("channel", channel);
             }
         }

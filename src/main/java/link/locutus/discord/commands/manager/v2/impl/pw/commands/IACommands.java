@@ -27,6 +27,7 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
+import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -82,6 +83,43 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class IACommands {
+
+    @Command(desc = "View the list of bans for a nation id")
+    public String viewBans(int nationId) {
+        PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(nationId);
+        Long userId = user == null ? null : user.getDiscordId();
+        List<DBBan> bans;
+        if (userId != null) {
+            bans = Locutus.imp().getNationDB().getBansForUser(userId, nationId);
+        } else {
+            bans = Locutus.imp().getNationDB().getBansForNation(nationId);
+        }
+        if (bans.isEmpty()) return "Nation: " + nationId + " has no bans";
+        StringBuilder response = new StringBuilder("Nation: " + nationId + " has " + bans.size() + " bans\n");
+        for (DBBan ban : bans) {
+//            ban.date
+//            ban.reason
+            response.append("### nation:" + ban.nation_id);
+            if (ban.discord_id != 0) {
+                response.append(" | discord:");
+                String name = DiscordUtil.getUserName(ban.discord_id);
+                if (name != null && !name.equals(ban.discord_id + "")) {
+                    response.append("`" + name + "` | ");
+                }
+                response.append("`" + ban.discord_id+ "`");
+            }
+            response.append(" | created:" + DiscordUtil.timestamp(ban.date, null));
+            if (ban.isExpired()) {
+                response.append(" | expired:" + DiscordUtil.timestamp(ban.getEndDate(), null));
+            } else if (ban.days_left == -1){
+                response.append(" | PERMANENT");
+            } else {
+                response.append(" | ending:" + DiscordUtil.timestamp(ban.getEndDate(), null));
+            }
+            response.append("\n>>> " + ban.reason + "\n\n");
+        }
+        return response.toString();
+    }
 
     @Command(desc = "Generate a sheet of nations and their day change\n" +
             "Nations not in an alliance registered to this guild can only show the public day change estimate based on unit purchases")

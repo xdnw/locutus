@@ -51,4 +51,5 @@ public enum SheetKeys {
     ANSWER_SHEET,
     ESCROW_SHEET,
     REPORTS_SHEET,
+    LOANS_SHEET,
 }

@@ -229,6 +229,10 @@ public interface IMessageBuilder {
         return embed(title, body).commandButton(command.put(parameter, "true").toString(), message);
     }
 
+    default IMessageBuilder confirmation(JSONObject command, String parameter, String message) {
+        return commandButton(command.put(parameter, "true").toString(), message);
+    }
+
     @CheckReturnValue
     @Deprecated
     default IMessageBuilder commandButton(CommandBehavior behavior, String command, String message) {

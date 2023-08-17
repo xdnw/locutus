@@ -23,6 +23,7 @@ import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.AllianceMetric;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBCity;
+import link.locutus.discord.db.entities.DiscordBan;
 import link.locutus.discord.db.entities.DiscordMeta;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
@@ -57,6 +58,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.emoji.EmojiUnion;
+import net.dv8tion.jda.api.events.guild.GuildBanEvent;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.invite.GuildInviteCreateEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
@@ -927,6 +929,17 @@ public final class Locutus extends ListenerAdapter {
         if (!db.hasAlliance()) return;
 
         executor.submit(() -> db.getHandler().onGuildMemberRoleAdd(event));
+    }
+
+    @Override
+    public void onGuildBan(@NotNull GuildBanEvent event) {
+        executor.submit(new Runnable() {
+            @Override
+            public void run() {
+                DiscordBan discordBan = new DiscordBan(event.getUser().getIdLong(), event.getGuild().getIdLong(), System.currentTimeMillis(), "");
+                getDiscordDB().addBans(List.of(discordBan));
+            }
+        });
     }
 
     @Override
