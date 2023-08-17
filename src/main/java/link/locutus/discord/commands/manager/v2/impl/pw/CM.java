@@ -1999,18 +1999,20 @@ public class CM {
                 return createArgs("type", type, "message", message, "nation", nation, "discord_user_id", discord_user_id, "imageEvidenceUrl", imageEvidenceUrl, "forum_post", forum_post, "news_post", news_post, "updateReport", updateReport, "force", force);
             }
         }
-        public static class import{
+
+        public static class upload {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="importLegacyBlacklist")
-            public static class legacy extends CommandRef {
-                public static final legacy cmd = new legacy();
-                public legacy create(String sheet) {
+            public static class legacy_reports extends CommandRef {
+                public static final legacy_reports cmd = new legacy_reports();
+                public legacy_reports create(String sheet) {
                     return createArgs("sheet", sheet);
                 }
             }
+
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="importLoans")
-            public static class loans extends CommandRef {
-                public static final loans cmd = new loans();
-                public loans create(String sheet, String defaultStatus, String overwriteLoans, String overwriteSameNation, String addLoans) {
+            public static class loan_sheet extends CommandRef {
+                public static final loan_sheet cmd = new loan_sheet();
+                public loan_sheet create(String sheet, String defaultStatus, String overwriteLoans, String overwriteSameNation, String addLoans) {
                     return createArgs("sheet", sheet, "defaultStatus", defaultStatus, "overwriteLoans", overwriteLoans, "overwriteSameNation", overwriteSameNation, "addLoans", addLoans);
                 }
             }

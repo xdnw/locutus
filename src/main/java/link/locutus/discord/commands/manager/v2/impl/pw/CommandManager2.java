@@ -186,9 +186,9 @@ public class CommandManager2 {
             // report commands
             ReportCommands reportCommands = new ReportCommands();
             this.commands.registerMethod(reportCommands, List.of("report", "sheet"), "reportSheet", "generate");
-            this.commands.registerMethod(reportCommands, List.of("report", "import"), "importLegacyBlacklist", "legacy");
+            this.commands.registerMethod(reportCommands, List.of("report", "upload"), "importLegacyBlacklist", "legacy_reports");
             this.commands.registerMethod(reportCommands, List.of("report", "sheet"), "getLoanSheet", "loans");
-            this.commands.registerMethod(reportCommands, List.of("report", "import"), "importLoans", "loans");
+            this.commands.registerMethod(reportCommands, List.of("report", "upload"), "importLoans", "loan_sheet");
             this.commands.registerMethod(reportCommands, List.of("report"), "createReport", "create");
             this.commands.registerMethod(reportCommands, List.of("report"), "removeReport", "remove");
             this.commands.registerMethod(reportCommands, List.of("report"), "approveReport", "approve");

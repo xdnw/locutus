@@ -2,6 +2,9 @@ package link.locutus.discord.db.entities;
 
 import com.google.gson.JsonSyntaxException;
 import com.politicsandwar.graphql.model.Nation;
+import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
@@ -1788,24 +1791,36 @@ public class DBNation implements NationOrAlliance {
     }
 
     public static Map<LoginFactor, Double> getLoginFactorPercents(DBNation nation) {
+        long start = System.currentTimeMillis();
         List<DBNation.LoginFactor> factors = DBNation.getLoginFactors(nation);
+        System.out.println("login pcts 1: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
 
         long turnNow = TimeUtil.getTurn();
         int maxTurn = 30 * 12;
         int candidateTurnInactive = (int) (turnNow - TimeUtil.getTurn(nation.lastActiveMs()));
+
+        System.out.println("login pcts 2: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
 
         Set<DBNation> nations1dInactive = Locutus.imp().getNationDB().getNationsMatching(f -> f.active_m() >= 1440 && f.getVm_turns() == 0 && f.active_m() <= TimeUnit.DAYS.toMinutes(30));
         NationScoreMap<DBNation> inactiveByTurn = new NationScoreMap<DBNation>(nations1dInactive, f -> {
             return (double) (turnNow - TimeUtil.getTurn(f.lastActiveMs()));
         }, 1, 1);
 
+        System.out.println("login pcts 3: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
+
         Map<LoginFactor, Double> result = new LinkedHashMap<>();
         for (DBNation.LoginFactor factor : factors) {
+            long start2 = System.currentTimeMillis();
             Predicate<DBNation> matches = f -> factor.matches(factor.get(nation), factor.get(f));
             BiFunction<Integer, Integer, Integer> sumFactor = inactiveByTurn.getSummedFunction(matches);
 
             int numCandidateActivity = sumFactor.apply(Math.min(maxTurn - 23, candidateTurnInactive), Math.min(maxTurn, candidateTurnInactive + 24));
             int numInactive = Math.max(1, sumFactor.apply(14 * 12, 30 * 12) / (30 - 14));
+
+            long diff = System.currentTimeMillis() - start2;
+            if (diff > 5) {
+                System.out.println("Diff " + factor.name + ": " + diff + "ms");
+            }
 
             double loginPct = Math.min(0.95, Math.max(0.05, numCandidateActivity > numInactive ? (1d - ((double) (numInactive) / (double) numCandidateActivity)) : 0)) * 100;
             result.put(factor, loginPct);
@@ -1898,11 +1913,20 @@ public class DBNation implements NationOrAlliance {
         });
 
         factors.add(new LoginFactor("alliancerank", new Function<DBNation, Double>() {
+            private static Map<Integer, Integer> RANK_CACHE = new Int2IntOpenHashMap();
             @Override
             public Double apply(DBNation f) {
-                DBAlliance alliance = f.getAlliance(false);
-                if (alliance != null) {
-                    return (double) alliance.getRank();
+                if (f.getAlliance_id() == 0) return Double.MAX_VALUE;
+
+                Integer cachedRank = RANK_CACHE.get(f.getAlliance_id());
+                if (cachedRank == null) {
+                    DBAlliance alliance = f.getAlliance(false);
+                    if (alliance != null) {
+                        RANK_CACHE.put(f.getAlliance_id(), alliance.getRank());
+                        return (double) alliance.getRank();
+                    }
+                } else {
+                    return cachedRank.doubleValue();
                 }
                 return Double.MAX_VALUE;
             }
@@ -2001,9 +2025,18 @@ public class DBNation implements NationOrAlliance {
         });
 
         factors.add(new LoginFactor("lastbank", new Function<DBNation, Double>() {
+            private static Map<Integer, Double> BANK_DAYS_CACHE  = new Int2DoubleOpenHashMap();
+            private static Map<Integer, Long> BANK_CACHE_DATE = new Int2LongOpenHashMap();
+            long originalBankCache = 0;
             @Override
             public Double apply(DBNation f) {
-                double days = f.daysSinceLastBankDeposit() - ((System.currentTimeMillis() - f.lastActiveMs()) / (double) TimeUnit.DAYS.toMillis(1));
+                Double daysSinceLastDepo = BANK_DAYS_CACHE.get(f.getNation_id());
+                if (daysSinceLastDepo == null || f.lastActiveMs() > BANK_CACHE_DATE.getOrDefault(f.getNation_id(), 0L)) {
+                    daysSinceLastDepo = f.daysSinceLastBankDeposit();
+                    BANK_DAYS_CACHE.put(f.getNation_id(), daysSinceLastDepo);
+                    BANK_CACHE_DATE.put(f.getNation_id(), System.currentTimeMillis());
+                }
+                double days = daysSinceLastDepo - ((System.currentTimeMillis() - f.lastActiveMs()) / (double) TimeUnit.DAYS.toMillis(1));
                 return days;
             }
         }) {
@@ -2031,9 +2064,17 @@ public class DBNation implements NationOrAlliance {
         });
 
         factors.add(new LoginFactor("consecutive", new Function<DBNation, Double>() {
+            private static Map<Integer, Long> CONSECUTIVE_DAYS_CACHE  = new Int2LongOpenHashMap();
+            private static Map<Integer, Long> CONSECUTIVE_CACHE_DATE = new Int2LongOpenHashMap();
             @Override
             public Double apply(DBNation f) {
-                double days = f.daysSince7ConsecutiveLogins() - ((System.currentTimeMillis() - f.lastActiveMs()) / (double) TimeUnit.DAYS.toMillis(1));
+                Long daysSinceLastConsecutive = CONSECUTIVE_DAYS_CACHE.get(f.getNation_id());
+                if (daysSinceLastConsecutive == null || f.lastActiveMs() > CONSECUTIVE_CACHE_DATE.getOrDefault(f.getNation_id(), 0L)) {
+                    daysSinceLastConsecutive = f.daysSince7ConsecutiveLogins();
+                    CONSECUTIVE_DAYS_CACHE.put(f.getNation_id(), daysSinceLastConsecutive);
+                    CONSECUTIVE_CACHE_DATE.put(f.getNation_id(), System.currentTimeMillis());
+                }
+                double days = daysSinceLastConsecutive - ((System.currentTimeMillis() - f.lastActiveMs()) / (double) TimeUnit.DAYS.toMillis(1));
                 return days;
             }
         }) {

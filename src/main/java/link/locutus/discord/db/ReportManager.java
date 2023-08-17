@@ -1,5 +1,6 @@
 package link.locutus.discord.db;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
@@ -194,24 +195,30 @@ public class ReportManager {
         }
     }
 
-    private final Map<Integer, List<Map.Entry<Long, Map.Entry<Integer, Rank>>>> REMOVES_CACHE = new ConcurrentHashMap<>();
+    private final Map<Integer, Map<Integer, List<Map.Entry<Long, Long>>>> REMOVES_CACHE = new ConcurrentHashMap<>();
 
-    public List<Map.Entry<Long, Map.Entry<Integer, Rank>>> getCachedHistory(int nationId) {
+    public Map<Integer, List<Map.Entry<Long, Long>>> getCachedHistory(int nationId) {
         synchronized (REMOVES_CACHE) {
             if (REMOVES_CACHE.containsKey(nationId)) {
                 return REMOVES_CACHE.get(nationId);
             }
             List<Map.Entry<Long, Map.Entry<Integer, Rank>>> removes = Locutus.imp().getNationDB().getRankChanges(nationId);
-            REMOVES_CACHE.put(nationId, removes);
-            return removes;
+            Map<Integer, List<Map.Entry<Long, Long>>> durations = getAllianceDurationMap(removes);
+            REMOVES_CACHE.put(nationId, durations);
+            return durations;
         }
     }
 
-    public Map<Integer, Long> getBlackListProximity(DBNation nation, List<Map.Entry<Long, Map.Entry<Integer, Rank>>> history) {
+    public Map<Integer, Long> getBlackListProximity(DBNation nation, Map<Integer, List<Map.Entry<Long, Long>>> allianceDurationMap) {
+        long start = System.currentTimeMillis();
         Set<Integer> nationIds = getReportedNationIds(true);
+        System.out.println("proximity 1: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
 
-        Map<Integer, List<Map.Entry<Long, Long>>> allianceDurationMap = getAllianceDurationMap(history);
+        System.out.println("proximity 2: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
 
+        long getCachedHistory = 0;
+        long getAllianceDurationMap = 0;
+        long add = 0;
         Map<Integer, Long> proximityMap = new HashMap<>();
 
         for (int nationId : nationIds) {
@@ -219,8 +226,12 @@ public class ReportManager {
                 continue;  // Skip comparing with itself
             }
 
-            List<Map.Entry<Long, Map.Entry<Integer, Rank>>> otherHistory = getCachedHistory(nationId);
-            Map<Integer, List<Map.Entry<Long, Long>>> otherAllianceDurationMap = getAllianceDurationMap(otherHistory);
+            long start2 = System.nanoTime();
+            Map<Integer, List<Map.Entry<Long, Long>>> otherAllianceDurationMap = getCachedHistory(nationId);
+            getCachedHistory += System.nanoTime() - start2;
+            long start3 = System.nanoTime();
+            getAllianceDurationMap += System.nanoTime() - start3;
+            long start4 = System.nanoTime();
 
             long totalProximity = 0;
 
@@ -236,11 +247,17 @@ public class ReportManager {
                 long overlapTime = calculateOverlapDuration(durations, otherDurations);
                 totalProximity += overlapTime;
             }
+            add += System.nanoTime() - start4;
 
             if (totalProximity > 0) {
                 proximityMap.put(nationId, totalProximity);
             }
         }
+
+        // print getCachedHistory, getAllianceDurationMap, add as ms
+        System.out.println("getCachedHistory: " + (getCachedHistory / 1000000) + "ms");
+        System.out.println("getAllianceDurationMap: " + (getAllianceDurationMap / 1000000) + "ms");
+        System.out.println("add: " + (add / 1000000) + "ms");
 
         return proximityMap;
     }
@@ -269,7 +286,7 @@ public class ReportManager {
         return overlapDuration;
     }
     public Map<Integer, List<Map.Entry<Long, Long>>> getAllianceDurationMap(List<Map.Entry<Long, Map.Entry<Integer, Rank>>> history) {
-        Map<Integer, List<Map.Entry<Long, Long>>> allianceDurationMap = new HashMap<>();
+        Map<Integer, List<Map.Entry<Long, Long>>> allianceDurationMap = new Int2ObjectOpenHashMap<>();
 
         long currentTime = System.currentTimeMillis();
         int currentAllianceId = -1;
@@ -285,8 +302,8 @@ public class ReportManager {
                     if (endTime > currentTime) {
                         endTime = currentTime;
                     }
-                    allianceDurationMap.computeIfAbsent(currentAllianceId, k -> new ArrayList<>())
-                            .add(new AbstractMap.SimpleEntry<>(currentStartTime, endTime));
+                    allianceDurationMap.computeIfAbsent(currentAllianceId, k -> new ObjectArrayList<>())
+                            .add(Map.entry(currentStartTime, endTime));
                 }
 
                 currentAllianceId = allianceId;
@@ -297,8 +314,8 @@ public class ReportManager {
         // Handle the last alliance entry
         if (currentAllianceId != -1) {
             long endTime = currentTime;
-            allianceDurationMap.computeIfAbsent(currentAllianceId, k -> new ArrayList<>())
-                    .add(new AbstractMap.SimpleEntry<>(currentStartTime, endTime));
+            allianceDurationMap.computeIfAbsent(currentAllianceId, k -> new ObjectArrayList<>())
+                    .add(Map.entry(currentStartTime, endTime));
         }
 
         return allianceDurationMap;
@@ -322,7 +339,7 @@ public class ReportManager {
         Set<Integer> reportedNationIds = getReportedNationIds(true);
         reportedNationIds.add(nation.getNation_id());
         List<DBTrade> trades = Locutus.imp().getTradeManager().getTradeDb().getTrades(nation.getNation_id(), 0);
-        trades.removeIf(trade -> !reportedNationIds.contains(trade.getBuyer()) || !reportedNationIds.contains(trade.getSeller()));
+        trades.removeIf(trade -> !reportedNationIds.contains(trade.getBuyer()) || !reportedNationIds.contains(trade.getSeller()) || trade.getBuyer() == trade.getSeller());
         return trades;
     }
 
@@ -337,7 +354,8 @@ public class ReportManager {
             int max = offer.getResource() == ResourceType.FOOD ? 1000 : 10000;
             if (offer.getPpu() > 1 && offer.getPpu() < max) continue;
             double value = PnwUtil.convertedTotal(offer.getResource(), offer.getQuantity());
-            moneyTrades.compute(offer.getBuyer(), (k, v) -> v == null ? value : v + value);
+            int id = offer.getBuyer() == nation.getNation_id() ? offer.getSeller() : offer.getBuyer();
+            moneyTrades.compute(id, (k, v) -> v == null ? value : v + value);
         }
         return moneyTrades;
     }
@@ -425,7 +443,7 @@ public class ReportManager {
             reportId = rs.getInt(header.report_id);
             nationId = rs.getInt(header.nation_id);
             discordId = rs.getLong(header.discord_id);
-            type = ReportType.valueOf(rs.getString(header.report_type));
+            type = ReportType.values()[rs.getInt(header.report_type)];
             reporterNationId = rs.getInt(header.reporter_nation_id);
             reporterDiscordId = rs.getLong(header.reporter_discord_id);
             reporterAllianceId = rs.getInt(header.reporter_alliance_id);
