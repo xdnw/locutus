@@ -477,7 +477,7 @@ public class ReportCommands {
         }
 
         return "Done, created `" + loans.size() + "` loans\n" +
-                "See: TODO CM ref to view current loans";
+                "See: " + CM.report.sheet.loans.cmd.toSlashMention();
     }
 
     @Command(desc = "Report a nation to the bot")
@@ -583,7 +583,7 @@ public class ReportCommands {
             if (existing.hasPermission(me, author, db)) {
                 return "You do not have permission to edit this report: `#" + updateReport.reportId +
                         "` (owned by nation:" + PnwUtil.getName(existing.reporterNationId, false) + ")\n" +
-                        "To add a comment: TODO CM ref";
+                        "To add a comment: " + CM.report.comment.add.cmd.toSlashMention();
             }
             // set the missing fields to the values from this report
             if (nationId == null) {
@@ -642,7 +642,7 @@ public class ReportCommands {
 
             List<ReportManager.Report> reportList = reportManager.loadReportsByNationOrUser(nationId, discord_user_id);
             if (!reportList.isEmpty()) {
-                body.append("To add a comment: TODO CM Ref\n");
+                body.append("To add a comment: " + CM.report.comment.add.cmd.toSlashMention() + "\n");
                 body.append("**Please look at these existing reports and add a comment instead if you are reporting the same thing**\n");
                 for (ReportManager.Report report : reportList) {
                     body.append("#" + report.reportId +": ```\n" + report.message + "\n```\n");
@@ -678,7 +678,7 @@ public class ReportCommands {
         reportManager.saveReport(report);
 
         return "Report " + (existing == null ? "created" : "updated") + " with id `" + report.reportId + "`\n" +
-                "See: TODO CM REf to view your report\";";
+                "See: " + CM.report.show.cmd.create(report.reportId + "").toSlashCommand(true);
     }
 
     @Command
@@ -687,7 +687,7 @@ public class ReportCommands {
         if (!report.hasPermission(me, author, db)) {
             return "You do not have permission to remove this report: `#" + report.reportId +
                     "` (owned by nation:" + PnwUtil.getName(report.reporterNationId, false) + ")\n" +
-                    "To add a comment: TODO CM ref";
+                    "To add a comment: " + CM.report.comment.add.cmd.toSlashMention();
         }
         if (!force) {
             String title = "Remove " + report.type + " report";
@@ -922,8 +922,8 @@ public class ReportCommands {
         if (reports.size() > 0) {
             int approved = (int) reports.stream().filter(report -> report.approved).count();
             int pending = reports.size() - approved;
-            response.append("Reports: " + reports.size() + " (" + approved + " approved, " + pending + " pending)\n");
-            // use TODO CM ref to show (X approved, X pending)
+            response.append("Reports: " + reports.size() + " (" + approved + " approved, " + pending + " pending) " +
+                    CM.report.search.cmd.toSlashMention() + "\n");
         }
 
         System.out.println("Risk factors 5: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
@@ -998,7 +998,7 @@ public class ReportCommands {
         }
 
         if (!bans.isEmpty() || !currentIpBans.isEmpty() || !historicalIpBans.isEmpty()) {
-            response.append("See TODO CM Ref for ban command\n");
+            response.append("See " + CM.nation.list.bans.cmd.toSlashMention() + "\n");
         }
 
         // Add multi information
@@ -1040,8 +1040,8 @@ public class ReportCommands {
                 String reportListStr = reportTypes.get(nationId).stream().map(ReportManager.ReportType::name).collect(Collectors.joining(","));
                 response.append("- " + nationName + " | " + reportListStr + ": " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, entry.getValue()) + "\n");
             }
+            response.append("See: " + CM.nation.departures.cmd.toSlashMention() + "\n");
         }
-        // TODO CM Ref see aa history command
         System.out.println("Risk factors 12: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
         Map<Integer, Double> trades = reportManager.getBlacklistedMoneyTrade(nation);
         System.out.println("Risk factors 13: " + (( - start) + (start = System.currentTimeMillis())) + "ms");

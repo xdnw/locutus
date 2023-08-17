@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.NationMeta;
@@ -489,7 +490,7 @@ public class ReportManager {
         }
 
         public String toMarkdown(boolean includeComments) {
-            StringBuilder body = new StringBuilder("Report #" + reportId + " - " + type + "\n");
+            StringBuilder body = new StringBuilder("Report `#" + reportId + "` - " + type + "\n");
             if (nationId != 0) {
                 body.append("Nation: " + PnwUtil.getMarkdownUrl(nationId, false) + "\n");
             }
@@ -522,7 +523,7 @@ public class ReportManager {
                         body.append("-" + comment.toMarkdown() + "\n");
                     }
                 } else {
-                    body.append(comments.size() + " comments, see: TODO CM ref\n");
+                    body.append(comments.size() + " comments, see: " + CM.report.show.cmd.toSlashMention());
                 }
             }
             return body.toString();
