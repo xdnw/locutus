@@ -383,6 +383,7 @@ public class CommandManager2 {
                     } catch (RuntimeException e) {
                         Throwable e2 = e;
                         while (e2.getCause() != null && e2.getCause() != e2) e2 = e2.getCause();
+                        e2.printStackTrace();
                         throw new CommandUsageException(callable, e2.getMessage());
                     }
                 });

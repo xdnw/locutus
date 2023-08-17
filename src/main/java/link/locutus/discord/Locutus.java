@@ -889,7 +889,7 @@ public final class Locutus extends ListenerAdapter {
             } catch (IllegalArgumentException e) {
                 AlertUtil.error("Mail error", "Cannot check mail for " + section + "(nation=" + nationId + "): They are not authenticated (user/pass)");
             }
-        } 
+        }
     }
 
     public Guild getServer() {
