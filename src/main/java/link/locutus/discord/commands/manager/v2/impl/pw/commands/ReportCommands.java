@@ -102,7 +102,7 @@ public class ReportCommands {
     }
 
     @Command
-    @RolePermission(value = Roles.ADMIN, root = true)
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS}, root = true, any = true)
     public String importLegacyBlacklist(ReportManager reportManager, @Me GuildDB db, @Me DBNation me, @Me User author, SpreadSheet sheet) {
         List<List<Object>> rows = sheet.getAll();
         List<Object> header = rows.get(0);
@@ -126,6 +126,7 @@ public class ReportCommands {
 
         for (int i = 1; i < rows.size(); i++) {
             List<Object> row = rows.get(i);
+            if (row.isEmpty()) continue;
 
             String nationIdStr = row.get(nationIdIndex).toString();
             String discordIdsStr = row.get(discordIndex).toString();
@@ -700,7 +701,7 @@ public class ReportCommands {
     }
 
     @Command
-    @RolePermission(value = Roles.INTERNAL_AFFAIRS_STAFF, root = true)
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS}, root = true, any = true)
     public String approveReport(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, @ReportPerms ReportManager.Report report, @Switch("f") boolean force) {
         if (report.approved) {
             return "Report #" + report.reportId + " is already approved.";
@@ -739,7 +740,7 @@ public class ReportCommands {
     }
 
     @Command
-    @RolePermission(value = Roles.ADMIN, root = true)
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS}, root = true, any = true)
     public String purgeReports(@Me IMessageIO io, @Me JSONObject command, ReportManager reportManager, @Switch("n") Integer nationIdReported, @Switch("d") Long userIdReported, @Switch("i") Integer reportingNation, @Switch("u") Long reportingUser, @Switch("f") boolean force) {
         List<ReportManager.Report> reports = reportManager.loadReports(nationIdReported, userIdReported, reportingNation, reportingUser);
         if (reports.isEmpty()) {
@@ -776,7 +777,7 @@ public class ReportCommands {
     }
 
     @Command(desc = "Ban a nation from submitting nation reports")
-    @RolePermission(value = Roles.ADMIN, root = true)
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS}, root = true, any = true)
     public String ban(ReportManager reportManager, @Me IMessageIO io, @Me JSONObject command, DBNation nation, @Timestamp long timestamp, String reason, @Switch("f") boolean force) throws IOException {
         if (!force) {
             String title = "Ban " + nation.getName() + " from reporting";
@@ -798,7 +799,7 @@ public class ReportCommands {
     }
 
     @Command(desc = "Ban a nation from submitting nation reports")
-    @RolePermission(value = Roles.ADMIN, root = true)
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS}, root = true, any = true)
     public String unban(ReportManager reportManager, @Me IMessageIO io, @Me JSONObject command, DBNation nation, @Switch("f") boolean force) throws IOException {
         if (!force) {
             String title = "Unban " + nation.getName() + " from reporting";
