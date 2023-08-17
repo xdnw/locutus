@@ -220,7 +220,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         }
 
         @Command(desc="Econ panel for members")
-        public void memberEconPanel(@Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel) {
+        public void memberEconPanel(@Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel, @Switch("d") boolean showDepositsInDms) {
             Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
             String title = "Econ Panel";
             String body = """
@@ -240,7 +240,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             }
 
             CM.offshore.send send = CM.offshore.send.cmd.create(null, null, null);
-            CM.deposits.check deposits = CM.deposits.check.cmd.create("{nation_id}", null, null, null, null, null, null, null, null, null);
+            CM.deposits.check deposits = CM.deposits.check.cmd.create("{nation_id}", null, null, null, null, null, showDepositsInDms + "", null, null, null);
             CM.deposits.check depositsBreakdown = CM.deposits.check.cmd.create("{nation_id}", null, null, null, null, "true", null, null, null, null);
             CM.tax.info taxInfo = CM.tax.info.cmd.create("{nation_id}");
             CM.nation.revenue revenue = CM.nation.revenue.cmd.create("{nation_id}", "true", null);
