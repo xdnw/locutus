@@ -11,6 +11,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -18,6 +19,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -39,7 +41,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 
+import static link.locutus.discord.db.guild.GuildKey.REPORT_ALERT_CHANNEL;
 import static link.locutus.discord.util.MarkupUtil.markdownUrl;
 import static link.locutus.discord.util.discord.DiscordUtil.getGuildName;
 import static link.locutus.discord.util.discord.DiscordUtil.getMessageGuild;
@@ -354,7 +358,7 @@ public class ReportManager {
             if (offer.getResource() == ResourceType.CREDITS) continue;
             int max = offer.getResource() == ResourceType.FOOD ? 1000 : 10000;
             if (offer.getPpu() > 1 && offer.getPpu() < max) continue;
-            double value = PnwUtil.convertedTotal(offer.getResource(), offer.getQuantity());
+            double value = Math.max(PnwUtil.convertedTotal(offer.getResource(), offer.getQuantity()), offer.getTotal());
             int id = offer.getBuyer() == nation.getNation_id() ? offer.getSeller() : offer.getBuyer();
             moneyTrades.compute(id, (k, v) -> v == null ? value : v + value);
         }
