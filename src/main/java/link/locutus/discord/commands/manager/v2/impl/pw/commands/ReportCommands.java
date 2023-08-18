@@ -27,6 +27,7 @@ import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.ImageUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -92,7 +93,7 @@ public class ReportCommands {
             column.set(6, reporterAlliance + "");
             column.set(7, reporterGuild + "");
             column.set(8, report.message);
-            column.set(9, report.imageUrl);
+            column.set(9, StringMan.join(report.imageUrls, "\n"));
             column.set(10, report.forumUrl);
             column.set(11, report.newsUrl);
             column.set(12, report.date + "");
@@ -185,7 +186,7 @@ public class ReportCommands {
                         me.getAlliance_id(),
                         db.getIdLong(),
                         reasonFinal,
-                        "",
+                        new ArrayList<>(),
                         "",
                         "",
                         System.currentTimeMillis(),
@@ -497,7 +498,7 @@ public class ReportCommands {
                          @Arg("Description of report") @TextArea String message,
                          @Default @Arg("Nation to report") DBNation nation,
                          @Default @Arg("Discord user to report") Long discord_user_id,
-                         @Arg("Image evidence of report") @Switch("i") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String imageEvidenceUrl,
+                         @Arg("Image evidence of report") @Switch("i") String imageEvidenceUrl,
                          @Arg("Link to relevant forum post") @Switch("f") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String forum_post,
                          @Arg("Link to relevant news post") @Switch("m") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String news_post,
                                @Switch("i") ReportManager.Report updateReport,
@@ -548,11 +549,17 @@ public class ReportCommands {
             }
         }
 
+        List<String> imageUrls = new ArrayList<>();
         if (imageEvidenceUrl != null) {
-            // ensure imageEvidenceUrl is discord image url
-            String imageOcr = ImageUtil.getText(imageEvidenceUrl);
-            if (imageOcr != null) {
-                message += "\nScreenshot transcript:\n```\n" + imageOcr + "\n```";
+            // split by space
+            String[] split = imageEvidenceUrl.split(" ");
+            for (String imageUrl : split) {
+                imageUrls.add(imageUrl);
+                // ensure imageEvidenceUrl is discord image url
+                String imageOcr = ImageUtil.getText(imageUrl);
+                if (imageOcr != null) {
+                    message += "\nScreenshot transcript:\n```\n" + imageOcr + "\n```";
+                }
             }
         }
 
@@ -608,7 +615,7 @@ public class ReportCommands {
                 message = existing.message;
             }
             if (imageEvidenceUrl == null) {
-                imageEvidenceUrl = existing.imageUrl;
+                imageUrls = existing.imageUrls;
             }
             if (forum_post == null) {
                 forum_post = existing.forumUrl;
@@ -674,7 +681,7 @@ public class ReportCommands {
             reporterAlliance,
             reporterGuildId,
             message,
-            imageEvidenceUrl == null ? "" : imageEvidenceUrl,
+                imageUrls,
             forum_post == null ? "" : forum_post,
             news_post == null ? "" : news_post,
             System.currentTimeMillis(),

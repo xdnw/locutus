@@ -92,7 +92,7 @@ public class ReportManager {
         stmt.setInt(header.reporter_alliance_id, report.reporterAllianceId);
         stmt.setLong(header.reporter_guild_id, report.reporterGuildId);
         stmt.setString(header.report_message, report.message);
-        stmt.setString(header.image_url, report.imageUrl);
+        stmt.setString(header.image_url, StringMan.join(report.imageUrls, "\n"));
         stmt.setString(header.forum_url, report.forumUrl);
         stmt.setString(header.news_url, report.newsUrl);
         stmt.setLong(header.date, report.date);
@@ -392,7 +392,7 @@ public class ReportManager {
         public int reporterAllianceId;
         public long reporterGuildId;
         public String message;
-        public String imageUrl;
+        public List<String> imageUrls;
         public String forumUrl;
         public String newsUrl;
         public long date;
@@ -406,7 +406,7 @@ public class ReportManager {
                         int reporterAllianceId,
                         long reporterGuildId,
                         String reportMessage,
-                        String imageUrl,
+                        List<String> imageUrls,
                         String forumUrl,
                         String newsUrl,
                         long date,
@@ -420,7 +420,7 @@ public class ReportManager {
             this.reporterAllianceId = reporterAllianceId;
             this.reporterGuildId = reporterGuildId;
             this.message = reportMessage;
-            this.imageUrl = imageUrl;
+            this.imageUrls = imageUrls;
             this.forumUrl = forumUrl;
             this.newsUrl = newsUrl;
             this.date = date;
@@ -437,7 +437,12 @@ public class ReportManager {
             reporterAllianceId = Integer.parseInt(row.get(header.reporter_alliance_id).toString());
             reporterGuildId = Long.parseLong(row.get(header.reporter_guild_id).toString());
             message = row.get(header.report_message).toString();
-            imageUrl = row.get(header.image_url).toString();
+            String imageUrlStr = row.get(header.image_url).toString().trim();
+            if (imageUrlStr.isEmpty()) {
+                imageUrls = new ArrayList<>();
+            } else {
+                imageUrls = Arrays.asList(imageUrlStr.split("\n"));
+            }
             forumUrl = row.get(header.forum_url).toString();
             newsUrl = row.get(header.news_url).toString();
             date = Long.parseLong(row.get(header.date).toString());
@@ -454,7 +459,12 @@ public class ReportManager {
             reporterAllianceId = rs.getInt(header.reporter_alliance_id);
             reporterGuildId = rs.getLong(header.reporter_guild_id);
             message = rs.getString(header.report_message);
-            imageUrl = rs.getString(header.image_url);
+            String imageUrlStr = rs.getString(header.image_url);
+            if (imageUrlStr == null) {
+                imageUrls = new ArrayList<>();
+            } else {
+                imageUrls = Arrays.asList(imageUrlStr.split("\n"));
+            }
             forumUrl = rs.getString(header.forum_url);
             newsUrl = rs.getString(header.news_url);
             date = rs.getLong(header.date);
@@ -473,7 +483,7 @@ public class ReportManager {
                     ", reporterAllianceId=" + reporterAllianceId +
                     ", reporterGuildId=" + reporterGuildId +
                     ", reportMessage='" + message + '\'' +
-                    ", imageUrl='" + imageUrl + '\'' +
+                    ", imageUrl='" + imageUrls + '\'' +
                     ", forumUrl='" + forumUrl + '\'' +
                     ", newsUrl='" + newsUrl + '\'' +
                     ", date=" + date +
@@ -506,8 +516,8 @@ public class ReportManager {
             String reporterGuildLink = markdownUrl(getGuildName(reporterGuildId), DiscordUtil.getGuildUrl(reporterGuildId));
             body.append("Reported by: " + reporterNationLink + " | " + reporterAllianceLink  + " | <@" + reporterDiscordId + "> | " + reporterGuildLink + "\n");
             body.append("```\n" + message + "\n```\n");
-            if (imageUrl != null && !imageUrl.isEmpty()) {
-                body.append("Image: <" + imageUrl + ">\n");
+            if (imageUrls != null && !imageUrls.isEmpty()) {
+                body.append("Image: <" + StringMan.join(imageUrls, "> <") + ">\n");
             }
             if (forumUrl != null && !forumUrl.isEmpty()) {
                 // https://forum.politicsandwar.com/index.php?/topic

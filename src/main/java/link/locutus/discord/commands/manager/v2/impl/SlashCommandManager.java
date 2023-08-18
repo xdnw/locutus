@@ -634,7 +634,7 @@ public class SlashCommandManager extends ListenerAdapter {
                         String value;
                         if (o instanceof Map.Entry<?, ?> entry) {
                             name = entry.getKey().toString();
-                            value = entry.getKey().toString();
+                            value = entry.getValue().toString();
                         } else {
                             name = o.toString();
                             value = o.toString();
