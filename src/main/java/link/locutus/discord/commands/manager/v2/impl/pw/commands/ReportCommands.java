@@ -1,7 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
@@ -16,7 +15,6 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBBan;
 import link.locutus.discord.db.entities.DBLoan;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.DiscordBan;
 import link.locutus.discord.db.entities.LoanManager;
 import link.locutus.discord.db.entities.NationMeta;
@@ -35,12 +33,8 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutput;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.*;
@@ -503,6 +497,11 @@ public class ReportCommands {
                          @Arg("Link to relevant news post") @Switch("m") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String news_post,
                                @Switch("i") ReportManager.Report updateReport,
                                @Switch("f") boolean force) {
+        Map.Entry<String, Long> ban = reportManager.getBan(me);
+        if (ban != null) {
+            return "You were banned from reporting on " + DiscordUtil.timestamp(ban.getValue(), null) + " for `" + ban.getKey() + "`";
+        }
+
         if (forum_post == null && news_post == null) {
             return "You must provide either a link to a forum post, or a link to a news report";
         }
@@ -725,6 +724,31 @@ public class ReportCommands {
         return "Report removed.";
     }
 
+    @Command(desc = "Remove a comment on a report")
+    public String removeComment(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, @ReportPerms ReportManager.Report report, @Default DBNation nationCommenting, @Switch("f") boolean force) {
+        if (nationCommenting == null) nationCommenting = me;
+        if (nationCommenting.getNation_id() != me.getNation_id() && !Roles.INTERNAL_AFFAIRS_STAFF.hasOnRoot(author)) {
+            return "You do not have permission to remove another nation's comment on report: `#" + report.reportId +
+                    "` (owned by nation:" + PnwUtil.getName(nationCommenting.getNation_id(), false) + ")\n" +
+                    "To add a comment: " + CM.report.comment.add.cmd.toSlashMention();
+        }
+        ReportManager.Comment comment = reportManager.loadCommentsByReportNation(report.reportId, nationCommenting.getNation_id());
+        if (comment == null) {
+            return "No comment found for nation: " + PnwUtil.getName(nationCommenting.getNation_id(), false) + " on report: `#" + report.reportId + "`";
+        }
+
+        if (!force) {
+            String title = "Remove comment by nation:" + PnwUtil.getName(comment.nationId, false);
+            StringBuilder body = new StringBuilder();
+            body.append("See report: #" + report.reportId + " | " + CM.report.show.cmd.toSlashMention() + "\n");
+            body.append(comment.toMarkdown());
+            io.create().confirmation(title, body.toString(), command).send();
+            return null;
+        }
+        reportManager.deleteComment(report.reportId, comment.nationId);
+        return "Comment removed.";
+    }
+
     @Command(desc = "Approv a report for a nation or user")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS}, root = true, any = true)
     public String approveReport(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, @ReportPerms ReportManager.Report report, @Switch("f") boolean force) {
@@ -744,8 +768,11 @@ public class ReportCommands {
 
     @Command(desc = "Add a short comment to a report")
     public String comment(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, ReportManager.Report report, String comment, @Switch("f") boolean force) {
-        // check existing comment
-        ReportManager.Vote existing = reportManager.loadVotesByReportNation(report.reportId, me.getNation_id());
+        Map.Entry<String, Long> ban = reportManager.getBan(me);
+        if (ban != null) {
+            return "You were banned from reporting on " + DiscordUtil.timestamp(ban.getValue(), null) + " for `" + ban.getKey() + "`";
+        }
+        ReportManager.Comment existing = reportManager.loadCommentsByReportNation(report.reportId, me.getNation_id());
 
         if (!force) {
             String title = "Comment on " + report.getTitle();
@@ -759,8 +786,23 @@ public class ReportCommands {
             io.create().confirmation(title, bodyString, command).send();
             return null;
         }
-        report.approved = true;
-        reportManager.saveReport(report);
+
+        boolean isNewComment = existing == null;
+
+        existing = new ReportManager.Comment(report.reportId, me.getNation_id(), author.getIdLong(), comment, System.currentTimeMillis());
+
+        reportManager.saveComment(existing);
+
+        ReportManager.Comment finalExisting = existing;
+        AlertUtil.forEachChannel(f -> true, REPORT_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
+            @Override
+            public void accept(MessageChannel channel, GuildDB db) {
+                String title = (isNewComment ? "New " : "Updating ") + " comment";
+                String body = "Report: #" + report.reportId + " " + report.getTitle() + "\n\n" + finalExisting.toMarkdown();
+                new DiscordChannelIO(channel).create().embed(title, body).sendWhenFree();
+            }
+        });
+
         return "Added comment to #" + report.reportId +
                 "\nSee: " + CM.report.show.cmd.toSlashMention();
     }
@@ -802,6 +844,50 @@ public class ReportCommands {
         return "Deleted " + reports.size() + " reports";
     }
 
+    @Command(desc = "Mass delete reports about or submitted by a user or nation")
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS}, root = true, any = true)
+    public String purgeComments(@Me IMessageIO io, @Me JSONObject command, ReportManager reportManager, @Switch("r") ReportManager.Report report, @Switch("i") Integer nation_id, @Switch("u") Long discord_id, @Switch("f") boolean force) {
+        if (nation_id != null && discord_id != null) {
+            return "Cannot specify both a nation and a user. Pick one";
+        }
+        if (report != null && (nation_id != null || discord_id != null)) {
+            return "Cannot specify both a report and a nation/user. Pick one";
+        }
+        List<ReportManager.Comment> comments;
+        if (report != null) {
+            comments = reportManager.loadCommentsByReport(report.reportId);
+        } else if (nation_id != null) {
+            comments = reportManager.loadCommentsByNation(nation_id);
+        } else if (discord_id != null) {
+            comments = reportManager.loadCommentsByUser(discord_id);
+        } else {
+            return "Please specify either `report` or `nation_id` or `discord_id`";
+        }
+        if (comments.isEmpty()) {
+            return "No comments found";
+        }
+        if (!force) {
+            String title = "Purge " + comments.size() + " comments";
+            StringBuilder body = new StringBuilder();
+            // append each variable used
+            if (nation_id != null) {
+                DBNation nation = DBNation.getById(nation_id);
+                String aaName = nation == null ? "None" : nation.getAllianceUrlMarkup(true);
+                body.append("Nation commenting: ").append(PnwUtil.getMarkdownUrl(nation_id, false) + " | " + aaName).append("\n");
+            }
+            if (discord_id != null) {
+                body.append("User commenting: ").append("<@" + discord_id + ">").append("\n");
+            }
+            body.append("\n");
+            io.create().confirmation(title, body.toString(), command).send();
+            return null;
+        }
+        for (ReportManager.Comment comment : comments) {
+            reportManager.deleteComment(comment.report_id, comment.nationId);
+        }
+        return "Deleted " + comments.size() + " comments";
+    }
+
     @Command(desc = "Ban a nation from submitting new reports\n" +
             "Reports they have already submitted will remain\n" +
             "Use the purge command to delete existing reports")
@@ -829,11 +915,14 @@ public class ReportCommands {
     @Command(desc = "Remove a ban on a nation submitting new reports")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS}, root = true, any = true)
     public String unban(ReportManager reportManager, @Me IMessageIO io, @Me JSONObject command, DBNation nation, @Switch("f") boolean force) throws IOException {
+        Map.Entry<String, Long> ban = reportManager.getBan(nation);
+        if (ban == null) {
+            return "No ban found for " + nation.getName();
+        }
         if (!force) {
             String title = "Unban " + nation.getName() + " from reporting";
             StringBuilder body = new StringBuilder();
             body.append("Nation: ").append(nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true)).append("\n");
-            Map.Entry<String, Long> ban = reportManager.getBan(nation);
             if (ban != null) {
                 body.append("Existing ban:\n```\n").append(ban.getKey()).append("\n```\nuntil ").append(DiscordUtil.timestamp(ban.getValue(), null)).append("\n");
             }

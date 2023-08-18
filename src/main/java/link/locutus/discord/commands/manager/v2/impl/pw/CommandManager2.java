@@ -201,6 +201,9 @@ public class CommandManager2 {
             this.commands.registerMethod(reportCommands, List.of("report"), "searchReports", "search");
             this.commands.registerMethod(reportCommands, List.of("report"), "showReport", "show");
             this.commands.registerMethod(reportCommands, List.of("report"), "riskFactors", "analyze");
+
+            this.commands.registerMethod(reportCommands, List.of("report", "comment"), "removeComment", "delete");
+            this.commands.registerMethod(reportCommands, List.of("report", "comment"), "purgeComments", "purge");
         }
 
         HelpCommands help = new HelpCommands();

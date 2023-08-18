@@ -11,7 +11,6 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -19,7 +18,6 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -41,9 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
 
-import static link.locutus.discord.db.guild.GuildKey.REPORT_ALERT_CHANNEL;
 import static link.locutus.discord.util.MarkupUtil.markdownUrl;
 import static link.locutus.discord.util.discord.DiscordUtil.getGuildName;
 import static link.locutus.discord.util.discord.DiscordUtil.getMessageGuild;
@@ -69,10 +65,9 @@ public class ReportManager {
                 "date BIGINT NOT NULL," +
                 "approved BOOLEAN NOT NULL)");
 
-        db.executeStmt("CREATE TABLE IF NOT EXISTS REPORT_VOTES (report_id INT NOT NULL, " +
+        db.executeStmt("CREATE TABLE IF NOT EXISTS REPORT_COMMENTS (report_id INT NOT NULL, " +
                 "nation_id INT NOT NULL, " +
                 "discord_id BIGINT NOT NULL, " +
-                "vote INT NOT NULL, " +
                 "comment VARCHAR NOT NULL, " +
                 "date BIGINT NOT NULL, " +
                 "PRIMARY KEY(report_id, nation_id))");
@@ -120,6 +115,28 @@ public class ReportManager {
                 if (rs.next()) {
                     report.reportId = rs.getInt(1);
                 }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void saveComment(Comment comment) {
+        CommentHeader header = new CommentHeader();
+        header.setDefaultIndexes();
+        List<String> columns = new ArrayList<>(Arrays.asList(header.getHeaderNames()));
+        String query = "INSERT OR REPLACE INTO REPORT_COMMENTS " +
+                "(" + StringMan.join(columns, ", ") + ")" +
+                " VALUES (" + StringMan.repeat("?, ", columns.size() - 1) + "?)";
+        synchronized (db) {
+            try (PreparedStatement stmt = db.getConnection().prepareStatement(query)) {
+                stmt.setInt(header.report_id, comment.report_id);
+                stmt.setInt(header.nation_id, comment.nationId);
+                stmt.setLong(header.discord_id, comment.discordId);
+                stmt.setString(header.comment, comment.comment);
+                stmt.setLong(header.date, comment.date);
+
+                stmt.executeUpdate();
             } catch (SQLException e) {
                 e.printStackTrace();
             }
@@ -365,6 +382,10 @@ public class ReportManager {
         return moneyTrades;
     }
 
+    public void deleteComment(int reportId, int nationId) {
+        db.update("DELETE FROM reports_comments WHERE report_id = ? AND nation_id = ?", reportId, nationId);
+    }
+
     public enum ReportType {
         MULTI,
         REROLL,
@@ -460,7 +481,7 @@ public class ReportManager {
             reporterGuildId = rs.getLong(header.reporter_guild_id);
             message = rs.getString(header.report_message);
             String imageUrlStr = rs.getString(header.image_url);
-            if (imageUrlStr == null) {
+            if (imageUrlStr == null || imageUrlStr.isEmpty()) {
                 imageUrls = new ArrayList<>();
             } else {
                 imageUrls = Arrays.asList(imageUrlStr.split("\n"));
@@ -530,10 +551,10 @@ public class ReportManager {
                 body.append("News: " + newsMarkup + "\n");
             }
 
-            List<Vote> comments = Locutus.imp().getNationDB().getReportManager().loadVotesByReport(this.reportId);
+            List<Comment> comments = Locutus.imp().getNationDB().getReportManager().loadCommentsByReport(this.reportId);
             if (!comments.isEmpty()) {
                 if (includeComments) {
-                    for (Vote comment : comments) {
+                    for (Comment comment : comments) {
                         body.append("-" + comment.toMarkdown() + "\n");
                     }
                 } else {
@@ -598,57 +619,59 @@ public class ReportManager {
         }
     }
 
-    public static class VoteHeader {
+    public static class CommentHeader {
         public int report_id;
         public int nation_id;
         public int discord_id;
-        public int vote;
         public int comment;
         public int date;
 
         public String[] getHeaderNames() {
-            return new String[]{"report_id", "nation_id", "discord_id", "vote", "comment", "date"};
+            return new String[]{"report_id", "nation_id", "discord_id", "comment", "date"};
         }
 
         public void setDefaultIndexes() {
             report_id = 1;
             nation_id = 2;
             discord_id = 3;
-            vote = 4;
-            comment = 5;
-            date = 6;
+            comment = 4;
+            date = 5;
         }
     }
 
-    public static class Vote {
+    public static class Comment {
         public int report_id;
         public int nationId;
         public long discordId;
-        public int vote;
         public String comment;
         public long date;
 
-        public Vote(VoteHeader header, List<Object> row) {
+        public Comment(int report_id, int nationId, long discordId, String comment, long date) {
+            this.report_id = report_id;
+            this.nationId = nationId;
+            this.discordId = discordId;
+            this.comment = comment;
+            this.date = date;
+        }
+        public Comment(CommentHeader header, List<Object> row) {
             report_id = Integer.parseInt(row.get(header.report_id).toString());
             nationId = Integer.parseInt(row.get(header.nation_id).toString());
             discordId = Long.parseLong(row.get(header.discord_id).toString());
-            vote = Integer.parseInt(row.get(header.vote).toString());
             comment = row.get(header.comment).toString();
             date = Long.parseLong(row.get(header.date).toString());
         }
 
-        public Vote(VoteHeader header, ResultSet rs) throws SQLException {
+        public Comment(CommentHeader header, ResultSet rs) throws SQLException {
             report_id = rs.getInt(header.report_id);
             nationId = rs.getInt(header.nation_id);
             discordId = rs.getLong(header.discord_id);
-            vote = rs.getInt(header.vote);
             comment = rs.getString(header.comment);
             date = rs.getLong(header.date);
         }
 
         public String toMarkdown() {
             StringBuilder msg = new StringBuilder();
-            msg.append("[" + vote + " | " + DiscordUtil.timestamp(date, null) + "]");
+            msg.append("[" + DiscordUtil.timestamp(date, null) + "]");
             msg.append("(by: " + PnwUtil.getName(nationId, false) + " | " + DiscordUtil.getUserName(discordId) + "):\n");
             msg.append("> " + comment.replace("\n", "\n> "));
             return msg.toString();
@@ -677,8 +700,8 @@ public class ReportManager {
         return result;
     }
 
-    public List<Vote> getVotes(SpreadSheet sheet) throws GeneralSecurityException, IOException, NoSuchFieldException, IllegalAccessException {
-        List<Vote> result = new ArrayList<>();
+    public List<Comment> getComments(SpreadSheet sheet) throws GeneralSecurityException, IOException, NoSuchFieldException, IllegalAccessException {
+        List<Comment> result = new ArrayList<>();
         List<List<Object>> values = sheet.loadValues();
 
         if (values.isEmpty()) return result;
@@ -686,12 +709,12 @@ public class ReportManager {
         List<Object> headerRow = values.get(0);
         if (headerRow.isEmpty()) return result;
 
-        VoteHeader header = sheet.loadHeader(new VoteHeader(), headerRow);
+        CommentHeader header = sheet.loadHeader(new CommentHeader(), headerRow);
         for (int i = 1; i < values.size(); i++) {
             List<Object> row = values.get(i);
             if (row.isEmpty()) continue;
 
-            Vote report = new Vote(header, row);
+            Comment report = new Comment(header, row);
             result.add(report);
         }
 
@@ -760,31 +783,39 @@ public class ReportManager {
         return reports.get(0);
     }
 
-    public List<Vote> loadVotesByReport(int reportId) {
-        return loadVotes("report_id = " + reportId);
+    public List<Comment> loadCommentsByReport(int reportId) {
+        return loadComments("report_id = " + reportId);
     }
 
-    public Vote loadVotesByReportNation(int reportId, int nationId) {
-        List<Vote> votes = loadVotes("report_id = " + reportId + " AND nation_id = " + nationId);
+    public List<Comment> loadCommentsByNation(int nationId) {
+        return loadComments("nation_id = " + nationId);
+    }
+
+    public List<Comment> loadCommentsByUser(long userId) {
+        return loadComments("discord_id = " + userId);
+    }
+
+    public Comment loadCommentsByReportNation(int reportId, int nationId) {
+        List<Comment> votes = loadComments("report_id = " + reportId + " AND nation_id = " + nationId);
         if (votes.isEmpty()) return null;
         return votes.get(0);
     }
 
-    public List<Vote> loadVotes(String whereClauseOrNull) {
+    public List<Comment> loadComments(String whereClauseOrNull) {
         if (whereClauseOrNull == null) {
             whereClauseOrNull = "";
         } else {
             whereClauseOrNull = " WHERE " + whereClauseOrNull;
         }
-        List<Vote> votes = new ObjectArrayList<>();
+        List<Comment> votes = new ObjectArrayList<>();
 
-        VoteHeader header = new VoteHeader();
+        CommentHeader header = new CommentHeader();
         header.setDefaultIndexes();
-        String select = "SELECT " + StringMan.join(header.getHeaderNames(), ",") +  " FROM REPORT_VOTES" + whereClauseOrNull;
+        String select = "SELECT " + StringMan.join(header.getHeaderNames(), ",") +  " FROM REPORT_COMMENTS" + whereClauseOrNull;
         try (PreparedStatement stmt = db.getConnection().prepareStatement(select)) {
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
-                votes.add(new Vote(header, rs));
+                votes.add(new Comment(header, rs));
             }
         } catch (SQLException e) {
             e.printStackTrace();
