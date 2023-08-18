@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Messages;
@@ -22,6 +23,7 @@ import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.ImageUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -29,6 +31,7 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
@@ -41,8 +44,10 @@ import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
+import static link.locutus.discord.db.guild.GuildKey.REPORT_ALERT_CHANNEL;
 import static link.locutus.discord.util.MarkupUtil.sheetUrl;
 import static link.locutus.discord.util.PnwUtil.add;
 import static link.locutus.discord.util.PnwUtil.getAllianceUrl;
@@ -679,6 +684,16 @@ public class ReportCommands {
         }
 
         reportManager.saveReport(report);
+
+        ReportManager.Report finalExisting = existing;
+        AlertUtil.forEachChannel(f -> true, REPORT_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
+            @Override
+            public void accept(MessageChannel channel, GuildDB db) {
+                String title = (finalExisting != null ? "Updating" : "New") + " " + report.getTitle();
+                String body = report.toMarkdown(false);
+                new DiscordChannelIO(channel).create().embed(title, body).sendWhenFree();
+            }
+        });
 
         return "Report " + (existing == null ? "created" : "updated") + " with id `" + report.reportId + "`\n" +
                 "See: " + CM.report.show.cmd.create(report.reportId + "").toSlashCommand(true);

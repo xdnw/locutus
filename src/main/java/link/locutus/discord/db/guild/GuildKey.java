@@ -1171,6 +1171,19 @@ public class GuildKey {
             return "The #channel to receive alerts for nation rerolls";
         }
     }.nonPublic().requireActiveGuild();
+    public static GuildSetting<MessageChannel> REPORT_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String REPORT_ALERT_CHANNEL(@Me GuildDB db, @Me User user, MessageChannel channel) {
+            return REPORT_ALERT_CHANNEL.setAndValidate(db, user, channel);
+        }
+        @Override
+        public String help() {
+            return "The channel to receive alerts when any nation or user is reported to the bot\n" +
+                    "See " + CM.report.create.cmd.toSlashMention();
+        }
+    }.nonPublic().requireActiveGuild();
     public static GuildSetting<MessageChannel> DELETION_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
