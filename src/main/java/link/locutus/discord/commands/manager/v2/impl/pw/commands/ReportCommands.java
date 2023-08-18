@@ -213,7 +213,7 @@ public class ReportCommands {
 
         reportManager.saveReports(reports);
 
-        return "Added " + reports.size() + " reports. Use TODO CMD ref to view all reports";
+        return "Added " + reports.size() + " reports. See " + CM.report.sheet.generate.cmd.toSlashMention();
     }
 
     @Command(desc = "Generate a google sheet of all loan information banks and alliances have submitted")

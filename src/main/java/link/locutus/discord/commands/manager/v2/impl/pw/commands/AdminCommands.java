@@ -1404,6 +1404,13 @@ public class AdminCommands {
     }
 
     @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public synchronized String importLinkedBans() throws IOException {
+        Locutus.imp().getNationDB().importMultiBans();
+        return "Done";
+    }
+
+    @Command
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public synchronized String hasSameNetworkAsBan(@Me IMessageIO io, @Me User author, Set<DBNation> nations, @Switch("e") boolean listExpired, @Switch("f") boolean forceUpdate) throws IOException {
         if (forceUpdate && nations.size() > 300 && !Roles.ADMIN.hasOnRoot(author)) {
