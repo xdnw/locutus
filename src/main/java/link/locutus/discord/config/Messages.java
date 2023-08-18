@@ -47,6 +47,7 @@ public class Messages {
                 - Pirate Island Times
                 - The Micro Minute
                 - Thalmoria
+                - Orbis Business & Innovation Forum
                 
                 Note: DM `xdnw` to get a news server added to this list""";
 

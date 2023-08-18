@@ -523,7 +523,8 @@ public class ReportCommands {
                 827905979575959629L, // Very Good Media
                 353730979816407052L, // Pirate Island Times
                 1022224780751011860L, // Micro Minute
-                580481635645128745L // Thalmoria
+                580481635645128745L, // Thalmoria
+                1139041525817409539L // Orbis Business & Innovation Forum
         ));
 
         if (forum_post == null && news_post == null) {
@@ -708,7 +709,6 @@ public class ReportCommands {
     }
 
     @Command(desc = "Remove a report of a nation or user")
-    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String removeReport(ReportManager reportManager, @Me JSONObject command, @Me IMessageIO io, @Me DBNation me, @Me User author, @Me GuildDB db, @ReportPerms ReportManager.Report report, @Switch("f") boolean force) {
         if (!report.hasPermission(me, author, db)) {
             return "You do not have permission to remove this report: `#" + report.reportId +
@@ -761,7 +761,8 @@ public class ReportCommands {
         }
         report.approved = true;
         reportManager.saveReport(report);
-        return "Verified report #" + report.reportId;
+        return "Added comment to #" + report.reportId +
+                "\nSee: " + CM.report.show.cmd.toSlashMention();
     }
 
     @Command(desc = "Mass delete reports about or submitted by a user or nation")
@@ -867,7 +868,6 @@ public class ReportCommands {
 
     // report search
     @Command(desc = "List all reports about or submitted by a nation or user")
-    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String searchReports(@Me IMessageIO io, @Me JSONObject command, ReportManager reportManager, @Switch("n") Integer nationIdReported, @Switch("d") Long userIdReported, @Switch("i") Integer reportingNation, @Switch("u") Long reportingUser, @Switch("f") boolean force) {
         List<ReportManager.Report> reports = reportManager.loadReports(nationIdReported, userIdReported, reportingNation, reportingUser);
         // list reports matching
@@ -884,13 +884,11 @@ public class ReportCommands {
 
     // report show, incl comments
     @Command(desc = "View a report and its comments")
-    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String showReport(@Me IMessageIO io, ReportManager.Report report) {
         return "### " + report.toMarkdown(true);
     }
 
     @Command(desc = "Show an analysis of a nation's risk factors including: Reports, loans, discord & game bans, money trades and proximity with blacklisted nations, multi info, user account age, inactivity predictors")
-    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String riskFactors(@Me IMessageIO io, ReportManager reportManager, LoanManager loanManager, DBNation nation) {
         long start = System.currentTimeMillis();
         StringBuilder response = new StringBuilder();
