@@ -373,6 +373,9 @@ public class DBNation implements NationOrAlliance {
             if (role != null) {
                 try {
                     Member member = db.getGuild().getMember(user);
+                    if (member == null) {
+                        member = db.getGuild().retrieveMember(user).complete();
+                    }
                     if (member != null) {
                         RateLimitUtil.complete(db.getGuild().addRoleToMember(user, role));
                         output.append("You have been assigned the role: " + role.getName());
@@ -380,7 +383,6 @@ public class DBNation implements NationOrAlliance {
                         task.execute();
                         output.append("\n" + task.getChangesAndErrorMessage());
                     } else {
-                        member = db.getGuild().retrieveMember(user).complete();
                         output.append("Member " + DiscordUtil.getFullUsername(user) + " not found in guild: " + db.getGuild());
                     }
                 } catch (InsufficientPermissionException e) {
@@ -3575,6 +3577,7 @@ public class DBNation implements NationOrAlliance {
         String refreshCmd = Settings.commandPrefix(true) + "who " + getNationUrl();
 
         String response = toEmbedString();
+        response += "To report in-game fraud: " + CM.report.create.cmd.toSlashMention();
         IMessageBuilder msg = channel.create().embed(title, response)
                 .commandButton(CommandBehavior.UNDO_REACTION, CM.war.counter.nation.cmd.create(getId() + "", null, null, null, null, null, null, null), "Counter");
         if (refresh) {

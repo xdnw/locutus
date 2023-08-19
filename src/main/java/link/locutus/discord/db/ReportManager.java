@@ -383,7 +383,7 @@ public class ReportManager {
     }
 
     public void deleteComment(int reportId, int nationId) {
-        db.update("DELETE FROM reports_comments WHERE report_id = ? AND nation_id = ?", reportId, nationId);
+        db.update("DELETE FROM report_comments WHERE report_id = ? AND nation_id = ?", reportId, nationId);
     }
 
     public enum ReportType {

@@ -493,9 +493,9 @@ public class ReportCommands {
                          @Default @Arg("Nation to report") DBNation nation,
                          @Default @Arg("Discord user to report") Long discord_user_id,
                          @Arg("Image evidence of report") @Switch("i") String imageEvidenceUrl,
-                         @Arg("Link to relevant forum post") @Switch("f") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String forum_post,
-                         @Arg("Link to relevant news post") @Switch("m") @Filter("[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") String news_post,
-                               @Switch("i") ReportManager.Report updateReport,
+                         @Arg("Link to relevant forum post") @Switch("p") String forum_post,
+                         @Arg("Link to relevant news post") @Switch("m") String news_post,
+                               @Switch("u") ReportManager.Report updateReport,
                                @Switch("f") boolean force) {
         Map.Entry<String, Long> ban = reportManager.getBan(me);
         if (ban != null) {
@@ -503,7 +503,7 @@ public class ReportCommands {
         }
 
         if (forum_post == null && news_post == null) {
-            return "You must provide either a link to a forum post, or a link to a news report";
+            return "No argument provided\n" + Messages.FORUM_NEWS_ERROR;
         }
         if (nation == null && discord_user_id == null) {
             // say must provide one of either
@@ -526,11 +526,9 @@ public class ReportCommands {
                 1139041525817409539L // Orbis Business & Innovation Forum
         ));
 
-        if (forum_post == null && news_post == null) {
-            return "No argument provided\n" + Messages.FORUM_NEWS_ERROR;
-        }
+
         if (forum_post != null && !forum_post.startsWith("https://forum.politicsandwar.com/index.php?/topic/")) {
-            return "Forum post must be on domain `https://forum.politicsandwar.com/index.php?/topic/`\n" + Messages.FORUM_NEWS_ERROR;
+            return "Forum post (`" + forum_post + "`) must be on domain `https://forum.politicsandwar.com/index.php?/topic/`\n" + Messages.FORUM_NEWS_ERROR;
         }
         if (news_post != null) {
             // https://discord.com/channels/SERVER_ID/992205932006228041/1073856622545346641
@@ -546,20 +544,6 @@ public class ReportCommands {
                 }
             } catch (NumberFormatException e) {
                 return "News post must be discord message link in the format `https://discord.com/channels/SERVER_ID/CHANNEL_ID/MESSAGE_ID`\n" + Messages.FORUM_NEWS_ERROR;
-            }
-        }
-
-        List<String> imageUrls = new ArrayList<>();
-        if (imageEvidenceUrl != null) {
-            // split by space
-            String[] split = imageEvidenceUrl.split(" ");
-            for (String imageUrl : split) {
-                imageUrls.add(imageUrl);
-                // ensure imageEvidenceUrl is discord image url
-                String imageOcr = ImageUtil.getText(imageUrl);
-                if (imageOcr != null) {
-                    message += "\nScreenshot transcript:\n```\n" + imageOcr + "\n```";
-                }
             }
         }
 
@@ -613,9 +597,6 @@ public class ReportCommands {
             }
             if (message == null) {
                 message = existing.message;
-            }
-            if (imageEvidenceUrl == null) {
-                imageUrls = existing.imageUrls;
             }
             if (forum_post == null) {
                 forum_post = existing.forumUrl;
@@ -672,6 +653,23 @@ public class ReportCommands {
                     .confirmation(command).send();
             return null;
         }
+
+        List<String> imageUrls = new ArrayList<>();
+        if (imageEvidenceUrl != null) {
+            // split by space
+            String[] split = imageEvidenceUrl.split(" ");
+            for (String imageUrl : split) {
+                imageUrls.add(imageUrl);
+                // ensure imageEvidenceUrl is discord image url
+                String imageOcr = ImageUtil.getText(imageUrl);
+                if (imageOcr != null) {
+                    message += "\nScreenshot transcript:\n```\n" + imageOcr + "\n```";
+                }
+            }
+        } else if (updateReport != null) {
+            imageUrls = existing.imageUrls;
+        }
+
         ReportManager.Report report = new ReportManager.Report(
             nationId == null ? 0 : nationId,
             discord_user_id == null ? 0 : discord_user_id,
@@ -681,7 +679,7 @@ public class ReportCommands {
             reporterAlliance,
             reporterGuildId,
             message,
-                imageUrls,
+            imageUrls,
             forum_post == null ? "" : forum_post,
             news_post == null ? "" : news_post,
             System.currentTimeMillis(),

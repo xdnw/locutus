@@ -1183,7 +1183,7 @@ public class GuildKey {
             return "The channel to receive alerts when any nation or user is reported to the bot\n" +
                     "See " + CM.report.create.cmd.toSlashMention();
         }
-    }.nonPublic().requireActiveGuild();
+    }.requireActiveGuild();
     public static GuildSetting<MessageChannel> DELETION_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2326,18 +2326,6 @@ public class GuildKey {
         }
 
     }.setupRequirements(f -> f.requireValidAlliance().requires(RECRUIT_MESSAGE_OUTPUT).requires(ALLIANCE_ID));
-    public static GuildSetting<MessageChannel> PLAYER_REPORT_ALERTS = new GuildChannelSetting(GuildSettingCategory.FOREIGN_AFFAIRS) {
-        @NoFormat
-        @Command(descMethod = "help")
-        @RolePermission(Roles.ADMIN)
-        public String PLAYER_REPORT_ALERTS(@Me GuildDB db, @Me User user, MessageChannel channel) {
-            return PLAYER_REPORT_ALERTS.setAndValidate(db, user, channel);
-        }
-        @Override
-        public String help() {
-            return "The #channel to receive alerts when a player report is submitted by the community";
-        }
-    };
 
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 
