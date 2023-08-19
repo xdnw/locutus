@@ -154,8 +154,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "The name of a created grant template")
-    public AGrantTemplate AGrantTemplate(@Me GuildDB db, String input) {
-        GrantTemplateManager manager = db.getGrantTemplateManager();
+    public AGrantTemplate AGrantTemplate(GrantTemplateManager manager, @Me GuildDB db, String input) {
         Set<AGrantTemplate> found = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(input));
         if (found.isEmpty()) throw new IllegalArgumentException("No grant template found for `" + input + "`");
         if (found.size() > 1) throw new IllegalArgumentException("Multiple grant templates found for `" + input + "`");
@@ -977,6 +976,11 @@ public class PWBindings extends BindingHelper {
     @Binding
     public ReportManager ReportManager() {
         return Locutus.imp().getNationDB().getReportManager();
+    }
+
+    @Binding
+    public GrantTemplateManager grantTemplateManager(@Me GuildDB db) {
+        return db.getGrantTemplateManager();
     }
 
     @Binding
