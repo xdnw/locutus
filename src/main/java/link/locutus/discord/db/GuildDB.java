@@ -929,21 +929,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
 
         };
-        {
-            String create = "CREATE TABLE IF NOT EXISTS `LOANS` (`loan_id` INTEGER PRIMARY KEY AUTOINCREMENT, `server` BIGINT NOT NULL, `message`, `receiver` INT NOT NULL, `resources` BLOB NOT NULL, `due` BIGINT NOT NULL, `repaid` BIGINT NOT NULL)";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(create);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        };
-        {
-            // Escroew
-            String create = "";
-        }
-
 
 //        {
 //            String create = "CREATE TABLE IF NOT EXISTS `BEIGE_TARGET_ALERTS` (`user` INT NOT NULL, `target`)";
@@ -1301,37 +1286,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return result;
     }
 
-    public List<DBLoan> getLoansByNation(int nationId) {
-        List<DBLoan> loans = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM LOANS where receiver = ? ORDER BY loan_id desc")) {
-            stmt.setInt(1, nationId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    loans.add(new DBLoan(rs));
-                }
-            }
-            return loans;
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public DBLoan getLoanById(int loanId) {
-        List<DBLoan> loans = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM LOANS where loan_id = ?")) {
-            stmt.setInt(1, loanId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    return new DBLoan(rs);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
     public Map<DepositType, double[]> getTaxBracketDeposits(int taxId, long cutOff, boolean includeExpired, boolean includeIgnored) {
         List<BankDB.TaxDeposit> records;
         if (cutOff == 0) {
@@ -1446,61 +1400,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 //        return total;
 //
 //    }
-
-    public DBLoan getLoanByMessageId(long loanId) {
-        List<DBLoan> loans = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM LOANS where message = ?")) {
-            stmt.setLong(1, loanId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    return new DBLoan(rs);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public List<DBLoan> getExpiredLoans() {
-        List<DBLoan> loans = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM LOANS where due < ? AND repaid = 0")) {
-            stmt.setLong(1, System.currentTimeMillis());
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    loans.add(new DBLoan(rs));
-                }
-            }
-            return loans;
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public void addLoan(DBLoan loan) {
-        update("INSERT OR REPLACE INTO `LOANS`(`server`, `message`, `receiver`, `resources`, `due`, `repaid`) VALUES(?, ?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setLong(1, loan.loanerGuildOrAA);
-            stmt.setLong(2, loan.loanerNation);
-            stmt.setLong(3, loan.nationId);
-            stmt.setBytes(4, ArrayUtil.toByteArray(ArrayUtil.dollarToCents(loan.resources)));
-            stmt.setLong(5, loan.dueDate);
-            stmt.setInt(6, loan.status.ordinal());
-        });
-    }
-
-    public void updateLoan(DBLoan loan) {
-        if (loan.loanId == -1) throw new IllegalArgumentException("Loan has no id");
-        update("INSERT OR REPLACE INTO `LOANS`(`loan_id`, `server`, `message`, `receiver`, `resources`, `due`, `repaid`) VALUES(?, ?, ?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, loan.loanId);
-            stmt.setLong(2, loan.loanerGuildOrAA);
-            stmt.setLong(3, loan.loanerNation);
-            stmt.setLong(4, loan.nationId);
-            stmt.setBytes(5, ArrayUtil.toByteArray(ArrayUtil.dollarToCents(loan.resources)));
-            stmt.setLong(6, loan.dueDate);
-            stmt.setInt(7, loan.status.ordinal());
-        });
-    }
 
     public IAutoRoleTask getAutoRoleTask() {
         if (this.autoRoleTask == null) {

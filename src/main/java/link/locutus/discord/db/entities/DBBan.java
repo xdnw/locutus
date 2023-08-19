@@ -23,6 +23,14 @@ public class DBBan {
         this.days_left = rs.getInt("days_left");
     }
 
+    public DBBan(int nation_id, long discord_id, String reason, long date, int days_left) {
+        this.nation_id = nation_id;
+        this.discord_id = discord_id;
+        this.reason = reason;
+        this.date = date;
+        this.days_left = days_left;
+    }
+
     public DBBan(BannedNation banQl) {
         this.nation_id = banQl.getNation_id();
         PNWUser pwUser = Locutus.imp().getDiscordDB().getUserFromNationId(this.nation_id);
@@ -38,11 +46,15 @@ public class DBBan {
         if (days_left == -1) return Integer.MAX_VALUE;
 
         long now = System.currentTimeMillis();
-        long expire = date + TimeUnit.DAYS.toMillis(days_left);
+        long expire = getEndDate();
         return Math.max(0, expire - now);
     }
 
     public boolean isExpired() {
         return getTimeRemaining() <= 0;
+    }
+
+    public long getEndDate() {
+        return date + TimeUnit.DAYS.toMillis(days_left);
     }
 }

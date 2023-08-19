@@ -58,6 +58,7 @@ import link.locutus.discord.apiv1.enums.Rank;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import link.locutus.discord.util.update.WarUpdateProcessor;
 import link.locutus.discord.web.jooby.WebRoot;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -119,6 +120,40 @@ public class AdminCommands {
     public String syncBans() throws SQLException {
         Locutus.imp().getNationDB().updateBans(Event::post);
         return "Done! (see console)";
+    }
+
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String syncDiscordBans() {
+        List<Guild> checkGuilds = new ArrayList<>();
+        for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
+            if (db.isAlliance()) {
+                checkGuilds.add(db.getGuild());
+            }
+        }
+        List<DiscordBan> toAdd = new ArrayList<>();
+        for (Guild guild : checkGuilds) {
+            Role botRole = guild.getBotRole();
+            if (botRole == null) continue;
+            if (!botRole.hasPermission(Permission.BAN_MEMBERS)) continue;
+            try {
+                List<Guild.Ban> bans = RateLimitUtil.complete(guild.retrieveBanList());
+                for (Guild.Ban ban : bans) {
+                    User user = ban.getUser();
+                    String reason = ban.getReason();
+                    if (reason == null) reason = "";
+
+                    // long user, long server, long date, String reason
+                    DiscordBan discordBan = new DiscordBan(user.getIdLong(), guild.getIdLong(), System.currentTimeMillis(), reason);
+                    toAdd.add(discordBan);
+                }
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+        }
+
+        Locutus.imp().getDiscordDB().addBans(toAdd);
+        return "Done! Saved " + toAdd.size() + " bans.";
     }
 
     @Command
@@ -1366,6 +1401,13 @@ public class AdminCommands {
             result.append("\n");
         }
         return result.toString().trim();
+    }
+
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public synchronized String importLinkedBans() throws IOException {
+        Locutus.imp().getNationDB().importMultiBans();
+        return "Done";
     }
 
     @Command

@@ -1680,4 +1680,11 @@ public class DiscordUtil {
         }
         return "#" + discriminator;
     }
+
+    public static long getMessageGuild(String url) {
+        int index = url.indexOf("channels/");
+        if (index == -1) return 0;
+        String[] split = url.substring(index + 9).split("/");
+        return Long.parseLong(split[0]);
+    }
 }

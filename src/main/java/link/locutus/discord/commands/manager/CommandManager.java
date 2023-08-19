@@ -513,6 +513,7 @@ public class CommandManager {
     }
 
     public void registerCommands(DiscordDB db) {
+        this.register(new RaidCommand());
         this.register(new PendingCommand());
         this.register(new ForumScrape());
         this.register(new KickLocutus());

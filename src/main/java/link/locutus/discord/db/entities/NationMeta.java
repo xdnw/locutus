@@ -111,6 +111,8 @@ public enum NationMeta {
 
     GPT_OPTIONS,
 
+    REPORT_BAN,
+
     ;
 
     public static NationMeta[] values = values();

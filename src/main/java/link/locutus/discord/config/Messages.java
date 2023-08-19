@@ -31,4 +31,24 @@ public class Messages {
             "- Switching your build to another power source (or buildings to mine e.g. uranium)";
 
     public static String GLOBAL_ROLE_MAPPING_INFO = "A global role mapping to ID:0 (*) will grant access to that role for all registered alliances";
+
+    public static String FORUM_NEWS_ERROR = """
+                You must provide a valid link to a `forum_post`, or a `news_post`
+                Forums: <https://forum.politicsandwar.com/index.php?/forum/40-orbis-central/>
+                News Servers: 
+                - <https://politicsandwar.fandom.com/wiki/Category:News_Servers>
+                - <https://politicsandwar.fandom.com/wiki/Discord_Directory>
+                
+                Supported News Servers:
+                - Ducc News Network
+                - Royal Orbis News
+                - Orbis Crowned News
+                - Very Good Media
+                - Pirate Island Times
+                - The Micro Minute
+                - Thalmoria
+                - Orbis Business & Innovation Forum
+                
+                Note: DM `xdnw` to get a news server added to this list""";
+
 }

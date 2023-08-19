@@ -33,6 +33,7 @@ import link.locutus.discord.event.position.PositionCreateEvent;
 import link.locutus.discord.event.position.PositionDeleteEvent;
 import link.locutus.discord.event.treasure.TreasureUpdateEvent;
 import link.locutus.discord.event.treaty.*;
+import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
@@ -62,6 +63,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -81,6 +84,7 @@ public class NationDB extends DBMainV2 {
     private final Map<Integer, DBTreasure> treasuresByNation = new Int2ObjectOpenHashMap<>();
     private final Map<String, DBTreasure> treasuresByName = new ConcurrentHashMap<>();
     private ReportManager reportManager;
+    private LoanManager loanManager;
 
     public NationDB() throws SQLException, ClassNotFoundException {
         super("nations");
@@ -88,6 +92,10 @@ public class NationDB extends DBMainV2 {
 
     public ReportManager getReportManager() {
         return reportManager;
+    }
+
+    public LoanManager getLoanManager() {
+        return loanManager;
     }
 
     public void load() throws SQLException {
@@ -2209,8 +2217,64 @@ public class NationDB extends DBMainV2 {
 
         purgeOldBeigeReminders();
 
+        //Create table IMPORTED_LOANS
+        executeStmt("CREATE TABLE IF NOT EXISTS IMPORTED_LOANS (" +
+                        "allianceOrGuild BIGINT NOT NULL, " +
+                        "nation_id INT NOT NULL, " +
+                        "loan_date BIGINT NOT NULL, " +
+                        "loaner_user BIGINT NOT NULL, " +
+                        "status INT NOT NULL, " +
+                        "principal BLOB NOT NULL, " +
+                        "remaining BLOB NOT NULL, " +
+                        "date_submitted BIGINT NOT NULL, " +
+                        "PRIMARY KEY(allianceOrGuild, nation_id))");
+        //Add index for nation_id
+        executeStmt("CREATE INDEX IF NOT EXISTS index_imported_loans_nation_id ON IMPORTED_LOANS (nation_id);");
+
         this.reportManager = new ReportManager(this);
+
+        this.loanManager = new LoanManager(this);
     }
+
+    public void importMultiBans() {
+        Map<Integer, DBBan> newBans = new HashMap<>();
+        Map<Integer, DBBan> bans = getBansByNation();
+        for (Map.Entry<Integer, DBBan> entry : bans.entrySet()) {
+            DBBan ban = entry.getValue();
+            if (ban.reason == null || ban.reason.isEmpty()) continue;
+
+            String regex = "https://politicsandwar.com/nation/id=(\\d+)";
+
+            Pattern pattern = Pattern.compile(regex);
+            Matcher matcher = pattern.matcher(ban.reason);
+
+            while (matcher.find()) {
+                String idStr = matcher.group(1);
+                int id = Integer.parseInt(idStr);
+                if (bans.containsKey(id)) continue;
+
+                String newReason = "Link to ban of nation: " + ban.nation_id + "\n" + ban.reason;
+
+                DBBan existing = newBans.get(id);
+                if (existing == null) {
+                    long discordId = ban.discord_id;
+
+                    PNWUser newDiscordId = Locutus.imp().getDiscordDB().getUserFromNationId(id);
+                    if (newDiscordId != null) {
+                        discordId = newDiscordId.getDiscordId();
+                    }
+
+                    existing = new DBBan(id, discordId, newReason, ban.date, 0);
+                    newBans.put(id, existing);
+                } else {
+                    existing.reason = existing.reason + "\n\n" + newReason;
+                }
+            }
+        }
+        addBans(new ArrayList<>(newBans.values()), null);
+    }
+
+
 
 
     public void addBans(List<DBBan> bans, Consumer<Event> eventConsumer) {
@@ -2319,6 +2383,8 @@ public class NationDB extends DBMainV2 {
             bans.add(ban);
         }
         addBans(bans, eventConsumer);
+
+        importMultiBans();
     }
 
     public void updateTreasures(Consumer<Event> eventConsumer) {
