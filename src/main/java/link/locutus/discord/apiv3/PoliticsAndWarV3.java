@@ -1382,6 +1382,36 @@ public class PoliticsAndWarV3 {
         return true;
     }
 
+    private TradeResponseProjection tradeResponseProjection() {
+        return new TradeResponseProjection()
+                .accepted()
+                .date()
+                .id()
+                .buy_or_sell()
+                .date_accepted()
+                .offer_amount()
+                .price()
+                .receiver_id()
+                .sender_id()
+                .offer_resource()
+                .type();
+    }
+
+    public Trade acceptPersonalTrade(int id, int amount) {
+        AcceptPersonalTradeMutationRequest mutation = new AcceptPersonalTradeMutationRequest();
+        mutation.setId(id);
+        mutation.setOffer_amount(amount);
+        return request(PagePriority.BANK_TRADE, mutation, tradeResponseProjection(), Trade.class);
+    }
+
+    public AlliancePosition assignAlliancePosition(int nation_id, int position_id) {
+        AssignAlliancePositionMutationRequest mutation = new AssignAlliancePositionMutationRequest();
+        mutation.setId(nation_id);
+        mutation.setPosition_id(position_id);
+        AlliancePositionResponseProjection projection = new AlliancePositionResponseProjection().id();
+        return request(PagePriority.RANK_SET, mutation, projection, AlliancePosition.class);
+    }
+
     private TreatyResponseProjection treatyResponseProjection() {
         return new TreatyResponseProjection()
         .id()
