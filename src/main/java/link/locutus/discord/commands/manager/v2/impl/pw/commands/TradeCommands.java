@@ -13,6 +13,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
@@ -62,6 +63,11 @@ public class TradeCommands {
     public static final long BULK_TRADE_SERVER = 672217848311054346L; // 1080313938937389207L
     public static final long BULK_TRADE_CHANNEL = 672310912090243092L; // 1080573769048932372L
 
+    @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
+    @Command(desc = "List the bot offers nations have on discord for you selling a given resource")
+    public String topList(TradeManager tMan, @Me DBNation me) {
+
+    }
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
     @Command(desc = "List the bot trade offers you have on discord")
@@ -163,6 +169,7 @@ public class TradeCommands {
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
     @Command(desc = "Update one of your bot trade offers on discord")
+    @HasOffshore
     public String updateOffer(@Me JSONObject command, TradeManager tMan, @Me DBNation me, @Me IMessageIO io,
                               @Arg("The id of your trade offer")
                               int offerId,
@@ -253,7 +260,7 @@ public class TradeCommands {
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
     @Command(desc = "View the details of a bot trade offer on discord")
-    public String offerInfo(@Me JSONObject command, TradeManager tMan, @Me IMessageIO io, 
+    public String offerInfo(@Me JSONObject command, TradeManager tMan, @Me IMessageIO io,
                             @Arg("The id of a trade offer")
                             int offerId) {
         TradeDB.BulkTradeOffer offer = tMan.getBulkOffer(offerId);
@@ -305,6 +312,7 @@ public class TradeCommands {
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
     @Command(desc = "Create a bot trade offer on discord for buying a resource")
+    @HasOffshore
     public String buyOffer(@Me IMessageIO io, TradeManager tMan, @Me JSONObject command, @Me DBNation me, @Me User author, ResourceType resource,
                            @Arg("The quantity of the resource you are receiving")
                                Long quantity,
@@ -393,6 +401,7 @@ public class TradeCommands {
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
     @Command(desc = "Create a bot trade offer on discord for selling a resource")
+    @HasOffshore
     public String sellOffer(@Me IMessageIO io, TradeManager tMan, @Me JSONObject command, @Me DBNation me, @Me User author, ResourceType resource,
                             @Arg("The quantity of the resource you are sending")
                             Long quantity,

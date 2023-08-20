@@ -29,6 +29,8 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.ReportManager;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.grant.AGrantTemplate;
+import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.gpt.pwembed.PWGPTHandler;
@@ -86,6 +88,20 @@ public class PWCompleter extends BindingHelper {
     @Binding(types={AlliancePermission.class})
     public List<String> AlliancePermission(String input) {
         return StringMan.completeEnum(input, AlliancePermission.class);
+    }
+
+    @Autocomplete
+    @Binding(types={AGrantTemplate.class})
+    public List<Map.Entry<String, String>> AGrantTemplate(GrantTemplateManager manager, @Me GuildDB db, String input) {
+        List<AGrantTemplate> options = new ArrayList<>(manager.getTemplates());
+        if (options == null || options.isEmpty()) return null;
+        options = StringMan.getClosest(input, options, AGrantTemplate::getName, OptionData.MAX_CHOICES, true);
+        return options.stream().map(new Function<AGrantTemplate, Map.Entry<String, String>>() {
+            @Override
+            public Map.Entry<String, String> apply(AGrantTemplate f) {
+                return Map.entry(f.getType() + " - " + f.getName(), f.getName());
+            }
+        }).collect(Collectors.toList());
     }
 
     @Autocomplete
