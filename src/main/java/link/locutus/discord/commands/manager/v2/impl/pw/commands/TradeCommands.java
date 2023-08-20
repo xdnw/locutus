@@ -66,7 +66,7 @@ public class TradeCommands {
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
     @Command(desc = "List the bot offers nations have on discord for you selling a given resource")
     public String topList(TradeManager tMan, @Me DBNation me) {
-
+        return null;
     }
 
     @RolePermission(value=Roles.MEMBER, guild=BULK_TRADE_SERVER)
