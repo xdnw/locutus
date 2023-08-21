@@ -1,7 +1,13 @@
 package link.locutus.discord.db.entities;
 
+import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import net.dv8tion.jda.api.entities.User;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -74,6 +80,46 @@ public class DBLoan {
 
     public long getLoanDate() {
         return loanDate;
+    }
+
+    public String getLineString(boolean showReceiver, boolean showSender) {
+//        return #").append(loan.loanId).append(" ").append(loan.status)
+//                .append("updated:" + DiscordUtil.timestamp(loan.date_submitted, null))
+        StringBuilder response = new StringBuilder("#" + loanId + " " + status + ": ");
+        if (showReceiver) {
+            response.append(PnwUtil.getMarkdownUrl(nationOrAllianceId, isAlliance));
+        }
+        if (status != Status.DEFAULTED && status != Status.CLOSED) {
+            if (remaining != null && !ResourceType.isZero(remaining)) {
+                response.append(" | " + PnwUtil.resourcesToString(remaining));
+            }
+            if (dueDate != 0) {
+                response.append(" | next: " + DiscordUtil.timestamp(dueDate, null));
+            }
+        }
+        if (showSender) {
+            String senderStr;
+            if (this.loanerGuildOrAA > Integer.MAX_VALUE) {
+                senderStr = MarkupUtil.markdownUrl(DiscordUtil.getGuildUrl(this.loanerGuildOrAA), DiscordUtil.getGuildUrl(this.loanerGuildOrAA));
+            } else {
+                senderStr = PnwUtil.getMarkdownUrl(this.loanerNation, true);
+            }
+            response.append(" | " + senderStr);
+        }
+        return response.toString();
+    }
+
+    public String getLoanerString() {
+        return loanerGuildOrAA > Integer.MAX_VALUE ? DiscordUtil.getGuildName(loanerGuildOrAA) : PnwUtil.getAllianceUrl((int) loanerGuildOrAA);
+    }
+
+    public boolean hasPermission(GuildDB db, DBNation me, User author) {
+        if (!Roles.ADMIN.hasOnRoot(author) && loanerNation != me.getNation_id()) {
+            if (loanerGuildOrAA > Integer.MAX_VALUE ? db.getIdLong() != loanerGuildOrAA : !db.isAllianceId((int) loanerGuildOrAA)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public enum Status {

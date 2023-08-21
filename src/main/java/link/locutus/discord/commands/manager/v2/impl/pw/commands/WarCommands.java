@@ -1274,20 +1274,25 @@ public class WarCommands {
         if(onlyWeaker)
             nations.removeIf(f -> f.getStrength() > me.getStrength());
 
-        Map<DBNation, DBTreasure> nationTreasures = nations.stream().collect(Collectors.toMap(n -> n, n -> Locutus.imp().getNationDB().getTreasure(n.getNation_id())));
-        nations.removeIf(f -> nationTreasures.get(f) == null);
+        Map<DBNation, DBTreasure> nationTreasures = new HashMap<>();
+        for (DBNation nation : nations) {
+//            nations.stream().collect(Collectors.toMap(n -> n, n -> Locutus.imp().getNationDB().getTreasure(n.getNation_id())));
+            DBTreasure treasure = Locutus.imp().getNationDB().getTreasure(nation.getNation_id());
+            if (treasure != null) {
+                nationTreasures.put(nation, treasure);
+            }
+        }
 
         long currentTurn = TimeUtil.getTurn();
-        Iterator<DBNation> iter = nations.iterator();
-        while (iter.hasNext()) {
-            DBNation nation = iter.next();
-
+        for (Map.Entry<DBNation, DBTreasure> entry : nationTreasures.entrySet()) {
+            DBNation nation = entry.getKey();
+            DBTreasure treasure = entry.getValue();
             response.append('\n')
                     .append("<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
                     .append(" | " + String.format("%16s", nation.getNation()))
                     .append(" | " + String.format("%16s", nation.getAllianceName()));
 
-                    response.append(": treasure=" + nation.treasureDays() + "d");
+                    response.append(": treasure=" + treasure.getDaysRemaining() + "d");
 
             response.append("\n```")
                     .append(String.format("%2s", nation.getCities())).append(" \uD83C\uDFD9").append(" | ")

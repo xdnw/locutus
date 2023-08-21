@@ -247,10 +247,41 @@ public enum ResourceType {
             return getResources();
         }
 
+        public ResourcesBuilder subtract(Map<ResourceType, Double> amt) {
+            for (Map.Entry<ResourceType, Double> entry : amt.entrySet()) {
+                add(entry.getKey(), -entry.getValue());
+            }
+            return this;
+        }
 
         public ResourcesBuilder subtract(double[] resources) {
             for (int i = 0; i < resources.length; i++) {
                 add(ResourceType.values[i], -resources[i]);
+            }
+            return this;
+        }
+
+        public Map<ResourceType, Double> buildMap() {
+            return PnwUtil.resourcesToMap(build());
+        }
+
+        public ResourcesBuilder max(double[] amounts) {
+            for (int i = 0; i < amounts.length; i++) {
+                this.resources[i] = Math.max(this.resources[i], amounts[i]);
+            }
+            return this;
+        }
+
+        public ResourcesBuilder maxZero() {
+            for (int i = 0; i < resources.length; i++) {
+                this.resources[i] = Math.max(this.resources[i], 0);
+            }
+            return this;
+        }
+
+        public ResourcesBuilder min(double[] amounts) {
+            for (int i = 0; i < amounts.length; i++) {
+                this.resources[i] = Math.min(this.resources[i], amounts[i]);
             }
             return this;
         }

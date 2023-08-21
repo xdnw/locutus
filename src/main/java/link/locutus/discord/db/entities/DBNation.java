@@ -479,9 +479,7 @@ public class DBNation implements NationOrAlliance {
 
         if(Locutus.imp().getNationDB().getTreasure(nation_id) != null)
             return 0;
-
-        long difference = (System.currentTimeMillis() - treasure.getSpawnDate()) + (TimeUnit.DAYS.toMillis(60));
-        return TimeUnit.DAYS.toDays(difference);
+        return treasure.getDaysRemaining();
     }
 
     public void setProject(Project project) {

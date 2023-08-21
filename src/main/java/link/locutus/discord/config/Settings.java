@@ -174,8 +174,7 @@ public class Settings extends Config {
     }
 
     @Comment({
-            "How often in seconds a task is run (set to 0 to disable)",
-            "Note: Politics and war is rate limited. You may experience issues if you run tasks too frequently"
+            "Artificual intelligence is used for features such as natural language responses, search and image processing",
     })
     public static class TASKS {
         @Comment("If any turn related tasks are run (default: true)")

@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsGuild;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Messages;
@@ -19,6 +20,7 @@ import link.locutus.discord.db.entities.DiscordBan;
 import link.locutus.discord.db.entities.LoanManager;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
@@ -42,12 +44,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
+import static link.locutus.discord.apiv1.enums.ResourceType.subtract;
 import static link.locutus.discord.db.guild.GuildKey.REPORT_ALERT_CHANNEL;
 import static link.locutus.discord.util.MarkupUtil.sheetUrl;
 import static link.locutus.discord.util.PnwUtil.add;
 import static link.locutus.discord.util.PnwUtil.getAllianceUrl;
 import static link.locutus.discord.util.PnwUtil.getName;
 import static link.locutus.discord.util.PnwUtil.getNationUrl;
+import static link.locutus.discord.util.PnwUtil.resourcesToArray;
+import static link.locutus.discord.util.PnwUtil.resourcesToMap;
 import static link.locutus.discord.util.discord.DiscordUtil.getGuildName;
 import static link.locutus.discord.util.discord.DiscordUtil.getGuildUrl;
 import static link.locutus.discord.util.discord.DiscordUtil.getUserName;
@@ -211,18 +216,27 @@ public class ReportCommands {
         return "Added " + reports.size() + " reports. See " + CM.report.sheet.generate.cmd.toSlashMention();
     }
 
-    @Command(desc = "Generate a google sheet of all loan information banks and alliances have submitted")
+    @Command(desc = "Generate a google sheet of all loan information banks and alliances have submitted\n" +
+            "If no nations are provided, only the loans for this server are returned\n" +
+            "If no loan status is provided, all loans are returned")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String getLoanSheet(@Me IMessageIO io, @Me GuildDB db, LoanManager manager, @Default Set<DBNation> nations, @Switch("s") SpreadSheet sheet, @Switch("l") Set<DBLoan.Status> loanStatus) throws GeneralSecurityException, IOException {
         List<DBLoan> loans;
-        Set<Integer> nationIds = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
-        if (nations.size() >= 1000) {
-            loans = manager.getLoansByStatus(loanStatus); // get all loans and then filter
-            // remove if not
-             loans.removeIf(f -> !f.isAlliance && !nationIds.contains(f.nationOrAllianceId));
-            // get all loans and then filter
+        if (nations == null) {
+            loans = manager.getLoansByGuildDB(db);
         } else {
-            loans = manager.getLoansByNations(nationIds, loanStatus);
+            Set<Integer> nationIds = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
+            if (nations.size() >= 1000) {
+                loans = manager.getLoansByStatus(loanStatus); // get all loans and then filter
+                // remove if not
+                loans.removeIf(f -> !f.isAlliance && !nationIds.contains(f.nationOrAllianceId));
+                // get all loans and then filter
+            } else {
+                loans = manager.getLoansByNations(nationIds, loanStatus);
+            }
+        }
+        if (loanStatus != null && !loanStatus.isEmpty()) {
+            loans.removeIf(f -> !loanStatus.contains(f.getStatus()));
         }
 
         if (sheet == null) {
@@ -277,6 +291,287 @@ public class ReportCommands {
     }
 
 
+    @Command(desc = "Add a loan for a nation or alliance")
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ECON}, any = true)
+    public String addLoan(LoanManager loanManager, @Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, NationOrAlliance receiver, @Default DBLoan.Status status, @Switch("o") @GuildLoan DBLoan overwriteLoan,
+                          @Switch("p") Map<ResourceType, Double> principal, @Switch("r") Map<ResourceType, Double> remaining, @Switch("c") Map<ResourceType, Double> amountPaid,
+                          @Switch("d") @Timestamp Long dueDate, @Switch("a") DBAlliance allianceLending, @Switch("f") boolean force) {
+        if (allianceLending != null) {
+            if (!db.isAllianceId(allianceLending.getId())) {
+                throw new IllegalArgumentException("Alliance lending must be from this server. See " + CM.settings_default.registerAlliance.cmd.toSlashMention());
+            }
+        }
+        if (overwriteLoan != null) {
+            if (overwriteLoan.isAlliance) {
+                if (!db.isAllianceId((int) overwriteLoan.loanerGuildOrAA)) {
+                    // Belongs to another alliance
+                    throw new IllegalArgumentException("Cannot overwrite loan from another alliance (" + PnwUtil.getMarkdownUrl((int) overwriteLoan.loanerGuildOrAA, true) + ")");
+                }
+                else if (db.getIdLong() != overwriteLoan.loanerGuildOrAA) {
+                    throw new IllegalArgumentException("Cannot overwrite loan from another guild (id:" + (int) overwriteLoan.loanerGuildOrAA + ")");
+                }
+            }
+        }
+
+        long loanerId;
+        if (overwriteLoan == null) {
+            if (allianceLending != null) {
+                loanerId = allianceLending.getId();
+            } else if (db.isAlliance()) {
+                loanerId = db.getAllianceIds().iterator().next();
+            } else {
+                loanerId = db.getIdLong();
+            }
+            // set remaining to principal if not there
+            if (remaining == null) {
+                remaining = principal;
+            }
+            // set paid to 0
+            if (amountPaid == null) {
+                amountPaid = new HashMap<>();
+            }
+        } else {
+            loanerId = overwriteLoan.loanerGuildOrAA;
+            if (amountPaid != null && remaining == null) {
+                if (overwriteLoan.remaining != null && !ResourceType.isZero(overwriteLoan.remaining)) {
+                    remaining = ResourceType.builder()
+                            .add(overwriteLoan.remaining)
+                            .add(overwriteLoan.paid)
+                            .subtract(amountPaid)
+                            .maxZero().buildMap();
+                }
+
+            } else if (remaining != null && amountPaid == null) {
+                amountPaid = ResourceType.builder()
+                        .add(overwriteLoan.paid)
+                        .add(remaining)
+                        .subtract(overwriteLoan.remaining)
+                        .maxZero().buildMap();
+
+            }
+        }
+
+        if (!force) {
+
+            String title = (overwriteLoan == null ? "Add" : "Update") + " Loan";
+            StringBuilder body = new StringBuilder();
+
+            if (loanerId > Integer.MAX_VALUE) {
+                body.append("**Lending:** `").append(DiscordUtil.getGuildName(loanerId)).append("`\n");
+            } else {
+                body.append("**Lender:** ").append(PnwUtil.getMarkdownUrl((int) loanerId, true)).append("\n");
+            }
+
+            if (status != null) {
+                body.append("**Status:** ").append(status.name()).append("\n");
+            }
+            if (principal != null) {
+                body.append("**Principal:** ").append(PnwUtil.resourcesToString(principal)).append("\n");
+            }
+            if (remaining != null) {
+                body.append("**Remaining:** ").append(PnwUtil.resourcesToString(remaining)).append("\n");
+            }
+            if (amountPaid != null) {
+                body.append("**Amount Paid:** ").append(PnwUtil.resourcesToString(amountPaid)).append("\n");
+            }
+
+            // If loan already exists to nation from this guild, prompt to update it
+            if (overwriteLoan == null) {
+                List<DBLoan> foundLoans = loanManager.getLoanByReceiver(db, receiver);
+                foundLoans.removeIf(f -> f.status == DBLoan.Status.CLOSED);
+                if (!foundLoans.isEmpty()) {
+                    body.append("**A loan already exists to ")
+                            .append(receiver.isAlliance() ? "alliance " : "nation ")
+                            .append(PnwUtil.getMarkdownUrl(receiver.getId(), receiver.isAlliance()))
+                            .append(".**\nConsider updating or closing these: TODO CM Ref\n");
+                    for (DBLoan loan : foundLoans) {
+                        // Id, status, date, remaining
+                        body.append("- " + loan.getLineString(false, false) + "\n");
+                    }
+                }
+
+                if (principal == null) {
+                    body.append("**Warning:** No `principal` amount set. It is recommended to set the initial loan amount\n");
+                }
+                if (dueDate == null) {
+                    dueDate = TimeUtil.getTimeFromTurn(TimeUtil.getTurn()) + TimeUnit.DAYS.toMillis(7);
+                    body.append("**Warning:** No `dueDate` set. Defaulting to 7 days\n");
+                }
+                if (status == null) {
+                    status = DBLoan.Status.OPEN;
+                    body.append("**Warning:** No `status` set. Defaulting to `OPEN`\n");
+                }
+            }
+
+            io.create().confirmation(title, body.toString(), command).send();
+            return null;
+        }
+
+
+        boolean isUpdate = overwriteLoan == null;
+        if (overwriteLoan == null) {
+            if (dueDate == null && (overwriteLoan == null || overwriteLoan.status == DBLoan.Status.OPEN || overwriteLoan.status == DBLoan.Status.EXTENDED)) {
+                dueDate = TimeUtil.getTimeFromTurn(TimeUtil.getTurn()) + TimeUnit.DAYS.toMillis(7);
+            }
+            if (principal == null) {
+                principal = new HashMap<>();
+            }
+            if (remaining == null) {
+                remaining = new HashMap<>();
+            }
+
+            overwriteLoan = new DBLoan(
+                    loanerId,
+                    me.getNation_id(),
+                    receiver.getId(),
+                    receiver.isAlliance(),
+                    PnwUtil.resourcesToArray(principal),
+                    PnwUtil.resourcesToArray(remaining),
+                    PnwUtil.resourcesToArray(amountPaid),
+                    status,
+                    dueDate,
+                    System.currentTimeMillis(),
+                    System.currentTimeMillis()
+            );
+        }
+
+        StringBuilder response = new StringBuilder("Done! " + (isUpdate ? "Updated" : "Added") + "1 loan");
+
+        // If there are loans updated >1w ago, prompt to update them
+        List<DBLoan> existing = loanManager.getLoansByGuildDB(db);
+        long now = System.currentTimeMillis();
+        existing.removeIf(f -> f.status == DBLoan.Status.DEFAULTED || f.status == DBLoan.Status.CLOSED || f.dueDate >= now);
+        // The following loans are >1w old, would you like to update them?
+        if (!existing.isEmpty()) {
+            response.append("\n**Warning:** There are loans >1w old that have not been updated. Consider updating them:\n");
+            for (DBLoan loan : existing) {
+                response.append("- " + loan.getLineString(true, false) + "\n");
+            }
+        }
+
+        // When created, prompt to use the view loan sheet command
+        response.append("\nTo view all loans, see: TODO CM ref\n" +
+                "To bulk update loans, see: TODO CM ref for import sheet");
+
+        if (isUpdate) {
+            loanManager.updateLoan(overwriteLoan);
+        } else {
+            loanManager.addLoans(List.of(overwriteLoan));
+        }
+
+        return response.toString();
+    }
+
+    @Command(desc = "Update a loan for a nation or alliance\n" +
+            "If no other arguments are provided, only the last updated date will be set")
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ECON}, any = true)
+    public String updateLoan(LoanManager loanManager, @Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me,
+                             @GuildLoan DBLoan loan,
+                             @Switch("p") Map<ResourceType, Double> principal,
+                             @Switch("r") Map<ResourceType, Double> remaining,
+                             @Switch("c") Map<ResourceType, Double> amountPaid,
+                             @Switch("d") @Timestamp Long dueDate,
+                             @Switch("f") boolean force) {
+        NationOrAlliance receiver = null;
+        if (loan.isAlliance) {
+            receiver = DBAlliance.getOrCreate(loan.nationOrAllianceId);
+        } else {
+            receiver = DBNation.getById(loan.nationOrAllianceId);
+            if (receiver == null) {
+                DBNation nation = new DBNation();
+                nation.setNation_id(loan.nationOrAllianceId);
+                receiver = nation;
+            }
+        }
+        return addLoan(loanManager, command, io, db, me, receiver, loan.status, loan, principal, remaining, amountPaid, dueDate, null, force);
+    }
+
+    // delete loan
+    @Command(desc = "Delete a loan for a nation or alliance\n" +
+            "Note: To delete all loans use the loan purge command")
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ECON}, any = true)
+    public String deleteLoan(LoanManager loanManager, @Me User author, @Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @GuildLoan DBLoan loan, @Switch("f") boolean force) {
+        if (!loan.hasPermission(db, me, author)) {
+            return "You do not have permission to delete this loan. Loan was created by: " + loan.getLoanerString();
+        }
+        if (!force) {
+            String title = "Confirm delete loan";
+            String body = loan.getLineString(true, true);
+            io.create().confirmation(title, body, command).send();
+            return null;
+        }
+        // ensure has permission
+        loanManager.deleteLoans(List.of(loan));
+        return "Loan deleted";
+    }
+
+    @Command(desc = "Delete all loan information")
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ECON}, any = true)
+    public String purgeLoans(LoanManager loanManager, @Me JSONObject command, @Me User author, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Arg("Purge all loans created by this guild or alliance id") @Default Long guildOrAllianceId, @Switch("f") boolean force) {
+        if (guildOrAllianceId != null && !Roles.ADMIN.hasOnRoot(author)) {
+            // check permission
+            if (guildOrAllianceId != db.getIdLong() && (guildOrAllianceId > Integer.MAX_VALUE || !db.isAllianceId(guildOrAllianceId.intValue()))) {
+                return "You do not have permission to purge loans for this guild/alliance";
+            }
+        }
+        List<DBLoan> loans;
+        if (guildOrAllianceId == null) {
+            loans = loanManager.getLoansByGuildDB(db);
+        } else {
+            loans = loanManager.getLoansByGuildOrAA(Collections.singleton(guildOrAllianceId), null);
+        }
+        if (loans.isEmpty()) {
+            return "No loans found. Create one with TODO CM REf";
+        }
+        if (!force) {
+            String title = "Confirm delete all " + loans.size() + " loans";
+            StringBuilder body = new StringBuilder();
+            body.append("**Note:** It is recommended to create a copy first\n" +
+                    "See: TODO CM Ref loan sheet\n\n");
+
+            if (guildOrAllianceId == null) {
+                body.append("Deleting: All Loans from this guild/alliance (" + db.getGuild().toString() + ")");
+            } else if (guildOrAllianceId > Integer.MAX_VALUE) {
+                body.append("Deleting: All Loans from guild: " + DiscordUtil.getGuildName(guildOrAllianceId) + " (" + guildOrAllianceId + ")");
+            } else {
+                body.append("Deleting: All Loans from alliance: " + PnwUtil.getMarkdownUrl(guildOrAllianceId.intValue(), true));
+            }
+
+            io.create().confirmation(title, body.toString(), command).send();
+            return null;
+        }
+        loanManager.deleteLoans(loans);
+        return "All loans deleted";
+    }
+
+
+    @Command(desc = "Mark all active loans by this guild as up to date\n" +
+            "It is useful for loan reporting to remain accurate")
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ECON}, any = true)
+    public String markAllLoansAsUpdated(LoanManager loanManager, @Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Default Set<DBLoan.Status> loanStatus, @Switch("f") boolean force) {
+        List<DBLoan> loans = loanManager.getLoansByGuildDB(db);
+        if (loanStatus != null) {
+            loans.removeIf(f -> !loanStatus.contains(f.status));
+        }
+        if (loans.isEmpty()) {
+            return "No loans found";
+        }
+        if (!force) {
+            String title = "Confirm mark " + loans.size() + " loans as up to date";
+            StringBuilder body = new StringBuilder();
+            for (DBLoan loan : loans) {
+                body.append("- " + loan.getLineString(true, false)).append("\n");
+            }
+            io.create().confirmation(title, body.toString(), command).send();
+            return null;
+        }
+        for (DBLoan loan : loans) {
+            loan.date_submitted = System.currentTimeMillis();
+        }
+        loanManager.updateLoans(loans);
+        return "Updated " + loans.size() + " loans";
+
+    }
 
     @Command(desc = "Import loan report data from a google sheet\n" +
             "Expects the columns: Receiver, Principal, Remaining, Status, Due Date, Loan Date, Paid, Interest\n" +
@@ -400,15 +695,15 @@ public class ReportCommands {
             Map<ResourceType, Double> interest = interestStr == null ? null : PnwUtil.parseResources(interestStr);
 
             if (paid == null && remaining != null) {
-                double[] principalArr = PnwUtil.resourcesToArray(principal);
-                double[] remainingArr = PnwUtil.resourcesToArray(remaining);
-                double[] interestArr = interest == null ? null : PnwUtil.resourcesToArray(interest);
+                double[] principalArr = resourcesToArray(principal);
+                double[] remainingArr = resourcesToArray(remaining);
+                double[] interestArr = interest == null ? null : resourcesToArray(interest);
                 if (interest != null) {
                     // paid = principal - remaining + interest
-                    paid = PnwUtil.resourcesToMap(ResourceType.add(ResourceType.subtract(principalArr, remainingArr), interestArr));
+                    paid = PnwUtil.resourcesToMap(ResourceType.add(subtract(principalArr, remainingArr), interestArr));
                 } else {
                     // paid = principal - remaining
-                    paid = PnwUtil.resourcesToMap(PnwUtil.max(ResourceType.getBuffer(), ResourceType.subtract(principalArr, remainingArr)));
+                    paid = PnwUtil.resourcesToMap(PnwUtil.max(ResourceType.getBuffer(), subtract(principalArr, remainingArr)));
                 }
             }
 
@@ -422,9 +717,9 @@ public class ReportCommands {
                     me.getId(),
                     receiverId,
                     isRecieverAA,
-                    PnwUtil.resourcesToArray(principal),
-                    paid == null ? ResourceType.getBuffer() : PnwUtil.resourcesToArray(paid),
-                    remaining == null ? ResourceType.getBuffer() : PnwUtil.resourcesToArray(remaining),
+                    resourcesToArray(principal),
+                    paid == null ? ResourceType.getBuffer() : resourcesToArray(paid),
+                    remaining == null ? ResourceType.getBuffer() : resourcesToArray(remaining),
                     status,
                     dueDate,
                     loanDate,
@@ -440,7 +735,7 @@ public class ReportCommands {
         }
 
 
-        if (overwriteLoans == false && addLoans == false && overwriteSameNation == false) {
+        if (!overwriteLoans && !addLoans && !overwriteSameNation) {
             String title = "Add or Overwrite loans";
             StringBuilder body = new StringBuilder();
             body.append(loans.size() + " loans will be added to the database\n");
@@ -501,10 +796,6 @@ public class ReportCommands {
         if (ban != null) {
             return "You were banned from reporting on " + DiscordUtil.timestamp(ban.getValue(), null) + " for `" + ban.getKey() + "`";
         }
-
-        if (forum_post == null && news_post == null) {
-            return "No argument provided\n" + Messages.FORUM_NEWS_ERROR;
-        }
         if (nation == null && discord_user_id == null) {
             // say must provide one of either
             // post link for how to get discord id <url>
@@ -512,6 +803,9 @@ public class ReportCommands {
                     You must provide either a `nation` or a `discord_user_id` to report
                     To get a discord user id, right click on the user and select `Copy ID`
                     See: <https://support.discord.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID->""";
+        }
+        if (forum_post == null && news_post == null) {
+            return "No argument provided\n" + Messages.FORUM_NEWS_ERROR;
         }
 
         // At least one forum post or news report must be attached

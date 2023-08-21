@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
 import link.locutus.discord.config.Settings;
@@ -778,7 +779,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Bankrec> fetchAllianceBankRecs(int allianceId, Consumer<AllianceBankrecsParametrizedInput> filter) {
-        List<Alliance> alliance = fetchAlliances(f -> f.setId(List.of(allianceId)), new Consumer<AllianceResponseProjection>() {
+        List<Alliance> alliance = fetchAlliances(PagePriority.API_BANK_RECS, ALLIANCES_PER_PAGE, f -> f.setId(List.of(allianceId)), new Consumer<AllianceResponseProjection>() {
             @Override
             public void accept(AllianceResponseProjection proj) {
                 BankrecResponseProjection bankProj = new BankrecResponseProjection();
@@ -788,8 +789,8 @@ public class PoliticsAndWarV3 {
                 proj.id();
                 proj.bankrecs(input, bankProj);
             }
-        });
-        if (alliance == null || alliance.size() == 0) {
+        }, f -> ErrorResponse.THROW, f -> true);
+        if (alliance == null || alliance.size() != 1) {
             System.out.println("No results");
             return null;
         }
@@ -1047,9 +1048,13 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Alliance> fetchAlliances(int perPage, Consumer<AlliancesQueryRequest> filter, Consumer<AllianceResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Alliance> addEachResult) {
+        return fetchAlliances(PagePriority.API_ALLIANCES, perPage, filter, query, errorBehavior, addEachResult);
+    }
+
+    public List<Alliance> fetchAlliances(PagePriority priority, int perPage, Consumer<AlliancesQueryRequest> filter, Consumer<AllianceResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Alliance> addEachResult) {
         List<Alliance> allResults = new ArrayList<>();
 
-        handlePagination(PagePriority.API_ALLIANCES, page -> {
+        handlePagination(priority, page -> {
                     AlliancesQueryRequest request = new AlliancesQueryRequest();
                     if (filter != null) filter.accept(request);
                     request.setFirst(perPage);
@@ -1408,6 +1413,15 @@ public class PoliticsAndWarV3 {
         AssignAlliancePositionMutationRequest mutation = new AssignAlliancePositionMutationRequest();
         mutation.setId(nation_id);
         mutation.setPosition_id(position_id);
+        AlliancePositionResponseProjection projection = new AlliancePositionResponseProjection().id();
+        return request(PagePriority.RANK_SET, mutation, projection, AlliancePosition.class);
+    }
+
+    public AlliancePosition assignAlliancePosition(int nation_id, Rank rank) {
+        DefaultAlliancePosition v3 = rank.toV3();
+        AssignAlliancePositionMutationRequest mutation = new AssignAlliancePositionMutationRequest();
+        mutation.setId(nation_id);
+        mutation.setDefault_position(v3);
         AlliancePositionResponseProjection projection = new AlliancePositionResponseProjection().id();
         return request(PagePriority.RANK_SET, mutation, projection, AlliancePosition.class);
     }
