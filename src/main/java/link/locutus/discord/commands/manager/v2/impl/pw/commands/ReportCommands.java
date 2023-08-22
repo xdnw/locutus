@@ -383,7 +383,7 @@ public class ReportCommands {
                     body.append("**A loan already exists to ")
                             .append(receiver.isAlliance() ? "alliance " : "nation ")
                             .append(PnwUtil.getMarkdownUrl(receiver.getId(), receiver.isAlliance()))
-                            .append(".**\nConsider updating or closing these: TODO CM Ref\n");
+                            .append(".**\nConsider updating or closing these: " + CM.report.loan.update.cmd.toSlashMention() + " " + CM.report.loan.remove.cmd.toSlashMention() + "\n");
                     for (DBLoan loan : foundLoans) {
                         // Id, status, date, remaining
                         body.append("- " + loan.getLineString(false, false) + "\n");
@@ -449,8 +449,8 @@ public class ReportCommands {
             }
         }
 
-        response.append("\nTo view all loans, see: TODO CM ref\n" +
-                "To bulk update loans, see: TODO CM ref for import sheet");
+        response.append("\nTo view all loans, see: " + CM.report.loan.sheet.cmd.toSlashMention() + "\n" +
+                "To bulk update loans, see: " + CM.report.loan.upload.cmd.toSlashMention());
 
         if (isUpdate) {
             loanManager.updateLoan(overwriteLoan);
@@ -520,13 +520,13 @@ public class ReportCommands {
             loans = loanManager.getLoansByGuildOrAA(Collections.singleton(guildOrAllianceId), null);
         }
         if (loans.isEmpty()) {
-            return "No loans found. Create one with TODO CM REf";
+            return "No loans found. Create one with " + CM.report.loan.add.cmd.toSlashMention();
         }
         if (!force) {
             String title = "Confirm delete all " + loans.size() + " loans";
             StringBuilder body = new StringBuilder();
             body.append("**Note:** It is recommended to create a copy first\n" +
-                    "See: TODO CM Ref loan sheet\n\n");
+                    "See: " + CM.report.loan.sheet.cmd.toSlashMention() + "\n\n");
 
             if (guildOrAllianceId == null) {
                 body.append("Deleting: All Loans from this guild/alliance (" + db.getGuild().toString() + ")");
@@ -775,7 +775,7 @@ public class ReportCommands {
         }
 
         return "Done, created `" + loans.size() + "` loans\n" +
-                "See: " + CM.report.sheet.loans.cmd.toSlashMention();
+                "See: " + CM.report.loan.sheet.cmd.toSlashMention();
     }
 
     @Command(desc = "Report a nation or user's game behavior to the bot for things such as fraud")
@@ -1243,7 +1243,7 @@ public class ReportCommands {
 //        StringBuilder response = new StringBuilder();
 //        // append each report incl comments
 //
-//        return null; // TODO CM REF (but not actually, i just put this here so it compiles, i need to finish this method)
+//        return null;
 //    }
 
     // report search
