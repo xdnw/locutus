@@ -1969,6 +1969,13 @@ public class CM {
         }
     }
     public static class report{
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="createReport")
+        public static class add extends CommandRef {
+            public static final add cmd = new add();
+            public add create(String type, String message, String nation, String discord_user_id, String imageEvidenceUrl, String forum_post, String news_post, String updateReport, String force) {
+                return createArgs("type", type, "message", message, "nation", nation, "discord_user_id", discord_user_id, "imageEvidenceUrl", imageEvidenceUrl, "forum_post", forum_post, "news_post", news_post, "updateReport", updateReport, "force", force);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="riskFactors")
         public static class analyze extends CommandRef {
             public static final analyze cmd = new analyze();
@@ -2013,11 +2020,55 @@ public class CM {
                 }
             }
         }
-        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="createReport")
-        public static class add extends CommandRef {
-            public static final add cmd = new add();
-            public add add(String type, String message, String nation, String discord_user_id, String imageEvidenceUrl, String forum_post, String news_post, String updateReport, String force) {
-                return createArgs("type", type, "message", message, "nation", nation, "discord_user_id", discord_user_id, "imageEvidenceUrl", imageEvidenceUrl, "forum_post", forum_post, "news_post", news_post, "updateReport", updateReport, "force", force);
+        public static class loan{
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="addLoan")
+            public static class add extends CommandRef {
+                public static final add cmd = new add();
+                public add create(String receiver, String status, String overwriteLoan, String principal, String remaining, String amountPaid, String dueDate, String allianceLending, String force) {
+                    return createArgs("receiver", receiver, "status", status, "overwriteLoan", overwriteLoan, "principal", principal, "remaining", remaining, "amountPaid", amountPaid, "dueDate", dueDate, "allianceLending", allianceLending, "force", force);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="purgeLoans")
+            public static class purge extends CommandRef {
+                public static final purge cmd = new purge();
+                public purge create(String guildOrAllianceId, String force) {
+                    return createArgs("guildOrAllianceId", guildOrAllianceId, "force", force);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="deleteLoan")
+            public static class remove extends CommandRef {
+                public static final remove cmd = new remove();
+                public remove create(String loan, String force) {
+                    return createArgs("loan", loan, "force", force);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="getLoanSheet")
+            public static class sheet extends CommandRef {
+                public static final sheet cmd = new sheet();
+                public sheet create(String nations, String sheet, String loanStatus) {
+                    return createArgs("nations", nations, "sheet", sheet, "loanStatus", loanStatus);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="updateLoan")
+            public static class update extends CommandRef {
+                public static final update cmd = new update();
+                public update create(String loan, String principal, String remaining, String amountPaid, String dueDate, String force) {
+                    return createArgs("loan", loan, "principal", principal, "remaining", remaining, "amountPaid", amountPaid, "dueDate", dueDate, "force", force);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="markAllLoansAsUpdated")
+            public static class update_all extends CommandRef {
+                public static final update_all cmd = new update_all();
+                public update_all create(String loanStatus, String force) {
+                    return createArgs("loanStatus", loanStatus, "force", force);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="importLoans")
+            public static class upload extends CommandRef {
+                public static final upload cmd = new upload();
+                public upload create(String sheet, String defaultStatus, String overwriteLoans, String overwriteSameNation, String addLoans) {
+                    return createArgs("sheet", sheet, "defaultStatus", defaultStatus, "overwriteLoans", overwriteLoans, "overwriteSameNation", overwriteSameNation, "addLoans", addLoans);
+                }
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="purgeReports")
