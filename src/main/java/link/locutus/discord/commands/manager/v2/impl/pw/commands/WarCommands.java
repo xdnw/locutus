@@ -1388,7 +1388,6 @@ public class WarCommands {
             response.append("```");
 
             response.append("\n```")
-                    .append(String.format("%2s", nation.treasureDays())).append(" \uD83D\uDC8E ").append(" | ")
                     .append(String.format("%2s", nation.getCities())).append(" \uD83C\uDFD9").append(" | ")
                     .append(String.format("%6s", nation.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
                     .append(String.format("%5s", nation.getTanks())).append(" \u2699").append(" | ")

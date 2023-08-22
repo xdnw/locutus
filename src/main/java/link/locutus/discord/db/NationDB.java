@@ -134,6 +134,8 @@ public class NationDB extends DBMainV2 {
         System.out.println("Loading meta...");
         loadAndPurgeMeta();
         System.out.println("Done loading nations/meta");
+
+        loadTreasures();
     }
 
     public void deleteExpiredTreaties(Consumer<Event> eventConsumer) {

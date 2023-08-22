@@ -474,11 +474,8 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "How many days the treasure is in said nation")
     public long treasureDays() {
-
         DBTreasure treasure = Locutus.imp().getNationDB().getTreasure(nation_id);
-
-        if(Locutus.imp().getNationDB().getTreasure(nation_id) != null)
-            return 0;
+        if(treasure == null) return 0;
         return treasure.getDaysRemaining();
     }
 
