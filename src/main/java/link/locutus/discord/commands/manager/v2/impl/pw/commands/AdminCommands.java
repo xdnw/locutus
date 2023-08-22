@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import com.politicsandwar.graphql.model.BannedNation;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -37,7 +36,7 @@ import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.DocPrinter2;
+import com.locutus.wiki.CommandWikiPages;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -52,7 +51,6 @@ import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.EditAllianceTask;
 import link.locutus.discord.util.update.AllianceListener;
-import link.locutus.discord.util.update.NationUpdateProcessor;
 import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.Rank;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
@@ -69,7 +67,6 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
-import rocker.guild.ia.message;
 
 import java.io.File;
 import java.io.IOException;
@@ -94,7 +91,6 @@ import java.util.PriorityQueue;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -196,10 +192,10 @@ public class AdminCommands {
         if (pathRelative == null) pathRelative = "../locutus.wiki";
         CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
 
-        String commandsStr = DocPrinter2.printCommands(manager.getCommands(), manager.getStore(), manager.getPermisser());
-        String argumentsStr = DocPrinter2.printParsers(manager.getStore());
-        String placeholderStr = DocPrinter2.printPlaceholders(manager.getNationPlaceholders(), manager.getStore());
-        String aaPlaceholderStr = DocPrinter2.printPlaceholders(manager.getNationPlaceholders(), manager.getStore());
+        String commandsStr = CommandWikiPages.printCommands(manager.getCommands(), manager.getStore(), manager.getPermisser());
+        String argumentsStr = CommandWikiPages.printParsers(manager.getStore());
+        String placeholderStr = CommandWikiPages.printPlaceholders(manager.getNationPlaceholders(), manager.getStore());
+        String aaPlaceholderStr = CommandWikiPages.printPlaceholders(manager.getNationPlaceholders(), manager.getStore());
 
         // write commandsStr to file `path` + File.separator + "commands.md"
         File file = new File(pathRelative + File.separator + "commands.md");
