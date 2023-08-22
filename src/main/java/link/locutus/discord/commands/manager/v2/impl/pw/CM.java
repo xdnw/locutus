@@ -2014,9 +2014,9 @@ public class CM {
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="createReport")
-        public static class create extends CommandRef {
-            public static final create cmd = new create();
-            public create create(String type, String message, String nation, String discord_user_id, String imageEvidenceUrl, String forum_post, String news_post, String updateReport, String force) {
+        public static class add extends CommandRef {
+            public static final add cmd = new add();
+            public add add(String type, String message, String nation, String discord_user_id, String imageEvidenceUrl, String forum_post, String news_post, String updateReport, String force) {
                 return createArgs("type", type, "message", message, "nation", nation, "discord_user_id", discord_user_id, "imageEvidenceUrl", imageEvidenceUrl, "forum_post", forum_post, "news_post", news_post, "updateReport", updateReport, "force", force);
             }
         }
@@ -2049,13 +2049,6 @@ public class CM {
                     return createArgs("sheet", sheet);
                 }
             }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="getLoanSheet")
-            public static class loans extends CommandRef {
-                public static final loans cmd = new loans();
-                public loans create(String nations, String sheet, String loanStatus) {
-                    return createArgs("nations", nations, "sheet", sheet, "loanStatus", loanStatus);
-                }
-            }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="showReport")
         public static class show extends CommandRef {
@@ -2077,13 +2070,6 @@ public class CM {
                 public static final legacy_reports cmd = new legacy_reports();
                 public legacy_reports create(String sheet) {
                     return createArgs("sheet", sheet);
-                }
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="importLoans")
-            public static class loan_sheet extends CommandRef {
-                public static final loan_sheet cmd = new loan_sheet();
-                public loan_sheet create(String sheet, String defaultStatus, String overwriteLoans, String overwriteSameNation, String addLoans) {
-                    return createArgs("sheet", sheet, "defaultStatus", defaultStatus, "overwriteLoans", overwriteLoans, "overwriteSameNation", overwriteSameNation, "addLoans", addLoans);
                 }
             }
         }

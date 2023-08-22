@@ -145,6 +145,7 @@ public class PWCompleter extends BindingHelper {
         return reports(manager, me, author, db, input, true);
     }
 
+
     @Autocomplete
     @Binding(types={ReportManager.Report.class})
     public List<Map.Entry<String, String>> reportsAll(ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input) {
@@ -160,6 +161,15 @@ public class PWCompleter extends BindingHelper {
         options = StringMan.getClosest(input, options, f -> "#" + f.reportId + " " + f.getTitle(), OptionData.MAX_CHOICES, true, true);
 
         return options.stream().map(f -> Map.entry("#" + f.reportId + " " + f.getTitle(), f.reportId + "")).collect(Collectors.toList());
+    }
+
+    @Autocomplete
+    @GuildLoan
+    @Binding(types={DBLoan.class})
+    public List<Map.Entry<String, String>> loan(LoanManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input) {
+        List<DBLoan> options = manager.getLoansByGuildDB(db);
+        options = StringMan.getClosest(input, options, f -> f.getLineString(true, false), OptionData.MAX_CHOICES, true, true);
+        return options.stream().map(f -> Map.entry(f.getLineString(true, false), f.loanId + "")).collect(Collectors.toList());
     }
 
     @Autocomplete

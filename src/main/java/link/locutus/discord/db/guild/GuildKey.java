@@ -30,7 +30,6 @@ import link.locutus.discord.gpt.GPTModerator;
 import link.locutus.discord.gpt.ModerationResult;
 import link.locutus.discord.gpt.copilot.CopilotDeviceAuthenticationData;
 import link.locutus.discord.gpt.imps.CopilotText2Text;
-import link.locutus.discord.gpt.imps.GPTText2Text;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
@@ -51,7 +50,6 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
 import java.io.File;
 import java.io.IOException;
@@ -1181,7 +1179,7 @@ public class GuildKey {
         @Override
         public String help() {
             return "The channel to receive alerts when any nation or user is reported to the bot\n" +
-                    "See " + CM.report.create.cmd.toSlashMention();
+                    "See " + CM.report.add.cmd.toSlashMention();
         }
     }.requireActiveGuild();
     public static GuildSetting<MessageChannel> DELETION_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {

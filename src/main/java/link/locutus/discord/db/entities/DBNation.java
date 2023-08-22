@@ -3575,7 +3575,7 @@ public class DBNation implements NationOrAlliance {
         String refreshCmd = Settings.commandPrefix(true) + "who " + getNationUrl();
 
         String response = toEmbedString();
-        response += "To report in-game fraud: " + CM.report.create.cmd.toSlashMention();
+        response += "To report in-game fraud: " + CM.report.add.cmd.toSlashMention();
         IMessageBuilder msg = channel.create().embed(title, response)
                 .commandButton(CommandBehavior.UNDO_REACTION, CM.war.counter.nation.cmd.create(getId() + "", null, null, null, null, null, null, null), "Counter");
         if (refresh) {

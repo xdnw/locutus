@@ -10,6 +10,7 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ICommandGroup;
@@ -141,6 +142,17 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "The status of a nation's loan")
     public DBLoan.Status LoanStatus(String input) {
         return emum(DBLoan.Status.class, input);
+    }
+
+    @Binding
+    @GuildLoan
+    public DBLoan loan(LoanManager manager, String input) {
+        int id = PrimitiveBindings.Integer(input);
+        DBLoan loan = manager.getLoanById(id);
+        if (loan == null) {
+            throw new IllegalArgumentException("No loan found for id `" + id + "`");
+        }
+        return loan;
     }
 
     @Binding(value = "A reason beiging and defeating an enemy in war")

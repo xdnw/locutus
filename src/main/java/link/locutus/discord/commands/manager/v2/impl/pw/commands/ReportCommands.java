@@ -449,7 +449,6 @@ public class ReportCommands {
             }
         }
 
-        // When created, prompt to use the view loan sheet command
         response.append("\nTo view all loans, see: TODO CM ref\n" +
                 "To bulk update loans, see: TODO CM ref for import sheet");
 

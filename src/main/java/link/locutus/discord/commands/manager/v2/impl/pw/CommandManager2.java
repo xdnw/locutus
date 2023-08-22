@@ -189,9 +189,16 @@ public class CommandManager2 {
             ReportCommands reportCommands = new ReportCommands();
             this.commands.registerMethod(reportCommands, List.of("report", "sheet"), "reportSheet", "generate");
             this.commands.registerMethod(reportCommands, List.of("report", "upload"), "importLegacyBlacklist", "legacy_reports");
-            this.commands.registerMethod(reportCommands, List.of("report", "sheet"), "getLoanSheet", "loans");
-            this.commands.registerMethod(reportCommands, List.of("report", "upload"), "importLoans", "loan_sheet");
-            this.commands.registerMethod(reportCommands, List.of("report"), "createReport", "create");
+
+            this.commands.registerMethod(reportCommands, List.of("report", "loan"), "addLoan", "add");
+            this.commands.registerMethod(reportCommands, List.of("report", "loan"), "updateLoan", "update");
+            this.commands.registerMethod(reportCommands, List.of("report", "loan"), "deleteLoan", "remove");
+            this.commands.registerMethod(reportCommands, List.of("report", "loan"), "purgeLoans", "purge");
+            this.commands.registerMethod(reportCommands, List.of("report", "loan"), "markAllLoansAsUpdated", "update_all");
+            this.commands.registerMethod(reportCommands, List.of("report", "loan"), "getLoanSheet", "sheet");
+            this.commands.registerMethod(reportCommands, List.of("report", "loan"), "importLoans", "upload");
+
+            this.commands.registerMethod(reportCommands, List.of("report"), "createReport", "add");
             this.commands.registerMethod(reportCommands, List.of("report"), "removeReport", "remove");
             this.commands.registerMethod(reportCommands, List.of("report"), "approveReport", "approve");
             this.commands.registerMethod(reportCommands, List.of("report", "comment"), "comment", "add");

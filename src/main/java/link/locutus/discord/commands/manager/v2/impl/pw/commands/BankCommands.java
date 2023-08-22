@@ -3422,7 +3422,7 @@ public class BankCommands {
             }
         }
         if (escrowed != null && !ResourceType.isZero(escrowed)) {
-            footers.add("Use: " + CM.escrow.withdraw.cmd.toSlashMention());
+            footers.add("Use: `" + CM.escrow.withdraw.cmd.toSlashMention() + "` ");
         }
 
         if (!footers.isEmpty()) {
