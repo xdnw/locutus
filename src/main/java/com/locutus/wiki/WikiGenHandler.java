@@ -14,18 +14,31 @@ public class WikiGenHandler {
 
     private final CommandManager2 manager;
     private final PWGPTHandler gpt;
+    private final String pathRelative;
 
-    public WikiGenHandler(CommandManager2 manager, PWGPTHandler gpt) {
+    public WikiGenHandler(String pathRelative, CommandManager2 manager, PWGPTHandler gpt) {
         this.manager = manager;
         this.gpt = gpt;
         this.registerDefaults(manager.getStore());
+        this.pathRelative = pathRelative;
     }
 
     private void registerDefaults(ValueStore store) {
         List<WikiGen> pages = new ArrayList<>();
 
+        // commands
+
+        // arguments
+
+        // nation_placeholders
+
+        // alliance_placeholders
+
         // register defaults
         pages.add(new WikiSetupPage(store));
+
+        // todo convert the command pages to wiki pages
+
         //War Alerts
         //Auto masking
         //- self roles
