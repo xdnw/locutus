@@ -210,6 +210,9 @@ public class PermissionBinding extends BindingHelper {
                 hasAny = true;
             }
         }
+        if (!hasAny) {
+            throw new IllegalCallerException("You do not have any of " + Arrays.toString(perm.value()) + " on " + guild + " " + user.getAsMention() + " see: " + CM.role.setAlias.cmd.toSlashMention());
+        }
         return hasAny;
     }
 }
