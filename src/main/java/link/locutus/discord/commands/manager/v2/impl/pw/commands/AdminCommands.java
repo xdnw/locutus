@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.locutus.wiki.WikiGenHandler;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -191,26 +192,8 @@ public class AdminCommands {
     public String dumpWiki(@Default String pathRelative) throws IOException, InvocationTargetException, IllegalAccessException {
         if (pathRelative == null) pathRelative = "../locutus.wiki";
         CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
-
-        String commandsStr = CommandWikiPages.printCommands(manager.getCommands(), manager.getStore(), manager.getPermisser());
-        String argumentsStr = CommandWikiPages.printParsers(manager.getStore());
-        String placeholderStr = CommandWikiPages.printPlaceholders(manager.getNationPlaceholders(), manager.getStore());
-        String aaPlaceholderStr = CommandWikiPages.printPlaceholders(manager.getNationPlaceholders(), manager.getStore());
-
-        // write commandsStr to file `path` + File.separator + "commands.md"
-        File file = new File(pathRelative + File.separator + "commands.md");
-        Files.write(file.toPath(), commandsStr.getBytes());
-
-        // write argumentsStr   to file `path` + File.separator + "arguments.md"
-        file = new File(pathRelative + File.separator + "arguments.md");
-        Files.write(file.toPath(), argumentsStr.getBytes());
-
-        // write placeholderStr to file `path` + File.separator + "kingdom_placeholders.md"
-        file = new File(pathRelative + File.separator + "nation_placeholders.md");
-        Files.write(file.toPath(), placeholderStr.getBytes());
-
-        file = new File(pathRelative + File.separator + "alliance_placeholders.md");
-        Files.write(file.toPath(), aaPlaceholderStr.getBytes());
+        WikiGenHandler generator = new WikiGenHandler(pathRelative, manager);
+        generator.writeDefaults();
 
         return "Done!";
     }

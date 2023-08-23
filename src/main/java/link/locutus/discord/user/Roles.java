@@ -38,7 +38,7 @@ public enum Roles {
     MILCOM_NO_PINGS(4, "Access to milcom related commands- doesn't receive pings", GuildKey.ALLIANCE_ID, "MILCOM_ADVISOR"),
 
     ECON(5, "Has access to econ gov commands", null),
-    ECON_STAFF(6, "Has access to basic econ commands", GuildKey.ALLIANCE_ID, "ECON_LOW_GOV") {
+    ECON_STAFF(6, "Has access to economy information commands", GuildKey.ALLIANCE_ID, "ECON_LOW_GOV") {
         @Override
         public boolean has(Member member) {
             if (super.has(member)) return true;
@@ -53,9 +53,9 @@ public enum Roles {
         }
     },
 
-    ECON_GRANT_ALERTS(7, "Gets pinged for member grant requests", GuildKey.ALLIANCE_ID),
-    ECON_DEPOSIT_ALERTS(8, "Gets pinged when there is a deposit", GuildKey.ALLIANCE_ID),
-    ECON_WITHDRAW_ALERTS(9, "Gets pinged when there is a withdrawal", GuildKey.ALLIANCE_ID),
+//    ECON_GRANT_ALERTS(7, "Gets pinged for member grant requests", GuildKey.ALLIANCE_ID),
+    ECON_DEPOSIT_ALERTS(8, "Gets pinged when there is a deposit", GuildKey.DEPOSIT_ALERT_CHANNEL),
+    ECON_WITHDRAW_ALERTS(9, "Gets pinged when there is a withdrawal", GuildKey.WITHDRAW_ALERT_CHANNEL, "ECON_GRANT_ALERTS"),
     ECON_WITHDRAW_SELF(10, "Can withdraw own funds", GuildKey.MEMBER_CAN_WITHDRAW),
     ECON_GRANT_SELF(11, "Role to allow member to grant themselves", GuildKey.MEMBER_CAN_WITHDRAW),
 
@@ -128,8 +128,7 @@ public enum Roles {
     BLITZ_PARTICIPANT(27, "Opt in to blitz participation (clear this regularly)", GuildKey.ALLIANCE_ID),
     BLITZ_PARTICIPANT_OPT_OUT(28, "Opt in to blitz participation (clear this regularly)", GuildKey.ALLIANCE_ID),
 
-    TEMP(29, "Role to signify temporary member", GuildKey.ALLIANCE_ID),
-//    ACTIVE("Role to signify active member", GuildKey.ALLIANCE_ID)
+    TEMP(29, "Role to signify temporary member, not elligable for grants", GuildKey.ALLIANCE_ID),
 
     MAIL(30, "Can use mail commands", GuildKey.API_KEY),
 

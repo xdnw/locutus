@@ -509,8 +509,10 @@ public class GuildKey {
 
         @Override
         public String help() {
-            return "API key found on: <https://politicsandwar.com/account/>\n" +
-                    "Needed for alliance functions and information";
+            return "API key found at the bottom of: <https://politicsandwar.com/account/>\n" +
+                    "Be sure to enable all access you wish the bot to have, and have a sufficient position in-game (e.g. leader)\n" +
+                    "Needed for alliance functions and information access, such as calculating resource dispersal, sending mail\n" +
+                    "![Api Key Example](https://cdn.discordapp.com/attachments/672310912090243092/1143703860481904691/AAAetVInX_AQsRH_PbhSwx7dANRzZ31ykmtLfBdS0-paNiZN1xt36VWmClVeuhc4FwlpP7gaeNGk_jrfV24mgYUyz3AxTPY6ljLZZKGn1YkE_6vbRztKs512.png)";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
 

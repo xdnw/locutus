@@ -3,6 +3,7 @@ package com.locutus.wiki;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
 
@@ -12,11 +13,19 @@ import java.util.Map;
 
 public abstract class WikiGen {
     private final String pageName;
-    private final ValueStore store;
+    private final CommandManager2 manager;
 
-    public WikiGen(ValueStore store, String pageName) {
+    public WikiGen(CommandManager2 manager, String pageName) {
         this.pageName = pageName;
-        this.store = store;
+        this.manager = manager;
+    }
+
+    public String getPageName() {
+        return pageName;
+    }
+
+    public CommandManager2 getManager() {
+        return manager;
     }
 
     public String getDescription() {
@@ -45,7 +54,7 @@ public abstract class WikiGen {
     }
 
     public String commandMarkdown(CommandRef ref) {
-        return ref.getCallable(true).toBasicMarkdown(store, null, "/", false, true);
+        return ref.getCallable(true).toBasicMarkdown(manager.getStore(), null, "/", false, true);
     }
 
 }

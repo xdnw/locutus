@@ -41,7 +41,7 @@ For filters `#getLand>30`
 Use round brackets for arguments `#myFunction(123)`
 """;
 
-    public static String printPlaceholders(Placeholders placeholders, ValueStore store) throws InvocationTargetException, IllegalAccessException {
+    public static String printPlaceholders(Placeholders placeholders, ValueStore store) {
         String header = PLACEHOLDER_HEADER + """
 
 ---
@@ -55,7 +55,7 @@ Use round brackets for arguments `#myFunction(123)`
         return printCommands(placeholders.getCommands(), store, placeholders.getPermisser(), "\\#", header);
     }
 
-    public static String printCommands(CommandGroup group, ValueStore store, PermissionHandler permisser) throws InvocationTargetException, IllegalAccessException {
+    public static String printCommands(CommandGroup group, ValueStore store, PermissionHandler permisser) {
         String header = """
 ## Command Syntax
 
@@ -89,7 +89,7 @@ Message: `$who Rose -l`
         return printCommands(group, store, permisser, "/", header);
     }
 
-    public static String printCommands(CommandGroup group, ValueStore store, PermissionHandler permisser, String prefix, String header) throws InvocationTargetException, IllegalAccessException {
+    public static String printCommands(CommandGroup group, ValueStore store, PermissionHandler permisser, String prefix, String header) {
         // Command name
         // Description
         // Arguments
