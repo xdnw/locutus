@@ -922,8 +922,8 @@ public class PoliticsAndWarV3 {
 //        return allResults;
 //    }
 
-    public List<Nation> fetchNationsWithInfo(Consumer<NationsQueryRequest> filter, Predicate<Nation> nationResults) {
-        return fetchNations(NATIONS_PER_PAGE, filter, new Consumer<NationResponseProjection>() {
+    public List<Nation> fetchNationsWithInfo(boolean priority, Consumer<NationsQueryRequest> filter, Predicate<Nation> nationResults) {
+        return fetchNations(priority, NATIONS_PER_PAGE, filter, new Consumer<NationResponseProjection>() {
             @Override
             public void accept(NationResponseProjection projection) {
                 projection.id();
@@ -976,13 +976,13 @@ public class PoliticsAndWarV3 {
         }, f -> PoliticsAndWarV3.ErrorResponse.THROW, nationResults);
     }
 
-    public List<Nation> fetchNations(Consumer<NationsQueryRequest> filter, Consumer<NationResponseProjection> query) {
-        return fetchNations(NATIONS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
+    public List<Nation> fetchNations(boolean priority, Consumer<NationsQueryRequest> filter, Consumer<NationResponseProjection> query) {
+        return fetchNations(priority, NATIONS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
     }
-    public List<Nation> fetchNations(int perPage, Consumer<NationsQueryRequest> filter, Consumer<NationResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Nation> nationResults) {
+    public List<Nation> fetchNations(boolean priority, int perPage, Consumer<NationsQueryRequest> filter, Consumer<NationResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Nation> nationResults) {
         List<Nation> allResults = new ArrayList<>();
 
-        handlePagination(PagePriority.API_NATIONS, page -> {
+        handlePagination(priority ? PagePriority.API_NATIONS_MANUAL : PagePriority.API_NATIONS_AUTO, page -> {
             NationsQueryRequest request = new NationsQueryRequest();
             if (filter != null) filter.accept(request);
             request.setFirst(perPage);
@@ -1015,8 +1015,8 @@ public class PoliticsAndWarV3 {
         return allResults;
     }
 
-    public List<Alliance> fetchAlliances(Consumer<AlliancesQueryRequest> filter, boolean positions, boolean allianceInfo) {
-        return fetchAlliances(ALLIANCES_PER_PAGE, filter, new Consumer<AllianceResponseProjection>() {
+    public List<Alliance> fetchAlliances(boolean priority, Consumer<AlliancesQueryRequest> filter, boolean positions, boolean allianceInfo) {
+        return fetchAlliances(priority, ALLIANCES_PER_PAGE, filter, new Consumer<AllianceResponseProjection>() {
             @Override
             public void accept(AllianceResponseProjection projection) {
                 projection.id();
@@ -1050,12 +1050,12 @@ public class PoliticsAndWarV3 {
         }, f -> ErrorResponse.THROW, f -> true);
     }
 
-    public List<Alliance> fetchAlliances(Consumer<AlliancesQueryRequest> filter, Consumer<AllianceResponseProjection> query) {
-        return fetchAlliances(ALLIANCES_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
+    public List<Alliance> fetchAlliances(boolean priority, Consumer<AlliancesQueryRequest> filter, Consumer<AllianceResponseProjection> query) {
+        return fetchAlliances(priority, ALLIANCES_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
     }
 
-    public List<Alliance> fetchAlliances(int perPage, Consumer<AlliancesQueryRequest> filter, Consumer<AllianceResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Alliance> addEachResult) {
-        return fetchAlliances(PagePriority.API_ALLIANCES, perPage, filter, query, errorBehavior, addEachResult);
+    public List<Alliance> fetchAlliances(boolean priority, int perPage, Consumer<AlliancesQueryRequest> filter, Consumer<AllianceResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Alliance> addEachResult) {
+        return fetchAlliances(priority ? PagePriority.API_ALLIANCES_MANUAL : PagePriority.API_ALLIANCES_AUTO, perPage, filter, query, errorBehavior, addEachResult);
     }
 
     public List<Alliance> fetchAlliances(PagePriority priority, int perPage, Consumer<AlliancesQueryRequest> filter, Consumer<AllianceResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Alliance> addEachResult) {

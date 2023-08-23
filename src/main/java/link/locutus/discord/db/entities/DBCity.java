@@ -65,9 +65,9 @@ public class DBCity {
         NationDB db = Locutus.imp().getNationDB();
         db.markCityDirty(-1, id, Long.MAX_VALUE);
         if (events) {
-            Locutus.imp().runEventsAsync(db::updateDirtyCities);
+            Locutus.imp().runEventsAsync(f -> db.updateDirtyCities(true, f));
         } else {
-            db.updateDirtyCities(null);
+            db.updateDirtyCities(true, null);
         }
     }
 

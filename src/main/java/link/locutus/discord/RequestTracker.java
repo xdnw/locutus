@@ -37,14 +37,18 @@ public class RequestTracker {
     private Map<Integer, Boolean> DOMAIN_HAS_RATE_LIMITING = new ConcurrentHashMap<>();
     private Map<Integer, Long> DOMAIN_RETRY_AFTER = new ConcurrentHashMap<>();
 
-    private boolean hasRateLimiting(URI url) throws URISyntaxException {
+    public boolean hasRateLimiting(URI url) {
         return DOMAIN_HAS_RATE_LIMITING.getOrDefault(url.getHost(), false);
     }
 
-    private long getRetryAfter(URI url) {
+    public long getRetryAfter(URI url) {
         Integer id = DOMAIN_MAP.get(url.getHost());
         if (id == null) return 0;
-        return DOMAIN_RETRY_AFTER.getOrDefault(id, 0L);
+        return getRetryAfter(id);
+    }
+
+    public long getRetryAfter(int domainId) {
+        return DOMAIN_RETRY_AFTER.getOrDefault(domainId, 0L);
     }
 
     private void setRetryAfter(URI url, int seconds) {
@@ -122,7 +126,7 @@ public class RequestTracker {
         // DOMAIN_LOCKS
     }
 
-    private int getDomainId(URI url) {
+    public int getDomainId(URI url) {
         return DOMAIN_MAP.computeIfAbsent(url.getHost(), k -> DOMAIN_COUNTER.incrementAndGet());
     }
 

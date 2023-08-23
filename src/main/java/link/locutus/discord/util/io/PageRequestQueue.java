@@ -12,6 +12,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -32,22 +33,133 @@ public class PageRequestQueue {
         for (int i = 0; i < threads; i++) {
             service.submit(() -> {
                 while (true) {
-                    PageRequestTask<?> task;
-                    synchronized (lock) {
-                        while (queue.isEmpty()) {
+                    PageRequestTask<?> task = null;
+                    while (task == null) {
+                        AtomicLong waitTime = new AtomicLong();
+                        synchronized (lock) {
+                            while (queue.isEmpty()) {
+                                try {
+                                    lock.wait();
+                                } catch (InterruptedException e) {
+                                    Thread.currentThread().interrupt();
+                                    return;
+                                }
+                            }
+                            task = findAndRemoveTask(waitTime);
+                        }
+                        if (task == null) {
+                            long wait = waitTime.get();
+                            if (wait <= 0) {
+                                wait = 1000;
+                            }
                             try {
-                                lock.wait();
+                                Thread.sleep(wait);
                             } catch (InterruptedException e) {
                                 Thread.currentThread().interrupt();
                                 return;
                             }
                         }
-                        task = queue.poll();
                     }
                     run(task);
                 }
             });
         }
+    }
+
+    private PageRequestTask findAndRemoveTask(AtomicLong waitTime) {
+        PageRequestTask task = findTask(waitTime);
+        if (task != null) {
+            queue.remove(task);
+        }
+        return task;
+    }
+
+    private PageRequestTask findTask(AtomicLong waitTime) {
+        long minWait = Long.MAX_VALUE;
+
+        boolean hasNonRateLimitedTask = false;
+
+        long now = System.currentTimeMillis();
+        long oneMinute = now - TimeUnit.MINUTES.toMillis(1);
+        long fiveMinutes = now - TimeUnit.MINUTES.toMillis(5);
+
+        PageRequestTask firstDelayTask = null;
+        PageRequestTask firstBufferTask = null;
+        PageRequestTask firstTask = null;
+
+        for (PageRequestTask task : queue) {
+            if (!tracker.hasRateLimiting(task.getUrl())) {
+                return task;
+            }
+            int domainId = tracker.getDomainId(task.getUrl());
+            long retry = tracker.getRetryAfter(domainId);
+
+            if (retry > now) {
+                minWait = Math.min(minWait, retry);
+                continue;
+            }
+            hasNonRateLimitedTask = true;
+
+            long timeStart = System.currentTimeMillis();
+            int minuteCount = tracker.getDomainRequestsSince(task.getUrl(), oneMinute);
+            long timeEnd = System.currentTimeMillis() - timeStart;
+            if (timeEnd > 0) {
+                System.out.println("Took " + timeEnd + "ms to get minute count for " + task.getUrl());
+            }
+//            double fiveCount = tracker.getDomainRequestsSince(task.getUrl(), fiveMinutes) / 5d;
+            double maxCount = minuteCount;//Math.max(minuteCount, fiveCount);
+
+            long submitDate = task.getCreationDate();
+            long bufferMs = task.getAllowBuffering();
+            long delayMs = task.getAllowDelay();
+
+            if (bufferMs == 0 && delayMs == 0) {
+                return task;
+            }
+
+            if (maxCount < 30) {
+                return task;
+            }
+
+            long currentDiff = now - submitDate;
+
+            if (currentDiff > delayMs) {
+                if (firstDelayTask == null) {
+                    firstDelayTask = task;
+                }
+            }
+
+            if (currentDiff > bufferMs) {
+                if (firstBufferTask == null) {
+                    firstBufferTask = task;
+                }
+            }
+
+            if (maxCount < 60) {
+                firstTask = task;
+            } else {
+                int over = minuteCount - 59;
+                minWait = Math.min(TimeUnit.SECONDS.toMillis(over), minWait);
+            }
+        }
+
+        if (hasNonRateLimitedTask) {
+            if (firstDelayTask != null) {
+                return firstDelayTask;
+            }
+            if (firstBufferTask != null) {
+                return firstBufferTask;
+            }
+            if (firstTask != null) {
+                return firstTask;
+            }
+        }
+        if (minWait != Long.MAX_VALUE) {
+            long wait = minWait - System.currentTimeMillis();
+            waitTime.set(wait);
+            return null;
+        }
+        return null;
     }
 
     public RequestTracker getTracker() {
@@ -69,13 +181,6 @@ public class PageRequestQueue {
         }
     }
 
-    public void run() {
-        PageRequestTask task;
-        synchronized (queue) {
-            task = queue.poll();
-        }
-    }
-
     public <T> PageRequestTask<T> submit(Supplier<T> task, long priority, int allowBuffering, int allowDelay, String urlStr) {
         URI url;
         try {
@@ -87,7 +192,10 @@ public class PageRequestQueue {
     }
 
     public <T> PageRequestTask<T> submit(Supplier<T> task, long priority, int allowBuffering, int allowDelay, URI url) {
-        PageRequestTask<T> request = new PageRequestTask<T>(task, priority, allowBuffering, allowDelay, url);
+        return submit(new PageRequestTask<T>(task, priority, allowBuffering, allowDelay, url));
+    }
+
+    public <T> PageRequestTask<T> submit(PageRequestTask<T> request) {
         synchronized (lock) {
             queue.add(request);
             lock.notifyAll();

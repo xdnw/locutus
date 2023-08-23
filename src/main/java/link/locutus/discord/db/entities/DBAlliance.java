@@ -900,7 +900,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     public void updateCities(Predicate<DBNation> fetchNation) throws IOException, ParseException {
         Set<Integer> nationIds = getNations(false, 0, true).stream().filter(fetchNation).map(DBNation::getId).collect(Collectors.toSet());
         if (nationIds.isEmpty()) return;
-        Locutus.imp().getNationDB().updateCitiesOfNations(nationIds, true, Event::post);
+        Locutus.imp().getNationDB().updateCitiesOfNations(nationIds, true, true, Event::post);
     }
 
     public DBAlliance getCachedParentOfThisOffshore() {

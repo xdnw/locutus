@@ -431,13 +431,13 @@ public abstract class AGrantTemplate<T> {
             }
         }));
 
-        List<Transaction2> transfers = receiver.getTransactions(0L);
+        List<Transaction2> transfers = receiver.getTransactions(0L, true);
         long latest = transfers.size() > 0 ? transfers.stream().mapToLong(Transaction2::getDate).max().getAsLong() : 0L;
         // require no new transfers
         list.add(new Grant.Requirement("Nation has received a transfer since attempting this grant, please try again", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                List<Transaction2> newTransfers = receiver.getTransactions(0L);
+                List<Transaction2> newTransfers = receiver.getTransactions(0L, true);
                 long newLatest = newTransfers.size() > 0 ? newTransfers.stream().mapToLong(Transaction2::getDate).max().getAsLong() : 0L;
                 return latest == newLatest;
             }

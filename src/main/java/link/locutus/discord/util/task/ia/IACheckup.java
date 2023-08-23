@@ -159,7 +159,7 @@ public class IACheckup {
         }
         List<Transaction2> transactions;
         try {
-            transactions = nation.getTransactions(fast ? -1L : 1);
+            transactions = nation.getTransactions(fast ? -1L : 1, false);
         } catch (RuntimeException e) {
             e.printStackTrace();
             transactions = Locutus.imp().getBankDB().getTransactionsByNation(nation.getNation_id());

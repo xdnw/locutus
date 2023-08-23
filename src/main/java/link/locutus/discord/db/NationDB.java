@@ -1044,7 +1044,7 @@ public class NationDB extends DBMainV2 {
 
     public void updateAllCities(Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
-        List<City> cities = v3.fetchCitiesWithInfo(null, true);
+        List<City> cities = v3.fetchCitiesWithInfo(false,null, true);
         Map<Integer, Map<Integer, City>> nationIdCityIdCityMap = new Int2ObjectOpenHashMap<>();
         for (City city : cities) {
             nationIdCityIdCityMap.computeIfAbsent(city.getNation_id(), f -> new Int2ObjectOpenHashMap<>())
@@ -1053,7 +1053,7 @@ public class NationDB extends DBMainV2 {
         updateCities(nationIdCityIdCityMap, eventConsumer);
     }
 
-    public void updateCitiesOfNations(Set<Integer> nationIds, boolean isAuto, boolean bulk, Consumer<Event> eventConsumer) {
+    public void updateCitiesOfNations(Set<Integer> nationIds, boolean priority, boolean bulk, Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
 
         List<Integer> idList = new ArrayList<>(nationIds);
@@ -1077,7 +1077,7 @@ public class NationDB extends DBMainV2 {
         for (int i = 0; i < 500 && !idList.isEmpty(); i += 500) {
             int end = Math.min(i + 500, idList.size());
             List<Integer> toFetch = idList.subList(i, end);
-            List<City> cities = v3.fetchCitiesWithInfo(r -> r.setNation_id(toFetch), true);
+            List<City> cities = v3.fetchCitiesWithInfo(priority, r -> r.setNation_id(toFetch), true);
             Map<Integer, Map<Integer, City>> completeCities = new Int2ObjectOpenHashMap<>();
             System.out.println("Return cities " + cities.size());
             for (City city : cities) {
@@ -1088,7 +1088,7 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    public boolean updateDirtyCities(Consumer<Event> eventConsumer) {
+    public boolean updateDirtyCities(boolean priority, Consumer<Event> eventConsumer) {
         List<Integer> cityIds = new ArrayList<>();
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
 
@@ -1117,7 +1117,7 @@ public class NationDB extends DBMainV2 {
         for (int i = 0; i < 500 && !cityIds.isEmpty(); i += 500) {
             int end = Math.min(i + 500, cityIds.size());
             List<Integer> toFetch = cityIds.subList(i, end);
-            List<City> cities = v3.fetchCitiesWithInfo(r -> r.setId(toFetch), true);
+            List<City> cities = v3.fetchCitiesWithInfo(priority, r -> r.setId(toFetch), true);
             deletedCities.addAll(toFetch);
             for (City city : cities) deletedCities.remove(city.getId());
             updateCities(cities, eventConsumer);
@@ -1162,7 +1162,7 @@ public class NationDB extends DBMainV2 {
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
         List<Integer> newIds = getNewCityIds(500, new HashSet<>());
         Collections.sort(newIds);
-        List<City> cities = v3.fetchCitiesWithInfo(r -> r.setId(newIds), true);
+        List<City> cities = v3.fetchCitiesWithInfo(false, r -> r.setId(newIds), true);
         updateCities(cities, eventConsumer);
     }
 
@@ -1645,7 +1645,7 @@ public class NationDB extends DBMainV2 {
 
             if (!dirtyNationCities.isEmpty()) {
                 System.out.println("Dirty cities " + dirtyNationCities.size());
-                updateCitiesOfNations(dirtyNationCities, true, eventConsumer);
+                updateCitiesOfNations(dirtyNationCities, false, true, eventConsumer);
             }
 
             if (!expected.isEmpty()) {
@@ -1885,7 +1885,7 @@ public class NationDB extends DBMainV2 {
 
         if (!fetchCitiesOfNations.isEmpty() || (fetchMostActiveIfNoneOutdated)) {
             System.out.println("Update cities " + fetchCitiesOfNations.size());
-            updateCitiesOfNations(fetchCitiesOfNations, true, eventConsumer);
+            updateCitiesOfNations(fetchCitiesOfNations, false, true, eventConsumer);
         }
 
         if (fetchAlliancesIfOutdated || fetchPositionsIfOutdated) {

@@ -491,7 +491,7 @@ public class DataDumpParser {
         }
 
         // add bank recs
-        Locutus.imp().runEventsAsync(Locutus.imp().getBankDB()::updateBankRecs);
+        Locutus.imp().runEventsAsync(f -> Locutus.imp().getBankDB().updateBankRecs(false, f));
         for (Transaction2 transaction : Locutus.imp().getBankDB().getTransactions(minDate, false)) {
             tracker.bankEvent(new TransactionEvent(transaction));
         }

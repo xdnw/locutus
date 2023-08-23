@@ -530,7 +530,7 @@ public class DBNation implements NationOrAlliance {
 
         long checkBankCutoff = currentDate - TimeUnit.DAYS.toMillis(60);
         if (cities > 10 && lastLootDate < checkBankCutoff) {
-            List<Transaction2> transactions = getTransactions(Long.MAX_VALUE);
+            List<Transaction2> transactions = getTransactions(Long.MAX_VALUE, true);
             long recent = 0;
             for (Transaction2 transaction : transactions) {
                 if (transaction.receiver_id != getNation_id()) {
@@ -1606,11 +1606,11 @@ public class DBNation implements NationOrAlliance {
         return PnwUtil.convertedTotal(getNetDeposits(db, updateThreshold));
     }
 
-    public List<Transaction2> getTransactions() {
-        return getTransactions(0);
+    public List<Transaction2> getTransactions(boolean priority) {
+        return getTransactions(0, priority);
     }
 
-    public List<Transaction2> updateTransactions(PagePriority priority) {
+    public List<Transaction2> updateTransactions(boolean priority) {
         BankDB bankDb = Locutus.imp().getBankDB();
         if (Settings.USE_V2) {
             Locutus.imp().runEventsAsync(events -> bankDb.updateBankRecsv2(nation_id, events));
@@ -1619,7 +1619,7 @@ public class DBNation implements NationOrAlliance {
             Locutus.imp().runEventsAsync(f -> bankDb.updateBankRecs(priority, f));
         } else {
             System.out.println("Update bank recs 1");
-            Locutus.imp().runEventsAsync(events -> bankDb.updateBankRecs(nation_id, events));
+            Locutus.imp().runEventsAsync(events -> bankDb.updateBankRecs(nation_id, priority, events));
             System.out.println("Update bank recs 2");
         }
         return Locutus.imp().getBankDB().getTransactionsByNation(nation_id);
@@ -1678,7 +1678,7 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "Unix timestamp when last deposited in a bank")
     public long lastBankDeposit() {
         if (getPositionEnum().id <= Rank.APPLICANT.id) return 0;
-        List<Transaction2> transactions = getTransactions(Long.MAX_VALUE);
+        List<Transaction2> transactions = getTransactions(Long.MAX_VALUE, false);
         long max = 0;
         for (Transaction2 transaction : transactions) {
             if (transaction.receiver_id == alliance_id && transaction.isReceiverAA()) max = Math.max(max, transaction.tx_datetime);
@@ -1691,7 +1691,7 @@ public class DBNation implements NationOrAlliance {
      * @param updateThreshold = -1 is no update, 0 = always update
      * @return
      */
-    public List<Transaction2> getTransactions(long updateThreshold) {
+    public List<Transaction2> getTransactions(long updateThreshold, boolean priority) {
         boolean update = updateThreshold == 0;
         if (!update && updateThreshold > 0) {
             Transaction2 tx = Locutus.imp().getBankDB().getLatestTransaction();
@@ -1702,7 +1702,7 @@ public class DBNation implements NationOrAlliance {
         }
         if (update) {
             System.out.println("Update transactions");
-            return updateTransactions();
+            return updateTransactions(priority);
         }
         return Locutus.imp().getBankDB().getTransactionsByNation(nation_id);
     }
@@ -2306,7 +2306,7 @@ public class DBNation implements NationOrAlliance {
         return sum;
     }
 
-    public List<Map.Entry<Integer, Transaction2>> getTransactions(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff) {
+    public List<Map.Entry<Integer, Transaction2>> getTransactions(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean priority) {
         long start = System.currentTimeMillis();
         if (tracked == null) {
             tracked = db.getTrackedBanks();
@@ -3072,7 +3072,7 @@ public class DBNation implements NationOrAlliance {
             if (updateIfOutdated && estimateScore() != this.score) force = true;
             if (force) {
                 System.out.println("Fetch cities for " + getNation() + " | " + getNation_id());
-                Locutus.imp().getNationDB().updateCitiesOfNations(Collections.singleton(nation_id), true, Event::post);
+                Locutus.imp().getNationDB().updateCitiesOfNations(Collections.singleton(nation_id), true,true, Event::post);
                 cityObj = _getCitiesV3();
             }
         }
@@ -3777,7 +3777,7 @@ public class DBNation implements NationOrAlliance {
         return maxInfra;
     }
 
-    public JsonObject sendMail(ApiKeyPool pool, String subject, String message) throws IOException {
+    public JsonObject sendMail(ApiKeyPool pool, String subject, String message, boolean priority) throws IOException {
         if (pool.size() == 1 && pool.getNextApiKey().getKey().equalsIgnoreCase(Settings.INSTANCE.API_KEY_PRIMARY)) {
             Auth auth = Locutus.imp().getRootAuth();
             if (auth != null) {
@@ -3796,7 +3796,7 @@ public class DBNation implements NationOrAlliance {
             post.put("subject", subject);
             post.put("message", message);
             String url = "" + Settings.INSTANCE.PNW_URL() + "/api/send-message/?key=" + pair.getKey();
-            String result = FileUtil.get(FileUtil.readStringFromURL(PagePriority.MAIL_SEND.ordinal(), url, post, null));
+            String result = FileUtil.get(FileUtil.readStringFromURL(priority ? PagePriority.MAIL_SEND_SINGLE.ordinal() : PagePriority.MAIL_SEND_BULK.ordinal(), url, post, null));
             System.out.println("Result " + result);
             if (result.contains("Invalid API key")) {
                 pair.deleteApiKey();
@@ -5101,7 +5101,7 @@ public class DBNation implements NationOrAlliance {
 
     public void updateCities(boolean bulk) {
         Locutus.imp().runEventsAsync(events ->
-                Locutus.imp().getNationDB().updateCitiesOfNations(Set.of(nation_id), bulk, events));
+                Locutus.imp().getNationDB().updateCitiesOfNations(Set.of(nation_id), true, bulk, events));
     }
 
     public double[] projectCost(Project project) {
