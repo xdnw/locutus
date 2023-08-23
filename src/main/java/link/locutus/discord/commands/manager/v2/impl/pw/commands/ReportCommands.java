@@ -778,8 +778,9 @@ public class ReportCommands {
                 "See: " + CM.report.loan.sheet.cmd.toSlashMention();
     }
 
-    @Command(desc = "Report a nation or user's game behavior to the bot for things such as fraud")
-    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
+    @Command(desc = "Report a nation or user's game behavior to the bot for things such as fraud\n" +
+            "Note: Submitting spam or maliciously false reports may result in being locked out of reporting commands")
+//    @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF, Roles.ECON_STAFF}, any = true)
     public String createReport(@Me DBNation me, @Me User author, @Me GuildDB db, @Me IMessageIO io, @Me JSONObject command,
                          ReportManager reportManager,
                          ReportManager.ReportType type,
@@ -1379,7 +1380,7 @@ public class ReportCommands {
         System.out.println("Risk factors 7: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
         currentSharedNetwork.remove((Integer) nation.getNation_id());
         historicalSharedNetwork.remove((Integer) nation.getNation_id());
-        Set<DBNation> sharedNetworkActive = currentSharedNetwork.stream().map(DBNation::getById).collect(Collectors.toSet());
+        Set<DBNation> sharedNetworkActive = currentSharedNetwork.stream().map(DBNation::getById).filter(Objects::nonNull).collect(Collectors.toSet());
 
         // add bans to response
         if (!bans.isEmpty()) {

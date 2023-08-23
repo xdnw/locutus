@@ -148,12 +148,12 @@ public class PoliticsAndWarV3 {
 //
                 HttpEntity<String> entity = httpEntity(graphQLRequest, pair.getKey(), pair.getBotKey());
 
+                URI uri = URI.create(url);
                 exchange =
-//                        restTemplate.exchange(URI.create(url),
-                        FileUtil.submit(priority, () -> restTemplate.exchange(URI.create(url),
+                        FileUtil.submit(priority, () -> restTemplate.exchange(uri,
                         HttpMethod.POST,
                         entity,
-                        String.class));
+                        String.class), uri);
 
                 String body = exchange.getBody();
                 JsonNode json = jacksonObjectMapper.readTree(body);
@@ -179,6 +179,13 @@ public class PoliticsAndWarV3 {
                 break;
             } catch (HttpClientErrorException.TooManyRequests e) {
                 try {
+                    System.out.println("Status " + e.getStatusText());
+                    HttpHeaders headers = e.getResponseHeaders();
+                    // Retry-After
+                    if (headers != null) {
+                        String retryAfter = headers.getFirst("Retry-After");
+                        System.out.println("Retry-After " + retryAfter);
+                    }
                     long timeout = (60000L);
                     System.out.println(e.getMessage());
                     System.out.println("Hit rate limit 2 " + timeout + "ms");
@@ -766,20 +773,20 @@ public class PoliticsAndWarV3 {
         };
     }
 
-    public List<Bankrec> fetchBankRecsWithInfo(Consumer<BankrecsQueryRequest> filter) {
-        return fetchBankRecs(filter, createBankRecProjection());
+    public List<Bankrec> fetchBankRecsWithInfo(PagePriority priority, Consumer<BankrecsQueryRequest> filter) {
+        return fetchBankRecs(priority, filter, createBankRecProjection());
     }
 
-    public List<Bankrec> fetchBankRecs(Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query) {
-        return fetchBankRecs(BANKRECS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
+    public List<Bankrec> fetchBankRecs(PagePriority priority, Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query) {
+        return fetchBankRecs(priority, BANKRECS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
     }
 
-    public List<Bankrec> fetchBankRecs(Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query, Predicate<Bankrec> recResults) {
-        return fetchBankRecs(BANKRECS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, recResults);
+    public List<Bankrec> fetchBankRecs(PagePriority priority, Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query, Predicate<Bankrec> recResults) {
+        return fetchBankRecs(priority, BANKRECS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, recResults);
     }
 
     public List<Bankrec> fetchAllianceBankRecs(int allianceId, Consumer<AllianceBankrecsParametrizedInput> filter) {
-        List<Alliance> alliance = fetchAlliances(PagePriority.API_BANK_RECS, ALLIANCES_PER_PAGE, f -> f.setId(List.of(allianceId)), new Consumer<AllianceResponseProjection>() {
+        List<Alliance> alliance = fetchAlliances(PagePriority.API_BANK_RECS_MANUAL, ALLIANCES_PER_PAGE, f -> f.setId(List.of(allianceId)), new Consumer<AllianceResponseProjection>() {
             @Override
             public void accept(AllianceResponseProjection proj) {
                 BankrecResponseProjection bankProj = new BankrecResponseProjection();
@@ -797,10 +804,10 @@ public class PoliticsAndWarV3 {
         return alliance.get(0).getBankrecs();
     }
 
-    public List<Bankrec> fetchBankRecs(int perPage, Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bankrec> recResults) {
+    public List<Bankrec> fetchBankRecs(PagePriority priority, int perPage, Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bankrec> recResults) {
         List<Bankrec> allResults = new ArrayList<>();
 
-        handlePagination(PagePriority.API_BANK_RECS, page -> {
+        handlePagination(priority, page -> {
                     BankrecsQueryRequest request = new BankrecsQueryRequest();
                     if (filter != null) filter.accept(request);
                     request.setFirst(perPage);

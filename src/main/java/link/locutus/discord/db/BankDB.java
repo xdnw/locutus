@@ -19,6 +19,7 @@ import link.locutus.discord.event.bank.TransactionEvent;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.MathMan;
@@ -253,7 +254,7 @@ public class BankDB extends DBMainV3 {
         saveBankRecsV2(records, eventConsumer);
     }
 
-    public void updateBankRecs(Consumer<Event> eventConsumer) {
+    public void updateBankRecs(PagePriority priority, Consumer<Event> eventConsumer) {
         ByteBuffer info = Locutus.imp().getDiscordDB().getInfo(DiscordMeta.BANK_RECS_SEQUENTIAL, 0);
         int latestId = info == null ? -1 : info.getInt();
 

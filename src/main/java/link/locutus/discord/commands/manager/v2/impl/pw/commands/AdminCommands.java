@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.RequestTracker;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -72,6 +73,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.math.BigInteger;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.security.GeneralSecurityException;
 import java.sql.SQLException;
@@ -154,7 +156,7 @@ public class AdminCommands {
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String showFileQueue() {
+    public String showFileQueue(@Default @Timestamp Long timestamp) throws URISyntaxException {
         PageRequestQueue handler = FileUtil.getPageRequestQueue();
         PriorityQueue<PageRequestQueue.PageRequestTask<?>> jQueue = handler.getQueue();
 
@@ -176,13 +178,34 @@ public class AdminCommands {
         entries.sort((o1, o2) -> o2.getValue() - o1.getValue());
 
         StringBuilder sb = new StringBuilder();
-        sb.append("File Queue:\n");
+        sb.append("**File Queue:**\n");
         for (Map.Entry<PagePriority, Integer> entry : entries) {
             sb.append(entry.getKey().name()).append(": ").append(entry.getValue()).append("\n");
         }
         if (unknown > 0) {
             sb.append("Unknown: ").append(unknown).append("\n");
         }
+
+        if (timestamp != null) {
+            RequestTracker tracker = handler.getTracker();
+            Map<String, Integer> byDomain = tracker.getCountByDomain(timestamp);
+            Map<String, Integer> byUrl = tracker.getCountByUrl(timestamp);
+
+            sb.append("\n**By Domain:**\n");
+            int domainI = 1;
+            for (Map.Entry<String, Integer> entry : byDomain.entrySet()) {
+                sb.append("- " + entry.getKey()).append(": ").append(entry.getValue()).append("\n");
+                if (domainI++ >= 25) break;
+            }
+
+            sb.append("\n**By URL:**\n");
+            int urlI = 1;
+            for (Map.Entry<String, Integer> entry : byUrl.entrySet()) {
+                sb.append("- " + entry.getKey()).append(": ").append(entry.getValue()).append("\n");
+                if (urlI++ >= 25) break;
+            }
+        }
+
         return sb.toString();
     }
 

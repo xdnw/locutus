@@ -5,6 +5,7 @@ import link.locutus.discord.util.io.PageRequestQueue;
 import link.locutus.discord.util.offshore.Auth;
 import org.apache.commons.io.IOUtils;
 import org.eclipse.jetty.util.UrlEncoded;
+import org.springframework.web.client.HttpClientErrorException;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.io.BufferedReader;
@@ -17,19 +18,24 @@ import java.io.UnsupportedEncodingException;
 import java.net.CookieManager;
 import java.net.HttpCookie;
 import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -81,8 +87,12 @@ public final class FileUtil {
         return Thread.currentThread().getContextClassLoader();
     }
 
-    public static <T> T submit(int priority, Supplier<T> task) {
-        return get(pageRequestQueue.submit(task, getPriority(priority)));
+    public static <T> T submit(int priority, Supplier<T> task, String url) {
+        return get(pageRequestQueue.submit(task, getPriority(priority), url));
+    }
+
+    public static <T> T submit(int priority, Supplier<T> task, URI url) {
+        return get(pageRequestQueue.submit(task, getPriority(priority), url));
     }
 
     public static PageRequestQueue getPageRequestQueue() {
@@ -106,7 +116,33 @@ public final class FileUtil {
                 e.printStackTrace ();
                 return null;
             }
-        });
+        }, urlStr);
+    }
+
+    private static void check409Error(URLConnection connection) throws IOException {
+        if (connection instanceof HttpURLConnection http) {
+            if (http.getResponseCode() == 429) {
+                Integer retryAfter = null;
+                String retry = http.getHeaderField("Retry-After");
+                if (retry != null && MathMan.isInteger(retry)) {
+                    retryAfter = Integer.parseInt(retry);
+                }
+                throw new TooManyRequests("Too many requests", retryAfter);
+            }
+        }
+    }
+
+    public static class TooManyRequests extends RuntimeException {
+        private final Integer retryAfter;
+
+        public TooManyRequests(String message, Integer retryAfter) {
+            super(message);
+            this.retryAfter = retryAfter;
+        }
+
+        public Integer getRetryAfter() {
+            return retryAfter;
+        }
     }
 
     public static String readStringFromURL(int priority, String requestURL) throws IOException {
@@ -114,6 +150,7 @@ public final class FileUtil {
                 try {
                     URL website = new URL(requestURL);
                     URLConnection connection = website.openConnection();
+                    check409Error(connection);
                     try (BufferedReader in = new BufferedReader(
                             new InputStreamReader(connection.getInputStream()))) {
 
@@ -129,7 +166,8 @@ public final class FileUtil {
                     e.printStackTrace();
                     return null;
                 }
-            }
+            },
+            requestURL
         );
     }
 
@@ -187,6 +225,7 @@ public final class FileUtil {
                 try {
                     URL url = new URL(urlStr);
                     URLConnection con = url.openConnection();
+                    check409Error(con);
                     HttpURLConnection http = (HttpURLConnection) con;
 
                     if (msCookieManager != null && msCookieManager.getCookieStore().getCookies().size() > 0) {
@@ -290,7 +329,7 @@ public final class FileUtil {
                     }
                 }
             }
-        }, getPriority(priority));
+        }, getPriority(priority), urlStr);
         return task;
     }
 }
