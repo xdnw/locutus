@@ -80,7 +80,7 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
             public Boolean apply(DBNation nation) {
                 String findNote = "#project=" + project.name().toLowerCase();
                 String findNotr2 = "#project=" + project.ordinal();
-                for (Transaction2 transaction : nation.getTransactions()) {
+                for (Transaction2 transaction : nation.getTransactions(true)) {
                     if (transaction.note == null) continue;
                     String noteLower = transaction.note.toLowerCase();
                     if (noteLower.contains(findNote) || noteLower.contains(findNotr2)) return false;

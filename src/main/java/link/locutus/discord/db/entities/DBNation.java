@@ -1565,29 +1565,29 @@ public class DBNation implements NationOrAlliance {
         this.spies = spies;
     }
 
-    public double[] getNetDeposits(GuildDB db) throws IOException {
-        return getNetDeposits(db, 0L);
+    public double[] getNetDeposits(GuildDB db, boolean priority) throws IOException {
+        return getNetDeposits(db, 0L, priority);
     }
 
-    public double[] getNetDeposits(GuildDB db, boolean includeGrants) throws IOException {
-        return getNetDeposits(db, null, true, true, includeGrants, 0L, 0L);
+    public double[] getNetDeposits(GuildDB db, boolean includeGrants, boolean priority) throws IOException {
+        return getNetDeposits(db, null, true, true, includeGrants, 0L, 0L, priority);
     }
 
-    public double[] getNetDeposits(GuildDB db, boolean includeGrants, long updateThreshold) throws IOException {
-        return getNetDeposits(db, null, true, true, includeGrants, updateThreshold, 0L);
+    public double[] getNetDeposits(GuildDB db, boolean includeGrants, long updateThreshold, boolean priority) throws IOException {
+        return getNetDeposits(db, null, true, true, includeGrants, updateThreshold, 0L, priority);
     }
 
-    public double[] getNetDeposits(GuildDB db, long updateThreshold) throws IOException {
-        return getNetDeposits(db, null, true, true, updateThreshold, 0L);
+    public double[] getNetDeposits(GuildDB db, long updateThreshold, boolean priority) throws IOException {
+        return getNetDeposits(db, null, true, true, updateThreshold, 0L, priority);
     }
 
-    public double[] getNetDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff) throws IOException {
-        return getNetDeposits(db, tracked, useTaxBase, offset, true, updateThreshold, cutOff);
+    public double[] getNetDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean priority) throws IOException {
+        return getNetDeposits(db, tracked, useTaxBase, offset, true, updateThreshold, cutOff, priority);
     }
 
-    public double[] getNetDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, boolean includeGrants, long updateThreshold, long cutOff) throws IOException {
+    public double[] getNetDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, boolean includeGrants, long updateThreshold, long cutOff, boolean priority) throws IOException {
         long start = System.currentTimeMillis();
-        Map<DepositType, double[]> result = getDeposits(db, tracked, useTaxBase, offset, updateThreshold, cutOff);
+        Map<DepositType, double[]> result = getDeposits(db, tracked, useTaxBase, offset, updateThreshold, cutOff, priority);
         double[] total = new double[ResourceType.values.length];
         for (Map.Entry<DepositType, double[]> entry : result.entrySet()) {
             if (includeGrants || entry.getKey() != DepositType.GRANT) {
@@ -1603,7 +1603,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public double getNetDepositsConverted(GuildDB db, long updateThreshold) throws IOException {
-        return PnwUtil.convertedTotal(getNetDeposits(db, updateThreshold));
+        return PnwUtil.convertedTotal(getNetDeposits(db, updateThreshold, false));
     }
 
     public List<Transaction2> getTransactions(boolean priority) {
@@ -3167,7 +3167,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public String fetchUsername() throws IOException {
-        List<Nation> discord = Locutus.imp().getV3().fetchNations(f -> f.setId(List.of(nation_id)), r -> r.discord());
+        List<Nation> discord = Locutus.imp().getV3().fetchNations(true, f -> f.setId(List.of(nation_id)), r -> r.discord());
         if (discord.isEmpty()) return null;
         return discord.get(0).getDiscord();
     }
@@ -3796,7 +3796,7 @@ public class DBNation implements NationOrAlliance {
             post.put("subject", subject);
             post.put("message", message);
             String url = "" + Settings.INSTANCE.PNW_URL() + "/api/send-message/?key=" + pair.getKey();
-            String result = FileUtil.get(FileUtil.readStringFromURL(priority ? PagePriority.MAIL_SEND_SINGLE.ordinal() : PagePriority.MAIL_SEND_BULK.ordinal(), url, post, null));
+            String result = FileUtil.get(FileUtil.readStringFromURL(priority ? PagePriority.MAIL_SEND_SINGLE : PagePriority.MAIL_SEND_BULK, url, post, null));
             System.out.println("Result " + result);
             if (result.contains("Invalid API key")) {
                 pair.deleteApiKey();
@@ -3933,7 +3933,7 @@ public class DBNation implements NationOrAlliance {
 
         if (Settings.INSTANCE.TASKS.AUTO_FETCH_UID && fetchUid) {
             try {
-                BigInteger uid = fetchUid();
+                BigInteger uid = fetchUid(true);
                 for (Map.Entry<Integer, Long> entry : Locutus.imp().getDiscordDB().getUuids(uid)) {
                     int nationId = entry.getKey();
                     if (nationId == this.nation_id) continue;
@@ -3951,8 +3951,8 @@ public class DBNation implements NationOrAlliance {
         return 0;
     }
 
-    public BigInteger fetchUid() throws IOException {
-        return new GetUid(this).call();
+    public BigInteger fetchUid(boolean priority) throws IOException {
+        return new GetUid(this, priority).call();
     }
 
     public NationMeta.BeigeAlertMode getBeigeAlertMode(NationMeta.BeigeAlertMode def) {
@@ -4060,7 +4060,7 @@ public class DBNation implements NationOrAlliance {
         GuildDB db = Locutus.imp().getGuildDBByAA(alliance_id);
         if (db == null) return 0;
         boolean includeGrants = db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS) == Boolean.FALSE;
-        double[] depo = getNetDeposits(db, includeGrants, -1);
+        double[] depo = getNetDeposits(db, includeGrants, -1, false);
         return PnwUtil.convertedTotal(depo);
     }
 

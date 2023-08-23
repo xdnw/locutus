@@ -373,7 +373,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
             return result;
         }
 
-        Map<Integer, com.politicsandwar.graphql.model.TaxBracket> bracketsV3 = api.fetchTaxBrackets(allianceId);
+        Map<Integer, com.politicsandwar.graphql.model.TaxBracket> bracketsV3 = api.fetchTaxBrackets(allianceId, true);
         BRACKETS_CACHED = new ConcurrentHashMap<>();
         BRACKETS_TURN_UPDATED = TimeUtil.getTurn();
         for (Map.Entry<Integer, com.politicsandwar.graphql.model.TaxBracket> entry : bracketsV3.entrySet()) {
@@ -1095,7 +1095,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
         if (bankRecs == null) return null;
         if (bankRecs.isEmpty()) return new ArrayList<>();
 
-        Map<Integer, com.politicsandwar.graphql.model.TaxBracket> taxRates = api.fetchTaxBrackets(getAlliance_id());
+        Map<Integer, com.politicsandwar.graphql.model.TaxBracket> taxRates = api.fetchTaxBrackets(getAlliance_id(), false);
 
         List<BankDB.TaxDeposit> taxes = new ArrayList<>();
         Map<Integer, TaxRate> internalTaxRateCache = new HashMap<>();

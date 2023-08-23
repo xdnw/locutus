@@ -80,12 +80,12 @@ public class Auth {
         synchronized (this)
         {
             login(false);
-            String result = FileUtil.get(FileUtil.readStringFromURL(priority.ordinal(), urlStr, arguments, post, msCookieManager, i -> {}));
+            String result = FileUtil.get(FileUtil.readStringFromURL(priority, urlStr, arguments, post, msCookieManager, i -> {}));
             if (result.contains("<!--Logged Out-->")) {
                 logout();
                 msCookieManager = new CookieManager();
                 login(true);
-                result = FileUtil.get(FileUtil.readStringFromURL(priority.ordinal(), urlStr, arguments, post, msCookieManager, i -> {}));
+                result = FileUtil.get(FileUtil.readStringFromURL(priority, urlStr, arguments, post, msCookieManager, i -> {}));
                 if (result.contains("<!--Logged Out-->")) {
                     throw new IllegalArgumentException("Failed to login to PNW");
                 }

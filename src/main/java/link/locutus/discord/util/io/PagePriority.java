@@ -1,5 +1,6 @@
 package link.locutus.discord.util.io;
 public enum PagePriority {
+    GPT_MODERATE(0, 0),
     ACTIVE_PAGE(0, 0),
     TOKEN(0, 0),
     LOGOUT(0, 0),

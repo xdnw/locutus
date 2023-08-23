@@ -49,7 +49,7 @@ public class GetPageTask implements Callable<List<Element>> {
 
             String tmp = url + String.format("&maximum=%s&minimum=%s&search=Go", i + 50, i);
 
-            String html = auth == null ? FileUtil.get(FileUtil.readStringFromURL(priority.ordinal(), tmp, form)) : auth.readStringFromURL(priority, tmp, form);
+            String html = auth == null ? FileUtil.get(FileUtil.readStringFromURL(priority, tmp, form)) : auth.readStringFromURL(priority, tmp, form);
             Document dom = Jsoup.parse(html);
             Elements tables = dom.getElementsByClass("nationtable");
             int finalTableIndex = tableIndex == -1 ? tables.size() - 1 : tableIndex;

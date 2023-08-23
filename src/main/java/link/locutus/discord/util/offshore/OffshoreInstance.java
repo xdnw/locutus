@@ -654,7 +654,7 @@ public class OffshoreInstance {
 
                 if (!depositType.isIgnored())
                 {
-                    myDeposits = nationAccount.getNetDeposits(senderDB, !ignoreGrants, requireConfirmation ? -1 : 0L);
+                    myDeposits = nationAccount.getNetDeposits(senderDB, !ignoreGrants, requireConfirmation ? -1 : 0L, true);
                     double[] myDepositsNormalized = PnwUtil.normalize(myDeposits);
                     double myDepoValue = PnwUtil.convertedTotal(myDepositsNormalized, false);
 
@@ -850,7 +850,7 @@ public class OffshoreInstance {
             }
 
             if (nationAccount != null && !depositType.isIgnored() && (banker == null || !Roles.ECON.has(banker, getGuildDB().getGuild()))) {
-                double[] myNewDeposits = nationAccount.getNetDeposits(senderDB, !ignoreGrants, -1L);
+                double[] myNewDeposits = nationAccount.getNetDeposits(senderDB, !ignoreGrants, -1L, true);
                 // ensure myDeposits and myNewDeposits difference is amount
                 double[] diff = ResourceType.getBuffer();
                 for (int i = 0; i < amount.length; i++) {

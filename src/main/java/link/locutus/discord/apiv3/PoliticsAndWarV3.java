@@ -110,10 +110,11 @@ public class PoliticsAndWarV3 {
     private static final RateLimit rateLimitGlobal = new RateLimit();
 
     public <T> T readTemplate(PagePriority priority, GraphQLRequest graphQLRequest, Class<T> resultBody) {
-        return readTemplate(priority.ordinal(), graphQLRequest, resultBody);
+        return readTemplate(priority, graphQLRequest, resultBody);
     }
 
-    public <T> T readTemplate(int priority, GraphQLRequest graphQLRequest, Class<T> resultBody) {
+    public <T> T readTemplate(PagePriority priority, boolean pagination, GraphQLRequest graphQLRequest, Class<T> resultBody) {
+        int priorityId = priority.ordinal() + (pagination ? 1 : 0);
         if (rateLimitGlobal.intervalMs != 0) {
             synchronized (rateLimitGlobal) {
                 long now = System.currentTimeMillis();
@@ -150,7 +151,7 @@ public class PoliticsAndWarV3 {
 
                 URI uri = URI.create(url);
                 exchange =
-                        FileUtil.submit(priority, () -> restTemplate.exchange(uri,
+                        FileUtil.submit(priorityId, priority.getAllowedBufferingMs(), priority.getAllowableDelayMs(), () -> restTemplate.exchange(uri,
                         HttpMethod.POST,
                         entity,
                         String.class), uri);
@@ -337,7 +338,7 @@ public class PoliticsAndWarV3 {
             GraphQLRequest graphQLRequest = requestFactory.apply(page);
 
             for (int i = 0; i < 5; i++) {
-                T result = readTemplate(priority.ordinal() - (page == 1 ? 0 : 1), graphQLRequest, resultBody);
+                T result = readTemplate(priority, page > 1, graphQLRequest, resultBody);
 
                 boolean iterateNext = result != null && hasMorePages.test(result);
 
@@ -841,7 +842,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Bankrec> fetchTaxRecsWithInfo(int allianceId, Long afterDate) {
-        List<Alliance> alliances = fetchAlliances(f -> f.setId(List.of(allianceId)), new Consumer<AllianceResponseProjection>() {
+        List<Alliance> alliances = fetchAlliances(false, f -> f.setId(List.of(allianceId)), new Consumer<AllianceResponseProjection>() {
             @Override
             public void accept(AllianceResponseProjection projection) {
                 AllianceTaxrecsParametrizedInput filter = new AllianceTaxrecsParametrizedInput();
@@ -1095,7 +1096,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Treaty> fetchTreaties(int allianceId) {
-        List<Alliance> alliances = fetchAlliances(f -> f.setId(List.of(allianceId)), new Consumer<AllianceResponseProjection>() {
+        List<Alliance> alliances = fetchAlliances(true, f -> f.setId(List.of(allianceId)), new Consumer<AllianceResponseProjection>() {
             @Override
             public void accept(AllianceResponseProjection proj) {
                 proj.id();
@@ -1233,7 +1234,7 @@ public class PoliticsAndWarV3 {
     }
 
     public double[] getAllianceStockpile(int allianceId) {
-        List<Alliance> alliances = fetchAlliances(f -> f.setId(List.of(allianceId)), new Consumer<AllianceResponseProjection>() {
+        List<Alliance> alliances = fetchAlliances(true, f -> f.setId(List.of(allianceId)), new Consumer<AllianceResponseProjection>() {
             @Override
             public void accept(AllianceResponseProjection projection) {
                 projection.money();
@@ -1272,7 +1273,7 @@ public class PoliticsAndWarV3 {
 
     public Map<Integer, double[]> getStockPile(Consumer<NationsQueryRequest> query) {
         Map<Integer, double[]> result = new HashMap<>();
-        for (Nation rec : fetchNations(query::accept, new Consumer<NationResponseProjection>() {
+        for (Nation rec : fetchNations(true, query::accept, new Consumer<NationResponseProjection>() {
             @Override
             public void accept(NationResponseProjection projection) {
                 projection.id();
@@ -1511,9 +1512,9 @@ public class PoliticsAndWarV3 {
         return request(PagePriority.API_TAX_EDIT, mutation, createTaxBracketProjection(), TaxBracket.class);
     }
 
-    public Map<Integer, TaxBracket> fetchTaxBrackets(int allianceId) {
+    public Map<Integer, TaxBracket> fetchTaxBrackets(int allianceId, boolean priority) {
         Map<Integer, TaxBracket> taxBracketMap = new HashMap<>();
-        List<Alliance> alliances = fetchAlliances(f -> f.setId(List.of(allianceId)), new Consumer<AllianceResponseProjection>() {
+        List<Alliance> alliances = fetchAlliances(priority, f -> f.setId(List.of(allianceId)), new Consumer<AllianceResponseProjection>() {
             @Override
             public void accept(AllianceResponseProjection proj) {
                 proj.id();
@@ -1647,7 +1648,7 @@ public class PoliticsAndWarV3 {
     }
 
     public List<Nation> fetchNationActive(List<Integer> ids) {
-        return fetchNations(f -> {
+        return fetchNations(true, f -> {
             f.setId(ids);
             f.setVmode(false);
         }, new Consumer<NationResponseProjection>() {

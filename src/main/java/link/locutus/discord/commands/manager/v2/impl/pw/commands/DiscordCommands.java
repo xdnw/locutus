@@ -162,7 +162,7 @@ public class DiscordCommands {
             }
 
             String url = emote.getImageUrl();
-            byte[] bytes = FileUtil.readBytesFromUrl(PagePriority.DISCORD_EMOJI_URL.ordinal(), url);
+            byte[] bytes = FileUtil.readBytesFromUrl(PagePriority.DISCORD_EMOJI_URL, url);
 
             channel.send("Creating emote: " + emote.getName() + " | " + url);
 

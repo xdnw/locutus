@@ -42,7 +42,7 @@ public class ImportEmoji extends Command {
         if (arg.startsWith("https://discord.com/channels/")) {
         } else if (arg.startsWith("http")) {
             List<Future<?>> tasks = new ArrayList<>();
-            byte[] bytes = FileUtil.readBytesFromUrl(PagePriority.DISCORD_EMOJI_URL.ordinal(), arg);
+            byte[] bytes = FileUtil.readBytesFromUrl(PagePriority.DISCORD_EMOJI_URL, arg);
             if (bytes != null) {
                 Icon icon = Icon.from(bytes);
                 String[] split = arg.split("/");
@@ -69,7 +69,7 @@ public class ImportEmoji extends Command {
             }
 
             String url = emote.getImageUrl();
-            byte[] bytes = FileUtil.readBytesFromUrl(PagePriority.DISCORD_EMOJI_URL.ordinal(), url);
+            byte[] bytes = FileUtil.readBytesFromUrl(PagePriority.DISCORD_EMOJI_URL, url);
 
             channel.send("Creating emote: " + emote.getName() + " | " + url);
 

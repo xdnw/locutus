@@ -3245,7 +3245,7 @@ public class WarCommands {
             String body = entry.getValue().getValue();
 
             try {
-                attacker.sendMail(key, subject, body);
+                attacker.sendMail(key, subject, body, true);
             } catch (Throwable e) {
                 mailErrors.put(attacker, (e.getMessage() + " ").split("\n")[0]);
                 continue;

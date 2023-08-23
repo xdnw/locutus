@@ -916,7 +916,7 @@ public class PWBindings extends BindingHelper {
     @Binding
     @Me
     public double[] deposits2(@Me GuildDB db, @Me DBNation nation) throws IOException {
-        return nation.getNetDeposits(db);
+        return nation.getNetDeposits(db, false);
     }
 
     @Binding

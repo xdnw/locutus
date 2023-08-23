@@ -98,7 +98,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
         Map<ResourceType, Double> stockpile = receiver.getStockpile();
         Map<ResourceType, Double> needed = receiver.getResourcesNeeded(stockpile, parsed, false);
 
-        for (Transaction2 record : receiver.getTransactions()) {
+        for (Transaction2 record : receiver.getTransactions(true)) {
             if(record.tx_datetime > cutoff && record.note != null && record.sender_id == receiver.getId()) {
                 Map<String, String> notes = PnwUtil.parseTransferHashNotes(record.note);
                 if (notes.containsKey("#raws") || notes.containsKey("#tax")) {

@@ -58,7 +58,7 @@ public class SpyTracker {
             api = DBAlliance.getOrCreate(allianceId).getApi(AlliancePermission.SEE_SPIES);
             if (api == null) return;
         }
-        List<Nation> nations = api.fetchNations(new Consumer<NationsQueryRequest>() {
+        List<Nation> nations = api.fetchNations(false, new Consumer<NationsQueryRequest>() {
             @Override
             public void accept(NationsQueryRequest f) {
                 f.setVmode(false);

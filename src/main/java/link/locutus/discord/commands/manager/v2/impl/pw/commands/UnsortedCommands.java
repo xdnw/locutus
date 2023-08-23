@@ -1354,7 +1354,7 @@ public class UnsortedCommands {
                     markdown += ("\n\nPlease get in contact with us via discord for assistance");
                     markdown = markdown.replace("\n", "<br>").replace(" STARPLACEHOLDER ", " * ");
 
-                    JsonObject response = nation.sendMail(keys, title, markdown);
+                    JsonObject response = nation.sendMail(keys, title, markdown, false);
                     String userStr = nation.getNation() + "/" + nation.getNation_id();
                     resultMsg.append("\n" + userStr + ": " + response);
                 }
@@ -1698,7 +1698,7 @@ public class UnsortedCommands {
             }
             if ((!result && sendDM) || sendMail) {
                 try {
-                    nation.sendMail(keys, subject, personal);
+                    nation.sendMail(keys, subject, personal, false);
                 } catch (IllegalArgumentException | IOException e) {
                     failedToMail.add(nation.getNation_id());
                 }
@@ -1755,6 +1755,6 @@ public class UnsortedCommands {
             msg.commandButton(CommandBehavior.EPHEMERAL, cmd, "view").send();
         }
 
-        return "Done. See " + CM.announcement.find.cmd.toSlashMention();
+        return "Done. See " + CM.announcement.find.cmd.toSlashMention() + "\n" + author.getAsMention();
     }
 }

@@ -650,7 +650,7 @@ public class DiscordDB extends DBMainV2 {
 
     public int updateUserIds(boolean overrideExisting, Consumer<NationsQueryRequest> query, Consumer<Event> eventConsumer) {
         int updated = 0;
-        for (Nation nation : Locutus.imp().getV3().fetchNations(query::accept, r -> {
+        for (Nation nation : Locutus.imp().getV3().fetchNations(false, query::accept, r -> {
             r.id();
             r.discord();
             r.discord_id();

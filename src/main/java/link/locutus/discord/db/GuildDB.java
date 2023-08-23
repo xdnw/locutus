@@ -438,7 +438,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             return "No escrowed resources found.";
         }
 
-        double[] deposits = nation.getNetDeposits(this, false);
+        double[] deposits = nation.getNetDeposits(this, false, false);
 
         User user = nation.getUser();
 
@@ -1857,7 +1857,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
 
             if (senderNation != null) {
-                double[] deposits = senderNation.getNetDeposits(senderDB);
+                double[] deposits = senderNation.getNetDeposits(senderDB, true);
                 checkDeposits(deposits, amount, "nation", senderNation.getName());
             }
 

@@ -174,7 +174,7 @@ public class CheckCities extends Command {
                     markdown += ("\n\nPlease get in contact with us via discord for assistance.");
                     markdown = markdown.replace("\n", "<br>").replace(" STARPLACEHOLDER ", " * ");
 
-                    JsonObject response = nation.sendMail(keys, title, markdown);
+                    JsonObject response = nation.sendMail(keys, title, markdown, false);
                     String userStr = nation.getNation() + "/" + nation.getNation_id();
                     channel.sendMessage(userStr + ": " + response);
                 }

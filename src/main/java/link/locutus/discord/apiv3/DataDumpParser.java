@@ -816,7 +816,7 @@ public class DataDumpParser {
 
     private void download(String fileUrl, File savePath) throws IOException {
         System.out.println("Saving " + savePath);
-        byte[] bytes = FileUtil.readBytesFromUrl(PagePriority.DATA_DUMP.ordinal(), fileUrl);
+        byte[] bytes = FileUtil.readBytesFromUrl(PagePriority.DATA_DUMP, fileUrl);
         assert bytes != null;
         try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(bytes))) {
             ZipEntry entry = in.getNextEntry();

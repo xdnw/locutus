@@ -153,7 +153,7 @@ public class MailCommand extends Command implements Noformat {
                     }
                     start = System.currentTimeMillis();
                 }
-                response.append(nation.sendMail(key, subject, message)).append("\n");
+                response.append(nation.sendMail(key, subject, message, nations.size() == 1)).append("\n");
             }
 
             if (msg != null && msg.getId() > 0) {

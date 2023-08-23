@@ -216,7 +216,7 @@ public class NationUpdateProcessor {
                 Locutus.imp().getExecutor().submit(new CaughtRunnable() {
                     @Override
                     public void runUnsafe() throws Exception {
-                        nation.fetchUid();
+                        nation.fetchUid(false);
                     }
                 });
             }

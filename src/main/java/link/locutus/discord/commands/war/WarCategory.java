@@ -534,7 +534,7 @@ public class WarCategory {
                             String mailBody = MarkupUtil.transformURLIntoLinks(MarkupUtil.markdownToHTML(body.toString()));
 
                             try {
-                                attacker.sendMail(mailKey, title, mailBody);
+                                attacker.sendMail(mailKey, title, mailBody, false);
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }

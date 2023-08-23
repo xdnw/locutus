@@ -137,7 +137,7 @@ public class IACommands {
         for (DBAlliance alliance : subList.getAlliances()) {
             PoliticsAndWarV3 api = alliance.getApi(AlliancePermission.SEE_RESET_TIMERS);
             if (api != null) {
-                for (Nation nation : api.fetchNations(new Consumer<NationsQueryRequest>() {
+                for (Nation nation : api.fetchNations(true, new Consumer<NationsQueryRequest>() {
                     @Override
                     public void accept(NationsQueryRequest nationsQueryRequest) {
                         nationsQueryRequest.setAlliance_id(List.of(alliance.getId()));
@@ -980,7 +980,7 @@ public class IACommands {
             try {
                 String subjectF = DiscordUtil.format(db.getGuild(), channel, nation.getUser(), nation, subject);
                 String messageF = DiscordUtil.format(db.getGuild(), channel, nation.getUser(), nation, message);
-                full.add(String.valueOf(nation.sendMail(key, subjectF, messageF)));
+                full.add(String.valueOf(nation.sendMail(key, subjectF, messageF, nations.size() == 1)));
             } catch (Throwable e) {
                 e.printStackTrace();
                 full.add("Error sending mail to " + nation.getName() + " (" + nation.getId() + "): " + e.getMessage());

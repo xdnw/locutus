@@ -100,8 +100,8 @@ public final class FileUtil {
         return pageRequestQueue;
     }
 
-    public static byte[] readBytesFromUrl(int priority, int maxBuffer, int maxDelay, String urlStr) {
-        return submit(priority, maxBuffer, maxDelay, () -> {
+    public static byte[] readBytesFromUrl(PagePriority priority, String urlStr) {
+        return submit(priority.ordinal(), priority.getAllowedBufferingMs(), priority.getAllowableDelayMs(), () -> {
             try (InputStream is = new URL(urlStr).openStream()) {
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 byte[] byteChunk = new byte[4096]; // Or whatever size you want to read in at a time.
@@ -182,15 +182,15 @@ public final class FileUtil {
         return split[0] + "?" + UrlEncoded.encodeString(split[1], StandardCharsets.UTF_8);
     }
 
-    public static CompletableFuture<String> readStringFromURL(int priority, String urlStr, Map<String, String> arguments) throws IOException {
+    public static CompletableFuture<String> readStringFromURL(PagePriority priority, String urlStr, Map<String, String> arguments) throws IOException {
         return readStringFromURL(priority, urlStr, arguments, null);
     }
 
-    public static CompletableFuture<String> readStringFromURL(int priority, String urlStr, Map<String, String> arguments, CookieManager msCookieManager) throws IOException {
+    public static CompletableFuture<String> readStringFromURL(PagePriority priority, String urlStr, Map<String, String> arguments, CookieManager msCookieManager) throws IOException {
         return readStringFromURL(priority, urlStr, arguments, true, msCookieManager, i -> {});
     }
 
-    public static CompletableFuture<String> readStringFromURL(int priority, String urlStr, Map<String, String> arguments, boolean post, CookieManager msCookieManager, Consumer<HttpURLConnection> apply) throws IOException {
+    public static CompletableFuture<String> readStringFromURL(PagePriority priority, String urlStr, Map<String, String> arguments, boolean post, CookieManager msCookieManager, Consumer<HttpURLConnection> apply) throws IOException {
         StringJoiner sj = new StringJoiner("&");
         for (Map.Entry<String, String> entry : arguments.entrySet())
             sj.add(URLEncoder.encode(entry.getKey(), "UTF-8") + "="
@@ -222,7 +222,7 @@ public final class FileUtil {
         return requestOrder.incrementAndGet() + Integer.MAX_VALUE * (long) priority;
     }
 
-    public static CompletableFuture<String> readStringFromURL(int priority, int maxBuffer, int maxDelay, String urlStr, byte[] dataBinary, RequestType type, CookieManager msCookieManager, Consumer<HttpURLConnection> apply) {
+    public static CompletableFuture<String> readStringFromURL(PagePriority priority, String urlStr, byte[] dataBinary, RequestType type, CookieManager msCookieManager, Consumer<HttpURLConnection> apply) {
         Supplier<String> fetch = new Supplier<String>() {
             @Override
             public String get() {
@@ -334,7 +334,7 @@ public final class FileUtil {
                     }
                 }
             }
-        }, getPriority(priority), maxBuffer, maxDelay, urlStr);
+        }, getPriority(priority.ordinal()), priority.getAllowedBufferingMs(), priority.getAllowableDelayMs(), urlStr);
         return task;
     }
 }

@@ -238,7 +238,7 @@ public class WarRoom extends Command {
                             String mailBody = MarkupUtil.transformURLIntoLinks(MarkupUtil.markdownToHTML(body));
 
                             try {
-                                attacker.sendMail(ApiKeyPool.create(Locutus.imp().getRootAuth().getApiKey()), title, mailBody);
+                                attacker.sendMail(ApiKeyPool.create(Locutus.imp().getRootAuth().getApiKey()), title, mailBody, false);
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }

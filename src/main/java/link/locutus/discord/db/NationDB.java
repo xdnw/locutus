@@ -353,7 +353,7 @@ public class NationDB extends DBMainV2 {
     public void updateAlliances(Consumer<AlliancesQueryRequest> filter, Consumer<Event> eventConsumer) {
         Set<Integer> toDelete = filter == null ? getAlliances().stream().map(DBAlliance::getId).collect(Collectors.toSet()) : new HashSet<>();
 
-        List<Alliance> alliances = Locutus.imp().getV3().fetchAlliances(filter, true, true);
+        List<Alliance> alliances = Locutus.imp().getV3().fetchAlliances(false, filter, true, true);
         if (alliances.isEmpty()) return;
         Set<Integer> updated = processUpdatedAlliances(alliances, eventConsumer);
         toDelete.removeAll(updated);
@@ -373,7 +373,7 @@ public class NationDB extends DBMainV2 {
             List<Integer> toFetch = ids.subList(i, end);
 
 
-            List<Alliance> alliances = v3.fetchAlliances(req -> req.setId(toFetch), true, true);
+            List<Alliance> alliances = v3.fetchAlliances(false, req -> req.setId(toFetch), true, true);
             fetched.addAll(processUpdatedAlliances(alliances, eventConsumer));
         }
 

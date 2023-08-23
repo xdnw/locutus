@@ -87,7 +87,7 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
         return runWithKey(apiKey -> {
             try {
                 String urlStr = baseUrl + url.getUrl(apiKey, arg, query);
-                String json = FileUtil.readStringFromURL(priority.ordinal(), urlStr);
+                String json = FileUtil.readStringFromURL(priority, urlStr);
 
                 if (removeHeader) {
                     String successStr = "success\":";

@@ -234,7 +234,7 @@ public class BankDB extends DBMainV3 {
         List<Transaction2> latestTx = getTransactionsByNation(nationId, 1);
         int minId = latestTx.size() == 1 ? latestTx.get(0).tx_id : 0;
         System.out.println("Latest tx id: " + minId + " in " + (System.currentTimeMillis() - start) + "ms");
-        List<Bankrec> bankRecs = v3.fetchBankRecsWithInfo(new Consumer<BankrecsQueryRequest>() {
+        List<Bankrec> bankRecs = v3.fetchBankRecsWithInfo(priority, new Consumer<BankrecsQueryRequest>() {
             @Override
             public void accept(BankrecsQueryRequest request) {
                 if (minId > 0) request.setMin_id(minId + 1);
@@ -250,7 +250,7 @@ public class BankDB extends DBMainV3 {
 
     public void updateBankRecsv2(int nationId, boolean priority, Consumer<Event> eventConsumer) {
         PoliticsAndWarV2 api = Locutus.imp().getPnwApiV2();
-        List<BankRecord> records = api.getBankRecords(nationId);
+        List<BankRecord> records = api.getBankRecords(nationId, priority);
         saveBankRecsV2(records, eventConsumer);
     }
 
@@ -272,7 +272,7 @@ public class BankDB extends DBMainV3 {
             Locutus.imp().getDiscordDB().setInfo(DiscordMeta.BANK_RECS_SEQUENTIAL, 0, maxIdData);
             records.clear();
         };
-        v3.fetchBankRecs(priority ? PagePriority.API_BANK_RECS_MANUAL : PagePriority.API_BANK_RECS_AUTO, new Consumer<BankrecsQueryRequest>() {
+        v3.fetchBankRecs(priority, new Consumer<BankrecsQueryRequest>() {
             @Override
             public void accept(BankrecsQueryRequest f) {
                 f.setOr_type(List.of(1));

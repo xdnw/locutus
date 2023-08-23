@@ -520,7 +520,7 @@ public class AdminCommands {
             }
             if ((!result && sendDM) || sendMail) {
                 try {
-                    nation.sendMail(keys, subject, personal);
+                    nation.sendMail(keys, subject, personal, false);
                 } catch (IllegalArgumentException e) {
                     failedToMail.add(nation.getNation_id());
                 }
@@ -1460,7 +1460,7 @@ public class AdminCommands {
                     msg = io.updateOptionally(msgFuture, "Updating " + nation.getNation() + "(" + i + "/" + nationsToUpdate.size() + ")");
                     start = System.currentTimeMillis();
                 }
-                nation.fetchUid();
+                nation.fetchUid(true);
                 i++;
             }
             if (msg != null && msg.getId() > 0) {

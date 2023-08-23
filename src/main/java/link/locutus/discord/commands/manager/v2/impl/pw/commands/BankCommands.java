@@ -510,7 +510,7 @@ public class BankCommands {
             if (mailResults) {
                 String subject = "Deposit Resources/" + channelId;
                 try {
-                    JsonObject mailResult = nation.sendMail(key, subject, body.toString());
+                    JsonObject mailResult = nation.sendMail(key, subject, body.toString(), true);
                     result.append("\n- **mail**: ").append("`" + mailResult + "`");
                     sentMail = true;
                 } catch (Throwable e) {
@@ -1216,7 +1216,7 @@ public class BankCommands {
             }
 
             if (subtractDeposits) {
-                double[] deposits = nation.getNetDeposits(db, -1L);
+                double[] deposits = nation.getNetDeposits(db, -1L, true);
                 for (int i = 0; i < deposits.length; i++) {
                     double amt = deposits[i];
                     if (amt > 0) {
@@ -1561,7 +1561,7 @@ public class BankCommands {
             double[] total = stockpileArr2.clone();
             double[] depo = ResourceType.getBuffer();
             if (!ignoreDeposits) {
-                depo = nation.getNetDeposits(db, includeGrants, forceUpdate ? 0L : -1L);
+                depo = nation.getNetDeposits(db, includeGrants, forceUpdate ? 0L : -1L, false);
                 if (!doNotNormalizeDeposits) {
                     depo = PnwUtil.normalize(depo);
                 }
@@ -1760,7 +1760,7 @@ public class BankCommands {
                 note += " #expire=timestamp:" + (System.currentTimeMillis() + timediff);
             }
         }
-        Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, 0, 0);
+        Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, 0, 0, true);
 
         double[] toAdd = depoByType.get(from);
         if (toAdd == null || ResourceType.isZero(toAdd)) {
@@ -1802,7 +1802,7 @@ public class BankCommands {
         double[] totalEscrow = ResourceType.getBuffer();
 
         for (DBNation nation : nations.getNations()) {
-            Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, force ? 0L : -1L, 0);
+            Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, force ? 0L : -1L, 0, true);
 
             double[] deposits = depoByType.get(DepositType.DEPOSIT);
             if (deposits != null && !ignoreBankDeposits && !ResourceType.isZero(deposits)) {
@@ -1826,7 +1826,7 @@ public class BankCommands {
             }
 
             if (depoByType.containsKey(DepositType.GRANT) && !ignoreGrants) {
-                List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, -1, 0);
+                List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, -1, 0, true);
                 for (Map.Entry<Integer, Transaction2> entry : transactions) {
                     Transaction2 tx = entry.getValue();
                     if (tx.note == null || !tx.note.contains("#expire") || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id()))
@@ -2304,7 +2304,7 @@ public class BankCommands {
                 if (tmp != null) msgFuture = tmp.clear().append("calculating for: " + nation.getNation()).send();
                 last = System.currentTimeMillis();
             }
-            Map<DepositType, double[]> deposits = nation.getDeposits(db, tracked, useTaxBase, useOffset, (updateBulk && !force) ? -1 : 0L, 0L);
+            Map<DepositType, double[]> deposits = nation.getDeposits(db, tracked, useTaxBase, useOffset, (updateBulk && !force) ? -1 : 0L, 0L, false);
             double[] buffer = ResourceType.getBuffer();
 
             header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
@@ -2515,11 +2515,11 @@ public class BankCommands {
         for (DBNation nation : nations) {
             double[] depo;
             if (depositType != null) {
-                Map<DepositType, double[]> depoByCategory = nation.getDeposits(db, null, true, true, -1, 0L);
+                Map<DepositType, double[]> depoByCategory = nation.getDeposits(db, null, true, true, -1, 0L, false);
                 depo = depoByCategory.get(depositType.type);
                 if (depo == null) continue;
             } else {
-                depo = nation.getNetDeposits(db, null, true, true, includeGrants, -1, 0L);
+                depo = nation.getNetDeposits(db, null, true, true, includeGrants, -1, 0L, false);
             }
             double[] amtAdd = ResourceType.getBuffer();
             boolean add = false;
@@ -2604,7 +2604,7 @@ public class BankCommands {
         List<Transaction2> transactions = new ArrayList<>();
         if (nationOrAllianceOrGuild.isNation()) {
             DBNation nation = nationOrAllianceOrGuild.asNation();
-            List<Map.Entry<Integer, Transaction2>> natTrans = nation.getTransactions(db, null, useTaxBase, useOffset, 0, timeframe);
+            List<Map.Entry<Integer, Transaction2>> natTrans = nation.getTransactions(db, null, useTaxBase, useOffset, 0, timeframe, false);
             for (Map.Entry<Integer, Transaction2> entry : natTrans) {
                 transactions.add(entry.getValue());
             }
@@ -3303,7 +3303,7 @@ public class BankCommands {
             DBNation nation = nationOrAllianceOrGuild.asNation();
             if (nation != me && !Roles.INTERNAL_AFFAIRS.has(author, guild) && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild) && !Roles.ECON.has(author, guild)) return "You do not have permission to check other nation's deposits";
             // txList
-            accountDeposits = nation.getDeposits(db, offshoreIds, !includeBaseTaxes, !ignoreInternalOffsets, 0L, timeCutoff, includeIgnored, includeExpired, f -> true);
+            accountDeposits = nation.getDeposits(db, offshoreIds, !includeBaseTaxes, !ignoreInternalOffsets, 0L, timeCutoff, includeIgnored, includeExpired, f -> true, true);
             if (!hideEscrowed) {
                 Map.Entry<double[], Long> escoredPair = db.getEscrowed(nation);
                 if (escoredPair != null) {

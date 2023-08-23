@@ -565,7 +565,7 @@ public class GuildHandler {
 
         if (user != null && current.getActive_m() < 2880) {
             try {
-                double[] depoTotal = current.getNetDeposits(db);
+                double[] depoTotal = current.getNetDeposits(db, false);
                 body.append("\n\nPlease check the following:\n" +
                         "- Discord roles\n" +
                         "- Deposits: `" + PnwUtil.resourcesToString(depoTotal) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(depoTotal)));
@@ -635,7 +635,7 @@ public class GuildHandler {
             subject = DiscordUtil.format(guild, output, null, to, subject);
         }
 
-        return to.sendMail(keys, subject, message);
+        return to.sendMail(keys, subject, message, false);
     }
 
     public Double getWithdrawLimit(int banker) {
@@ -1629,7 +1629,7 @@ public class GuildHandler {
                                     String title = "Do Not Raid/" + channel.getIdLong();
                                     String message = MarkupUtil.htmlUrl(war.toUrl(), war.toUrl()) + " violates the `Do Not Raid` list. If you were not asked to attack, please offer peace\n\nNote: This is an automated message";
 
-                                    nation.sendMail(key, title, message);
+                                    nation.sendMail(key, title, message, false);
                                 }
                             } catch (Throwable e) {
                                 e.printStackTrace();
@@ -2172,7 +2172,7 @@ public class GuildHandler {
                 ApiKeyPool keys = db.getMailKey();
                 if (keys != null) {
                     try {
-                        nation.sendMail(keys, "Beige Cycle Violation", explanation);
+                        nation.sendMail(keys, "Beige Cycle Violation", explanation, false);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }

@@ -1628,7 +1628,7 @@ public Map<ParametricCallable, String> getEndpoints() {
         Map<DBNation, Map<ResourceType, Double>> transfers = new HashMap<>();
 
         for (DBNation nation : nations) {
-            Map<ResourceType, Double> deposits = PnwUtil.resourcesToMap(nation.getNetDeposits(db));
+            Map<ResourceType, Double> deposits = PnwUtil.resourcesToMap(nation.getNetDeposits(db, false));
             deposits.remove(ResourceType.CREDITS);
             deposits = PnwUtil.normalize(deposits);
 
