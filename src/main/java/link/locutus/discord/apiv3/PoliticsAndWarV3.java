@@ -664,8 +664,8 @@ public class PoliticsAndWarV3 {
         return allResults;
     }
 
-    public List<City> fetchCitiesWithInfo(Consumer<CitiesQueryRequest> filter, boolean cityInfo) {
-        return fetchCities(filter, proj -> {
+    public List<City> fetchCitiesWithInfo(boolean priority, Consumer<CitiesQueryRequest> filter, boolean cityInfo) {
+        return fetchCities(priority, filter, proj -> {
             proj.nation_id();
             proj.id();
             proj.infrastructure();
@@ -708,14 +708,14 @@ public class PoliticsAndWarV3 {
         });
     }
 
-    public List<City> fetchCities(Consumer<CitiesQueryRequest> filter, Consumer<CityResponseProjection> query) {
-        return fetchCities(CITIES_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
+    public List<City> fetchCities(boolean priority, Consumer<CitiesQueryRequest> filter, Consumer<CityResponseProjection> query) {
+        return fetchCities(priority, CITIES_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
     }
 
-    public List<City> fetchCities(int perPage, Consumer<CitiesQueryRequest> filter, Consumer<CityResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<City> recResults) {
+    public List<City> fetchCities(boolean priority, int perPage, Consumer<CitiesQueryRequest> filter, Consumer<CityResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<City> recResults) {
         List<City> allResults = new ArrayList<>();
 
-        handlePagination(PagePriority.API_CITIES, page -> {
+        handlePagination(priority ? PagePriority.API_CITIES_MANUAL : PagePriority.API_CITIES_AUTO, page -> {
                     CitiesQueryRequest request = new CitiesQueryRequest();
                     if (filter != null) filter.accept(request);
                     request.setFirst(perPage);

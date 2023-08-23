@@ -76,18 +76,18 @@ public class PageRequestQueue {
         }
     }
 
-    public <T> PageRequestTask<T> submit(Supplier<T> task, long priority, String urlStr) {
+    public <T> PageRequestTask<T> submit(Supplier<T> task, long priority, int allowBuffering, int allowDelay, String urlStr) {
         URI url;
         try {
             url = new URI(urlStr);
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
-        return submit(task, priority, url);
+        return submit(task, priority, allowBuffering, allowDelay, url);
     }
 
-    public <T> PageRequestTask<T> submit(Supplier<T> task, long priority, URI url) {
-        PageRequestTask<T> request = new PageRequestTask<T>(task, priority, url);
+    public <T> PageRequestTask<T> submit(Supplier<T> task, long priority, int allowBuffering, int allowDelay, URI url) {
+        PageRequestTask<T> request = new PageRequestTask<T>(task, priority, allowBuffering, allowDelay, url);
         synchronized (lock) {
             queue.add(request);
             lock.notifyAll();
@@ -105,11 +105,30 @@ public class PageRequestQueue {
         private final Supplier<T> task;
         private final long priority;
         private final URI url;
-        public PageRequestTask(Supplier<T> task, long priority, URI uri) {
+        private final int allowBuffering;
+        private final int allowDelay;
+        private final long creationDate;
+
+        public PageRequestTask(Supplier<T> task, long priority, int allowBuffering, int allowDelay, URI uri) {
+            this.creationDate = System.currentTimeMillis();
+            this.allowBuffering = allowBuffering;
+            this.allowDelay = allowDelay;
             this.task = task;
             this.priority = priority;
             this.url = uri;
             checkNotNull(this.url.getHost(), "Invalid URL Host: " + uri);
+        }
+
+        public long getCreationDate() {
+            return creationDate;
+        }
+
+        public int getAllowBuffering() {
+            return allowBuffering;
+        }
+
+        public int getAllowDelay() {
+            return allowDelay;
         }
 
         public URI getUrl() {
