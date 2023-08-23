@@ -3996,7 +3996,7 @@ public class NationDB extends DBMainV2 {
             synchronized (dirtyCities) {
                 dirtyCities.add(cityId);
             }
-            updateDirtyCities(eventConsumer);
+            updateDirtyCities(true, eventConsumer);
             return getCitiesV3ByCityId(cityId, false, eventConsumer);
         }
         return null;

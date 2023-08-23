@@ -147,7 +147,7 @@ public class GuildKey {
 
                             if (!isValid) {
                                 String url = Settings.INSTANCE.PNW_URL() + "/alliance/id=" + aaId;
-                                String content = FileUtil.readStringFromURL(PagePriority.ALLIANCE_ID_AUTH_CODE.ordinal(), url);
+                                String content = FileUtil.readStringFromURL(PagePriority.ALLIANCE_ID_AUTH_CODE, url);
                                 String idStr = db.getGuild().getId();
 
                                 if (!content.contains(idStr)) {

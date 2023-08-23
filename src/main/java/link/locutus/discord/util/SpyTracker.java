@@ -510,7 +510,7 @@ public class SpyTracker {
         if (activitiesToFlag.isEmpty()) return;
 
         String url = "https://politicsandwar.com/index.php?id=15&keyword=&cat=everything&ob=lastactive&od=DESC&maximum=50&minimum=0&search=Go&vmode=false";
-        String html = FileUtil.readStringFromURL(PagePriority.ACTIVE_PAGE.ordinal(), url);
+        String html = FileUtil.readStringFromURL(PagePriority.ACTIVE_PAGE, url);
 
         List<Integer> nationIds = PnwUtil.getNationsFromTable(html, 0);
         Map<Integer, Integer> nationIdIndex = new HashMap<>();

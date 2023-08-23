@@ -109,7 +109,7 @@ public class Auth {
             userPass.put("rememberme", "1");
             String url = "" + Settings.INSTANCE.PNW_URL() + "/login/";
 
-            String loginResult = FileUtil.get(FileUtil.readStringFromURL(PagePriority.LOGIN.ordinal(), url, userPass, this.getCookieManager()));
+            String loginResult = FileUtil.get(FileUtil.readStringFromURL(PagePriority.LOGIN, url, userPass, this.getCookieManager()));
             if (!loginResult.contains("Login Successful")) {
                 System.out.println(loginResult);
                 throw new IllegalArgumentException("Error: " + PnwUtil.parseDom(Jsoup.parse(loginResult), "columnheader"));
@@ -119,7 +119,7 @@ public class Auth {
     }
 
     public String logout() throws IOException {
-        String logout = FileUtil.readStringFromURL(PagePriority.LOGOUT.ordinal(), "" + Settings.INSTANCE.PNW_URL() + "/logout/");
+        String logout = FileUtil.readStringFromURL(PagePriority.LOGOUT, "" + Settings.INSTANCE.PNW_URL() + "/logout/");
         Document dom = Jsoup.parse(logout);
         clearCookies();
         return PnwUtil.getAlert(dom);

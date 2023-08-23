@@ -25,7 +25,7 @@ public class GetActiveWars implements Callable<Collection<Map.Entry<Integer, Int
     @Override
     public Collection<Map.Entry<Integer, Integer>> call() throws Exception {
         String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nationId + "&display=war";
-        Document dom = Jsoup.parse(FileUtil.readStringFromURL(PagePriority.ACTIVE_WARS_UNUSED.ordinal(), url));
+        Document dom = Jsoup.parse(FileUtil.readStringFromURL(PagePriority.ACTIVE_WARS_UNUSED, url));
 
         Element table = dom.getElementsByClass("nationtable").get(0);
         Elements rows = table.getElementsByTag("tr");

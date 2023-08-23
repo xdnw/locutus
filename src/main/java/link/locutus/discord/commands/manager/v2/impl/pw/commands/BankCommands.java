@@ -2294,7 +2294,7 @@ public class BankCommands {
 
         boolean updateBulk = Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS > 0;
         if (updateBulk) {
-            Locutus.imp().getBankDB().updateBankRecs(Event::post);
+            Locutus.imp().getBankDB().updateBankRecs(false, Event::post);
         }
 
         long last = System.currentTimeMillis();
@@ -2334,7 +2334,7 @@ public class BankCommands {
                 total = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, total, value);
             }
             header.set(7, String.format("%.2f", PnwUtil.convertedTotal(total)));
-            List<Transaction2> transactions = nation.getTransactions(Long.MAX_VALUE);
+            List<Transaction2> transactions = nation.getTransactions(Long.MAX_VALUE, false);
             long lastDeposit = 0;
             for (Transaction2 transaction : transactions) {
                 if (transaction.sender_id == nation.getNation_id()) {
@@ -3448,7 +3448,7 @@ public class BankCommands {
                         if (!excess.isEmpty()) {
                             tips2.add("Excess can be deposited: " + PnwUtil.resourcesToString(excess));
                             if (Boolean.TRUE.equals(db.getOrNull(GuildKey.DEPOSIT_INTEREST))) {
-                                List<Transaction2> transactions = finalNation.getTransactions(-1);
+                                List<Transaction2> transactions = finalNation.getTransactions(-1, false);
                                 long last = 0;
                                 for (Transaction2 transaction : transactions) last = Math.max(transaction.tx_datetime, last);
                                 if (System.currentTimeMillis() - last > TimeUnit.DAYS.toMillis(5)) {

@@ -508,8 +508,6 @@ public class DataDumpParser {
             tracker.onBaseball(new BaseballGameEvent(game));
         }
 
-        double[] EMPTY = ResourceType.getBuffer();
-
         Map<Long, Map<Continent, Double>> radsByDay = Locutus.imp().getNationDB().getRadiationByTurns();
 
         long previousTurn = 0L;
@@ -800,7 +798,7 @@ public class DataDumpParser {
 
     public Map<Long, File> load(String url, File savePath) throws IOException, ParseException {
         Map<Long, File> filesByDate = new LinkedHashMap<>();
-        Document dom = Jsoup.parse(FileUtil.readStringFromURL(PagePriority.DATA_DUMP.ordinal(), url));
+        Document dom = Jsoup.parse(FileUtil.readStringFromURL(PagePriority.DATA_DUMP, url));
         for (Element a : dom.select("a")) {
             String subUrl = a.attr("href");
             if (subUrl != null && subUrl.contains(".zip")) {

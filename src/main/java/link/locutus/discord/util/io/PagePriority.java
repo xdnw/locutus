@@ -89,11 +89,11 @@ public enum PagePriority {
         this.allowableDelayMs = allowableDelayMs;
     }
 
-    public int getAllowableDelayMs() {
-        return allowableDelayMs;
-    }
-
     public int getAllowedBufferingMs() {
         return allowedBufferingMs;
+    }
+
+    public int getAllowableDelayMs() {
+        return allowableDelayMs;
     }
 }

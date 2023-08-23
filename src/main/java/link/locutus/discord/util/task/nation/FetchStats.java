@@ -33,7 +33,7 @@ public class FetchStats{
         String statUrl = "" + Settings.INSTANCE.PNW_URL() + "/index.php?id=132&name=%s&type=%s&date=%s&submit=Go";
         statUrl = String.format(statUrl, URLEncoder.encode(name, "UTF-8"), type, dateStr);
 
-        Document dom = Jsoup.parse(FileUtil.readStringFromURL(PagePriority.NATION_STATS_UNUSED.ordinal(), statUrl));
+        Document dom = Jsoup.parse(FileUtil.readStringFromURL(PagePriority.NATION_STATS_UNUSED, statUrl));
         Elements tables = dom.getElementsByClass("nationtable");
         if (tables.isEmpty()) return;
 

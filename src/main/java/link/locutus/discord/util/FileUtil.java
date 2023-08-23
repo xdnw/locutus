@@ -1,6 +1,7 @@
 package link.locutus.discord.util;
 
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.io.PageRequestQueue;
 import link.locutus.discord.util.offshore.Auth;
 import org.apache.commons.io.IOUtils;
@@ -87,20 +88,20 @@ public final class FileUtil {
         return Thread.currentThread().getContextClassLoader();
     }
 
-    public static <T> T submit(int priority, Supplier<T> task, String url) {
-        return get(pageRequestQueue.submit(task, getPriority(priority), url));
+    public static <T> T submit(int priority, int maxBuffer, int maxDelay, Supplier<T> task, String url) {
+        return get(pageRequestQueue.submit(task, getPriority(priority), maxBuffer, maxDelay, url));
     }
 
-    public static <T> T submit(int priority, Supplier<T> task, URI url) {
-        return get(pageRequestQueue.submit(task, getPriority(priority), url));
+    public static <T> T submit(int priority, int maxBuffer, int maxDelay, Supplier<T> task, URI url) {
+        return get(pageRequestQueue.submit(task, getPriority(priority), maxBuffer, maxDelay, url));
     }
 
     public static PageRequestQueue getPageRequestQueue() {
         return pageRequestQueue;
     }
 
-    public static byte[] readBytesFromUrl(int priority, String urlStr) {
-        return submit(priority, () -> {
+    public static byte[] readBytesFromUrl(int priority, int maxBuffer, int maxDelay, String urlStr) {
+        return submit(priority, maxBuffer, maxDelay, () -> {
             try (InputStream is = new URL(urlStr).openStream()) {
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 byte[] byteChunk = new byte[4096]; // Or whatever size you want to read in at a time.
@@ -145,8 +146,12 @@ public final class FileUtil {
         }
     }
 
-    public static String readStringFromURL(int priority, String requestURL) throws IOException {
-        return submit(priority, () -> {
+    public static String readStringFromURL(PagePriority priority, String requestURL) throws IOException {
+        return readStringFromURL(priority.ordinal(), priority.getAllowedBufferingMs(), priority.getAllowableDelayMs(), requestURL);
+    }
+
+    public static String readStringFromURL(int priority, int maxBuffer, int maxDelay, String requestURL) throws IOException {
+        return submit(priority, maxBuffer, maxDelay, () -> {
                 try {
                     URL website = new URL(requestURL);
                     URLConnection connection = website.openConnection();
@@ -217,7 +222,7 @@ public final class FileUtil {
         return requestOrder.incrementAndGet() + Integer.MAX_VALUE * (long) priority;
     }
 
-    public static CompletableFuture<String> readStringFromURL(int priority, String urlStr, byte[] dataBinary, RequestType type, CookieManager msCookieManager, Consumer<HttpURLConnection> apply) {
+    public static CompletableFuture<String> readStringFromURL(int priority, int maxBuffer, int maxDelay, String urlStr, byte[] dataBinary, RequestType type, CookieManager msCookieManager, Consumer<HttpURLConnection> apply) {
         Supplier<String> fetch = new Supplier<String>() {
             @Override
             public String get() {
@@ -329,7 +334,7 @@ public final class FileUtil {
                     }
                 }
             }
-        }, getPriority(priority), urlStr);
+        }, getPriority(priority), maxBuffer, maxDelay, urlStr);
         return task;
     }
 }

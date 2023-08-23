@@ -183,7 +183,7 @@ public class CityTemplate extends AGrantTemplate<Integer> {
         list.add(new Grant.Requirement("Already received a grant for a city", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                List<Transaction2> transactions = nation.getTransactions(-1);
+                List<Transaction2> transactions = nation.getTransactions(-1, true);
                 return !Grant.hasGrantedCity(nation, transactions, currentCities + 1);
             }
         }));

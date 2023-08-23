@@ -1310,7 +1310,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
         Map<DBNation, Integer> ops = new HashMap<>();
         // get api
         PoliticsAndWarV3 api = getApiOrThrow(true, AlliancePermission.SEE_SPIES);
-        for (Nation nation : api.fetchNations(new Consumer<NationsQueryRequest>() {
+        for (Nation nation : api.fetchNations(true, new Consumer<NationsQueryRequest>() {
             @Override
             public void accept(NationsQueryRequest request) {
                 request.setAlliance_id(List.of(allianceId));

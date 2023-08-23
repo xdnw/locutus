@@ -773,15 +773,15 @@ public class PoliticsAndWarV3 {
         };
     }
 
-    public List<Bankrec> fetchBankRecsWithInfo(PagePriority priority, Consumer<BankrecsQueryRequest> filter) {
+    public List<Bankrec> fetchBankRecsWithInfo(boolean priority, Consumer<BankrecsQueryRequest> filter) {
         return fetchBankRecs(priority, filter, createBankRecProjection());
     }
 
-    public List<Bankrec> fetchBankRecs(PagePriority priority, Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query) {
+    public List<Bankrec> fetchBankRecs(boolean priority, Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query) {
         return fetchBankRecs(priority, BANKRECS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, f -> true);
     }
 
-    public List<Bankrec> fetchBankRecs(PagePriority priority, Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query, Predicate<Bankrec> recResults) {
+    public List<Bankrec> fetchBankRecs(boolean priority, Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query, Predicate<Bankrec> recResults) {
         return fetchBankRecs(priority, BANKRECS_PER_PAGE, filter, query, f -> ErrorResponse.THROW, recResults);
     }
 
@@ -804,10 +804,10 @@ public class PoliticsAndWarV3 {
         return alliance.get(0).getBankrecs();
     }
 
-    public List<Bankrec> fetchBankRecs(PagePriority priority, int perPage, Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bankrec> recResults) {
+    public List<Bankrec> fetchBankRecs(boolean priority, int perPage, Consumer<BankrecsQueryRequest> filter, Consumer<BankrecResponseProjection> query, Function<GraphQLError, ErrorResponse> errorBehavior, Predicate<Bankrec> recResults) {
         List<Bankrec> allResults = new ArrayList<>();
 
-        handlePagination(priority, page -> {
+        handlePagination(priority ? PagePriority.API_BANK_RECS_MANUAL : PagePriority.API_BANK_RECS_AUTO, page -> {
                     BankrecsQueryRequest request = new BankrecsQueryRequest();
                     if (filter != null) filter.accept(request);
                     request.setFirst(perPage);

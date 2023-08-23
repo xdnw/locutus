@@ -227,7 +227,7 @@ public class ForumDB extends DBMain {
         List<DBComment> newComments = new ArrayList<>();
 
         String url = "https://forum.politicsandwar.com/index.php?/discover/&view=expanded";
-        String content = FileUtil.readStringFromURL(PagePriority.FORUM_PAGE.ordinal(), url);
+        String content = FileUtil.readStringFromURL(PagePriority.FORUM_PAGE, url);
         Document dom = Jsoup.parse(content);
         Elements elems = dom.select("[data-searchable]");
         for (Element elem : elems) {

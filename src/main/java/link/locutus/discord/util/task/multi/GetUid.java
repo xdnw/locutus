@@ -19,16 +19,19 @@ import java.util.concurrent.Callable;
 
 public class GetUid implements Callable<BigInteger> {
     private final DBNation nation;
+    private final boolean priority;
     private boolean verified;
     private BigInteger uuid;
 
-    public GetUid(DBNation nation) {
+    public GetUid(DBNation nation, boolean priority) {
         this.nation = nation;
+        this.priority = priority;
     }
     @Override
     public BigInteger call() throws IOException {
         String url = nation.getNationUrl();
-        String html = FileUtil.readStringFromURL(PagePriority.NATION_UID.ordinal(), url);
+        PagePriority pp = (priority ? PagePriority.NATION_UID_MANUAL : PagePriority.NATION_UID_AUTO);
+        String html = FileUtil.readStringFromURL(pp.ordinal(), pp.getAllowedBufferingMs(), pp.getAllowableDelayMs(), url);
 
         Document dom = Jsoup.parse(html);
         try {

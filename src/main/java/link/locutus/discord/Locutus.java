@@ -726,7 +726,7 @@ public final class Locutus extends ListenerAdapter {
             }, Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS);
 
             addTaskSeconds(() -> {
-                runEventsAsync(bankDb::updateBankRecs);
+                runEventsAsync(f -> bankDb.updateBankRecs(false, f));
             }, Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS);
 
             addTaskSeconds(() -> {
@@ -738,7 +738,7 @@ public final class Locutus extends ListenerAdapter {
             }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS);
 
             addTaskSeconds(() -> {
-                runEventsAsync(nationDB::updateDirtyCities);
+                runEventsAsync(f -> nationDB.updateDirtyCities(false, f));
             }, Settings.INSTANCE.TASKS.OUTDATED_CITIES_SECONDS);
 
             if (Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS > 0) {

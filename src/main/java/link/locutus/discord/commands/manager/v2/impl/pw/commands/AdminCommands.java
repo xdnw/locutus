@@ -271,7 +271,7 @@ public class AdminCommands {
         }
         int count = 0;
         // read string from url
-        String csvTabSeparated = FileUtil.readStringFromURL(PagePriority.DISCORD_IDS_ENDPOINT.ordinal(), url);
+        String csvTabSeparated = FileUtil.readStringFromURL(PagePriority.DISCORD_IDS_ENDPOINT, url);
         // split into lines
         String[] lines = csvTabSeparated.split("\n");
         // iterate each line
@@ -1348,7 +1348,7 @@ public class AdminCommands {
         OffshoreInstance bank = alliance.getBank();
         bank.sync(timestamp, false);
 
-        Locutus.imp().getBankDB().updateBankRecs(Event::post);
+        Locutus.imp().getBankDB().updateBankRecs(false, Event::post);
         return "Done!";
     }
 

@@ -1613,7 +1613,7 @@ public class DBNation implements NationOrAlliance {
     public List<Transaction2> updateTransactions(boolean priority) {
         BankDB bankDb = Locutus.imp().getBankDB();
         if (Settings.USE_V2) {
-            Locutus.imp().runEventsAsync(events -> bankDb.updateBankRecsv2(nation_id, events));
+            Locutus.imp().runEventsAsync(events -> bankDb.updateBankRecsv2(nation_id, priority, events));
         } else if (Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS > 0) {
             System.out.println("Update bank recs 0");
             Locutus.imp().runEventsAsync(f -> bankDb.updateBankRecs(priority, f));
@@ -2296,12 +2296,12 @@ public class DBNation implements NationOrAlliance {
      * @param updateThreshold use 0l for force update
      * @return
      */
-    public Map<DepositType, double[]> getDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff) {
-        return getDeposits(db, tracked, useTaxBase, offset, updateThreshold, cutOff, false, false, f -> true);
+    public Map<DepositType, double[]> getDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean priority) {
+        return getDeposits(db, tracked, useTaxBase, offset, updateThreshold, cutOff, false, false, f -> true, priority);
     }
-    public Map<DepositType, double[]> getDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter) {
+    public Map<DepositType, double[]> getDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter, boolean priority) {
         long start = System.currentTimeMillis();
-        List<Map.Entry<Integer, Transaction2>> transactions = getTransactions(db, tracked, useTaxBase, offset, updateThreshold, cutOff);
+        List<Map.Entry<Integer, Transaction2>> transactions = getTransactions(db, tracked, useTaxBase, offset, updateThreshold, cutOff, priority);
         Map<DepositType, double[]> sum = PnwUtil.sumNationTransactions(db, tracked, transactions, forceIncludeExpired, forceIncludeIgnored, filter);
         return sum;
     }
@@ -2356,7 +2356,7 @@ public class DBNation implements NationOrAlliance {
             transactions.add(transaction);
         }
 
-        List<Transaction2> records = getTransactions(updateThreshold);
+        List<Transaction2> records = getTransactions(updateThreshold, priority);
         transactions.addAll(records);
 
         List<Map.Entry<Integer, Transaction2>> result = new ArrayList<>();
@@ -3781,7 +3781,7 @@ public class DBNation implements NationOrAlliance {
         if (pool.size() == 1 && pool.getNextApiKey().getKey().equalsIgnoreCase(Settings.INSTANCE.API_KEY_PRIMARY)) {
             Auth auth = Locutus.imp().getRootAuth();
             if (auth != null) {
-                String result = new MailTask(auth, this, subject, message, null).call();
+                String result = new MailTask(auth, priority, this, subject, message, null).call();
                 if (result.contains("Message sent")) {
                     return JsonParser.parseString("{\"success\":true,\"to\":\"" + nation_id + "\",\"cc\":null,\"subject\":\"" + subject + "\"}").getAsJsonObject();
                 }
@@ -4160,8 +4160,8 @@ public class DBNation implements NationOrAlliance {
         return new Activity(getNation_id(), turns);
     }
 
-    public JsonObject sendMail(Auth auth, String subject, String body) throws IOException {
-        String result = new MailTask(auth, this, subject, body, null).call();
+    public JsonObject sendMail(Auth auth, boolean priority, String subject, String body) throws IOException {
+        String result = new MailTask(auth, priority, this, subject, body, null).call();
         if (result.contains("Message sent")) {
             return JsonParser.parseString("{\"success\":true,\"to\":\"" + nation_id + "\",\"cc\":null,\"subject\":\"" + subject + "\"}").getAsJsonObject();
         }
@@ -4173,7 +4173,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public Map.Entry<Integer, Integer> getCommends() throws IOException {
-        Document dom = Jsoup.parse(FileUtil.readStringFromURL(PagePriority.COMMEND.ordinal(), getNationUrl()));
+        Document dom = Jsoup.parse(FileUtil.readStringFromURL(PagePriority.COMMEND, getNationUrl()));
         int commend = Integer.parseInt(dom.select("#commendment_count").text());
         int denounce = Integer.parseInt(dom.select("#denouncement_count").text());
         return new AbstractMap.SimpleEntry<>(commend, denounce);

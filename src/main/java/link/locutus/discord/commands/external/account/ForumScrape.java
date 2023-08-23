@@ -44,7 +44,7 @@ public class ForumScrape extends Command {
             String url = String.format(urlRaw, i);
 
             try {
-                String html = FileUtil.readStringFromURL(PagePriority.FORUM_PAGE.ordinal(), url);
+                String html = FileUtil.readStringFromURL(PagePriority.FORUM_PAGE, url);
                 Document dom = Jsoup.parse(html);
                 int nationId = Integer.parseInt(dom.select("strong:matches(Nation ID)").first().parent().nextElementSibling().text());
                 String discordId = dom.select("strong:matches(Discord Name)").first().parent().nextElementSibling().text();

@@ -100,7 +100,7 @@ public class BankPages {
             for (double[] value : deposits.values()) total = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, total, value);
             row.set(7, MathMan.format(PnwUtil.convertedTotal(total)));
 
-            List<Transaction2> transactions = nation.getTransactions(-1);
+            List<Transaction2> transactions = nation.getTransactions(-1, true);
 
             long lastDeposit = 0;
             for (Transaction2 transaction : transactions) {

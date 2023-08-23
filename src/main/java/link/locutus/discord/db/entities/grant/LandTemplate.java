@@ -82,7 +82,7 @@ public class LandTemplate extends AGrantTemplate<Double>{
 
     public Map<Integer, Double> getTopCityLandGrant(DBNation receiver) {
 
-        List<Transaction2> transactions = receiver.getTransactions(0);
+        List<Transaction2> transactions = receiver.getTransactions(0, true);
 
         Map<Integer, Double> landGrants = Grant.getLandGrantedByCity(receiver, transactions);
 

@@ -181,7 +181,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
 
     public Map<Integer, Map<Long, Double>> getTopCityInfraGrant(DBNation receiver) {
 
-        List<Transaction2> transactions = receiver.getTransactions(0);
+        List<Transaction2> transactions = receiver.getTransactions(0, true);
 
         Map<Integer, Map<Long, Double>> grants = Grant.getInfraGrantsByCityByDate(receiver, transactions);
 
