@@ -1053,7 +1053,7 @@ public class NationDB extends DBMainV2 {
         updateCities(nationIdCityIdCityMap, eventConsumer);
     }
 
-    public void updateCitiesOfNations(Set<Integer> nationIds, boolean bulk, Consumer<Event> eventConsumer) {
+    public void updateCitiesOfNations(Set<Integer> nationIds, boolean isAuto, boolean bulk, Consumer<Event> eventConsumer) {
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
 
         List<Integer> idList = new ArrayList<>(nationIds);

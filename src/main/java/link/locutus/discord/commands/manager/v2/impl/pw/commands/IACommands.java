@@ -833,7 +833,7 @@ public class IACommands {
             auth = me.getAuth();
         } else {
             auth = sender.getAuth(true);
-            GuildDB authDB = Locutus.imp().getGuildDB(sender.getAlliance_id());
+            GuildDB authDB = Locutus.imp().getGuildDBByAA(sender.getAlliance_id());
             boolean hasPerms = (Roles.INTERNAL_AFFAIRS.hasOnRoot(author)) || (authDB != null && Roles.INTERNAL_AFFAIRS.has(author, authDB.getGuild()));
             if (authDB == null) {
                 return "No discord guild found for sender's alliance (sender: " + sender.getNation() + ", alliance: " + sender.getAllianceName() + "). See: " + GuildKey.ALLIANCE_ID.getCommandMention();
