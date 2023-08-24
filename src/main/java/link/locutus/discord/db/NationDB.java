@@ -1832,7 +1832,7 @@ public class NationDB extends DBMainV2 {
             return false;
         };
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
-        v3.fetchNationsWithInfo(filter, onEachNation);
+        v3.fetchNationsWithInfo(false, filter, onEachNation);
 
         updateNationCitiesAndPositions(nationChanges, eventConsumer);
         return nationsFetched;

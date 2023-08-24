@@ -1457,7 +1457,7 @@ public class IACommands {
 
             String result;
             try {
-                JsonObject json = nation.sendMail(keys, subject, body);
+                JsonObject json = nation.sendMail(keys, subject, body, false);
                 result = json + "";
             } catch (IOException e) {
                 errors++;

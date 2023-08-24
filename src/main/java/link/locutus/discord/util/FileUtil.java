@@ -155,21 +155,26 @@ public final class FileUtil {
                 try {
                     URL website = new URL(requestURL);
                     URLConnection connection = website.openConnection();
-                    check409Error(connection);
-                    try (BufferedReader in = new BufferedReader(
-                            new InputStreamReader(connection.getInputStream()))) {
+                    try {
+                        try (BufferedReader in = new BufferedReader(
+                                new InputStreamReader(connection.getInputStream()))) {
 
-                        StringBuilder response = new StringBuilder();
-                        String inputLine;
+                            StringBuilder response = new StringBuilder();
+                            String inputLine;
 
-                        while ((inputLine = in.readLine()) != null) {
-                            response.append(inputLine);
+                            while ((inputLine = in.readLine()) != null) {
+                                response.append(inputLine);
+                            }
+                            return response.toString();
                         }
-                        return response.toString();
+                    } catch (IOException e) {
+                        check409Error(connection);
+                        e.printStackTrace();
+                        throw new RuntimeException(e);
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
-                    return null;
+                    throw new RuntimeException(e);
                 }
             },
             requestURL
@@ -230,7 +235,6 @@ public final class FileUtil {
                 try {
                     URL url = new URL(urlStr);
                     URLConnection con = url.openConnection();
-                    check409Error(con);
                     HttpURLConnection http = (HttpURLConnection) con;
 
                     if (msCookieManager != null && msCookieManager.getCookieStore().getCookies().size() > 0) {
@@ -293,6 +297,7 @@ public final class FileUtil {
 
                         return new String(bytes, StandardCharsets.UTF_8);
                     } catch (IOException e) {
+                        check409Error(http);
                         try (InputStream is = http.getErrorStream()) {
                             if (is != null) {
                                 throw new IOException(e.getMessage() + ":\n" + IOUtils.toString(is, StandardCharsets.UTF_8));
