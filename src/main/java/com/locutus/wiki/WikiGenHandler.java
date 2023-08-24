@@ -1,15 +1,18 @@
 package com.locutus.wiki;
 
 import com.locutus.wiki.pages.WikiAlliancePlaceholdersPage;
+import com.locutus.wiki.pages.WikiAntiLeakPage;
 import com.locutus.wiki.pages.WikiArgumentsPage;
 import com.locutus.wiki.pages.WikiAuditingPage;
 import com.locutus.wiki.pages.WikiAutoMaskingPage;
 import com.locutus.wiki.pages.WikiBankPage;
 import com.locutus.wiki.pages.WikiBeigeCyclingPage;
 import com.locutus.wiki.pages.WikiBlitzPage;
+import com.locutus.wiki.pages.WikiBlockadePage;
 import com.locutus.wiki.pages.WikiCoalitionsPage;
 import com.locutus.wiki.pages.WikiCommandsPage;
 import com.locutus.wiki.pages.WikiCounteringPage;
+import com.locutus.wiki.pages.WikiCustomSheetsPage;
 import com.locutus.wiki.pages.WikiDNRPage;
 import com.locutus.wiki.pages.WikiDepositsPage;
 import com.locutus.wiki.pages.WikiEmbassyPage;
@@ -17,12 +20,16 @@ import com.locutus.wiki.pages.WikiEscrowPage;
 import com.locutus.wiki.pages.WikiFindingTargetsPage;
 import com.locutus.wiki.pages.WikiHelpPage;
 import com.locutus.wiki.pages.WikiInterviewPage;
+import com.locutus.wiki.pages.WikiLoanPage;
 import com.locutus.wiki.pages.WikiNationPlaceholdersPage;
 import com.locutus.wiki.pages.WikiRecruitmentPage;
+import com.locutus.wiki.pages.WikiReportPage;
 import com.locutus.wiki.pages.WikiSendTargetsPage;
 import com.locutus.wiki.pages.WikiSetupPage;
 import com.locutus.wiki.pages.WikiSpyWarPage;
+import com.locutus.wiki.pages.WikiStatisticsPage;
 import com.locutus.wiki.pages.WikiTaxBracketPage;
+import com.locutus.wiki.pages.WikiTradePage;
 import com.locutus.wiki.pages.WikiWarAlertsPage;
 import com.locutus.wiki.pages.WikiWarRoomPage;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -108,7 +115,7 @@ public class WikiGenHandler {
 //        //Anti Leak System
         pages.add(new WikiAntiLeakPage(manager)); // <---   ####
 //        //Making custom spreadsheets
-        pages.add(new WikiCustomSpreadsheetsPage(manager)); // <---   ####
+        pages.add(new WikiCustomSheetsPage(manager)); // <---   ####
 //        //Statistics System
         pages.add(new WikiStatisticsPage(manager)); // <---   ####
 //        //Trade System (use trading guide)

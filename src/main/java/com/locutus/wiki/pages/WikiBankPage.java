@@ -13,6 +13,8 @@ public class WikiBankPage extends WikiGen {
        /*
        https://docs.google.com/document/d/1QkN1FDh8Z8ENMcS5XX8zaCwS9QRBeBJdCmHN5TKu_l8/edit
 
+       offshore browser extension
+
         How to create and run a custom offshore
         manage offshore balances
 
