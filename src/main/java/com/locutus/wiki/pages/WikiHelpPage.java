@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.util.MarkupUtil;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class WikiHelpPage extends WikiGen {
@@ -16,7 +17,7 @@ public class WikiHelpPage extends WikiGen {
 
     public WikiHelpPage(CommandManager2 manager, List<WikiGen>pages) {
         super(manager, "overview");
-        this.pages = pages;
+        this.pages = new ArrayList<>(pages);
         this.urlPrefix = "../";
     }
 

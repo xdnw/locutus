@@ -70,6 +70,7 @@ public class RequestTracker {
         Integer retryAfter = null;
         try {
             if (retryMs < now) {
+                addRequest(task.getUrl());
                 Supplier supplier = task.getTask();
                 task.complete(supplier.get());
             }
@@ -131,19 +132,14 @@ public class RequestTracker {
         return DOMAIN_MAP.computeIfAbsent(url.getHost(), k -> DOMAIN_COUNTER.incrementAndGet());
     }
 
-    private void addRequest(URI url) throws URISyntaxException {
-        String domain = url.getHost();
-        if (domain != null) {
-            int domainId = getDomainId(url);
-            long currentTime = System.currentTimeMillis();
+    private void addRequest(URI url) {
+        int domainId = getDomainId(url);
+        long currentTime = System.currentTimeMillis();
 
-            synchronized (DOMAIN_REQUESTS) {
-                DOMAIN_REQUESTS.computeIfAbsent(domainId, k -> new Object2ObjectOpenHashMap<>())
-                        .computeIfAbsent(url.toString(), k -> new ArrayList<>())
-                        .add(currentTime);
-            }
-        } else {
-            throw new URISyntaxException(url.toString(), "Invalid domain");
+        synchronized (DOMAIN_REQUESTS) {
+            DOMAIN_REQUESTS.computeIfAbsent(domainId, k -> new Object2ObjectOpenHashMap<>())
+                    .computeIfAbsent(url.toString(), k -> new ArrayList<>())
+                    .add(currentTime);
         }
     }
 
