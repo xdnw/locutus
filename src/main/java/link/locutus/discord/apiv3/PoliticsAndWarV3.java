@@ -1173,6 +1173,7 @@ public class PoliticsAndWarV3 {
                         .key()
                         .max_requests()
                         .requests()
+                        .permission_bits()
                         .nation(new NationResponseProjection().id()),
                 MeQueryResponse.class);
         if (result.me() == null) throw new GraphQLException("Error fetching api key");

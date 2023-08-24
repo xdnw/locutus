@@ -139,13 +139,6 @@ public class CM {
                 }
             }
         }
-        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="rootApiUsageStats")
-        public static class rootApiUsageStats extends CommandRef {
-            public static final rootApiUsageStats cmd = new rootApiUsageStats();
-            public rootApiUsageStats create() {
-                return createArgs();
-            }
-        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="stop")
         public static class stop extends CommandRef {
             public static final stop cmd = new stop();

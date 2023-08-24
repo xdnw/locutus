@@ -1613,7 +1613,7 @@ public class DBNation implements NationOrAlliance {
     public List<Transaction2> updateTransactions(boolean priority) {
         BankDB bankDb = Locutus.imp().getBankDB();
         if (Settings.USE_V2) {
-            Locutus.imp().runEventsAsync(events -> bankDb.updateBankRecsv2(nation_id, priority, events));
+            Locutus.imp().runEventsAsync(events -> bankDb.updateBankRecs(nation_id, priority, events));
         } else if (Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS > 0) {
             System.out.println("Update bank recs 0");
             Locutus.imp().runEventsAsync(f -> bankDb.updateBankRecs(priority, f));

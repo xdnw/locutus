@@ -876,6 +876,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return api;
     }
 
+    @Deprecated
     public PoliticsAndWarV2 getApiV2(AlliancePermission... permissions) {
         ApiKeyPool pool = getApiKeys(permissions);
         if (pool == null) return null;

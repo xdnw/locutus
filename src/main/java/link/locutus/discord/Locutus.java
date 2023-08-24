@@ -47,7 +47,6 @@ import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.util.update.*;
 import link.locutus.discord.web.jooby.WebRoot;
 import com.google.common.eventbus.EventBus;
-import link.locutus.discord.apiv1.PoliticsAndWarBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Guild;
@@ -109,9 +108,6 @@ public final class Locutus extends ListenerAdapter {
     private final DiscordDB discordDB;
     private final NationDB nationDB;
     private Guild server;
-
-    private final PoliticsAndWarV2 pnwApi;
-    private final PoliticsAndWarV2 rootPnwApi;
 
     private final PoliticsAndWarV3 v3;
 
@@ -226,11 +222,6 @@ public final class Locutus extends ListenerAdapter {
         if (pool.isEmpty()) {
             pool.add(Settings.INSTANCE.API_KEY_PRIMARY);
         }
-
-        this.pnwApi = new PoliticsAndWarBuilder().addApiKeys(pool.toArray(new String[0])).setEnableCache(false).setTestServerMode(Settings.INSTANCE.TEST).build();
-        System.out.println("remove:|| pnwapi " + (((-start)) + (start = System.currentTimeMillis())));
-        this.rootPnwApi = new PoliticsAndWarBuilder().addApiKeys(Settings.INSTANCE.API_KEY_PRIMARY).setEnableCache(false).setTestServerMode(Settings.INSTANCE.TEST).build();
-        System.out.println("remove:|| rootpnwapi " + (((-start)) + (start = System.currentTimeMillis())));
 
         ApiKeyPool v3Pool = ApiKeyPool.builder().addKey(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY,Settings.INSTANCE.ACCESS_KEY).build();
         this.v3 = new PoliticsAndWarV3(v3Pool);
@@ -912,14 +903,6 @@ public final class Locutus extends ListenerAdapter {
 
     public PoliticsAndWarV3 getV3() {
         return v3;
-    }
-
-    public PoliticsAndWarV2 getPnwApiV2() {
-        return pnwApi;
-    }
-
-    public PoliticsAndWarV2 getRootPnwApiV2() {
-        return rootPnwApi;
     }
 
     @Override

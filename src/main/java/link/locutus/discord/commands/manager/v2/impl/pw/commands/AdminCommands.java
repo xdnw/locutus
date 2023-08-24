@@ -867,43 +867,31 @@ public class AdminCommands {
                 "To unregister, use " + CM.role.unregister.cmd.create(locutusRole.name(), null).toSlashCommand() + "";
     }
 
-    public String printApiStats(PoliticsAndWarV2 api) {
-        Map<String, AtomicInteger> methodUsage = api.getMethodUsageStats();
-        List<Map.Entry<String, AtomicInteger>> sorted = new ArrayList<>(methodUsage.entrySet());
-        sorted.sort((o1, o2) -> Integer.compare(o2.getValue().intValue(), o1.getValue().intValue()));
-
-        StringBuilder response = new StringBuilder("API usage by method:\n");
-        for (Map.Entry<String, AtomicInteger> entry : sorted) {
-            response.append("- " + entry.getKey() + ": " + entry.getValue().intValue() + "\n");
-        }
-        response.append("\n\n------------------------\n\nApi stacktraces (>100 calls)");
-        for (Map.Entry<String, AtomicInteger> entry : sorted) {
-            if (entry.getValue().intValue() < 100) break;
-
-            response.append("\n\n**" + entry.getKey() + "** |||| ==== |||| :\n");
-            Set<List<StackTraceElement>> traces = api.getMethodToStacktrace().get(entry.getKey());
-            for (List<StackTraceElement> trace : traces) {
-                response.append("\nTrace:\n" + StringMan.stacktraceToString(trace.toArray(new StackTraceElement[0])));
+    public String printApiStats(ApiKeyPool keys) {
+        Map<String, String> map = new LinkedHashMap<>();
+        for (ApiKeyPool.ApiKey key : keys.getKeys()) {
+            PoliticsAndWarV3 v3 = new PoliticsAndWarV3(ApiKeyPool.create(key));
+            try {
+                ApiKeyDetails stats = v3.getApiKeyStats();
+                map.put(key.getKey(), StringMan.formatJsonLikeText(stats.toString()));
+            } catch (Throwable e) {
+                map.put(key.getKey(), e.getMessage());
             }
-
         }
-        return "```" + response.toString() + "```";
-    }
+        StringBuilder response = new StringBuilder();
 
-    @Command()
-    @RolePermission(value = Roles.ADMIN, root = true)
-    public String rootApiUsageStats() {
-        PoliticsAndWarV2 api = Locutus.imp().getRootPnwApiV2();
-        System.out.println(printApiStats(api));
-        return "Done! (see console)";
+        // Convert map to simple message (newline for each / header)
+        for (Map.Entry<String, String> entry : map.entrySet()) {
+            response.append("**Key `" + entry.getKey() + "`:\n```json\n" + entry.getValue() + "\n```\n\n");
+        }
+        return response.toString();
     }
 
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
     public String apiUsageStats(@Me DBAlliance alliance, boolean cached) {
         ApiKeyPool keys = alliance.getApiKeys();
-        PoliticsAndWarV2 api = new PoliticsAndWarV2(keys, Settings.INSTANCE.TEST, cached);
-        System.out.println(printApiStats(api));
+        System.out.println(printApiStats(keys));
         return "Done! (see console)";
     }
 
@@ -931,38 +919,40 @@ public class AdminCommands {
     @Command(desc = "Check if current api keys are valid")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String validateAPIKeys() {
-        Set<String> keys = Locutus.imp().getPnwApiV2().getApiKeyUsageStats().keySet();
-        Map<String, String> failed = new LinkedHashMap<>();
-        Map<String, ApiKeyDetails> success = new LinkedHashMap<>();
-        for (String key : keys) {
-            try {
-                ApiKeyDetails stats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
-                if (stats != null && stats.getNation() != null && stats.getNation().getId() != null) {
-                    success.put(key, stats);
-                } else {
-                    failed.put(key, "Error: null (1)");
-                }
-            } catch (Throwable e) {
-                failed.put(key, e.getMessage());
-            }
-        }
-        StringBuilder response = new StringBuilder();
-        for (Map.Entry<String, String> e : failed.entrySet()) {
-            response.append(e.getKey() + ": " + e.getValue() + "\n");
-        }
-        for (Map.Entry<String, ApiKeyDetails> e : success.entrySet()) {
-            String key = e.getKey();
-            ApiKeyDetails record = e.getValue();
-            int natId = record.getNation().getId();
-            DBNation nation = DBNation.getById(natId);
-            if (nation != null) {
-                response.append(key + ": " + record.toString() + " | " + nation.getNation() + " | " + nation.getAllianceName() + " | " + nation.getPosition() + "\n");
-            } else {
-                response.append(e.getKey() + ": " + e.getValue() + "\n");
-            }
-        }
-        System.out.println(response); // keep
-        return "Done (see console)";
+        // Validate v3 keys used in the guild db?
+        return "TODO";
+//        Set<String> keys = Locutus.imp().getPnwApiV2().getApiKeyUsageStats().keySet();
+//        Map<String, String> failed = new LinkedHashMap<>();
+//        Map<String, ApiKeyDetails> success = new LinkedHashMap<>();
+//        for (String key : keys) {
+//            try {
+//                ApiKeyDetails stats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
+//                if (stats != null && stats.getNation() != null && stats.getNation().getId() != null) {
+//                    success.put(key, stats);
+//                } else {
+//                    failed.put(key, "Error: null (1)");
+//                }
+//            } catch (Throwable e) {
+//                failed.put(key, e.getMessage());
+//            }
+//        }
+//        StringBuilder response = new StringBuilder();
+//        for (Map.Entry<String, String> e : failed.entrySet()) {
+//            response.append(e.getKey() + ": " + e.getValue() + "\n");
+//        }
+//        for (Map.Entry<String, ApiKeyDetails> e : success.entrySet()) {
+//            String key = e.getKey();
+//            ApiKeyDetails record = e.getValue();
+//            int natId = record.getNation().getId();
+//            DBNation nation = DBNation.getById(natId);
+//            if (nation != null) {
+//                response.append(key + ": " + record.toString() + " | " + nation.getNation() + " | " + nation.getAllianceName() + " | " + nation.getPosition() + "\n");
+//            } else {
+//                response.append(e.getKey() + ": " + e.getValue() + "\n");
+//            }
+//        }
+//        System.out.println(response); // keep
+//        return "Done (see console)";
     }
 
     @Command(desc = "Test your alliance recruitment message by sending it to the bot creator's nation")

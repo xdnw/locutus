@@ -248,11 +248,11 @@ public class BankDB extends DBMainV3 {
         System.out.println("Saved bank recs in " + (System.currentTimeMillis() - start) + "ms");
     }
 
-    public void updateBankRecsv2(int nationId, boolean priority, Consumer<Event> eventConsumer) {
-        PoliticsAndWarV2 api = Locutus.imp().getPnwApiV2();
-        List<BankRecord> records = api.getBankRecords(nationId, priority);
-        saveBankRecsV2(records, eventConsumer);
-    }
+//    public void updateBankRecsv2(int nationId, boolean priority, Consumer<Event> eventConsumer) {
+//        PoliticsAndWarV2 api = Locutus.imp().getPnwApiV2();
+//        List<BankRecord> records = api.getBankRecords(nationId, priority);
+//        saveBankRecsV2(records, eventConsumer);
+//    }
 
     public void updateBankRecs(boolean priority, Consumer<Event> eventConsumer) {
         ByteBuffer info = Locutus.imp().getDiscordDB().getInfo(DiscordMeta.BANK_RECS_SEQUENTIAL, 0);
