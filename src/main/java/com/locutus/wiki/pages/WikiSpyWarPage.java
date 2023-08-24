@@ -13,7 +13,7 @@ public class WikiSpyWarPage extends WikiGen {
        /*
        TODO espionage commands
 
-       Spy template
+       Spy template (member one, and the gov sheet one)
 
        https://docs.google.com/document/d/1qlZ-J2MV2P-xbf-gPpYW4KyEMqlO7q7j_I4GMnjM9ds/edit
 
@@ -24,6 +24,11 @@ public class WikiSpyWarPage extends WikiGen {
         Spy counter
 
         Espionage channel
+
+        Converting common sheet formats (hidude tkr rose etc.)
+
+        Generating a sub sheet
+        /sheets_milcom listSpyTargets
         */
     }
 }

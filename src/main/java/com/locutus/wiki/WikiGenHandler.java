@@ -5,6 +5,8 @@ import com.locutus.wiki.pages.WikiArgumentsPage;
 import com.locutus.wiki.pages.WikiAuditingPage;
 import com.locutus.wiki.pages.WikiAutoMaskingPage;
 import com.locutus.wiki.pages.WikiBankPage;
+import com.locutus.wiki.pages.WikiBeigeCyclingPage;
+import com.locutus.wiki.pages.WikiBlitzPage;
 import com.locutus.wiki.pages.WikiCoalitionsPage;
 import com.locutus.wiki.pages.WikiCommandsPage;
 import com.locutus.wiki.pages.WikiCounteringPage;
@@ -12,12 +14,15 @@ import com.locutus.wiki.pages.WikiDNRPage;
 import com.locutus.wiki.pages.WikiDepositsPage;
 import com.locutus.wiki.pages.WikiEmbassyPage;
 import com.locutus.wiki.pages.WikiEscrowPage;
+import com.locutus.wiki.pages.WikiFindingTargetsPage;
 import com.locutus.wiki.pages.WikiHelpPage;
 import com.locutus.wiki.pages.WikiInterviewPage;
 import com.locutus.wiki.pages.WikiNationPlaceholdersPage;
 import com.locutus.wiki.pages.WikiRecruitmentPage;
+import com.locutus.wiki.pages.WikiSendTargetsPage;
 import com.locutus.wiki.pages.WikiSetupPage;
 import com.locutus.wiki.pages.WikiSpyWarPage;
+import com.locutus.wiki.pages.WikiTaxBracketPage;
 import com.locutus.wiki.pages.WikiWarAlertsPage;
 import com.locutus.wiki.pages.WikiWarRoomPage;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -88,29 +93,27 @@ public class WikiGenHandler {
         pages.add(new WikiEscrowPage(manager)); // <---
 //        //Plan a blitz
         pages.add(new WikiBlitzPage(manager)); // <---
-//        //- get coalitions
-//        //- Counter blitz
 //        //Send out targets
         pages.add(new WikiSendTargetsPage(manager)); // <---
 //        //Spy war
         pages.add(new WikiSpyWarPage(manager)); // <---
 //        //Blockade System
-        pages.add(new WikiBlockadePage(manager)); // <---
+        pages.add(new WikiBlockadePage(manager)); // <---   ####
 //        //Beige cycling tutorial
         pages.add(new WikiBeigeCyclingPage(manager)); // <---
 //        //Loan System
-        pages.add(new WikiLoanPage(manager)); // <---
+        pages.add(new WikiLoanPage(manager));// <---   ####
 //        //Report System
-        pages.add(new WikiReportPage(manager)); // <---
+        pages.add(new WikiReportPage(manager)); // <---   ####
 //        //Anti Leak System
-        pages.add(new WikiAntiLeakPage(manager)); // <---
+        pages.add(new WikiAntiLeakPage(manager)); // <---   ####
 //        //Making custom spreadsheets
-        pages.add(new WikiCustomSpreadsheetsPage(manager)); // <---
+        pages.add(new WikiCustomSpreadsheetsPage(manager)); // <---   ####
 //        //Statistics System
-        pages.add(new WikiStatisticsPage(manager)); // <---
+        pages.add(new WikiStatisticsPage(manager)); // <---   ####
 //        //Trade System (use trading guide)
 //        //- Link DocScripts trade tool (cause useful)
-        pages.add(new WikiTradePage(manager)); // <---
+        pages.add(new WikiTradePage(manager)); // <---   ####
 
         WikiHelpPage help = new WikiHelpPage(manager, pages);
         pages.add(help);

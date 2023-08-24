@@ -19,9 +19,11 @@ public class WikiWarAlertsPage extends WikiGen {
         }
 
         // Militarization alerts
+        // ACTIVITY_ALERTS
         // /settings_orbis_alerts ORBIS_OFFICER_MMR_CHANGE_ALERTS
         // /settings_orbis_alerts AA_GROUND_TOP_X
         ///settings_orbis_alerts AA_GROUND_UNIT_ALERTS
+//        /settings_beige_alerts ENEMY_MMR_CHANGE_ALERTS
         // Set the role
 
 
