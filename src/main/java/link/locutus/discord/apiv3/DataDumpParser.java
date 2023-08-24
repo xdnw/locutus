@@ -438,7 +438,7 @@ public class DataDumpParser {
             }
         }
 
-        Locutus.imp().runEventsAsync(Locutus.imp().getWarDb()::updateAllWarsV2);
+        Locutus.imp().runEventsAsync(Locutus.imp().getWarDb()::updateAllWars);
         Locutus.imp().runEventsAsync(Locutus.imp().getWarDb()::updateAttacks);
 
         Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWarsSince(minDate - TimeUnit.DAYS.toMillis(5));
