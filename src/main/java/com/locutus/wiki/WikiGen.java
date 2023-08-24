@@ -44,7 +44,7 @@ public abstract class WikiGen {
     public abstract String generateMarkdown();
 
     public String build(String... content) {
-        return StringMan.join(content, "\n");
+        return StringMan.join(content, "\n\n");
     }
 
     public String commandMarkdownSpoiler(CommandRef ref) {

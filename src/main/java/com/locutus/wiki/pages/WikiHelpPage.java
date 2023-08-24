@@ -15,7 +15,7 @@ public class WikiHelpPage extends WikiGen {
     private final String urlPrefix;
 
     public WikiHelpPage(CommandManager2 manager, List<WikiGen>pages) {
-        super(manager, "Overview");
+        super(manager, "overview");
         this.pages = pages;
         this.urlPrefix = "../";
     }
