@@ -2294,7 +2294,7 @@ public class GuildKey {
     }.setupRequirements(f -> f.requireValidAlliance().requiresOffshore());
 
     // add a limit interval
-    public static GuildSetting<Long> GRANT_LIMIT_DELAY = new GuildLongSetting(GuildSettingCategory.RECRUIT) {
+    public static GuildSetting<Long> GRANT_LIMIT_DELAY = new GuildLongSetting(GuildSettingCategory.BANK_ACCESS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)

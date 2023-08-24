@@ -10,6 +10,11 @@ public class WikiArgumentsPage extends WikiGen {
     }
 
     @Override
+    public String getDescription() {
+        return "List and description of all command arguments.";
+    }
+
+    @Override
     public String generateMarkdown() {
         return CommandWikiPages.printParsers(getManager().getStore());
     }

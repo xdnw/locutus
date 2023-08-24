@@ -2119,11 +2119,11 @@ public class CM {
         }
     }
     public static class role{
-        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="addRole")
-        public static class add extends CommandRef {
-            public static final add cmd = new add();
-            public add create(String member, String addRole) {
-                return createArgs("member", member, "addRole", addRole);
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="mask")
+        public static class mask extends CommandRef {
+            public static final mask cmd = new mask();
+            public mask create(String members, String role, String value, String toggleMaskFromOthers) {
+                return createArgs("members", members, "role", role, "value", value, "toggleMaskFromOthers", toggleMaskFromOthers);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="addRoleToAllMembers")
@@ -2175,13 +2175,6 @@ public class CM {
                 return createArgs("optOut", optOut);
             }
         }
-        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="removeRole")
-        public static class remove extends CommandRef {
-            public static final remove cmd = new remove();
-            public remove create(String member, String addRole) {
-                return createArgs("member", member, "addRole", addRole);
-            }
-        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="removeAssignableRole")
         public static class removeAssignableRole extends CommandRef {
             public static final removeAssignableRole cmd = new removeAssignableRole();
@@ -2205,6 +2198,20 @@ public class CM {
         }
     }
     public static class self{
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="addRole")
+        public static class add extends CommandRef {
+            public static final add cmd = new add();
+            public add create(String member, String addRole) {
+                return createArgs("member", member, "addRole", addRole);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="removeRole")
+        public static class remove extends CommandRef {
+            public static final remove cmd = new remove();
+            public remove create(String member, String addRole) {
+                return createArgs("member", member, "addRole", addRole);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="addAssignableRole")
         public static class create extends CommandRef {
             public static final create cmd = new create();
@@ -2217,13 +2224,6 @@ public class CM {
             public static final list cmd = new list();
             public list create() {
                 return createArgs();
-            }
-        }
-        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="mask")
-        public static class mask extends CommandRef {
-            public static final mask cmd = new mask();
-            public mask create(String members, String role, String value, String toggleMaskFromOthers) {
-                return createArgs("members", members, "role", role, "value", value, "toggleMaskFromOthers", toggleMaskFromOthers);
             }
         }
     }
