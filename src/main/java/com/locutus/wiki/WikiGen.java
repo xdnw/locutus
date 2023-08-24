@@ -48,7 +48,7 @@ public abstract class WikiGen {
     }
 
     public String commandMarkdownSpoiler(CommandRef ref) {
-        String title = ref.toSlashCommand(true);
+        String title = "### " + ref.toSlashCommand(true);
         String body = commandMarkdown(ref);
         return MarkupUtil.spoiler(title, body);
     }

@@ -138,10 +138,10 @@ public class PageRequestQueue {
                 }
             }
 
-            if (maxCount < 60) {
+            if (maxCount < 59) {
                 firstTask = task;
             } else {
-                int over = minuteCount - 59;
+                int over = minuteCount - 58;
                 minWait = Math.min(TimeUnit.SECONDS.toMillis(over), minWait);
             }
         }

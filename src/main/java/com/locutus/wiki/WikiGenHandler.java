@@ -102,7 +102,8 @@ public class WikiGenHandler {
 //        //- Link DocScripts trade tool (cause useful)
 //        pages.add(new WikiTradePage(manager));
 
-        pages.add(new WikiHelpPage(manager, pages)); // <---
+        WikiHelpPage help = new WikiHelpPage(manager, pages);
+        pages.add(help); // <---
 
         for (WikiGen page : pages) {
             writePage(page);
