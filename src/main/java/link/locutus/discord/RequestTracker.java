@@ -27,15 +27,15 @@ import java.util.stream.Collectors;
 
 public class RequestTracker {
     // A map of the domain to the id, the id is from the domain counter, must be atomic
-    private Map<String, Integer> DOMAIN_MAP = new ConcurrentHashMap<>();
-    private Map<Integer, Object> DOMAIN_LOCKS = new ConcurrentHashMap<>();
+    private final Map<String, Integer> DOMAIN_MAP = new ConcurrentHashMap<>();
+    private final Map<Integer, Object> DOMAIN_LOCKS = new ConcurrentHashMap<>();
     // The domain counter, increment for each new domain
-    private AtomicInteger DOMAIN_COUNTER = new AtomicInteger(0);
+    private final AtomicInteger DOMAIN_COUNTER = new AtomicInteger(0);
     // The map of the domain id, to the url and then the list of times being requested
-    private Map<Integer, Map<String, List<Long>>> DOMAIN_REQUESTS = new Int2ObjectOpenHashMap<>();
+    private final Map<Integer, Map<String, List<Long>>> DOMAIN_REQUESTS = new Int2ObjectOpenHashMap<>();
 
-    private Map<Integer, Boolean> DOMAIN_HAS_RATE_LIMITING = new ConcurrentHashMap<>();
-    private Map<Integer, Long> DOMAIN_RETRY_AFTER = new ConcurrentHashMap<>();
+    private final Map<Integer, Boolean> DOMAIN_HAS_RATE_LIMITING = new ConcurrentHashMap<>();
+    private final Map<Integer, Long> DOMAIN_RETRY_AFTER = new ConcurrentHashMap<>();
 
     public boolean hasRateLimiting(URI url) {
         return DOMAIN_HAS_RATE_LIMITING.getOrDefault(url.getHost(), false);
@@ -114,6 +114,7 @@ public class RequestTracker {
                     // sleep remaining ms
                     long sleepMs = timestamp - now;
                     try {
+                        System.out.println("Sleeping for " + sleepMs + "ms");
                         Thread.sleep(sleepMs);
                     } catch (InterruptedException e) {
                         e.printStackTrace();

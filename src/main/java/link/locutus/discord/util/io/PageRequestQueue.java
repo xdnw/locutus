@@ -4,8 +4,11 @@ import link.locutus.discord.RequestTracker;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.client.HttpClientErrorException;
 
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 import java.util.concurrent.CompletableFuture;
