@@ -10,6 +10,11 @@ public class WikiAlliancePlaceholdersPage extends WikiGen {
     }
 
     @Override
+    public String getDescription() {
+        return "List and description of all alliance placeholders.";
+    }
+
+    @Override
     public String generateMarkdown() {
         return CommandWikiPages.printPlaceholders(getManager().getNationPlaceholders(), getManager().getStore());
     }

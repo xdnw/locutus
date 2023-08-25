@@ -134,8 +134,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="showFileQueue")
             public static class file extends CommandRef {
                 public static final file cmd = new file();
-                public file create() {
-                    return createArgs();
+                public file create(String timestamp) {
+                    return createArgs("timestamp", timestamp);
                 }
             }
         }
@@ -2119,13 +2119,6 @@ public class CM {
         }
     }
     public static class role{
-        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="addRole")
-        public static class add extends CommandRef {
-            public static final add cmd = new add();
-            public add create(String member, String addRole) {
-                return createArgs("member", member, "addRole", addRole);
-            }
-        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="addRoleToAllMembers")
         public static class addRoleToAllMembers extends CommandRef {
             public static final addRoleToAllMembers cmd = new addRoleToAllMembers();
@@ -2168,18 +2161,18 @@ public class CM {
                 return createArgs("user", user, "role", role);
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="mask")
+        public static class mask extends CommandRef {
+            public static final mask cmd = new mask();
+            public mask create(String members, String role, String value, String toggleMaskFromOthers) {
+                return createArgs("members", members, "role", role, "value", value, "toggleMaskFromOthers", toggleMaskFromOthers);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.PlayerSettingCommands.class,method="optOut")
         public static class optOut extends CommandRef {
             public static final optOut cmd = new optOut();
             public optOut create(String optOut) {
                 return createArgs("optOut", optOut);
-            }
-        }
-        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="removeRole")
-        public static class remove extends CommandRef {
-            public static final remove cmd = new remove();
-            public remove create(String member, String addRole) {
-                return createArgs("member", member, "addRole", addRole);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="removeAssignableRole")
@@ -2205,6 +2198,13 @@ public class CM {
         }
     }
     public static class self{
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="addRole")
+        public static class add extends CommandRef {
+            public static final add cmd = new add();
+            public add create(String member, String addRole) {
+                return createArgs("member", member, "addRole", addRole);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="addAssignableRole")
         public static class create extends CommandRef {
             public static final create cmd = new create();
@@ -2219,11 +2219,11 @@ public class CM {
                 return createArgs();
             }
         }
-        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="mask")
-        public static class mask extends CommandRef {
-            public static final mask cmd = new mask();
-            public mask create(String members, String role, String value, String toggleMaskFromOthers) {
-                return createArgs("members", members, "role", role, "value", value, "toggleMaskFromOthers", toggleMaskFromOthers);
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="removeRole")
+        public static class remove extends CommandRef {
+            public static final remove cmd = new remove();
+            public remove create(String member, String addRole) {
+                return createArgs("member", member, "addRole", addRole);
             }
         }
     }
@@ -2336,6 +2336,13 @@ public class CM {
         public static class BANKER_WITHDRAW_LIMIT_INTERVAL extends CommandRef {
             public static final BANKER_WITHDRAW_LIMIT_INTERVAL cmd = new BANKER_WITHDRAW_LIMIT_INTERVAL();
             public BANKER_WITHDRAW_LIMIT_INTERVAL create(String timediff) {
+                return createArgs("timediff", timediff);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="GRANT_LIMIT_DELAY", field="GRANT_LIMIT_DELAY")
+        public static class GRANT_LIMIT_DELAY extends CommandRef {
+            public static final GRANT_LIMIT_DELAY cmd = new GRANT_LIMIT_DELAY();
+            public GRANT_LIMIT_DELAY create(String timediff) {
                 return createArgs("timediff", timediff);
             }
         }

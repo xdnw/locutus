@@ -127,7 +127,7 @@ public class HelpCommands {
         io.create().embed(title, body.toString()).send();
     }
 
-    @Command
+    @Command(desc = "Show the description, usage information and permissions for a command")
     public String command(@Me IMessageIO io, ValueStore store, PermissionHandler permisser, ICommand command) {
         String body = command.toBasicMarkdown(store, permisser, "/", false, true);
         String title = "/" + command.getFullPath();
@@ -152,7 +152,7 @@ public class HelpCommands {
         return null;
     }
 
-    @Command
+    @Command(desc = "Show the description, usage information and permissions for a nation placeholder")
     public String nation_placeholder(@Me IMessageIO io, NationPlaceholders placeholders, ValueStore store, PermissionHandler permisser, @NationAttributeCallable ParametricCallable command) {
         String body = command.toBasicMarkdown(store, permisser, "/", false, true);
         String title = "/" + command.getFullPath();
@@ -176,7 +176,8 @@ public class HelpCommands {
         return null;
     }
 
-    @Command
+    @Command(desc = "Locate a setting you are looking for.\n" +
+            "Use keywords for relevant results, or ask a question.")
     public void find_setting(@Me IMessageIO io, ValueStore store, String query, @Range(min = 1, max = 25) @Default("5") int num_results) {
         try {
             IMessageBuilder msg = io.create();

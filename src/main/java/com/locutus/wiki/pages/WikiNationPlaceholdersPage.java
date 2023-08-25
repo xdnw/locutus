@@ -10,6 +10,11 @@ public class WikiNationPlaceholdersPage extends WikiGen {
     }
 
     @Override
+    public String getDescription() {
+        return "List and description of all nation placeholders and filters.";
+    }
+
+    @Override
     public String generateMarkdown() {
         return CommandWikiPages.printPlaceholders(getManager().getNationPlaceholders(), getManager().getStore());
     }

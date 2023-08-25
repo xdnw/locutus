@@ -13,6 +13,11 @@ public class WikiCommandsPage extends WikiGen {
     }
 
     @Override
+    public String getDescription() {
+        return "List and description of all commands.";
+    }
+
+    @Override
     public String generateMarkdown() {
         return CommandWikiPages.printCommands(getManager().getCommands(), getManager().getStore(), getManager().getPermisser());
     }
