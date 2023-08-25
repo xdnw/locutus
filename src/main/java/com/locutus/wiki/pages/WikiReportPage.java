@@ -45,6 +45,7 @@ public class WikiReportPage extends WikiGen {
                 commandMarkdown(CM.report.analyze.cmd),
                 commandMarkdown(CM.report.search.cmd),
                 commandMarkdown(CM.report.show.cmd),
+                commandMarkdown(CM.nation.list.bans.cmd),
                 commandMarkdown(CM.report.sheet.generate.cmd),
                 commandMarkdown(CM.settings_orbis_alerts.REPORT_ALERT_CHANNEL.cmd),
                 "# A report of me is false or no longer valid",

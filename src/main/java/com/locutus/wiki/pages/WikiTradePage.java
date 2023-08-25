@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 
 public class WikiTradePage extends WikiGen {
     public WikiTradePage(CommandManager2 manager) {
-        super(manager, "embassies");
+        super(manager, "trade");
     }
 
     @Override

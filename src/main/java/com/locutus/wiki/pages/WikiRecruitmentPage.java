@@ -14,7 +14,6 @@ public class WikiRecruitmentPage extends WikiGen {
     @Override
     public String generateMarkdown() {
         return build(
-                "# Overview",
                 """
                         Locutus can send recruitment messages. This does NOT require login/username/password.\s
                         Messages will only be sent if you have an active nation in a leadership position.

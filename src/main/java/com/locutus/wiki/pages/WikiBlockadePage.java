@@ -14,7 +14,6 @@ public class WikiBlockadePage extends WikiGen {
     @Override
     public String generateMarkdown() {
         return build(
-        "# Overview",
                 "Post a card to a channel, and optionally ping members or gov when a member is blockaded or unblockaded",
                 "# Blockade Roles",
                 "Link the blockade alert roles to a discord role (e.g. your member role)",
@@ -32,7 +31,7 @@ public class WikiBlockadePage extends WikiGen {
                 "# Target finder enemies blockading allies",
                 commandMarkdown(CM.war.find.unblockade.cmd),
                 "# See also",
-                MarkupUtil.markdownUrl("Locutus/Wiki/Escrow", "../escrow")
+                MarkupUtil.markdownUrl("Locutus/Wiki/Escrow", "../wiki/escrow")
         );
     }
 }

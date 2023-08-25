@@ -16,17 +16,18 @@ public class WikiHelpPage extends WikiGen {
     private final String urlPrefix;
 
     public WikiHelpPage(CommandManager2 manager, List<WikiGen>pages) {
-        super(manager, "overview");
+        super(manager, "home");
         this.pages = new ArrayList<>(pages);
-        this.urlPrefix = "../";
+        this.urlPrefix = "../wiki/";
     }
 
     @Override
     public String generateMarkdown() {
         StringBuilder pageList = new StringBuilder();
         for (WikiGen page : pages) {
-            String url = urlPrefix + page.getPageName();
-            pageList.append("- " + MarkupUtil.markdownUrl(page.getPageName(), url)).append("\n");
+            if (page.generateMarkdown().trim().isEmpty()) continue;
+            String url = urlPrefix + page.getPageName().replace(" ", "_");
+            pageList.append("### " + MarkupUtil.markdownUrl(page.getPageName(), url)).append("\n");
             pageList.append("> " + page.getDescription().replace("\n", "\n> ")).append("\n");
         }
         return build(

@@ -145,7 +145,7 @@ public enum Roles {
 
     GROUND_MILITARIZE_ALERT(37, "Role to receive pings when alliances militarize", GuildKey.AA_GROUND_UNIT_ALERTS, "GROUND_MILITARIZE_ROLE"),
 
-    AI_COMMAND_ACCESS(37, "Access to AI commands on the discord server", GuildKey.AA_GROUND_UNIT_ALERTS),
+    AI_COMMAND_ACCESS(37, "Access to AI commands on the discord server"),
 
 
     ;

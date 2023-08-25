@@ -23,7 +23,7 @@ import static link.locutus.discord.user.Roles.*;
 
 public class WikiSetupPage extends WikiGen {
     public WikiSetupPage(CommandManager2 manager) {
-        super(manager, "Initial Setup");
+        super(manager, "initial setup");
     }
 
     @Override
@@ -59,7 +59,6 @@ public class WikiSetupPage extends WikiGen {
         };
 
         return build(
-                "# Introduction",
                 """
                 Locutus is a bot on the discord server which assists with war calculations and alliance affairs for the game Politics and War. To get started, add the bot to your server.""\",
                                     

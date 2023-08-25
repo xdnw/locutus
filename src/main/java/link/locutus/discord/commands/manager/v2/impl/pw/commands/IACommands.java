@@ -821,7 +821,9 @@ public class IACommands {
 
 
 
-    @Command(desc = "Reply to an in-game mail message")
+    @Command(desc = "Reply to an in-game mail message\n" +
+            "Supports subject and body nation placeholders\n" +
+            "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
     @RolePermission(Roles.MAIL)
     @IsAlliance
     public String reply(@Me GuildDB db, @Me DBNation me, @Me User author, @Me IMessageIO channel, @Arg("The nation you are replying to") DBNation receiver, @Arg("The url of the mail") String url, String message, @Arg("The account to reply with\nMust be the same account that received the mail") @Switch("s") DBNation sender) throws IOException {
@@ -914,7 +916,12 @@ public class IACommands {
     }
 
 
-    @Command(desc = "Send in-game mail to a list of nations")
+    @Command(desc = "Send in-game mail to a list of nations\n" +
+            "Supports subject and body nation placeholders\n" +
+            "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>\n" +
+            "Append the channel id to the subject to direct responses there:\n" +
+            "`Hello Nation/12345678910`\n" +
+            "(Note: DM Borg to setup mail responses)")
     @NoFormat
     public String mail(@Me DBNation me, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO channel, @Me User author, Set<DBNation> nations, String subject, @TextArea String message, @Switch("f") boolean confirm, @Arg("Send from the api key registered to the guild") @Switch("l") boolean sendFromGuildAccount, @Arg("The api key to use to send the mail") @Switch("a") String apiKey) throws IOException {
         message = MarkupUtil.transformURLIntoLinks(message);
@@ -1272,8 +1279,12 @@ public class IACommands {
         return "Moved " + tc.getAsMention() + " to " + category.getName();
     }
 
-    @Command(desc = "Bulk send the result of a bot command to a list of nations")
+    @Command(desc = "Bulk send the result of a bot command to a list of nations in your alliance\n" +
+            "The command will run as each user\n" +
+            "Nations which are not registered or lack permission to use a command will result in an error\n" +
+            "It is recommended to review the output sheet before confirming and sending the results")
     @RolePermission(value=Roles.ADMIN)
+    @IsAlliance
     @NoFormat
     public String mailCommandOutput(NationPlaceholders placeholders, ValueStore store, @Me GuildDB db, @Me Guild guild, @Me User author, @Me IMessageIO channel,
                                     @Arg("Nations to mail command results to") Set<DBNation> nations,
@@ -1298,6 +1309,16 @@ public class IACommands {
 
         if (nations.size() > 300 && !Roles.ADMIN.hasOnRoot(author)) {
             return "Max allowed: 300 nations.";
+        }
+
+        List<String> notInAA = new ArrayList<>();
+        for (DBNation nation : nations) {
+            if (!db.isAllianceId(nation.getAlliance_id())) {
+                notInAA.add(nation.getNationUrlMarkup(true));
+            }
+        }
+        if (!notInAA.isEmpty()) {
+            return "The following nations are not in the alliance:\n - " + String.join("\n - ", notInAA);
         }
 
         if (nations.isEmpty()) return "No nations specified";
@@ -1372,7 +1393,8 @@ public class IACommands {
     }
 
     @Command(desc = "Bulk send in-game mail from a google sheet\n" +
-            "Columns: nation, subject, body")
+            "Columns: `nation`, `subject`, `body`\n" +
+            "Other bulk mail commands forward to this command")
     @HasApi
     @RolePermission(Roles.ADMIN)
     public String mailSheet(@Me GuildDB db, @Me JSONObject command, @Me IMessageIO io, @Me User author, SpreadSheet sheet, @Switch("f") boolean confirm) {

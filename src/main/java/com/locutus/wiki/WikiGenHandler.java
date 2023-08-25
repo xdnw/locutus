@@ -19,6 +19,7 @@ import com.locutus.wiki.pages.WikiEmbassyPage;
 import com.locutus.wiki.pages.WikiEscrowPage;
 import com.locutus.wiki.pages.WikiFindingTargetsPage;
 import com.locutus.wiki.pages.WikiHelpPage;
+import com.locutus.wiki.pages.WikiHostingLocutus;
 import com.locutus.wiki.pages.WikiInterviewPage;
 import com.locutus.wiki.pages.WikiLoanPage;
 import com.locutus.wiki.pages.WikiNationPlaceholdersPage;
@@ -58,6 +59,9 @@ public class WikiGenHandler {
     public void writeDefaults() throws IOException {
         List<WikiGen> pages = new ArrayList<>();
 
+        // register defaults
+        pages.add(new WikiSetupPage(manager));
+        pages.add(new WikiHostingLocutus(manager));
         // commands
         pages.add(new WikiCommandsPage(manager));
         // arguments
@@ -66,8 +70,6 @@ public class WikiGenHandler {
         pages.add(new WikiNationPlaceholdersPage(manager));
         // alliance_placeholders
         pages.add(new WikiAlliancePlaceholdersPage(manager));
-        // register defaults
-        pages.add(new WikiSetupPage(manager));
         //War Alerts
         pages.add(new WikiWarAlertsPage(manager)); // <--- easy @@@ ===
 //        //Auto masking
@@ -109,11 +111,11 @@ public class WikiGenHandler {
 //        //Beige cycling tutorial
         pages.add(new WikiBeigeCyclingPage(manager));
 //        //Loan System
-        pages.add(new WikiLoanPage(manager));// <---   ####
+        pages.add(new WikiLoanPage(manager));
 //        //Report System
         pages.add(new WikiReportPage(manager));
 //        //Anti Leak System
-        pages.add(new WikiAntiLeakPage(manager)); // <---   #### @
+        pages.add(new WikiAntiLeakPage(manager));
 //        //Making custom spreadsheets
         pages.add(new WikiCustomSheetsPage(manager)); // <---   #### @
 //        //Statistics System

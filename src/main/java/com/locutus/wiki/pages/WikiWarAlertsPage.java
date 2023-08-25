@@ -11,7 +11,7 @@ import java.util.List;
 
 public class WikiWarAlertsPage extends WikiGen {
     public WikiWarAlertsPage(CommandManager2 manager) {
-        super(manager, "war_alerts");
+        super(manager, "war alerts");
     }
 
     @Override

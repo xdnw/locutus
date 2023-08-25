@@ -38,7 +38,7 @@ public abstract class WikiGen {
                 headings.add(line.substring(2));
             }
         }
-        return StringMan.join(headings, "\n");
+        return "- " + StringMan.join(headings, "\n- ");
     }
 
     public abstract String generateMarkdown();
@@ -54,7 +54,7 @@ public abstract class WikiGen {
     }
 
     public String commandMarkdown(CommandRef ref) {
-        return ref.getCallable(true).toBasicMarkdown(manager.getStore(), null, "/", false, true);
+        return "### " + ref.toSlashCommand(true) + "\n" + ref.getCallable(true).toBasicMarkdown(manager.getStore(), null, "/", false, true) + "\n\n---\n\n";
     }
 
 }
