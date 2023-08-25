@@ -15,14 +15,14 @@ public class WikiBlockadePage extends WikiGen {
     public String generateMarkdown() {
         return build(
                 "Post a card to a channel, and optionally ping members or gov when a member is blockaded or unblockaded",
+                "# Set the blockade alert channels",
+                commandMarkdown(CM.settings_war_alerts.BLOCKADED_ALERTS.cmd),
+                commandMarkdown(CM.settings_war_alerts.UNBLOCKADED_ALERTS.cmd),
                 "# Blockade Roles",
                 "Link the blockade alert roles to a discord role (e.g. your member role)",
                 CM.role.setAlias.cmd.create(Roles.UNBLOCKADED_ALERT.name(), "", null, null).toString(),
                 CM.role.setAlias.cmd.create(Roles.BLOCKADED_ALERT.name(), "", null, null).toString(),
                 CM.role.setAlias.cmd.create(Roles.UNBLOCKADED_GOV_ROLE_ALERT.name(), "", null, null).toString(),
-                "## Set the blockade alert channels",
-                commandMarkdown(CM.settings_war_alerts.BLOCKADED_ALERTS.cmd),
-                commandMarkdown(CM.settings_war_alerts.UNBLOCKADED_ALERTS.cmd),
                 "# Member unblockade requests",
                 commandMarkdown(CM.settings_war_alerts.UNBLOCKADE_REQUESTS.cmd),
                 commandMarkdown(CM.war.blockade.request.cmd),

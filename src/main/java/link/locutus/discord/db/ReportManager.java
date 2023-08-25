@@ -389,7 +389,7 @@ public class ReportManager {
     public enum ReportType {
         MULTI("Suspected or confirmed multi boxing, where a user controls or accesses multiple nations simultaneously"),
         REROLL("Has created a new nation after their previous one has been reset, deleted, banned or forgotten"),
-        FRAUD("Deceptive actions such as not paying for an agreed trade or service, investment frauds such as ponzi schemes, embezzlement of funds, selling worthless services, fake lotteries, actions, charity appeals"),
+        FRAUD("Deceptive actions such as not paying for an agreed trade or service, investment frauds such as ponzi schemes, embezzlement of funds, selling worthless services, fake lotteries, auctions, charity appeals"),
         BANK_DEFAULT("When a player defaults on their financial commitments or obligations such as loans or trade agreements"),
         COUPING("A player attempting to overthrow or seize control of an alliance or bank"),
         THREATS_COERCION("Threatening action which violates the sovereignty of a nation or alliance unless demands are met. " +
