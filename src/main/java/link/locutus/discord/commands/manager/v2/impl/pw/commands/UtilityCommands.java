@@ -10,6 +10,7 @@ import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -67,6 +68,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
+import org.kefirsf.bb.conf.If;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -74,6 +76,7 @@ import java.security.GeneralSecurityException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -269,6 +272,7 @@ public class UtilityCommands {
     @Command(desc = "Find potential offshores used by an alliance")
     @RolePermission(Roles.ECON)
     public String findOffshore(@Me IMessageIO channel, @Me JSONObject command, DBAlliance alliance, @Default @Timestamp Long cutoffMs) {
+        if (cutoffMs == null) cutoffMs = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(200);
         Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
 
         List<Transaction2> transactions = Locutus.imp().getBankDB().getToNationTransactions(cutoffMs);
@@ -1385,17 +1389,17 @@ public class UtilityCommands {
     }
 
     @Command(desc = "Get info about your own nation")
-    public String me(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me DBNation me) throws IOException {
-        return who(command, guild, channel, Collections.singleton(me), null, false, false, false, false, false, false, null);
+    public String me(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildDB db) throws IOException {
+        return who(command, guild, channel, author, db, Collections.singleton(me), null, false, false, false, false, false, false, null);
     }
 
     @Command(aliases = {"who", "pnw-who", "who", "pw-who", "pw-info", "how", "where", "when", "why", "whois"},
             desc = "Get detailed information about a nation\n" +
                     "Nation argument can be nation name, id, link, or discord tag\n" +
                     "e.g. `{prefix}who @borg`")
-    public String who(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel,
+    public String who(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me User author, @Me GuildDB db,
                       @Arg("The nations to get info about")
-                      Set<DBNation> nations,
+                      Set<NationOrAlliance> nationOrAlliances,
                       @Arg("Sort any listed nations by this attribute")
                       @Default() NationPlaceholder sortBy,
                       @Arg("List the nations instead of just providing a summary")
@@ -1411,7 +1415,7 @@ public class UtilityCommands {
                       @Arg("List all interview channels of each nation")
                       @Switch("c") boolean listChannels,
                       @Switch("p") Integer page) throws IOException {
-
+        DBNation myNation = DiscordUtil.getNation(author.getIdLong());
         /*
         // TODO get commands that can run with
             // NationList
@@ -1458,20 +1462,86 @@ public Map<ParametricCallable, String> getEndpoints() {
 //        } else {
 //
 //        }
-
+        Collection<DBNation> nations = SimpleNationList.from(nationOrAlliances).getNations();
 
         String arg0;
         String title;
-        if (nations.size() == 1) {
-            DBNation nation = nations.iterator().next();
-            title = nation.getNation();
-            nation.toCard(channel, false);
+        if (nationOrAlliances.size() == 1) {
+            NationOrAlliance nationOrAA = nationOrAlliances.iterator().next();
+            if (nationOrAA.isNation()) {
+                DBNation nation = nationOrAA.asNation();
+                title = nation.getNation();
+                nation.toCard(channel, false);
 
-            List<CommandRef> commands = new ArrayList<>();
-            commands.add(CM.nation.list.multi.cmd.create(nation.getNation_id() + ""));
-            commands.add(CM.nation.revenue.cmd.create(nation.getNation_id() + "", null, null));
-            commands.add(CM.war.info.cmd.create(nation.getNation_id() + ""));
-            commands.add(CM.unit.history.cmd.create(nation.getNation_id() + "", null, null));
+                List<CommandRef> commands = new ArrayList<>();
+                commands.add(CM.nation.list.multi.cmd.create(nation.getNation_id() + ""));
+                commands.add(CM.nation.revenue.cmd.create(nation.getNation_id() + "", null, null));
+                commands.add(CM.war.info.cmd.create(nation.getNation_id() + ""));
+                commands.add(CM.unit.history.cmd.create(nation.getNation_id() + "", null, null));
+            } else {
+                DBAlliance alliance = nationOrAA.asAlliance();
+                title = alliance.getName();
+                String markdown = alliance.toMarkdown();
+
+//                If no aaid is set, and you are in the aa, button to register it as your alliance
+//                - Register Guild
+                StringBuilder aaMarkdown = new StringBuilder(alliance.toMarkdown() + "\n");
+                if (Roles.ADMIN.has(author, db.getGuild()) && myNation != null && myNation.getAlliance_id() == alliance.getId() && db.getAllianceIds().isEmpty()) {
+                    aaMarkdown.append("\nSet as this guild's alliance: " + CM.settings_default.registerAlliance.cmd.toSlashMention() + "\n");
+                }
+
+                IMessageBuilder msg = channel.create().embed(title, aaMarkdown.toString());
+
+                // Militarization graph
+                CM.alliance.stats.metricsByTurn militarization =
+                        CM.alliance.stats.metricsByTurn.cmd.create(AllianceMetric.GROUND_PCT.name(), alliance.getQualifiedName(), "7d");
+                msg = msg.commandButton(CommandBehavior.EPHEMERAL, militarization, "Military Graph");
+                // Tiering graph
+                CM.stats_tier.cityTierGraph tiering =
+                        CM.stats_tier.cityTierGraph.cmd.create(alliance.getQualifiedName(), "", null, null);
+                msg = msg.modal(CommandBehavior.EPHEMERAL, tiering, "City Tier Graph");
+                // strength graph
+                CM.stats_tier.strengthTierGraph strength =
+                        CM.stats_tier.strengthTierGraph.cmd.create(alliance.getQualifiedName(), "", null, null, null, null, null, null);
+                msg = msg.modal(CommandBehavior.EPHEMERAL, strength, "Strength Tier Graph");
+                // mmr tier
+                CM.stats_tier.mmrTierGraph mmr =
+                        CM.stats_tier.mmrTierGraph.cmd.create(alliance.getQualifiedName(), "", null, null, null, null);
+                msg = msg.modal(CommandBehavior.EPHEMERAL, mmr, "MMR Tier Graph");
+                // spy tier
+                CM.stats_tier.spyTierGraph spy =
+                        CM.stats_tier.spyTierGraph.cmd.create(alliance.getQualifiedName(), "", null, null, null);
+                msg = msg.modal(CommandBehavior.EPHEMERAL, spy, "Spy Tier Graph");
+
+                //- /coalition create - add
+                CM.coalition.create createCoalition =
+                        CM.coalition.create.cmd.create(alliance.getQualifiedName(), "");
+                msg = msg.modal(CommandBehavior.EPHEMERAL, createCoalition, "Create Coalition");
+
+                //- /coalition generate - sphere
+                CM.coalition.generate generateCoalition =
+                        CM.coalition.generate.cmd.create("", alliance.getQualifiedName(), "80");
+                msg = msg.modal(CommandBehavior.EPHEMERAL, generateCoalition, "Add Sphere Coalition");
+                //- /alliance departures
+                CM.alliance.departures departures =
+                        CM.alliance.departures.cmd.create(alliance.getQualifiedName(), "", null, null, null, null, null);
+                msg = msg.modal(CommandBehavior.EPHEMERAL, departures, "Departures");
+                //- loot
+                CM.nation.loot loot =
+                        CM.nation.loot.cmd.create(alliance.getQualifiedName(), "", null);
+                msg = msg.modal(CommandBehavior.EPHEMERAL, loot, "Loot");
+
+                // alliance cost
+                CM.alliance.cost cost =
+                        CM.alliance.cost.cmd.create(alliance.getQualifiedName(), null);
+                msg = msg.commandButton(CommandBehavior.EPHEMERAL, cost, "Cost");
+                // offshore find
+                CM.offshore.findForCoalition findOffshore =
+                        CM.offshore.findForCoalition.cmd.create(alliance.getQualifiedName(), "200d");
+                msg = msg.commandButton(CommandBehavior.EPHEMERAL, findOffshore, "Find Offshores");
+
+                msg.send();
+            }
         } else {
             int allianceId = -1;
             for (DBNation nation : nations) {
@@ -1503,14 +1573,9 @@ public Map<ParametricCallable, String> getEndpoints() {
             response.append("Average for " + arg0 + ":").append('\n');
 
             printAA(response, average, true);
-
-            // min score
-            // max score
-            // Num members
-            // averages
         }
         IMessageBuilder msg = channel.create();
-        if (!listInfo && page == null && nations.size() > 1) {
+        if (!listInfo && page == null && !response.isEmpty()) {
             msg.embed(title, response.toString());
         }
 
@@ -1529,7 +1594,6 @@ public Map<ParametricCallable, String> getEndpoints() {
                     }
                 }
             } else {
-                GuildDB db = guild == null ? null : Locutus.imp().getGuildDB(guild);
                 IACategory iaCat = listChannels && db != null ? db.getIACategory() : null;
                 for (DBNation nation : nations) {
                     String nationStr = list ? nation.getNationUrlMarkup(true) : "";

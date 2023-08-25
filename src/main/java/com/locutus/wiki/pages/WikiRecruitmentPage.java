@@ -20,7 +20,7 @@ public class WikiRecruitmentPage extends WikiGen {
                         Alliances with 9 or less members (non inactive) will also require an online nation on discord with the INTERNAL_AFFAIRS role
                         """,
                 "# Set an `" + Roles.INTERNAL_AFFAIRS.name() + "` role",
-                CM.role.setAlias.cmd.create(Roles.INTERNAL_AFFAIRS.name(), "", null, null).toString(),
+                CM.role.setAlias.cmd.create(Roles.INTERNAL_AFFAIRS.name(), "@discordRole", null, null).toString(),
                 "# Setup a recruitment message",
                 "First ensure you have your alliance and api key set",
                 commandMarkdown(CM.settings_default.registerAlliance.cmd),

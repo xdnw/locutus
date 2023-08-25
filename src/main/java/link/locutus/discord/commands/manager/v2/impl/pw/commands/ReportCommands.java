@@ -262,6 +262,8 @@ public class ReportCommands {
         // sort loans by status then date
         loans.sort(Comparator.comparing(DBLoan::getStatus).thenComparing(DBLoan::getLoanDate));
 
+        double[] total = ResourceType.getBuffer();
+
         for (DBLoan loan : loans) {
             header.set(0, loan.loanId + "");
             String loanerName = loan.loanerGuildOrAA > Integer.MAX_VALUE ? DiscordUtil.getGuildName(loan.loanerGuildOrAA) : PnwUtil.getName(loan.loanerGuildOrAA, true);
@@ -281,12 +283,18 @@ public class ReportCommands {
             header.set(8, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(loan.loanDate)));
             header.set(9, TimeUtil.YYYY_MM_DD_HH_MM_SS.format(new Date(loan.date_submitted)));
 
+            if (loan.remaining != null) {
+                total = PnwUtil.add(total, loan.remaining);
+            }
+
             sheet.addRow(header);
         }
 
         sheet.clearAll();
         sheet.set(0, 0);
-        sheet.attach(io.create(), "loans").send();
+        sheet.attach(io.create(), "loans")
+                .append("Total on loan: `" + PnwUtil.resourcesToString(total) + "` worth `$" + MathMan.format(PnwUtil.convertedTotal(total)) + "`")
+                .send();
         return null;
     }
 
