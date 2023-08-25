@@ -3175,7 +3175,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     private void loadRoles() {
-        if (roleToAccountToDiscord.isEmpty() && !cachedRoleAliases) {
+        if (!cachedRoleAliases) {
             synchronized (roleToAccountToDiscord) {
                 if (cachedRoleAliases) return;
                 cachedRoleAliases = true;
