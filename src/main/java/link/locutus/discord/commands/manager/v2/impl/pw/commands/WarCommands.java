@@ -1291,16 +1291,9 @@ public class WarCommands {
                     .append("<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
                     .append(" | " + String.format("%16s", nation.getNation()))
                     .append(" | " + String.format("%16s", nation.getAllianceName()));
-
                     response.append(": treasure=" + treasure.getDaysRemaining() + "d");
 
-            response.append("\n```")
-                    .append(String.format("%2s", nation.getCities())).append(" \uD83C\uDFD9").append(" | ")
-                    .append(String.format("%6s", nation.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
-                    .append(String.format("%5s", nation.getTanks())).append(" \u2699").append(" | ")
-                    .append(String.format("%5s", nation.getAircraft())).append(" \u2708").append(" | ")
-                    .append(String.format("%4s", nation.getShips())).append(" \u26F5").append(" | ")
-                    .append(String.format("%1s", nation.getDef())).append(" \uD83D\uDEE1");
+            response.append("\n```");
 
             if (nation.isBeige()) {
                 response.append(" | ").append("beige=" + nation.getBeigeTurns());
@@ -1311,16 +1304,15 @@ public class WarCommands {
             int loginPct = (int) (loginChance * 100);
 
             response.append(" | login=" + loginPct + "%");
-            response.append("```");
-
-            response.append("\n```")
-                    .append(String.format("%2s", nation.treasureDays())).append(" \uD83D\uDC8E ").append(" | ")
+            response.append("\n")
+                    .append(String.format("%2s", nation.treasureDays()) + "d").append(" \uD83D\uDC8E ").append(" | ")
                     .append(String.format("%2s", nation.getCities())).append(" \uD83C\uDFD9").append(" | ")
                     .append(String.format("%6s", nation.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
                     .append(String.format("%5s", nation.getTanks())).append(" \u2699").append(" | ")
                     .append(String.format("%5s", nation.getAircraft())).append(" \u2708").append(" | ")
                     .append(String.format("%4s", nation.getShips())).append(" \u26F5").append(" | ")
                     .append(String.format("%1s", nation.getDef())).append(" \uD83D\uDEE1");
+            response.append("\n```\n");
 
             if(count >= numResults)
                 break;
@@ -1368,14 +1360,7 @@ public class WarCommands {
 
             response.append(": " + bountySum.toString().replace("{", "").replace("}", "").replace(" ", ""));
 
-            response.append("\n```")
-                    .append(String.format("%2s", nation.getCities())).append(" \uD83C\uDFD9").append(" | ")
-                    .append(String.format("%6s", nation.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
-                    .append(String.format("%5s", nation.getTanks())).append(" \u2699").append(" | ")
-                    .append(String.format("%5s", nation.getAircraft())).append(" \u2708").append(" | ")
-                    .append(String.format("%4s", nation.getShips())).append(" \u26F5").append(" | ")
-                    .append(String.format("%1s", nation.getDef())).append(" \uD83D\uDEE1");
-
+            response.append("\n```");
             if (nation.isBeige()) {
                 response.append(" | ").append("beige=" + nation.getBeigeTurns());
             }
@@ -1385,15 +1370,15 @@ public class WarCommands {
             int loginPct = (int) (loginChance * 100);
 
             response.append(" | login=" + loginPct + "%");
-            response.append("```");
 
-            response.append("\n```")
+            response.append("\n")
                     .append(String.format("%2s", nation.getCities())).append(" \uD83C\uDFD9").append(" | ")
                     .append(String.format("%6s", nation.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
                     .append(String.format("%5s", nation.getTanks())).append(" \u2699").append(" | ")
                     .append(String.format("%5s", nation.getAircraft())).append(" \u2708").append(" | ")
                     .append(String.format("%4s", nation.getShips())).append(" \u26F5").append(" | ")
                     .append(String.format("%1s", nation.getDef())).append(" \uD83D\uDEE1");
+            response.append("\n```\n");
 
             if(count >= numResults)
                 break;
