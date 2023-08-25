@@ -9,7 +9,7 @@ To get started with Locutus, please refer to the [User Setup Guide](https://docs
 ## GitHub Wiki Pages
 
 For more detailed information about Locutus and its capabilities, please visit the following GitHub wiki pages:
-- [Hosting Locutus](https://github.com/xdnw/locutus/wiki/Hosting-Locutus)
+- [Hosting Locutus](https://github.com/xdnw/locutus/wiki/hosting_locutus)
 - [alliance_placeholders](https://github.com/xdnw/locutus/wiki/alliance_placeholders)
 - [Arguments](https://github.com/xdnw/locutus/wiki/Arguments)
 - [Commands](https://github.com/xdnw/locutus/wiki/Commands)
