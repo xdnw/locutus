@@ -4,6 +4,9 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.entities.DBNation;
 
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class SimpleNationList implements NationList {
     private final Collection<DBNation> nations;
@@ -11,6 +14,18 @@ public class SimpleNationList implements NationList {
 
     public SimpleNationList(Collection<DBNation> nations) {
         this.nations = nations;
+    }
+
+    public static SimpleNationList from(Collection<NationOrAlliance> nationOrAlliances) {
+        Set<DBNation> nations = new HashSet<>();
+        for (NationOrAlliance nationOrAlliance : nationOrAlliances) {
+            if (nationOrAlliance.isNation()) {
+                nations.add(nationOrAlliance.asNation());
+            } else {
+                nations.addAll(nationOrAlliance.asAlliance().getNations());
+            }
+        }
+        return new SimpleNationList(nations);
     }
 
     public SimpleNationList setFilter(String filter) {

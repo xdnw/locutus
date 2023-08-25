@@ -1,21 +1,28 @@
 package link.locutus.discord.commands.manager.v2.command;
 
+import com.google.gson.Gson;
 import de.vandermeer.asciitable.AT_Context;
 import de.vandermeer.asciitable.AsciiTable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
+import rocker.guild.ia.message;
 
 import javax.annotation.CheckReturnValue;
 import java.nio.charset.StandardCharsets;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
@@ -41,6 +48,29 @@ public interface IMessageBuilder {
     IMessageBuilder commandLinkInline(CommandRef ref);
 
     @CheckReturnValue
+    default IMessageBuilder modal(CommandBehavior behavior, CommandRef cmd, String message) {
+            Map<String, String> arguments = cmd.getArguments();
+            String path = cmd.getPath();
+            Iterator<Map.Entry<String, String>> iter = arguments.entrySet().iterator();
+            Set<String> promptFor = new LinkedHashSet<>();
+            while (iter.hasNext()) {
+                Map.Entry<String, String> entry = iter.next();
+                if (entry.getValue() == null) {
+                    iter.remove();
+                } else if (entry.getValue().isEmpty()) {
+                    promptFor.add(entry.getKey().toLowerCase(Locale.ROOT));
+                    iter.remove();
+                }
+            }
+            // convert keys to lowercase
+            arguments = arguments.entrySet().stream().collect(Collectors.toMap(e -> e.getKey().toLowerCase(Locale.ROOT),
+                    Map.Entry::getValue, (a, b) -> b, LinkedHashMap::new));
+            String argumentJson = arguments.isEmpty() ? null : new Gson().toJson(arguments);
+            CM.modal.create attach = CM.modal.create.cmd.create(path, StringMan.join(promptFor, ","), argumentJson);
+            return commandButton(behavior, attach, message);
+        }
+
+    @CheckReturnValue
     default IMessageBuilder commandButton(CommandBehavior behavior, CommandRef ref, String message) {
         return commandButton(behavior, null, ref, message);
     }
@@ -60,9 +90,8 @@ public interface IMessageBuilder {
     }
 
     @CheckReturnValue
-    default IMessageBuilder modal(CommandBehavior behavior, CommandRef ref, String message) {
+    default IMessageBuilder modalLegacy(CommandBehavior behavior, CommandRef ref, String message) {
         CM.fun.say say = CM.fun.say.cmd.create(behavior.getValue() + ref.toSlashCommand());
-        // TODO modal
         commandButton(behavior, say, message);
         return this;
     }

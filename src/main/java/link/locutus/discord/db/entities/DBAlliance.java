@@ -28,11 +28,14 @@ import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.domains.AllianceMembers;
 import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
@@ -395,6 +398,141 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
         return Collections.unmodifiableMap(BRACKETS_CACHED);
     }
+
+    public String toMarkdown() {
+        StringBuilder body = new StringBuilder();
+        // `#id` | Alliance urlMakrup / acronym (linked)
+        body.append("`AA:").append(allianceId).append("` | ").append(getMarkdownUrl());
+        if (acronym != null && !acronym.isEmpty()) {
+            body.append(" / `").append(acronym).append("`");
+        }
+        body.append(" | `#").append(getRank()).append("`").append("\n");
+
+        String prefix = "";
+        if (discord_link != null && !discord_link.isEmpty()) {
+            body.append(MarkupUtil.markdownUrl("Discord", discord_link));
+            prefix = " | ";
+        }
+        if (wiki_link != null && !wiki_link.isEmpty()) {
+            body.append(prefix).append(MarkupUtil.markdownUrl("Wiki", wiki_link));
+            prefix = " | ";
+        }
+        if (forum_link != null && !forum_link.isEmpty()) {
+            body.append(prefix).append(MarkupUtil.markdownUrl("Forum", forum_link));
+            prefix = " | ";
+        }
+        if (!prefix.isEmpty()) {
+            body.append("\n");
+        }
+        body.append("```\n");
+        // Number of members / applicants (active past day)
+        Set<DBNation> nations = getNations();
+        Set<DBNation> members = nations.stream().filter(n -> n.getPosition() > Rank.APPLICANT.id && n.getVm_turns() == 0).collect(Collectors.toSet());
+        Set<DBNation> activeMembers = members.stream().filter(n -> n.active_m() < 7200).collect(Collectors.toSet());
+        Set<DBNation> taxableMembers = members.stream().filter(n -> n.isTaxable()).collect(Collectors.toSet());
+        Set<DBNation> applicants = nations.stream().filter(n -> n.getPosition() == Rank.APPLICANT.id && n.getVm_turns() == 0).collect(Collectors.toSet());
+        Set<DBNation> activeApplicants = applicants.stream().filter(n -> n.active_m() < 7200).collect(Collectors.toSet());
+        // 5 members (3 active/2 taxable) | 2 applicants (1 active)
+        body.append(members.size()).append(" members (").append(activeMembers.size()).append(" active/").append(taxableMembers.size()).append(" taxable) | ")
+                .append(applicants.size()).append(" applicants (").append(activeApplicants.size()).append(" active)\n");
+        // Off, Def, Cities (total/average), Score, Color
+        int off = nations.stream().mapToInt(DBNation::getOff).sum();
+        int def = nations.stream().mapToInt(DBNation::getDef).sum();
+        int cities = members.stream().mapToInt(DBNation::getCities).sum();
+        double avgCities = cities / (double) members.size();
+        double score = members.stream().mapToDouble(DBNation::getScore).sum();
+        body.append(off).append("\uD83D\uDDE1 | ")
+                .append(def).append("\uD83D\uDEE1 | ")
+                .append(cities).append("\uD83C\uDFD9").append(" (avg:").append(MathMan.format(avgCities)).append(") | ")
+                .append(MathMan.format(score)).append("ns | ")
+                .append(color).append("\n```\n");
+
+        // mmr
+        double[] mmrBuild = this.getAverageMMR(false);
+        double[] mmrUnit = this.getAverageMMRUnit();
+        // Convert to e.g. MMR[Build]=1.5/2.5/1.1/3.0 | MMR[Unit]=1.5/2.5/1.1/3.0
+        // append with each number on newline
+        body.append("\n**MMR[Build]**: `")
+                .append(MathMan.format(mmrBuild[0])).append("/")
+                .append(MathMan.format(mmrBuild[1])).append("/")
+                .append(MathMan.format(mmrBuild[2])).append("/")
+                .append(MathMan.format(mmrBuild[3])).append("`")
+            .append("\n**MMR[Unit]**: `")
+                .append(MathMan.format(mmrUnit[0])).append("/")
+                .append(MathMan.format(mmrUnit[1])).append("/")
+                .append(MathMan.format(mmrUnit[2])).append("/")
+                .append(MathMan.format(mmrUnit[3])).append("`\n");
+        Map<DBAlliance, Integer> warsByAlliance = new HashMap<>();
+        for (DBWar war : getActiveWars()) {
+            DBNation attacker = war.getNation(true);
+            DBNation defender = war.getNation(false);
+            if (attacker == null || attacker.active_m() > 7200) continue;
+            if (defender == null || defender.active_m() > 7200) continue;
+            int otherAAId = war.attacker_aa == allianceId ? war.defender_aa : war.attacker_aa;
+            if (otherAAId > 0) {
+                DBAlliance otherAA = DBAlliance.getOrCreate(otherAAId);
+                warsByAlliance.put(otherAA, warsByAlliance.getOrDefault(otherAA, 0) + 1);
+            }
+        }
+        if (!warsByAlliance.isEmpty()) {
+            List<Map.Entry<DBAlliance, Integer>> sorted = warsByAlliance.entrySet().stream()
+                    .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+                    .toList();
+            body.append("\n**Alliance Wars:**\n");
+            for (Map.Entry<DBAlliance, Integer> entry : sorted) {
+                body.append("- ").append(PnwUtil.getMarkdownUrl(entry.getKey().getId(), true))
+                        .append(": ").append(entry.getValue()).append("wars \n");
+            }
+        }
+        Map<Integer, Treaty> treaties = this.getTreaties();
+        if (treaties.isEmpty()) {
+            body.append("`No treaties`\n");
+        } else {
+            body.append("\n**Treaties:**\n");
+            for (Treaty treaty : treaties.values()) {
+                int otherId = treaty.getToId() == allianceId ? treaty.getFromId() : treaty.getToId();
+                body.append("- ").append(treaty.getType())
+                        .append(": ").append(PnwUtil.getMarkdownUrl(otherId, true))
+                        .append(" (").append(DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(treaty.getTurnEnds()), null))
+                        .append(")\n");
+            }
+        }
+        // Revenue
+        Map<ResourceType, Double> revenue = getRevenue();
+        if (revenue.isEmpty()) {
+            body.append("`No revenue`\n");
+        } else {
+            body.append("\n**Taxable Nation Revenue:**");
+            body.append("`").append(PnwUtil.resourcesToString(revenue)).append("`\n");
+            body.append("- worth: `$" + MathMan.format(PnwUtil.convertedTotal(revenue)) + "`\n");
+        }
+        // Last loot
+        LootEntry lastLoot = this.getLoot();
+        if (lastLoot == null) {
+            body.append("`No loot history`\n");
+        } else {
+            body.append("\n**Last Resources:** (from ")
+                    .append(lootEntry.getType().name()).append(" ")
+                    .append(DiscordUtil.timestamp(lootEntry.getDate(), null)).append(")\n");
+            body.append("`").append(PnwUtil.resourcesToString(lootEntry.getTotal_rss())).append("`\n");
+            body.append("- worth: `$").append(MathMan.format(lootEntry.convertedTotal())).append("`\n");
+        }
+        return body.toString();
+    }
+
+    @Command(desc = "Revenue of taxable alliance members")
+    public Map<ResourceType, Double> getRevenue() {
+        return getRevenue(getNations(f -> f.isTaxable()));
+    }
+
+    private Map<ResourceType, Double> getRevenue(Set<DBNation> nations) {
+        double[] total = ResourceType.getBuffer();
+        for (DBNation nation : nations) {
+            total = ResourceType.add(total, nation.getRevenue());
+        }
+        return PnwUtil.resourcesToMap(total);
+    }
+
 
     public String getMarkdownUrl() {
         return PnwUtil.getMarkdownUrl(allianceId, true);

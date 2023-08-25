@@ -21,6 +21,11 @@ public class WikiLoanPage extends WikiGen {
                 """
                 The loan reporting system allows alliances and player banks to share and access information about active or defaulted loans.
                 Loan information can be useful to avoid loaning to over burdened players with active loan obligations or a history of fraud
+                
+                Anyone with the INTERNAL_AFFAIRS role can create loans.
+                All loan information is publicly viewable.
+                Loans are tied to the server/alliance creating them.  
+                Only those with the `INTERNAL_AFFAIRS` role can update or remove a loan.
                 """,
                 "# Valid loan status\n" +
                 Arrays.stream(DBLoan.Status.values()).map(f -> "- " + f.name()).collect(Collectors.joining("\n")),

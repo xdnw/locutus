@@ -5,6 +5,7 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
+import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -64,6 +65,17 @@ public interface NationList extends NationFilter {
         }
     }
 
+    default double[] getAverageMMRUnit() {
+        double[] total = getTotalMMRUnit();
+        double num = total[4];
+        return new double[] {
+                total[0] / (num * Buildings.BARRACKS.max()),
+                total[1] / (num * Buildings.FACTORY.max()),
+                total[2] / (num * Buildings.HANGAR.max()),
+                total[3] / (num * Buildings.DRYDOCK.max())
+        };
+    }
+
 
     default double[] getAverageMMR(boolean update) {
         double[] total = getTotalMMR(update);
@@ -121,6 +133,27 @@ public interface NationList extends NationFilter {
         }
 
         return new double[] {barracks, factories, hangars, drydocks, numCities};
+    }
+
+    /**
+     * in the form [soldiers, tanks, aircraft, ships, cities]
+     * @return
+     */
+    default double[] getTotalMMRUnit() {
+        double soldiers = 0;
+        double tanks = 0;
+        double aircraft = 0;
+        double ships = 0;
+
+        int numCities = 0;
+        for (DBNation nation : getNations()) {
+            soldiers += nation.getSoldiers();
+            tanks += nation.getTanks();
+            aircraft += nation.getAircraft();
+            ships += nation.getShips();
+            numCities += nation.getCities();
+        }
+        return new double[] {soldiers, tanks, aircraft, ships, numCities};
     }
 
     default double[] getMilitaryBuyPct(boolean update) {
