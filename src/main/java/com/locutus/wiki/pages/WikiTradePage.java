@@ -10,6 +10,9 @@ public class WikiTradePage extends WikiGen {
 
     @Override
     public String generateMarkdown() {
+        return build(
+
+        );
        /*
        TODO trade guide
 

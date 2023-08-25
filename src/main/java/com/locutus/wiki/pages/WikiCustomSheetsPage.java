@@ -10,6 +10,9 @@ public class WikiCustomSheetsPage extends WikiGen {
 
     @Override
     public String generateMarkdown() {
+        return build(
+
+        );
        /*
        nationsheet
        alliancesheet

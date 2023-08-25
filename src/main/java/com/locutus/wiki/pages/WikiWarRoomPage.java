@@ -10,6 +10,9 @@ public class WikiWarRoomPage extends WikiGen {
 
     @Override
     public String generateMarkdown() {
+        return build(
+
+        );
        /*
         TODO copy stuff from war room guide
         https://docs.google.com/document/d/1Qq6Qe7KtCy-Dlqktz8bhNfrUpcbf7oM8F6gRVNR28Dw/edit

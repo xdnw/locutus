@@ -10,6 +10,9 @@ public class WikiCoalitionsPage extends WikiGen {
 
     @Override
     public String generateMarkdown() {
+        return build(
+
+        );
        /*
 
        List of all coalitions and their purpose

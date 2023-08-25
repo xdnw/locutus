@@ -10,6 +10,9 @@ public class WikiLoanPage extends WikiGen {
 
     @Override
     public String generateMarkdown() {
+        return build(
+
+        );
        /*
        TODO update wiki commands.md so it has the loan commands
        TODO loan settings?

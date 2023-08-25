@@ -10,6 +10,9 @@ public class WikiCounteringPage extends WikiGen {
 
     @Override
     public String generateMarkdown() {
+        return build(
+
+        );
        /*
        TODO: Locutus countering guide
         https://docs.google.com/document/d/1eJfgNRk6L72G6N3MT01xjfn0CzQtYibwnTg9ARFknRg/edit

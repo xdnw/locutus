@@ -11,7 +11,13 @@ public class WikiAutoMaskingPage extends WikiGen {
 
     @Override
     public String generateMarkdown() {
+        return build(
+
+        );
         /*
+
+        registered role
+
         Alliance city roles (inclusive): Add a role called c3 or a range c5-10
         Tax roles (must have api key set)
         AutoNick enums

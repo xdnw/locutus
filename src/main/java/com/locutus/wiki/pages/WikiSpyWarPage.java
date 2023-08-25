@@ -10,6 +10,9 @@ public class WikiSpyWarPage extends WikiGen {
 
     @Override
     public String generateMarkdown() {
+        return build(
+
+        );
        /*
        TODO espionage commands
 

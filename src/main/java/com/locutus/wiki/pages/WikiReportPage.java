@@ -1,7 +1,12 @@
 package com.locutus.wiki.pages;
 
 import com.locutus.wiki.WikiGen;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.db.ReportManager;
+
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 public class WikiReportPage extends WikiGen {
     public WikiReportPage(CommandManager2 manager) {
@@ -10,55 +15,60 @@ public class WikiReportPage extends WikiGen {
 
     @Override
     public String generateMarkdown() {
-       /*
-       state purpose of report system
-
-       The goal of the report system is for alliances and player corps to have accurate information about problematic behavior of a user/nation.
-e.g. Scamming, loan defaults, multis, OOC.
-
-I've imported the OCB report sheet as a starting point, though removed all the "declaring war" reports since those are pointless.
-
-I do have concerns that people will try reporting innacurate or false information. The way it's coded currently
-
-Reports are pending until an admin approves it.
-The report system has commands /report comment add
-As well as reports requiring either a forum post, or a post on one of the public news servers.
-
-
-The management commands (e.g. ban,unban,purge,upload) require the IA role on the Unicomplex server
-
-       TODO update wiki commands.md so it has the report commands
-
-       report alert channel
-
-       /report sheet generate
-Generate a sheet of reports
-/report import legacy
-Import the legacy reports
-/report sheet loans
-Generate a sheet of loans
-/report import loans
-Import loans from a sheet
-/report create
-Create a report for a nation or user
-/report remove
-Remove a report
-/report approve
-Approve a report
-/report comment add
-Add a comment to a report
-/report purge
-Purge all reports by a user
-/report ban
-Ban a nation from creating reports
-/report unban
-unban a nation from creating reports
-/report search
-Find reports by or on a nation or user
-/report show
-Show the information and comments for a specific report
-/report analyze
-Show an analysis of a nation's risk factors including: Reports, loans, discord & game bans, money trades and proximity with blacklisted nations, multi info, user account age, inactivity predictors
-        */
+        return build(
+                "# Reporting overview",
+                """
+                        The goal of the report system is for alliances and player corps to report and access accurate information about problematic behavior of a user/nation.
+                        """,
+                "# What can be reported",
+                """
+                If someone is breaking game rules, create a report on the P&W discord, or forums
+                - <https://discord.gg/H9XnGxc>
+                - <https://forum.politicsandwar.com/index.php?/forum/133-game-reports/>
+                
+                If there is a violation of discord terms of service, report to discord:
+                - <https://discord.com/safety/360044103651-reporting-abusive-behavior-to-discord>
+                
+                You can additionally report the above to the bot, however reports are solely informational, and will not result in administrative action.
+                Please refrain from reporting normal game politics and declarations of war, as these are not reportable offenses.
+                
+                The following are reportable offenses:""",
+                // dot points `- `
+                Arrays.stream(ReportManager.ReportType.values()).map(r -> "- `" + r.name() + "`: " + r.getDescription()).collect(Collectors.joining("\n")),
+                "# Creating and editing a report",
+                commandMarkdown(CM.report.add.cmd),
+                commandMarkdown(CM.report.remove.cmd),
+                commandMarkdown(CM.report.comment.add.cmd),
+                commandMarkdown(CM.report.comment.delete.cmd),
+                "",
+                "# Viewing reports",
+                commandMarkdown(CM.report.analyze.cmd),
+                commandMarkdown(CM.report.search.cmd),
+                commandMarkdown(CM.report.show.cmd),
+                commandMarkdown(CM.report.sheet.generate.cmd),
+                commandMarkdown(CM.settings_orbis_alerts.REPORT_ALERT_CHANNEL.cmd),
+                "# A report of me is false or no longer valid",
+                "You can add a comment to your report, which may result in a review",
+                commandMarkdown(CM.report.comment.add.cmd),
+                "Alternatively, you can join the Locutus server and create a ticket",
+                "- <https://discord.gg/cUuskPDrB7>",
+                "# I've been banned from creating reports",
+                """
+                This is likely due to reporting false information or misusing the report system.
+                Create a ticket in the Locutus server to appeal the ban
+                - <https://discord.gg/cUuskPDrB7>""",
+                "# I would like to help verify reports",
+                """
+                Join the Locutus server and create a ticket to request the IA role
+                - <https://discord.gg/cUuskPDrB7>
+                """,
+                "# Administrating reports (Locutus server only)",
+                commandMarkdown(CM.report.approve.cmd),
+                commandMarkdown(CM.report.purge.cmd),
+                commandMarkdown(CM.report.ban.cmd),
+                commandMarkdown(CM.report.unban.cmd),
+                commandMarkdown(CM.report.upload.legacy_reports.cmd),
+                commandMarkdown(CM.report.sheet.generate.cmd)
+        );
     }
 }

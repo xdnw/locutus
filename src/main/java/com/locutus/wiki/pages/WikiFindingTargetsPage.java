@@ -10,6 +10,9 @@ public class WikiFindingTargetsPage extends WikiGen {
 
     @Override
     public String generateMarkdown() {
+        return build(
+
+        );
        /*
        TODO /war find target commands
        TODO spy target commands

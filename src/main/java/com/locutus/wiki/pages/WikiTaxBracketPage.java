@@ -10,6 +10,9 @@ public class WikiTaxBracketPage extends WikiGen {
 
     @Override
     public String generateMarkdown() {
+        return build(
+
+        );
        /*
        Set api key to track taxes
 

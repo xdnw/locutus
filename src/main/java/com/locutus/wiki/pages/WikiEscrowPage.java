@@ -5,11 +5,14 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 
 public class WikiEscrowPage extends WikiGen {
     public WikiEscrowPage(CommandManager2 manager) {
-        super(manager, "embassies");
+        super(manager, "escrow");
     }
 
     @Override
     public String generateMarkdown() {
+        return build(
+
+        );
        /*
        State purpose of escrow system and how it generally works
        i.e. escrow funds if a nation is blockaded that they can withdraw when they leave blockade

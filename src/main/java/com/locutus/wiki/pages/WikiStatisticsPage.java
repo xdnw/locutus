@@ -10,6 +10,9 @@ public class WikiStatisticsPage extends WikiGen {
 
     @Override
     public String generateMarkdown() {
+        return build(
+
+        );
        /*
        TODO list general things the commands can do in an overview
 

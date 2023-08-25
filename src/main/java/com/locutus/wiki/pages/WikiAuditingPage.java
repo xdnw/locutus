@@ -10,6 +10,9 @@ public class WikiAuditingPage extends WikiGen {
 
     @Override
     public String generateMarkdown() {
+        return build(
+
+        );
        /*
        TODO find other auditing commands
 

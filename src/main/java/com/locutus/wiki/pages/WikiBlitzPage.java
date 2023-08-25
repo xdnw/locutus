@@ -10,6 +10,9 @@ public class WikiBlitzPage extends WikiGen {
 
     @Override
     public String generateMarkdown() {
+        return build(
+
+        );
        /*
        TODO link to espionage page
 

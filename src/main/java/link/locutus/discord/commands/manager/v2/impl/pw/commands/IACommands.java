@@ -298,7 +298,7 @@ public class IACommands {
         StringBuilder result = new StringBuilder();
         result.append(GuildKey.ASSIGNABLE_ROLES.set(db, assignable)).append("\n");
 
-        result.append(StringMan.getString(requireRole) + " can now add/remove " + StringMan.getString(assignableRoles) + " via " + CM.role.add.cmd.toSlashMention() + " / " + CM.role.remove.cmd.toSlashMention() + "\n" +
+        result.append(StringMan.getString(requireRole) + " can now add/remove " + StringMan.getString(assignableRoles) + " via " + CM.self.add.cmd.toSlashMention() + " / " + CM.self.remove.cmd.toSlashMention() + "\n" +
                 "- To see a list of current mappings, use " + CM.settings.info.cmd.create(GuildKey.ASSIGNABLE_ROLES.name(), null, null) + "");
         return result.toString();
     }
@@ -1241,7 +1241,7 @@ public class IACommands {
         }
         response.append("\n(Via Account: " + auth.getNation().getNation() + ")");
         response.append(result);
-        response.append("\nSee also " + CM.self.list.cmd.toSlashMention() + " / " + CM.role.add.cmd.toSlashMention());
+        response.append("\nSee also " + CM.self.list.cmd.toSlashMention() + " / " + CM.self.add.cmd.toSlashMention());
         return response.toString();
     }
 

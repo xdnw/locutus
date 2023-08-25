@@ -10,6 +10,9 @@ public class WikiDNRPage extends WikiGen {
 
     @Override
     public String generateMarkdown() {
+        return build(
+
+        );
        /*
        Note that target finding commands adhere to the DNR
        Recommend also adding this info to the war declare page of your alliance in-game

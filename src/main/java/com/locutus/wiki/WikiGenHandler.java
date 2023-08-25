@@ -69,58 +69,58 @@ public class WikiGenHandler {
         // register defaults
         pages.add(new WikiSetupPage(manager));
         //War Alerts
-        pages.add(new WikiWarAlertsPage(manager)); // <---
+        pages.add(new WikiWarAlertsPage(manager)); // <--- easy @@@ ===
 //        //Auto masking
-        pages.add(new WikiAutoMaskingPage(manager)); // <---
+        pages.add(new WikiAutoMaskingPage(manager)); // <--- easy @@@ ===
         // Embassies
-        pages.add(new WikiEmbassyPage(manager)); // <---
+        pages.add(new WikiEmbassyPage(manager));
         //Deposits System
-        pages.add(new WikiDepositsPage(manager)); // <---
+        pages.add(new WikiDepositsPage(manager)); // <--- @@@ ===
 //        //Setup an offshore or bank
-        pages.add(new WikiBankPage(manager));  // <---
+        pages.add(new WikiBankPage(manager));  // <--- easy @@@ ===
 //        //Interview System
-        pages.add(new WikiInterviewPage(manager)); // <---
-//        //Auditing System / Alliance MMR requirements
-        pages.add(new WikiAuditingPage(manager)); // <---
+        pages.add(new WikiInterviewPage(manager)); // <--- @@@ ===
+        //Recruitment System
+        pages.add(new WikiRecruitmentPage(manager));
 //        //DNR system
-        pages.add(new WikiDNRPage(manager)); // <---
+        pages.add(new WikiDNRPage(manager)); // <--- @@@ ===
 //        //Coalitions system
-        pages.add(new WikiCoalitionsPage(manager)); // <---
+        pages.add(new WikiCoalitionsPage(manager)); // <--- @@@ ===
 //        //War Room System
-        pages.add(new WikiWarRoomPage(manager)); // <---
-//        //Recruitment System
-        pages.add(new WikiRecruitmentPage(manager)); // <---
+        pages.add(new WikiWarRoomPage(manager)); // <--- easy @@ ===
 //        //Countering
-        pages.add(new WikiCounteringPage(manager)); // <---
+        pages.add(new WikiCounteringPage(manager)); // <--- @@
+        //        //Tax Bracket Automation
+        pages.add(new WikiTaxBracketPage(manager)); // <--- @@@ ===
+        //Auditing System / Alliance MMR requirements
+        pages.add(new WikiAuditingPage(manager)); // <--- @@
 //        //Finding Targets / War panels
-        pages.add(new WikiFindingTargetsPage(manager)); // <---
-//        //Tax Bracket Automation
-        pages.add(new WikiTaxBracketPage(manager)); // <---
+        pages.add(new WikiFindingTargetsPage(manager)); // <--- @@
 //        //Escrow System
-        pages.add(new WikiEscrowPage(manager)); // <---
+        pages.add(new WikiEscrowPage(manager)); // <--- @
 //        //Plan a blitz
-        pages.add(new WikiBlitzPage(manager)); // <---
+        pages.add(new WikiBlitzPage(manager)); // <--- @
 //        //Send out targets
-        pages.add(new WikiSendTargetsPage(manager)); // <---
+        pages.add(new WikiSendTargetsPage(manager)); // <--- easy @
 //        //Spy war
-        pages.add(new WikiSpyWarPage(manager)); // <---
+        pages.add(new WikiSpyWarPage(manager)); // <--- easy @
 //        //Blockade System
-        pages.add(new WikiBlockadePage(manager)); // <---   ####
+        pages.add(new WikiBlockadePage(manager));
 //        //Beige cycling tutorial
-        pages.add(new WikiBeigeCyclingPage(manager)); // <---
+        pages.add(new WikiBeigeCyclingPage(manager));
 //        //Loan System
         pages.add(new WikiLoanPage(manager));// <---   ####
 //        //Report System
-        pages.add(new WikiReportPage(manager)); // <---   ####
+        pages.add(new WikiReportPage(manager));
 //        //Anti Leak System
-        pages.add(new WikiAntiLeakPage(manager)); // <---   ####
+        pages.add(new WikiAntiLeakPage(manager)); // <---   #### @
 //        //Making custom spreadsheets
-        pages.add(new WikiCustomSheetsPage(manager)); // <---   ####
+        pages.add(new WikiCustomSheetsPage(manager)); // <---   #### @
 //        //Statistics System
         pages.add(new WikiStatisticsPage(manager)); // <---   ####
 //        //Trade System (use trading guide)
 //        //- Link DocScripts trade tool (cause useful)
-        pages.add(new WikiTradePage(manager)); // <---   ####
+        pages.add(new WikiTradePage(manager)); // <---   #### @
 
         WikiHelpPage help = new WikiHelpPage(manager, pages);
         pages.add(help);
@@ -131,7 +131,11 @@ public class WikiGenHandler {
     }
 
     private void writePage(WikiGen page) throws IOException {
+        String markdown = page.generateMarkdown().trim();
+        if (markdown.isEmpty()) {
+            return;
+        }
         File file = new File(pathRelative + File.separator + page.getPageName().toLowerCase().replace(" ", "_") + ".md");
-        Files.write(file.toPath(), page.generateMarkdown().getBytes());
+        Files.write(file.toPath(), markdown.getBytes());
     }
 }

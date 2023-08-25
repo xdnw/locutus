@@ -1,7 +1,10 @@
 package com.locutus.wiki.pages;
 
 import com.locutus.wiki.WikiGen;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.user.Roles;
 
 public class WikiRecruitmentPage extends WikiGen {
     public WikiRecruitmentPage(CommandManager2 manager) {
@@ -10,24 +13,33 @@ public class WikiRecruitmentPage extends WikiGen {
 
     @Override
     public String generateMarkdown() {
-       /*
-       Note other recruitment strategies
-        - members inviting their friends in the game
-        - talking to and meeting people in game discords
-        - advertising on other discord servers, like news servers
-        - advertising in game (link)
-
-    public static GuildSetting<String> RECRUIT_MESSAGE_SUBJECT = new GuildStringSetting(GuildSettingCategory.RECRUIT) {
-    public static GuildSetting<String> RECRUIT_MESSAGE_CONTENT = new GuildStringSetting(GuildSettingCategory.RECRUIT) {
-    public static GuildSetting<MessageChannel> RECRUIT_MESSAGE_OUTPUT = new GuildChannelSetting(GuildSettingCategory.RECRUIT) {
-    public static GuildSetting<Long> RECRUIT_MESSAGE_DELAY = new GuildLongSetting(GuildSettingCategory.RECRUIT) {
-
-    Messages support html
-
-    test command
-    /mail recruit
-
-    /interview recruitmentRankings
-        */
+        return build(
+                "# Overview",
+                """
+                        Locutus can send recruitment messages. This does NOT require login/username/password.\s
+                        Messages will only be sent if you have an active nation in a leadership position.
+                        Alliances with 9 or less members (non inactive) will also require an online nation on discord with the INTERNAL_AFFAIRS role
+                        """,
+                "# Set an `" + Roles.INTERNAL_AFFAIRS.name() + "` role",
+                CM.role.setAlias.cmd.create(Roles.INTERNAL_AFFAIRS.name(), "", null, null).toString(),
+                "# Setup a recruitment message",
+                "First ensure you have your alliance and api key set",
+                commandMarkdown(CM.settings_default.registerAlliance.cmd),
+                commandMarkdown(CM.settings_default.registerApiKey.cmd),
+                "Then set the message subject, content, and output channel",
+                commandMarkdown(CM.settings_recruit.RECRUIT_MESSAGE_SUBJECT.cmd),
+                commandMarkdown(CM.settings_recruit.RECRUIT_MESSAGE_CONTENT.cmd),
+                commandMarkdown(CM.settings_recruit.RECRUIT_MESSAGE_OUTPUT.cmd),
+                "Optional:",
+                commandMarkdown(CM.settings_recruit.RECRUIT_MESSAGE_DELAY.cmd),
+                "# Send a test message",
+                commandMarkdown(CM.mail.recruit.cmd),
+                """
+                # Other recruitment strategies
+                - Members inviting their friends to the game
+                - Talking to and meeting people in game Discords
+                - Advertising on other Discord servers, such as news servers
+                - Using the in-game advertisements <https://politicsandwar.com/donate/advertisement/>"""
+        );
     }
 }

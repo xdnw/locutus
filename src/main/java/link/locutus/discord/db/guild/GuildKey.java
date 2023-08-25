@@ -569,7 +569,7 @@ public class GuildKey {
 
         @Override
         public String help() {
-            return "The channel to get alerts when a member is spied";
+            return "The channel to get alerts when a member has their units spied successfully";
         }
     }.setupRequirements(f -> f.requires(API_KEY).requires(ALLIANCE_ID).requireActiveGuild());
     public static GuildSetting<Boolean> MEMBER_CAN_SET_BRACKET = new GuildBooleanSetting(GuildSettingCategory.TAX) {
@@ -892,7 +892,7 @@ public class GuildKey {
 
         @Override
         public String help() {
-            return "Map roles that can be assigned (or removed). See " + CM.self.create.cmd.toSlashMention() + " " + CM.role.removeAssignableRole.cmd.toSlashMention() + " " + CM.role.add.cmd.toSlashMention() + " " + CM.role.remove.cmd.toSlashMention();
+            return "Map roles that can be assigned (or removed). See " + CM.self.create.cmd.toSlashMention() + " " + CM.role.removeAssignableRole.cmd.toSlashMention() + " " + CM.self.add.cmd.toSlashMention() + " " + CM.self.remove.cmd.toSlashMention();
         }
     };
     public static GuildSetting<MessageChannel> DEFENSE_WAR_CHANNEL = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
@@ -905,7 +905,9 @@ public class GuildKey {
 
         @Override
         public String help() {
-            return "The #channel to receive alerts for defensive wars";
+            return "The #channel to receive alerts for defensive wars\n" +
+                    "Members and `" + Roles.MILCOM.name() + " are pinged for defensive wars\n" +
+                    "To set the `" + Roles.MILCOM.name() + "` role, see: " + CM.role.setAlias.cmd.create(Roles.MILCOM.name(), "", null, null);
         }
     }.setupRequirements(f -> f.requiresAllies().requireActiveGuild().requireValidAlliance().requireFunction(new Consumer<GuildDB>() {
         @Override
@@ -959,7 +961,10 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "The #channel to receive alerts for offensive wars";
+            return "The #channel to receive alerts for offensive wars\n" +
+                    "Members and `" + Roles.FOREIGN_AFFAIRS.name() + "` role are pinged for Do Not Raid (DNR) violations\n" +
+                    "To set the `" + Roles.FOREIGN_AFFAIRS.name() + "` role, see: " + CM.role.setAlias.cmd.create(Roles.FOREIGN_AFFAIRS.name(), "", null, null) + "\n" +
+                    "Wars against inactive nones do not create alerts";
         }
     }.setupRequirements(f -> f.requiresAllies().requireActiveGuild().requireValidAlliance());
     public static GuildSetting<Boolean> SHOW_ALLY_OFFENSIVE_WARS = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
@@ -2202,7 +2207,7 @@ public class GuildKey {
         @Override
         public String help() {
             return "The channel to send alerts when alliance ground units increase by 10% or more.\n" +
-                    "See also: `AA_GROUND_TOP_X` and coalition: `GROUND_ALERTS`";
+                    "See also setting `" + AA_GROUND_TOP_X.name() + "` and coalition: `" + Coalition.GROUND_ALERTS.name() + "` and role alias: `" + Roles.GROUND_MILITARIZE_ALERT.name() + "`";
         }
     }.setupRequirements(f -> f.requireActiveGuild());
     // AA_GROUND_TOP_X (min = 1, max = 80)

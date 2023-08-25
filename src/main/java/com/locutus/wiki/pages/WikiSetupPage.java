@@ -1,6 +1,7 @@
 package com.locutus.wiki.pages;
 
 import com.locutus.wiki.WikiGen;
+import jdk.jfr.Registered;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
@@ -106,6 +107,9 @@ public class WikiSetupPage extends WikiGen {
                 CM.settings.info.cmd.create("", null, null).toSlashCommand(true),
                 "Here is a list of all the roles:",
                 rolesToInfo.apply(otherRoles),
+                "# Remove a role alias",
+                "Here is an example of unlinking the registered role",
+                CM.role.setAlias.cmd.create(REGISTERED.name(), null, null, "true").toSlashCommand(true),
                 "# Setting your API Key",
                 GuildKey.API_KEY.help(),
                 "To set your API key, use:",

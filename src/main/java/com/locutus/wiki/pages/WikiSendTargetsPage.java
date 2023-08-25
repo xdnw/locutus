@@ -10,6 +10,9 @@ public class WikiSendTargetsPage extends WikiGen {
 
     @Override
     public String generateMarkdown() {
+        return build(
+
+        );
        /*
        Ensure api key is set for mailing
 
