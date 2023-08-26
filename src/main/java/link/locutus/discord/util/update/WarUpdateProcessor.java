@@ -221,15 +221,18 @@ public class WarUpdateProcessor {
 
         if (attacker.getPosition() > 1) {
             GuildDB db = attacker.getGuildDB();
-            Map.Entry<AttackTypeSubCategory, String> violation = checkViolation(root, db);
-            if (violation != null) {
+            try {
+                Map.Entry<AttackTypeSubCategory, String> violation = checkViolation(root, db);
+                if (violation != null) {
 //                Locutus.imp().getWarDb().addSubCategory();
-
-                if (db != null) {
-                    AttackTypeSubCategory type = violation.getKey();
-                    String msg = "<" + root.toUrl() + ">" + violation.getValue();
-                    AlertUtil.auditAlert(attacker, type, msg);
+                    if (db != null) {
+                        AttackTypeSubCategory type = violation.getKey();
+                        String msg = "<" + root.toUrl() + ">" + violation.getValue();
+                        AlertUtil.auditAlert(attacker, type, msg);
+                    }
                 }
+            } catch (Throwable ignore) {
+                ignore.printStackTrace();
             }
         }
     }

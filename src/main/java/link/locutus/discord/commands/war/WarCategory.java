@@ -305,10 +305,10 @@ public class WarCategory {
                 break;
             case VICTORY:
                 room.setPlanning(false);
-                message = name1 + " looted " + PnwUtil.resourcesToString(attack.getLoot()) + " from " + name2;
+                message = name1 + " looted " + (attack.getLoot() == null ? "nothing" : PnwUtil.resourcesToString(attack.getLoot())) + " from " + name2;
                 break;
             case A_LOOT:
-                message = name1 + " looted " + PnwUtil.resourcesToString(attack.getLoot()) + " from " + PnwUtil.getName(attack.getAllianceIdLooted(), true);
+                message = name1 + " looted " + (attack.getLoot() == null ? "nothing" : PnwUtil.resourcesToString(attack.getLoot())) + " from " + PnwUtil.getName(attack.getAllianceIdLooted(), true);
                 break;
             case PEACE:
                 message = name1 + " agreed to peace with " + name2;
