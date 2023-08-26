@@ -310,7 +310,7 @@ public class SpreadSheet {
                 } catch (IllegalArgumentException ignore) {
                     ignore.printStackTrace();
                 }
-                if (rssName.toString().equalsIgnoreCase("cost_raw") || rssName.toString().equalsIgnoreCase("deposit_raw")) {
+                if (rssName.toString().equalsIgnoreCase("cost_raw") || rssName.toString().equalsIgnoreCase("deposit_raw") || rssName.toString().equalsIgnoreCase("resources")) {
                     for (Map.Entry<ResourceType, Double> entry : PnwUtil.parseResources(amtStr.toString()).entrySet()) {
                         transfer.putIfAbsent(entry.getKey(), entry.getValue());
                     }

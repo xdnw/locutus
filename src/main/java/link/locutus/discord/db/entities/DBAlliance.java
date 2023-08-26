@@ -481,7 +481,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
             body.append("\n**Alliance Wars:**\n");
             for (Map.Entry<DBAlliance, Integer> entry : sorted) {
                 body.append("- ").append(PnwUtil.getMarkdownUrl(entry.getKey().getId(), true))
-                        .append(": ").append(entry.getValue()).append("wars \n");
+                        .append(": ").append(entry.getValue()).append(" wars\n");
             }
         }
         Map<Integer, Treaty> treaties = this.getTreaties();

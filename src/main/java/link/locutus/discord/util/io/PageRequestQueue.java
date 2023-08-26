@@ -36,33 +36,44 @@ public class PageRequestQueue {
         for (int i = 0; i < threads; i++) {
             service.submit(() -> {
                 while (true) {
+                    AtomicLong waitTime = new AtomicLong();
                     PageRequestTask<?> task = null;
-                    while (task == null) {
-                        AtomicLong waitTime = new AtomicLong();
-                        synchronized (lock) {
-                            while (queue.isEmpty()) {
-                                try {
-                                    lock.wait();
-                                } catch (InterruptedException e) {
-                                    Thread.currentThread().interrupt();
-                                    return;
+                    synchronized (lock) {
+                        while (true) {
+                            synchronized (queue) {
+                                if (!queue.isEmpty()) {
+                                    break;
                                 }
                             }
-                            task = findAndRemoveTask(waitTime);
-                        }
-                        if (task == null) {
-                            long wait = waitTime.get();
-                            if (wait <= 0) {
-                                wait = 1000;
-                            }
                             try {
-                                Thread.sleep(wait);
+                                lock.wait();
                             } catch (InterruptedException e) {
                                 Thread.currentThread().interrupt();
                                 return;
                             }
                         }
+                        System.out.println("Find and remove task");
+                        synchronized (queue) {
+                            task = findAndRemoveTask(waitTime);
+                        }
                     }
+                    if (task == null) {
+                        continue;
+                    }
+//                    if (task == null) {
+//                        long wait = waitTime.get();
+//                        if (wait <= 0) {
+//                            wait = 1000;
+//                        }
+//                        System.out.println("Wait for " + wait + "ms");
+//                        try {
+//                            Thread.sleep(wait);
+//                        } catch (InterruptedException e) {
+//                            Thread.currentThread().interrupt();
+//                            return;
+//                        }
+//                        continue;
+//                    }
                     run(task);
                 }
             });
@@ -70,6 +81,9 @@ public class PageRequestQueue {
     }
 
     private PageRequestTask findAndRemoveTask(AtomicLong waitTime) {
+        if (true) return queue.poll();
+
+        if (queue.isEmpty()) return null;
         PageRequestTask task = findTask(waitTime);
         if (task != null) {
             queue.remove(task);
@@ -112,6 +126,7 @@ public class PageRequestQueue {
 //            double fiveCount = tracker.getDomainRequestsSince(task.getUrl(), fiveMinutes) / 5d;
             double maxCount = minuteCount;//Math.max(minuteCount, fiveCount);
 
+            System.out.println("Current minute count is " + minuteCount);
             long submitDate = task.getCreationDate();
             long bufferMs = task.getAllowBuffering();
             long delayMs = task.getAllowDelay();
@@ -120,7 +135,7 @@ public class PageRequestQueue {
                 return task;
             }
 
-            if (maxCount < 30) {
+            if (maxCount < 30 || true) {
                 return task;
             }
 
@@ -200,7 +215,9 @@ public class PageRequestQueue {
 
     public <T> PageRequestTask<T> submit(PageRequestTask<T> request) {
         synchronized (lock) {
-            queue.add(request);
+            synchronized (queue) {
+                queue.add(request);
+            }
             lock.notifyAll();
         }
         return request;

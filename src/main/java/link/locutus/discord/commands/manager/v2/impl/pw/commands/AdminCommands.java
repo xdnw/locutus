@@ -163,8 +163,11 @@ public class AdminCommands {
 
         Map<PagePriority, Integer> pagePriorities = new HashMap<>();
         int unknown = 0;
+        int size = 0;
         synchronized (jQueue) {
-            for (PageRequestQueue.PageRequestTask<?> task : jQueue) {
+            ArrayList<PageRequestQueue.PageRequestTask<?>> copy = new ArrayList<>(jQueue);
+            size = copy.size();
+            for (PageRequestQueue.PageRequestTask<?> task : copy) {
                 long priority = task.getPriority();
                 int ordinal = (int) (priority / Integer.MAX_VALUE);
                 if (ordinal >= PagePriority.values.length) unknown++;
@@ -179,7 +182,7 @@ public class AdminCommands {
         entries.sort((o1, o2) -> o2.getValue() - o1.getValue());
 
         StringBuilder sb = new StringBuilder();
-        sb.append("**File Queue:**\n");
+        sb.append("**File Queue:** " + size + "\n");
         for (Map.Entry<PagePriority, Integer> entry : entries) {
             sb.append(entry.getKey().name()).append(": ").append(entry.getValue()).append("\n");
         }

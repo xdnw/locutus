@@ -312,7 +312,7 @@ public class WarCommands {
         Set<DBNation> allNations = new LinkedHashSet<>(Locutus.imp().getNationDB().getNations().values());
         if (vmTurns == null) vmTurns = 0;
         if (defensiveSlots == null) defensiveSlots = -1;
-        boolean active = activeTimeCutoff != null;
+        boolean active = activeTimeCutoff != null && activeTimeCutoff <= 60;
         long minutesInactive = activeTimeCutoff == null ? 10000 : TimeUnit.MILLISECONDS.toMinutes(activeTimeCutoff);
         double score = nationScore == null ? me.getScore() : nationScore;
 

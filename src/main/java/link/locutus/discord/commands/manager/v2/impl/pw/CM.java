@@ -1861,8 +1861,8 @@ public class CM {
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="who")
         public static class who extends CommandRef {
             public static final who cmd = new who();
-            public who create(String nations, String sortBy, String list, String listAlliances, String listRawUserIds, String listMentions, String listInfo, String listChannels, String page) {
-                return createArgs("nations", nations, "sortBy", sortBy, "list", list, "listAlliances", listAlliances, "listRawUserIds", listRawUserIds, "listMentions", listMentions, "listInfo", listInfo, "listChannels", listChannels, "page", page);
+            public who create(String nationOrAlliances, String sortBy, String list, String listAlliances, String listRawUserIds, String listMentions, String listInfo, String listChannels, String page) {
+                return createArgs("nationOrAlliances", nationOrAlliances, "sortBy", sortBy, "list", list, "listAlliances", listAlliances, "listRawUserIds", listRawUserIds, "listMentions", listMentions, "listInfo", listInfo, "listChannels", listChannels, "page", page);
             }
         }
     }
@@ -4150,8 +4150,8 @@ public class CM {
     @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="who")
     public static class who extends CommandRef {
         public static final who cmd = new who();
-        public who create(String nations, String sortBy, String list, String listAlliances, String listRawUserIds, String listMentions, String listInfo, String listChannels, String page) {
-            return createArgs("nations", nations, "sortBy", sortBy, "list", list, "listAlliances", listAlliances, "listRawUserIds", listRawUserIds, "listMentions", listMentions, "listInfo", listInfo, "listChannels", listChannels, "page", page);
+        public who create(String nationOrAlliances, String sortBy, String list, String listAlliances, String listRawUserIds, String listMentions, String listInfo, String listChannels, String page) {
+            return createArgs("nationOrAlliances", nationOrAlliances, "sortBy", sortBy, "list", list, "listAlliances", listAlliances, "listRawUserIds", listRawUserIds, "listMentions", listMentions, "listInfo", listInfo, "listChannels", listChannels, "page", page);
         }
     }
 }

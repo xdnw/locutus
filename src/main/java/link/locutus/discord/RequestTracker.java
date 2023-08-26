@@ -64,6 +64,9 @@ public class RequestTracker {
     }
 
     private void runWithRetryAfter(PageRequestQueue.PageRequestTask task, int depth) {
+        if (depth > 3) {
+
+        }
         long now = System.currentTimeMillis();
         long retryMs = getRetryAfter(task.getUrl());
         boolean isRateLimited = false;
@@ -75,9 +78,15 @@ public class RequestTracker {
                 task.complete(supplier.get());
             }
         } catch (FileUtil.TooManyRequests e) {
+            if (depth > 3) {
+                task.completeExceptionally(e);
+            }
             isRateLimited = true;
             retryAfter = e.getRetryAfter();
         } catch (HttpClientErrorException.TooManyRequests e) {
+            if (depth > 3) {
+                task.completeExceptionally(e);
+            }
             isRateLimited = true;
             HttpHeaders headers = e.getResponseHeaders();
             if (headers != null) {
@@ -86,6 +95,9 @@ public class RequestTracker {
                     retryAfter = Integer.parseInt(retryStr);
                 }
             }
+        } catch (Throwable e) {
+            System.out.println("Error " + e.getMessage() + " on " + task.getUrl());
+            throw e;
         }
         if (isRateLimited) {
             int domainId = getDomainId(task.getUrl());

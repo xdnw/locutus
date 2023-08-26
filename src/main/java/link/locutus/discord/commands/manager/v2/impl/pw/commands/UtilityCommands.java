@@ -1481,7 +1481,6 @@ public Map<ParametricCallable, String> getEndpoints() {
             } else {
                 DBAlliance alliance = nationOrAA.asAlliance();
                 title = alliance.getName();
-                String markdown = alliance.toMarkdown();
 
 //                If no aaid is set, and you are in the aa, button to register it as your alliance
 //                - Register Guild
