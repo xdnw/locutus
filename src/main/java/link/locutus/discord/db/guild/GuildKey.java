@@ -1833,7 +1833,8 @@ public class GuildKey {
             return RESOURCE_REQUEST_CHANNEL.set(db, existing);
         }
         @NoFormat
-        @Command(descMethod = "help")
+        @Command(desc = "Set the resource withdrawal channel to the current channel\n" +
+                "Do not specify an alliance to set the default withdraw channel")
         @RolePermission(Roles.ADMIN)
         public String addResourceChannel(@Me GuildDB db, @Me User user, @Me MessageChannel channel, @Default DBAlliance alliance) {
             Map<Long, MessageChannel> existing = RESOURCE_REQUEST_CHANNEL.getOrNull(db, false);

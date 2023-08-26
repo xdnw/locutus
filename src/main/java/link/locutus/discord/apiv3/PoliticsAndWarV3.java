@@ -57,7 +57,6 @@ public class PoliticsAndWarV3 {
     public static int BOUNTIES_PER_PAGE = 1000;
     public static int BASEBALL_PER_PAGE = 1000;
     public static int EMBARGO_PER_PAGE = 1000;
-
     public static int BANS_PER_PAGE = 500;
 
     private final String endpoint;
@@ -130,6 +129,11 @@ public class PoliticsAndWarV3 {
                 rateLimitGlobal.reset(System.currentTimeMillis());
                 rateLimitGlobal.remaining--;
             }
+        }
+
+        {
+            String queryStr = graphQLRequest.toQueryString().split("\\{")[0];
+            System.out.println(":||Remove gql" + queryStr);
         }
 
         ResponseEntity<String> exchange;
