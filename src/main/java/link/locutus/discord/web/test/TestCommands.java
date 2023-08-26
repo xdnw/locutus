@@ -2,6 +2,7 @@ package link.locutus.discord.web.test;
 
 import cn.easyproject.easyocr.ImageType;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -22,8 +23,13 @@ public class TestCommands {
         return null;
     }
 
-    @Command
-    public String modal(@Me IMessageIO io, ICommand command, List<String> arguments, @Default String defaults) {
+    @Command(desc = "Create a discord modal for a bot command\n" +
+            "This will make a popup prompting for the command arguments you specify and submit any defaults you provide\n" +
+            "Note: This is intended to be used in conjuction with the card command")
+    public String modal(@Me IMessageIO io, ICommand command,
+                        @Arg("A comma separated list of the command arguments to prompt for") List<String> arguments,
+                        @Arg("The json string of the default arguments and values you want to submit to the command")
+                        @Default String defaults) {
         Map<String, String> args = defaults == null ? new HashMap<>() : PnwUtil.parseMap(defaults);
         io.modal().create(command, args, arguments).send();
         return null;
