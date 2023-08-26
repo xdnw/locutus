@@ -60,8 +60,13 @@ public class GrantCommands {
         int numDisabled = templates.stream().mapToInt(t -> t.isEnabled() ? 0 : 1).sum();
 
         if (templates.isEmpty()) {
-            String msg = "No templates found for category: " + category + "\n" +
-                    "Create one with " + category.getCommandMention();
+            String msg;
+            if (category == null) {
+                msg = "No templates found for all categories";
+            } else {
+                msg = "No templates found for category: " + category + "\n" +
+                        "Create one with " + category.getCommandMention();
+            }
             if (!listDisabled) {
                 msg += "\nUse `-d listDisabled` to list disabled templates";
             }
@@ -753,7 +758,7 @@ public class GrantCommands {
                 }
             }
             if (limit == null) {
-                throw new IllegalArgumentException("Grant template limits are set (see: " + CM.settings.info.cmd.toSlashMention() + " with key " + GuildKey.GRANT_TEMPLATE_LIMITS.name() + ")\n" +
+                throw new IllegalArgumentException("Grant template limits are set (see: " + CM.settings.info.cmd.create(GuildKey.GRANT_TEMPLATE_LIMITS.name(), null, null).toSlashMention() + ")\n" +
                         "However you have none of the roles set in the limits.");
             }
         }
