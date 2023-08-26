@@ -48,7 +48,7 @@ public abstract class AGrantTemplate<T> {
     private int maxGranterDay;
     private long dateCreated;
 
-    public AGrantTemplate(GuildDB db, boolean enabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated) {
+    public AGrantTemplate(GuildDB db, boolean enabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, Long allowExpiry, boolean allowIgnore) {
         this.db = db;
         this.enabled = enabled;
         this.name = name;
@@ -62,6 +62,8 @@ public abstract class AGrantTemplate<T> {
         this.maxGranterDay = maxGranterDay;
         this.maxGranterTotal = maxGranterTotal;
         this.dateCreated = dateCreated;
+        this.allowExpiry = allowExpiry;
+        this.allowIgnore = allowIgnore;
     }
 
     public boolean isEnabled() {

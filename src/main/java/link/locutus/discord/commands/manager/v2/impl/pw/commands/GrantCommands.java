@@ -758,7 +758,7 @@ public class GrantCommands {
                 }
             }
             if (limit == null) {
-                throw new IllegalArgumentException("Grant template limits are set (see: " + CM.settings.info.cmd.toSlashMention() + " with key " + GuildKey.GRANT_TEMPLATE_LIMITS.name() + ")\n" +
+                throw new IllegalArgumentException("Grant template limits are set (see: " + CM.settings.info.cmd.create(GuildKey.GRANT_TEMPLATE_LIMITS.name(), null, null).toSlashMention() + ")\n" +
                         "However you have none of the roles set in the limits.");
             }
         }
