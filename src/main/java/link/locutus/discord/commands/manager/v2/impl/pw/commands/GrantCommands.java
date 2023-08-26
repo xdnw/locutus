@@ -60,8 +60,13 @@ public class GrantCommands {
         int numDisabled = templates.stream().mapToInt(t -> t.isEnabled() ? 0 : 1).sum();
 
         if (templates.isEmpty()) {
-            String msg = "No templates found for category: " + category + "\n" +
-                    "Create one with " + category.getCommandMention();
+            String msg;
+            if (category == null) {
+                msg = "No templates found for all categories";
+            } else {
+                msg = "No templates found for category: " + category + "\n" +
+                        "Create one with " + category.getCommandMention();
+            }
             if (!listDisabled) {
                 msg += "\nUse `-d listDisabled` to list disabled templates";
             }
