@@ -427,6 +427,7 @@ public class GrantTemplateManager {
         templates.put(template.getName(), template);
         String query = template.createQuery();
         try (PreparedStatement stmt = db.prepareQuery(query)) {
+            template.setValuesBase(stmt);
             template.setValues(stmt);
             stmt.executeUpdate();
         } catch (SQLException e) {

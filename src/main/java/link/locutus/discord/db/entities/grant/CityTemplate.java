@@ -65,8 +65,8 @@ public class CityTemplate extends AGrantTemplate<Integer> {
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setInt(13, min_city);
-        stmt.setInt(14, max_city);
+        stmt.setInt(15, min_city);
+        stmt.setInt(16, max_city);
     }
 
     @Override

@@ -63,8 +63,8 @@ public class LandTemplate extends AGrantTemplate<Double>{
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setLong(13, level);
-        stmt.setBoolean(14, onlyNewCities);
+        stmt.setLong(15, level);
+        stmt.setBoolean(16, onlyNewCities);
     }
 
     @Override

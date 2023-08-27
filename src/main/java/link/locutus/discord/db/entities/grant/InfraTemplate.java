@@ -76,10 +76,10 @@ public class InfraTemplate extends AGrantTemplate<Double>{
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setLong(13, level);
-        stmt.setBoolean(14, onlyNewCities);
-        stmt.setLong(15, require_n_offensives);
-        stmt.setBoolean(16, allow_rebuild);
+        stmt.setLong(15, level);
+        stmt.setBoolean(16, onlyNewCities);
+        stmt.setLong(17, require_n_offensives);
+        stmt.setBoolean(18, allow_rebuild);
     }
 
     @Override

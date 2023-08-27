@@ -494,6 +494,8 @@ public abstract class AGrantTemplate<T> {
         list.add("max_granter_day");
         list.add("max_granter_total");
         list.add("date_created");
+        list.add("expire");
+        list.add("allow_ignore");
         return list;
     }
 
@@ -554,6 +556,8 @@ public abstract class AGrantTemplate<T> {
         stmt.setInt(10, this.getMaxGranterDay());
         stmt.setInt(11, this.getMaxGranterTotal());
         stmt.setLong(12, this.getDateCreated());
+        stmt.setLong(13, this.getExpire());
+        stmt.setBoolean(14, this.allowsExpire());
     }
 
     public long getDateCreated() {

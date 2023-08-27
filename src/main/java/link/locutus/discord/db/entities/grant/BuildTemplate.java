@@ -144,14 +144,14 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setBytes(13, build);
-        stmt.setBoolean(14, onlyNewCities);
-        stmt.setLong(15, mmr.toNumber());
-        stmt.setLong(16, allow_switch_after_days);
-        stmt.setBoolean(17, allow_switch_after_offensive);
-        stmt.setBoolean(18, allow_switch_after_infra);
-        stmt.setBoolean(19, allow_switch_after_land_or_project);
-        stmt.setBoolean(20, allow_all);
+        stmt.setBytes(15, build);
+        stmt.setBoolean(16, onlyNewCities);
+        stmt.setLong(17, mmr.toNumber());
+        stmt.setLong(18, allow_switch_after_days);
+        stmt.setBoolean(19, allow_switch_after_offensive);
+        stmt.setBoolean(20, allow_switch_after_infra);
+        stmt.setBoolean(21, allow_switch_after_land_or_project);
+        stmt.setBoolean(22, allow_all);
     }
 
     @Override

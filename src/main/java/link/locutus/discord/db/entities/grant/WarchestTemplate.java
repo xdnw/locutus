@@ -130,7 +130,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
     @Override
     public List<String> getQueryFields() {
         List<String> list = getQueryFieldsBase();
-        list.add("allowance_per_city");
+        list.add("allowance_per_ci  ty");
         list.add("track_days");
         list.add("subtract_expenditure");
         list.add("overdraw_percent_cents");
@@ -139,10 +139,10 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setBytes(13, ArrayUtil.toByteArray(allowancePerCity));
-        stmt.setLong(14, trackDays);
-        stmt.setBoolean(15, subtractExpenditure);
-        stmt.setLong(16, overdrawPercentCents);
+        stmt.setBytes(15, ArrayUtil.toByteArray(allowancePerCity));
+        stmt.setLong(16, trackDays);
+        stmt.setBoolean(17, subtractExpenditure);
+        stmt.setLong(18, overdrawPercentCents);
     }
     @Override
     public double[] getCost(DBNation sender, DBNation receiver, Map<ResourceType, Double> parsed) {

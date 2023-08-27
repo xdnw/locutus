@@ -163,7 +163,7 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setInt(13, project.ordinal());
+        stmt.setInt(15, project.ordinal());
     }
 
     @Override

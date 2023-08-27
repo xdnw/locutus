@@ -83,8 +83,8 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setLong(13, days);
-        stmt.setLong(14, overdrawPercent);
+        stmt.setLong(15, days);
+        stmt.setLong(16, overdrawPercent);
     }
 
     @Override
