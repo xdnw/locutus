@@ -140,7 +140,14 @@ public class PoliticsAndWarV3 {
 
         {
             String queryStr = graphQLRequest.toQueryString().split("\\{")[0];
-            requestTracker.addRequest(queryStr, queryStr);
+            String queryFull = graphQLRequest.toQueryString();
+            // find index of first number
+            int index = 0;
+            while (index < queryFull.length() && !Character.isDigit(queryFull.charAt(index))) {
+                index++;
+            }
+            String queryUrl = queryFull.substring(0, index);
+            requestTracker.addRequest(queryStr, queryUrl);
         }
 
         ResponseEntity<String> exchange;
