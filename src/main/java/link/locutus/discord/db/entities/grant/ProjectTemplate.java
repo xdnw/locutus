@@ -78,7 +78,7 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
         }));
 
         // received project already
-        list.add(new Grant.Requirement("Received project " + project + " already", false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Received transfer for " + project + " already", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
                 String findNote = "#project=" + project.name().toLowerCase();
@@ -124,20 +124,24 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
         }));
 
         // max city
-        list.add(new Grant.Requirement("Project requires at most " + project.maxCities() + " cities", false, new Function<DBNation, Boolean>() {
-            @Override
-            public Boolean apply(DBNation nation) {
-                return project.maxCities() <= 0 || nation.getCities() <= project.maxCities();
-            }
-        }));
+        if (project.maxCities() != 0) {
+            list.add(new Grant.Requirement("Project requires at most " + project.maxCities() + " cities", false, new Function<DBNation, Boolean>() {
+                @Override
+                public Boolean apply(DBNation nation) {
+                    return project.maxCities() <= 0 || nation.getCities() <= project.maxCities();
+                }
+            }));
+        }
 
         // min city
-        list.add(new Grant.Requirement("Project requires at least " + project.maxCities() + " cities", false, new Function<DBNation, Boolean>() {
-            @Override
-            public Boolean apply(DBNation nation) {
-                return project.requiredCities() <= 0 || nation.getCities() >= project.requiredCities();
-            }
-        }));
+        if (project.maxCities() != 0) {
+            list.add(new Grant.Requirement("Project requires at least " + project.maxCities() + " cities", false, new Function<DBNation, Boolean>() {
+                @Override
+                public Boolean apply(DBNation nation) {
+                    return project.requiredCities() <= 0 || nation.getCities() >= project.requiredCities();
+                }
+            }));
+        }
 
         // domestic policy is technological advancement
         list.add(new Grant.Requirement("Domestic policy must be technological advancement", true, new Function<DBNation, Boolean>() {

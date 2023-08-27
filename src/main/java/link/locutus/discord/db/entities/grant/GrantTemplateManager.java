@@ -101,6 +101,7 @@ public class GrantTemplateManager {
                 "`max_total` INT NOT NULL, " +
                 "`max_day` INT NOT NULL, " +
                 "`max_granter_day` INT NOT NULL, " +
+                "`max_granter_total` INT NOT NULL, " +
                 "`expire` BIGINT NOT NULL, " +
                 "`allow_ignore` BOOLEAN NOT NULL)";
 
@@ -118,6 +119,7 @@ public class GrantTemplateManager {
                 "`max_total` INT NOT NULL, " +
                 "`max_day` INT NOT NULL, " +
                 "`max_granter_day` INT NOT NULL, " +
+                "`max_granter_total` INT NOT NULL, " +
                 "`expire` BIGINT NOT NULL, " +
                 "`allow_ignore` BOOLEAN NOT NULL)";
 
@@ -137,6 +139,7 @@ public class GrantTemplateManager {
                 "`max_total` INT NOT NULL, " +
                 "`max_day` INT NOT NULL, " +
                 "`max_granter_day` INT NOT NULL, " +
+                "`max_granter_total` INT NOT NULL, " +
                 "`expire` BIGINT NOT NULL, " +
                 "`allow_ignore` BOOLEAN NOT NULL)";
         String infra = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_INFRA` " +
@@ -155,6 +158,7 @@ public class GrantTemplateManager {
                 "`max_total` INT NOT NULL, " +
                 "`max_day` INT NOT NULL, " +
                 "`max_granter_day` INT NOT NULL, " +
+                "`max_granter_total` INT NOT NULL, " +
                 "`expire` BIGINT NOT NULL, " +
                 "`allow_ignore` BOOLEAN NOT NULL)";
         String land = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_LAND` " +
@@ -171,6 +175,7 @@ public class GrantTemplateManager {
                 "`max_total` INT NOT NULL, " +
                 "`max_day` INT NOT NULL, " +
                 "`max_granter_day` INT NOT NULL, " +
+                "`max_granter_total` INT NOT NULL, " +
                 "`expire` BIGINT NOT NULL, " +
                 "`allow_ignore` BOOLEAN NOT NULL)";
         String build = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_BUILD` " +
@@ -193,6 +198,7 @@ public class GrantTemplateManager {
                 "`max_total` INT NOT NULL, " +
                 "`max_day` INT NOT NULL, " +
                 "`max_granter_day` INT NOT NULL, " +
+                "`max_granter_total` INT NOT NULL, " +
                 "`expire` BIGINT NOT NULL, " +
                 "`allow_ignore` BOOLEAN NOT NULL)";
         String raws = "CREATE TABLE IF NOT EXISTS `GRANT_TEMPLATE_RAWS` " +
@@ -209,6 +215,7 @@ public class GrantTemplateManager {
                 "`max_total` INT NOT NULL, " +
                 "`max_day` INT NOT NULL, " +
                 "`max_granter_day` INT NOT NULL, " +
+                "`max_granter_total` INT NOT NULL, " +
                 "`expire` BIGINT NOT NULL, " +
                 "`allow_ignore` BOOLEAN NOT NULL)";
 
@@ -242,6 +249,7 @@ public class GrantTemplateManager {
             String tableName = value.getTable();
             db.executeStmt("ALTER TABLE `" + tableName + "` ADD COLUMN `expire` BIGINT NOT NULL DEFAULT 0");
             db.executeStmt("ALTER TABLE `" + tableName + "` ADD COLUMN `allow_ignore` BOOLEAN NOT NULL DEFAULT 0");
+            db.executeStmt("ALTER TABLE `" + tableName + "` ADD COLUMN `max_granter_total` INT NOT NULL DEFAULT 0");
         }
 
     }

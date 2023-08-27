@@ -88,7 +88,8 @@ public class WikiBankPage extends WikiGen {
                     - Create a __private__ trade of either a `$0` ppu sell offer, or a food buy offer __over__ `$100,000` ppu. 
                     - Send the trade with a nation with bank access to an alliance using the offshore, who has provided credentials to the bot. 
                       (i.e. the bot owner `Borg`)
-                    - Use the command `/trade accept` in your discord server for the account you wish to deposit into.""",
+                    - Use the command e.g. `/trade accept` in the discord server you wish to deposit into (i.e. your alliance or corporate server)
+                    Set the banker as the receiver (e.g. `Borg`)""",
                     commandMarkdownSpoiler(CM.trade.accept.cmd),
                 "# For my nation",
                 """
@@ -104,7 +105,7 @@ public class WikiBankPage extends WikiGen {
                 "# Using the local alliance",
                 """
                         It is recommended to use an offshore instead, to avoid loot losses.
-                        To enable offshoring using the local alliance, use your alliance url in:""",
+                        To enable banking using the local alliance, use your alliance url in:""",
                         CM.offshore.add.cmd.create("", null).toString(),
                 "**Alternatively** you can use the coalition command to set both `" + Coalition.OFFSHORE.name() + "` and `" + Coalition.OFFSHORING.name() + "` to your alliance",
                 CM.coalition.add.cmd.create("", Coalition.OFFSHORE.name()).toString(),
