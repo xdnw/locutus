@@ -16,6 +16,11 @@ public class DelegateAutoRoleTask implements IAutoRoleTask {
     }
 
     @Override
+    public AutoRoleInfo autoRoleMemberApp(Member member, DBNation nation) {
+        return task.autoRoleMemberApp(member, nation);
+    }
+
+    @Override
     public AutoRoleInfo updateTaxRoles(Map<DBNation, TaxBracket> brackets) {
         return task.updateTaxRoles(brackets);
     }

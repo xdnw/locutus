@@ -595,4 +595,16 @@ public abstract class AGrantTemplate<T> {
         }
         return null;
     }
+
+    public boolean allowsExpire() {
+        return this.expiryOrZero > 0;
+    }
+
+    public long getExpire() {
+        return this.expiryOrZero;
+    }
+
+    public boolean allowsIgnore() {
+        return this.allowIgnore;
+    }
 }

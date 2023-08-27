@@ -48,7 +48,9 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                 rs.getBoolean("allow_switch_after_offensive"),
                 rs.getBoolean("allow_switch_after_infra"),
                 rs.getBoolean("allow_switch_after_land_or_project"),
-                rs.getBoolean("allow_all")
+                rs.getBoolean("allow_all"),
+                rs.getLong("expiry"),
+                rs.getBoolean("allow_ignore")
         );
     }
 
@@ -58,9 +60,9 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                          boolean allow_switch_after_offensive,
                          boolean allow_switch_after_infra,
                          boolean allow_switch_after_land_or_project,
-                         boolean allow_all
+                         boolean allow_all, long expiryOrZero, boolean allowIgnore
     ) {
-        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated);
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore);
         this.build = build;
         this.onlyNewCities = onlyNewCities;
         this.mmr = mmr <= 0 ? null : MMRInt.fromString(String.format("%04d", mmr));
