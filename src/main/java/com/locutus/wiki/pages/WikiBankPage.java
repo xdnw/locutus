@@ -44,6 +44,9 @@ public class WikiBankPage extends WikiGen {
                     CM.who.cmd.create("Borg", null, null, null, null, null, null, null, null).toString(),
                 "Set that alliance as your offshore:",
                 commandMarkdown(CM.offshore.add.cmd),
+                "**Alternatively** you can use the coalition command in your  to set `" + Coalition.OFFSHORE.name() + "` to the desired offshore alliance, and ensure `" + Coalition.OFFSHORING.name() + "` is empty",
+                CM.coalition.create.cmd.create("", Coalition.OFFSHORE.name()).toString(),
+                CM.coalition.delete.cmd.create(Coalition.OFFSHORING.name()).toString(),
                 MarkupUtil.spoiler("Legal/Disclaimer", """
                         Offshoring and bot services are non political, and should be assumed to continue operating regardless of any attacks on Borg.
                                                 
@@ -103,6 +106,11 @@ public class WikiBankPage extends WikiGen {
                         It is recommended to use an offshore instead, to avoid loot losses.
                         To enable offshoring using the local alliance, use your alliance url in:""",
                         CM.offshore.add.cmd.create("", null).toString(),
+                "**Alternatively** you can use the coalition command to set both `" + Coalition.OFFSHORE.name() + "` and `" + Coalition.OFFSHORING.name() + "` to your alliance",
+                CM.coalition.add.cmd.create("", Coalition.OFFSHORE.name()).toString(),
+                CM.coalition.add.cmd.create("", Coalition.OFFSHORING.name()).toString(),
+                "And no other values are set:",
+                CM.coalition.list.cmd.toString(),
                 "# Running your own offshore",
                 """
                 Go to the discord guild for your offshore, or create a new one if it does not exist.
@@ -119,9 +127,20 @@ public class WikiBankPage extends WikiGen {
                 "### Set it as an offshore",
                 "In the guild for your offshore, use the alliance id of the offshore:",
                 CM.offshore.add.cmd.create("", null).toString(),
+                "**Alternatively**, you can use the coalition command to set both `" + Coalition.OFFSHORE.name() + "` and `" + Coalition.OFFSHORING.name() + "` to your offshore alliance",
+                CM.coalition.add.cmd.create("", Coalition.OFFSHORE.name()).toString(),
+                CM.coalition.add.cmd.create("", Coalition.OFFSHORING.name()).toString(),
+                "And ensure ONLY past offshores (not connected to any other guild) are set as those coalitions",
+                CM.coalition.list.cmd.toString(),
                 "### Set the offshore in your alliance or corporation",
-                "The same steps as using the public offshore, but use your offshore alliance id for:",
+                "Go to the guild you have setup for your alliance or corporation, and use the offshore add command with the alliance id of your offshore:",
                 CM.offshore.add.cmd.create("", null).toString(),
+                "**Alternatively**:\n" +
+                "1. In your alliance/corporation server, use the coalition command to set `" + Coalition.OFFSHORE.name() + "` and ensure `" + Coalition.OFFSHORING.name() + "` is not set",
+                CM.coalition.add.cmd.create("", Coalition.OFFSHORE.name()).toString() + "\n" +
+                CM.coalition.delete.cmd.create(Coalition.OFFSHORING.name()).toString(),
+                "2. In your offshore server, add your alliance id (if an alliance) or guild id (if corporation) to the `" + Coalition.OFFSHORING.name() + "` coalition",
+                CM.coalition.add.cmd.create("", Coalition.OFFSHORING.name()).toString(),
                 "### Check deposits of alliances or guilds",
                 "In the offshore server, as above, use the deposits command with the alliance or guild id you wish to check",
                 CM.deposits.check.cmd.create("", null, null, null, null, null, null, null, null, null).toString(),
