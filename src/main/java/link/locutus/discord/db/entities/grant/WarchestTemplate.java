@@ -130,7 +130,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
     @Override
     public List<String> getQueryFields() {
         List<String> list = getQueryFieldsBase();
-        list.add("allowance_per_ci  ty");
+        list.add("allowance_per_city");
         list.add("track_days");
         list.add("subtract_expenditure");
         list.add("overdraw_percent_cents");
