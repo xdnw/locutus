@@ -50,7 +50,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                 rs.getBoolean("allow_switch_after_infra"),
                 rs.getBoolean("allow_switch_after_land_or_project"),
                 rs.getBoolean("allow_all"),
-                rs.getLong("expiry"),
+                rs.getLong("expire"),
                 rs.getBoolean("allow_ignore")
         );
     }

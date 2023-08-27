@@ -407,8 +407,6 @@ public class GrantTemplateManager {
     }
 
     public void loadTemplates() throws SQLException, InvocationTargetException, InstantiationException, IllegalAccessException {
-        Map<String, AGrantTemplate> templates = new HashMap<>();
-
         for (TemplateTypes type : TemplateTypes.values()) {
             String query = "SELECT * FROM `" + type.getTable() + "`";
 

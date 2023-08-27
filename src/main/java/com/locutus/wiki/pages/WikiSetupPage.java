@@ -60,7 +60,7 @@ public class WikiSetupPage extends WikiGen {
 
         return build(
                 """
-                Locutus is a bot on the discord server which assists with war calculations and alliance affairs for the game Politics and War. To get started, add the bot to your server.""\",
+                Locutus is a bot on the discord server which assists with war calculations and alliance affairs for the game Politics and War.
                                     
                 Support Server: [<kbd> <br> Discord Support Server <br> </kbd>][Link]
                                 

@@ -25,7 +25,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
     private final long overdrawPercent;
     public RawsTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
         this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), rs.getLong("days"), rs.getLong("overdraw_percent_cents"),
-                rs.getLong("expiry"),
+                rs.getLong("expire"),
                 rs.getBoolean("allow_ignore"));
     }
 
