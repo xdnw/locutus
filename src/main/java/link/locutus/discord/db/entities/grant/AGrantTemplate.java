@@ -25,6 +25,7 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 
+import javax.annotation.Nullable;
 import java.util.*;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -135,10 +136,10 @@ public abstract class AGrantTemplate<T> {
                 maxTotal > 0 ? "" + maxTotal : null,
                 maxDay > 0 ? "" + maxDay : null,
                 maxGranterDay > 0 ? "" + maxGranterDay : null,
-                maxGranterTotal > 0 ? "" + maxGranterTotal : null);
+                maxGranterTotal > 0 ? "" + maxGranterTotal : null, expiryOrZero == 0 ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expiryOrZero), allowIgnore ? "true" : null);
     }
 
-    public abstract String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal);
+    public abstract String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowIgnore);
 
     public String toFullString(DBNation sender, DBNation receiver, T parsed) {
         // sender or receiver may be null
@@ -308,7 +309,7 @@ public abstract class AGrantTemplate<T> {
 
     public abstract TemplateTypes getType();
 
-    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver, T parsed) {
+    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, T parsed) {
         List<Grant.Requirement> list = new ArrayList<>();
 
         // check grant not disabled
@@ -338,7 +339,7 @@ public abstract class AGrantTemplate<T> {
             }));
         }
         if (getMaxGranterTotal() > 0) {
-            list.add(new Grant.Requirement("Grant limit reached: " + getMaxGranterTotal() + " total grants send from " + sender.getName(), false, new Function<DBNation, Boolean>() {
+            list.add(new Grant.Requirement("Grant limit reached: " + getMaxGranterTotal() + " total grants send from " + (sender == null ? "sender" : sender.getName()), false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
                     return getGrantedTotal(sender).size() < getMaxGranterTotal();
@@ -346,7 +347,7 @@ public abstract class AGrantTemplate<T> {
             }));
         }
         if (getMaxGranterDay() > 0) {
-            list.add(new Grant.Requirement("Grant limit reached: " + getMaxGranterDay() + " grants per day send from " + sender.getName(), false, new Function<DBNation, Boolean>() {
+            list.add(new Grant.Requirement("Grant limit reached: " + getMaxGranterDay() + " grants per day send from " + (sender == null ? "sender" : sender.getName()), false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
                     long oneDayMs = TimeUnit.DAYS.toMillis(1);
@@ -359,7 +360,7 @@ public abstract class AGrantTemplate<T> {
         list.add(new Grant.Requirement("Nation has already received this grant", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                return db.getGrantTemplateManager().getRecordsByReceiver(nation.getId(), getName()).size() == 0;
+                return db.getGrantTemplateManager().getRecordsByReceiver(nation.getId(), getName()).isEmpty();
             }
         }));
 
@@ -406,7 +407,7 @@ public abstract class AGrantTemplate<T> {
             }
         }));
 
-        Set<Integer> blacklist = GuildKey.GRANT_TEMPLATE_BLACKLIST.get(db);
+        Set<Integer> blacklist = GuildKey.GRANT_TEMPLATE_BLACKLIST.getOrNull(db);
 
         if(blacklist == null)
             blacklist = Collections.emptySet();
@@ -448,8 +449,8 @@ public abstract class AGrantTemplate<T> {
             }
         }));
 
-        List<Transaction2> transfers = receiver.getTransactions(0L, true);
-        long latest = transfers.size() > 0 ? transfers.stream().mapToLong(Transaction2::getDate).max().getAsLong() : 0L;
+        List<Transaction2> transfers = receiver == null ? Collections.emptyList() : receiver.getTransactions(0L, true);
+        long latest = !transfers.isEmpty() ? transfers.stream().mapToLong(Transaction2::getDate).max().getAsLong() : 0L;
         // require no new transfers
         list.add(new Grant.Requirement("Nation has received a transfer since attempting this grant, please try again", false, new Function<DBNation, Boolean>() {
             @Override

@@ -17,6 +17,7 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.offshore.Grant;
 import rocker.grant.cities;
 
+import javax.annotation.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -69,8 +70,8 @@ public class CityTemplate extends AGrantTemplate<Integer> {
     }
 
     @Override
-    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal) {
-        return CM.grant_template.create.city.cmd.create(name, allowedRecipients,  min_city + "", max_city + "", econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, null).toString();
+    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowIgnore) {
+        return CM.grant_template.create.city.cmd.create(name, allowedRecipients,  min_city + "", max_city + "", econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, allowExpire, allowIgnore, null).toString();
     }
 
     @Override
@@ -85,7 +86,7 @@ public class CityTemplate extends AGrantTemplate<Integer> {
 
     //add flags to the template database
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver, Integer amount) {
+    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Integer amount) {
         List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, amount);
 
         // amount cannot be <= 0
@@ -100,7 +101,7 @@ public class CityTemplate extends AGrantTemplate<Integer> {
                 return amount <= 1;
         }));
 
-        int currentCities = receiver.getCities();
+        int currentCities = receiver == null ? 0 : receiver.getCities();
         list.add(new Grant.Requirement("Nation has built a city, please run the grant command again", false, f -> f.getCities() == currentCities));
 
         list.add(new Grant.Requirement("Requires at least " + min_city + " cities", false, new Function<DBNation, Boolean>() {

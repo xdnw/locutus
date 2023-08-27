@@ -19,6 +19,7 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
 
+import javax.annotation.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -92,7 +93,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     }
 
     @Override
-    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal) {
+    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowIgnore) {
         return CM.grant_template.create.build.cmd.create(name, allowedRecipients,
                 build != null ? JavaCity.fromBytes(build).toJson() : null,
                 String.format("%04d", mmr),
@@ -102,7 +103,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                 allow_switch_after_infra ? "true" : null,
                 allow_all ? "true" : null,
                 allow_switch_after_land_or_project ? "true" : null,
-                econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, null).toString();
+                econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, allowExpire, allowIgnore, null).toString();
     }
 
     @Override
@@ -237,7 +238,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver, Map<Integer, CityBuild> build) {
+    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Map<Integer, CityBuild> build) {
         List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, build);
 
         if (onlyNewCities) {
@@ -291,16 +292,9 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         for (GrantTemplateManager.GrantSendRecord record : getDb().getGrantTemplateManager().getRecordsByReceiver(receiver.getId())) {
             // buildDate = Math.max(buildDate, record.date);
             switch (record.grant_type) {
-                case BUILD:
-                    buildDate = Math.max(buildDate, record.date);
-                    break;
-                case INFRA:
-                    infraDate = Math.max(infraDate, record.date);
-                    break;
-                case PROJECT:
-                case LAND:
-                    projectOrLandDate = Math.max(projectOrLandDate, record.date);
-                    break;
+                case BUILD -> buildDate = Math.max(buildDate, record.date);
+                case INFRA -> infraDate = Math.max(infraDate, record.date);
+                case PROJECT, LAND -> projectOrLandDate = Math.max(projectOrLandDate, record.date);
             }
         }
         Set<Integer> citiesToGrant = new HashSet<>();
@@ -310,10 +304,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
             if (date < cutoff) continue;
             boolean allowGrant = true;
             if (buildDate > date) {
-                allowGrant = false;
-                if (infraDate > buildDate && allow_switch_after_infra) {
-                    allowGrant = true;
-                }
+                allowGrant = infraDate > buildDate && allow_switch_after_infra;
                 if (projectOrLandDate > buildDate && allow_switch_after_land_or_project) {
                     allowGrant = true;
                 }

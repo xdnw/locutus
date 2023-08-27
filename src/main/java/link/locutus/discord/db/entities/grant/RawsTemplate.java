@@ -37,7 +37,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
     }
 
     @Override
-    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal) {
+    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowIgnore) {
         return CM.grant_template.create.raws.cmd.create(name,
                 allowedRecipients,
                 days + "",
@@ -49,7 +49,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
                 maxTotal,
                 maxDay,
                 maxGranterDay,
-                maxGranterTotal,
+                maxGranterTotal, allowExpire, allowIgnore,
                 null).toSlashCommand();
     }
 

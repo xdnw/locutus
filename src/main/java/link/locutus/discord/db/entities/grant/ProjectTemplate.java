@@ -15,6 +15,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
 
+import javax.annotation.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -44,8 +45,8 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
     }
 
     @Override
-    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal) {
-        return CM.grant_template.create.project.cmd.create(name, allowedRecipients, project.name(), econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, null).toString();
+    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowIgnore) {
+        return CM.grant_template.create.project.cmd.create(name, allowedRecipients, project.name(), econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, allowExpire, allowIgnore, null).toString();
 
     }
 
@@ -65,7 +66,7 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver, Void parsed) {
+    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Void parsed) {
         List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, parsed);
 
         // has a timer

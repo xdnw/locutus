@@ -188,7 +188,7 @@ public class AutoRoleTask implements IAutoRoleTask {
             infoStr.append(memberRole == null ? "No Member Role" : "- Member Role: " + memberRole.getName()).append("\n");
             info.put("Auto Role Members/Apps", infoStr.toString());
         } else {
-            info.put("Auto Role Members/Apps", "False (see: TODO CM REF)");
+            info.put("Auto Role Members/Apps", "False (see: " + CM.settings_role.AUTOROLE_MEMBER_APPS.cmd.toSlashMention() + ")");
         }
 
         StringBuilder result = new StringBuilder();

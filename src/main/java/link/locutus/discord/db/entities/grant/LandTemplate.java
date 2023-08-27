@@ -15,6 +15,7 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
 
+import javax.annotation.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -77,9 +78,9 @@ public class LandTemplate extends AGrantTemplate<Double>{
     }
 
     @Override
-    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal) {
+    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowIgnore) {
         return CM.grant_template.create.land.cmd.create(name, allowedRecipients, level + "",
-                onlyNewCities ? "true" : null, econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, null).toString();
+                onlyNewCities ? "true" : null, econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, allowExpire, allowIgnore, null).toString();
     }
 
     public Map<Integer, Double> getTopCityLandGrant(DBNation receiver) {
@@ -149,7 +150,7 @@ public class LandTemplate extends AGrantTemplate<Double>{
 
     }
 
-    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver, Double parsed) {
+    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Double parsed) {
         List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, parsed);
 
         //nation does not have ALA

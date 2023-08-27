@@ -17,6 +17,7 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
 import net.dv8tion.jda.api.entities.Role;
 
+import javax.annotation.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -94,15 +95,15 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     }
 
     @Override
-    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal) {
+    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowIgnore) {
         return CM.grant_template.create.infra.cmd.create(name, allowedRecipients,
                 level + "", onlyNewCities ? "true" : null,
                 require_n_offensives > 0 ? "true" : null,
-                allow_rebuild ? "true" : null, econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, null).toString();
+                allow_rebuild ? "true" : null, econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, allowExpire, allowIgnore, null).toString();
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver, Double amount) {
+    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Double amount) {
         List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, amount);
 
         if (amount > level) {

@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.AccessType;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.EscrowMode;
@@ -218,6 +219,11 @@ public class GrantCommands {
         // confirmation
         if (!force) {
             String body = template.toFullString(me, null, null);
+            Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(allowedRecipients);
+            nations.removeIf(f -> !db.isAllianceId(f.getAlliance_id()));
+            if (nations.isEmpty()) {
+                body = "**WARNING: NO NATIONS MATCHING `" + allowedRecipients.getFilter() + "`**\n\n" + body;
+            }
             if (existing != null) {
                 body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
                         "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
@@ -292,6 +298,11 @@ public class GrantCommands {
         // confirmation
         if (!force) {
             String body = template.toFullString(me, null, null);
+            Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(allowedRecipients);
+            nations.removeIf(f -> !db.isAllianceId(f.getAlliance_id()));
+            if (nations.isEmpty()) {
+                body = "**WARNING: NO NATIONS MATCHING `" + allowedRecipients.getFilter() + "`**\n\n" + body;
+            }
             if (existing != null) {
                 body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
                         "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
@@ -357,6 +368,11 @@ public class GrantCommands {
         // confirmation
         if (!force) {
             String body = template.toFullString(me, null, null);
+            Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(allowedRecipients);
+            nations.removeIf(f -> !db.isAllianceId(f.getAlliance_id()));
+            if (nations.isEmpty()) {
+                body = "**WARNING: NO NATIONS MATCHING `" + allowedRecipients.getFilter() + "`**\n\n" + body;
+            }
             if (existing != null) {
                 body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
                         "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
@@ -441,6 +457,11 @@ public class GrantCommands {
         // confirmation
         if (!force) {
             String body = template.toFullString(me, null, null);
+            Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(allowedRecipients);
+            nations.removeIf(f -> !db.isAllianceId(f.getAlliance_id()));
+            if (nations.isEmpty()) {
+                body = "**WARNING: NO NATIONS MATCHING `" + allowedRecipients.getFilter() + "`**\n\n" + body;
+            }
             if (existing != null) {
                 body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
                         "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
@@ -507,6 +528,11 @@ public class GrantCommands {
         // confirmation
         if (!force) {
             String body = template.toFullString(me, null, null);
+            Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(allowedRecipients);
+            nations.removeIf(f -> !db.isAllianceId(f.getAlliance_id()));
+            if (nations.isEmpty()) {
+                body = "**WARNING: NO NATIONS MATCHING `" + allowedRecipients.getFilter() + "`**\n\n" + body;
+            }
             if (existing != null) {
                 body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
                         "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
@@ -574,6 +600,11 @@ public class GrantCommands {
         // confirmation
         if (!force) {
             String body = template.toFullString(me, null, null);
+            Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(allowedRecipients);
+            nations.removeIf(f -> !db.isAllianceId(f.getAlliance_id()));
+            if (nations.isEmpty()) {
+                body = "**WARNING: NO NATIONS MATCHING `" + allowedRecipients.getFilter() + "`**\n\n" + body;
+            }
             if (existing != null) {
                 body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
                         "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
@@ -644,6 +675,11 @@ public class GrantCommands {
         // confirmation
         if (!force) {
             String body = template.toFullString(me, null, null);
+            Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(allowedRecipients);
+            nations.removeIf(f -> !db.isAllianceId(f.getAlliance_id()));
+            if (nations.isEmpty()) {
+                body = "**WARNING: NO NATIONS MATCHING `" + allowedRecipients.getFilter() + "`**\n\n" + body;
+            }
             if (existing != null) {
                 body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
                         "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
@@ -847,7 +883,7 @@ public class GrantCommands {
 
             //in the case an unknown error occurs while sending the grant
             if (status.getKey() == OffshoreInstance.TransferStatus.OTHER) {
-                Set<Integer> blacklist = GuildKey.GRANT_TEMPLATE_BLACKLIST.get(db);
+                Set<Integer> blacklist = GuildKey.GRANT_TEMPLATE_BLACKLIST.getOrNull(db);
                 if (blacklist == null) blacklist = new HashSet<>();
                 blacklist.add(receiver.getId());
                 GuildKey.GRANT_TEMPLATE_BLACKLIST.set(db, blacklist);
