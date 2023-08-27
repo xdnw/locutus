@@ -3,7 +3,9 @@ package link.locutus.discord.apiv3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.RequestTracker;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
@@ -107,6 +109,11 @@ public class PoliticsAndWarV3 {
     }
 
     private static final RateLimit rateLimitGlobal = new RateLimit();
+    private static RequestTracker requestTracker = new RequestTracker();
+
+    public static RequestTracker getRequestTracker() {
+        return requestTracker;
+    }
 
     public <T> T readTemplate(PagePriority priority, boolean pagination, GraphQLRequest graphQLRequest, Class<T> resultBody) {
         int priorityId = priority.ordinal() + (pagination ? 1 : 0);
@@ -133,7 +140,7 @@ public class PoliticsAndWarV3 {
 
         {
             String queryStr = graphQLRequest.toQueryString().split("\\{")[0];
-            System.out.println(":||Remove gql" + queryStr);
+            requestTracker.addRequest(queryStr, queryStr);
         }
 
         ResponseEntity<String> exchange;

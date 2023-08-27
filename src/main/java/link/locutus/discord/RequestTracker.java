@@ -141,11 +141,19 @@ public class RequestTracker {
     }
 
     public int getDomainId(URI url) {
-        return DOMAIN_MAP.computeIfAbsent(url.getHost(), k -> DOMAIN_COUNTER.incrementAndGet());
+        return getDomainId(url.getHost());
     }
 
-    private void addRequest(URI url) {
+    private int getDomainId(String host) {
+        return DOMAIN_MAP.computeIfAbsent(host, k -> DOMAIN_COUNTER.incrementAndGet());
+    }
+
+    public void addRequest(String host, String url) {
         int domainId = getDomainId(url);
+        addRequest(domainId, url);
+    }
+
+    public void addRequest(int domainId, String url) {
         long currentTime = System.currentTimeMillis();
 
         synchronized (DOMAIN_REQUESTS) {
@@ -153,6 +161,11 @@ public class RequestTracker {
                     .computeIfAbsent(url.toString(), k -> new ArrayList<>())
                     .add(currentTime);
         }
+    }
+
+    public void addRequest(URI url) {
+        int domainId = getDomainId(url);
+        addRequest(domainId, url.toString());
     }
 
     public void purgeRequests(long timestamp) {

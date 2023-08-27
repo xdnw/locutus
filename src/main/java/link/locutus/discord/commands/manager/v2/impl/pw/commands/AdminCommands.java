@@ -157,7 +157,7 @@ public class AdminCommands {
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String showFileQueue(@Default @Timestamp Long timestamp) throws URISyntaxException {
+    public String showFileQueue(@Me IMessageIO io, @Default @Timestamp Long timestamp, @Switch("r") Integer numResults) throws URISyntaxException {
         PageRequestQueue handler = FileUtil.getPageRequestQueue();
         PriorityQueue<PageRequestQueue.PageRequestTask<?>> jQueue = handler.getQueue();
 
@@ -180,6 +180,7 @@ public class AdminCommands {
         List<Map.Entry<PagePriority, Integer>> entries = new ArrayList<>(pagePriorities.entrySet());
         // sort
         entries.sort((o1, o2) -> o2.getValue() - o1.getValue());
+        if (numResults == null) numResults = 25;
 
         StringBuilder sb = new StringBuilder();
         sb.append("**File Queue:** " + size + "\n");
@@ -199,18 +200,36 @@ public class AdminCommands {
             int domainI = 1;
             for (Map.Entry<String, Integer> entry : byDomain.entrySet()) {
                 sb.append("- " + entry.getKey()).append(": ").append(entry.getValue()).append("\n");
-                if (domainI++ >= 25) break;
+                if (domainI++ >= numResults) break;
             }
 
             sb.append("\n**By URL:**\n");
             int urlI = 1;
             for (Map.Entry<String, Integer> entry : byUrl.entrySet()) {
                 sb.append("- " + entry.getKey()).append(": ").append(entry.getValue()).append("\n");
-                if (urlI++ >= 25) break;
+                if (urlI++ >= numResults) break;
             }
+
+            RequestTracker v3Tracker = PoliticsAndWarV3.getRequestTracker();
+            Map<String, Integer> v3Request = v3Tracker.getCountByDomain(timestamp);
+            if (!v3Request.isEmpty()) {
+                sb.append("\n**V3 By Domain:**\n");
+                int v3I = 1;
+                for (Map.Entry<String, Integer> entry : v3Request.entrySet()) {
+                    sb.append("- " + entry.getKey()).append(": ").append(entry.getValue()).append("\n");
+                    if (v3I++ >= numResults) break;
+                }
+            }
+
         }
 
-        return sb.toString();
+
+        if (numResults > 25) {
+            io.create().file("queue.txt", sb.toString()).send();
+            return null;
+        } else {
+            return sb.toString();
+        }
     }
 
     @Command

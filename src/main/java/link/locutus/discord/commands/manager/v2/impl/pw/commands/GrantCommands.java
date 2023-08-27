@@ -915,7 +915,7 @@ public class GrantCommands {
 
 
             //saves grant record into the database
-            if (status.getKey() == OffshoreInstance.TransferStatus.SUCCESS) {
+            if (status.getKey() == OffshoreInstance.TransferStatus.SUCCESS || status.getKey() == OffshoreInstance.TransferStatus.ALLIANCE_BANK) {
                 GrantTemplateManager.GrantSendRecord record = new GrantTemplateManager.GrantSendRecord(template.getName(), me.getId(), receiver.getId(), template.getType(), cost, System.currentTimeMillis());
                 db.getGrantTemplateManager().saveGrantRecord(record);
             }
