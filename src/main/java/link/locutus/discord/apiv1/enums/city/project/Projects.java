@@ -1,11 +1,13 @@
 package link.locutus.discord.apiv1.enums.city.project;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.apiv1.enums.ResourceType;
 
 import java.lang.reflect.Field;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -419,6 +421,7 @@ public class Projects {
 
     public static final Project[] values;
     public static final Map<String, Project> PROJECTS_MAP = new HashMap<>();
+    private static final Map<Integer, Project> PROJECTS_BY_ID = new ConcurrentHashMap<>();
     static {
         try {
             List<Project> projList = new ArrayList<>();
@@ -430,6 +433,7 @@ public class Projects {
                     projList.add(proj);
                     ((AProject) proj).setName(field.getName(), i++);
                     PROJECTS_MAP.put(field.getName(), proj);
+                    PROJECTS_BY_ID.put(proj.ordinal(), proj);
                 }
             }
             values = projList.toArray(new Project[0]);
@@ -437,6 +441,9 @@ public class Projects {
             e.printStackTrace();
             throw new RuntimeException(e);
         }
+    }
+    public static Project get(int id) {
+        return PROJECTS_BY_ID.get(id);
     }
 
     public static Project get(String name) {
