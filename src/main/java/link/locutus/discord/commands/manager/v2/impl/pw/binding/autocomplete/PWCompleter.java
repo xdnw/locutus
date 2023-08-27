@@ -95,11 +95,11 @@ public class PWCompleter extends BindingHelper {
     public List<Map.Entry<String, String>> AGrantTemplate(GrantTemplateManager manager, @Me GuildDB db, String input) {
         List<AGrantTemplate> options = new ArrayList<>(manager.getTemplates());
         if (options == null || options.isEmpty()) return null;
-        options = StringMan.getClosest(input, options, AGrantTemplate::getName, OptionData.MAX_CHOICES, true);
+        options = StringMan.getClosest(input, options, f -> f.getType() + "/" + f.getName(), OptionData.MAX_CHOICES, true);
         return options.stream().map(new Function<AGrantTemplate, Map.Entry<String, String>>() {
             @Override
             public Map.Entry<String, String> apply(AGrantTemplate f) {
-                return Map.entry(f.getType() + " - " + f.getName(), f.getName());
+                return Map.entry(f.getType() + "/" + f.getName(), f.getName());
             }
         }).collect(Collectors.toList());
     }

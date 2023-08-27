@@ -1370,8 +1370,8 @@ public class CM {
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="templateInfo")
         public static class info extends CommandRef {
             public static final info cmd = new info();
-            public info create(String template, String receiver, String value, String showEdit) {
-                return createArgs("template", template, "receiver", receiver, "value", value, "showEdit", showEdit);
+            public info create(String template, String receiver, String value, String show_command) {
+                return createArgs("template", template, "receiver", receiver, "value", value, "show_command", show_command);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="templateList")

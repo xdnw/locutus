@@ -454,7 +454,7 @@ public abstract class AGrantTemplate<T> {
             @Override
             public Boolean apply(DBNation nation) {
 
-                return nation.minWarResistancePlusMap() < 30;
+                return nation.minWarResistancePlusMap() > 30;
             }
         }));
 

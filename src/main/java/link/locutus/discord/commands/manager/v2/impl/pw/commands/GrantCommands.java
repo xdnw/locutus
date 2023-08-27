@@ -125,12 +125,12 @@ public class GrantCommands {
 
     @Command(desc = "Full information about a grant template")
     @RolePermission(Roles.MEMBER)
-    public String templateInfo(@Me GuildDB db, @Me JSONObject command, @Me Guild guild, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io, AGrantTemplate template, @Default DBNation receiver, @Default String value, @Switch("e") boolean showEdit) {
+    public String templateInfo(@Me GuildDB db, @Me JSONObject command, @Me Guild guild, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io, AGrantTemplate template, @Default DBNation receiver, @Default String value, @Switch("e") boolean show_command) {
         if (receiver == null) receiver = me;
-        if (showEdit) {
+        if (show_command) {
             return "### Edit Command\n`" + template.getCommandString() + "`";
         }
-        JSONObject editJson = command.put("showEdit", "true");
+        JSONObject editJson = command.put("show_command", "true");
         io.create().embed(template.getName(), template.toFullString(me, receiver, value))
                 .commandButton(editJson, "Edit").send();
         return null;
