@@ -854,7 +854,7 @@ public class GrantCommands {
                     return "Failed requirement (2): " + requirement.getMessage();
                 }
             }
-            { // limits
+            if (limit != null) { // limits
 
                 Long duration = GuildKey.GRANT_LIMIT_DELAY.getOrNull(db);
                 if (duration == null) duration = TimeUnit.DAYS.toMillis(1);
