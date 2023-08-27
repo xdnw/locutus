@@ -62,6 +62,9 @@ public class AutoRoleTask implements IAutoRoleTask {
     private Map<Integer, Set<Role>> cityRoleMap;
     private Set<Role> cityRoles;
     private Rank autoRoleRank;
+    private boolean autoRoleMembersApps;
+    private Role applicantRole;
+    private Role memberRole;
 
     public AutoRoleTask(Guild guild, GuildDB db) {
         this.guild = guild;
@@ -143,6 +146,10 @@ public class AutoRoleTask implements IAutoRoleTask {
         }
         registeredRole = Roles.REGISTERED.toRole(guild);
 
+        this.autoRoleMembersApps = GuildKey.AUTOROLE_MEMBER_APPS.getOrNull(db) == Boolean.TRUE && !autoRoleAllyGov;
+        this.applicantRole = Roles.APPLICANT.toRole(guild);
+        this.memberRole = Roles.MEMBER.toRole(guild);
+
         info.put(GuildKey.AUTONICK.name(), setNickname + "");
         info.put(GuildKey.AUTOROLE_ALLIANCES.name(), setAllianceMask + "");
         info.put(GuildKey.AUTOROLE_ALLIANCE_RANK.name(), autoRoleRank == null ? "Member" : autoRoleRank.name());
@@ -173,6 +180,15 @@ public class AutoRoleTask implements IAutoRoleTask {
             // join by markdown list
             List<String> taxNamesList = taxRoles.entrySet().stream().map(f -> f.getKey().getKey() + "/" + f.getKey().getValue() + " -> " + f.getValue().getName()).toList();
             info.put("Found Tax Roles", String.join("\n", taxNamesList));
+        }
+        if (autoRoleMembersApps) {
+            StringBuilder infoStr = new StringBuilder();
+            infoStr.append("True\n");
+            infoStr.append(applicantRole == null ? "No Applicant Role" : "- Applicant Role: " + applicantRole.getName()).append("\n");
+            infoStr.append(memberRole == null ? "No Member Role" : "- Member Role: " + memberRole.getName()).append("\n");
+            info.put("Auto Role Members/Apps", infoStr.toString());
+        } else {
+            info.put("Auto Role Members/Apps", "False (see: TODO CM REF)");
         }
 
         StringBuilder result = new StringBuilder();
@@ -456,6 +472,10 @@ public class AutoRoleTask implements IAutoRoleTask {
             autoRoleCities(info, member, nation);
         }
 
+        if (autoRoleMembersApps && !autoRoleAllyGov) {
+            setAutoRoleMemberApp(info, member, nation);
+        }
+
         if (setNickname != null && setNickname != GuildDB.AutoNickOption.FALSE && member.getNickname() == null && nation != null) {
             autoNick(info, autoAll, member, nation);
         } else if (!autoAll && (setNickname == null || setNickname == GuildDB.AutoNickOption.FALSE)) {
@@ -588,6 +608,15 @@ public class AutoRoleTask implements IAutoRoleTask {
     }
 
     @Override
+    public AutoRoleInfo autoRoleMemberApp(Member member, DBNation nation) {
+        if (!autoRoleMembersApps) return null;
+        AutoRoleInfo info = new AutoRoleInfo(db, "");
+        setAutoRoleMemberApp(info, member, nation);
+        info.execute();
+        return info;
+    }
+
+    @Override
     public AutoRoleInfo updateTaxRoles(Map<DBNation, TaxBracket> brackets) {
         AutoRoleInfo info = new AutoRoleInfo(db, "");
         updateTaxRoles(info, brackets);
@@ -601,6 +630,44 @@ public class AutoRoleTask implements IAutoRoleTask {
         updateTaxRole(info, member, bracket);
         info.execute();
         return info;
+    }
+
+        private void setAutoRoleMemberApp(AutoRoleInfo info, Member member, DBNation nation) {
+        if (!autoRoleMembersApps) return;
+        if (memberRole == null && applicantRole == null) {
+            return;
+        }
+        List<Role> memberRoles = member.getRoles();
+        if (nation != null && db.isAllianceId(nation.getAlliance_id())) {
+            if (nation.getPositionEnum().id > Rank.APPLICANT.id) {
+                // member
+                if (memberRole != null && !memberRoles.contains(memberRole)) {
+                    info.addRoleToMember(member, memberRole);
+                }
+                // remove applicant
+                if (applicantRole != null && memberRoles.contains(applicantRole)) {
+                    info.removeRoleFromMember(member, applicantRole);
+                }
+            } else {
+                // applicant
+                if (applicantRole != null && !memberRoles.contains(applicantRole)) {
+                    info.addRoleToMember(member, applicantRole);
+                }
+                // remove member
+                if (memberRole != null && memberRoles.contains(memberRole)) {
+                    info.removeRoleFromMember(member, memberRole);
+                }
+            }
+        } else {
+            // remove member
+            if (memberRole != null && memberRoles.contains(memberRole)) {
+                info.removeRoleFromMember(member, memberRole);
+            }
+            // remove applicant
+            if (applicantRole != null && memberRoles.contains(applicantRole)) {
+                info.removeRoleFromMember(member, applicantRole);
+            }
+        }
     }
 
     public void autoRoleCities(AutoRoleInfo info, Member member, DBNation nation) {

@@ -812,9 +812,9 @@ public class ReportCommands {
                     To get a discord user id, right click on the user and select `Copy ID`
                     See: <https://support.discord.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID->""";
         }
-        if (forum_post == null && news_post == null) {
-            return "No argument provided\n" + Messages.FORUM_NEWS_ERROR;
-        }
+//        if (forum_post == null && news_post == null) {
+//            return "No argument provided\n" + Messages.FORUM_NEWS_ERROR;
+//        }
 
         // At least one forum post or news report must be attached
         Set<Long> supportedServers = new HashSet<>(Arrays.asList(
@@ -847,7 +847,7 @@ public class ReportCommands {
             } catch (NumberFormatException e) {
                 return "News post must be discord message link in the format `https://discord.com/channels/SERVER_ID/CHANNEL_ID/MESSAGE_ID`\n" + Messages.FORUM_NEWS_ERROR;
             }
-        }
+    }
 
         if (discord_user_id != null && nation != null) {
             PNWUser nationUser = Locutus.imp().getDiscordDB().getUserFromNationId(nation.getId());

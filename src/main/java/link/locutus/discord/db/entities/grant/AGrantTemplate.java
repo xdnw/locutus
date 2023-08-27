@@ -35,6 +35,8 @@ import java.util.stream.Collectors;
 public abstract class AGrantTemplate<T> {
 
     private final GuildDB db;
+    private final long expiryOrZero;
+    private final boolean allowIgnore;
     private boolean enabled;
     private String name;
     private NationFilter nationFilter;
@@ -48,7 +50,7 @@ public abstract class AGrantTemplate<T> {
     private int maxGranterDay;
     private long dateCreated;
 
-    public AGrantTemplate(GuildDB db, boolean enabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated) {
+    public AGrantTemplate(GuildDB db, boolean enabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long expiryOrZero, boolean allowIgnore) {
         this.db = db;
         this.enabled = enabled;
         this.name = name;
@@ -62,6 +64,8 @@ public abstract class AGrantTemplate<T> {
         this.maxGranterDay = maxGranterDay;
         this.maxGranterTotal = maxGranterTotal;
         this.dateCreated = dateCreated;
+        this.expiryOrZero = expiryOrZero;
+        this.allowIgnore = allowIgnore;
     }
 
     public boolean isEnabled() {
@@ -82,6 +86,13 @@ public abstract class AGrantTemplate<T> {
         } else if (useReceiverBracket) {
             if (result.length() > 0) result.append(",");
             result.append("#tax_id=").append("receiver");
+        }
+        if (expiryOrZero > 0) {
+            String time = TimeUtil.secToTime(TimeUnit.MILLISECONDS, expiryOrZero);
+            result.append(" #expire=").append(time);
+        }
+        if (allowIgnore) {
+            result.append(" #ignore");
         }
         return result.toString();
     }
@@ -159,6 +170,12 @@ public abstract class AGrantTemplate<T> {
         }
         if (maxDay > 0) {
             data.append("Daily: `").append(getGranted(TimeUnit.DAYS.toMillis(1)).size() + "/" + maxDay).append("`\n");
+        }
+        if (expiryOrZero > 0) {
+            data.append("Allow Expiry: `").append(TimeUtil.secToTime(TimeUnit.MILLISECONDS, expiryOrZero)).append("`\n");
+        }
+        if (allowIgnore) {
+            data.append("Allow #ignore: `true`\n");
         }
         if (maxGranterTotal > 0) {
             data.append("Total(Granter): `");

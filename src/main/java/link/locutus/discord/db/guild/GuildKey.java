@@ -1243,9 +1243,30 @@ public class GuildKey {
                     "- " + CM.coalition.create.cmd.create(null, Coalition.MASKEDALLIANCES.name()) + "\n" +
                     "- " + CM.role.clearAllianceRoles.cmd.toSlashMention() + "\n" +
                     "- " + AUTOROLE_ALLIANCE_RANK.getCommandMention() + "\n" +
+                    "- " + AUTOROLE_MEMBER_APPS.getCommandMention() + "\n" +
                     "- " + AUTOROLE_TOP_X.getCommandMention();
         }
     };
+    public static GuildSetting<Boolean> AUTOROLE_MEMBER_APPS = new GuildBooleanSetting(GuildSettingCategory.ROLE) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String AUTOROLE_MEMBER_APPS(@Me GuildDB db, @Me User user, boolean enabled) {
+            return AUTOROLE_MEMBER_APPS.setAndValidate(db, user, enabled);
+        }
+
+        @Override
+        public String help() {
+            return "Whether member and applicant roles are automatically added or removed.\n" +
+                    "Note: Set `" + WAR_ALERT_FOR_OFFSHORES.name() + "` to false to not give member roles to offshore nations\n" +
+                    "Cannot be used in conjuction with `" + AUTOROLE_ALLY_GOV.name() + "`";
+        }
+    }.setupRequirements(new Consumer<GuildSetting<Boolean>>() {
+        @Override
+        public void accept(GuildSetting<Boolean> f) {
+            f.requires(ALLIANCE_ID).requiresNot(AUTOROLE_ALLY_GOV, false);
+        }
+    });
     public static GuildSetting<Rank> AUTOROLE_ALLIANCE_RANK = new GuildEnumSetting<Rank>(GuildSettingCategory.ROLE, Rank.class) {
         @NoFormat
         @Command(descMethod = "help")
@@ -1296,7 +1317,7 @@ public class GuildKey {
         public String help() {
             return "Whether to give gov/member roles to allies (this is intended for coalition servers), `true` or `false`";
         }
-    }.setupRequirements(f -> f.requiresCoalition(Coalition.ALLIES).requiresNot(ALLIANCE_ID, false));
+    }.setupRequirements(f -> f.requiresCoalition(Coalition.ALLIES).requiresNot(ALLIANCE_ID, false).requiresNot(AUTOROLE_MEMBER_APPS, false));
     public static GuildSetting<Set<Roles>> AUTOROLE_ALLY_ROLES = new GuildEnumSetSetting<Roles>(GuildSettingCategory.ROLE, Roles.class) {
         @NoFormat
         @Command(descMethod = "help")
@@ -1664,7 +1685,7 @@ public class GuildKey {
                     "#cities<10:505X\n" +
                     "#cities>=10:0250\n" +
                     "```\n" +
-                    "All nation filters are supported";
+                    "All nation filters are supported. Use `*` as the city filter to match all nations.";
 
             return response;
         }
