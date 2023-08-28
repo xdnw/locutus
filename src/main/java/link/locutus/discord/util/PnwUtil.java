@@ -519,6 +519,48 @@ public class PnwUtil {
     private static Gson RESOURCE_GSON = new GsonBuilder()
             .registerTypeAdapter(RESOURCE_TYPE, new DoubleDeserializer())
             .create();
+
+    /**
+     * @param offensive (else defensive)
+     * @param isWar (else spy)
+     * @param isMin (else max)
+     * @return
+     */
+    public static double getAttackRange(boolean offensive, boolean isWar, boolean isMin, double score) {
+        long scoreInt = Math.round(score * 100);
+        long range;
+        if (offensive) {
+            if (isWar) {
+                if (isMin) {
+                    range = Math.round(scoreInt * 0.75);
+                } else {
+                    range = Math.round(scoreInt * 1.75);
+                }
+            } else {
+                if (isMin) {
+                    range = Math.round(scoreInt * 0.4);
+                } else {
+                    range = Math.round(scoreInt * 2.5);
+                }
+            }
+        } else {
+            if (isWar) {
+                if (isMin) {
+                    range = Math.round(scoreInt / 1.75);
+                } else {
+                    range = Math.round(scoreInt / 0.75);
+                }
+            } else {
+                if (isMin) {
+                    range = Math.round(scoreInt / 2.5);
+                } else {
+                    range = Math.round(scoreInt / 0.4);
+                }
+            }
+        }
+        return range * 0.01;
+    }
+
     private static class DoubleDeserializer implements JsonDeserializer<Map<ResourceType, Double>> {
         @Override
         public Map<ResourceType, Double> deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {

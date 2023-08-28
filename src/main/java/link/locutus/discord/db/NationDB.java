@@ -10,6 +10,8 @@ import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectArraySet;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.db.entities.DBTreasure;
@@ -81,7 +83,7 @@ public class NationDB extends DBMainV2 {
     private final Set<Integer> dirtyCities = Collections.synchronizedSet(new LinkedHashSet<>());
     private final Set<Integer> dirtyNations = Collections.synchronizedSet(new LinkedHashSet<>());
 
-    private final Map<Integer, DBTreasure> treasuresByNation = new Int2ObjectOpenHashMap<>();
+    private final Map<Integer, Set<DBTreasure>> treasuresByNation = new Int2ObjectOpenHashMap<>();
     private final Map<String, DBTreasure> treasuresByName = new ConcurrentHashMap<>();
     private ReportManager reportManager;
     private LoanManager loanManager;
@@ -2398,13 +2400,20 @@ public class NationDB extends DBMainV2 {
         List<Treasure> newTreasures = v3.fetchTreasures();
         for (Treasure newTreasure : newTreasures) {
             String name = newTreasure.getName();
-            DBTreasure existing = treasuresByName.get(name);
+            DBTreasure existing;
+            synchronized (treasuresByName) {
+                existing = treasuresByName.get(name);
+            }
             if (existing == null) {
                 existing = new DBTreasure().set(newTreasure);
                 treasuresToSave.add(existing);
-                treasuresByName.put(existing.getName(), existing);
+                synchronized (treasuresByName) {
+                    treasuresByName.put(existing.getName(), existing);
+                }
                 if (existing.getNation_id() > 0) {
-                    treasuresByNation.put(existing.getNation_id(), existing);
+                    synchronized (treasuresByNation) {
+                        treasuresByNation.computeIfAbsent(existing.getNation_id(), k -> new ObjectOpenHashSet<>()).add(existing);
+                    }
                 }
             }
             DBTreasure copy = existing.copy();
@@ -2413,10 +2422,23 @@ public class NationDB extends DBMainV2 {
             if (copy != null && !copy.equalsExact(existing)) {
                 if (copy.getNation_id() != existing.getNation_id()) {
                     if (copy.getNation_id() > 0) {
-                        treasuresByNation.remove(copy.getNation_id(), existing);
+                        // is set now
+                        // remove set if empty
+//                        treasuresByNation.remove(copy.getNation_id(), existing);
+                        synchronized (treasuresByNation) {
+                            Set<DBTreasure> treasures = treasuresByNation.get(copy.getNation_id());
+                            if (treasures != null) {
+                                treasures.remove(copy);
+                                if (treasures.isEmpty()) {
+                                    treasuresByNation.remove(copy.getNation_id());
+                                }
+                            }
+                        }
                     }
                     if (existing.getNation_id() > 0) {
-                        treasuresByNation.put(existing.getNation_id(), existing);
+                        synchronized (treasuresByNation) {
+                            treasuresByNation.computeIfAbsent(existing.getNation_id(), k -> new ObjectOpenHashSet<>()).add(existing);
+                        }
                     }
                 }
 
@@ -2467,8 +2489,12 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    public DBTreasure getTreasure(int nationId) {
-        return treasuresByNation.get(nationId);
+    public Set<DBTreasure> getTreasure(int nationId) {
+        synchronized (treasuresByNation) {
+            Set<DBTreasure> treasures = treasuresByNation.get(nationId);
+            if (treasures == null) return Collections.emptySet();
+            return new ObjectArraySet<>(treasures);
+        }
     }
 
     public Map<String, DBTreasure> getTreasuresByName() {
@@ -2496,7 +2522,9 @@ public class NationDB extends DBMainV2 {
                 DBTreasure treasure = new DBTreasure(id, name, color, bonus, continent, nation_id, spawnDate, respawnAlert);
                 treasuresByName.put(treasure.getName(), treasure);
                 if (nation_id > 0) {
-                    treasuresByNation.put(nation_id, treasure);
+                    synchronized (treasuresByNation) {
+                        treasuresByNation.computeIfAbsent(nation_id, k -> new ObjectOpenHashSet<>()).add(treasure);
+                    }
                 }
             }
         } catch (SQLException e) {

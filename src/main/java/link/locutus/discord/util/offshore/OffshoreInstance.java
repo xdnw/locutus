@@ -475,6 +475,22 @@ public class OffshoreInstance {
         return transferFromNationAccountWithRoleChecks(allowedIdsGet, banker, nationAccount, allianceAccount, taxAccount, senderDB, senderChannel, receiver, amount, depositType, expire, grantToken, convertCash, escrowMode, requireConfirmation, bypassChecks);
     }
 
+    private final Map<Integer, double[]> lastSuccessfulTransfer = new ConcurrentHashMap<>();
+    private void setLastSuccessfulTransfer(NationOrAlliance receiver, double[] resources) {
+        int id = receiver.isAlliance() ? -receiver.asAlliance().getAlliance_id() : receiver.asNation().getNation_id();
+        lastSuccessfulTransfer.put(id, resources);
+    }
+
+    private double[] getLastSuccessfulTransfer(NationOrAlliance receiver) {
+        int id = receiver.isAlliance() ? -receiver.asAlliance().getAlliance_id() : receiver.asNation().getNation_id();
+        return lastSuccessfulTransfer.get(id);
+    }
+
+    public boolean checkLastSuccessfulTransferMatches(NationOrAlliance receiver, double[] amount) {
+        double[] previous = getLastSuccessfulTransfer(receiver);
+        return ResourceType.equals(previous, amount);
+    }
+
     public Map.Entry<TransferStatus, String> transferFromNationAccountWithRoleChecks(Supplier<Map<Long, AccessType>> allowedIdsGet, User banker, DBNation nationAccount, DBAlliance allianceAccount, TaxBracket taxAccount, GuildDB senderDB, Long senderChannel, NationOrAlliance receiver, double[] amount, DepositType.DepositTypeInfo depositType, Long expire, UUID grantToken, boolean convertCash, EscrowMode escrowMode, boolean requireConfirmation, boolean bypassChecks) throws IOException {
         if (!TimeUtil.checkTurnChange()) return Map.entry(TransferStatus.TURN_CHANGE, "You cannot transfer close to turn change");
 
@@ -744,8 +760,11 @@ public class OffshoreInstance {
 
             if (requireConfirmation) {
                 StringBuilder body = new StringBuilder();
+                if (checkLastSuccessfulTransferMatches(receiver, amount)) {
+                    reqMsg.append("You have already transferred this exact amount to " + receiver.getQualifiedName() + "\n");
+                }
                 if (reqMsg.length() > 0) {
-                    body.append("**Errors:**\n");
+                    body.append("**!! ERRORS !!:**\n");
                     body.append("- " + reqMsg.toString().trim().replace("\n", "\n- "));
                     body.append("\n\n");
                 }
@@ -1324,7 +1343,11 @@ public class OffshoreInstance {
 
             try {
                 String response = request.get(20, TimeUnit.SECONDS);
-                return categorize(response);
+                Map.Entry<TransferStatus, String> category = categorize(response);
+                if (category.getKey() == TransferStatus.SUCCESS || category.getKey() == TransferStatus.ALLIANCE_BANK) {
+                    setLastSuccessfulTransfer(receiver, PnwUtil.resourcesToArray(transfer));
+                }
+                return category;
             } catch (InterruptedException | ExecutionException | TimeoutException e) {
                 return Map.entry(TransferStatus.OTHER, "Timeout: " + e.getMessage());
             }

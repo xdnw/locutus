@@ -1275,20 +1275,21 @@ public class WarCommands {
         if(onlyWeaker)
             nations.removeIf(f -> f.getStrength() > me.getStrength());
 
-        Map<DBNation, DBTreasure> nationTreasures = new HashMap<>();
+        Map<DBNation, Set<DBTreasure>> nationTreasures = new HashMap<>();
         for (DBNation nation : nations) {
 //            nations.stream().collect(Collectors.toMap(n -> n, n -> Locutus.imp().getNationDB().getTreasure(n.getNation_id())));
-            DBTreasure treasure = Locutus.imp().getNationDB().getTreasure(nation.getNation_id());
-            if (treasure != null) {
-                nationTreasures.put(nation, treasure);
+            Set<DBTreasure> treasures = Locutus.imp().getNationDB().getTreasure(nation.getNation_id());
+            if (!treasures.isEmpty()) {
+                nationTreasures.put(nation, treasures);
             }
         }
 
         long currentTurn = TimeUtil.getTurn();
-        for (Map.Entry<DBNation, DBTreasure> entry : nationTreasures.entrySet()) {
+        for (Map.Entry<DBNation, Set<DBTreasure>> entry : nationTreasures.entrySet()) {
             DBNation nation = entry.getKey();
-            DBTreasure treasure = entry.getValue();
-            response.append("treasure: " + treasure.getDaysRemaining() + "d | ");
+            Set<DBTreasure> treasures = entry.getValue();
+            String treasureStr = treasures.stream().map(f -> f.getDaysRemaining() + "d").collect(Collectors.joining(", "));
+            response.append("treasure: " + treasureStr + " | ");
             response.append(nation.toMarkdown(true, true, true, false, false)).append("\n");
 
             if(count >= numResults)

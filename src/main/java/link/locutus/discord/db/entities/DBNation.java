@@ -27,6 +27,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.ReportManager;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.nation.NationRegisterEvent;
@@ -469,14 +470,20 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "If the nation has the treasure")
     public boolean hasTreasure() {
-        return (Locutus.imp().getNationDB().getTreasure(nation_id) != null);
+        return !Locutus.imp().getNationDB().getTreasure(nation_id).isEmpty();
+    }
+
+    public Set<DBTreasure> getTreasures() {
+        return Locutus.imp().getNationDB().getTreasure(nation_id);
     }
 
     @Command(desc = "How many days the treasure is in said nation")
     public long treasureDays() {
-        DBTreasure treasure = Locutus.imp().getNationDB().getTreasure(nation_id);
-        if(treasure == null) return 0;
-        return treasure.getDaysRemaining();
+        long max = 0;
+        for (DBTreasure treasure : getTreasures()) {
+            max = Math.max(max, treasure.getDaysRemaining());
+        }
+        return max;
     }
 
     public void setProject(Project project) {
@@ -2960,7 +2967,7 @@ public class DBNation implements NationOrAlliance {
                 .collect(Collectors.toSet());
     }
 
-    @Command(desc = "If a specified nation is within espionage range")
+    @Command(desc = "If a specified nation is within this nations espionage range")
     public boolean isInSpyRange(DBNation other) {
         return SpyCount.isInScoreRange(getScore(), other.getScore());
     }
@@ -3710,6 +3717,12 @@ public class DBNation implements NationOrAlliance {
         return body.toString();
     }
 
+    @Command
+    public int getNumReports() {
+        ReportManager reportManager = Locutus.imp().getNationDB().getReportManager();
+        return reportManager.loadReports(getId(), getUserId(), null, null).size();
+    }
+
     public String toFullMarkdown() {
         StringBuilder body = new StringBuilder();
         //Nation | Leader name | timestamp(DATE_CREATED) `tax_id=1`
@@ -3719,42 +3732,159 @@ public class DBNation implements NationOrAlliance {
         if (tax_id != 0) {
             body.append(" `#tax_id=").append(tax_id).append("` | ");
         }
+
         body.append(DiscordUtil.timestamp(date, null)).append("\n");
-        //Alliance | PositionOrEnum(id=0,enum=0) | timestamp(Seniority
-        //@User timestamp(DATE_CREATED) | Treasure: 15d
-        //VM: Timestamp(Started) - Timestamp(ends) (5 turns)
-        //
+        //Alliance | PositionOrEnum(id=0,enum=0) | timestamp(Seniority)
+        if (alliance_id == 0) {
+            body.append("`AA:0`");
+        } else {
+            body.append(getAllianceUrlMarkup(true));
+            DBAlliancePosition position = this.getAlliancePosition();
+            String posStr;
+            if (position != null) {
+                posStr = position.getName() + " (id=" + position.getId() + ",enum=" + this.getPosition() + ")";
+            } else {
+                posStr = getPositionEnum().name();
+            }
+            long dateJoined = System.currentTimeMillis() - allianceSeniorityMs();
+            body.append(" | `").append(posStr).append("` | ").append(DiscordUtil.timestamp(dateJoined, null));
+        }
+        body.append("\n");
+        User user = getUser();
+        {
+            String prefix = "";
+            if (user != null) {
+                long created = user.getTimeCreated().toEpochSecond() * 1000L;
+                body.append(user.getAsMention() + " | " + DiscordUtil.userUrl(user.getIdLong(), false) + " | " + DiscordUtil.timestamp(created, null));
+                prefix = " | ";
+            }
+            List<DBBan> bans = getBans();
+            if (!bans.isEmpty()) {
+                body.append(prefix).append(bans.size() + " bans");
+                prefix = " | ";
+            }
+            int reports = getNumReports();
+            if (reports > 0) {
+                body.append(prefix).append(reports + " reports");
+            }
+            body.append("\n");
+        }
         //Infra: 1500/2000 | Cities: 15 (6 unpowered) | Off: 5/5 | Def: 1/3
+        {
+            Collection<DBCity> cities = _getCitiesV3().values();
+            double infra = 0;
+            double buildingInfra = 0;
+            int unpowered = 0;
+            for (DBCity value : cities) {
+                buildingInfra += value.getNumBuildings() * 50;
+                infra += value.infra;
+                if (!value.powered) unpowered++;
+            }
+            infra /= cities.size();
+            buildingInfra /= cities.size();
+            body.append("Infra: `").append(MathMan.format(infra)).append("/").append(MathMan.format(buildingInfra)).append("` | ");
+            body.append("Cities: `").append(cities.size());
+            if (unpowered == 0) {
+                body.append("`");
+            } else if (unpowered == cities.size()) {
+                body.append("` (unpowered)");
+            } else {
+                body.append("` (").append(unpowered).append(" unpowered)");
+            }
+            body.append(" | ").append("Off: `").append(getOff()).append("/").append(getMaxOff()).append("` | ");
+            body.append("Def: `").append(getDef()).append("/").append(3).append("`\n");
+
+
+        }
+        //VM: Timestamp(Started) - Timestamp(ends) (5 turns)
+        if (getVm_turns() > 0) {
+            body.append("VM: ").append(DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(entered_vm), null)).append(" - ").append(DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(leaving_vm), null)).append(" (").append(getVm_turns()).append(" turns)").append("\n");
+        }
         //Domestic/War policy | beige turns | score
-        //MMR[Building]:
-        //MMR[Unit]:
+        body.append("`").append(this.domestic_policy.name()).append("` | `").append(this.war_policy.name()).append("` | `").append(MathMan.format(score)).append("` | `").append(getContinent().name()).append("`\n");
+        //MMR[Building]: 1/2/3 | MMR[Unit]: 5/6/7
+        body.append("MMR[Build]=`").append(getMMRBuildingStr()).append("` | MMR[Unit]=`").append(getMMR()).append("`\n");
         //
         //Units: Now/Buyable/Cap
+        body.append("Units: Now/Buyable/Cap\n");
         //Soldier: 0/0/0
-        //Tanks: 0/0/0
-        //Aircraft: 0/0/0
-        //Ship: 0/0/0
-        //Spies: 5/50/30 (full)
-        //(optional) Missile: 0 (bought today) | Nuke: 1 (bought today)
+        long dcTurn = this.getTurnsFromDC();
+        long dcTimestamp = TimeUtil.getTimeFromTurn(dcTurn);
+        for (MilitaryUnit unit : new MilitaryUnit[]{MilitaryUnit.SOLDIER, MilitaryUnit.TANK, MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP, MilitaryUnit.SPIES, MilitaryUnit.MISSILE, MilitaryUnit.NUKE}) {
+            body.append(unit.name()).append(": `").append(getUnits(unit)).append("/").append(getUnitBuys(unit, dcTimestamp)).append("/").append(getUnitCap(unit)).append("`").append("\n");
+        }
         //
         //Attack Range: War= | Spy=
+        {
+            double offWarMin = PnwUtil.getAttackRange(true, true, true, score);
+            double offWarMax = PnwUtil.getAttackRange(true, true, false, score);
+            double offSpyMin = PnwUtil.getAttackRange(true, false, true, score);
+            double offSpyMax = PnwUtil.getAttackRange(true, false, false, score);
+            // use MathMan.format to format doubles
+            body.append("Attack Range: War=`").append(MathMan.format(offWarMin)).append("-").append(MathMan.format(offWarMax)).append("` | Spy=`").append(MathMan.format(offSpyMin)).append("-").append(MathMan.format(offSpyMax)).append("`\n");
+        }
         //Defense Range: War= | Spy=
+        {
+            double defWarMin = PnwUtil.getAttackRange(false, true, true, score);
+            double defWarMax = PnwUtil.getAttackRange(false, true, false, score);
+            double defSpyMin = PnwUtil.getAttackRange(false, false, true, score);
+            double defSpyMax = PnwUtil.getAttackRange(false, false, false, score);
+            // use MathMan.format to format doubles
+            body.append("Defense Range: War=`").append(MathMan.format(defWarMin)).append("-").append(MathMan.format(defWarMax)).append("` | Spy=`").append(MathMan.format(defSpyMin)).append("-").append(MathMan.format(defSpyMax)).append("`\n");
+        }
         //
+        Map<String, Integer> timerStr = new LinkedHashMap<>();
         //(optional) Timers: city=1, project=1, color=1, war=, domestic=1
+        long cityTurns = getCityTurns();
+        if (cityTurns > 0) timerStr.put("city", (int) cityTurns);
+        long projectTurns = getProjectTurns();
+        if (projectTurns > 0) timerStr.put("project", (int) projectTurns);
+        long colorTurns = getColorTurns();
+        if (colorTurns > 0) timerStr.put("color", (int) colorTurns);
+        long warTurns = getWarPolicyTurns();
+        if (warTurns > 0) timerStr.put("war", (int) warTurns);
+        long domesticTurns = getDomesticPolicyTurns();
+        if (domesticTurns > 0) timerStr.put("domestic", (int) domesticTurns);
+        if (!timerStr.isEmpty()) {
+            body.append("Timers: `" + timerStr.toString() + "`\n");
+        }
         //(optional) Active wars
         //
         //Revenue: {}
         // - Worth: $10
+        double[] revenue = getRevenue();
+        body.append("Revenue: `").append(PnwUtil.resourcesToString(revenue)).append("`\n");
+        body.append(" - worth: `").append(PnwUtil.convertedTotal(revenue)).append("`\n");
         //
-        //(optional) Projects: 5/10 | [Projects] (bold VDS and ID)
-        //
-        //(optional) Blockaded By:
-        //(optional) Blockading:
-        //
+        //Projects: 5/10 | [Projects] (bold VDS and ID)
+        body.append("Projects: ").append(getNumProjects()).append("/").append(projectSlots()).append(" ")
+                .append(getProjects().stream().map(f -> (f == Projects.IRON_DOME || f == Projects.VITAL_DEFENSE_SYSTEM ? "**" + f.name() + "**" : f.name()).toLowerCase(Locale.ROOT)).collect(Collectors.joining(","))).append("\n");
+
+        Set<Integer> blockaded = this.getBlockadedBy();
+        if (!blockaded.isEmpty()) {
+            // DBNation.byId(id)
+            // if not null, append nation.getMarkdownUrl(true) else, append id. comma separated
+            body.append("Blockaded By: ").append(blockaded.stream().map(id -> {
+                DBNation nation = DBNation.getById(id);
+                return nation != null ? nation.getMarkdownUrl() : String.valueOf(id);
+            }).collect(Collectors.joining(","))).append("\n");
+        }
+        // use MathMan.format to turn into Map<WarType, String> from Map<WarType, Long>
+        Map<WarType, String> bounties = getBountySums().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> MathMan.format(e.getValue())));
         //(optional) Bounties: {}
-        //
-        //(optional) 1 Bans
-        //(optional) 2 Reports
+        if (!bounties.isEmpty()) {
+            body.append("Bounties: `").append(bounties.toString()).append("\n");
+        }
+        return body.toString();
+    }
+
+    public Set<DBBounty> getBounties() {
+        return Locutus.imp().getWarDb().getBounties(getId());
+    }
+
+    @Command
+    public Map<WarType, Long> getBountySums() {
+        return getBounties().stream().collect(Collectors.groupingBy(DBBounty::getType, Collectors.summingLong(DBBounty::getAmount)));
     }
 
     public String toMarkdown(boolean embed, boolean war, boolean title, boolean general, boolean military, boolean spies) {
@@ -4918,6 +5048,16 @@ public class DBNation implements NationOrAlliance {
         int currentTurn = (int) TimeUtil.getDayTurn();
         if (currentTurn >= dc_turn) return (dc_turn + 12) - currentTurn;
         return dc_turn - currentTurn;
+    }
+
+    @Command
+    public int getTurnsFromDC() {
+        int currentTurnMod = (int) TimeUtil.getDayTurn() % 12;
+        if (currentTurnMod >= dc_turn) {
+            return currentTurnMod - dc_turn;
+        } else {
+            return (currentTurnMod + 12) - dc_turn;
+        }
     }
 
     @Command(desc = "Are any cities powered")
