@@ -3873,7 +3873,7 @@ public class DBNation implements NationOrAlliance {
         // - Worth: $10
         double[] revenue = getRevenue();
         body.append("Revenue: `").append(PnwUtil.resourcesToString(revenue)).append("`\n");
-        body.append(" - worth: `").append(PnwUtil.convertedTotal(revenue)).append("`\n");
+        body.append(" - worth: `").append(MathMan.format(PnwUtil.convertedTotal(revenue))).append("`\n");
         //
         //Projects: 5/10 | [Projects] (bold VDS and ID)
         body.append("Projects: ").append(getNumProjects()).append("/").append(projectSlots()).append(" ")
