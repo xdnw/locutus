@@ -3710,6 +3710,53 @@ public class DBNation implements NationOrAlliance {
         return body.toString();
     }
 
+    public String toFullMarkdown() {
+        StringBuilder body = new StringBuilder();
+        //Nation | Leader name | timestamp(DATE_CREATED) `tax_id=1`
+        body.append(getNationUrlMarkup(true)).append(" | ");
+        body.append(leader).append(" | ");
+        // DiscordUtil.timestamp
+        if (tax_id != 0) {
+            body.append(" `#tax_id=").append(tax_id).append("` | ");
+        }
+        body.append(DiscordUtil.timestamp(date, null)).append("\n");
+        //Alliance | PositionOrEnum(id=0,enum=0) | timestamp(Seniority
+        //@User timestamp(DATE_CREATED) | Treasure: 15d
+        //VM: Timestamp(Started) - Timestamp(ends) (5 turns)
+        //
+        //Infra: 1500/2000 | Cities: 15 (6 unpowered) | Off: 5/5 | Def: 1/3
+        //Domestic/War policy | beige turns | score
+        //MMR[Building]:
+        //MMR[Unit]:
+        //
+        //Units: Now/Buyable/Cap
+        //Soldier: 0/0/0
+        //Tanks: 0/0/0
+        //Aircraft: 0/0/0
+        //Ship: 0/0/0
+        //Spies: 5/50/30 (full)
+        //(optional) Missile: 0 (bought today) | Nuke: 1 (bought today)
+        //
+        //Attack Range: War= | Spy=
+        //Defense Range: War= | Spy=
+        //
+        //(optional) Timers: city=1, project=1, color=1, war=, domestic=1
+        //(optional) Active wars
+        //
+        //Revenue: {}
+        // - Worth: $10
+        //
+        //(optional) Projects: 5/10 | [Projects] (bold VDS and ID)
+        //
+        //(optional) Blockaded By:
+        //(optional) Blockading:
+        //
+        //(optional) Bounties: {}
+        //
+        //(optional) 1 Bans
+        //(optional) 2 Reports
+    }
+
     public String toMarkdown(boolean embed, boolean war, boolean title, boolean general, boolean military, boolean spies) {
         StringBuilder response = new StringBuilder();
         if (title) {

@@ -421,6 +421,24 @@ public class DBAlliance implements NationList, NationOrAlliance {
             body.append(prefix).append(MarkupUtil.markdownUrl("Forum", forum_link));
             prefix = " | ";
         }
+        {
+            DBAlliance parent = getCachedParentOfThisOffshore();
+            if (parent != null) {
+                body.append(prefix).append(MarkupUtil.markdownUrl("Offshore of: ", parent.getMarkdownUrl()));
+                prefix = " | ";
+            } else {
+                for (DBAlliance other : Locutus.imp().getNationDB().getAlliances()) {
+                    if (other == this) continue;
+                    parent = other.getCachedParentOfThisOffshore();
+                    if (parent != null && parent.getAlliance_id() == allianceId) {
+                        body.append(prefix).append(MarkupUtil.markdownUrl("Offshore for: ", other.getMarkdownUrl()));
+                        prefix = " | ";
+                        break;
+                    }
+                }
+            }
+        }
+
         if (!prefix.isEmpty()) {
             body.append("\n");
         }
