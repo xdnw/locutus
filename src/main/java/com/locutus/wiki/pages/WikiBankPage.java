@@ -44,9 +44,10 @@ public class WikiBankPage extends WikiGen {
                     CM.who.cmd.create("Borg", null, null, null, null, null, null, null, null).toString(),
                 "Set that alliance as your offshore:",
                 commandMarkdown(CM.offshore.add.cmd),
-                "**Alternatively** you can use the coalition command in your  to set `" + Coalition.OFFSHORE.name() + "` to the desired offshore alliance, and ensure `" + Coalition.OFFSHORING.name() + "` is empty",
+                "**Alternatively** you can use the coalition command in your alliance server to set `" + Coalition.OFFSHORE.name() + "` to the desired offshore alliance, and ensure `" + Coalition.OFFSHORING.name() + "` is empty",
                 CM.coalition.create.cmd.create("", Coalition.OFFSHORE.name()).toString(),
                 CM.coalition.delete.cmd.create(Coalition.OFFSHORING.name()).toString(),
+                "And ask an admin in the offshore alliance to add your alliance to the `" + Coalition.OFFSHORING.name() + "` coalition",
                 MarkupUtil.spoiler("Legal/Disclaimer", """
                         Offshoring and bot services are non political, and should be assumed to continue operating regardless of any attacks on Borg.
                                                 

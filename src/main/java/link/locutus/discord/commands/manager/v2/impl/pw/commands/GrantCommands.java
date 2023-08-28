@@ -7,7 +7,6 @@ import link.locutus.discord.apiv1.enums.EscrowMode;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
-import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
@@ -16,8 +15,6 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.MMRInt;
 import link.locutus.discord.db.entities.TaxBracket;
@@ -41,6 +38,7 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.util.offshore.TransferResult;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -846,7 +844,7 @@ public class GrantCommands {
             }
         }
 
-        Map.Entry<OffshoreInstance.TransferStatus, String> status;
+        TransferResult status;
         synchronized (OffshoreInstance.BANK_LOCK) {
             for (Grant.Requirement requirement : requirements) {
                 if (requirement.canOverride()) continue;
@@ -901,7 +899,7 @@ public class GrantCommands {
                     false);
 
             //in the case an unknown error occurs while sending the grant
-            if (status.getKey() == OffshoreInstance.TransferStatus.OTHER) {
+            if (status.getStatus() == OffshoreInstance.TransferStatus.OTHER) {
                 Set<Integer> blacklist = GuildKey.GRANT_TEMPLATE_BLACKLIST.getOrNull(db);
                 if (blacklist == null) blacklist = new HashSet<>();
                 blacklist.add(receiver.getId());
@@ -910,12 +908,12 @@ public class GrantCommands {
                 Role role = Roles.ECON.toRole(db);
                 String econGovMention = role == null ? "" : role.getAsMention();
 
-                throw new IllegalArgumentException(status.getValue() + econGovMention);
+                throw new IllegalArgumentException(status.getMessageJoined(true) + "\n" + econGovMention);
             }
 
 
             //saves grant record into the database
-            if (status.getKey() == OffshoreInstance.TransferStatus.SUCCESS || status.getKey() == OffshoreInstance.TransferStatus.ALLIANCE_BANK) {
+            if (status.getStatus() == OffshoreInstance.TransferStatus.SUCCESS || status.getStatus() == OffshoreInstance.TransferStatus.SENT_TO_ALLIANCE_BANK) {
                 GrantTemplateManager.GrantSendRecord record = new GrantTemplateManager.GrantSendRecord(template.getName(), me.getId(), receiver.getId(), template.getType(), cost, System.currentTimeMillis());
                 db.getGrantTemplateManager().saveGrantRecord(record);
             }
@@ -1957,20 +1955,18 @@ public class GrantCommands {
                 }
             }
             // - Send to self via #ignore
-            Map.Entry<OffshoreInstance.TransferStatus, String> result = offshore.transferFromAllianceDeposits(me, db, db::isAllianceId, receiver, amtArr, "#ignore");
-            switch (result.getKey()) {
-                case ALLIANCE_BANK:
+            TransferResult result = offshore.transferFromAllianceDeposits(me, db, db::isAllianceId, receiver, amtArr, "#ignore");
+            switch (result.getStatus()) {
+                case SENT_TO_ALLIANCE_BANK:
                 case SUCCESS: {
-                    message.append("Successfully withdrew " + PnwUtil.resourcesToString(amtArr) + " from escrowed resources for " + receiver.getNation()  +"\n" +
-                            result.getKey() + " -> " + result.getValue());
-                    return message.toString();
+                    channel.create().embed("Escrow " + result.toTitleString(), result.toEmbedString()).send();
+                    return null;
                 }
                 default:
                 case TURN_CHANGE:
                 case OTHER: {
-                    message.append("Failed to withdraw " + PnwUtil.resourcesToString(amtArr) + " from escrowed resources for " + receiver.getNation() + "\n" +
-                            result.getKey() + " -> " + result.getValue());
-                    return message.toString();
+                    channel.create().embed("Escrow " + result.toTitleString(), result.toEmbedString()).send();
+                    return null;
                 }
                 case BLOCKADE:
                 case MULTI:
@@ -1992,11 +1988,9 @@ public class GrantCommands {
                 case CONFIRMATION: {
                     // add balance back
                     db.setEscrowed(receiver, escrowedPair.getKey(), escrowDate);
-                    message.append("Failed to withdraw " + PnwUtil.resourcesToString(amtArr) + " from escrowed resources for " + receiver.getNation() + "\n" +
-                            result.getKey() + " -> " + result.getValue());
-                    // message for adding back, same as deduct one but add back
-                    message.append("Adding back `" + PnwUtil.resourcesToString(amtArr) + "` to escrow account for " + receiver.getNation() + "\n");
-                    return message.toString();
+                    result.addMessage("Adding back `" + PnwUtil.resourcesToString(amtArr) + "` to escrow account for " + receiver.getMarkdownUrl());
+                    channel.create().embed("Escrow " + result.toTitleString(), result.toEmbedString()).send();
+                    return null;
                 }
             }
         }

@@ -55,6 +55,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
+import link.locutus.discord.util.offshore.TransferResult;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -75,10 +76,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import org.json.JSONObject;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.security.GeneralSecurityException;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -691,7 +689,8 @@ public class BankCommands {
     @RolePermission(value = {Roles.MEMBER, Roles.ECON, Roles.ECON_STAFF}, alliance = true, any=true)
     @HasOffshore
     @IsAlliance
-    public static String offshore(@Me User user, @Me GuildDB db, @Arg("Offshore alliance to send funds to") @Default DBAlliance to, @Arg("The amount of resources to keep in the bank") @Default("{}") Map<ResourceType, Double> warchest,
+    public static String offshore(@Me User user, @Me GuildDB db, @Me IMessageIO io,
+                                  @Arg("Offshore alliance to send funds to") @Default DBAlliance to, @Arg("The amount of resources to keep in the bank") @Default("{}") Map<ResourceType, Double> warchest,
                                   @Arg("The account to offshore with (defaults to the sender alliance)") @Default NationOrAllianceOrGuild account) throws IOException {
         if (account != null && account.isNation()) {
             throw new IllegalArgumentException("You can't offshore into a nation. You can only offshore into an alliance or guild. Value provided: `Nation:" + account.getName() + "`");
@@ -725,7 +724,7 @@ public class BankCommands {
             throw new IllegalArgumentException("You cannot offshore to yourself");
         }
 
-        List<String> results = new ArrayList<>();
+        List<TransferResult> results = new ArrayList<>();
         for (DBAlliance from : alliances) {
             if (from.getAlliance_id() == to.getAlliance_id()) continue;
             Map<ResourceType, Double> resources = from.getStockpile();
@@ -743,11 +742,26 @@ public class BankCommands {
                 note = "#alliance=" + from.getAlliance_id();
             }
             note += " #tx_id=" + UUID.randomUUID().toString();
-            Map.Entry<OffshoreInstance.TransferStatus, String> response = bank.transferUnsafe(null, to, resources, note);
-            results.add(from.getName() + " -> " + to.getName() + ": " + response.getKey() + " (" + response.getValue() + ")");
+            TransferResult response = bank.transferUnsafe(null, to, resources, note);
+            results.add(response);
         }
-
-        return "Offshored:\n- " + String.join("\n- ", results);
+        if (results.size() == 1) {
+            TransferResult result = results.get(0);
+            String title = result.toTitleString();
+            String body = result.toEmbedString();
+            io.create().embed(title, body).send();
+            return null;
+        } else {
+            String title = "Offshored for " + alliances.size() + " alliances";
+            int success = results.stream().mapToInt(f -> f.getStatus().isSuccess() ? 1 : 0).sum();
+            int failed = results.size() - success;
+            if (failed > 0) {
+                title += " (" + success + " successful, " + failed + " failed)";
+            }
+            String body = results.stream().map(TransferResult::toLineString).collect(Collectors.joining("\n"));
+            io.create().embed(title, body).send();
+            return null;
+        }
     }
 
     @Command(desc = "Generate csv of war cost by nation between alliances (for reimbursement)\n" +
@@ -2026,7 +2040,7 @@ public class BankCommands {
             }
         }
 
-        Map.Entry<OffshoreInstance.TransferStatus, String> result;
+        TransferResult result;
         try {
             result = offshore.transferFromNationAccountWithRoleChecks(
                     author,
@@ -2046,19 +2060,21 @@ public class BankCommands {
                     bypassChecks
             );
         } catch (IllegalArgumentException | IOException e) {
-            result = new AbstractMap.SimpleEntry<>(OffshoreInstance.TransferStatus.OTHER, e.getMessage());
+//            result = new AbstractMap.SimpleEntry<>(OffshoreInstance.TransferStatus.OTHER, e.getMessage());
+            result = new TransferResult(OffshoreInstance.TransferStatus.OTHER, receiver, transfer, depositType.toString()).addMessage(e.getMessage());
         }
-        if (result.getKey() == OffshoreInstance.TransferStatus.CONFIRMATION) {
+        if (result.getStatus() == OffshoreInstance.TransferStatus.CONFIRMATION) {
             String worth = "$" + MathMan.format(PnwUtil.convertedTotal(transfer));
             String title = "Send (worth: " + worth + ") to " + receiver.getTypePrefix() + ":" + receiver.getName();
             if (receiver.isNation()) {
                 title += " | " + receiver.asNation().getAlliance();
             }
-            channel.create().confirmation(title, result.getValue(), command, "force", "Send").cancelButton().send();
+            channel.create().confirmation(title, result.getMessageJoined(false), command, "force", "Send").cancelButton().send();
             return null;
         }
 
-        return "**Transfer: " + result.getKey() + ":**\n" + result.getValue();
+        channel.create().embed(result.toTitleString(), result.toEmbedString()).send();
+        return null;
     }
 
     @Command(desc = "Sheet of projects each nation has")
@@ -2786,11 +2802,12 @@ public class BankCommands {
             NationOrAlliance receiver = entry.getKey();
             double[] amount = PnwUtil.resourcesToArray(entry.getValue());
 
-            Map.Entry<OffshoreInstance.TransferStatus, String> result = null;
+            TransferResult result = null;
             TaxBracket taxAccountFinal = taxAccount;
             if (existingTaxAccount) {
                 if (!receiver.isNation()) {
-                    result = new AbstractMap.SimpleEntry<>(OffshoreInstance.TransferStatus.INVALID_DESTINATION, "Cannot use `existingTaxAccount` for transfers to alliances");
+//                    result = new AbstractMap.SimpleEntry<>(OffshoreInstance.TransferStatus.INVALID_DESTINATION, "Cannot use `existingTaxAccount` for transfers to alliances");
+                    result = new TransferResult(OffshoreInstance.TransferStatus.INVALID_DESTINATION, receiver, amount, depositType.toString()).addMessage("Cannot use `existingTaxAccount` for transfers to alliances");
                 } else {
                     taxAccountFinal = receiver.asNation().getTaxBracket();
                 }
@@ -2816,16 +2833,15 @@ public class BankCommands {
                             bypassChecks
                     );
                 } catch (IllegalArgumentException | IOException e) {
-                    result = new AbstractMap.SimpleEntry<>(OffshoreInstance.TransferStatus.OTHER, e.getMessage());
+                    result = new TransferResult(OffshoreInstance.TransferStatus.OTHER, receiver, amount, depositType.toString()).addMessage(e.getMessage());
                 }
             }
 
-            output.append(receiver.getUrl() + "\t" + receiver.isAlliance() + "\t" + StringMan.getString(amount) + "\t" + result.getKey() + "\t" + "\"" + result.getValue() + "\"");
+            output.append(receiver.getUrl() + "\t" + receiver.isAlliance() + "\t" + StringMan.getString(amount) + "\t" + result.getStatus() + "\t" + "\"" + result.getMessageJoined(false).replace("\n", " ") + "\"");
             output.append("\n");
-            if (result.getKey() == OffshoreInstance.TransferStatus.SUCCESS || result.getKey() == OffshoreInstance.TransferStatus.ALLIANCE_BANK) {
+            if (result.getStatus() == OffshoreInstance.TransferStatus.SUCCESS || result.getStatus() == OffshoreInstance.TransferStatus.SENT_TO_ALLIANCE_BANK) {
                 totalSent = PnwUtil.add(totalSent, PnwUtil.resourcesToMap(amount));
-
-                io.send(PnwUtil.resourcesToString(amount) + " -> " + receiver.getUrl() + " | **" + result.getKey() + "**: " + result.getValue());
+                io.create().embed(result.toTitleString(), result.toEmbedString()).send();
             }
         }
 

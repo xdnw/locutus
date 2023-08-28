@@ -73,6 +73,6 @@ public class Offshore extends Command {
 
         DBAlliance to = null;
         if (args.size() > 0) to = DBAlliance.getOrCreate(PnwUtil.parseAllianceId(args.get(0)));
-        return BankCommands.offshore(author, db, to, warchest, account);
+        return BankCommands.offshore(author, db, channel, to, warchest, account);
     }
 }

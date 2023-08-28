@@ -3686,21 +3686,13 @@ public class DBNation implements NationOrAlliance {
 
     public String getNationUrlMarkup(boolean embed) {
         String nationUrl = getNationUrl();
-        if (!embed) {
-            nationUrl = "<" + nationUrl + ">" + " | " + String.format("%16s", getNation());
-        } else {
-            nationUrl = MarkupUtil.markdownUrl(nation, nationUrl);
-        }
+        nationUrl = MarkupUtil.markdownUrl(nation, "<" + nationUrl + ">");
         return nationUrl;
     }
 
     public String getAllianceUrlMarkup(boolean embed) {
         String allianceUrl = getAllianceUrl();
-        if (!embed) {
-            allianceUrl = String.format("%16s", getAllianceName()); // "<" + allianceUrl + ">" + " | " +
-        } else {
-            allianceUrl = MarkupUtil.markdownUrl(getAllianceName(), allianceUrl);
-        }
+        allianceUrl = MarkupUtil.markdownUrl(getAllianceName(), "<" + allianceUrl + ">");
         return allianceUrl;
     }
 
@@ -3726,6 +3718,7 @@ public class DBNation implements NationOrAlliance {
     public int getRemainingUnitBuy(MilitaryUnit unit, long timeSince) {
         if (unit == MilitaryUnit.INFRASTRUCTURE || unit == MilitaryUnit.MONEY) return -1;
         int maxPerDay = unit.getMaxPerDay(cities, this::hasProject);
+        System.out.println("Max daily " + maxPerDay);
         Map<Long, Integer> purchases = getUnitPurchaseHistory(unit, timeSince);
         for (Map.Entry<Long, Integer> entry : purchases.entrySet()) {
             if (entry.getValue() > 0) {
@@ -3818,7 +3811,7 @@ public class DBNation implements NationOrAlliance {
             body.append("VM: ").append(DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(entered_vm), null)).append(" - ").append(DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(leaving_vm), null)).append(" (").append(getVm_turns()).append(" turns)").append("\n");
         }
         //Domestic/War policy | beige turns | score
-        body.append("`").append(this.domestic_policy.name()).append("` | `").append(this.war_policy.name()).append("` | `").append(MathMan.format(score)).append("` | `").append(getContinent().name()).append("`\n");
+        body.append("`").append(this.domestic_policy.name()).append("` | `").append(this.war_policy.name()).append("` | `").append(MathMan.format(score) + "ns").append("` | `").append(getContinent().name()).append("`\n");
         //MMR[Building]: 1/2/3 | MMR[Unit]: 5/6/7
         body.append("MMR[Build]=`").append(getMMRBuildingStr()).append("` | MMR[Unit]=`").append(getMMR()).append("`\n");
         //
@@ -3873,7 +3866,7 @@ public class DBNation implements NationOrAlliance {
         // - Worth: $10
         double[] revenue = getRevenue();
         body.append("Revenue: `").append(PnwUtil.resourcesToString(revenue)).append("`\n");
-        body.append(" - worth: `").append(MathMan.format(PnwUtil.convertedTotal(revenue))).append("`\n");
+        body.append(" - worth: `$").append(MathMan.format(PnwUtil.convertedTotal(revenue))).append("`\n");
         //
         //Projects: 5/10 | [Projects] (bold VDS and ID)
         body.append("Projects: ").append(getNumProjects()).append("/").append(projectSlots()).append(" ")

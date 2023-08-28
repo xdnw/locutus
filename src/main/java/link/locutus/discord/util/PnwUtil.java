@@ -1169,7 +1169,7 @@ public class PnwUtil {
     }
 
     public static String getMarkdownUrl(int nationId, boolean isAA) {
-        return MarkupUtil.markdownUrl(PnwUtil.getName(nationId, isAA), PnwUtil.getUrl(nationId, isAA));
+        return MarkupUtil.markdownUrl(PnwUtil.getName(nationId, isAA), "<" + PnwUtil.getUrl(nationId, isAA) + ">");
     }
 
     public static int parseTaxId(String url) {

@@ -14,6 +14,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
+import link.locutus.discord.util.offshore.TransferResult;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -92,7 +93,7 @@ public class Borgomas extends Command {
         }
 
         String note = "Merry Borgmas!";
-        Map.Entry<OffshoreInstance.TransferStatus, String> result = Locutus.imp().getRootBank().transfer(me, resources, note);
+        TransferResult result = Locutus.imp().getRootBank().transfer(me, resources, note);
         return message;
     }
 }
