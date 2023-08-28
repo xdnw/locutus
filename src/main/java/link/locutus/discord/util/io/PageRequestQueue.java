@@ -38,52 +38,54 @@ public class PageRequestQueue {
         tracker = new RequestTracker();
 
         for (int i = 0; i < threads; i++) {
-            service.submit(() -> {
-                outer:
-                while (true) {
-                    boolean isEmpty = false;
-                    synchronized (queue) {
-                        isEmpty = queue.isEmpty();
-                    }
-                    if (isEmpty) {
-                        synchronized (lock) {
+            service.submit(new Runnable() {
+                @Override
+                public void run() {
+                    while (true) {
+                        boolean isEmpty ;
+                        synchronized (queue) {
+                            isEmpty = queue.isEmpty();
+                        }
+                        if (isEmpty) {
+                            synchronized (lock) {
+                                synchronized (queue) {
+                                    if (!queue.isEmpty()) {
+                                        continue;
+                                    }
+                                }
+                                try {
+                                    lock.wait();
+                                } catch (InterruptedException e) {
+                                    Thread.currentThread().interrupt();
+                                    return;
+                                }
+                            }
+                        }
+
+                        AtomicLong waitTime = new AtomicLong();
+                        PageRequestTask<?> task = null;
+                        synchronized (queue) {
+                            task = findAndRemoveTask(waitTime);
+                        }
+                        if (task == null) {
+                            long wait = waitTime.get();
+                            if (wait <= 0) {
+                                wait = (delayIncrement.addAndGet(100) % 900) + 100;
+                            }
                             synchronized (queue) {
-                                if (!queue.isEmpty()) {
-                                    continue outer;
+                                if (queue.isEmpty()) {
+                                    continue;
                                 }
                             }
                             try {
-                                lock.wait();
+                                Thread.sleep(wait);
                             } catch (InterruptedException e) {
-                                Thread.currentThread().interrupt();
-                                return;
+                                throw new RuntimeException(e);
                             }
+                            continue;
                         }
+                        PageRequestQueue.this.run(task);
                     }
-
-                    AtomicLong waitTime = new AtomicLong();
-                    PageRequestTask<?> task = null;
-                    synchronized (queue) {
-                        task = findAndRemoveTask(waitTime);
-                    }
-                    if (task == null) {
-                        long wait = waitTime.get();
-                        if (wait <= 0) {
-                            wait = (delayIncrement.addAndGet(100) % 900) + 100;
-                        }
-                        synchronized (queue) {
-                            if (queue.isEmpty()) {
-                                continue outer;
-                            }
-                        }
-                        try {
-                            Thread.sleep(wait);
-                        } catch (InterruptedException e) {
-                            throw new RuntimeException(e);
-                        }
-                        continue;
-                    }
-                    run(task);
                 }
             });
         }

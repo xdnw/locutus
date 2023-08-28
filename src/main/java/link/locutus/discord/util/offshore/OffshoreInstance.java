@@ -488,7 +488,7 @@ public class OffshoreInstance {
 
     public boolean checkLastSuccessfulTransferMatches(NationOrAlliance receiver, double[] amount) {
         double[] previous = getLastSuccessfulTransfer(receiver);
-        return ResourceType.equals(previous, amount);
+        return previous != null && ResourceType.equals(previous, amount);
     }
 
     public Map.Entry<TransferStatus, String> transferFromNationAccountWithRoleChecks(Supplier<Map<Long, AccessType>> allowedIdsGet, User banker, DBNation nationAccount, DBAlliance allianceAccount, TaxBracket taxAccount, GuildDB senderDB, Long senderChannel, NationOrAlliance receiver, double[] amount, DepositType.DepositTypeInfo depositType, Long expire, UUID grantToken, boolean convertCash, EscrowMode escrowMode, boolean requireConfirmation, boolean bypassChecks) throws IOException {
@@ -1361,6 +1361,7 @@ public class OffshoreInstance {
                 Bankrec result = api.transferFromBank(PnwUtil.resourcesToArray(transfer), receiver, note);
                 System.out.println("Success " + result.toString());
                 String msg = PnwUtil.resourcesToString(transfer) + " | " + note + " -> " + receiver.getTypePrefix() + ":" + receiver.getName();
+                setLastSuccessfulTransfer(receiver, PnwUtil.resourcesToArray(transfer));
                 return Map.entry(TransferStatus.SUCCESS, msg);
             } catch (HttpClientErrorException.Unauthorized e) {
                 return Map.entry(TransferStatus.INVALID_DESTINATION, "Invalid API key");

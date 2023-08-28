@@ -3901,7 +3901,7 @@ public class DBNation implements NationOrAlliance {
         return Locutus.imp().getWarDb().getBounties(getId());
     }
 
-    @Command
+    @Command(desc = "Get a map of each war type to the total value of bounties for that type that this nation has")
     public Map<WarType, Long> getBountySums() {
         return getBounties().stream().collect(Collectors.groupingBy(DBBounty::getType, Collectors.summingLong(DBBounty::getAmount)));
     }
