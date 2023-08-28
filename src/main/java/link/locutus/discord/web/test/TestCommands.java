@@ -11,6 +11,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
 import link.locutus.discord.util.ImageUtil;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.StringMan;
 
 import java.util.HashMap;
 import java.util.List;
@@ -27,11 +28,11 @@ public class TestCommands {
             "This will make a popup prompting for the command arguments you specify and submit any defaults you provide\n" +
             "Note: This is intended to be used in conjuction with the card command")
     public String modal(@Me IMessageIO io, ICommand command,
-                        @Arg("A comma separated list of the command arguments to prompt for") List<String> arguments,
+                        @Arg("A comma separated list of the command arguments to prompt for") String arguments,
                         @Arg("The json string of the default arguments and values you want to submit to the command")
                         @Default String defaults) {
         Map<String, String> args = defaults == null ? new HashMap<>() : PnwUtil.parseMap(defaults);
-        io.modal().create(command, args, arguments).send();
+        io.modal().create(command, args, StringMan.split(arguments, ',')).send();
         return null;
     }
 

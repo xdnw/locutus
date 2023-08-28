@@ -896,7 +896,7 @@ public class UtilityCommands {
                         @Switch("p") Integer projects,
                         @Switch("i") Integer avg_infra,
                         @Switch("I") Integer infraTotal,
-                        @Switch("b") String builtMMR
+                        @Switch("b") MMRDouble builtMMR
     ) {
         if (nation == null) {
             nation = new DBNation();
@@ -933,7 +933,7 @@ public class UtilityCommands {
             infra = infraTotal;
         }
         if (builtMMR != null) {
-            nation.setMMR((builtMMR.charAt(0) - '0'), (builtMMR.charAt(1) - '0'), (builtMMR.charAt(2) - '0'), (builtMMR.charAt(3) - '0'));
+            nation.setMMR((builtMMR.getBarracks()), (builtMMR.getFactory()), (builtMMR.getHangar()), (builtMMR.getDrydock()));
         }
         double score = nation.estimateScore(infra == -1 ? nation.getInfra() : infra);
 

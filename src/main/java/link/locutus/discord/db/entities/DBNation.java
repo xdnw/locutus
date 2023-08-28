@@ -4217,11 +4217,11 @@ public class DBNation implements NationOrAlliance {
         return (projectTimer - TimeUtil.getTurn());
     }
 
-    public void setMMR(int barracks, int factories, int hangars, int drydocks) {
-        soldiers = barracks * cities * Buildings.BARRACKS.max();
-        tanks = factories * cities * Buildings.FACTORY.max();
-        aircraft = hangars * cities * Buildings.HANGAR.max();
-        ships = drydocks * cities * Buildings.DRYDOCK.max();
+    public void setMMR(double barracks, double factories, double hangars, double drydocks) {
+        soldiers = (int) (barracks * cities * Buildings.BARRACKS.max());
+        tanks = (int) (factories * cities * Buildings.FACTORY.max());
+        aircraft = (int) (hangars * cities * Buildings.HANGAR.max());
+        ships = (int) (drydocks * cities * Buildings.DRYDOCK.max());
     }
 
     @Command(desc = "Number of buildings total")
