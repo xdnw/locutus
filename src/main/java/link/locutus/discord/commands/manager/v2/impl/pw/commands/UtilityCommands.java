@@ -1397,7 +1397,7 @@ public class UtilityCommands {
             desc = "Get detailed information about a nation\n" +
                     "Nation argument can be nation name, id, link, or discord tag\n" +
                     "e.g. `{prefix}who @borg`")
-    public String who(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me User author, @Me GuildDB db,
+    public static String who(@Me JSONObject command, @Me Guild guild, @Me IMessageIO channel, @Me User author, @Me GuildDB db,
                       @Arg("The nations to get info about")
                       Set<NationOrAlliance> nationOrAlliances,
                       @Arg("Sort any listed nations by this attribute")
@@ -1416,52 +1416,8 @@ public class UtilityCommands {
                       @Switch("c") boolean listChannels,
                       @Switch("p") Integer page) throws IOException {
         DBNation myNation = DiscordUtil.getNation(author.getIdLong());
-        /*
-        // TODO get commands that can run with
-            // NationList
-            // Set<NationOrAlliance>
-            // Set<DBNation>
-            // Set<NationOrAllianceOrGuild>
-            // NationFilter
-            //
-            // for nation:
-            // DBNation
-            //
-            // for alliance
-            // DBAlliance
-            // Set<DBAlliance>
-
-            CommandManager2 commands = Locutus.imp().getCommandManager().getV2();
-//            commands.getCommands()
-public Map<ParametricCallable, String> getEndpoints() {
-
-    }
-         */
-
         int perpage = 15;
         StringBuilder response = new StringBuilder();
-
-//        if (nationsOrAlliances.isEmpty()) {
-//            return "Not found: `" + Settings.commandPrefix(false) + "who <user>`";
-//        }
-//        if (nationsOrAlliances.size() == 1) {
-//            NationOrAlliance nationOrAlliance = nationsOrAlliances.iterator().next();
-//            if (nationOrAlliance.isNation()) {
-//                // nation card
-//                // -
-//
-//            } else {
-//                // alliance card
-//                // - Tiering
-//                // - Militarization
-//                // - Active conflicts
-//                // - Offshores
-//                // - List of alliance commands
-//
-//            }
-//        } else {
-//
-//        }
         Collection<DBNation> nations = SimpleNationList.from(nationOrAlliances).getNations();
 
         String arg0;
@@ -1471,25 +1427,70 @@ public Map<ParametricCallable, String> getEndpoints() {
             if (nationOrAA.isNation()) {
                 DBNation nation = nationOrAA.asNation();
                 title = nation.getNation();
-                nation.toCard(channel, false);
+                StringBuilder markdown = new StringBuilder(nation.toFullMarkdown());
+                IMessageBuilder msg = channel.create().embed(title, markdown.toString());
 
-                List<CommandRef> commands = new ArrayList<>();
-                commands.add(CM.nation.list.multi.cmd.create(nation.getNation_id() + ""));
-                commands.add(CM.nation.revenue.cmd.create(nation.getNation_id() + "", null, null));
-                commands.add(CM.war.info.cmd.create(nation.getNation_id() + ""));
-                commands.add(CM.unit.history.cmd.create(nation.getNation_id() + "", null, null));
+                //Run audit (if ia/econ, or self)
+                if ((myNation != null && myNation.getId() == nation.getId()) || Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild)) {
+                    CM.audit.run audit = CM.audit.run.cmd.create(nation.getQualifiedName(), null, null, null, null, null);
+                    msg = msg.commandButton(CommandBehavior.EPHEMERAL, audit, "Audit");
+                }
+                //Bans
+                CM.nation.list.bans bans = CM.nation.list.bans.cmd.create(nation.getNationUrl());
+                msg = msg.commandButton(CommandBehavior.EPHEMERAL, bans, "Bans");
+                //Reports
+                CM.report.search reports = CM.report.search.cmd.create(nation.getNationUrl(), null, null, null);
+                msg = msg.commandButton(CommandBehavior.EPHEMERAL, reports, "Reports");
+                //Projects
+                CM.project.slots projects = CM.project.slots.cmd.create(nation.getNationUrl());
+                msg = msg.commandButton(CommandBehavior.EPHEMERAL, projects, "Projects");
+                //Departures
+                CM.nation.departures departures = CM.nation.departures.cmd.create(nation.getNationUrl(), "9999d", null, null, null, null, null);
+                msg = msg.commandButton(CommandBehavior.EPHEMERAL, departures, "Departures");
+                //Multis
+                CM.nation.list.multi multis = CM.nation.list.multi.cmd.create(nation.getNationUrl());
+                msg = msg.commandButton(CommandBehavior.EPHEMERAL, multis, "Multis");
+                //Reroll
+                CM.nation.reroll reroll = CM.nation.reroll.cmd.create(nation.getNationUrl());
+                msg = msg.commandButton(CommandBehavior.EPHEMERAL, reroll, "Reroll");
+                //Open alliance info
+                if (nation.getAlliance_id() != 0) {
+                    CM.who info = CM.who.cmd.create(nation.getAllianceUrl(), null, null, null, null, null, null, null, null);
+                    msg = msg.commandButton(CommandBehavior.EPHEMERAL, info, "Alliance");
+                }
+                //Score command
+
+                CM.nation.score score = CM.nation.score.cmd.create(nation.getNationUrl(), null, null, null, null, null, "", "", "", "", null, "");
+                msg = msg.modal(CommandBehavior.EPHEMERAL, score, "Score");
+                //Revenue
+                CM.nation.revenue revenue = CM.nation.revenue.cmd.create(nation.getNationUrl(), null, null);
+                msg = msg.modal(CommandBehavior.EPHEMERAL, revenue, "Revenue");
+                //WarInfo
+                CM.war.info warInfo = CM.war.info.cmd.create(nation.getNationUrl());
+                msg = msg.modal(CommandBehavior.EPHEMERAL, warInfo, "War Info");
+                //Counter
+                CM.war.counter.nation counter = CM.war.counter.nation.cmd.create(nation.getNationUrl(), "", null, null, null, null, "", null);
+                msg = msg.modal(CommandBehavior.EPHEMERAL, counter, "Counter");
+                //Loot
+                CM.nation.loot loot = CM.nation.loot.cmd.create(nation.getNationUrl(), null, null);
+                msg = msg.commandButton(CommandBehavior.EPHEMERAL, loot, "Loot");
+                //Cost
+                CM.alliance.cost cost = CM.alliance.cost.cmd.create(nation.getNationUrl(), null);
+                msg = msg.commandButton(CommandBehavior.EPHEMERAL, cost, "Cost");
+                //unit history
+                CM.unit.history history = CM.unit.history.cmd.create(nation.getNationUrl(), "", null);
+                msg = msg.modal(CommandBehavior.EPHEMERAL, history, "Unit History");
+
+                msg.send();
             } else {
                 DBAlliance alliance = nationOrAA.asAlliance();
                 title = alliance.getName();
-
-//                If no aaid is set, and you are in the aa, button to register it as your alliance
-//                - Register Guild
-                StringBuilder aaMarkdown = new StringBuilder(alliance.toMarkdown() + "\n");
+                StringBuilder markdown = new StringBuilder(alliance.toMarkdown() + "\n");
                 if (Roles.ADMIN.has(author, db.getGuild()) && myNation != null && myNation.getAlliance_id() == alliance.getId() && db.getAllianceIds().isEmpty()) {
-                    aaMarkdown.append("\nSet as this guild's alliance: " + CM.settings_default.registerAlliance.cmd.toSlashMention() + "\n");
+                    markdown.append("\nSet as this guild's alliance: " + CM.settings_default.registerAlliance.cmd.toSlashMention() + "\n");
                 }
 
-                IMessageBuilder msg = channel.create().embed(title, aaMarkdown.toString());
+                IMessageBuilder msg = channel.create().embed(title, markdown.toString());
 
                 // Militarization graph
                 CM.alliance.stats.metricsByTurn militarization =
@@ -1668,7 +1669,7 @@ public Map<ParametricCallable, String> getEndpoints() {
         return null;
     }
 
-    private void printAA(StringBuilder response, DBNation nation, boolean spies) {
+    private static void printAA(StringBuilder response, DBNation nation, boolean spies) {
         response.append(String.format("%4s", TimeUtil.secToTime(TimeUnit.DAYS, nation.getAgeDays()))).append(" ");
         response.append(nation.toMarkdown(true, false, false, true, false, false));
         response.append(nation.toMarkdown(true, false, false, false, true, spies));

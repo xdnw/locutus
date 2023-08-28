@@ -2081,8 +2081,8 @@ public class CM {
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands.class,method="searchReports")
         public static class search extends CommandRef {
             public static final search cmd = new search();
-            public search create(String nationIdReported, String userIdReported, String reportingNation, String reportingUser, String force) {
-                return createArgs("nationIdReported", nationIdReported, "userIdReported", userIdReported, "reportingNation", reportingNation, "reportingUser", reportingUser, "force", force);
+            public search create(String nationIdReported, String userIdReported, String reportingNation, String reportingUser) {
+                return createArgs("nationIdReported", nationIdReported, "userIdReported", userIdReported, "reportingNation", reportingNation, "reportingUser", reportingUser);
             }
         }
         public static class sheet{
