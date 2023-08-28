@@ -3723,6 +3723,23 @@ public class DBNation implements NationOrAlliance {
         return reportManager.loadReports(getId(), getUserId(), null, null).size();
     }
 
+    public int getRemainingUnitBuy(MilitaryUnit unit, long timeSince) {
+        if (unit == MilitaryUnit.INFRASTRUCTURE || unit == MilitaryUnit.MONEY) return -1;
+        int maxPerDay = unit.getMaxPerDay(cities, this::hasProject);
+        Map<Long, Integer> purchases = getUnitPurchaseHistory(unit, timeSince);
+        for (Map.Entry<Long, Integer> entry : purchases.entrySet()) {
+            if (entry.getValue() > 0) {
+                maxPerDay -= entry.getValue();
+            }
+        }
+        return maxPerDay;
+    }
+
+    public int getUnitCap(MilitaryUnit unit, boolean checkBuildingsAndPop) {
+        int result = checkBuildingsAndPop ? unit.getCap(this, false) : unit.getMaxMMRCap(cities, this::hasProject);
+        return result;
+    }
+
     public String toFullMarkdown() {
         StringBuilder body = new StringBuilder();
         //Nation | Leader name | timestamp(DATE_CREATED) `tax_id=1`
@@ -3806,12 +3823,14 @@ public class DBNation implements NationOrAlliance {
         body.append("MMR[Build]=`").append(getMMRBuildingStr()).append("` | MMR[Unit]=`").append(getMMR()).append("`\n");
         //
         //Units: Now/Buyable/Cap
-        body.append("Units: Now/Buyable/Cap\n");
+        body.append("Units: Now/Remaining Buy/Cap (assumes 5553)\n");
         //Soldier: 0/0/0
         long dcTurn = this.getTurnsFromDC();
         long dcTimestamp = TimeUtil.getTimeFromTurn(dcTurn);
         for (MilitaryUnit unit : new MilitaryUnit[]{MilitaryUnit.SOLDIER, MilitaryUnit.TANK, MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP, MilitaryUnit.SPIES, MilitaryUnit.MISSILE, MilitaryUnit.NUKE}) {
-            body.append(unit.name()).append(": `").append(getUnits(unit)).append("/").append(getUnitBuys(unit, dcTimestamp)).append("/").append(getUnitCap(unit)).append("`").append("\n");
+            int cap = getUnitCap(unit, false);
+            if (cap == Integer.MAX_VALUE) cap = -1;
+            body.append(unit.name()).append(": `").append(getUnits(unit)).append("/").append(getRemainingUnitBuy(unit, dcTimestamp)).append("/").append(cap).append("`").append("\n");
         }
         //
         //Attack Range: War= | Spy=
