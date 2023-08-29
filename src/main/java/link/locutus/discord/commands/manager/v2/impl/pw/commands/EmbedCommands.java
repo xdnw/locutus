@@ -563,7 +563,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
     @Command(desc = "Discord embed for checking deposits, withdrawing funds, viewing your stockpile, depositing resources and offshoring funds")
     @HasOffshore
     @RolePermission(Roles.ADMIN)
-    public void depositsPanel(@Me GuildDB db, @Me IMessageIO io, @Arg("Only applicable to corporate servers. The nation accepting trades for bank deposits. Defaults to the bot owner's nation") @Default DBNation bankerNation) {
+    public void depositsPanel(@Me GuildDB db, @Me IMessageIO io, @Arg("Only applicable to corporate servers. The nation accepting trades for bank deposits. Defaults to the bot owner's nation") @Default DBNation bankerNation, @Switch("c") MessageChannel outputChannel) {
         int nationId = Settings.INSTANCE.NATION_ID;
         if (bankerNation != null) {
             nationId = bankerNation.getId();
@@ -603,6 +603,12 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             depositFunds = CM.bank.deposit.cmd.create("nation:{nation_id}", null, "", null, null, null, null, null, null, null, null, null, null, null, "true", "true");
             depositAuto = CM.bank.deposit.cmd.create("nation:{nation_id}", null, null, "7", null, null, "1", null, null, null, null, null, null, null, "true", "true");
         }
+
+        Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
+        if (channelId != null) {
+            body += "\n\n> Results in <#" + channelId + ">";
+        }
+
         CM.deposits.check deposits = CM.deposits.check.cmd.create("nation:{nation_id}", null, null, null, null, null, null, null, null, null);
         CM.transfer.self self = CM.transfer.self.cmd.create("", null, null, null, null, null, null, null, null, null, null, null, null, null);
         CM.transfer.resources other = CM.transfer.resources.cmd.create("", "", null, "{nation_id}", null, null, null, null, null, null, null, null, null, null, null);
@@ -611,13 +617,13 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         CommandBehavior behavior = CommandBehavior.EPHEMERAL;
 
         IMessageBuilder msg = io.create().embed(title, body)
-                .commandButton(behavior, null, deposits, "balance")
-                .commandButton(behavior, null, self, "self")
-                .commandButton(behavior, null, other, "other")
-                .commandButton(behavior, null, stockpile, "stockpile")
-                .commandButton(behavior, null, depositFunds, depositFundsLabel);
+                .commandButton(behavior, channelId, deposits, "balance")
+                .modal(behavior, channelId, self, "self")
+                .modal(behavior, channelId, other, "other")
+                .commandButton(behavior, channelId, stockpile, "stockpile")
+                .modal(behavior, channelId, depositFunds, depositFundsLabel);
         if (depositAuto != null) {
-            msg.commandButton(behavior, null, depositAuto, "deposit auto");
+            msg = msg.commandButton(behavior, channelId, depositAuto, "deposit auto");
         }
         msg.send();
     }

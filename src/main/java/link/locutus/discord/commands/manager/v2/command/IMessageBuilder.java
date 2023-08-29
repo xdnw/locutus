@@ -12,6 +12,7 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
+import org.springframework.messaging.MessageChannel;
 import rocker.guild.ia.message;
 
 import javax.annotation.CheckReturnValue;
@@ -49,6 +50,11 @@ public interface IMessageBuilder {
 
     @CheckReturnValue
     default IMessageBuilder modal(CommandBehavior behavior, CommandRef cmd, String message) {
+        return modal(behavior, null, cmd, message);
+    }
+
+    @CheckReturnValue
+    default IMessageBuilder modal(CommandBehavior behavior, Long outputChannel, CommandRef cmd, String message) {
             Map<String, String> arguments = cmd.getArguments();
             String path = cmd.getPath();
             Iterator<Map.Entry<String, String>> iter = arguments.entrySet().iterator();
