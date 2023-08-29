@@ -1270,6 +1270,9 @@ public class PoliticsAndWarV3 {
             return null;
         }
         Alliance rec = alliances.get(0);
+        if (rec.getMoney() == null) {
+            return null;
+        }
         double[] resources = ResourceType.getBuffer();
         resources[ResourceType.MONEY.ordinal()] = rec.getMoney();
         resources[ResourceType.COAL.ordinal()] = rec.getCoal();
