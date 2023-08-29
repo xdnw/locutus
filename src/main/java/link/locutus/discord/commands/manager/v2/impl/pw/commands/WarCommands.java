@@ -1260,7 +1260,7 @@ public class WarCommands {
 
     @Command(desc = "Find nations in war range that have a treasure")
     @RolePermission(Roles.MEMBER)
-    public void findTreasureNations(@Me User Author, @Me DBNation me, @Me GuildDB guildDB, @Me IMessageIO channel, @Switch("r") boolean onlyWeaker, @Switch("d") boolean ignoreDNR, @Switch("n") @Default("5") Integer numResults) {
+    public void findTreasureNations(@Me User Author, @Me DBNation me, @Me GuildDB guildDB, @Me IMessageIO channel, @Arg("Only list enemies with less ground than you") @Switch("r") boolean onlyWeaker, @Arg("Ignore the do not raid settings for this server") @Switch("d") boolean ignoreDNR, @Switch("n") @Default("5") Integer numResults) {
 
         StringBuilder response = new StringBuilder("**Results for " + me.getNation() + "**:\n");
         Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(f -> f.isInWarRange(me));
@@ -1305,9 +1305,9 @@ public class WarCommands {
         }
     }
 
-    @Command(desc = "Find nations with high bounties")
+    @Command(desc = "Find nations with high bounties within your war range")
     @RolePermission(Roles.MEMBER)
-    public void findBountyNations(@Me User Author, @Me DBNation me, @Me GuildDB guildDB, @Me IMessageIO channel, @Switch("r") boolean onlyWeaker, @Switch("d") boolean ignoreDNR, @Switch("n") @Default("5") Integer numResults) {
+    public void findBountyNations(@Me User Author, @Me DBNation me, @Me GuildDB guildDB, @Me IMessageIO channel, @Arg("Only list enemies with less ground than you") @Switch("r") boolean onlyWeaker, @Arg("Ignore the do not raid settings for this server") @Switch("d") boolean ignoreDNR, @Switch("n") @Default("5") Integer numResults) {
 
         StringBuilder response = new StringBuilder("**Results for " + me.getNation() + "**:\n");
         Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(f -> f.isInWarRange(me));
