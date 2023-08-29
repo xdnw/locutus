@@ -260,7 +260,6 @@ public class DBAlliance implements NationList, NationOrAlliance {
         Set<AlliancePermission> permsSet = new HashSet<>(Arrays.asList(permissions));
         GuildDB db = getGuildDB();
 
-        int preferNation = -1;
         if (db != null) {
             List<String> apiKeys = db.getOrNull(GuildKey.API_KEY);
             if (apiKeys != null) {

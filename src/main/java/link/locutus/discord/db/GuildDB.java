@@ -3124,6 +3124,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public void addRole(Roles locutusRole, long discordRole, long allianceId) {
+        loadRoles();
         deleteRole(locutusRole, allianceId, false);
         roleToAccountToDiscord.computeIfAbsent(locutusRole, f -> new ConcurrentHashMap<>()).put(allianceId, discordRole);
         update("INSERT OR REPLACE INTO `ROLES2`(`role`, `alias`, `alliance`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
@@ -3137,6 +3138,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
     public void deleteRole(Roles role, long alliance, boolean updateCache) {
         if (updateCache) {
+            loadRoles();
             Map<Long, Long> existing = roleToAccountToDiscord.get(role);
             if (existing != null) {
                 existing.remove(alliance);
@@ -3149,6 +3151,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public void deleteRole(Roles role) {
+        loadRoles();
         roleToAccountToDiscord.remove(role);
         update("DELETE FROM `ROLES2` WHERE `role` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setLong(1, role.getId());
@@ -3156,6 +3159,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public  Map<Roles, Map<Long, Long>> getMappingRaw() {
+        loadRoles();
         return Collections.unmodifiableMap(roleToAccountToDiscord);
     }
 
@@ -3184,10 +3188,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                         while (rs.next()) {
                             try {
                                 Roles role = Roles.getRoleById(rs.getInt("role"));
+                                if (role == null) continue;
                                 long alias = rs.getLong("alias");
                                 long alliance = rs.getLong("alliance");
                                 roleToAccountToDiscord.computeIfAbsent(role, f -> new ConcurrentHashMap<>()).put(alliance, alias);
                             } catch (IllegalArgumentException ignore) {
+                                ignore.printStackTrace();
                             }
                         }
                     }
