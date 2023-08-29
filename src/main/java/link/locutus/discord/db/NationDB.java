@@ -8,6 +8,7 @@ import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
@@ -757,7 +758,11 @@ public class NationDB extends DBMainV2 {
         // get the 1k most recent nations
         List<DBNation> allNations = new ArrayList<>(this.getNationsMatching(f -> f.getVm_turns() == 0));
         // sort by last active (desc)
-        allNations.sort(Comparator.comparingLong(DBNation::lastActiveMs).reversed());
+        Map<Integer, Long> lastActive = new Int2LongOpenHashMap();
+        for (DBNation nation : allNations) {
+            lastActive.put(nation.getId(), nation.lastActiveMs());
+        }
+        allNations.sort((o1, o2) -> Long.compare(lastActive.get(o2.getId()), lastActive.get(o1.getId())));
         // get the first 1k
         allNations = allNations.subList(0, Math.min(1000, allNations.size()));
         long diff;
