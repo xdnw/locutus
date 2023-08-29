@@ -2255,7 +2255,7 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requireActiveGuild());
 
-    public static GuildSetting<Map<Long, Double>> GRANT_TEMPLATE_LIMITS = new GuildSetting<Map<Long,Double>>(GuildSettingCategory.ORBIS_ALERTS, Map.class, Long.class, Double.class) {
+    public static GuildSetting<Map<Long, Double>> GRANT_TEMPLATE_LIMITS = new GuildSetting<Map<Long,Double>>(GuildSettingCategory.BANK_ACCESS, Map.class, Long.class, Double.class) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
