@@ -132,10 +132,11 @@ public enum Roles {
 
     MAIL(30, "Can use mail commands", GuildKey.API_KEY),
 
-    BLOCKADED_ALERT(31, "Gets alerts when you are blockaded", GuildKey.BLOCKADED_ALERTS, "BLOCKADED_ALERTS"),
-    UNBLOCKADED_ALERT(32, "Gets alerts when you are unblockaded", GuildKey.UNBLOCKADED_ALERTS, "UNBLOCKADED_ALERTS"),
+    BLOCKADED_ALERT(31, "Gets a ping when you are blockaded", GuildKey.BLOCKADED_ALERTS, "BLOCKADED_ALERTS"),
+    UNBLOCKADED_ALERT(32, "Gets a ping when you are unblockaded", GuildKey.UNBLOCKADED_ALERTS, "UNBLOCKADED_ALERTS"),
 
-    UNBLOCKADED_GOV_ROLE_ALERT(33, "Gets alerts when any member is fully unblockaded", GuildKey.UNBLOCKADED_ALERTS, "UNBLOCKADED_GOV_ROLE_ALERTS"),
+    UNBLOCKADED_GOV_ROLE_ALERT(33, "Pings this role when any member is fully unblockaded", GuildKey.UNBLOCKADED_ALERTS, "UNBLOCKADED_GOV_ROLE_ALERTS"),
+    ESCROW_GOV_ALERT(33, "Pings this role when any member is fully unblockaded and has an escrow balance", GuildKey.UNBLOCKADED_ALERTS, "UNBLOCKADED_GOV_ROLE_ALERTS"),
 
 
     TREASURE_ALERT(34, "Gets alerts in the TREASURE_ALERT_CHANNEL if a treasure is spawning in their range", GuildKey.TREASURE_ALERT_CHANNEL, "TREASURE_ALERTS"),

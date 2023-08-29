@@ -2528,10 +2528,10 @@ public class GuildHandler {
         DBNation nation = event.getBlockadedNation();
         MessageChannel channel = getDb().getOrNull(GuildKey.BLOCKADED_ALERTS);
         Role role = Roles.BLOCKADED_ALERT.toRole(guild);
-        blockadeAlert(nation, event.getBlockaderNation(), channel, role, null, "blockaded");
+        blockadeAlert(nation, event.getBlockaderNation(), channel, role, null, null, "blockaded");
     }
 
-    private void blockadeAlert(DBNation blockaded, DBNation blockader, MessageChannel channel, Role role, Role govRole, String titleSuffix) {
+    private void blockadeAlert(DBNation blockaded, DBNation blockader, MessageChannel channel, Role role, Role govRole, Role escrowRole, String titleSuffix) {
         if (channel == null) return;
 
         IMessageIO io = new DiscordChannelIO(channel);
@@ -2552,14 +2552,24 @@ public class GuildHandler {
         IMessageBuilder msg = io.create().embed(title, body.toString());
 
         if (govRole != null) {
-            msg.append(" (see below) " + govRole.getAsMention());
+            msg.append("\n(see below) " + govRole.getAsMention());
         }
 
         User user = blockaded.getUser();
         if (user != null && role != null) {
             Member member = getGuild().getMember(user);
             if (member != null && member.getRoles().contains(role)) {
-                msg.append(" (see below) " + member.getAsMention());
+                msg.append("\n(see below) " + member.getAsMention());
+            }
+        }
+        if (escrowRole != null) {
+            try {
+                Map.Entry<double[], Long> escrow = getDb().getEscrowed(blockaded);
+                if (escrow != null && !ResourceType.isZero(escrow.getKey())) {
+                    msg.append("\nHas Escrow " + escrowRole.getAsMention());
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
         msg.send();
@@ -2578,7 +2588,9 @@ public class GuildHandler {
         MessageChannel channel = getDb().getOrNull(GuildKey.UNBLOCKADED_ALERTS);
         Role role = blockaded ? null : Roles.UNBLOCKADED_ALERT.toRole(guild);
         Role govRole = blockaded ? null : Roles.UNBLOCKADED_GOV_ROLE_ALERT.toRole(guild);
-        blockadeAlert(nation, event.getBlockaderNation(), channel, role, govRole, title);
+        Role escrowRole = blockaded ? null : Roles.ESCROW_GOV_ALERT.toRole(guild);
+
+        blockadeAlert(nation, event.getBlockaderNation(), channel, role, govRole, escrowRole, title);
 
         processEscrow(nation);
 
