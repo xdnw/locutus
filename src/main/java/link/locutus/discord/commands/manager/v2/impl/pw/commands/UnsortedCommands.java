@@ -368,7 +368,7 @@ public class UnsortedCommands {
             totals = alliance.getStockpile();
         } else {
             DBNation nation = nationOrAlliance.asNation();
-            if (nation != me) {
+            if (nation.getId() != me.getId()) {
                 boolean noPerm = false;
                 if (!Roles.ECON.has(author, guild) && !Roles.MILCOM.has(author, guild) && !Roles.INTERNAL_AFFAIRS.has(author, guild) && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild)) {
                     noPerm = true;
