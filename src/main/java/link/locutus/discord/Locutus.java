@@ -746,13 +746,24 @@ public final class Locutus extends ListenerAdapter {
             }
 
             addTaskSeconds(() -> {
-                synchronized (warUpdateLock) {
+                try {
                     System.out.println("Start update wars 1");
-                    long start = System.currentTimeMillis();
-                    runEventsAsync(f -> warDb.updateActiveWars(f, false));
-                    runEventsAsync(warDb::fetchNewWars);
-                    runEventsAsync(warDb::updateAttacks);
+                    synchronized (warUpdateLock) {
+                        System.out.println("Start update wars 1.1");
+                        long start = System.currentTimeMillis();
+                        System.out.println("Start update wars 1.2");
+                        runEventsAsync(f -> warDb.updateActiveWars(f, false));
+                        System.out.println("Start update wars 1.3");
+                        runEventsAsync(warDb::fetchNewWars);
+                        System.out.println("Start update wars 1.4");
+                        runEventsAsync(warDb::updateAttacks);
+                        System.out.println("Start update wars 1.5");
+                    }
+                    System.out.println("End update wars 1.5");
+                } catch (Throwable e) {
+                    e.printStackTrace();
                 }
+
             }, Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS);
 
 //            addTaskSeconds(() -> {

@@ -134,8 +134,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="showFileQueue")
             public static class file extends CommandRef {
                 public static final file cmd = new file();
-                public file create(String timestamp) {
-                    return createArgs("timestamp", timestamp);
+                public file create(String timestamp, String numResults) {
+                    return createArgs("timestamp", timestamp, "numResults", numResults);
                 }
             }
         }
@@ -1153,6 +1153,13 @@ public class CM {
                 public static final ally_enemy_sheets cmd = new ally_enemy_sheets();
                 public ally_enemy_sheets create(String outputChannel, String allEnemiesSheet, String priorityEnemiesSheet, String allAlliesSheet, String underutilizedAlliesSheet) {
                     return createArgs("outputChannel", outputChannel, "allEnemiesSheet", allEnemiesSheet, "priorityEnemiesSheet", priorityEnemiesSheet, "allAlliesSheet", allAlliesSheet, "underutilizedAlliesSheet", underutilizedAlliesSheet);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="depositsPanel")
+            public static class deposits extends CommandRef {
+                public static final deposits cmd = new deposits();
+                public deposits create(String bankerNation, String outputChannel) {
+                    return createArgs("bankerNation", bankerNation, "outputChannel", outputChannel);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="warGuerilla")
@@ -2726,13 +2733,6 @@ public class CM {
         }
     }
     public static class settings_recruit{
-        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="GRANT_LIMIT_DELAY", field="GRANT_LIMIT_DELAY")
-        public static class GRANT_LIMIT_DELAY extends CommandRef {
-            public static final GRANT_LIMIT_DELAY cmd = new GRANT_LIMIT_DELAY();
-            public GRANT_LIMIT_DELAY create(String timediff) {
-                return createArgs("timediff", timediff);
-            }
-        }
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="RECRUIT_MESSAGE_CONTENT", field="RECRUIT_MESSAGE_CONTENT")
         public static class RECRUIT_MESSAGE_CONTENT extends CommandRef {
             public static final RECRUIT_MESSAGE_CONTENT cmd = new RECRUIT_MESSAGE_CONTENT();

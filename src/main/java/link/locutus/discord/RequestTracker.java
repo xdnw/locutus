@@ -64,28 +64,33 @@ public class RequestTracker {
     }
 
     private void runWithRetryAfter(PageRequestQueue.PageRequestTask task, int depth) {
-        if (depth > 3) {
-
-        }
         long now = System.currentTimeMillis();
         long retryMs = getRetryAfter(task.getUrl());
         boolean isRateLimited = false;
         Integer retryAfter = null;
         try {
-            if (retryMs < now) {
-                addRequest(task.getUrl());
-                Supplier supplier = task.getTask();
-                task.complete(supplier.get());
+            if (retryMs > now) {
+                try {
+                    Thread.sleep(retryMs - now);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
+            addRequest(task.getUrl());
+            Supplier supplier = task.getTask();
+            task.complete(supplier.get());
+            return;
         } catch (FileUtil.TooManyRequests e) {
             if (depth > 3) {
                 task.completeExceptionally(e);
+                return;
             }
             isRateLimited = true;
             retryAfter = e.getRetryAfter();
         } catch (HttpClientErrorException.TooManyRequests e) {
             if (depth > 3) {
                 task.completeExceptionally(e);
+                return;
             }
             isRateLimited = true;
             HttpHeaders headers = e.getResponseHeaders();
@@ -97,6 +102,7 @@ public class RequestTracker {
             }
         } catch (Throwable e) {
             System.out.println("Error " + e.getMessage() + " on " + task.getUrl());
+            task.completeExceptionally(e);
             throw e;
         }
         if (isRateLimited) {
@@ -132,12 +138,10 @@ public class RequestTracker {
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                    runWithRetryAfter(task, depth + 1);
                 }
+                runWithRetryAfter(task, depth + 1);
             }
         }
-
-        // DOMAIN_LOCKS
     }
 
     public int getDomainId(URI url) {

@@ -933,6 +933,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public ApiKeyPool getApiKeys(AlliancePermission... permissions) {
+        Set<String> apiKeysToUse = new LinkedHashSet<>();
         GuildDB db = getGuildDB();
         if (db != null) {
             List<String> apiKeys = db.getOrNull(GuildKey.API_KEY);
@@ -945,6 +946,10 @@ public class DBAlliance implements NationList, NationOrAlliance {
                         if (nationId == null) {
                             ApiKeyDetails stats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
                             Locutus.imp().getDiscordDB().addApiKey(stats.getNation().getId(), key);
+                        }
+                        DBNation nation = DBNation.getById(nationId);
+                        if (nation != null && nation.getAlliance_id() == allianceId && nation.hasAllPermission(new HashSet<>(Arrays.asList(permissions)))) {
+                            apiKeysToUse.add(key);
                         }
 //                    deleteInfo(Key.API_KEY);
                     } catch (HttpClientErrorException.Unauthorized e) {
@@ -963,21 +968,26 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
         ApiKeyPool.SimpleBuilder builder = new ApiKeyPool.SimpleBuilder();
 
-        Set<DBNation> nations = getNations();
-        for (DBNation gov : nations) {
-            if (gov.getVm_turns() > 0 || gov.getPositionEnum().id <= Rank.APPLICANT.id || gov.getAlliance_id() != allianceId) continue;
-            if (gov.getPositionEnum() != Rank.LEADER && gov.getPositionEnum() != Rank.HEIR) {
-                DBAlliancePosition position = gov.getAlliancePosition();
-                if (permissions != null && permissions.length > 0 && (position == null || (!position.hasAllPermission(permissions)))) {
+        if (!apiKeysToUse.isEmpty()) {
+            builder.addKeys(new ArrayList<>(apiKeysToUse));
+        } else {
+            Set<DBNation> nations = getNations();
+            for (DBNation gov : nations) {
+                if (gov.getVm_turns() > 0 || gov.getPositionEnum().id <= Rank.APPLICANT.id || gov.getAlliance_id() != allianceId)
                     continue;
+                if (gov.getPositionEnum() != Rank.LEADER && gov.getPositionEnum() != Rank.HEIR) {
+                    DBAlliancePosition position = gov.getAlliancePosition();
+                    if (permissions != null && permissions.length > 0 && (position == null || (!position.hasAllPermission(permissions)))) {
+                        continue;
+                    }
                 }
-            }
-            try {
-                ApiKeyPool.ApiKey key = gov.getApiKey(false);
-                if (key == null) continue;
-                builder.addKey(key);
-            } catch (IllegalArgumentException ignore) {
-                ignore.printStackTrace();
+                try {
+                    ApiKeyPool.ApiKey key = gov.getApiKey(false);
+                    if (key == null) continue;
+                    builder.addKey(key);
+                } catch (IllegalArgumentException ignore) {
+                    ignore.printStackTrace();
+                }
             }
         }
         if (!builder.isEmpty()) {
