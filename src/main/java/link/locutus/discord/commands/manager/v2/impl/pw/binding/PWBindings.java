@@ -678,7 +678,6 @@ public class PWBindings extends BindingHelper {
                             continue;
                         }
                     } catch (IllegalArgumentException ignore) {
-                        ignore.printStackTrace();
                     }
                     if (db != null) {
                         if (arg.charAt(0) == '~') arg = arg.substring(1);
@@ -695,7 +694,7 @@ public class PWBindings extends BindingHelper {
             }
             result.addAll(nations(data, guild, StringMan.join(remainder, ",")));
         }
-        if (result.isEmpty()) throw new IllegalArgumentException("Invalid nations or alliances: " + input);
+        if (result.isEmpty()) throw new IllegalArgumentException("Invalid nations or alliances: `" + input + "`");
         return result;
     }
 

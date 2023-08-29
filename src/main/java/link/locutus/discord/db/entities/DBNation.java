@@ -3717,15 +3717,30 @@ public class DBNation implements NationOrAlliance {
 
     public int getRemainingUnitBuy(MilitaryUnit unit, long timeSince) {
         if (unit == MilitaryUnit.INFRASTRUCTURE || unit == MilitaryUnit.MONEY) return -1;
-        int maxPerDay = unit.getMaxPerDay(cities, this::hasProject);
-        System.out.println("Max daily " + maxPerDay);
-        Map<Long, Integer> purchases = getUnitPurchaseHistory(unit, timeSince);
-        for (Map.Entry<Long, Integer> entry : purchases.entrySet()) {
-            if (entry.getValue() > 0) {
-                maxPerDay -= entry.getValue();
+
+        int previousAmt = getUnits(unit, timeSince);
+        int currentAmt = getUnits(unit);
+        int lostInAttacks = 0;
+
+        if (unit != MilitaryUnit.SPIES) {
+            List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(getNation_id(), timeSince);
+
+            outer:
+            for (AbstractCursor attack : attacks) {
+                MilitaryUnit[] units = attack.getAttack_type().getUnits();
+                for (MilitaryUnit other : units) {
+                    if (other == unit) {
+                        Map<MilitaryUnit, Integer> losses = attack.getUnitLosses(attack.getAttacker_id() == nation_id);
+                        lostInAttacks += losses.get(unit);
+                        continue outer;
+                    }
+                }
             }
         }
-        return maxPerDay;
+
+        int numPurchased = currentAmt - previousAmt + lostInAttacks;
+        int maxPerDay = unit.getMaxPerDay(cities, this::hasProject);
+        return Math.max(0, maxPerDay - numPurchased);
     }
 
     public int getUnitCap(MilitaryUnit unit, boolean checkBuildingsAndPop) {
@@ -3819,7 +3834,7 @@ public class DBNation implements NationOrAlliance {
         body.append("Units: Now/Remaining Buy/Cap (assumes 5553)\n");
         //Soldier: 0/0/0
         long dcTurn = this.getTurnsFromDC();
-        long dcTimestamp = TimeUtil.getTimeFromTurn(dcTurn);
+        long dcTimestamp = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - dcTurn);
         for (MilitaryUnit unit : new MilitaryUnit[]{MilitaryUnit.SOLDIER, MilitaryUnit.TANK, MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP, MilitaryUnit.SPIES, MilitaryUnit.MISSILE, MilitaryUnit.NUKE}) {
             int cap = getUnitCap(unit, false);
             if (cap == Integer.MAX_VALUE) cap = -1;

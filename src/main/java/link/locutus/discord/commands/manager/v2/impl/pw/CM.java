@@ -1059,7 +1059,8 @@ public class CM {
                 return createArgs("username", username, "password", password);
             }
         }
-        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="logout")
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="logout" +
+         "")
         public static class logout extends CommandRef {
             public static final logout cmd = new logout();
             public logout create() {
@@ -2332,6 +2333,13 @@ public class CM {
         }
     }
     public static class settings_bank_access{
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="addGrantTemplateLimit", field="GRANT_TEMPLATE_LIMITS")
+        public static class addGrantTemplateLimit extends CommandRef {
+            public static final addGrantTemplateLimit cmd = new addGrantTemplateLimit();
+            public addGrantTemplateLimit create(String role, String marketValue) {
+                return createArgs("role", role, "marketValue", marketValue);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="BANKER_WITHDRAW_LIMIT", field="BANKER_WITHDRAW_LIMIT")
         public static class BANKER_WITHDRAW_LIMIT extends CommandRef {
             public static final BANKER_WITHDRAW_LIMIT cmd = new BANKER_WITHDRAW_LIMIT();
@@ -2722,13 +2730,6 @@ public class CM {
             public static final REROLL_ALERT_CHANNEL cmd = new REROLL_ALERT_CHANNEL();
             public REROLL_ALERT_CHANNEL create(String channel) {
                 return createArgs("channel", channel);
-            }
-        }
-        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="addGrantTemplateLimit", field="GRANT_TEMPLATE_LIMITS")
-        public static class addGrantTemplateLimit extends CommandRef {
-            public static final addGrantTemplateLimit cmd = new addGrantTemplateLimit();
-            public addGrantTemplateLimit create(String role, String marketValue) {
-                return createArgs("role", role, "marketValue", marketValue);
             }
         }
     }
