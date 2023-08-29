@@ -10,17 +10,23 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Operation;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -220,6 +226,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         }
 
         @Command(desc="Econ panel for members")
+        @RolePermission(Roles.ADMIN)
         public void memberEconPanel(@Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel, @Switch("d") boolean showDepositsInDms) {
             Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
             String title = "Econ Panel";
@@ -553,6 +560,69 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             .send();
     }
 
+    @Command(desc = "Discord embed for checking deposits, withdrawing funds, viewing your stockpile, depositing resources and offshoring funds")
+    @HasOffshore
+    @RolePermission(Roles.ADMIN)
+    public void depositsPanel(@Me GuildDB db, @Me IMessageIO io, @Arg("Only applicable to corporate servers. The nation accepting trades for bank deposits. Defaults to the bot owner's nation") @Default DBNation bankerNation) {
+        int nationId = Settings.INSTANCE.NATION_ID;
+        if (bankerNation != null) {
+            nationId = bankerNation.getId();
+        }
+        // if corporation
+        // trade accept
+        // else
+        // Press `offshore` to send funds offshore
+
+        // Add add credentials link to the panel, but not as a command button
+        String title = "Member Deposits Panel";
+        String body = """
+                Press `balance` to view your deposit balance
+                Press `self` to withdraw to your own nation
+                Press `other` to send your funds to another receiver
+                Press `stockpile` to view your stockpile
+                
+                """;
+
+        boolean isCorp = db.getAllianceIds().isEmpty();
+
+        String depositFundsLabel;
+        CommandRef depositFunds;
+        CommandRef depositAuto = null;
+        if (isCorp) {
+            depositFundsLabel = "trade deposit";
+            body += "\n\nTo deposit, send a PRIVATE trade offer to " + PnwUtil.getMarkdownUrl(nationId, false) + ":\n" +
+                    "- Selling a resource for $0\n" +
+                    "- Buying food for OVER $100,000\n" +
+                    "Then press `trade deposit`";
+            depositFunds = CM.trade.accept.cmd.create("nation:{nation_id}", Boolean.TRUE + "");
+        } else {
+            depositFundsLabel = "deposit custom";
+            body += "\n\nTo deposit, go to your alliance bank page in-game.\n" +
+                    "Alternatively, set your api key with: " + CM.credentials.addApiKey.cmd.toSlashMention() + "\n" +
+                    "And then press `deposit custom` or `deposit auto`";
+            depositFunds = CM.bank.deposit.cmd.create("nation:{nation_id}", null, "", null, null, null, null, null, null, null, null, null, null, null, "true", "true");
+            depositAuto = CM.bank.deposit.cmd.create("nation:{nation_id}", null, null, "7", null, null, "1", null, null, null, null, null, null, null, "true", "true");
+        }
+        CM.deposits.check deposits = CM.deposits.check.cmd.create("nation:{nation_id}", null, null, null, null, null, null, null, null, null);
+        CM.transfer.self self = CM.transfer.self.cmd.create("", null, null, null, null, null, null, null, null, null, null, null, null, null);
+        CM.transfer.resources other = CM.transfer.resources.cmd.create("", "", null, "{nation_id}", null, null, null, null, null, null, null, null, null, null, null);
+        CM.nation.stockpile stockpile = CM.nation.stockpile.cmd.create("nation:{nation_id}");
+
+        CommandBehavior behavior = CommandBehavior.EPHEMERAL;
+
+        IMessageBuilder msg = io.create().embed(title, body)
+                .commandButton(behavior, null, deposits, "balance")
+                .commandButton(behavior, null, self, "self")
+                .commandButton(behavior, null, other, "other")
+                .commandButton(behavior, null, stockpile, "stockpile")
+                .commandButton(behavior, null, depositFunds, depositFundsLabel);
+        if (depositAuto != null) {
+            msg.commandButton(behavior, null, depositAuto, "deposit auto");
+        }
+        msg.send();
+    }
+
+
     @Command(desc="Generates sheets for a coalition war:" +
             "- All enemies\n" +
             "- Priority enemies\n" +
@@ -748,6 +818,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
     }
 
     @Command(desc = "Discord embed for sheet to update ally and enemy spy counts, generate and send spy blitz targets")
+    @RolePermission(Roles.ADMIN)
     public void spySheets(@Me GuildDB db, @Me IMessageIO io, @Default("spyops") @GuildCoalition String allies, @Default MessageChannel outputChannel, @Default SpreadSheet spySheet) throws GeneralSecurityException, IOException {
         if (allies == null) allies = Coalition.ALLIES.name();
 
