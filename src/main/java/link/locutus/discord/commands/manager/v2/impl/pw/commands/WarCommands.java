@@ -93,6 +93,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -1261,7 +1262,7 @@ public class WarCommands {
     @RolePermission(Roles.MEMBER)
     public void findTreasureNations(@Me User Author, @Me DBNation me, @Me GuildDB guildDB, @Me IMessageIO channel, @Switch("r") boolean onlyWeaker, @Switch("d") boolean ignoreDNR, @Switch("n") @Default("5") Integer numResults) {
 
-        StringBuilder response = new StringBuilder("**Results for " + me.getNation() + "**:");
+        StringBuilder response = new StringBuilder("**Results for " + me.getNation() + "**:\n");
         Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(f -> f.isInWarRange(me));
         Function<DBNation, Boolean> canRaid = guildDB.getCanRaid();
         int count = 0;
@@ -1274,45 +1275,22 @@ public class WarCommands {
         if(onlyWeaker)
             nations.removeIf(f -> f.getStrength() > me.getStrength());
 
-        Map<DBNation, DBTreasure> nationTreasures = new HashMap<>();
+        Map<DBNation, Set<DBTreasure>> nationTreasures = new HashMap<>();
         for (DBNation nation : nations) {
 //            nations.stream().collect(Collectors.toMap(n -> n, n -> Locutus.imp().getNationDB().getTreasure(n.getNation_id())));
-            DBTreasure treasure = Locutus.imp().getNationDB().getTreasure(nation.getNation_id());
-            if (treasure != null) {
-                nationTreasures.put(nation, treasure);
+            Set<DBTreasure> treasures = Locutus.imp().getNationDB().getTreasure(nation.getNation_id());
+            if (!treasures.isEmpty()) {
+                nationTreasures.put(nation, treasures);
             }
         }
 
         long currentTurn = TimeUtil.getTurn();
-        for (Map.Entry<DBNation, DBTreasure> entry : nationTreasures.entrySet()) {
+        for (Map.Entry<DBNation, Set<DBTreasure>> entry : nationTreasures.entrySet()) {
             DBNation nation = entry.getKey();
-            DBTreasure treasure = entry.getValue();
-            response.append('\n')
-                    .append("<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
-                    .append(" | " + String.format("%16s", nation.getNation()))
-                    .append(" | " + String.format("%16s", nation.getAllianceName()));
-                    response.append(": treasure=" + treasure.getDaysRemaining() + "d");
-
-            response.append("\n```");
-
-            if (nation.isBeige()) {
-                response.append(" | ").append("beige=" + nation.getBeigeTurns());
-            }
-
-            Activity activity = nation.getActivity(14 * 12);
-            double loginChance = activity.loginChance((int) Math.max(1, (12 - (currentTurn % 12))), true);
-            int loginPct = (int) (loginChance * 100);
-
-            response.append(" | login=" + loginPct + "%");
-            response.append("\n")
-                    .append(String.format("%2s", nation.treasureDays()) + "d").append(" \uD83D\uDC8E ").append(" | ")
-                    .append(String.format("%2s", nation.getCities())).append(" \uD83C\uDFD9").append(" | ")
-                    .append(String.format("%6s", nation.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
-                    .append(String.format("%5s", nation.getTanks())).append(" \u2699").append(" | ")
-                    .append(String.format("%5s", nation.getAircraft())).append(" \u2708").append(" | ")
-                    .append(String.format("%4s", nation.getShips())).append(" \u26F5").append(" | ")
-                    .append(String.format("%1s", nation.getDef())).append(" \uD83D\uDEE1");
-            response.append("\n```\n");
+            Set<DBTreasure> treasures = entry.getValue();
+            String treasureStr = treasures.stream().map(f -> f.getDaysRemaining() + "d").collect(Collectors.joining(", "));
+            response.append("treasure: " + treasureStr + " | ");
+            response.append(nation.toMarkdown(true, true, true, false, false)).append("\n");
 
             if(count >= numResults)
                 break;
@@ -1331,7 +1309,7 @@ public class WarCommands {
     @RolePermission(Roles.MEMBER)
     public void findBountyNations(@Me User Author, @Me DBNation me, @Me GuildDB guildDB, @Me IMessageIO channel, @Switch("r") boolean onlyWeaker, @Switch("d") boolean ignoreDNR, @Switch("n") @Default("5") Integer numResults) {
 
-        StringBuilder response = new StringBuilder("**Results for " + me.getNation() + "**:");
+        StringBuilder response = new StringBuilder("**Results for " + me.getNation() + "**:\n");
         Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(f -> f.isInWarRange(me));
         Function<DBNation, Boolean> canRaid = guildDB.getCanRaid();
         int count = 0;
@@ -1353,32 +1331,11 @@ public class WarCommands {
             DBNation nation = iter.next();
             Set<DBBounty> bounties = nationBounties.get(nation);
             Map<WarType, Long> bountySum = bounties.stream().collect(Collectors.groupingBy(DBBounty::getType, Collectors.summingLong(DBBounty::getAmount)));
-            response.append('\n')
-                    .append("<" + Settings.INSTANCE.PNW_URL() + "/nation/id=" + nation.getNation_id() + ">")
-                    .append(" | " + String.format("%16s", nation.getNation()))
-                    .append(" | " + String.format("%16s", nation.getAllianceName()));
+            Map<String, String> bountySumComma = bountySum.entrySet().stream().collect(Collectors.toMap(e -> e.getKey().toString(), e -> MathMan.format(e.getValue())));
 
-            response.append(": " + bountySum.toString().replace("{", "").replace("}", "").replace(" ", ""));
-
-            response.append("\n```");
-            if (nation.isBeige()) {
-                response.append(" | ").append("beige=" + nation.getBeigeTurns());
-            }
-
-            Activity activity = nation.getActivity(14 * 12);
-            double loginChance = activity.loginChance((int) Math.max(1, (12 - (currentTurn % 12))), true);
-            int loginPct = (int) (loginChance * 100);
-
-            response.append(" | login=" + loginPct + "%");
-
-            response.append("\n")
-                    .append(String.format("%2s", nation.getCities())).append(" \uD83C\uDFD9").append(" | ")
-                    .append(String.format("%6s", nation.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
-                    .append(String.format("%5s", nation.getTanks())).append(" \u2699").append(" | ")
-                    .append(String.format("%5s", nation.getAircraft())).append(" \u2708").append(" | ")
-                    .append(String.format("%4s", nation.getShips())).append(" \u26F5").append(" | ")
-                    .append(String.format("%1s", nation.getDef())).append(" \uD83D\uDEE1");
-            response.append("\n```\n");
+            String bountyStr = bountySumComma.toString().replace("{", "").replace("}", "").replace(" ", "");
+            response.append("bounty: " + bountyStr + " | ");
+            response.append(nation.toMarkdown(true, true, true, false, false)).append("\n");
 
             if(count >= numResults)
                 break;

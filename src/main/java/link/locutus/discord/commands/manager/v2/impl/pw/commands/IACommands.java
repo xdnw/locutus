@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.politicsandwar.graphql.model.AlliancePosition;
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
@@ -1170,9 +1171,7 @@ public class IACommands {
         if (position.hasAnyOfficerPermissions() || nationPosition != null) requiredPermissions.add(AlliancePermission.CHANGE_PERMISSIONS);
         if (nationPosition == null && nation.getPositionEnum() == Rank.APPLICANT) requiredPermissions.add(AlliancePermission.ACCEPT_APPLICANTS);
         if (position == DBAlliancePosition.REMOVE || position == DBAlliancePosition.APPLICANT) requiredPermissions.add(AlliancePermission.REMOVE_MEMBERS);
-        Auth auth = DBAlliance.getOrCreate(allianceId).getAuth(requiredPermissions.toArray(new AlliancePermission[0]));
-        if (auth == null) return "No auth for this guild found for: " + StringMan.getString(requiredPermissions);
-        if (auth.getNationId() == nation.getNation_id()) return "You cannot change position of the nation connected to Locutus.";
+        if (nation.getPositionEnum().id >= Rank.HEIR.id) return "You cannot change position of the nation heir or above";
 
         User discordUser = nation.getUser();
 
@@ -1241,13 +1240,23 @@ public class IACommands {
             }
         }
 
-        String result = auth.setRank(nation, position);
 
-        if (result.contains("Set player rank ingame.") && nationPosition == null) {
-            db.getHandler().onSetRank(author, channel, nation, position);
+        PoliticsAndWarV3 api = DBAlliance.getOrCreate(allianceId).getApi(AlliancePermission.ACCEPT_APPLICANTS);
+        if (api == null) {
+            return "No api key found. Please use" + GuildKey.API_KEY.getCommandMention();
         }
-        response.append("\n(Via Account: " + auth.getNation().getNation() + ")");
-        response.append(result);
+        AlliancePosition result;
+        if (position == DBAlliancePosition.REMOVE) {
+            result = api.assignAlliancePosition(nation.getId(), Rank.REMOVE);
+        } else if (position == DBAlliancePosition.APPLICANT) {
+            result = api.assignAlliancePosition(nation.getId(), Rank.APPLICANT);
+        } else {
+            result = api.assignAlliancePosition(nation.getId(), position.getId());
+        }
+        nation.setAlliancePositionId(result.getId());
+        db.getHandler().onSetRank(author, channel, nation, position);
+        response.append("Set to " + position.getName());
+
         response.append("\nSee also " + CM.self.list.cmd.toSlashMention() + " / " + CM.self.add.cmd.toSlashMention());
         return response.toString();
     }

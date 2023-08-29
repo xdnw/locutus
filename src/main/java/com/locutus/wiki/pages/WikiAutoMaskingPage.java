@@ -12,7 +12,13 @@ public class WikiAutoMaskingPage extends WikiGen {
     @Override
     public String generateMarkdown() {
         return build(
-
+//        """
+//                Users can be masked with a role based on their alliance, city, or tax bracket.
+//
+//                This bot does NOT automatically give member and applicant roles.
+//
+//                        """
+//            "# Alliance"
         );
         /*
 
@@ -32,6 +38,7 @@ public class WikiAutoMaskingPage extends WikiGen {
 
 /role addRoleToAllMembers
 
+AUTOROLE MEMBER APPS
 
 // self roles
 /role add

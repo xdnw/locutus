@@ -219,6 +219,9 @@ public class AutoRoleInfo {
 
     public void addRoleToMember(Member member, RoleOrCreate create) {
         RoleAdd roleAdd = new RoleAdd(member, create);
+        if (create.getCachedOrNull() != null && member.getRoles().contains(create.getCachedOrNull())) {
+            return;
+        }
         addRoles.computeIfAbsent(member, k -> new HashSet<>()).add(roleAdd);
     }
 
@@ -344,6 +347,10 @@ public class AutoRoleInfo {
             } else {
                 return CompletableFuture.completedFuture(role);
             }
+        }
+
+        public Role getCachedOrNull() {
+            return role;
         }
 
         public Role get() {

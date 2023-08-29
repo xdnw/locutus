@@ -152,6 +152,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 if (grantTemplateManager == null) {
                     grantTemplateManager = new GrantTemplateManager(this);
                     try {
+                        System.out.println("Loading grant templates for " + guild.getName());
                         grantTemplateManager.loadTemplates();
                     } catch (SQLException | InvocationTargetException | InstantiationException |
                              IllegalAccessException e) {

@@ -3,7 +3,9 @@ package link.locutus.discord.apiv3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.RequestTracker;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
@@ -57,7 +59,6 @@ public class PoliticsAndWarV3 {
     public static int BOUNTIES_PER_PAGE = 1000;
     public static int BASEBALL_PER_PAGE = 1000;
     public static int EMBARGO_PER_PAGE = 1000;
-
     public static int BANS_PER_PAGE = 500;
 
     private final String endpoint;
@@ -108,6 +109,11 @@ public class PoliticsAndWarV3 {
     }
 
     private static final RateLimit rateLimitGlobal = new RateLimit();
+    private static RequestTracker requestTracker = new RequestTracker();
+
+    public static RequestTracker getRequestTracker() {
+        return requestTracker;
+    }
 
     public <T> T readTemplate(PagePriority priority, boolean pagination, GraphQLRequest graphQLRequest, Class<T> resultBody) {
         int priorityId = priority.ordinal() + (pagination ? 1 : 0);
@@ -130,6 +136,18 @@ public class PoliticsAndWarV3 {
                 rateLimitGlobal.reset(System.currentTimeMillis());
                 rateLimitGlobal.remaining--;
             }
+        }
+
+        {
+            String queryStr = graphQLRequest.toQueryString().split("\\{")[0];
+            String queryFull = graphQLRequest.toQueryString();
+            // find index of first number
+            int index = 0;
+            while (index < queryFull.length() && !Character.isDigit(queryFull.charAt(index))) {
+                index++;
+            }
+            String queryUrl = queryFull.substring(0, index);
+            requestTracker.addRequest(queryStr, queryUrl);
         }
 
         ResponseEntity<String> exchange;

@@ -14,7 +14,9 @@ import java.util.PriorityQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
@@ -27,6 +29,8 @@ public class PageRequestQueue {
     private final PriorityQueue<PageRequestTask<?>> queue;
     private final Object lock = new Object();
 
+    private final AtomicInteger delayIncrement = new AtomicInteger(0);
+
     public PageRequestQueue(int threads) {
         // ScheduledExecutorService service
         this.queue = new PriorityQueue<>(Comparator.comparingLong(PageRequestTask::getPriority));
@@ -34,61 +38,68 @@ public class PageRequestQueue {
         tracker = new RequestTracker();
 
         for (int i = 0; i < threads; i++) {
-            service.submit(() -> {
-                while (true) {
-                    AtomicLong waitTime = new AtomicLong();
-                    PageRequestTask<?> task = null;
-                    synchronized (lock) {
-                        while (true) {
-                            synchronized (queue) {
-                                if (!queue.isEmpty()) {
-                                    break;
+            service.submit(new Runnable() {
+                @Override
+                public void run() {
+                    while (true) {
+                        boolean isEmpty ;
+                        synchronized (queue) {
+                            isEmpty = queue.isEmpty();
+                        }
+                        if (isEmpty) {
+                            synchronized (lock) {
+                                synchronized (queue) {
+                                    if (!queue.isEmpty()) {
+                                        continue;
+                                    }
+                                }
+                                try {
+                                    lock.wait();
+                                } catch (InterruptedException e) {
+                                    Thread.currentThread().interrupt();
+                                    return;
                                 }
                             }
-                            try {
-                                lock.wait();
-                            } catch (InterruptedException e) {
-                                Thread.currentThread().interrupt();
-                                return;
-                            }
                         }
-                        System.out.println("Find and remove task");
+
+                        AtomicLong waitTime = new AtomicLong();
+                        PageRequestTask<?> task = null;
                         synchronized (queue) {
                             task = findAndRemoveTask(waitTime);
                         }
+                        if (task == null) {
+                            long wait = waitTime.get();
+                            if (wait <= 0) {
+                                wait = (delayIncrement.addAndGet(100) % 900) + 100;
+                            }
+                            synchronized (queue) {
+                                if (queue.isEmpty()) {
+                                    continue;
+                                }
+                            }
+                            try {
+                                Thread.sleep(wait);
+                            } catch (InterruptedException e) {
+                                throw new RuntimeException(e);
+                            }
+                            continue;
+                        }
+                        PageRequestQueue.this.run(task);
                     }
-                    if (task == null) {
-                        continue;
-                    }
-//                    if (task == null) {
-//                        long wait = waitTime.get();
-//                        if (wait <= 0) {
-//                            wait = 1000;
-//                        }
-//                        System.out.println("Wait for " + wait + "ms");
-//                        try {
-//                            Thread.sleep(wait);
-//                        } catch (InterruptedException e) {
-//                            Thread.currentThread().interrupt();
-//                            return;
-//                        }
-//                        continue;
-//                    }
-                    run(task);
                 }
             });
         }
     }
 
     private PageRequestTask findAndRemoveTask(AtomicLong waitTime) {
-        if (true) return queue.poll();
-
-        if (queue.isEmpty()) return null;
-        PageRequestTask task = findTask(waitTime);
-        if (task != null) {
-            queue.remove(task);
+        synchronized (queue) {
+            if (queue.isEmpty()) return null;
+            PageRequestTask task = findTask(waitTime);
+            if (task != null) {
+                queue.remove(task);
+            }
+            return task;
         }
-        return task;
     }
 
     private PageRequestTask findTask(AtomicLong waitTime) {

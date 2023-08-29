@@ -917,9 +917,9 @@ public class Auth {
                         for (int i = 0; i < toDeposit.length; i++) {
                             if (toDeposit[i] < 0) toDeposit[i] = 0;
                         }
-                        Map.Entry<OffshoreInstance.TransferStatus, String> transferResult = bank.transfer(offshore.getAlliance(), PnwUtil.resourcesToMap(toDeposit), "#ignore");
-                        response.append("\nOffshoring:\n- ").append(transferResult.getKey() + "->" + transferResult.getValue());
-                        if (transferResult.getKey() != OffshoreInstance.TransferStatus.SUCCESS) {
+                        TransferResult transferResult = bank.transfer(offshore.getAlliance(), PnwUtil.resourcesToMap(toDeposit), "#ignore");
+                        response.append("Offshore " + transferResult.toLineString());
+                        if (transferResult.getStatus() != OffshoreInstance.TransferStatus.SUCCESS) {
                             return false;
                         }
 
