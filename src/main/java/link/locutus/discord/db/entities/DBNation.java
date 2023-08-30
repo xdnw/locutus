@@ -45,6 +45,8 @@ import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.Auth;
+import link.locutus.discord.util.offshore.OffshoreInstance;
+import link.locutus.discord.util.offshore.TransferResult;
 import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.MailTask;
@@ -74,6 +76,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -3758,15 +3761,124 @@ public class DBNation implements NationOrAlliance {
         return new PoliticsAndWarV3(ApiKeyPool.create(apiKey));
     }
 
+    public TransferResult acceptAndOffshoredTrades(GuildDB db, int expectedNationId) {
+        synchronized (OffshoreInstance.BANK_LOCK) {
+            if (!TimeUtil.checkTurnChange()) {
+                throw new IllegalArgumentException("Turn change");
+            }
+            DBNation nation = this.getNation();
+            if (nation.getPosition() <= Rank.APPLICANT.id) {
+                throw new IllegalArgumentException("Receiver is not member");
+            }
+            DBAlliancePosition position = nation.getAlliancePosition();
+            if (nation.getPositionEnum().id < Rank.HEIR.id && (position == null || !position.hasPermission(AlliancePermission.WITHDRAW_BANK) || !position.hasPermission(AlliancePermission.VIEW_BANK))) {
+                throw new IllegalArgumentException("Receiver does not have bank access");
+            }
+            DBNation senderNation = DBNation.getById(expectedNationId);
+            if (senderNation == null) throw new IllegalArgumentException("Sender is null");
+            if (senderNation.isBlockaded()) throw new IllegalArgumentException("Sender is blockaded");
+            if (nation.isBlockaded()) throw new IllegalArgumentException("Receiver is blockaded");
+
+            OffshoreInstance offshore = currentDB.getOffshore();
+
+            GuildDB authDb = Locutus.imp().getGuildDBByAA(nation.getAlliance_id());
+            if (authDb == null) throw new IllegalArgumentException("Receiver is not in a server with locutus: " + nation.getAlliance_id());
+            OffshoreInstance receiverOffshore = authDb.getOffshore();
+            if (receiverOffshore == null) {
+                throw new IllegalArgumentException("Receiver does not have a registered offshore");
+            }
+            if (receiverOffshore != offshore) {
+                throw new IllegalArgumentException("Receiver offshore does not match this guilds offshore");
+            }
+            Set<Integer> aaIds = currentDB.getAllianceIds();
+            long senderId;
+            int senderType;
+            if (aaIds.isEmpty()) {
+                senderId = currentDB.getIdLong();
+                senderType = currentDB.getReceiverType();
+            } else if (aaIds.size() == 1) {
+                senderId = aaIds.iterator().next();
+                senderType = nation.getAlliance().getReceiverType();
+            } else if (aaIds.contains(senderNation.getAlliance_id())){
+                senderId = senderNation.getAlliance_id();
+                senderType = senderNation.getAlliance().getReceiverType();
+            } else {
+                throw new IllegalArgumentException("Sender " + senderNation.getQualifiedName() + " is not in alliances: " + StringMan.getString(aaIds));
+            }
+
+            StringBuilder response = new StringBuilder("Checking trades...");
+
+            Set<Auth.TradeResult> trades = acceptTrades(expectedNationId, false);
+            double[] toDeposit = ResourceType.getBuffer();
+            for (Auth.TradeResult trade : trades) {
+                response.append("\n" + trade.toString());
+                if (trade.getResult() == Auth.TradeResultType.SUCCESS) {
+                    int sign = trade.getBuyer().getNation_id() == Auth.this.getNationId() ? 1 : -1;
+                    toDeposit[trade.getResource().ordinal()] += trade.getAmount() * sign;
+                    toDeposit[ResourceType.MONEY.ordinal()] += ((long) trade.getPpu()) * trade.getAmount() * sign * -1;
+                }
+            }
+            if (PnwUtil.convertedTotal(toDeposit) > 0) {
+                String safekeepResult = Auth.this.safekeep(false, toDeposit, "#ignore");
+                if (!safekeepResult.contains("You successfully made a deposit into the alliance bank.")) {
+                    response.append("\n- " + "Could not safekeep: " + safekeepResult);
+                    return false;
+                }
+            }
+            if (PnwUtil.convertedTotal(toDeposit) == 0) return false;
+
+            OffshoreInstance bank = nation.getAlliance().getBank();
+            if (bank != offshore) {
+                for (int i = 0; i < toDeposit.length; i++) {
+                    if (toDeposit[i] < 0) toDeposit[i] = 0;
+                }
+                TransferResult transferResult = bank.transfer(offshore.getAlliance(), PnwUtil.resourcesToMap(toDeposit), "#ignore");
+                response.append("Offshore " + transferResult.toLineString());
+                if (transferResult.getStatus() != OffshoreInstance.TransferStatus.SUCCESS) {
+                    return false;
+                }
+
+                // subtract from alliance
+            }
+
+            // add balance to guilddb
+            long tx_datetime = System.currentTimeMillis();
+            String note = "#deposit";
+
+            response.append("\nAdding deposits:");
+
+            offshore.getGuildDB().addTransfer(tx_datetime, senderId, senderType, offshore.getAlliance(), Auth.this.getNationId(), note, toDeposit);
+            response.append("\n- Added " + PnwUtil.resourcesToString(toDeposit) + " to " + currentDB.getGuild());
+            // add balance to expectedNation
+            currentDB.addTransfer(tx_datetime, senderNation, senderId, senderType, Auth.this.getNationId(), note, toDeposit);
+            response.append("\n- Added " + PnwUtil.resourcesToString(toDeposit) + " to " + senderNation.getNationUrl());
+
+            MessageChannel logChannel = offshore.getGuildDB().getResourceChannel(0);
+            if (logChannel != null) {
+                RateLimitUtil.queue(logChannel.sendMessage(response));
+            }
+
+            return new AbstractMap.SimpleEntry<>(result, response.toString());
+        }
+    }
+
     public Set<Auth.TradeResult> acceptTrades(int expectedNationId) throws Exception {
         if (expectedNationId == nation_id) throw new IllegalArgumentException("Buyer and seller cannot be the same");
         if (!TimeUtil.checkTurnChange()) return Collections.singleton(new Auth.TradeResult("cannot accept during turn change", Auth.TradeResultType.BLOCKADED));
         if (isBlockaded()) return Collections.singleton(new Auth.TradeResult("receiver is blockaded", Auth.TradeResultType.BLOCKADED));
 
+        todo ensure has bank deposit and send perms;
+        if (!this.hasPermission(AlliancePermission.VIEW_BANK)) {
+            return Collections.singleton(new Auth.TradeResult("The nation specifies has no bank view permission", Auth.TradeResultType.NO_BANK_ACCESS)
+        }
+        if (!this.hasPermission(AlliancePermission.WITHDRAW_BANK)) {
+            return Collections.singleton(new Auth.TradeResult("The nation specifies has no bank withdraw permission", Auth.TradeResultType.NO_BANK_ACCESS)
+        }
+
         PoliticsAndWarV3 api = this.getApi(true);
         Set<Auth.TradeResult> responses = new LinkedHashSet<>();
 
-        Map<Trade, String> errors = new LinkedHashMap<>();
+        Map<Trade, Map.Entry<String, Auth.TreadeResultType>> errors = new LinkedHashMap<>();
 
         List<Trade> tradesV3 = api.fetchTradesWithInfo(new Consumer<TradesQueryRequest>() {
             @Override
@@ -3830,177 +3942,35 @@ public class DBNation implements NationOrAlliance {
             return errorMsg;
         };
 
-        Set<Auth.TradeResult> results = new LinkedHashSet<>();
+        Set<Auth.TradeResult> responses = new LinkedHashSet<>();
         if (!tradesV3.isEmpty()) {
             for (Trade trade : tradesV3) {
                 try {
                     Trade completed = api.acceptPersonalTrade(trade.getId(), trade.getOffer_amount());
-                    success.put(trade, "Accepted");
+
+                    Auth.TradeResult response = new Auth.TradeResult(seller, buyer);
+                    response.setAmount(amount);
+                    response.setResource(type);
+                    response.setPPU(ppu);
+                    responses.add(response);
+
                 } catch (Throwable e) {
                     errors.put(trade, e.getMessage());
                 }
             }
         }
 
-        Map<Trade, String> success = new LinkedHashMap<>();
-
-
-
-
-        boolean moreTrades = true;
-        int max = 14;
-        while (moreTrades && (max-- > 0)) {
-            moreTrades = false;
-
-            String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/trade/";
-            String html = Auth.this.readStringFromURL(PagePriority.BANK_TRADE, url, emptyMap());
-            Document dom = Jsoup.parse(html);
-
-            Elements tables = dom.getElementsByClass("nationtable");
-            if (tables.size() == 0) {
-                System.out.println("Error fetching trades " + html);
-                return Collections.singleton(new Auth.TradeResult("Could not load trade page", Auth.TradeResultType.CAPTCHA));
-            }
-            Element table = tables.get(0);
-            Elements rows = table.getElementsByTag("tr");
-
-            if (rows.size() < 2) {
-                return Collections.singleton(new Auth.TradeResult("No trades found", Auth.TradeResultType.NO_TRADES));
-            }
-
-            if (!rows.get(0).child(1).text().contains("Selling Nation") || !rows.get(0).child(2).text().contains("Buying Nation")) {
-                return Collections.singleton(new Auth.TradeResult("No trade table found", Auth.TradeResultType.NO_TRADES));
-            }
-
-            for (int i = 1; i < rows.size(); i++) {
-                Element row = rows.get(i);
-                Elements forms = row.getElementsByClass("tradeForm");
-                if (forms.isEmpty()) {
-                    continue;
-                }
-                Element form = forms.get(0).parent();
-                String ver = form.getElementsByAttributeValue("name", "ver").get(0).attr("value");
-                String token = form.getElementsByAttributeValue("name", "token").get(0).attr("value");
-                if (ver == null || token == null) continue;
-                long tradeaccid = Long.parseLong(form.getElementsByAttributeValue("name", "tradeaccid").get(0).attr("value"));
-
-                Elements columns = row.getElementsByTag("td");
-
-                String senderUrl = columns.get(1).getElementsByTag("a").first().attr("href");
-                String receiverUrl = columns.get(2).getElementsByTag("a").first().attr("href");
-                DBNation seller = DiscordUtil.parseNation(senderUrl);
-                DBNation buyer = DiscordUtil.parseNation(receiverUrl);
-
-                if (columns.get(6).text().toLowerCase().contains("accepted")) continue;
-
-                if (seller == null) continue;
-                if (buyer == null) continue;
-                if (seller.getNation_id() != expectedNationId && buyer.getNation_id() != expectedNationId) {
-                    continue;
-                }
-                if (seller.getNation_id() != auth.getNationId() && buyer.getNation_id() != auth.getNationId()) {
-                    continue;
-                }
-                DBNation other = seller.getNation_id() == me.getNation_id() ? buyer : seller;
-
-                Integer amount = MathMan.parseInt(columns.get(4).text().trim());
-
-                String rssSrc = columns.get(4).children().first().attr("src");
-                String[] rssSplit = rssSrc.split("[\\./]");
-                String rssName = rssSplit[rssSplit.length - 2];
-                ResourceType type = ResourceType.parse(rssName);
-
-                Integer ppu = MathMan.parseInt(columns.get(5).text().split("/")[0].trim());
-
-                Auth.TradeResult response = new Auth.TradeResult(seller, buyer);
-                response.setAmount(amount);
-                response.setResource(type);
-                response.setPPU(ppu);
-                responses.add(response);
-
-                if (amount == null || amount <= 0) {
-                    response.setMessage("Invalid trade amount offered").setResult(Auth.TradeResultType.RUNTIME_ERROR);
-                    continue;
-                }
-                if (type == null) {
-                    response.setMessage("Invalid type: " + rssSrc).setResult(Auth.TradeResultType.RUNTIME_ERROR);
-                    continue;
-                }
-                if (ppu == null) {
-                    response.setMessage("Invalid trade ppu offered").setResult(Auth.TradeResultType.RUNTIME_ERROR);
-                    continue;
-                }
-                if (type == ResourceType.CREDITS) {
-                    response.setMessage("You cannot deposit credits").setResult(Auth.TradeResultType.CANNOT_DEPOSIT_CREDITS);
-                    continue;
-                }
-
-                if (other.isBlockaded()) {
-                    response.setMessage(other.getNation() + " is blockaded").setResult(Auth.TradeResultType.BLOCKADED);
-                    continue;
-                }
-
-                if (ppu == 0) {
-                    if (buyer.getNation_id() != auth.getNationId()) {
-                        response.setMessage("Trade must be sent as a sell offer").setResult(Auth.TradeResultType.NOT_A_SELL_OFFER);
-                        continue;
-                    }
-
-                } else if (ppu >= 100000) {
-                    if (type != ResourceType.FOOD) {
-                        response.setMessage("Money trades must be sent as a food trade").setResult(Auth.TradeResultType.NOT_A_FOOD_TRADE);
-                        continue;
-                    }
-                    if (buyer.getNation_id() == me.getNation_id() || seller.getNation_id() == other.getNation_id()) {
-                        response.setMessage("Money trades, must be buying food, not selling").setResult(Auth.TradeResultType.NOT_A_SELL_OFFER);
-                        continue;
-                    }
-                } else {
-                    if (seller.getNation_id() == auth.getNationId()) {
-                        if (type != ResourceType.FOOD) {
-                            response.setMessage("Money trades must be at least $100,000 and use food").setResult(Auth.TradeResultType.NOT_A_FOOD_TRADE);
-                        }
-                        response.setMessage("Money trades must be at least $100,000").setResult(Auth.TradeResultType.INCORRECT_PPU);
-                    } else {
-                        response.setMessage("Sell offers must be at $0 ppu").setResult(Auth.TradeResultType.INCORRECT_PPU);
-                    }
-                    continue;
-                }
-
-
-                Map<String, String> post = new HashMap<>();
-                post.put("rcustomamount", amount + "");
-                post.put("tradeaccid", tradeaccid + "");
-                post.put("ver", ver);
-                post.put("token", token);
-                post.put("acctrade", "");
-
-                String tradeAlert = PnwUtil.getAlert(Jsoup.parse(Auth.this.readStringFromURL(PagePriority.TOKEN, url, post)));
-                if (tradeAlert == null) {
-                    response.setResult(Auth.TradeResultType.UNKNOWN_ERROR);
-                    continue;
-                }
-
-                response.setMessage(tradeAlert);
-
-                if (tradeAlert.contains("You can't accept trade offers because a nation has a naval blockade on you.")) {
-                    response.setResult(Auth.TradeResultType.BLOCKADED);
-                    continue;
-                }
-                if (tradeAlert.contains("You can't enter in an amount greater than the offer.")
-                        || tradeAlert.contains("You do not have enough ")
-                        || tradeAlert.contains("The nation posting that trade offer does not have enough resources on hand to sell.")) {
-                    response.setResult(Auth.TradeResultType.INSUFFICIENT_RESOURCES);
-                }
-                if (tradeAlert.contains("You successfully accepted a trade offer")) {
-                    response.setResult(Auth.TradeResultType.SUCCESS);
-                } else {
-                    response.setResult(Auth.TradeResultType.UNCATEGORIZED_ERROR);
-                }
-
-                moreTrades = true;
-                break;
-            }
+        // iterate errors, for entryset
+        // add to responses a new trade result failure,
+        // with the error message
+        for (Map.Entry<Trade, Map.Entry<String, Auth.TreadeResultType>> entry : errors.entrySet()) {
+            Trade trade = entry.getKey();
+            Map.Entry<String, Auth.TreadeResultType> value = entry.getValue();
+            Auth.TreadeResultType type = value.getValue();
+            String error = value.getKey();
+            String msg = tradeToString.apply(trade) + ": " + error;
+            Auth.TradeResult response = new Auth.TradeResult(msg, type);
+            responses.add(response);
         }
 
         return responses;
