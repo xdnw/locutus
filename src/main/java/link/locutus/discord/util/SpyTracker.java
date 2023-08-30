@@ -39,7 +39,7 @@ import java.util.function.Consumer;
 public class SpyTracker {
     public SpyTracker() {
         long delay = TimeUnit.MINUTES.toMillis(1);
-        Locutus.imp().getCommandManager().getExecutor().schedule(new Runnable() {
+        Locutus.imp().getCommandManager().getExecutor().scheduleWithFixedDelay(new Runnable() {
             @Override
             public void run() {
                 try {
@@ -48,7 +48,7 @@ public class SpyTracker {
                     e.printStackTrace();
                 }
             }
-        }, delay, TimeUnit.MILLISECONDS);
+        }, delay, delay, TimeUnit.MILLISECONDS);
     }
 
     public void loadCasualties(Integer allianceId) {
