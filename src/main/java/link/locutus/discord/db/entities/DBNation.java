@@ -3766,6 +3766,8 @@ public class DBNation implements NationOrAlliance {
         PoliticsAndWarV3 api = this.getApi(true);
         Set<Auth.TradeResult> responses = new LinkedHashSet<>();
 
+        Map<Trade, String> errors = new LinkedHashMap<>();
+
         List<Trade> tradesV3 = api.fetchTradesWithInfo(new Consumer<TradesQueryRequest>() {
             @Override
             public void accept(TradesQueryRequest r) {
@@ -3774,19 +3776,75 @@ public class DBNation implements NationOrAlliance {
                 r.setType(TradeType.PERSONAL);
             }
         }, f -> {
-
             if (f.getAccepted()) return false;
             ResourceType resource = ResourceType.parse(f.getOffer_resource());
             switch (f.getBuy_or_sell().toLowerCase()) {
                 case "buy":
-                    if (resource != ResourceType.FOOD) return false;
-                    if (f.getPrice() < 100000) return false;
-                    if (f.getReceiver_id())
+                    if (resource != ResourceType.FOOD) {
+                        errors.put(f, "Buy offers can only be food trades");
+                        return false;
+                    }
+                    if (f.getPrice() < 100000) {
+                        errors.put(f, "Buy offers must be at least $100,000 to deposit");
+                        return false;
+                    }
+                    if (f.getReceiver_id() == null) {
+                        errors.put(f, "Receiver id is null");
+                        return false;
+                    }
+                    if (f.getReceiver_id() != expectedNationId) {
+                        errors.put(f, "Receiver id is not expected nation id (instead: " + expectedNationId + ")");
+                        return false;
+                    }
+                    return true;
                 case "sell":
+                    if (resource == ResourceType.CREDITS) {
+                        errors.put(f, "Cannot sell credits");
+                        return false;
+                    }
+                    if (f.getPrice() != 0) {
+                        errors.put(f, "Sell offers must be $0 to deposit");
+                        return false;
+                    }
+                    if (f.getSender_id() == null) {
+                        errors.put(f, "Sender id is null");
+                        return false;
+                    }
+                    if (f.getSender_id() != expectedNationId) {
+                        errors.put(f, "Sender id is not expected nation id (instead: " + expectedNationId + ")");
+                        return false;
+                    }
+                    return true;
             }
 
             return true;
         });
+        Function<Trade, String> tradeToString = trade ->
+                trade.getBuy_or_sell() + " `" +
+                        trade.getOffer_resource() + "=" +
+                        trade.getOffer_amount() + "` @ `$" +
+                        trade.getPrice() + "`";
+        Callable<String> getErrors = () -> {
+            String errorMsg = errors.entrySet().stream().map(e -> tradeToString.apply(e.getKey()) + ": " + e.getValue()).collect(Collectors.joining("\n- "));
+            if (!errorMsg.isEmpty()) errorMsg = "\n- " + errorMsg;
+            return errorMsg;
+        };
+
+        Set<Auth.TradeResult> results = new LinkedHashSet<>();
+        if (!tradesV3.isEmpty()) {
+            for (Trade trade : tradesV3) {
+                try {
+                    Trade completed = api.acceptPersonalTrade(trade.getId(), trade.getOffer_amount());
+                    success.put(trade, "Accepted");
+                } catch (Throwable e) {
+                    errors.put(trade, e.getMessage());
+                }
+            }
+        }
+
+        Map<Trade, String> success = new LinkedHashMap<>();
+
+
 
 
         boolean moreTrades = true;
