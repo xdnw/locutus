@@ -2384,6 +2384,7 @@ public class GuildHandler {
     private boolean sentNoIAMessage = false;
 
     private void sendMail(DBNation current) {
+        if (current.getPositionEnum().id > Rank.APPLICANT.id || current.getAgeDays() > 10) return;
         if (!sentMail.contains(current.getNation_id())) {
             sentMail.add(current.getNation_id());
 

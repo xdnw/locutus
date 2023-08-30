@@ -1469,7 +1469,8 @@ public class UtilityCommands {
                 CM.war.info warInfo = CM.war.info.cmd.create(nation.getNationUrl());
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, warInfo, "War Info");
                 //Counter
-                CM.war.counter.nation counter = CM.war.counter.nation.cmd.create(nation.getNationUrl(), "", null, null, null, null, "", null);
+                String aaIdStr = db.getAllianceIds().stream().map(f -> "AA:" + f).collect(Collectors.joining(","));
+                CM.war.counter.nation counter = CM.war.counter.nation.cmd.create(nation.getNationUrl(), aaIdStr, null, null, null, null, "", null);
                 msg = msg.modal(CommandBehavior.EPHEMERAL, counter, "Counter");
                 //Loot
                 CM.nation.loot loot = CM.nation.loot.cmd.create(nation.getNationUrl(), null, null);
