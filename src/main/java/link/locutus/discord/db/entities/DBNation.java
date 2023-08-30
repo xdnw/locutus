@@ -2,6 +2,9 @@ package link.locutus.discord.db.entities;
 
 import com.google.gson.JsonSyntaxException;
 import com.politicsandwar.graphql.model.Nation;
+import com.politicsandwar.graphql.model.Trade;
+import com.politicsandwar.graphql.model.TradeType;
+import com.politicsandwar.graphql.model.TradesQueryRequest;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
@@ -75,6 +78,7 @@ import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -95,6 +99,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+
+import static java.util.Collections.emptyMap;
 
 public class DBNation implements NationOrAlliance {
     private int nation_id;
@@ -3741,6 +3747,205 @@ public class DBNation implements NationOrAlliance {
         int numPurchased = currentAmt - previousAmt + lostInAttacks;
         int maxPerDay = unit.getMaxPerDay(cities, this::hasProject);
         return Math.max(0, maxPerDay - numPurchased);
+    }
+
+    public PoliticsAndWarV3 getApi(boolean throwError) {
+        ApiKeyPool.ApiKey apiKey = this.getApiKey(true);
+        if (apiKey == null) {
+            if (throwError) throw new IllegalStateException("No api key found");
+            return null;
+        }
+        return new PoliticsAndWarV3(ApiKeyPool.create(apiKey));
+    }
+
+    public Set<Auth.TradeResult> acceptTrades(int expectedNationId) throws Exception {
+        if (expectedNationId == nation_id) throw new IllegalArgumentException("Buyer and seller cannot be the same");
+        if (!TimeUtil.checkTurnChange()) return Collections.singleton(new Auth.TradeResult("cannot accept during turn change", Auth.TradeResultType.BLOCKADED));
+        if (isBlockaded()) return Collections.singleton(new Auth.TradeResult("receiver is blockaded", Auth.TradeResultType.BLOCKADED));
+
+        PoliticsAndWarV3 api = this.getApi(true);
+        Set<Auth.TradeResult> responses = new LinkedHashSet<>();
+
+        List<Trade> tradesV3 = api.fetchTradesWithInfo(new Consumer<TradesQueryRequest>() {
+            @Override
+            public void accept(TradesQueryRequest r) {
+                r.setAccepted(false);
+                r.setNation_id(List.of(expectedNationId));
+                r.setType(TradeType.PERSONAL);
+            }
+        }, f -> {
+
+            if (f.getAccepted()) return false;
+            ResourceType resource = ResourceType.parse(f.getOffer_resource());
+            switch (f.getBuy_or_sell().toLowerCase()) {
+                case "buy":
+                    if (resource != ResourceType.FOOD) return false;
+                    if (f.getPrice() < 100000) return false;
+                    if (f.getReceiver_id())
+                case "sell":
+            }
+
+            return true;
+        });
+
+
+        boolean moreTrades = true;
+        int max = 14;
+        while (moreTrades && (max-- > 0)) {
+            moreTrades = false;
+
+            String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/trade/";
+            String html = Auth.this.readStringFromURL(PagePriority.BANK_TRADE, url, emptyMap());
+            Document dom = Jsoup.parse(html);
+
+            Elements tables = dom.getElementsByClass("nationtable");
+            if (tables.size() == 0) {
+                System.out.println("Error fetching trades " + html);
+                return Collections.singleton(new Auth.TradeResult("Could not load trade page", Auth.TradeResultType.CAPTCHA));
+            }
+            Element table = tables.get(0);
+            Elements rows = table.getElementsByTag("tr");
+
+            if (rows.size() < 2) {
+                return Collections.singleton(new Auth.TradeResult("No trades found", Auth.TradeResultType.NO_TRADES));
+            }
+
+            if (!rows.get(0).child(1).text().contains("Selling Nation") || !rows.get(0).child(2).text().contains("Buying Nation")) {
+                return Collections.singleton(new Auth.TradeResult("No trade table found", Auth.TradeResultType.NO_TRADES));
+            }
+
+            for (int i = 1; i < rows.size(); i++) {
+                Element row = rows.get(i);
+                Elements forms = row.getElementsByClass("tradeForm");
+                if (forms.isEmpty()) {
+                    continue;
+                }
+                Element form = forms.get(0).parent();
+                String ver = form.getElementsByAttributeValue("name", "ver").get(0).attr("value");
+                String token = form.getElementsByAttributeValue("name", "token").get(0).attr("value");
+                if (ver == null || token == null) continue;
+                long tradeaccid = Long.parseLong(form.getElementsByAttributeValue("name", "tradeaccid").get(0).attr("value"));
+
+                Elements columns = row.getElementsByTag("td");
+
+                String senderUrl = columns.get(1).getElementsByTag("a").first().attr("href");
+                String receiverUrl = columns.get(2).getElementsByTag("a").first().attr("href");
+                DBNation seller = DiscordUtil.parseNation(senderUrl);
+                DBNation buyer = DiscordUtil.parseNation(receiverUrl);
+
+                if (columns.get(6).text().toLowerCase().contains("accepted")) continue;
+
+                if (seller == null) continue;
+                if (buyer == null) continue;
+                if (seller.getNation_id() != expectedNationId && buyer.getNation_id() != expectedNationId) {
+                    continue;
+                }
+                if (seller.getNation_id() != auth.getNationId() && buyer.getNation_id() != auth.getNationId()) {
+                    continue;
+                }
+                DBNation other = seller.getNation_id() == me.getNation_id() ? buyer : seller;
+
+                Integer amount = MathMan.parseInt(columns.get(4).text().trim());
+
+                String rssSrc = columns.get(4).children().first().attr("src");
+                String[] rssSplit = rssSrc.split("[\\./]");
+                String rssName = rssSplit[rssSplit.length - 2];
+                ResourceType type = ResourceType.parse(rssName);
+
+                Integer ppu = MathMan.parseInt(columns.get(5).text().split("/")[0].trim());
+
+                Auth.TradeResult response = new Auth.TradeResult(seller, buyer);
+                response.setAmount(amount);
+                response.setResource(type);
+                response.setPPU(ppu);
+                responses.add(response);
+
+                if (amount == null || amount <= 0) {
+                    response.setMessage("Invalid trade amount offered").setResult(Auth.TradeResultType.RUNTIME_ERROR);
+                    continue;
+                }
+                if (type == null) {
+                    response.setMessage("Invalid type: " + rssSrc).setResult(Auth.TradeResultType.RUNTIME_ERROR);
+                    continue;
+                }
+                if (ppu == null) {
+                    response.setMessage("Invalid trade ppu offered").setResult(Auth.TradeResultType.RUNTIME_ERROR);
+                    continue;
+                }
+                if (type == ResourceType.CREDITS) {
+                    response.setMessage("You cannot deposit credits").setResult(Auth.TradeResultType.CANNOT_DEPOSIT_CREDITS);
+                    continue;
+                }
+
+                if (other.isBlockaded()) {
+                    response.setMessage(other.getNation() + " is blockaded").setResult(Auth.TradeResultType.BLOCKADED);
+                    continue;
+                }
+
+                if (ppu == 0) {
+                    if (buyer.getNation_id() != auth.getNationId()) {
+                        response.setMessage("Trade must be sent as a sell offer").setResult(Auth.TradeResultType.NOT_A_SELL_OFFER);
+                        continue;
+                    }
+
+                } else if (ppu >= 100000) {
+                    if (type != ResourceType.FOOD) {
+                        response.setMessage("Money trades must be sent as a food trade").setResult(Auth.TradeResultType.NOT_A_FOOD_TRADE);
+                        continue;
+                    }
+                    if (buyer.getNation_id() == me.getNation_id() || seller.getNation_id() == other.getNation_id()) {
+                        response.setMessage("Money trades, must be buying food, not selling").setResult(Auth.TradeResultType.NOT_A_SELL_OFFER);
+                        continue;
+                    }
+                } else {
+                    if (seller.getNation_id() == auth.getNationId()) {
+                        if (type != ResourceType.FOOD) {
+                            response.setMessage("Money trades must be at least $100,000 and use food").setResult(Auth.TradeResultType.NOT_A_FOOD_TRADE);
+                        }
+                        response.setMessage("Money trades must be at least $100,000").setResult(Auth.TradeResultType.INCORRECT_PPU);
+                    } else {
+                        response.setMessage("Sell offers must be at $0 ppu").setResult(Auth.TradeResultType.INCORRECT_PPU);
+                    }
+                    continue;
+                }
+
+
+                Map<String, String> post = new HashMap<>();
+                post.put("rcustomamount", amount + "");
+                post.put("tradeaccid", tradeaccid + "");
+                post.put("ver", ver);
+                post.put("token", token);
+                post.put("acctrade", "");
+
+                String tradeAlert = PnwUtil.getAlert(Jsoup.parse(Auth.this.readStringFromURL(PagePriority.TOKEN, url, post)));
+                if (tradeAlert == null) {
+                    response.setResult(Auth.TradeResultType.UNKNOWN_ERROR);
+                    continue;
+                }
+
+                response.setMessage(tradeAlert);
+
+                if (tradeAlert.contains("You can't accept trade offers because a nation has a naval blockade on you.")) {
+                    response.setResult(Auth.TradeResultType.BLOCKADED);
+                    continue;
+                }
+                if (tradeAlert.contains("You can't enter in an amount greater than the offer.")
+                        || tradeAlert.contains("You do not have enough ")
+                        || tradeAlert.contains("The nation posting that trade offer does not have enough resources on hand to sell.")) {
+                    response.setResult(Auth.TradeResultType.INSUFFICIENT_RESOURCES);
+                }
+                if (tradeAlert.contains("You successfully accepted a trade offer")) {
+                    response.setResult(Auth.TradeResultType.SUCCESS);
+                } else {
+                    response.setResult(Auth.TradeResultType.UNCATEGORIZED_ERROR);
+                }
+
+                moreTrades = true;
+                break;
+            }
+        }
+
+        return responses;
     }
 
     public int getUnitCap(MilitaryUnit unit, boolean checkBuildingsAndPop) {
