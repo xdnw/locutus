@@ -1418,7 +1418,7 @@ public class UtilityCommands {
         DBNation myNation = DiscordUtil.getNation(author.getIdLong());
         int perpage = 15;
         StringBuilder response = new StringBuilder();
-        Collection<DBNation> nations = SimpleNationList.from(nationOrAlliances).getNations();
+        final Collection<DBNation> nations = SimpleNationList.from(nationOrAlliances).getNations();
 
         String arg0;
         String title;
@@ -1574,9 +1574,8 @@ public class UtilityCommands {
 
             printAA(response, average, true);
         }
-        IMessageBuilder msg = channel.create();
         if (!listInfo && page == null && !response.isEmpty()) {
-            msg.embed(title, response.toString());
+            channel.create().embed(title, response.toString()).send();
         }
 
         if (list || listMentions || listRawUserIds || listChannels || listAlliances) {
@@ -1625,7 +1624,7 @@ public class UtilityCommands {
             int pages = (nations.size() + perpage - 1) / perpage;
             title += "(" + (page + 1) + "/" + pages + ")";
 
-            msg.paginate(title, command, page, perpage, nationList).send();
+            channel.create().paginate(title, command, page, perpage, nationList).send();
         }
         if (listInfo) {
 //            if (perpage == null) perpage = 5;
@@ -1662,9 +1661,8 @@ public class UtilityCommands {
 
                 results.add(entry.toString());
             }
-            msg.paginate("Nations", command, page, perpage, results).send();
+            channel.create().paginate("Nations", command, page, perpage, results).send();
         }
-        msg.send();
 
         return null;
     }

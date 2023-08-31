@@ -54,6 +54,7 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -64,7 +65,7 @@ import java.util.Objects;
 import java.util.Set;
 
 public class EmbedCommands {
-    @Command
+    @Command(desc = "Create a simple embed with a title and description")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public void create(@Me IMessageIO io, String title, String description) {
         io.create().embed(title, description).send();
@@ -79,7 +80,7 @@ public class EmbedCommands {
         MessageEmbed embed = embeds.get(0);
 
         EmbedBuilder builder = new EmbedBuilder(embed);
-        builder.setThumbnail(title);
+        builder.setTitle(title);
 
         message.clearEmbeds();
         message.embed(builder.build());
@@ -139,11 +140,11 @@ public class EmbedCommands {
         return "Done! Deleted " + labels.size() + " buttons";
     }
 
-    @Command(desc = "Add a button to a discord embed from this bot")
+    @Command(desc = "Add a button to a discord embed from this bot which runs a command")
     @NoFormat
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public String addButton(Message message, String label, CommandBehavior behavior, ICommand command,
-                            @Arg("The arguments and values you want to submit to the command\n" +
+                            @Default @Arg("The arguments and values you want to submit to the command\n" +
                                     "Example: `myarg1:myvalue1 myarg2:myvalue2`\n" +
                                     "For placeholders: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
                             String arguments, @Switch("c") MessageChannel channel) {
@@ -156,6 +157,11 @@ public class EmbedCommands {
         Set<String> validArguments = command.getUserParameterMap().keySet();
 
         List<Button> buttons = message.getButtons();
+        for (Button button : buttons) {
+            if (button.getLabel().equalsIgnoreCase(label)) {
+                throw new IllegalArgumentException("The button label `" + label + "` already exists on the embed. Please remove it first: TODO CM REF");
+            }
+        }
         if (buttons.size() >= 25) {
             throw new IllegalArgumentException("You cannot have more than 25 buttons on an embed. Please remove one first: TODO CM REF");
         }
@@ -178,7 +184,7 @@ public class EmbedCommands {
         return "Done! Added button `" + label + "` to " + message.getJumpUrl();
     }
 
-    @Command(desc = "Add a modal button to a discord embed from this bot")
+    @Command(desc = "Add a modal button to a discord embed from this bot, which creates a prompt for a command")
     @NoFormat
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public String addModal(Message message, String label, CommandBehavior behavior, ICommand command,
@@ -196,16 +202,21 @@ public class EmbedCommands {
         Set<String> validArguments = command.getUserParameterMap().keySet();
 
         List<Button> buttons = message.getButtons();
+        for (Button button : buttons) {
+            if (button.getLabel().equalsIgnoreCase(label)) {
+                throw new IllegalArgumentException("The button label `" + label + "` already exists on the embed. Please remove it first: TODO CM REF");
+            }
+        }
         if (buttons.size() >= 25) {
             throw new IllegalArgumentException("You cannot have more than 25 buttons on an embed. Please remove one first: TODO CM REF");
         }
         Set<String> promptedArguments = new HashSet<>(StringMan.split(arguments, ','));
-        Map<String, String> providedArguments = CommandManager2.parseArguments(validArguments, defaults, true);
+        Map<String, String> providedArguments = defaults == null ? new HashMap<>() : CommandManager2.parseArguments(validArguments, defaults, true);
 
         for (String arg : promptedArguments) {
             String argLower = arg.toLowerCase(Locale.ROOT);
             if (!validArguments.contains(arg) && !validArguments.contains(argLower)) {
-                throw new IllegalArgumentException("The command `" + command.getFullPath() + "` does not have an argument `" + arg + "`. Valid arguments: `" + StringMan.getString(validArguments) + "`";
+                throw new IllegalArgumentException("The command `" + command.getFullPath() + "` does not have an argument `" + arg + "`. Valid arguments: `" + StringMan.getString(validArguments) + "`");
             }
             if (providedArguments.containsKey(arg) || providedArguments.containsKey(argLower)) {
                 throw new IllegalArgumentException("You have specified the argument `" + arg + "` in both `arguments` and `defaults`. Please only specify it in one.");
@@ -231,7 +242,7 @@ public class EmbedCommands {
         new DiscordMessageBuilder(message.getChannel(), message)
                 .modal(behavior, channelId, command, full, label)
                 .send();
-        return "Done! Added modal `" + label + "` to " + message.getJumpUrl();
+        return "Done! Added modal button `" + label + "` to " + message.getJumpUrl();
     }
 
 

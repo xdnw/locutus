@@ -171,6 +171,13 @@ public class CommandManager2 {
 
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "depositsPanel", "deposits");
 
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed"), "create", "create");
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed"), "title", "title");
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed"), "description", "description");
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "remove"), "removeButton", "button");
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "add"), "addButton", "command");
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "add"), "addModal", "modal");
+
         for (GuildSetting setting : GuildKey.values()) {
             List<String> path = List.of("settings_" + setting.getCategory().name().toLowerCase(Locale.ROOT));
 
@@ -536,7 +543,6 @@ public class CommandManager2 {
                     }
                 }
 
-                System.out.println("Create title " + title + " | " + body.toString());
                 io.create().embed(title, body.toString()).send();
             } catch (IllegalArgumentException e) {
                 e.printStackTrace();

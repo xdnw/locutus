@@ -149,9 +149,16 @@ public class PrimitiveBindings extends BindingHelper {
 
     @TextArea
     @Binding(examples = {"a b c"}, value = "Multiple words or text separated by spaces\nUse quotes for multi-word arguments")
-    public List<String> all(String string, TextArea ann) {
-        List<String> result = new ArrayList<>(StringMan.split(string, ann.value()));
-        System.out.println("Split `" + ann.value() + "` | " + result.size());
+    public List<String> all(String string, @Default ParameterData param) {
+        char splitChar = ' ';
+        if (param != null) {
+            TextArea ann = param.getAnnotation(TextArea.class);
+            if (ann != null) {
+                splitChar = ann.value();
+            }
+        }
+        List<String> result = new ArrayList<>(StringMan.split(string, splitChar));
+        System.out.println("Split `" + splitChar + "` | " + result.size());
         for (int i = 0; i < result.size(); i++) {
             String s = result.get(i);
             if (s.length() <= 2) continue;
