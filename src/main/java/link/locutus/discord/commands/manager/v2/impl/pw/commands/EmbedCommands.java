@@ -585,6 +585,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
 
         boolean isCorp = db.getAllianceIds().isEmpty();
 
+        boolean isDepositsModal = true;
         String depositFundsLabel;
         CommandRef depositFunds;
         CommandRef depositAuto = null;
@@ -596,6 +597,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                     "- Buying food for OVER $100,000\n" +
                     "Then press `trade deposit`";
             depositFunds = CM.trade.accept.cmd.create("nation:{nation_id}", Boolean.TRUE + "");
+            isDepositsModal = false;
         } else {
             depositFundsLabel = "deposit custom";
             body += "\nTo deposit, go to your alliance bank page in-game.\n" +
@@ -624,8 +626,12 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 .commandButton(behavior, channelId, deposits, "balance")
                 .modal(behavior, channelId, self, "self")
                 .modal(behavior, channelId, other, "other")
-                .commandButton(behavior, channelId, stockpile, "stockpile")
-                .modal(behavior, channelId, depositFunds, depositFundsLabel);
+                .commandButton(behavior, channelId, stockpile, "stockpile");
+        if (isDepositsModal) {
+            msg = msg.modal(behavior, channelId, depositFunds, depositFundsLabel);
+        } else {
+            msg = msg.commandButton(behavior, channelId, depositFunds, depositFundsLabel);
+        }
         if (depositAuto != null) {
             msg = msg.commandButton(behavior, channelId, depositAuto, "deposit auto");
         }
