@@ -1380,6 +1380,8 @@ public class PoliticsAndWarV3 {
         BankrecResponseProjection projection = new BankrecResponseProjection();
         projection.id();
         projection.date();
+        projection.receiver_id();
+        projection.receiver_type();
 
         return request(PagePriority.API_BANK_DEPOSIT, false, mutation, projection, Bankrec.class);
     }

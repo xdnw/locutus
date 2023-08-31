@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities;
 
 import com.google.gson.JsonSyntaxException;
+import com.politicsandwar.graphql.model.Bankrec;
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.Trade;
 import com.politicsandwar.graphql.model.TradeType;
@@ -2272,6 +2273,11 @@ public class DBNation implements NationOrAlliance {
         return true;
     }
 
+    @Command(desc = "Check if the nation has a permissions")
+    public boolean hasPermission(AlliancePermission permission) {
+        return hasAllPermission(Set.of(permission));
+    }
+
     @Command(desc = "Check if the nation has any permissions")
     public boolean hasAnyPermission(Set<AlliancePermission> permissions) {
         if (rank.id >= Rank.HEIR.id) return true;
@@ -3761,28 +3767,35 @@ public class DBNation implements NationOrAlliance {
         return new PoliticsAndWarV3(ApiKeyPool.create(apiKey));
     }
 
-    public TransferResult acceptAndOffshoredTrades(GuildDB db, int expectedNationId) {
+    public Map.Entry<Boolean, String> acceptAndOffshoredTrades(GuildDB currentDB, int expectedNationId) {
+        PoliticsAndWarV3 api = getApi(true);
         synchronized (OffshoreInstance.BANK_LOCK) {
             if (!TimeUtil.checkTurnChange()) {
                 throw new IllegalArgumentException("Turn change");
             }
-            DBNation nation = this.getNation();
-            if (nation.getPosition() <= Rank.APPLICANT.id) {
+            if (getPosition() <= Rank.APPLICANT.id) {
                 throw new IllegalArgumentException("Receiver is not member");
             }
-            DBAlliancePosition position = nation.getAlliancePosition();
-            if (nation.getPositionEnum().id < Rank.HEIR.id && (position == null || !position.hasPermission(AlliancePermission.WITHDRAW_BANK) || !position.hasPermission(AlliancePermission.VIEW_BANK))) {
+            DBAlliancePosition position = getAlliancePosition();
+            if (getPositionEnum().id < Rank.HEIR.id && (position == null || !position.hasPermission(AlliancePermission.WITHDRAW_BANK) || !position.hasPermission(AlliancePermission.VIEW_BANK))) {
                 throw new IllegalArgumentException("Receiver does not have bank access");
             }
+            if (!this.hasPermission(AlliancePermission.WITHDRAW_BANK)) {
+                return Map.entry(false, "The nation specifies has no `" + AlliancePermission.WITHDRAW_BANK + "` permission");
+            }
+            if (!this.hasPermission(AlliancePermission.VIEW_BANK)) {
+                return Map.entry(false, "The nation specifies has no `" + AlliancePermission.VIEW_BANK + "` permission");
+            }
+
             DBNation senderNation = DBNation.getById(expectedNationId);
             if (senderNation == null) throw new IllegalArgumentException("Sender is null");
             if (senderNation.isBlockaded()) throw new IllegalArgumentException("Sender is blockaded");
-            if (nation.isBlockaded()) throw new IllegalArgumentException("Receiver is blockaded");
+            if (isBlockaded()) throw new IllegalArgumentException("Receiver is blockaded");
 
             OffshoreInstance offshore = currentDB.getOffshore();
 
-            GuildDB authDb = Locutus.imp().getGuildDBByAA(nation.getAlliance_id());
-            if (authDb == null) throw new IllegalArgumentException("Receiver is not in a server with locutus: " + nation.getAlliance_id());
+            GuildDB authDb = Locutus.imp().getGuildDBByAA(getAlliance_id());
+            if (authDb == null) throw new IllegalArgumentException("Receiver is not in a server with locutus: " + getAlliance_id());
             OffshoreInstance receiverOffshore = authDb.getOffshore();
             if (receiverOffshore == null) {
                 throw new IllegalArgumentException("Receiver does not have a registered offshore");
@@ -3798,7 +3811,7 @@ public class DBNation implements NationOrAlliance {
                 senderType = currentDB.getReceiverType();
             } else if (aaIds.size() == 1) {
                 senderId = aaIds.iterator().next();
-                senderType = nation.getAlliance().getReceiverType();
+                senderType = getAlliance().getReceiverType();
             } else if (aaIds.contains(senderNation.getAlliance_id())){
                 senderId = senderNation.getAlliance_id();
                 senderType = senderNation.getAlliance().getReceiverType();
@@ -3808,26 +3821,37 @@ public class DBNation implements NationOrAlliance {
 
             StringBuilder response = new StringBuilder("Checking trades...");
 
-            Set<Auth.TradeResult> trades = acceptTrades(expectedNationId, false);
+            Set<Auth.TradeResult> trades = acceptTrades(expectedNationId);
             double[] toDeposit = ResourceType.getBuffer();
             for (Auth.TradeResult trade : trades) {
                 response.append("\n" + trade.toString());
                 if (trade.getResult() == Auth.TradeResultType.SUCCESS) {
-                    int sign = trade.getBuyer().getNation_id() == Auth.this.getNationId() ? 1 : -1;
+                    int sign = trade.getBuyer().getNation_id() == getNation_id() ? 1 : -1;
                     toDeposit[trade.getResource().ordinal()] += trade.getAmount() * sign;
                     toDeposit[ResourceType.MONEY.ordinal()] += ((long) trade.getPpu()) * trade.getAmount() * sign * -1;
                 }
             }
-            if (PnwUtil.convertedTotal(toDeposit) > 0) {
-                String safekeepResult = Auth.this.safekeep(false, toDeposit, "#ignore");
-                if (!safekeepResult.contains("You successfully made a deposit into the alliance bank.")) {
-                    response.append("\n- " + "Could not safekeep: " + safekeepResult);
-                    return false;
-                }
-            }
-            if (PnwUtil.convertedTotal(toDeposit) == 0) return false;
 
-            OffshoreInstance bank = nation.getAlliance().getBank();
+            if (ResourceType.isZero(toDeposit) || PnwUtil.convertedTotal(toDeposit) <= 0) {
+                return Map.entry(false, response.toString());
+            }
+            int receiverId;
+            try {
+                Bankrec deposit = api.depositIntoBank(toDeposit, "#ignore");
+                double[] amt = ResourceType.fromApiV3(deposit, ResourceType.getBuffer());
+                response.append("\nDeposited: `" + PnwUtil.resourcesToString(amt) + "`");
+                if (!ResourceType.equals(toDeposit, amt)) {
+                    response.append("\n- Error Depositing: " + PnwUtil.resourcesToString(toDeposit) + " != " + PnwUtil.resourcesToString(amt));
+                    return Map.entry(false, response.toString());
+                }
+                receiverId = deposit.getReceiver_id();
+            } catch (Throwable e) {
+                response.append("\n- Error Depositing: " + e.getMessage());
+                return Map.entry(false, response.toString());
+            }
+
+            DBAlliance receiverAA = DBAlliance.getOrCreate(receiverId);
+            OffshoreInstance bank = receiverAA.getBank();
             if (bank != offshore) {
                 for (int i = 0; i < toDeposit.length; i++) {
                     if (toDeposit[i] < 0) toDeposit[i] = 0;
@@ -3835,10 +3859,9 @@ public class DBNation implements NationOrAlliance {
                 TransferResult transferResult = bank.transfer(offshore.getAlliance(), PnwUtil.resourcesToMap(toDeposit), "#ignore");
                 response.append("Offshore " + transferResult.toLineString());
                 if (transferResult.getStatus() != OffshoreInstance.TransferStatus.SUCCESS) {
-                    return false;
+                    response.append("\n- Depositing failed");
+                    return Map.entry(false, response.toString());
                 }
-
-                // subtract from alliance
             }
 
             // add balance to guilddb
@@ -3847,10 +3870,10 @@ public class DBNation implements NationOrAlliance {
 
             response.append("\nAdding deposits:");
 
-            offshore.getGuildDB().addTransfer(tx_datetime, senderId, senderType, offshore.getAlliance(), Auth.this.getNationId(), note, toDeposit);
+            offshore.getGuildDB().addTransfer(tx_datetime, senderId, senderType, offshore.getAlliance(), getNation_id(), note, toDeposit);
             response.append("\n- Added " + PnwUtil.resourcesToString(toDeposit) + " to " + currentDB.getGuild());
             // add balance to expectedNation
-            currentDB.addTransfer(tx_datetime, senderNation, senderId, senderType, Auth.this.getNationId(), note, toDeposit);
+            currentDB.addTransfer(tx_datetime, senderNation, senderId, senderType, getNation_id(), note, toDeposit);
             response.append("\n- Added " + PnwUtil.resourcesToString(toDeposit) + " to " + senderNation.getNationUrl());
 
             MessageChannel logChannel = offshore.getGuildDB().getResourceChannel(0);
@@ -3858,27 +3881,19 @@ public class DBNation implements NationOrAlliance {
                 RateLimitUtil.queue(logChannel.sendMessage(response));
             }
 
-            return new AbstractMap.SimpleEntry<>(result, response.toString());
+            return new AbstractMap.SimpleEntry<>(true, response.toString());
         }
     }
 
-    public Set<Auth.TradeResult> acceptTrades(int expectedNationId) throws Exception {
+    public Set<Auth.TradeResult> acceptTrades(int expectedNationId) {
         if (expectedNationId == nation_id) throw new IllegalArgumentException("Buyer and seller cannot be the same");
         if (!TimeUtil.checkTurnChange()) return Collections.singleton(new Auth.TradeResult("cannot accept during turn change", Auth.TradeResultType.BLOCKADED));
         if (isBlockaded()) return Collections.singleton(new Auth.TradeResult("receiver is blockaded", Auth.TradeResultType.BLOCKADED));
 
-        todo ensure has bank deposit and send perms;
-        if (!this.hasPermission(AlliancePermission.VIEW_BANK)) {
-            return Collections.singleton(new Auth.TradeResult("The nation specifies has no bank view permission", Auth.TradeResultType.NO_BANK_ACCESS)
-        }
-        if (!this.hasPermission(AlliancePermission.WITHDRAW_BANK)) {
-            return Collections.singleton(new Auth.TradeResult("The nation specifies has no bank withdraw permission", Auth.TradeResultType.NO_BANK_ACCESS)
-        }
-
         PoliticsAndWarV3 api = this.getApi(true);
         Set<Auth.TradeResult> responses = new LinkedHashSet<>();
 
-        Map<Trade, Map.Entry<String, Auth.TreadeResultType>> errors = new LinkedHashMap<>();
+        Map<Trade, Map.Entry<String, Auth.TradeResultType>> errors = new LinkedHashMap<>();
 
         List<Trade> tradesV3 = api.fetchTradesWithInfo(new Consumer<TradesQueryRequest>() {
             @Override
@@ -3893,37 +3908,37 @@ public class DBNation implements NationOrAlliance {
             switch (f.getBuy_or_sell().toLowerCase()) {
                 case "buy":
                     if (resource != ResourceType.FOOD) {
-                        errors.put(f, "Buy offers can only be food trades");
+                        errors.put(f, Map.entry("Buy offers can only be food trades", Auth.TradeResultType.NOT_A_FOOD_TRADE));
                         return false;
                     }
                     if (f.getPrice() < 100000) {
-                        errors.put(f, "Buy offers must be at least $100,000 to deposit");
+                        errors.put(f, Map.entry("Buy offers must be at least $100,000 to deposit", Auth.TradeResultType.INCORRECT_PPU));
                         return false;
                     }
                     if (f.getReceiver_id() == null) {
-                        errors.put(f, "Receiver id is null");
+                        errors.put(f, Map.entry("Receiver id is null", Auth.TradeResultType.NOT_A_BUY_OFFER));
                         return false;
                     }
                     if (f.getReceiver_id() != expectedNationId) {
-                        errors.put(f, "Receiver id is not expected nation id (instead: " + expectedNationId + ")");
+                        errors.put(f, Map.entry("Receiver id is not expected nation id (instead: " + expectedNationId + ")", Auth.TradeResultType.NOT_A_BUY_OFFER));
                         return false;
                     }
                     return true;
                 case "sell":
                     if (resource == ResourceType.CREDITS) {
-                        errors.put(f, "Cannot sell credits");
+                        errors.put(f, Map.entry("Cannot sell credits", Auth.TradeResultType.CANNOT_DEPOSIT_CREDITS));
                         return false;
                     }
                     if (f.getPrice() != 0) {
-                        errors.put(f, "Sell offers must be $0 to deposit");
+                        errors.put(f, Map.entry("Sell offers must be $0 to deposit", Auth.TradeResultType.INCORRECT_PPU));
                         return false;
                     }
                     if (f.getSender_id() == null) {
-                        errors.put(f, "Sender id is null");
+                        errors.put(f, Map.entry("Sender id is null", Auth.TradeResultType.NOT_A_SELL_OFFER));
                         return false;
                     }
                     if (f.getSender_id() != expectedNationId) {
-                        errors.put(f, "Sender id is not expected nation id (instead: " + expectedNationId + ")");
+                        errors.put(f, Map.entry("Sender id is not expected nation id (instead: " + expectedNationId + ")", Auth.TradeResultType.NOT_A_SELL_OFFER));
                         return false;
                     }
                     return true;
@@ -3942,31 +3957,29 @@ public class DBNation implements NationOrAlliance {
             return errorMsg;
         };
 
-        Set<Auth.TradeResult> responses = new LinkedHashSet<>();
         if (!tradesV3.isEmpty()) {
             for (Trade trade : tradesV3) {
                 try {
                     Trade completed = api.acceptPersonalTrade(trade.getId(), trade.getOffer_amount());
+                    DBNation seller = DBNation.getById(completed.getSender_id());
+                    DBNation buyer = DBNation.getById(completed.getReceiver_id());
 
                     Auth.TradeResult response = new Auth.TradeResult(seller, buyer);
-                    response.setAmount(amount);
-                    response.setResource(type);
-                    response.setPPU(ppu);
+                    response.setAmount(completed.getOffer_amount());
+                    response.setResource(ResourceType.parse(completed.getOffer_resource()));
+                    response.setPPU(completed.getPrice());
                     responses.add(response);
 
                 } catch (Throwable e) {
-                    errors.put(trade, e.getMessage());
+                    errors.put(trade, Map.entry(e.getMessage(), Auth.TradeResultType.UNKNOWN_ERROR));
                 }
             }
         }
 
-        // iterate errors, for entryset
-        // add to responses a new trade result failure,
-        // with the error message
-        for (Map.Entry<Trade, Map.Entry<String, Auth.TreadeResultType>> entry : errors.entrySet()) {
+        for (Map.Entry<Trade, Map.Entry<String, Auth.TradeResultType>> entry : errors.entrySet()) {
             Trade trade = entry.getKey();
-            Map.Entry<String, Auth.TreadeResultType> value = entry.getValue();
-            Auth.TreadeResultType type = value.getValue();
+            Map.Entry<String, Auth.TradeResultType> value = entry.getValue();
+            Auth.TradeResultType type = value.getValue();
             String error = value.getKey();
             String msg = tradeToString.apply(trade) + ": " + error;
             Auth.TradeResult response = new Auth.TradeResult(msg, type);

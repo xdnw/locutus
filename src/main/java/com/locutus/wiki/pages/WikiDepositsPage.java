@@ -11,7 +11,11 @@ public class WikiDepositsPage extends WikiGen {
     @Override
     public String generateMarkdown() {
         return build(
-
+                """
+                        Member balances are determined by what they deposit into the bank, as well as funds they receive from the alliance.
+                        
+                        Offshores/Training alliances etc. 
+                        """
         );
        /*
        Notes
