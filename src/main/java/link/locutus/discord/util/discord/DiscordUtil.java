@@ -3,14 +3,11 @@ package link.locutus.discord.util.discord;
 import club.minnced.discord.webhook.WebhookClient;
 import club.minnced.discord.webhook.WebhookClientBuilder;
 import club.minnced.discord.webhook.send.WebhookEmbed;
-import com.google.gson.Gson;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
-import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
@@ -46,6 +43,7 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.interactions.InteractionHook;
+import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.internal.entities.UserImpl;
 import org.apache.commons.lang3.text.WordUtils;
@@ -63,6 +61,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -83,6 +82,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static link.locutus.discord.util.MathMan.parseFilter;
 import static link.locutus.discord.util.MathMan.parseStringFilter;
@@ -188,6 +188,26 @@ public class DiscordUtil {
                 return Long.compare(lastMessage2, lastMessage1);
             }
         });
+    }
+
+    public static Long getChannelId(Guild guild, String keyOrLong) {
+        if (keyOrLong.charAt(0) == '<' && keyOrLong.charAt(keyOrLong.length() - 1) == '>') {
+            keyOrLong = keyOrLong.substring(1, keyOrLong.length() - 1);
+        }
+        if (keyOrLong.charAt(0) == '#') {
+            keyOrLong = keyOrLong.substring(1);
+        }
+        if (MathMan.isInteger(keyOrLong)) {
+            return Long.parseLong(keyOrLong);
+        }
+        if (guild != null) {
+            MessageChannel channel = getChannel(guild, keyOrLong);
+            if (channel != null) {
+                return channel.getIdLong();
+            }
+            throw new IllegalArgumentException("Channel not found: `" + keyOrLong + "`");
+        }
+        throw new IllegalArgumentException("Channel not found (not a number): `" + keyOrLong + "`");
     }
 
     public static MessageChannel getChannel(Guild guild, String keyOrLong) {
@@ -449,6 +469,109 @@ public class DiscordUtil {
             }
         }
         return result;
+    }
+
+    public static class CommandInfo {
+        public final Long channelId;
+        public final CommandBehavior behavior;
+        public final String command;
+
+        public CommandInfo(Long channelId, CommandBehavior behavior, String command) {
+            this.channelId = channelId;
+            this.behavior = behavior;
+            this.command = command;
+        }
+    }
+
+    private static List<CommandInfo> parseCommands(Guild guild, String label, String id, Map<String, String> reactions, String ref) {
+        if (id == null) {
+            System.out.println("ID is null");
+            return null;
+        }
+        if (id.isBlank()) {
+            CommandInfo info = new CommandInfo(null, CommandBehavior.DELETE_MESSAGE, " ");
+            return List.of(info);
+        }
+        if (MathMan.isInteger(id)) {
+            if (reactions.isEmpty()) {
+                throw new IllegalArgumentException("No command info found: " + ref);
+            }
+            String cmd = reactions.get(id);
+            if (cmd == null) {
+                throw new IllegalArgumentException("No command info found: " + ref + " | " + id + " | " + StringMan.getString(reactions));
+            }
+            id = cmd;
+        }
+
+        Long channelId = null;
+        if (id.startsWith("<#")) {
+            String channelIdStr = id.substring(0, id.indexOf('>') + 1);
+            channelId = DiscordUtil.getChannelId(guild, channelIdStr);
+            id = id.substring(id.indexOf(' ') + 1);
+        }
+
+        CommandBehavior behavior = null;
+        if (!id.isEmpty()) {
+            char char0 = id.charAt(0);
+            behavior = CommandBehavior.getOrNull(char0 + "");
+            if (behavior != null) {
+                id = id.substring(behavior.getValue().length());
+            } else {
+                behavior = CommandBehavior.DELETE_MESSAGE;
+            }
+        }
+
+        if (id.startsWith(Settings.commandPrefix(true)) || id.startsWith(Settings.commandPrefix(false))) {
+            List<String> split = Arrays.asList(id.split("\\r?\\n(?=[" + Settings.commandPrefix(false) + "|" + Settings.commandPrefix(true) + "|{])"));
+            List<CommandInfo> infos = new ArrayList<>(split.size());
+            for (String cmd : split) {
+                infos.add(new CommandInfo(channelId, behavior, cmd));
+            }
+            return infos;
+        } else if (id.startsWith("{")){
+            return List.of(new CommandInfo(channelId, behavior, id));
+        } else if (!id.isEmpty()) {
+            throw new IllegalArgumentException("Unknown command: `" + id + "`");
+        } else {
+            return List.of(new CommandInfo(channelId, behavior, id));
+        }
+    }
+
+    public static Map<String, List<CommandInfo>> getCommands(Guild guild, MessageEmbed embed, List<Button> buttons, String ref, boolean checkNonButtons) {
+        Map<String, List<CommandInfo>> commands = new LinkedHashMap<>();
+
+        Map<String, String> reactions = null;
+        boolean initReactions = true;
+
+        for (Button button : buttons) {
+            if (initReactions) {
+                if (embed == null) throw new IllegalArgumentException("No embed found");
+                reactions = DiscordUtil.getReactions(embed);
+                initReactions = false;
+            }
+            String id = button.getId();
+            String label = button.getLabel();
+            List<CommandInfo> cmds = parseCommands(guild, label, id, reactions, ref);
+            if (cmds == null) continue;
+            commands.put(label, cmds);
+        }
+        if (checkNonButtons && buttons.isEmpty()) {
+            if (initReactions) {
+                if (embed == null) throw new IllegalArgumentException("No embed found");
+                reactions = DiscordUtil.getReactions(embed);
+            }
+            if (reactions == null) {
+                throw new IllegalArgumentException("No command info found (no buttons or reactions): " + ref);
+            }
+            for (Map.Entry<String, String> entry : reactions.entrySet()) {
+                String label = entry.getKey();
+                String id = entry.getValue();
+                List<CommandInfo> cmds = parseCommands(guild, label, id, reactions, ref);
+                if (cmds == null) continue;
+                commands.put(label, cmds);
+            }
+        }
+        return commands;
     }
 
     public static Map<String, String> getReactions(MessageEmbed embed) {

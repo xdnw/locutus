@@ -1447,7 +1447,7 @@ public class WarDB extends DBMainV2 {
         }
         updateWars(dbWars, null, eventConsumer);
 
-        if (activeWarsToFetch.size() > 0) {
+        if (!activeWarsToFetch.isEmpty()) {
             int notDeleted = 0;
             for (int warId : activeWarsToFetch) {
                 DBWar war = activeWars.getWar(warId);

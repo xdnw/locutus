@@ -30,11 +30,17 @@ public class CommandRef {
     }
 
     public <T extends CommandRef> T createArgs(String... args) {
+        Map<String, String> argMap = new LinkedHashMap<>();
+        for (int i = 0; i < args.length; i += 2) {
+            argMap.put(args[i], args[i + 1]);
+        }
+        return createArgs(argMap);
+    }
+
+    public <T extends CommandRef> T createArgs(Map<String, String> args) {
         try {
             CommandRef instance = getClass().newInstance();
-            for (int i = 0; i < args.length; i += 2) {
-                instance.arguments.put(args[i], args[i + 1]);
-            }
+            instance.arguments.putAll(args);
             return (T) instance;
         } catch (InstantiationException | IllegalAccessException e) {
             throw new RuntimeException(e);

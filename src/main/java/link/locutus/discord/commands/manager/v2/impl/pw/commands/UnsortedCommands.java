@@ -104,7 +104,7 @@ public class UnsortedCommands {
             @Arg("Nations to list in the sheet\n" +
                     "Defaults to the guild alliance")
             @Default NationList nations,
-            @Default @Arg("A space separated list of columns to add to the sheet\n" +
+            @Default @TextArea @Arg("A space separated list of columns to add to the sheet\n" +
                     "Can include NationAttribute as placeholders in columns\n" +
                     "All NationAttribute placeholders must be surrounded by {} e.g. {nation}")
             List<String> addColumns,

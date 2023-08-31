@@ -1230,7 +1230,7 @@ public class UtilityCommands {
                                 @Arg("The nations to include in each alliance")
                                 Set<DBNation> nations,
                                 @Arg("The columns to use in the sheet")
-                                List<String> columns,
+                                @TextArea List<String> columns,
                                 @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, IllegalAccessException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKeys.ALLIANCES_SHEET);
@@ -1293,7 +1293,7 @@ public class UtilityCommands {
                                    @Arg("A space separated list of columns to use in the sheet\n" +
                                            "Can include NationAttribute as placeholders in columns\n" +
                                            "All NationAttribute placeholders must be surrounded by {} e.g. {nation}")
-                                   List<String> columns,
+                                   @TextArea List<String> columns,
                               @Switch("e") boolean updateSpies, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKeys.NATION_SHEET);

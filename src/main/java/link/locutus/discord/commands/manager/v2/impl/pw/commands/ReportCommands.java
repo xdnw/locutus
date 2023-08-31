@@ -825,7 +825,8 @@ public class ReportCommands {
                 353730979816407052L, // Pirate Island Times
                 1022224780751011860L, // Micro Minute
                 580481635645128745L, // Thalmoria
-                1139041525817409539L // Orbis Business & Innovation Forum
+                1139041525817409539L, // Orbis Business & Innovation Forum
+                756580822739320883L // Black Label Media
         ));
 
 

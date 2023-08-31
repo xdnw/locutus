@@ -15,6 +15,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -470,7 +471,6 @@ public class StatCommands {
             if (!Double.isFinite(value)) continue;
             attributeByNation.put(nation, value);
         }
-
 
         String title = (total ? "Total" : groupByAlliance ? "Average" : "Top") + " " + attribute.getName() + " by " + (groupByAlliance ? "alliance" : "nation");
 
@@ -1260,7 +1260,7 @@ public class StatCommands {
     @NoFormat
     public String allianceNationsSheet(NationPlaceholders placeholders, AlliancePlaceholders aaPlaceholders, ValueStore store, @Me IMessageIO channel, @Me User author, @Me Guild guild, @Me GuildDB db,
                                        Set<DBNation> nations,
-                                       @Arg("The columns to have. See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>") List<String> columns,
+                                       @Arg("The columns to have. See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>") @TextArea List<String> columns,
                                        @Switch("s") SpreadSheet sheet,
                                        @Arg("Use the sum of each nation's attributes instead of the average")
                                        @Switch("t") boolean useTotal, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants) throws IOException, GeneralSecurityException, IllegalAccessException, InvocationTargetException {

@@ -5,6 +5,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -201,7 +202,7 @@ public class DiscordCommands {
             }
             body = body.replace("\\n", "\n");
 
-            System.out.println("Commands: " + commands);
+            System.out.println("Commands: " + commands.size());
             IMessageBuilder msg = channel.create().embed(title, body);
             for (int i = 0; i < commands.size(); i++) {
                 String cmd = commands.get(i);
@@ -321,37 +322,35 @@ public class DiscordCommands {
         MessageEmbed embed = embeds.get(0);
         String title = embed.getTitle();
         String desc = embed.getDescription();
-        Map<String, String> reactions = DiscordUtil.getReactions(embed);
-        Map<String, String> commands = new HashMap<>();
 
-        if (reactions == null || reactions.isEmpty()) {
-            return "No embed commands found.";
-        }
 
-        List<Button> buttons = message.getButtons();
-        for (Button button : buttons) {
-            String id = button.getId();
-            if (id == null) continue;
-            System.out.println("ID " + id);
-            if (id.isBlank()) {
-                commands.put(button.getLabel(), "");
-            } else if (MathMan.isInteger(id)) {
-                String cmd = reactions.get(id);
-                if (cmd != null) {
-                    commands.put(button.getLabel(), cmd);
-                } else {
-                    commands.put(button.getLabel(), id);
+        Map<String, List<DiscordUtil.CommandInfo>> commandMap = DiscordUtil.getCommands(message.isFromGuild() ? message.getGuild() : null, embed, message.getButtons(), message.getJumpUrl(), true);
+        List<String> commands = new ArrayList<>();
+        for (Map.Entry<String, List<DiscordUtil.CommandInfo>> entry : commandMap.entrySet()) {
+            CommandBehavior behavior = null;
+            Long channelId = null;
+            List<String> current = new ArrayList<>();
+            for (DiscordUtil.CommandInfo info : entry.getValue()) {
+                if (info.behavior != null) {
+                    behavior = info.behavior;
                 }
-            } else {
-                commands.put(button.getLabel(), id);
+                if (info.channelId != null) {
+                    channelId = info.channelId;
+                }
+                current.add(info.command);
             }
+            String prefix = "";
+            if (channelId != null) {
+                prefix += "<#" + channelId + "> ";
+            }
+            if (behavior != null) {
+                prefix += behavior.getValue();
+            }
+            String commandStr = prefix + StringMan.join(current, "\n");
+            commands.add("\"" + commandStr.replace("\"", "\\\"") + "\"");
         }
-        if (buttons.isEmpty()) {
-            commands.putAll(reactions);
-        }
-
-        String cmd = CM.embed.commands.cmd.create(title, desc, StringMan.join(commands.values(), "\" \"")).toSlashCommand();
-        return "```" + cmd + "```";
+        String cmd = CM.embed.commands.cmd.create(title, desc, StringMan.join(commands, " ")).toSlashCommand();
+        return "```\n" + cmd + "```";
     }
 
     @Command(desc = "Update a bot embed")
