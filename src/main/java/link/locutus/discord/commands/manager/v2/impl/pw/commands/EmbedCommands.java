@@ -596,7 +596,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                     "- Selling a resource for $0\n" +
                     "- Buying food for OVER $100,000\n" +
                     "Then press `trade deposit`";
-            depositFunds = CM.trade.accept.cmd.create("nation:{nation_id}", Boolean.TRUE + "");
+            depositFunds = CM.trade.accept.cmd.create(nationId + "", Boolean.TRUE + "");
             isDepositsModal = false;
         } else {
             depositFundsLabel = "deposit custom";
