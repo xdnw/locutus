@@ -82,7 +82,7 @@ public class NationOrExchange {
             // add a trade
 
             StringBuilder response = new StringBuilder();
-            response.append("Successfully transfered " + MathMan.format(amount) + "x" + exchange.symbol);
+            response.append("Successfully transferred " + MathMan.format(amount) + "x" + exchange.symbol);
 
             String title = "Funds received";
             TextChannel channel = exchange.getChannel();

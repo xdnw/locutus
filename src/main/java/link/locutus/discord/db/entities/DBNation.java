@@ -3767,7 +3767,7 @@ public class DBNation implements NationOrAlliance {
         return new PoliticsAndWarV3(ApiKeyPool.create(apiKey));
     }
 
-    public Map.Entry<Boolean, String> acceptAndOffshoredTrades(GuildDB currentDB, int expectedNationId) {
+    public Map.Entry<Boolean, String> acceptAndOffshoreTrades(GuildDB currentDB, int expectedNationId) {
         PoliticsAndWarV3 api = getApi(true);
         synchronized (OffshoreInstance.BANK_LOCK) {
             if (!TimeUtil.checkTurnChange()) {
