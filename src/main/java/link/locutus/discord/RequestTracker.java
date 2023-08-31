@@ -215,7 +215,11 @@ public class RequestTracker {
             int count = getDomainRequestsSince(id, timestamp);
             countByDomain.put(entry.getKey(), count);
         }
-        return countByDomain;
+        // sorted linked hash map
+        return countByDomain.entrySet()
+                .stream()
+                .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
     }
 
     public int getDomainRequestsSince(URI url, long timestamp) {

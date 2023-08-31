@@ -700,6 +700,8 @@ public class Auth {
         INCORRECT_PPU,
         CANNOT_DEPOSIT_CREDITS,
 
+        NO_BANK_ACCESS,
+
         SUCCESS,
     }
 

@@ -3479,13 +3479,13 @@ public class NationDB extends DBMainV2 {
     }
 
     public Integer getMilitary(DBNation nation, MilitaryUnit unit, long time, boolean useCurrent) {
-        try (PreparedStatement stmt = prepareQuery("select * FROM NATION_MIL_HISTORY WHERE id = ? AND unit = ? AND date < ? ORDER BY date ASC LIMIT 1")) {
-            stmt.setInt(1, nation.getNation_id());
+        try (PreparedStatement stmt = prepareQuery("select * FROM `NATION_MIL_HISTORY` WHERE `id` = ? AND `unit` = ? AND `date` < ? ORDER BY `date` DESC LIMIT 1")) {
+            stmt.setInt(1, nation.getId());
             stmt.setInt(2, unit.ordinal());
             stmt.setLong(3, time);
 
             try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
+                if (rs.next()) {
                     return rs.getInt("amount");
                 }
             }

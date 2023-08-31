@@ -1,6 +1,8 @@
 package link.locutus.discord.util.offshore;
 
+import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -83,7 +85,19 @@ public class TransferResult {
     public String toEmbedString() {
         StringBuilder body = new StringBuilder();
         body.append("**Status:** `").append(status.name()).append("`\n");
-        body.append("**To:** ").append(receiver.getMarkdownUrl()).append("\n");
+        body.append("**To:** ").append(receiver.getMarkdownUrl());
+        if (receiver.isNation()) {
+            DBNation nation = receiver.asNation();
+            if (nation.getAlliance_id() > 0) {
+                body.append(" | ").append(nation.getAlliance().getMarkdownUrl());
+                if (nation.getPositionEnum().id <= Rank.APPLICANT.id) {
+                    body.append(" (applicant)");
+                }
+            } else {
+                body.append(" | AA:0");
+            }
+        }
+        body.append("\n");
         body.append("**Amount:** `").append(PnwUtil.resourcesToString(amount)).append("`\n");
         body.append(" - worth: `$" + MathMan.format(PnwUtil.convertedTotal(amount)) + "`\n");
         body.append("**Note:** `").append(note).append("`\n");
@@ -104,7 +118,7 @@ public class TransferResult {
         } else {
             title = "Failed to transfer";
         }
-        title += " to " + receiver.getQualifiedName();
+        title += " to " + receiver.getTypePrefix() + ":" + receiver.getName();
         if (status != OffshoreInstance.TransferStatus.SUCCESS) {
             title += " (" + status.name() + ")";
         }

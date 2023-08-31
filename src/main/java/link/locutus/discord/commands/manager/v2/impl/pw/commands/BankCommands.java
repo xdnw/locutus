@@ -3059,10 +3059,7 @@ public class BankCommands {
             return null;
         }
 
-        Auth auth = receiver.getAuth(true);
-        if (auth == null) return "Receiver is not authenticated with Locutus: " + CM.credentials.login.cmd.toSlashMention() + "";
-
-        Map.Entry<Boolean, String> result = auth.acceptAndOffshoreTrades(db, me.getNation_id());
+        Map.Entry<Boolean, String> result = receiver.acceptAndOffshoreTrades(db, me.getNation_id());
         if (!result.getKey()) {
             return "__**ERROR: No funds have been added to your account**__\n" +
                     result.getValue();

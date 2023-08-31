@@ -267,7 +267,7 @@ public class AllianceListener {
                 CM.alliance.stats.metricsByTurn graphCmd = CM.alliance.stats.metricsByTurn.cmd.create(AllianceMetric.GROUND_PCT.name(), StringMan.join(allowedIds, ","), "7d");
                 IMessageBuilder msg = new DiscordChannelIO(channel).create()
                         .embed(title, body.toString())
-                        .commandButton(CommandBehavior.DELETE_REACTION, graphCmd, "graph");
+                        .commandButton(CommandBehavior.EPHEMERAL, graphCmd, "graph");
 
                 if (role != null) {
                     msg.append(role.getAsMention());

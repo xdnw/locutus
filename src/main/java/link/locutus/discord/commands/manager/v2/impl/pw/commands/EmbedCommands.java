@@ -588,20 +588,24 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         String depositFundsLabel;
         CommandRef depositFunds;
         CommandRef depositAuto = null;
+        CommandRef offshore = null;
         if (isCorp) {
             depositFundsLabel = "trade deposit";
-            body += "\n\nTo deposit, send a PRIVATE trade offer to " + PnwUtil.getMarkdownUrl(nationId, false) + ":\n" +
+            body += "\nTo deposit, send a PRIVATE trade offer to " + PnwUtil.getMarkdownUrl(nationId, false) + ":\n" +
                     "- Selling a resource for $0\n" +
                     "- Buying food for OVER $100,000\n" +
                     "Then press `trade deposit`";
             depositFunds = CM.trade.accept.cmd.create("nation:{nation_id}", Boolean.TRUE + "");
         } else {
             depositFundsLabel = "deposit custom";
-            body += "\n\nTo deposit, go to your alliance bank page in-game.\n" +
+            body += "\nTo deposit, go to your alliance bank page in-game.\n" +
                     "Alternatively, set your api key with: " + CM.credentials.addApiKey.cmd.toSlashMention() + "\n" +
-                    "And then press `deposit custom` or `deposit auto`";
+                    "And then press" +
+                    "- `deposit custom` or `deposit auto`" +
+                    "- `offshore` to offshore funds";
             depositFunds = CM.bank.deposit.cmd.create("nation:{nation_id}", null, "", null, null, null, null, null, null, null, null, null, null, null, "true", "true");
             depositAuto = CM.bank.deposit.cmd.create("nation:{nation_id}", null, null, "7", null, null, "1", null, null, null, null, null, null, null, "true", "true");
+            offshore = CM.offshore.send.cmd.create(null, null, null);
         }
 
         Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
@@ -624,6 +628,9 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 .modal(behavior, channelId, depositFunds, depositFundsLabel);
         if (depositAuto != null) {
             msg = msg.commandButton(behavior, channelId, depositAuto, "deposit auto");
+        }
+        if (offshore != null) {
+            msg = msg.commandButton(behavior, channelId, offshore, "offshore");
         }
         msg.send();
     }
