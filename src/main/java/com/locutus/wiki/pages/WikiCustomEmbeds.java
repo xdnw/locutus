@@ -42,14 +42,14 @@ public class WikiCustomEmbeds extends WikiGen {
                 "Copy the message url for an embed",
                 CM.embed.title.cmd.create("", "New Title").toString(),
                 CM.embed.description.cmd.create("", "New Description").toString(),
-                "# Remove a button from a template",
+                "# Remove a button from an embed",
                 "Copy the message url for an embed, and use the name of the button",
                 CM.embed.remove.button.cmd.create("", "button name").toString(),
                 "# Add a button to an embed",
                 commandMarkdown(CM.embed.add.command.cmd),
                 "# Add a modal (prompt button) to an embed",
                 commandMarkdown(CM.embed.add.modal.cmd),
-                "# Multiple commands",
+                "# Multiple commands in one button
                 "Use `\\n` for newlines between commands",
                 commandMarkdown(CM.embed.add.raw.cmd)
         );
