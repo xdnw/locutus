@@ -1806,7 +1806,7 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    public Set<Integer> updateNations(Collection<Nation> nations, Consumer<Event> eventConsumer) {
+    public Set<Integer> updateNations(Collection<Nation> nations, Consumer<Event> eventConsumer, long timestamp) {
         Map<DBNation, DBNation> nationChanges = new LinkedHashMap<>();
         Set<Integer> nationsFetched = new HashSet<>();
         for (Nation nation : nations) {
@@ -1816,7 +1816,7 @@ public class NationDB extends DBMainV2 {
                     NationDB.this.dirtyNations.remove(nation.getId());
                 }
             }
-            updateNation(nation, eventConsumer, nationChanges::put);
+            updateNation(nation, eventConsumer, nationChanges::put, timestamp);
         }
         updateNationCitiesAndPositions(nationChanges, eventConsumer);
         return nationsFetched;
@@ -1828,6 +1828,7 @@ public class NationDB extends DBMainV2 {
         Map<DBNation, DBNation> nationChanges = new LinkedHashMap<>();
         Set<Integer> nationsFetched = new HashSet<>();
 
+        long timestamp = System.currentTimeMillis();
         Predicate<Nation> onEachNation = nation -> {
             if (nation.getId() != null) {
                 nationsFetched.add(nation.getId());
@@ -1835,7 +1836,7 @@ public class NationDB extends DBMainV2 {
                     NationDB.this.dirtyNations.remove(nation.getId());
                 }
             }
-            updateNation(nation, eventConsumer, (prev, curr) -> nationChanges.put(curr, prev));
+            updateNation(nation, eventConsumer, (prev, curr) -> nationChanges.put(curr, prev), timestamp);
             return false;
         };
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
@@ -1906,7 +1907,7 @@ public class NationDB extends DBMainV2 {
      * @param eventConsumer any nation events to call
      * @param nationsToSave (previous, current)
      */
-    private void updateNation(Nation nation, Consumer<Event> eventConsumer, BiConsumer<DBNation, DBNation> nationsToSave) {
+    private void updateNation(Nation nation, Consumer<Event> eventConsumer, BiConsumer<DBNation, DBNation> nationsToSave, long timestamp) {
         dirtyNations.remove(nation.getId());
 
         DBNation existing = getNation(nation.getId());
@@ -1917,6 +1918,9 @@ public class NationDB extends DBMainV2 {
             eventHandler = eventConsumer;
         }
         AtomicBoolean isDirty = new AtomicBoolean();
+        if (timestamp > 0) {
+            Locutus.imp().getPusher().getSpyTracker().updateCasualties(nation, timestamp);
+        }
         DBNation newNation = updateNationInfo(existing, nation, eventHandler, isDirty);
         if (isDirty.get()) {
             nationsToSave.accept(existing, newNation);
