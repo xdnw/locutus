@@ -4,6 +4,7 @@ import com.locutus.wiki.WikiGen;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.util.MarkupUtil;
 
 public class WikiCustomEmbeds extends WikiGen {
     public WikiCustomEmbeds(CommandManager2 manager) {
@@ -14,11 +15,12 @@ public class WikiCustomEmbeds extends WikiGen {
     public String generateMarkdown() {
         return build(
                 """
-                        Create or update embeds with custom title, description, and buttons
-                        Buttons can run commands, either directly, or open prompts for input from the user
-                        Buttons can submit arguments with set values or use placeholders based on the nation using it
-                        Run one or more commands in other channels via a button
-                        Set the behavior to remove the embed, allow single use, or show the result only to the user""",
+                        - Create or update embeds with custom title, description, and buttons
+                        - Buttons can run commands, either directly, or open prompts for input from the user
+                        - Buttons can submit arguments with set values or use placeholders based on the nation using it
+                        - Run one or more commands in other channels via a button
+                        - Set the behavior to remove the embed, allow single use, or show the result only to the user""",
+                linkPage("nation_placeholders"),
                 "# Embed templates",
                 """
                 Create an embed with preset title, description and command buttons.
@@ -53,5 +55,9 @@ public class WikiCustomEmbeds extends WikiGen {
                 "Use `\\n` for newlines between commands",
                 commandMarkdown(CM.embed.add.raw.cmd)
         );
+    }
+
+    private String linkPage(String pageName) {
+        return MarkupUtil.markdownUrl("Locutus/Wiki/" + pageName, "../wiki/" + pageName);
     }
 }
