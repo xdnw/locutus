@@ -70,8 +70,6 @@ public class EditNationTask implements Callable<String> {
 
                 Map<String, String> post = new HashMap<>();
 
-
-
                 post.put("token", token);
                 post.put("submiteditform", "Save Changes");
 

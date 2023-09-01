@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
@@ -82,6 +83,11 @@ public class DiscordBindings extends BindingHelper {
     @Binding(value = "A discord role permission")
     public Permission key(String input) {
         return emum(Permission.class, input);
+    }
+
+    @Binding(value = "The behavior for a command button")
+    public CommandBehavior behavior(String input) {
+        return emum(CommandBehavior.class, input);
     }
 
     @Binding(value = "A discord category name or mention", examples = "category-name")

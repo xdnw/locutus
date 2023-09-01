@@ -799,7 +799,6 @@ public class Auth {
         DBNation nation = getNation();
         int fromBank = nation.getAlliance_id();
         ApiKeyPool.ApiKey key = getApiKey();
-        PoliticsAndWarV3 v3 = new PoliticsAndWarV3(ApiKeyPool.create(key));
 
         Map<ResourceType, Double> stockpile = nation.getStockpile();
         Map<String, String> post = new HashMap<>();

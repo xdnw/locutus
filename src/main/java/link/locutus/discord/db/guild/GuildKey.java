@@ -382,7 +382,7 @@ public class GuildKey {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String registerApiKey(@Me GuildDB db, @Me User user, List<String> apiKeys) {
+        public String registerApiKey(@Me GuildDB db, @Me User user, @TextArea(',') List<String> apiKeys) {
             List<String> existing = API_KEY.getOrNull(db);
             existing = existing == null ? new ArrayList<>() : new ArrayList<>(existing);
 

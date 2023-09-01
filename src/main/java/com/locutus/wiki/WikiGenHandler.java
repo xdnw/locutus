@@ -12,6 +12,7 @@ import com.locutus.wiki.pages.WikiBlockadePage;
 import com.locutus.wiki.pages.WikiCoalitionsPage;
 import com.locutus.wiki.pages.WikiCommandsPage;
 import com.locutus.wiki.pages.WikiCounteringPage;
+import com.locutus.wiki.pages.WikiCustomEmbeds;
 import com.locutus.wiki.pages.WikiCustomSheetsPage;
 import com.locutus.wiki.pages.WikiDNRPage;
 import com.locutus.wiki.pages.WikiDepositsPage;
@@ -116,6 +117,8 @@ public class WikiGenHandler {
         pages.add(new WikiReportPage(manager));
 //        //Anti Leak System
         pages.add(new WikiAntiLeakPage(manager));
+        //Making custom embeds
+        pages.add(new WikiCustomEmbeds(manager));
 //        //Making custom spreadsheets
         pages.add(new WikiCustomSheetsPage(manager)); // <---   #### @
 //        //Statistics System

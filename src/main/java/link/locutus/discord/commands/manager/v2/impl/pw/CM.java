@@ -1059,8 +1059,7 @@ public class CM {
                 return createArgs("username", username, "password", password);
             }
         }
-        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="logout" +
-         "")
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="logout")
         public static class logout extends CommandRef {
             public static final logout cmd = new logout();
             public logout create() {
@@ -1134,6 +1133,29 @@ public class CM {
         }
     }
     public static class embed{
+        public static class add{
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="addButton")
+            public static class command extends CommandRef {
+                public static final command cmd = new command();
+                public command create(String message, String label, String behavior, String command, String arguments, String channel) {
+                    return createArgs("message", message, "label", label, "behavior", behavior, "command", command, "arguments", arguments, "channel", channel);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="addModal")
+            public static class modal extends CommandRef {
+                public static final modal cmd = new modal();
+                public modal create(String message, String label, String behavior, String command, String arguments, String defaults, String channel) {
+                    return createArgs("message", message, "label", label, "behavior", behavior, "command", command, "arguments", arguments, "defaults", defaults, "channel", channel);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="addButtonRaw")
+            public static class raw extends CommandRef {
+                public static final raw cmd = new raw();
+                public raw create(String message, String label, String behavior, String command, String channel) {
+                    return createArgs("message", message, "label", label, "behavior", behavior, "command", command, "channel", channel);
+                }
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.DiscordCommands.class,method="card")
         public static class commands extends CommandRef {
             public static final commands cmd = new commands();
@@ -1141,11 +1163,34 @@ public class CM {
                 return createArgs("title", title, "body", body, "commands", commands);
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="create")
+        public static class create extends CommandRef {
+            public static final create cmd = new create();
+            public create create(String title, String description) {
+                return createArgs("title", title, "description", description);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="description")
+        public static class description extends CommandRef {
+            public static final description cmd = new description();
+            public description create(String discMessage, String description) {
+                return createArgs("discMessage", discMessage, "description", description);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.DiscordCommands.class,method="embedInfo")
         public static class info extends CommandRef {
             public static final info cmd = new info();
             public info create(String message) {
                 return createArgs("message", message);
+            }
+        }
+        public static class remove{
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="removeButton")
+            public static class button extends CommandRef {
+                public static final button cmd = new button();
+                public button create(String message, String labels) {
+                    return createArgs("message", message, "labels", labels);
+                }
             }
         }
         public static class template{
@@ -1218,6 +1263,13 @@ public class CM {
                 public war_winning create(String outputChannel, String resultsInDm) {
                     return createArgs("outputChannel", outputChannel, "resultsInDm", resultsInDm);
                 }
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="title")
+        public static class title extends CommandRef {
+            public static final title cmd = new title();
+            public title create(String discMessage, String title) {
+                return createArgs("discMessage", discMessage, "title", title);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.DiscordCommands.class,method="updateEmbed")
@@ -2333,13 +2385,6 @@ public class CM {
         }
     }
     public static class settings_bank_access{
-        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="addGrantTemplateLimit", field="GRANT_TEMPLATE_LIMITS")
-        public static class addGrantTemplateLimit extends CommandRef {
-            public static final addGrantTemplateLimit cmd = new addGrantTemplateLimit();
-            public addGrantTemplateLimit create(String role, String marketValue) {
-                return createArgs("role", role, "marketValue", marketValue);
-            }
-        }
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="BANKER_WITHDRAW_LIMIT", field="BANKER_WITHDRAW_LIMIT")
         public static class BANKER_WITHDRAW_LIMIT extends CommandRef {
             public static final BANKER_WITHDRAW_LIMIT cmd = new BANKER_WITHDRAW_LIMIT();
@@ -2401,6 +2446,13 @@ public class CM {
             public static final WITHDRAW_IGNORES_GRANTS cmd = new WITHDRAW_IGNORES_GRANTS();
             public WITHDRAW_IGNORES_GRANTS create(String enabled) {
                 return createArgs("enabled", enabled);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="addGrantTemplateLimit", field="GRANT_TEMPLATE_LIMITS")
+        public static class addGrantTemplateLimit extends CommandRef {
+            public static final addGrantTemplateLimit cmd = new addGrantTemplateLimit();
+            public addGrantTemplateLimit create(String role, String marketValue) {
+                return createArgs("role", role, "marketValue", marketValue);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="addResourceChannel", field="RESOURCE_REQUEST_CHANNEL")

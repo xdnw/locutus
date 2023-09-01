@@ -64,6 +64,12 @@ public class PrimitiveBindings extends BindingHelper {
         return ids;
     }
 
+    @TextArea
+    @Binding(examples = "hello", value = "A single line of text")
+    public static String TextArea(String input, @Default ParameterData param) {
+        return String(input, param);
+    }
+
     @Binding(examples = "hello", value = "A single line of text")
     public static String String(String input, @Default ParameterData param) {
         Filter annotation = param == null ? null : param.getAnnotation(Filter.class);
@@ -141,14 +147,22 @@ public class PrimitiveBindings extends BindingHelper {
         throw new IllegalStateException("No ArgumentStack set in command locals.");
     }
 
-    @Binding(examples = {"a b c"}, value = "Multiple words or text separated by spaces")
-    public List<String> all(@TextArea String string) {
-        List<String> result = new ArrayList<>(StringMan.split(string, ' '));
-        // remove starting and ending quote if exist
+    @TextArea
+    @Binding(examples = {"a b c"}, value = "Multiple words or text separated by spaces\nUse quotes for multi-word arguments")
+    public List<String> all(String string, @Default ParameterData param) {
+        char splitChar = ' ';
+        if (param != null) {
+            TextArea ann = param.getAnnotation(TextArea.class);
+            if (ann != null) {
+                splitChar = ann.value();
+            }
+        }
+        List<String> result = new ArrayList<>(StringMan.split(string, splitChar));
+        System.out.println("Split `" + splitChar + "` | " + result.size());
         for (int i = 0; i < result.size(); i++) {
             String s = result.get(i);
             if (s.length() <= 2) continue;
-             if (StringMan.isQuote(s.charAt(0)) && StringMan.isQuote(s.charAt(s.length() - 1))) {
+            if (StringMan.isQuote(s.charAt(0)) && StringMan.isQuote(s.charAt(s.length() - 1))) {
                 result.set(i, s.substring(1, s.length() - 1));
             }
         }

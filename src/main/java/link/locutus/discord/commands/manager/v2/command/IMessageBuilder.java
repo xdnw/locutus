@@ -54,9 +54,17 @@ public interface IMessageBuilder {
     }
 
     @CheckReturnValue
+    default IMessageBuilder modal(CommandBehavior behavior, Long outputChannel, ICommand cmd, Map<String, String> arguments, String message) {
+        return modal(behavior, outputChannel, cmd.getFullPath(), arguments, message);
+    }
+
+    @CheckReturnValue
     default IMessageBuilder modal(CommandBehavior behavior, Long outputChannel, CommandRef cmd, String message) {
-            Map<String, String> arguments = cmd.getArguments();
-            String path = cmd.getPath();
+        return modal(behavior, outputChannel, cmd.getPath(), cmd.getArguments(), message);
+    }
+
+    @CheckReturnValue
+    default IMessageBuilder modal(CommandBehavior behavior, Long outputChannel, String path, Map<String, String> arguments, String message) {
             Iterator<Map.Entry<String, String>> iter = arguments.entrySet().iterator();
             Set<String> promptFor = new LinkedHashSet<>();
             while (iter.hasNext()) {
@@ -88,10 +96,20 @@ public interface IMessageBuilder {
 
     @CheckReturnValue
     default IMessageBuilder commandButton(CommandBehavior behavior, Long outputChannel, CommandRef ref, String message) {
+        return commandButton(behavior, outputChannel, ref.toCommandArgs(), message);
+    }
+
+    @CheckReturnValue
+    default IMessageBuilder commandButton(CommandBehavior behavior, Long outputChannel, ICommand ref, Map<String, String> args, String message) {
+        return commandButton(behavior, outputChannel, ref.toCommandArgs(args), message);
+    }
+
+    @CheckReturnValue
+    default IMessageBuilder commandButton(CommandBehavior behavior, Long outputChannel, String command, String message) {
         StringBuilder cmd = new StringBuilder();
         if (outputChannel != null) cmd.append("<#").append(outputChannel).append("> ");
         if (behavior != null && behavior != CommandBehavior.DELETE_MESSAGE) cmd.append(behavior.getValue());
-        cmd.append(ref.toCommandArgs());
+        cmd.append(command);
         return commandButton(cmd.toString(), message);
     }
 

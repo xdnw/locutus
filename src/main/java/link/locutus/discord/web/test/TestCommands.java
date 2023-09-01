@@ -9,6 +9,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
+import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.util.ImageUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -16,6 +17,7 @@ import link.locutus.discord.util.StringMan;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class TestCommands {
 
@@ -29,9 +31,17 @@ public class TestCommands {
             "Note: This is intended to be used in conjuction with the card command")
     public String modal(@Me IMessageIO io, ICommand command,
                         @Arg("A comma separated list of the command arguments to prompt for") String arguments,
-                        @Arg("The json string of the default arguments and values you want to submit to the command")
+                        @Arg("The default arguments and values you want to submit to the command\n" +
+                                "Example: `myarg1:myvalue1 myarg2:myvalue2`")
                         @Default String defaults) {
-        Map<String, String> args = defaults == null ? new HashMap<>() : PnwUtil.parseMap(defaults);
+        Map<String, String> args;
+        if (defaults == null) {
+            args = new HashMap<>();
+        } else if (defaults.startsWith("{") && defaults.endsWith("}")) {
+            args = PnwUtil.parseMap(defaults);
+        } else {
+            args = CommandManager2.parseArguments(command.getUserParameterMap().keySet(), defaults, true);
+        }
         io.modal().create(command, args, StringMan.split(arguments, ',')).send();
         return null;
     }

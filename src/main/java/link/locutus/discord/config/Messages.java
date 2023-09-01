@@ -48,6 +48,7 @@ public class Messages {
                 - The Micro Minute
                 - Thalmoria
                 - Orbis Business & Innovation Forum
+                - Black Label Media
                 
                 Note: DM `xdnw` to get a news server added to this list""";
 

@@ -183,11 +183,12 @@ public class PermissionBinding extends BindingHelper {
         return true;
     }
 
-    @Binding("Must have the provided Locutus roles on discord\n" +
-            "If `any` requires ony of the roles instead of all\n" +
-            "If `root` requires the role on the Locutus server\n" +
-            "If `guild` requires the role in the guild matching that id\n" +
-            "If `alliance` requires the role in the guild for that alliance")
+    @Binding("Has the aliased roles on discord. \n" +
+            "`any` = has any of the roles. \n" +
+            "`root` = has role on bot's main guild. \n" +
+            "`guild` = has role on that guild. \n" +
+            "`alliance` = has role on alliance's guild."
+            )
     @RolePermission
     public static boolean checkRole(@Me Guild guild, RolePermission perm, @Me User user) {
         return checkRole(guild, perm, user, null);

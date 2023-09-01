@@ -7,16 +7,23 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Operation;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
+import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -27,20 +34,229 @@ import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.interactions.components.ActionRow;
+import net.dv8tion.jda.api.interactions.components.ItemComponent;
+import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import org.kefirsf.bb.conf.If;
 
+import java.awt.Color;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 public class EmbedCommands {
+    @Command(desc = "Create a simple embed with a title and description")
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public void create(@Me IMessageIO io, String title, String description) {
+        io.create().embed(title, description).send();
+    }
+
+    @Command(desc = "Set the title of an embed from this bot")
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public String title(Message discMessage, String title) {
+        DiscordMessageBuilder message = new DiscordMessageBuilder(discMessage.getChannel(), discMessage);
+        List<MessageEmbed> embeds = message.getEmbeds();
+        if (embeds.size() != 1) return "No embeds found";
+        MessageEmbed embed = embeds.get(0);
+
+        EmbedBuilder builder = new EmbedBuilder(embed);
+        builder.setTitle(title);
+
+        message.clearEmbeds();
+        message.embed(builder.build());
+        message.send();
+        return "Done! See: " + discMessage.getJumpUrl();
+    }
+
+    @Command(desc = "Set the description of an embed from this bot")
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public String description(Message discMessage, String description) {
+        DiscordMessageBuilder message = new DiscordMessageBuilder(discMessage.getChannel(), discMessage);
+        List<MessageEmbed> embeds = message.getEmbeds();
+        if (embeds.size() != 1) return "No embeds found";
+        MessageEmbed embed = embeds.get(0);
+
+        EmbedBuilder builder = new EmbedBuilder(embed);
+        builder.setDescription(description);
+
+        message.clearEmbeds();
+        message.embed(builder.build());
+        message.send();
+        return "Done! See: " + discMessage.getJumpUrl();
+    }
+
+    @Command(desc = "Remove a button from an embed from this bot")
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public String removeButton(Message message, @Arg("A comma separated list of button labels") @TextArea(',') List<String> labels) {
+        if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
+            throw new IllegalArgumentException("The message you linked is not from the bot. Only bot messages can be modified.");
+        }
+        Set<String> labelSet = Set.copyOf(labels);
+        List<Button> buttons = message.getButtons();
+
+        Set<String> invalidLabels = new HashSet<>(labels);
+        Set<String> validLabels = new LinkedHashSet<>();
+        List<ActionRow> rows = new ArrayList<>(message.getActionRows());
+        for (int i = 0; i < rows.size(); i++) {
+            ActionRow row = rows.get(i);
+            List<ItemComponent> components = new ArrayList<>(row.getComponents());
+            components.stream().filter(f -> f instanceof Button).map(f -> ((Button) f).getLabel()).forEach(validLabels::add);
+            components.removeIf(f -> {
+                if (f instanceof Button button) {
+                    if (labelSet.contains(button.getLabel())) {
+                        invalidLabels.remove(button.getLabel());
+                        return true;
+                    }
+                }
+                return false;
+            });
+            rows.set(i, ActionRow.of(components));
+        }
+        if (!invalidLabels.isEmpty()) {
+            throw new IllegalArgumentException("Invalid labels: `" + StringMan.join(invalidLabels, ", ") + "`. Valid labels: `" + StringMan.join(validLabels, ", ") + "`");
+        }
+
+        RateLimitUtil.queue(message.editMessageComponents(rows));
+        return "Done! Deleted " + labels.size() + " buttons";
+    }
+
+    @Command(desc = "Add a button to a discord embed from this bot which runs a command\n" +
+            "Supports legacy commands and user command syntax.\n" +
+            "Unlike `embed add button`, this does not parse and validate command input.")
+    @NoFormat
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public String addButtonRaw(Message message, String label, CommandBehavior behavior, String command, @Switch("c") MessageChannel channel) {
+        if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
+            throw new IllegalArgumentException("The message you linked is not from the bot. Only bot messages can be modified.");
+        }
+        if (!label.matches("[a-zA-Z0-9 ]+")) {
+            throw new IllegalArgumentException("Label must be alphanumeric, not: `" + label + "`");
+        }
+
+        List<Button> buttons = message.getButtons();
+        for (Button button : buttons) {
+            if (button.getLabel().equalsIgnoreCase(label)) {
+                throw new IllegalArgumentException("The button label `" + label + "` already exists on the embed. Please remove it first: TODO CM REF");
+            }
+        }
+        if (buttons.size() >= 25) {
+            throw new IllegalArgumentException("You cannot have more than 25 buttons on an embed. Please remove one first: TODO CM REF");
+        }
+
+        Long channelId = channel == null ? null : channel.getIdLong();
+        new DiscordMessageBuilder(message.getChannel(), message)
+                .commandButton(behavior, channelId, command.replace("\\n", "\n"), label)
+                .send();
+        return "Done! Added button `" + label + "` to " + message.getJumpUrl();
+    }
+
+    @Command(desc = "Add a button to a discord embed from this bot which runs a command")
+    @NoFormat
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public String addButton(Message message, String label, CommandBehavior behavior, ICommand command,
+                            @Default @Arg("The arguments and values you want to submit to the command\n" +
+                                    "Example: `myarg1:myvalue1 myarg2:myvalue2`\n" +
+                                    "For placeholders: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
+                            String arguments, @Switch("c") MessageChannel channel) {
+        Set<String> validArguments = command.getUserParameterMap().keySet();
+
+        Map<String, String> parsed = CommandManager2.parseArguments(validArguments, arguments, true);
+        // ensure required arguments aren't missing
+        for (ParameterData param : command.getUserParameters()) {
+            if (param.isOptional() || param.isFlag()) continue;
+            String name = param.getName();
+            if (!parsed.containsKey(name) && !parsed.containsKey(name.toLowerCase(Locale.ROOT))) {
+                throw new IllegalArgumentException("The command `" + command.getFullPath() + "` has a required argument `" + name + "` that is missing from your `arguments` value: `" + arguments + "`.\n" +
+                        "See: " + CM.help.command.cmd.create(command.getFullPath()));
+            }
+        }
+
+        String commandStr =  command.toCommandArgs(parsed);
+        return addButtonRaw(message, label, behavior, commandStr, channel);
+    }
+
+    @Command(desc = "Add a modal button to a discord embed from this bot, which creates a prompt for a command")
+    @NoFormat
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public String addModal(Message message, String label, CommandBehavior behavior, ICommand command,
+                           @Arg("A comma separated list of the command arguments to prompt for") String arguments,
+                           @Arg("The default arguments and values you want to submit to the command\n" +
+                                   "Example: `myarg1:myvalue1 myarg2:myvalue2`\n" +
+                                   "For placeholders: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
+                           @Default String defaults, @Switch("c") MessageChannel channel) {
+        if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
+            throw new IllegalArgumentException("The message you linked is not from the bot. Only bot messages can be modified.");
+        }
+        if (!label.matches("[a-zA-Z0-9 ]+")) {
+            throw new IllegalArgumentException("Label must be alphanumeric, not: `" + label + "`");
+        }
+        Set<String> validArguments = command.getUserParameterMap().keySet();
+
+        List<Button> buttons = message.getButtons();
+        for (Button button : buttons) {
+            if (button.getLabel().equalsIgnoreCase(label)) {
+                throw new IllegalArgumentException("The button label `" + label + "` already exists on the embed. Please remove it first: TODO CM REF");
+            }
+        }
+        if (buttons.size() >= 25) {
+            throw new IllegalArgumentException("You cannot have more than 25 buttons on an embed. Please remove one first: TODO CM REF");
+        }
+        Set<String> promptedArguments = new HashSet<>(StringMan.split(arguments, ','));
+        Map<String, String> providedArguments = defaults == null ? new HashMap<>() : CommandManager2.parseArguments(validArguments, defaults, true);
+
+        for (String arg : promptedArguments) {
+            String argLower = arg.toLowerCase(Locale.ROOT);
+            if (!validArguments.contains(arg) && !validArguments.contains(argLower)) {
+                throw new IllegalArgumentException("The command `" + command.getFullPath() + "` does not have an argument `" + arg + "`. Valid arguments: `" + StringMan.getString(validArguments) + "`");
+            }
+            if (providedArguments.containsKey(arg) || providedArguments.containsKey(argLower)) {
+                throw new IllegalArgumentException("You have specified the argument `" + arg + "` in both `arguments` and `defaults`. Please only specify it in one.");
+            }
+        }
+
+        for (ParameterData param : command.getUserParameters()) {
+            if (param.isOptional() || param.isFlag()) continue;
+            String name = param.getName();
+            String nameL = name.toLowerCase(Locale.ROOT);
+            if (!promptedArguments.contains(name) && !promptedArguments.contains(nameL) && !providedArguments.containsKey(name) && !providedArguments.containsKey(nameL)) {
+                throw new IllegalArgumentException("The command `" + command.getFullPath() + "` has a required argument `" + name + "` that is missing from your `arguments` or `defaults`.\n" +
+                        "See: " + CM.help.command.cmd.create(command.getFullPath()));
+            }
+        }
+
+        Map<String, String> full = new LinkedHashMap<>(providedArguments);
+        for (String arg : promptedArguments) {
+            full.put(arg, "");
+        }
+
+        Long channelId = channel == null ? null : channel.getIdLong();
+        new DiscordMessageBuilder(message.getChannel(), message)
+                .modal(behavior, channelId, command, full, label)
+                .send();
+        return "Done! Added modal button `" + label + "` to " + message.getJumpUrl();
+    }
+
+
 //    @Command(desc = "Add a command button to an embed")
 //    @RolePermission(Roles.INTERNAL_AFFAIRS)
 //    public String addCommand(Message message, String label, CommandRef command, @Default CommandBehavior behavior, @Default TextChannel output) {
