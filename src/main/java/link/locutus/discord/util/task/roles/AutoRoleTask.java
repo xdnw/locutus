@@ -106,6 +106,7 @@ public class AutoRoleTask implements IAutoRoleTask {
         initRegisteredRole = false;
         List<Role> roles = db.getGuild().getRoles();
         this.allianceRoles = new ConcurrentHashMap<>(DiscordUtil.getAARoles(roles));
+        nationAACache.clear();
         this.cityRoleMap = new ConcurrentHashMap<>(DiscordUtil.getCityRoles(roles));
         this.cityRoles = new HashSet<>();
         for (Set<Role> value : cityRoleMap.values()) cityRoles.addAll(value);
@@ -126,12 +127,12 @@ public class AutoRoleTask implements IAutoRoleTask {
             }
             Set<Integer> topAAIdSet = new HashSet<>(topAAIds);
             topAAIdSet.remove(0);
-            allowedAAs = f -> topAAIdSet.contains(f);
+            allowedAAs = topAAIdSet::contains;
         }
         if (setAllianceMask == GuildDB.AutoRoleOption.ALLIES) {
             Set<Integer> allies = new HashSet<>(db.getAllies(true));
 
-            if (allowedAAs == null) allowedAAs = f -> allies.contains(f);
+            if (allowedAAs == null) allowedAAs = allies::contains;
             else {
                 Function<Integer, Boolean> previousAllowed = allowedAAs;
                 allowedAAs = f -> previousAllowed.apply(f) || allies.contains(f);
@@ -391,7 +392,7 @@ public class AutoRoleTask implements IAutoRoleTask {
     }
 
     private boolean initRegisteredRole = false;
-    private Map<Integer, Integer> nationAACache = new HashMap<>();
+    private final Map<Integer, Integer> nationAACache = new HashMap<>();
 
     @Override
     public synchronized AutoRoleInfo autoRole(Member member, DBNation nation) {
