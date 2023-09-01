@@ -313,10 +313,10 @@ public class DiscordCommands {
         return channel;
     }
 
-    @Command(desc = "Get info about a bot embed")
+    @Command(desc = "Show the title, description and commands for a bot embed")
     @RolePermission(value = Roles.ADMIN)
-    public String embedInfo(Message message) {
-        List<MessageEmbed> embeds = message.getEmbeds();
+    public String embedInfo(Message embedMessage, @Arg("Show commands to update`copyToMessage` with the info from the `embedMessage`") @Default Message copyToMessage) {
+        List<MessageEmbed> embeds = embedMessage.getEmbeds();
         if (embeds.size() != 1) return "No embed found.";
 
         MessageEmbed embed = embeds.get(0);
@@ -324,8 +324,13 @@ public class DiscordCommands {
         String desc = embed.getDescription();
 
 
-        Map<String, List<DiscordUtil.CommandInfo>> commandMap = DiscordUtil.getCommands(message.isFromGuild() ? message.getGuild() : null, embed, message.getButtons(), message.getJumpUrl(), true);
+        Map<String, List<DiscordUtil.CommandInfo>> commandMap = DiscordUtil.getCommands(embedMessage.isFromGuild() ? embedMessage.getGuild() : null, embed, embedMessage.getButtons(), embedMessage.getJumpUrl(), true);
         List<String> commands = new ArrayList<>();
+
+        commands.add(CM.embed.create.cmd.create(title, desc).toSlashCommand(false));
+
+        String url = copyToMessage == null ? "" : copyToMessage.getJumpUrl();
+
         for (Map.Entry<String, List<DiscordUtil.CommandInfo>> entry : commandMap.entrySet()) {
             CommandBehavior behavior = null;
             Long channelId = null;
@@ -339,18 +344,17 @@ public class DiscordCommands {
                 }
                 current.add(info.command);
             }
-            String prefix = "";
-            if (channelId != null) {
-                prefix += "<#" + channelId + "> ";
-            }
-            if (behavior != null) {
-                prefix += behavior.getValue();
-            }
-            String commandStr = prefix + StringMan.join(current, "\n");
-            commands.add("\"" + commandStr.replace("\"", "\\\"") + "\"");
+            String label = entry.getKey();
+
+            String behaviorStr = (behavior == null ? CommandBehavior.DELETE_MESSAGE : behavior).name();
+            String cmdStr = CM.embed.add.raw.cmd.create(url, label, behaviorStr, StringMan.join(current, "\n"), channelId == null ? null : channelId.toString()).toSlashCommand(false);
+            commands.add(cmdStr);
         }
-        String cmd = CM.embed.commands.cmd.create(title, desc, StringMan.join(commands, " ")).toSlashCommand();
-        return "```\n" + cmd + "```";
+
+        return "Run the following commands:\n" +
+                "```\n" +
+                StringMan.join(commands, "\n") +
+                "\n```";
     }
 
     @Command(desc = "Update a bot embed")

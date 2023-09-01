@@ -1148,6 +1148,13 @@ public class CM {
                     return createArgs("message", message, "label", label, "behavior", behavior, "command", command, "arguments", arguments, "defaults", defaults, "channel", channel);
                 }
             }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="addButtonRaw")
+            public static class raw extends CommandRef {
+                public static final raw cmd = new raw();
+                public raw create(String message, String label, String behavior, String command, String channel) {
+                    return createArgs("message", message, "label", label, "behavior", behavior, "command", command, "channel", channel);
+                }
+            }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.DiscordCommands.class,method="card")
         public static class commands extends CommandRef {

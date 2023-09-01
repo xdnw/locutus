@@ -140,21 +140,18 @@ public class EmbedCommands {
         return "Done! Deleted " + labels.size() + " buttons";
     }
 
-    @Command(desc = "Add a button to a discord embed from this bot which runs a command")
+    @Command(desc = "Add a button to a discord embed from this bot which runs a command\n" +
+            "Supports legacy commands and user command syntax.\n" +
+            "Unlike `embed add button`, this does not parse and validate command input.")
     @NoFormat
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String addButton(Message message, String label, CommandBehavior behavior, ICommand command,
-                            @Default @Arg("The arguments and values you want to submit to the command\n" +
-                                    "Example: `myarg1:myvalue1 myarg2:myvalue2`\n" +
-                                    "For placeholders: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
-                            String arguments, @Switch("c") MessageChannel channel) {
+    public String addButtonRaw(Message message, String label, CommandBehavior behavior, String command, @Switch("c") MessageChannel channel) {
         if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
             throw new IllegalArgumentException("The message you linked is not from the bot. Only bot messages can be modified.");
         }
         if (!label.matches("[a-zA-Z0-9 ]+")) {
             throw new IllegalArgumentException("Label must be alphanumeric, not: `" + label + "`");
         }
-        Set<String> validArguments = command.getUserParameterMap().keySet();
 
         List<Button> buttons = message.getButtons();
         for (Button button : buttons) {
@@ -165,6 +162,23 @@ public class EmbedCommands {
         if (buttons.size() >= 25) {
             throw new IllegalArgumentException("You cannot have more than 25 buttons on an embed. Please remove one first: TODO CM REF");
         }
+
+        Long channelId = channel == null ? null : channel.getIdLong();
+        new DiscordMessageBuilder(message.getChannel(), message)
+                .commandButton(behavior, channelId, command.replace("\\n", "\n"), label)
+                .send();
+        return "Done! Added button `" + label + "` to " + message.getJumpUrl();
+    }
+
+    @Command(desc = "Add a button to a discord embed from this bot which runs a command")
+    @NoFormat
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public String addButton(Message message, String label, CommandBehavior behavior, ICommand command,
+                            @Default @Arg("The arguments and values you want to submit to the command\n" +
+                                    "Example: `myarg1:myvalue1 myarg2:myvalue2`\n" +
+                                    "For placeholders: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
+                            String arguments, @Switch("c") MessageChannel channel) {
+        Set<String> validArguments = command.getUserParameterMap().keySet();
 
         Map<String, String> parsed = CommandManager2.parseArguments(validArguments, arguments, true);
         // ensure required arguments aren't missing
@@ -177,11 +191,8 @@ public class EmbedCommands {
             }
         }
 
-        Long channelId = channel == null ? null : channel.getIdLong();
-        new DiscordMessageBuilder(message.getChannel(), message)
-                .commandButton(behavior, channelId, command, parsed, label)
-                        .send();
-        return "Done! Added button `" + label + "` to " + message.getJumpUrl();
+        String commandStr =  command.toCommandArgs(parsed);
+        return addButtonRaw(message, label, behavior, commandStr, channel);
     }
 
     @Command(desc = "Add a modal button to a discord embed from this bot, which creates a prompt for a command")
