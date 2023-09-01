@@ -699,7 +699,8 @@ public class UnsortedCommands {
     @RolePermission(Roles.ADMIN)
     public synchronized String clearNicks(@Me Guild guild,
                                           @Arg("Undo the last recent use of this command")
-                                          @Default boolean undo) throws ExecutionException, InterruptedException {
+                                          @Default Boolean undo) throws ExecutionException, InterruptedException {
+        if (undo == null) undo = false;
         if (previousNicksGuild != guild.getIdLong()) {
             previousNicksGuild = guild.getIdLong();
             previous.clear();
