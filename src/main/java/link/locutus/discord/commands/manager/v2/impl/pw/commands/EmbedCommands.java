@@ -156,11 +156,11 @@ public class EmbedCommands {
         List<Button> buttons = message.getButtons();
         for (Button button : buttons) {
             if (button.getLabel().equalsIgnoreCase(label)) {
-                throw new IllegalArgumentException("The button label `" + label + "` already exists on the embed. Please remove it first: TODO CM REF");
+                throw new IllegalArgumentException("The button label `" + label + "` already exists on the embed. Please remove it first: " + CM.embed.remove.button.cmd.toSlashMention());
             }
         }
         if (buttons.size() >= 25) {
-            throw new IllegalArgumentException("You cannot have more than 25 buttons on an embed. Please remove one first: TODO CM REF");
+            throw new IllegalArgumentException("You cannot have more than 25 buttons on an embed. Please remove one first: " + CM.embed.remove.button.cmd.toSlashMention());
         }
 
         Long channelId = channel == null ? null : channel.getIdLong();
@@ -215,11 +215,11 @@ public class EmbedCommands {
         List<Button> buttons = message.getButtons();
         for (Button button : buttons) {
             if (button.getLabel().equalsIgnoreCase(label)) {
-                throw new IllegalArgumentException("The button label `" + label + "` already exists on the embed. Please remove it first: TODO CM REF");
+                throw new IllegalArgumentException("The button label `" + label + "` already exists on the embed. Please remove it first: " + CM.embed.remove.button.cmd.toSlashMention());
             }
         }
         if (buttons.size() >= 25) {
-            throw new IllegalArgumentException("You cannot have more than 25 buttons on an embed. Please remove one first: TODO CM REF");
+            throw new IllegalArgumentException("You cannot have more than 25 buttons on an embed. Please remove one first: " + CM.embed.remove.button.cmd.toSlashMention());
         }
         Set<String> promptedArguments = new HashSet<>(StringMan.split(arguments, ','));
         Map<String, String> providedArguments = defaults == null ? new HashMap<>() : CommandManager2.parseArguments(validArguments, defaults, true);

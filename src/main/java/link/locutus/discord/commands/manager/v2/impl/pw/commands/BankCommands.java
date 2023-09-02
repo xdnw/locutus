@@ -3036,7 +3036,7 @@ public class BankCommands {
             "The receiver must be authenticated with the bot and have bank access in an alliance\n" +
             "Only resources sold for $0 or food bought for cash are accepted")
     @RolePermission(value = Roles.MEMBER)
-    public String acceptTrades(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, DBNation receiver, @Switch("f") boolean force) throws Exception {
+    public String acceptTrades(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, DBNation receiver, @Default Map<ResourceType, Double> amount, @Switch("f") boolean force) throws Exception {
         OffshoreInstance offshore = db.getOffshore();
         if (offshore == null) return "No offshore is set in this guild: <https://docs.google.com/document/d/1QkN1FDh8Z8ENMcS5XX8zaCwS9QRBeBJdCmHN5TKu_l8/>";
 
@@ -3461,14 +3461,6 @@ public class BankCommands {
                         Map<ResourceType, Double> excess = finalNation.checkExcessResources(db, stockpile);
                         if (!excess.isEmpty()) {
                             tips2.add("Excess can be deposited: " + PnwUtil.resourcesToString(excess));
-                            if (Boolean.TRUE.equals(db.getOrNull(GuildKey.DEPOSIT_INTEREST))) {
-                                List<Transaction2> transactions = finalNation.getTransactions(-1, false);
-                                long last = 0;
-                                for (Transaction2 transaction : transactions) last = Math.max(transaction.tx_datetime, last);
-                                if (System.currentTimeMillis() - last > TimeUnit.DAYS.toMillis(5)) {
-                                    tips2.add("Deposit frequently to be eligible for interest on your deposits");
-                                }
-                            }
                         }
                     }
                     Map<ResourceType, Double> needed = finalNation.getResourcesNeeded(stockpile, 3, true);

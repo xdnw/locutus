@@ -102,6 +102,7 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static java.util.Collections.emptyMap;
@@ -3767,18 +3768,15 @@ public class DBNation implements NationOrAlliance {
         return new PoliticsAndWarV3(ApiKeyPool.create(apiKey));
     }
 
-    public Map.Entry<Boolean, String> acceptAndOffshoreTrades(GuildDB currentDB, int expectedNationId) {
-        PoliticsAndWarV3 api = getApi(true);
+    private Map.Entry<Boolean, String> createAndOffshoreDeposit(GuildDB currentDB, DBNation senderNation, Supplier<Set<Auth.TradeResult>> tradeSupplier) {
+        PoliticsAndWarV3 receiverApi = getApi(true);
+
         synchronized (OffshoreInstance.BANK_LOCK) {
             if (!TimeUtil.checkTurnChange()) {
                 throw new IllegalArgumentException("Turn change");
             }
             if (getPosition() <= Rank.APPLICANT.id) {
                 throw new IllegalArgumentException("Receiver is not member");
-            }
-            DBAlliancePosition position = getAlliancePosition();
-            if (getPositionEnum().id < Rank.HEIR.id && (position == null || !position.hasPermission(AlliancePermission.WITHDRAW_BANK) || !position.hasPermission(AlliancePermission.VIEW_BANK))) {
-                throw new IllegalArgumentException("Receiver does not have bank access");
             }
             if (!this.hasPermission(AlliancePermission.WITHDRAW_BANK)) {
                 return Map.entry(false, "The nation specifies has no `" + AlliancePermission.WITHDRAW_BANK + "` permission");
@@ -3787,7 +3785,6 @@ public class DBNation implements NationOrAlliance {
                 return Map.entry(false, "The nation specifies has no `" + AlliancePermission.VIEW_BANK + "` permission");
             }
 
-            DBNation senderNation = DBNation.getById(expectedNationId);
             if (senderNation == null) throw new IllegalArgumentException("Sender is null");
             if (senderNation.isBlockaded()) throw new IllegalArgumentException("Sender is blockaded");
             if (isBlockaded()) throw new IllegalArgumentException("Receiver is blockaded");
@@ -3821,7 +3818,8 @@ public class DBNation implements NationOrAlliance {
 
             StringBuilder response = new StringBuilder("Checking trades...");
 
-            Set<Auth.TradeResult> trades = acceptTrades(expectedNationId);
+            Set<Auth.TradeResult> trades = tradeSupplier.get();
+
             double[] toDeposit = ResourceType.getBuffer();
             for (Auth.TradeResult trade : trades) {
                 response.append("\n" + trade.toString());
@@ -3837,7 +3835,7 @@ public class DBNation implements NationOrAlliance {
             }
             int receiverId;
             try {
-                Bankrec deposit = api.depositIntoBank(toDeposit, "#ignore");
+                Bankrec deposit = receiverApi.depositIntoBank(toDeposit, "#ignore");
                 double[] amt = ResourceType.fromApiV3(deposit, ResourceType.getBuffer());
                 response.append("\nDeposited: `" + PnwUtil.resourcesToString(amt) + "`");
                 if (!ResourceType.equals(toDeposit, amt)) {
@@ -3885,7 +3883,57 @@ public class DBNation implements NationOrAlliance {
         }
     }
 
-    public Set<Auth.TradeResult> acceptTrades(int expectedNationId) {
+    public Map.Entry<Boolean, String> createAndOffshoreDeposit(GuildDB currentDB, DBNation senderNation, double[] amounts) {
+        Map<ResourceType, Integer> amountMap = new LinkedHashMap<>();
+        for (ResourceType type : ResourceType.values) {
+            double amt = amounts[type.ordinal()];
+            amt = amt < 0 ? Math.ceil(amt) : Math.floor(amt);
+            if (amt == 0) continue;
+            if (amt < 0) {
+                throw new IllegalArgumentException("Negative amount for " + type);
+            }
+            if (type == ResourceType.CREDITS) {
+                throw new IllegalArgumentException("Cannot deposit credits (amount: " + amt + ")");
+            }
+            amountMap.put(type, (int) amt);
+        }
+        if (amountMap.isEmpty()) {
+            throw new IllegalArgumentException("No resources to deposit");
+        }
+        PoliticsAndWarV3 senderApi = senderNation.getApi(true);
+        PoliticsAndWarV3 receiverApi = getApi(true);
+        Auth auth = getAuth();
+        if (auth == null) {
+            throw new IllegalArgumentException("Banker nation has no auth (" + getNationUrlMarkup(true) + "). See: " + CM.credentials.login.cmd.toSlashMention());
+        }
+
+        Supplier<Set<Auth.TradeResult>> tradeSupplier = new Supplier<>() {
+            @Override
+            public Set<Auth.TradeResult> get() {
+                for (Map.Entry<ResourceType, Integer> entry : amountMap.entrySet()) {
+                    String trade = auth.createDepositTrade(senderNation, entry.getKey(), entry.getValue());
+                }
+                return senderNation.acceptTrades(getNation_id(), true);
+
+            }
+        };
+        return createAndOffshoreDeposit(currentDB, senderNation, tradeSupplier);
+    }
+
+    public Map.Entry<Boolean, String> acceptAndOffshoreTrades(GuildDB currentDB, DBNation senderNation) {
+        int expectedNationId = senderNation.getNation_id();
+        PoliticsAndWarV3 api = getApi(true);
+
+        Supplier<Set<Auth.TradeResult>> tradeSupplier = new Supplier<>() {
+            @Override
+            public Set<Auth.TradeResult> get() {
+                return acceptTrades(senderNation.getNation_id(), false);
+            }
+        };
+        return createAndOffshoreDeposit(currentDB, senderNation, tradeSupplier);
+    }
+
+    public Set<Auth.TradeResult> acceptTrades(int expectedNationId, boolean reverse) {
         if (expectedNationId == nation_id) throw new IllegalArgumentException("Buyer and seller cannot be the same");
         if (!TimeUtil.checkTurnChange()) return Collections.singleton(new Auth.TradeResult("cannot accept during turn change", Auth.TradeResultType.BLOCKADED));
         if (isBlockaded()) return Collections.singleton(new Auth.TradeResult("receiver is blockaded", Auth.TradeResultType.BLOCKADED));
@@ -3894,6 +3942,9 @@ public class DBNation implements NationOrAlliance {
         Set<Auth.TradeResult> responses = new LinkedHashSet<>();
 
         Map<Trade, Map.Entry<String, Auth.TradeResultType>> errors = new LinkedHashMap<>();
+
+        String foodBuyOrSell = reverse ? "sell" : "buy";
+        String rssBuyOrSell = reverse ? "buy" : "sell";
 
         List<Trade> tradesV3 = api.fetchTradesWithInfo(new Consumer<TradesQueryRequest>() {
             @Override
@@ -3905,46 +3956,44 @@ public class DBNation implements NationOrAlliance {
         }, f -> {
             if (f.getAccepted()) return false;
             ResourceType resource = ResourceType.parse(f.getOffer_resource());
-            switch (f.getBuy_or_sell().toLowerCase()) {
-                case "buy":
-                    if (resource != ResourceType.FOOD) {
-                        errors.put(f, Map.entry("Buy offers can only be food trades", Auth.TradeResultType.NOT_A_FOOD_TRADE));
-                        return false;
-                    }
-                    if (f.getPrice() < 100000) {
-                        errors.put(f, Map.entry("Buy offers must be at least $100,000 to deposit", Auth.TradeResultType.INCORRECT_PPU));
-                        return false;
-                    }
-                    if (f.getReceiver_id() == null) {
-                        errors.put(f, Map.entry("Receiver id is null", Auth.TradeResultType.NOT_A_BUY_OFFER));
-                        return false;
-                    }
-                    if (f.getReceiver_id() != expectedNationId) {
-                        errors.put(f, Map.entry("Receiver id is not expected nation id (instead: " + expectedNationId + ")", Auth.TradeResultType.NOT_A_BUY_OFFER));
-                        return false;
-                    }
-                    return true;
-                case "sell":
-                    if (resource == ResourceType.CREDITS) {
-                        errors.put(f, Map.entry("Cannot sell credits", Auth.TradeResultType.CANNOT_DEPOSIT_CREDITS));
-                        return false;
-                    }
-                    if (f.getPrice() != 0) {
-                        errors.put(f, Map.entry("Sell offers must be $0 to deposit", Auth.TradeResultType.INCORRECT_PPU));
-                        return false;
-                    }
-                    if (f.getSender_id() == null) {
-                        errors.put(f, Map.entry("Sender id is null", Auth.TradeResultType.NOT_A_SELL_OFFER));
-                        return false;
-                    }
-                    if (f.getSender_id() != expectedNationId) {
-                        errors.put(f, Map.entry("Sender id is not expected nation id (instead: " + expectedNationId + ")", Auth.TradeResultType.NOT_A_SELL_OFFER));
-                        return false;
-                    }
-                    return true;
+            if (f.getBuy_or_sell().equalsIgnoreCase(foodBuyOrSell)) {
+                if (resource != ResourceType.FOOD) {
+                    errors.put(f, Map.entry(foodBuyOrSell + " offers can only be food trades", Auth.TradeResultType.NOT_A_FOOD_TRADE));
+                    return false;
+                }
+                if (f.getPrice() < 100000) {
+                    errors.put(f, Map.entry(foodBuyOrSell + " offers must be at least $100,000 to deposit", Auth.TradeResultType.INCORRECT_PPU));
+                    return false;
+                }
+                if (f.getReceiver_id() == null) {
+                    errors.put(f, Map.entry("Receiver id is null", Auth.TradeResultType.NOT_A_BUY_OFFER));
+                    return false;
+                }
+                if (f.getReceiver_id() != expectedNationId) {
+                    errors.put(f, Map.entry("Receiver id is not expected nation id (instead: " + expectedNationId + ")", Auth.TradeResultType.NOT_A_BUY_OFFER));
+                    return false;
+                }
+                return true;
+            } else if (f.getBuy_or_sell().equalsIgnoreCase(rssBuyOrSell)) {
+                if (resource == ResourceType.CREDITS) {
+                    errors.put(f, Map.entry("Cannot " + rssBuyOrSell + " credits", Auth.TradeResultType.CANNOT_DEPOSIT_CREDITS));
+                    return false;
+                }
+                if (f.getPrice() != 0) {
+                    errors.put(f, Map.entry(rssBuyOrSell + " offers must be $0 to deposit", Auth.TradeResultType.INCORRECT_PPU));
+                    return false;
+                }
+                if (f.getSender_id() == null) {
+                    errors.put(f, Map.entry("Sender id is null", Auth.TradeResultType.NOT_A_SELL_OFFER));
+                    return false;
+                }
+                if (f.getSender_id() != expectedNationId) {
+                    errors.put(f, Map.entry("Sender id is not expected nation id (instead: " + expectedNationId + ")", Auth.TradeResultType.NOT_A_SELL_OFFER));
+                    return false;
+                }
+                return true;
             }
-
-            return true;
+            return false;
         });
         Function<Trade, String> tradeToString = trade ->
                 trade.getBuy_or_sell() + " `" +

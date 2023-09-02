@@ -31,6 +31,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import rocker.guild.ia.message;
 
 import java.io.IOException;
 import java.net.CookieManager;
@@ -203,6 +204,59 @@ public class Auth {
         return Locutus.imp().getDiscordDB().getApiKey(nationId);
     }
 
+    public String createDepositTrade(DBNation receiver, ResourceType resource, int num) {
+        boolean isBuy;
+        int price; // aka PPU
+        int amount;
+        if (resource == ResourceType.MONEY) {
+            resource = ResourceType.FOOD;
+            isBuy = false;
+            if (num > 50000000) {
+                // amount must be whole number
+                // ppu * amount must be a whole number
+                // ppu * amount = num (or slightly below, due to rounding)
+                amount = (int) Math.ceil(num / 50000000d);
+                price = (int) Math.floor((double) num / amount);
+            } else {
+                price = num;
+                amount = 1;
+            }
+        } else {
+            isBuy = true;
+            price = 0;
+            amount = num;
+        }
+        return createTrade(receiver, resource, amount, price, isBuy);
+    }
+
+    public String createTrade(DBNation receiver, ResourceType resource, int amount, int ppu, boolean isBuy) {
+        String leadername = receiver.getLeader();
+        String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/trade/create?leadername=" + leadername;
+        Map<String, String> post = new HashMap<>();
+        post.put("resourceoffer", resource.name().toLowerCase());
+        post.put("offeramount", "" + amount);
+        post.put("wantamount", "" + ppu);
+        post.put("offertype", "personal");
+        post.put("leaderpersonal", leadername);
+        post.put("submit", isBuy ? "Buy" : "Sell");
+
+        return PnwUtil.withLogin(() -> {
+            String result = Auth.this.readStringFromURL(PagePriority.BANK_TRADE, url, emptyMap());
+            Document dom = Jsoup.parse(result);
+            String token = dom.select("input[name=sesh]").attr("value");
+            post.put("sesh", token);
+
+            result = Auth.this.readStringFromURL(PagePriority.TOKEN, url, post);
+            dom = Jsoup.parse(result);
+            String alert = PnwUtil.getAlert(dom);
+            if (alert.isEmpty()) {
+                return "(no output)";
+            }
+            return alert;
+        }, this);
+
+    }
+
     public String createAllianceEmbargo(int embargoFrom, NationOrAlliance embargo, String message) {
         Map<String, String> post = new HashMap<>();
 
@@ -216,10 +270,6 @@ public class Auth {
         return PnwUtil.withLogin(new Callable<String>() {
             @Override
             public String call() throws Exception {
-//                String result = Auth.this.readStringFromURL(url, emptyMap());
-//                Document dom = Jsoup.parse(result);
-//                String token = dom.getElementsByAttributeValue("name", "token").get(0).attr("value");
-
                 String result = Auth.this.readStringFromURL(PagePriority.EMBARGO, url, post);
                 return PnwUtil.getAlert(Jsoup.parse(result));
             }

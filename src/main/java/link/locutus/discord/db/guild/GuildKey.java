@@ -1147,7 +1147,7 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "The #channel to receive alerts when balance is added";
+            return "The #channel to receive alerts when there is a large tranfer in the game or a nation VMs with resources";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
     public static GuildSetting<MessageChannel> BANK_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.BANK_INFO) {
@@ -1520,19 +1520,6 @@ public class GuildKey {
                     "Use `#cash` as the note when depositing or transferring funds";
         }
     }.setupRequirements(f -> f.requires(ALLIANCE_ID));
-    public static GuildSetting<Boolean> DEPOSIT_INTEREST = new GuildBooleanSetting(GuildSettingCategory.BANK_INFO) {
-        @NoFormat
-        @Command(descMethod = "help")
-        @RolePermission(Roles.ADMIN)
-        public String DEPOSIT_INTEREST(@Me GuildDB db, @Me User user, boolean enabled) {
-            return DEPOSIT_INTEREST.setAndValidate(db, user, enabled);
-        }
-        @Override
-        public String help() {
-            return "If members should expect to receive interest on their deposits\n" +
-                    "To add interest you must manually run: " + CM.deposits.interest.cmd.toSlashMention();
-        }
-    }.setupRequirements(f -> f.requiresWhitelisted());
     public static GuildSetting<MessageChannel> TRADE_ALERT_CHANNEL = new GuildChannelSetting(GuildSettingCategory.TRADE) {
         @NoFormat
         @Command(descMethod = "help")
