@@ -378,19 +378,20 @@ public class NationDB extends DBMainV2 {
         if (ids.isEmpty()) return fetched;
         ids = new ArrayList<>(ids);
         Collections.sort(ids);
+
+        Set<Integer> toDelete = new HashSet<>();
         for (int i = 0; i < ids.size(); i += 500) {
             int end = Math.min(i + 500, ids.size());
             List<Integer> toFetch = ids.subList(i, end);
+            toDelete.addAll(toFetch);
             List<Alliance> alliances = v3.fetchAlliances(false, req -> req.setId(toFetch), true, true);
             processUpdatedAlliances(alliances, eventConsumer);
             for (Alliance alliance : alliances) {
                 fetched.add(alliance.getId());
+                toDelete.remove(alliance.getId());
             }
         }
 
-        // delete alliances not returned
-        Set<Integer> toDelete = new HashSet<>(ids);
-        toDelete.removeAll(fetched);
         if (!toDelete.isEmpty()) {
             deleteAlliances(toDelete, eventConsumer);
         }
@@ -504,7 +505,6 @@ public class NationDB extends DBMainV2 {
                         alliancesById.put(alliance.getId(), existing);
                     }
                     createdAlliances.add(existing);
-//                    if (alliance.getDate().getEpochSecond() > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7))
                     dirtyAlliances.add(existing);
                 } else {
                     if (existing.set(alliance, eventConsumer)) {

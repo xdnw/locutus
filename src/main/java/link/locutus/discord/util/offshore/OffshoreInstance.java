@@ -693,8 +693,11 @@ public class OffshoreInstance {
                 if (!receiver.isNation() || nationAccount.getNation_id() != receiver.asNation().getNation_id()) {
                     isInternalTransfer = true;
                     if (depositType.isIgnored()) {
+                        allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
+                        if (allowedIds.isEmpty()) {
 //                        return Map.entry(TransferStatus.INVALID_NOTE, "Please use `" + DepositType.DEPOSIT + "` as the depositType when transferring to another nation");
-                        return new TransferResult(TransferStatus.INVALID_NOTE, receiver, amount, depositType.toString()).addMessage("Please use `" + DepositType.DEPOSIT + "` as the depositType when transferring to another nation");
+                            return new TransferResult(TransferStatus.INVALID_NOTE, receiver, amount, depositType.toString()).addMessage("Please use `" + DepositType.DEPOSIT + "` as the depositType when transferring to another nation");
+                        }
                     }
                 }
 
@@ -907,7 +910,7 @@ public class OffshoreInstance {
             String ingameNote = isInternalTransfer ? "#" + DepositType.IGNORE.name().toLowerCase(Locale.ROOT) : note;
 
             long timestamp = System.currentTimeMillis();
-            if (isInternalTransfer) {
+            if (isInternalTransfer && !depositType.isIgnored()) {
                 senderDB.subtractBalance(timestamp, nationAccount, bankerNation.getNation_id(), note, amount);
             }
 

@@ -1493,22 +1493,31 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 } else {
                     int aaId = bankerNation.getAlliance_id();
                     if (!channelWithdrawAccounts.contains((long) aaId)) {
+                        String footer = "";
+                        if (!channelWithdrawAccounts.isEmpty()) {
+                            if (GuildKey.NON_AA_MEMBERS_CAN_BANK.getOrNull(this) == Boolean.TRUE) {
+                                return channelWithdrawAccounts.iterator().next();
+                            }
+                            if (!isAllianceId(aaId)) {
+                                footer = "\nTo allow non members to bank, see: " + GuildKey.NON_AA_MEMBERS_CAN_BANK.getCommandMention();
+                            }
+                        }
                         if (throwError) {
                             if (channelWithdrawAccounts.isEmpty()) {
                                 MessageChannel defaultChannel = getResourceChannel(aaId);
                                 if (defaultChannel == null) {
-                                    throw new IllegalArgumentException("Please set a default resource channel with " + CM.settings_bank_access.addResourceChannel.cmd.toSlashMention());
+                                    throw new IllegalArgumentException("Please set a default resource channel with " + CM.settings_bank_access.addResourceChannel.cmd.toSlashMention() + footer);
                                 } else if (messageChannelIdOrNull != null && messageChannelIdOrNull != defaultChannel.getIdLong()) {
-                                    throw new IllegalArgumentException("Please use the resource channel: " + defaultChannel.getAsMention());
+                                    throw new IllegalArgumentException("Please use the resource channel: " + defaultChannel.getAsMention() + footer);
                                 }
                             }
                             if (getResourceChannel(aaId) == null) {
-                                throw new IllegalArgumentException("Please set a resource channel for your alliance with " + CM.settings_bank_access.addResourceChannel.cmd.toSlashMention());
+                                throw new IllegalArgumentException("Please set a resource channel for your alliance with " + CM.settings_bank_access.addResourceChannel.cmd.toSlashMention() + footer);
                             }
                             if (channelWithdrawAccounts.isEmpty()) {
-                                throw new IllegalArgumentException("This channel is not authorized for withdrawals in your alliance: " + aaId);
+                                throw new IllegalArgumentException("This channel is not authorized for withdrawals in your alliance: " + aaId + footer);
                             }
-                            throw new IllegalArgumentException("This channel is only authorized for the alliance/accounts: " + StringMan.getString(channelWithdrawAccounts) + " (your alliance id is: " + aaId + ")");
+                            throw new IllegalArgumentException("This channel is only authorized for the alliance/accounts: " + StringMan.getString(channelWithdrawAccounts) + " (your alliance id is: " + aaId + ")" + footer);
                         }
                     } else if (bankerNation.getPositionEnum().id <= Rank.APPLICANT.id) {
                         if (throwError) {
@@ -2421,7 +2430,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         FALSE("No nickname given"),
         LEADER("Set to leader name"),
         NATION("Set to nation name"),
-        DISCORD("Set to discord name")
+        DISCORD("Set to discord name"),
+        NICKNAME("Set to discord nickname")
         ;
 
         private final String description;

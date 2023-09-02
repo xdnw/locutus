@@ -1051,6 +1051,20 @@ public class GuildKey {
             return "Whether members can use " + CM.transfer.resources.cmd.toSlashMention() + " or " + Settings.commandPrefix(true) + "grant` to access their own funds (true/false)";
         }
     }.setupRequirements(f -> f.requiresCoalition(Coalition.OFFSHORE).requiresOffshore());
+
+    public static GuildSetting<Boolean> NON_AA_MEMBERS_CAN_BANK = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String NON_AA_MEMBERS_CAN_BANK(@Me GuildDB db, @Me User user, boolean enabled) {
+            return NON_AA_MEMBERS_CAN_BANK.setAndValidate(db, user, enabled);
+        }
+        @Override
+        public String help() {
+            return "Whether nations which are not a member of the alliance ingame can use any configured banking functions, such as withdrawals";
+        }
+    }.setupRequirements(f -> f.requiresCoalition(Coalition.OFFSHORE).requiresOffshore().requires(ALLIANCE_ID));
+
     public static GuildSetting<Boolean> MEMBER_CAN_WITHDRAW_WARTIME = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
         @NoFormat
         @Command(descMethod = "help")
