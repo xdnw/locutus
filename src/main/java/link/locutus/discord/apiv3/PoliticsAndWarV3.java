@@ -1569,24 +1569,45 @@ public class PoliticsAndWarV3 {
             }
         }
     }
-    public List<Trade> fetchTradesWithInfo(Consumer<TradesQueryRequest> filter, Predicate<Trade> tradeResults) {
-        return fetchTrades(TRADES_PER_PAGE, filter, new Consumer<TradeResponseProjection>() {
-            @Override
-            public void accept(TradeResponseProjection projection) {
-                projection.id();
-                projection.type();
-                projection.date();
-                projection.sender_id();
-                projection.receiver_id();
-                projection.offer_resource();
-                projection.offer_amount();
-                projection.buy_or_sell();
-                projection.price();
 
-                projection.date_accepted();
-                projection.original_trade_id();
+    public List<Trade> fetchPrivateTrades(int nationId) {
+        List<Nation> result = fetchNations(true, new Consumer<NationsQueryRequest>() {
+            @Override
+            public void accept(NationsQueryRequest r) {
+                r.setId(List.of(nationId));
             }
-        }, f -> PoliticsAndWarV3.ErrorResponse.THROW, tradeResults);
+        }, new Consumer<NationResponseProjection>() {
+            @Override
+            public void accept(NationResponseProjection r) {
+                TradeResponseProjection projection = new TradeResponseProjection();
+                tradeRespose(projection);
+                NationTradesParametrizedInput params = new NationTradesParametrizedInput();
+                params.accepted(false);
+                params.type(TradeType.PERSONAL);
+                r.trades(params, projection);
+            }
+        });
+        if (result.size() != 1) return Collections.emptyList();
+        return result.get(0).getTrades();
+    }
+
+    private void tradeRespose(TradeResponseProjection projection) {
+        projection.id();
+        projection.type();
+        projection.date();
+        projection.sender_id();
+        projection.receiver_id();
+        projection.offer_resource();
+        projection.offer_amount();
+        projection.buy_or_sell();
+        projection.price();
+
+        projection.date_accepted();
+        projection.original_trade_id();
+    }
+
+    public List<Trade> fetchTradesWithInfo(Consumer<TradesQueryRequest> filter, Predicate<Trade> tradeResults) {
+        return fetchTrades(TRADES_PER_PAGE, filter, this::tradeRespose, f -> PoliticsAndWarV3.ErrorResponse.THROW, tradeResults);
     }
 
     public List<Embargo> fetchEmbargoWithInfo(Consumer<EmbargoesQueryRequest> filter, Consumer<EmbargoResponseProjection> query, Predicate<Embargo> embargoResults) {

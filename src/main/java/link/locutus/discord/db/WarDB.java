@@ -1537,10 +1537,10 @@ public class WarDB extends DBMainV2 {
     }
 
     public void fetchNewWars(Consumer<Event> eventConsumer) {
-        System.out.println("Fetch new wars");
         int maxId = activeWars.getActiveWars().keySet().stream().mapToInt(i -> i).max().orElse(0);
         if (maxId == 0) return;
         PoliticsAndWarV3 api = Locutus.imp().getV3();
+        System.out.println("Fetch new wars " + maxId);
         List<War> warsQl = api.fetchWarsWithInfo(r -> {
             r.setMin_id(maxId + 1);
             r.setActive(false);

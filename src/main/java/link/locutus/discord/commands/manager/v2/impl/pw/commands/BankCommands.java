@@ -3036,7 +3036,7 @@ public class BankCommands {
             "The receiver must be authenticated with the bot and have bank access in an alliance\n" +
             "Only resources sold for $0 or food bought for cash are accepted")
     @RolePermission(value = Roles.MEMBER)
-    public String acceptTrades(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, DBNation receiver, @Default Map<ResourceType, Double> amount, @Switch("f") boolean force) throws Exception {
+    public String acceptTrades(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, DBNation receiver, @Default Map<ResourceType, Double> amount, @Switch("a") boolean useApi, @Switch("f") boolean force) throws Exception {
         OffshoreInstance offshore = db.getOffshore();
         if (offshore == null) return "No offshore is set in this guild: <https://docs.google.com/document/d/1QkN1FDh8Z8ENMcS5XX8zaCwS9QRBeBJdCmHN5TKu_l8/>";
 
@@ -3059,7 +3059,16 @@ public class BankCommands {
             return null;
         }
 
-        Map.Entry<Boolean, String> result = receiver.acceptAndOffshoreTrades(db, me.getNation_id());
+        Map.Entry<Boolean, String> result;
+        if (useApi) {
+            result = receiver.acceptAndOffshoreTrades(db, me.getNation_id());
+        } else {
+            Auth auth = receiver.getAuth(true);
+            if (auth == null) return "Receiver is not authenticated with Locutus: " + CM.credentials.login.cmd.toSlashMention() + "\n" +
+                    "Alternatively, set `useApi: True`";
+
+            result = auth.acceptAndOffshoreTrades(db, me.getNation_id());
+        }
         if (!result.getKey()) {
             return "__**ERROR: No funds have been added to your account**__\n" +
                     result.getValue();

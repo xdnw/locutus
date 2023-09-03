@@ -358,10 +358,17 @@ public class NationDB extends DBMainV2 {
 
         List<Alliance> alliances = Locutus.imp().getV3().fetchAlliances(false, filter, true, true);
         if (alliances.isEmpty()) return;
+        if (!toDelete.isEmpty()) {
+            for (Alliance alliance : alliances) {
+                toDelete.remove(alliance.getId());
+            }
+        }
         Set<Integer> updated = processUpdatedAlliances(alliances, eventConsumer);
-        toDelete.removeAll(updated);
 
-        if (!toDelete.isEmpty()) deleteAlliances(toDelete, eventConsumer);
+        if (!toDelete.isEmpty()) {
+            updateAlliancesById(new ArrayList<>(toDelete), eventConsumer);
+//            deleteAlliances(toDelete, eventConsumer);
+        }
     }
 
     private Set<Integer> updateAlliancesById(List<Integer> ids, Consumer<Event> eventConsumer) {
@@ -374,10 +381,11 @@ public class NationDB extends DBMainV2 {
         for (int i = 0; i < ids.size(); i += 500) {
             int end = Math.min(i + 500, ids.size());
             List<Integer> toFetch = ids.subList(i, end);
-
-
             List<Alliance> alliances = v3.fetchAlliances(false, req -> req.setId(toFetch), true, true);
-            fetched.addAll(processUpdatedAlliances(alliances, eventConsumer));
+            processUpdatedAlliances(alliances, eventConsumer);
+            for (Alliance alliance : alliances) {
+                fetched.add(alliance.getId());
+            }
         }
 
         // delete alliances not returned
@@ -423,6 +431,17 @@ public class NationDB extends DBMainV2 {
                 Map<Integer, Treaty> removedTreaties = treatiesByAlliance.remove(id);
                 if (removedTreaties != null && !removedTreaties.isEmpty()) {
                     treatiesToDelete.addAll(removedTreaties.values());
+                }
+            }
+            synchronized (positionsByAllianceId) {
+                Map<Integer, DBAlliancePosition> positions = positionsByAllianceId.remove(id);
+                if (positions != null) {
+                    positionsToDelete.addAll(positions.keySet());
+                    for (int posId : positions.keySet()) {
+                        synchronized (this.positionsById) {
+                            positionsById.remove(posId);
+                        }
+                    }
                 }
             }
         }
@@ -1432,7 +1451,7 @@ public class NationDB extends DBMainV2 {
             }
         }
         DBAlliance result = null;
-        synchronized (alliancesById.values()) {
+        synchronized (alliancesById) {
             for (DBAlliance alliance : alliancesById.values()) {
                 if (alliance.getName().equalsIgnoreCase(name)) {
                     allianceByNameCache.put(alliance.getName().toLowerCase(Locale.ROOT), alliance);
@@ -2839,7 +2858,7 @@ public class NationDB extends DBMainV2 {
 
     public Set<DBAlliance> getAlliances() {
         synchronized (alliancesById) {
-            return new HashSet<>(alliancesById.values());
+            return new ObjectOpenHashSet<>(alliancesById.values());
         }
     }
     public Set<DBAlliance> getAlliances(boolean removeUntaxable, boolean removeInactive, boolean removeApplicants, int topX) {
@@ -2889,7 +2908,10 @@ public class NationDB extends DBMainV2 {
                         }
                     } else {
                         int idAbs = Math.abs(id);
-                        DBAlliance alliance = alliancesById.get(idAbs);
+                        DBAlliance alliance;
+                        synchronized (alliancesById) {
+                            alliance = alliancesById.get(idAbs);
+                        }
                         if (alliance != null) {
                             alliance.setMetaRaw(key, data);
                         } else {

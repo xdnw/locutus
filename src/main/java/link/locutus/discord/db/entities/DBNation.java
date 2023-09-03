@@ -83,6 +83,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import retrofit2.http.HEAD;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -3943,58 +3944,60 @@ public class DBNation implements NationOrAlliance {
 
         Map<Trade, Map.Entry<String, Auth.TradeResultType>> errors = new LinkedHashMap<>();
 
+<<<<<<<HEAD
         String foodBuyOrSell = reverse ? "sell" : "buy";
         String rssBuyOrSell = reverse ? "buy" : "sell";
 
-        List<Trade> tradesV3 = api.fetchTradesWithInfo(new Consumer<TradesQueryRequest>() {
-            @Override
-            public void accept(TradesQueryRequest r) {
-                r.setAccepted(false);
-                r.setNation_id(List.of(expectedNationId));
-                r.setType(TradeType.PERSONAL);
-            }
-        }, f -> {
-            if (f.getAccepted()) return false;
+        List<Trade> tradesV3 = new ArrayList<>(api.fetchPrivateTrades(nation_id));
+        if (tradesV3.isEmpty()) {
+            return Collections.singleton(new Auth.TradeResult("no trades to accept", Auth.TradeResultType.NO_TRADES));
+        }
+        tradesV3.removeIf(f -> f.getSender_id() == null || f.getSender_id() != expectedNationId);
+        tradesV3.removeIf((Predicate<Trade>) f -> {
+            if (f.getAccepted()) return true;
             ResourceType resource = ResourceType.parse(f.getOffer_resource());
             if (f.getBuy_or_sell().equalsIgnoreCase(foodBuyOrSell)) {
                 if (resource != ResourceType.FOOD) {
                     errors.put(f, Map.entry(foodBuyOrSell + " offers can only be food trades", Auth.TradeResultType.NOT_A_FOOD_TRADE));
-                    return false;
+                    return true;
                 }
                 if (f.getPrice() < 100000) {
                     errors.put(f, Map.entry(foodBuyOrSell + " offers must be at least $100,000 to deposit", Auth.TradeResultType.INCORRECT_PPU));
-                    return false;
+                    return true;
                 }
                 if (f.getReceiver_id() == null) {
                     errors.put(f, Map.entry("Receiver id is null", Auth.TradeResultType.NOT_A_BUY_OFFER));
-                    return false;
+                    return true;
                 }
                 if (f.getReceiver_id() != expectedNationId) {
-                    errors.put(f, Map.entry("Receiver id is not expected nation id (instead: " + expectedNationId + ")", Auth.TradeResultType.NOT_A_BUY_OFFER));
-                    return false;
+                    errors.put(f, Map.entry("Receiver id is not expected nation id (" + f.getSender_id() + " != " + expectedNationId + ")", Auth.TradeResultType.NOT_A_BUY_OFFER));
+                    return true;
                 }
-                return true;
+                return false;
             } else if (f.getBuy_or_sell().equalsIgnoreCase(rssBuyOrSell)) {
                 if (resource == ResourceType.CREDITS) {
                     errors.put(f, Map.entry("Cannot " + rssBuyOrSell + " credits", Auth.TradeResultType.CANNOT_DEPOSIT_CREDITS));
-                    return false;
+                    return true;
                 }
                 if (f.getPrice() != 0) {
                     errors.put(f, Map.entry(rssBuyOrSell + " offers must be $0 to deposit", Auth.TradeResultType.INCORRECT_PPU));
-                    return false;
+                    return true;
                 }
                 if (f.getSender_id() == null) {
                     errors.put(f, Map.entry("Sender id is null", Auth.TradeResultType.NOT_A_SELL_OFFER));
-                    return false;
+                    return true;
                 }
                 if (f.getSender_id() != expectedNationId) {
-                    errors.put(f, Map.entry("Sender id is not expected nation id (instead: " + expectedNationId + ")", Auth.TradeResultType.NOT_A_SELL_OFFER));
-                    return false;
+                    errors.put(f, Map.entry("Sender id is not expected nation id (" + f.getSender_id() + " != " + expectedNationId + ")", Auth.TradeResultType.NOT_A_SELL_OFFER));
+                    return true;
                 }
+                return false;
+            } else {
+                errors.put(f, Map.entry("Unknown buy or sell type: " + f.getBuy_or_sell(), Auth.TradeResultType.UNKNOWN_ERROR));
                 return true;
             }
-            return false;
         });
+
         Function<Trade, String> tradeToString = trade ->
                 trade.getBuy_or_sell() + " `" +
                         trade.getOffer_resource() + "=" +
