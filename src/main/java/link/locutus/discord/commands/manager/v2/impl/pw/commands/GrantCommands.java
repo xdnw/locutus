@@ -1849,7 +1849,6 @@ public class GrantCommands {
 //
 //    }
 
-    @WhitelistPermission
     @Command
     @HasOffshore
     @RolePermission(value = {Roles.ECON_STAFF, Roles.ECON, Roles.ECON_WITHDRAW_SELF}, any = true)
