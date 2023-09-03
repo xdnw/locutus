@@ -64,7 +64,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                          boolean allow_all, long expiryOrZero, boolean allowIgnore
     ) {
         super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore);
-        this.build = build;
+        this.build = build == null || build.length == 0 ? null : build;
         this.onlyNewCities = onlyNewCities;
         this.mmr = mmr <= 0 ? null : MMRInt.fromString(String.format("%04d", mmr));
         this.allow_switch_after_days = allow_switch_after_days;
@@ -83,7 +83,9 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
             message.append("build: " + new JavaCity().fromBytes(build).toJson());
 
         message.append("Only New Cities: " + onlyNewCities);
-        message.append("MMR: " + String.format("%04d", mmr));
+        if (mmr != null) {
+            message.append("MMR: " + String.format("%04d", mmr));
+        }
         message.append("Allow Switch After Days: " + allow_switch_after_days);
         message.append("Allow Switch After Offensive: " + allow_switch_after_offensive);
         message.append("Allow Switch After Infra: " + allow_switch_after_infra);
@@ -96,7 +98,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowIgnore) {
         return CM.grant_template.create.build.cmd.create(name, allowedRecipients,
                 build != null ? JavaCity.fromBytes(build).toJson() : null,
-                String.format("%04d", mmr),
+                mmr == null ? null : mmr.toString(),
                 onlyNewCities ? "true" : null,
                 allow_switch_after_days >0 ? allow_switch_after_days + "" : null,
                 allow_switch_after_offensive ? "true" : null,
@@ -111,7 +113,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         StringBuilder result = new StringBuilder(super.toListString());
         if (mmr != null) {
             // format int to 4 digits with 0 padding (before the number)
-            String mmrString = String.format("%04d", mmr);
+            String mmrString = mmr.toString();
             result.append(" | MMR=").append(mmrString);
         }
         if (onlyNewCities) {
@@ -144,9 +146,9 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setBytes(15, build);
+        stmt.setBytes(15, build == null ? new byte[0] : build);
         stmt.setBoolean(16, onlyNewCities);
-        stmt.setLong(17, mmr.toNumber());
+        stmt.setLong(17, mmr == null ? -1 : mmr.toNumber());
         stmt.setLong(18, allow_switch_after_days);
         stmt.setBoolean(19, allow_switch_after_offensive);
         stmt.setBoolean(20, allow_switch_after_infra);
