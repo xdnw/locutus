@@ -51,6 +51,36 @@ public interface CommandCallable {
         return getCallable(new ArrayList<>(args), false);
     }
 
+    default CommandCallable getCallable(String fullCommand, StringBuilder remainder) {
+        if (!(this instanceof CommandGroup)) {
+            remainder.append(fullCommand);
+            return this;
+        }
+        String original = fullCommand;
+        CommandGroup root = (CommandGroup) this;
+        while (!fullCommand.isEmpty()) {
+            String rootRemaining = fullCommand;
+
+            int index = fullCommand.indexOf(' ');
+            if (index == -1) index = fullCommand.length();
+            String word = fullCommand.substring(0, index);
+            fullCommand = fullCommand.substring(index).trim();
+
+            CommandCallable subCommand = root.get(word);
+            if (subCommand == null) {
+                remainder.append(rootRemaining);
+                return root;
+            }
+            if (subCommand instanceof CommandGroup) {
+                root = (CommandGroup) subCommand;
+            } else {
+                remainder.append(fullCommand);
+                return subCommand;
+            }
+        }
+        return this;
+    }
+
     default CommandCallable getCallable(List<String> args, boolean allowRemainder) {
         CommandCallable root = this;
 

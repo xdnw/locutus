@@ -35,7 +35,10 @@ public abstract class WikiGen {
         List<String> headings = new ArrayList<>();
         for (String line : lines) {
             if (line.startsWith("# ")) {
-                headings.add(line.substring(2));
+                line = line.substring(2);
+                if (line.equalsIgnoreCase("see also")) continue;
+
+                headings.add(line);
             }
         }
         return "- " + StringMan.join(headings, "\n- ");

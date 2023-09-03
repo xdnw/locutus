@@ -36,6 +36,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.test.TestCommands;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import org.jooq.Param;
 import org.json.JSONObject;
 
 import javax.annotation.Nullable;
@@ -392,54 +393,84 @@ public class CommandManager2 {
 
     public void run(LocalValueStore<Object> existingLocals, IMessageIO io, String fullCmdStr, boolean async, boolean returnNotFound) {
         Runnable task = () -> {
-            if (fullCmdStr.startsWith("{")) {
-                JSONObject json = new JSONObject(fullCmdStr);
-                Map<String, Object> arguments = json.toMap();
-                Map<String, String> stringArguments = new HashMap<>();
-                for (Map.Entry<String, Object> entry : arguments.entrySet()) {
-                    stringArguments.put(entry.getKey(), entry.getValue().toString());
-                }
-
-                String pathStr = arguments.remove("").toString();
-                run(existingLocals, io, pathStr, stringArguments, async);
-                return;
-            }
-            List<String> args = StringMan.split(fullCmdStr, ' ');
-            List<String> original = new ArrayList<>(args);
-            CommandCallable callable = commands.getCallable(args, true);
-            if (callable == null) {
-                if (returnNotFound) {
-                    List<String> validIds = new ArrayList<>(getCommands().primarySubCommandIds());
-                    List<String> closest = StringMan.getClosest(args.get(0), validIds, false);
-                    if (closest.size() > 5) closest = closest.subList(0, 5);
-                    io.send("No command found for `" + StringMan.getString(args.get(0)) + "`\n" +
-                            "Did you mean:\n- " + StringMan.join(closest, "\n- ") +
-                            "\n\nSee also: " + CM.help.find_command.cmd.toSlashMention());
-                } else {
-                    System.out.println("No cmd found for " + StringMan.getString(original));
-                }
-                return;
-            }
-
-            LocalValueStore locals = createLocals(existingLocals, null, null, null, null, io, null);
-
-            if (callable instanceof ParametricCallable parametric) {
-                ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
-                handleCall(io, () -> {
-                    try {
-                        Map<ParameterData, Map.Entry<String, Object>> map = parametric.parseArgumentsToMap(stack);
-                        Object[] parsed = parametric.argumentMapToArray(map);
-                        return parametric.call(null, locals, parsed);
-                    } catch (RuntimeException e) {
-                        Throwable e2 = e;
-                        while (e2.getCause() != null && e2.getCause() != e2) e2 = e2.getCause();
-                        e2.printStackTrace();
-                        throw new CommandUsageException(callable, e2.getMessage());
+            try {
+                if (fullCmdStr.startsWith("{")) {
+                    JSONObject json = new JSONObject(fullCmdStr);
+                    Map<String, Object> arguments = json.toMap();
+                    Map<String, String> stringArguments = new HashMap<>();
+                    for (Map.Entry<String, Object> entry : arguments.entrySet()) {
+                        stringArguments.put(entry.getKey(), entry.getValue().toString());
                     }
-                });
-            } else if (callable instanceof CommandGroup group) {
-                handleCall(io, group, locals);
-            } else throw new IllegalArgumentException("Invalid command class " + callable.getClass());
+
+                    String pathStr = arguments.remove("").toString();
+                    run(existingLocals, io, pathStr, stringArguments, async);
+                    return;
+                }
+                if (fullCmdStr.isEmpty()) {
+                    if (returnNotFound) {
+                        io.send("You did not enter a command");
+                        return;
+                    }
+                    return;
+                }
+                StringBuilder remaining = new StringBuilder();
+                CommandCallable callable = commands.getCallable(fullCmdStr, remaining);
+                if (callable instanceof CommandGroup group && !remaining.isEmpty()) {
+                    if (returnNotFound) {
+                        String commandId = fullCmdStr.replace(remaining.toString(), "");
+                        if (commandId.isEmpty()) {
+                            commandId = fullCmdStr.split(" ")[0];
+                        }
+                        // last string in split by space
+                        String[] lastCommandIdSplit = commandId.split(" ");
+                        String lastCommandId = lastCommandIdSplit[lastCommandIdSplit.length - 1];
+                        List<String> validIds = new ArrayList<>(group.primarySubCommandIds());
+                        List<String> closest = StringMan.getClosest(lastCommandId, validIds, false);
+                        if (closest.size() > 5) closest = closest.subList(0, 5);
+
+                        io.send("No command found for `" + commandId + "`\n" +
+                                "Did you mean:\n- " + group.getFullPath() + StringMan.join(closest, "\n- " + group.getFullPath()) +
+                                "\n\nSee also: " + CM.help.find_command.cmd.toSlashMention());
+                    }
+                    return;
+                }
+
+                if (!remaining.isEmpty() && callable instanceof ParametricCallable pc) {
+                    try {
+                        Set<String> params = pc.getUserParameterMap().keySet();
+                        Map<String, String> parsed = parseArguments(params, remaining.toString(), false);
+                        String pathStr = callable.getFullPath();
+                        run(existingLocals, io, pathStr, parsed, async);
+                        return;
+                    } catch (IllegalArgumentException ignore) {
+                        ignore.printStackTrace();
+                    }
+                }
+
+                List<String> args = StringMan.split(remaining.toString(), ' ');
+
+                LocalValueStore locals = createLocals(existingLocals, null, null, null, null, io, null);
+
+                if (callable instanceof ParametricCallable parametric) {
+                    ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
+                    handleCall(io, () -> {
+                        try {
+                            Map<ParameterData, Map.Entry<String, Object>> map = parametric.parseArgumentsToMap(stack);
+                            Object[] parsed = parametric.argumentMapToArray(map);
+                            return parametric.call(null, locals, parsed);
+                        } catch (RuntimeException e) {
+                            Throwable e2 = e;
+                            while (e2.getCause() != null && e2.getCause() != e2) e2 = e2.getCause();
+                            e2.printStackTrace();
+                            throw new CommandUsageException(callable, e2.getMessage());
+                        }
+                    });
+                } else if (callable instanceof CommandGroup group) {
+                    handleCall(io, group, locals);
+                } else throw new IllegalArgumentException("Invalid command class " + callable.getClass());
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
         };
         if (async) Locutus.imp().getExecutor().submit(task);
         else task.run();
