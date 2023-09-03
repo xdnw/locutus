@@ -416,6 +416,9 @@ public class AutoRoleTask implements IAutoRoleTask {
             case DISCORD:
                 leaderOrNation = member.getUser().getName();
                 break;
+            case NICKNAME:
+                leaderOrNation = member.getUser().getEffectiveName();
+                break;
             default:
                 return;
         }
