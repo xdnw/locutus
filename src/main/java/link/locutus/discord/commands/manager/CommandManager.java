@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager;
 
+import it.unimi.dsi.fastutil.chars.CharOpenHashSet;
+import it.unimi.dsi.fastutil.chars.CharSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv3.enums.NationLootType;
@@ -147,19 +149,33 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 public class CommandManager {
     private final char prefix1;
-    private final char prefix2;
     private final ScheduledThreadPoolExecutor executor;
     private final Map<String, Command> commandMap;
     private final CommandManager2 modernized;
-//    private Tag tag;
+    private final CharOpenHashSet modernPrefixes;
 
     public CommandManager(Locutus locutus) {
         this.prefix1 = Settings.commandPrefix(true).charAt(0);
-        this.prefix2 = Settings.commandPrefix(false).charAt(0);
+        this.modernPrefixes = new CharOpenHashSet();
+        modernPrefixes.add(Settings.commandPrefix(false).charAt(0))
+        for (String prefix : Settings.INSTANCE.DISCORD.COMMAND.ALERT_PREFIX) {
+            modernPrefixes.add(prefix.charAt(0));
+        }
         this.commandMap = new LinkedHashMap<>();
         this.executor = new ScheduledThreadPoolExecutor(256);
 
         modernized = new CommandManager2().registerDefaults();
+    }
+
+    public boolean isModernPrefix(char prefix) {
+        return modernPrefixes.contains(prefix);
+    }
+
+    public Set<Character> getAllPrefixes() {
+        Set<Character> prefixes = new LinkedHashSet<>();
+        prefixes.add(prefix1);
+        prefixes.addAll(modernPrefixes);
+        return prefixes;
     }
 
     public ScheduledExecutorService getExecutor() {
@@ -204,7 +220,7 @@ public class CommandManager {
 
         boolean jsonCommand = (content.startsWith("{") && content.endsWith("}"));
         char char0 = content.charAt(0);
-        if (char0 != (prefix1) && char0 != prefix2 && !jsonCommand) {
+        if (char0 != (prefix1) && !jsonCommand && !isModernPrefix(char0)) {
             handleWarRoomSync(guild, msgUser, channel, content);
 
             if (content.contains("You successfully gathered intelligence about")) {

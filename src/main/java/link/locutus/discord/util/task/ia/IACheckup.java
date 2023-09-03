@@ -463,7 +463,7 @@ public class IACheckup {
                 return stockpile == null || stockpile.isEmpty() ? null : checkWarchest(nation, stockpile, db);
             case BEIGE_LOOT:
                 if (nation.getMeta(NationMeta.INTERVIEW_RAID_BEIGE) == null) {
-                    String cmd = db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS) ? Settings.commandPrefix(true) + "raid * 15 -beige" : Settings.commandPrefix(false) + "raid *,#isbeige";
+                    String cmd = CM.war.find.raid.cmd.create("*", "15", null, null, "170", null, null, null, null, null, null).toString();
                     String shortDesc = "`" + cmd + "`";
                     String longDesc = "At higher city counts, there are less nations available to raid. You will need to find and hit nations as the come off of the beige protection color.\n" +
                             "To list raid targets currently on beige, use e.g.:\n" +
@@ -814,7 +814,7 @@ public class IACheckup {
             }
         }
 
-        String cmd = db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS) ? Settings.commandPrefix(true) + "raid * 15 -beige<12" : Settings.commandPrefix(false) + "raid *,#isbeige";
+        String cmd = CM.war.find.raid.cmd.create("*", "15", null, null, "12", null, null, null, null, null, null).toSlashCommand(false);
         String longDesc = "Let's declare on a target as they come off beige:\n" +
                 "1. Use e.g. `" + cmd + "` to find a target that ends beige in the next 12 turns\n" +
                 "2. Set a reminder on your phone, or on discord using " + CM.alerts.beige.beigeAlert.cmd.toSlashMention() + "\n" +
@@ -1119,14 +1119,14 @@ public class IACheckup {
         if (nation.getOff() >= targets.size() || targets.isEmpty()) return null;
         StringBuilder resposnse = new StringBuilder("You have " + (5 - nation.getOff()) + " free offensive slots. ");
         if (hasEnemies && nation.getOff() < 3) {
-            String warPriority = CM.war.find.enemy.cmd.create(null, null, null, null, null, null, null, "true", null, null, null).toSlashCommand();
+            String warPriority = CM.war.find.enemy.cmd.create(null, null, null, null, null, null, null, "true", null, null, null).toSlashCommand(false);
             resposnse.append("Please use " + warPriority+ " or " + CM.war.find.enemy.cmd.toSlashMention() + "");
         } else hasEnemies = false;
         if (hasRaids) {
             if (hasEnemies) resposnse.append("Please use ");
             else resposnse.append("or ");
 
-            String cmd = db.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS) ? Settings.commandPrefix(true) + "raid" : Settings.commandPrefix(false) + "raid *";
+            String cmd = CM.war.find.raid.cmd.create("*", null, null, null, null, null, null, null, null, null, null).toSlashCommand(false);
             resposnse.append("`" + cmd + "` ");
         }
         resposnse.append("for some juicy targets");
