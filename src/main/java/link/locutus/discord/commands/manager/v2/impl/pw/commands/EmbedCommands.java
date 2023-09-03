@@ -1,7 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import com.politicsandwar.graphql.model.Trade;
-import link.locutus.discord.commands.bank.Offshore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -17,7 +15,6 @@ import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
-import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
@@ -37,7 +34,6 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Message;
@@ -47,9 +43,7 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.ItemComponent;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
-import org.kefirsf.bb.conf.If;
 
-import java.awt.Color;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
@@ -61,7 +55,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 public class EmbedCommands {
@@ -365,7 +358,7 @@ Results are sorted best to last in <#995168236213633024>" "<#995168236213633024>
         CM.war.find.unprotected unprotected = CM.war.find.unprotected.cmd.create(
                 "*", "25", null, "true", null,  null, "90", null, null);
 
-        CommandBehavior behavior = CommandBehavior.UNDO_REACTION;
+        CommandBehavior behavior = CommandBehavior.UNPRESS;
         io.create().embed(title, body)
                 .commandButton(behavior, channelId, app, "7d_app")
                 .commandButton(behavior, channelId, members, "7d_members")
@@ -431,7 +424,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             CM.war.blockade.find breakCmd = CM.war.blockade.find.cmd.create("~allies,#active_m<2880", null, null, "10");
             CM.war.blockade.find breakUnpowered = CM.war.blockade.find.cmd.create("~allies,#ispowered=0,#active_m<2880", null, null, "10");
 
-            CommandBehavior behavior = CommandBehavior.UNDO_REACTION;
+            CommandBehavior behavior = CommandBehavior.UNPRESS;
             io.create().embed(title, body)
                     .commandButton(behavior, channelId, low, "low")
                     .commandButton(behavior, channelId, deposit, "deposit")
@@ -472,7 +465,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             CM.trade.margin trademargin = CM.trade.margin.cmd.create(null);
             CM.trade.profit tradeprofit = CM.trade.profit.cmd.create("{nation_id}", "7d");
 
-            CommandBehavior behavior = CommandBehavior.UNDO_REACTION;
+            CommandBehavior behavior = CommandBehavior.UNPRESS;
             io.create().embed(title, body)
                     .commandButton(behavior, channelId, send, "offshore")
                     .commandButton(behavior, channelId, deposits, "balance")
@@ -542,7 +535,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             body += "\n\n> Results in <#" + channelId + ">";
         }
 
-        CommandBehavior behavior = CommandBehavior.UNDO_REACTION;
+        CommandBehavior behavior = CommandBehavior.UNPRESS;
 
         CM.war.find.damage damage = CM.war.find.damage.cmd.create(
                 "~enemies", null, null, null, null, null, null, null, null, null, null);
@@ -640,7 +633,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         CM.war.find.damage infra = CM.war.find.damage.cmd.create(
                 "~enemies,#active_m>2880||~enemies,#score" + greaterOrLess + scoreMax +"||~enemies,#barracks=0,#off=0", "true", "true", null, null, null, null, null, dmStr, null, null);
 
-        CommandBehavior behavior = CommandBehavior.UNDO_REACTION;
+        CommandBehavior behavior = CommandBehavior.UNPRESS;
         io.create().embed(title, body)
                 .commandButton(behavior, channelId, easy, "easy")
                 .commandButton(behavior, channelId, high, "high")
@@ -694,7 +687,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         CM.spy.find.target kill = CM.spy.find.target.cmd.create(
                 "~" + coalition + ",#active_m<1440", "*", null, null, "true", null);
 
-        CommandBehavior behavior = CommandBehavior.UNDO_REACTION;
+        CommandBehavior behavior = CommandBehavior.UNPRESS;
 
         io.create().embed(title, body)
             .commandButton(behavior, channelId, spy, "spy")
@@ -763,7 +756,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         CM.war.find.enemy beige = CM.war.find.enemy.cmd.create(
                 "~enemies,#color=beige", null, null, "true", "true", null, null, "true", null, dmStr, null);
 
-        CommandBehavior behavior = CommandBehavior.UNDO_REACTION;
+        CommandBehavior behavior = CommandBehavior.UNPRESS;
 
         io.create().embed(title, body)
             .commandButton(behavior, channelId, high, "high")
@@ -1023,7 +1016,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             footer = "\n\n> Output in " + outputChannel.getAsMention();
         }
 
-        CommandBehavior behavior = CommandBehavior.UNDO_REACTION;
+        CommandBehavior behavior = CommandBehavior.UNPRESS;
 
         io.create()
                 .embed("All Enemies Sheet", "Press `update` to update" + footer).commandButton(behavior, channelId,
@@ -1089,7 +1082,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             footer += "\n\n> Output in " + outputChannel.getAsMention();
         }
 
-        CommandBehavior behavior = CommandBehavior.UNDO_REACTION;
+        CommandBehavior behavior = CommandBehavior.UNPRESS;
         Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
 
         String columns = StringMan.join(Arrays.asList(

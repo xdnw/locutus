@@ -715,7 +715,7 @@ public class WarCategory {
                 msg.clearEmbeds();
                 msg.clearButtons();
                 msg.embed(builder.build());
-                msg.commandButton(CommandBehavior.UNDO_REACTION, CM.war.room.pin.cmd, "Update");
+                msg.commandButton(CommandBehavior.UNPRESS, CM.war.room.pin.cmd, "Update");
                 try {
                     CompletableFuture<IMessageBuilder> sent = msg.send();
                     if (sent != null) msg = sent.get();

@@ -4,8 +4,6 @@ import com.google.gson.JsonSyntaxException;
 import com.politicsandwar.graphql.model.Bankrec;
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.Trade;
-import com.politicsandwar.graphql.model.TradeType;
-import com.politicsandwar.graphql.model.TradesQueryRequest;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
@@ -82,8 +80,6 @@ import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
-import retrofit2.http.HEAD;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -105,8 +101,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-
-import static java.util.Collections.emptyMap;
 
 public class DBNation implements NationOrAlliance {
     private int nation_id;
@@ -3598,7 +3592,7 @@ public class DBNation implements NationOrAlliance {
         String response = toEmbedString();
         response += "To report in-game fraud: " + CM.report.add.cmd.toSlashMention();
         IMessageBuilder msg = channel.create().embed(title, response)
-                .commandButton(CommandBehavior.UNDO_REACTION, CM.war.counter.nation.cmd.create(getId() + "", null, null, null, null, null, null, null), "Counter");
+                .commandButton(CommandBehavior.UNPRESS, CM.war.counter.nation.cmd.create(getId() + "", null, null, null, null, null, null, null), "Counter");
         if (refresh) {
             msg = msg.commandButton(CM.who.cmd.create(getId() + "", null, null, null, null, null, null, null, null), "Refresh");
         }

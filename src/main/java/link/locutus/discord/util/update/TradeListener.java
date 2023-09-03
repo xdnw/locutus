@@ -116,7 +116,6 @@ public class TradeListener {
                 treasuresToAlert.add(treasure);
             }
         }
-        Locutus.imp().getNationDB().saveTreasures(treasuresToAlert);
 
         DBNation maxNation = null;
         for (DBNation nation : Locutus.imp().getNationDB().getNations().values()) {

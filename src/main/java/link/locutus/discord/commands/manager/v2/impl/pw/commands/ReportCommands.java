@@ -6,7 +6,6 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsGuild;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.config.Messages;
@@ -52,7 +51,6 @@ import static link.locutus.discord.util.PnwUtil.getAllianceUrl;
 import static link.locutus.discord.util.PnwUtil.getName;
 import static link.locutus.discord.util.PnwUtil.getNationUrl;
 import static link.locutus.discord.util.PnwUtil.resourcesToArray;
-import static link.locutus.discord.util.PnwUtil.resourcesToMap;
 import static link.locutus.discord.util.discord.DiscordUtil.getGuildName;
 import static link.locutus.discord.util.discord.DiscordUtil.getGuildUrl;
 import static link.locutus.discord.util.discord.DiscordUtil.getUserName;
@@ -758,7 +756,7 @@ public class ReportCommands {
                     .confirmation(command, "addLoans", "Add")
                     .confirmation(command, "overwriteSameNation", "Same")
                     .confirmation(command, "overwriteLoans", "Overwrite")
-                    .commandButton(CommandBehavior.DELETE_REACTION, CM.report.sheet.generate.cmd, "View")
+                    .commandButton(CommandBehavior.DELETE_PRESSED_BUTTON, CM.report.sheet.generate.cmd, "View")
                     .send();
             return null;
         }

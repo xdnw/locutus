@@ -2,7 +2,6 @@ package link.locutus.discord;
 
 import com.google.common.eventbus.AsyncEventBus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
@@ -15,14 +14,12 @@ import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
-import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.stock.StockDB;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.config.yaml.Config;
 import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.AllianceMetric;
 import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DiscordBan;
 import link.locutus.discord.db.entities.DiscordMeta;
 import link.locutus.discord.db.entities.DBNation;
@@ -81,7 +78,6 @@ import net.dv8tion.jda.api.utils.ChunkingFilter;
 import net.dv8tion.jda.api.utils.Compression;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
-import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
@@ -1107,10 +1103,10 @@ public final class Locutus extends ListenerAdapter {
                             io.setMessageDeleted();
                             RateLimitUtil.queue(message.delete());
                         }
-                        case EPHEMERAL, UNDO_REACTION -> {
+                        case EPHEMERAL, UNPRESS -> {
                             // unsupported
                         }
-                        case DELETE_REACTION -> {
+                        case DELETE_PRESSED_BUTTON -> {
                             List<ActionRow> rows = new ArrayList<>(message.getActionRows());
                             for (int i = 0; i < rows.size(); i++) {
                                 ActionRow row = rows.get(i);
@@ -1122,7 +1118,7 @@ public final class Locutus extends ListenerAdapter {
                             rows.removeIf(f -> f.getComponents().isEmpty());
                             RateLimitUtil.queue(message.editMessageComponents(rows));
                         }
-                        case DELETE_REACTIONS -> {
+                        case DELETE_BUTTONS -> {
                             RateLimitUtil.queue(message.editMessageComponents(new ArrayList<>()));
                         }
                     }
