@@ -85,12 +85,16 @@ public class WikiBankPage extends WikiGen {
                     (where `1234` is your guild id)
                     [How-To: Obtaining Guild Id](https://support.discord.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID-)
                     
-                    **Option 2:** Via Trade 
-                    - Create a __private__ trade of either a `$0` ppu sell offer, or a food buy offer __over__ `$100,000` ppu. 
-                    - Send the trade with a nation with bank access to an alliance using the offshore, who has provided credentials to the bot. 
-                      (i.e. the bot owner `Borg`)
-                    - Use the command e.g. `/trade accept` in the discord server you wish to deposit into (i.e. your alliance or corporate server)
-                    Set the banker as the receiver (e.g. `Borg`)""",
+                    **Option 2:** Via Trade""",
+                    "Specify a receiver nation that has bank access to an alliance using the offshore, who has provided credentials to the bot (i.e. " + CM.credentials.login.cmd.toString() + ")",
+                    "- Input the amount you wish to deposit",
+                    "- Run the command in the discord server you wish to deposit into (i.e. your alliance or corporate server)",
+                    CM.trade.accept.cmd.create("Borg", "{food=1,coal=3,money=4}", null, null).toString(),
+                """
+                Note: If the banker only has provided api details, but not their login, you will need to send the trades to the receiver.
+                - Create a __private__ trade of either a `$0` ppu sell offer, or a food buy offer __over__ `$100,000` ppu.
+                - You will run the commands in the discord server you wish to deposit into (i.e. your alliance or corporate server)
+                - Use the command `/trade accept` without specifying an amount, only the receiver who you sent the trades to""",
                     commandMarkdownSpoiler(CM.trade.accept.cmd),
                 "# For my nation",
                 """

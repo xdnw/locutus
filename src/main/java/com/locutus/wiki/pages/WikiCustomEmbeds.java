@@ -51,7 +51,7 @@ public class WikiCustomEmbeds extends WikiGen {
                 commandMarkdown(CM.embed.add.command.cmd),
                 "# Add a modal (prompt button) to an embed",
                 commandMarkdown(CM.embed.add.modal.cmd),
-                "# Multiple commands in one button
+                "# Multiple commands in one button",
                 "Use `\\n` for newlines between commands",
                 commandMarkdown(CM.embed.add.raw.cmd)
         );
