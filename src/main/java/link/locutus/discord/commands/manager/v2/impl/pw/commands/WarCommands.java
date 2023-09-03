@@ -1307,7 +1307,11 @@ public class WarCommands {
 
     @Command(desc = "Find nations with high bounties within your war range")
     @RolePermission(Roles.MEMBER)
-    public void findBountyNations(@Me User Author, @Me DBNation me, @Me GuildDB guildDB, @Me IMessageIO channel, @Arg("Only list enemies with less ground than you") @Switch("r") boolean onlyWeaker, @Arg("Ignore the do not raid settings for this server") @Switch("d") boolean ignoreDNR, @Switch("n") @Default("5") Integer numResults) {
+    public void findBountyNations(@Me User Author, @Me DBNation me, @Me GuildDB guildDB, @Me IMessageIO channel,
+                                  @Arg("Only list enemies with less ground than you") @Switch("r") boolean onlyWeaker,
+                                  @Arg("Ignore the do not raid settings for this server") @Switch("d") boolean ignoreDNR,
+                                  @Switch("b") Set<WarType> bountyTypes,
+                                  @Switch("n") @Default("5") Integer numResults) {
 
         StringBuilder response = new StringBuilder("**Results for " + me.getNation() + "**:\n");
         Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(f -> f.isInWarRange(me));
@@ -1323,14 +1327,27 @@ public class WarCommands {
             nations.removeIf(f -> f.getStrength() > me.getStrength());
 
         Map<DBNation, Set<DBBounty>> nationBounties = nations.stream().collect(Collectors.toMap(n -> n, n -> Locutus.imp().getWarDb().getBounties(n.getNation_id())));
+        if (bountyTypes != null && !bountyTypes.isEmpty())
+        for (Set<DBBounty> bounties : nationBounties.values()) {
+            bounties.removeIf(f -> !bountyTypes.contains(f.getType()));
+        }
         nations.removeIf(f -> nationBounties.get(f).isEmpty());
 
-        long currentTurn = TimeUtil.getTurn();
-        Iterator<DBNation> iter = nations.iterator();
-        while (iter.hasNext()) {
-            DBNation nation = iter.next();
+        Map<DBNation, Map<WarType, Long>> bountySums = new HashMap<>();
+        Map<DBNation, Long> maxBounty = new HashMap<>();
+
+        for (DBNation nation : nations) {
             Set<DBBounty> bounties = nationBounties.get(nation);
             Map<WarType, Long> bountySum = bounties.stream().collect(Collectors.groupingBy(DBBounty::getType, Collectors.summingLong(DBBounty::getAmount)));
+            bountySums.put(nation, bountySum);
+            WarType maxType = bountySum.entrySet().stream().max(Comparator.comparingLong(Map.Entry::getValue)).get().getKey();
+            maxBounty.put(nation, bountySum.get(maxType));
+        }
+
+        List<DBNation> sorted = nations.stream().sorted(Comparator.comparingLong(maxBounty::get).reversed()).toList();
+
+        for (DBNation nation : sorted) {
+            Map<WarType, Long> bountySum = bountySums.get(nation);
             Map<String, String> bountySumComma = bountySum.entrySet().stream().collect(Collectors.toMap(e -> e.getKey().toString(), e -> MathMan.format(e.getValue())));
 
             String bountyStr = bountySumComma.toString().replace("{", "").replace("}", "").replace(" ", "");
