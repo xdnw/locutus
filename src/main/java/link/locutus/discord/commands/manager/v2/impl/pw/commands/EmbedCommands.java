@@ -801,29 +801,43 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
 
         boolean isCorp = db.getAllianceIds().isEmpty();
 
-        boolean isDepositsModal = true;
-        String depositFundsLabel;
-        CommandRef depositFunds;
-        CommandRef depositAuto = null;
-        CommandRef offshore = null;
+        List<CommandRef> addButtons = new ArrayList<>();
+        List<String> addLabels = new ArrayList<>();
+        List<Boolean> isModals = new ArrayList<>();
+
         if (isCorp) {
-            depositFundsLabel = "trade deposit";
             body += "\nTo deposit, send a PRIVATE trade offer to " + PnwUtil.getMarkdownUrl(nationId, false) + ":\n" +
                     "- Selling a resource for $0\n" +
                     "- Buying food for OVER $100,000\n" +
-                    "Then press `trade deposit`";
-            depositFunds = CM.trade.accept.cmd.create(nationId + "", Boolean.TRUE + "");
-            isDepositsModal = false;
+                    "Press `trade deposit` if you have sent trades\n" +
+                    "Press `trade deposit amount` if you want to create trades for an amount\n";
+
+            addButtons.add(CM.trade.accept.cmd.create(nationId + "", null, null, null));
+            addLabels.add("deposit trade");
+            isModals.add(false);
+
+            addButtons.add(CM.trade.accept.cmd.create(nationId + "", "", null, null));
+            addLabels.add("deposit trade amount");
+            isModals.add(false);
         } else {
-            depositFundsLabel = "deposit custom";
             body += "\nTo deposit, go to your alliance bank page in-game.\n" +
                     "Alternatively, set your api key with: " + CM.credentials.addApiKey.cmd.toSlashMention() + "\n" +
                     "And then press" +
                     "- `deposit custom` or `deposit auto`" +
                     "- `offshore` to offshore funds";
-            depositFunds = CM.bank.deposit.cmd.create("nation:{nation_id}", null, "", null, null, null, null, null, null, null, null, null, null, null, "true", "true");
-            depositAuto = CM.bank.deposit.cmd.create("nation:{nation_id}", null, null, "7", null, null, "1", null, null, null, null, null, null, null, "true", "true");
-            offshore = CM.offshore.send.cmd.create(null, null, null);
+            addButtons.add(CM.bank.deposit.cmd.create("nation:{nation_id}", null, "", null, null, null, null, null, null, null, null, null, null, null, "true", "true"));
+            addLabels.add("deposit custom");
+            isModals.add(true);
+
+
+            CommandRef depositAuto = CM.bank.deposit.cmd.create("nation:{nation_id}", null, null, "7", null, null, "1", null, null, null, null, null, null, null, "true", "true");
+            addButtons.add(depositAuto);
+            addLabels.add("deposit auto");
+            isModals.add(false);
+            CommandRef offshore = CM.offshore.send.cmd.create(null, null, null);
+            addButtons.add(offshore);
+            addLabels.add("offshore");
+            isModals.add(false);
         }
 
         Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
@@ -843,16 +857,16 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 .modal(behavior, channelId, self, "self")
                 .modal(behavior, channelId, other, "other")
                 .commandButton(behavior, channelId, stockpile, "stockpile");
-        if (isDepositsModal) {
-            msg = msg.modal(behavior, channelId, depositFunds, depositFundsLabel);
-        } else {
-            msg = msg.commandButton(behavior, channelId, depositFunds, depositFundsLabel);
-        }
-        if (depositAuto != null) {
-            msg = msg.commandButton(behavior, channelId, depositAuto, "deposit auto");
-        }
-        if (offshore != null) {
-            msg = msg.commandButton(behavior, channelId, offshore, "offshore");
+
+        for (int i = 0; i < addButtons.size(); i++) {
+            CommandRef add = addButtons.get(i);
+            String label = addLabels.get(i);
+            boolean isModal = isModals.get(i);
+            if (isModal) {
+                msg = msg.modal(behavior, channelId, add, label);
+            } else {
+                msg = msg.commandButton(behavior, channelId, add, label);
+            }
         }
         msg.send();
     }

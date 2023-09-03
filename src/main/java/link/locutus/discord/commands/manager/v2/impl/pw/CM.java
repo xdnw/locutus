@@ -1180,8 +1180,8 @@ public class CM {
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.DiscordCommands.class,method="embedInfo")
         public static class info extends CommandRef {
             public static final info cmd = new info();
-            public info create(String message) {
-                return createArgs("message", message);
+            public info create(String embedMessage, String copyToMessage) {
+                return createArgs("embedMessage", embedMessage, "copyToMessage", copyToMessage);
             }
         }
         public static class remove{
@@ -2427,6 +2427,13 @@ public class CM {
                 return createArgs("enabled", enabled);
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="NON_AA_MEMBERS_CAN_BANK", field="NON_AA_MEMBERS_CAN_BANK")
+        public static class NON_AA_MEMBERS_CAN_BANK extends CommandRef {
+            public static final NON_AA_MEMBERS_CAN_BANK cmd = new NON_AA_MEMBERS_CAN_BANK();
+            public NON_AA_MEMBERS_CAN_BANK create(String enabled) {
+                return createArgs("enabled", enabled);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="PUBLIC_OFFSHORING", field="PUBLIC_OFFSHORING")
         public static class PUBLIC_OFFSHORING extends CommandRef {
             public static final PUBLIC_OFFSHORING cmd = new PUBLIC_OFFSHORING();
@@ -2497,13 +2504,6 @@ public class CM {
             public static final DEPOSIT_ALERT_CHANNEL cmd = new DEPOSIT_ALERT_CHANNEL();
             public DEPOSIT_ALERT_CHANNEL create(String channel) {
                 return createArgs("channel", channel);
-            }
-        }
-        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="DEPOSIT_INTEREST", field="DEPOSIT_INTEREST")
-        public static class DEPOSIT_INTEREST extends CommandRef {
-            public static final DEPOSIT_INTEREST cmd = new DEPOSIT_INTEREST();
-            public DEPOSIT_INTEREST create(String enabled) {
-                return createArgs("enabled", enabled);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="DISPLAY_ITEMIZED_DEPOSITS", field="DISPLAY_ITEMIZED_DEPOSITS")
@@ -3681,8 +3681,8 @@ public class CM {
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="acceptTrades")
         public static class accept extends CommandRef {
             public static final accept cmd = new accept();
-            public accept create(String receiver, String force) {
-                return createArgs("receiver", receiver, "force", force);
+            public accept create(String receiver, String amount, String useLogin, String force) {
+                return createArgs("receiver", receiver, "amount", amount, "useLogin", useLogin, "force", force);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="GlobalTradeAverage")

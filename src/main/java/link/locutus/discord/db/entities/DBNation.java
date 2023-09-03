@@ -3763,7 +3763,7 @@ public class DBNation implements NationOrAlliance {
     public PoliticsAndWarV3 getApi(boolean throwError) {
         ApiKeyPool.ApiKey apiKey = this.getApiKey(true);
         if (apiKey == null) {
-            if (throwError) throw new IllegalStateException("No api key found");
+            if (throwError) throw new IllegalStateException("No api key found for `" + nation + "` Please set one: " + CM.credentials.addApiKey.cmd.toSlashMention());
             return null;
         }
         return new PoliticsAndWarV3(ApiKeyPool.create(apiKey));
@@ -3884,7 +3884,7 @@ public class DBNation implements NationOrAlliance {
         }
     }
 
-    public Map.Entry<Boolean, String> createAndOffshoreDeposit(GuildDB currentDB, DBNation senderNation, double[] amounts) {
+    public Map.Entry<Boolean, String> tradeAndOffshoreDeposit(GuildDB currentDB, DBNation senderNation, double[] amounts) {
         Map<ResourceType, Integer> amountMap = new LinkedHashMap<>();
         for (ResourceType type : ResourceType.values) {
             double amt = amounts[type.ordinal()];
@@ -3944,7 +3944,6 @@ public class DBNation implements NationOrAlliance {
 
         Map<Trade, Map.Entry<String, Auth.TradeResultType>> errors = new LinkedHashMap<>();
 
-<<<<<<<HEAD
         String foodBuyOrSell = reverse ? "sell" : "buy";
         String rssBuyOrSell = reverse ? "buy" : "sell";
 

@@ -87,18 +87,20 @@ public class CityTemplate extends AGrantTemplate<Integer> {
     //add flags to the template database
     @Override
     public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Integer amount) {
+        if (amount == null) amount = 1;
         List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, amount);
 
         // amount cannot be <= 0
-        list.add(new Grant.Requirement("Amount must be greater than 0 not `" + amount + "`", false, f -> amount > 0));
+        int finalAmount = amount;
+        list.add(new Grant.Requirement("Amount must be greater than 0 not `" + amount + "`", false, f -> finalAmount > 0));
 
         // 0 - 10 (can buy up to 10 with amount)
         // 10+ = 1 amount max
         list.add(new Grant.Requirement("Cannot grant more 1 city at a time past city 10", false, f -> {
             if(f.getCities() < 10)
-                return amount <= 10 - f.getCities();
+                return finalAmount <= 10 - f.getCities();
             else
-                return amount <= 1;
+                return finalAmount <= 1;
         }));
 
         int currentCities = receiver == null ? 0 : receiver.getCities();

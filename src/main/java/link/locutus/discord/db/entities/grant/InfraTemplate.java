@@ -104,6 +104,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
 
     @Override
     public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Double amount) {
+        if (amount == null) amount = (double) level;
         List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, amount);
 
         if (amount > level) {
