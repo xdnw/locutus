@@ -157,7 +157,7 @@ public class CommandManager {
     public CommandManager(Locutus locutus) {
         this.prefix1 = Settings.commandPrefix(true).charAt(0);
         this.modernPrefixes = new CharOpenHashSet();
-        modernPrefixes.add(Settings.commandPrefix(false).charAt(0))
+        modernPrefixes.add(Settings.commandPrefix(false).charAt(0));
         for (String prefix : Settings.INSTANCE.DISCORD.COMMAND.ALERT_PREFIX) {
             modernPrefixes.add(prefix.charAt(0));
         }
