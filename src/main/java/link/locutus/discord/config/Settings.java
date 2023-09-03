@@ -1,11 +1,7 @@
 package link.locutus.discord.config;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.network.ProxyHandler;
 import link.locutus.discord.config.yaml.Config;
-import link.locutus.discord.db.GuildDB;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.io.File;
 import java.util.*;
@@ -468,8 +464,8 @@ public class Settings extends Config {
             @Comment("The prefix used for v2 commands (single character)")
             public String COMMAND_PREFIX = "/";
 
-            @Comment("Tell the user the new command prefix to use if they use on of these prefixes")
-            public List<String> ALERT_PREFIX = Arrays.asList("$");
+            @Comment("Additional prefixes supported for message commands (single character)")
+            public List<String> ALTERNATE_COMMAND_PREFIX = Arrays.asList("$");
         }
     }
 
