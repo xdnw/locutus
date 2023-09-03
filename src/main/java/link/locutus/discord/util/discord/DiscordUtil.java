@@ -342,7 +342,7 @@ public class DiscordUtil {
             nextPageCmd = new JSONObject(arguments).put("page", page + 1).toString();
         } else {
             String cmdCleared = command.replaceAll("-p " + "[0-9]+", "");
-            if (!cmdCleared.startsWith(Settings.commandPrefix(false))) {
+            if (!cmdCleared.isEmpty() && !Locutus.cmd().isModernPrefix(cmdCleared.charAt(0))) {
                 cmdCleared = Settings.commandPrefix(false) + cmdCleared;
             }
             previousPageCmd = cmdCleared + " -p " + (page - 1);
@@ -521,8 +521,8 @@ public class DiscordUtil {
             }
         }
 
-        if (id.startsWith(Settings.commandPrefix(true)) || id.startsWith(Settings.commandPrefix(false))) {
-            List<String> split = Arrays.asList(id.split("\\r?\\n(?=[" + Settings.commandPrefix(false) + "|" + Settings.commandPrefix(true) + "|{])"));
+        if (!id.isEmpty() && (id.startsWith(Settings.commandPrefix(true)) || Locutus.cmd().isModernPrefix(id.charAt(0)))) {
+            List<String> split = Arrays.asList(id.split("\\r?\\n(?=[" + StringMan.join(Locutus.cmd().getAllPrefixes(), "|") + "|{])"));
             List<CommandInfo> infos = new ArrayList<>(split.size());
             for (String cmd : split) {
                 infos.add(new CommandInfo(channelId, behavior, cmd));

@@ -1087,7 +1087,7 @@ public final class Locutus extends ListenerAdapter {
                         }
                     }
 
-                    if (id.startsWith(Settings.commandPrefix(true)) || id.startsWith(Settings.commandPrefix(false))) {
+                    if (!id.isEmpty() && (id.startsWith(Settings.commandPrefix(true)) || commandManager.isModernPrefix(id.charAt(0)))) {
                         success |= handleCommandReaction(id, message, ioToUse, user, true);
                         hasLegacyCommand = true;
                     } else if (id.startsWith("{")) {
@@ -1304,7 +1304,7 @@ public final class Locutus extends ListenerAdapter {
 
         DiscordChannelIO io = new DiscordChannelIO(channel, () -> message);
 
-        String[] split = raw.split("\\r?\\n(?=[" + Settings.commandPrefix(false) + "|" + Settings.commandPrefix(true) + "|{])");
+        String[] split = raw.split("\\r?\\n(?=[" + StringMan.join(commandManager.getAllPrefixes(), "|") + "|{])");
         System.out.println("Split " + StringMan.getString(split));
         for (String cmd : split) {
             success |= handleCommandReaction(cmd, message, io, user, async);

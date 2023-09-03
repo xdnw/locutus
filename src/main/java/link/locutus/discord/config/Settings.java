@@ -104,8 +104,6 @@ public class Settings extends Config {
         return legacy ? Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX : Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX;
     }
 
-    //
-
     public String PNW_URL() {
         return "https://" + (TEST ? "test." : "") + "politicsandwar.com";
     }
@@ -468,7 +466,10 @@ public class Settings extends Config {
             public String LEGACY_COMMAND_PREFIX = "!";
 
             @Comment("The prefix used for v2 commands (single character)")
-            public String COMMAND_PREFIX = "$";
+            public String COMMAND_PREFIX = "/";
+
+            @Comment("Tell the user the new command prefix to use if they use on of these prefixes")
+            public List<String> ALERT_PREFIX = Arrays.asList("$");
         }
     }
 

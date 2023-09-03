@@ -534,7 +534,7 @@ public class RaidCommand extends Command {
 
         for (Map.Entry<DBNation, Map.Entry<Double, Double>> entry : nationNetValues) {
             DBNation nation = entry.getKey();
-            if (nation.isBeige() && beigeTurns != -1) {
+            if (nation.isBeige() && beigeTurns != -1 && beigeTurns != Integer.MAX_VALUE) {
                 if (nation.getBeigeTurns() >= beigeTurns) continue;
             }
             if (count++ == numResults) break;

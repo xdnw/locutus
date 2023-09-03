@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.command;
 import com.google.gson.Gson;
 import de.vandermeer.asciitable.AT_Context;
 import de.vandermeer.asciitable.AsciiTable;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.config.Settings;
@@ -217,7 +218,7 @@ public interface IMessageBuilder {
             nextPageCmd = new JSONObject(arguments).put("page", page + 1).toString();
         } else {
             String cmdCleared = command.replaceAll("-p " + "[0-9]+", "");
-            if (!cmdCleared.startsWith(Settings.commandPrefix(false))) {
+            if (!cmdCleared.isEmpty() && !Locutus.cmd().isModernPrefix(cmdCleared.charAt(0))) {
                 cmdCleared = Settings.commandPrefix(false) + cmdCleared;
             }
             previousPageCmd = cmdCleared + " -p " + (page - 1);
