@@ -459,7 +459,7 @@ public class GrantCommands {
                 maxGranterDay == null ? 0 : maxGranterDay,
                 maxGranterTotal == null ? 0 : maxGranterTotal,
                 System.currentTimeMillis(),
-                level == null ? 0 : level,
+                level,
                 onlyNewCities,
                 requireNOffensives == null ? 0 : requireNOffensives,
                 allowRebuild, allowExpire == null ? 0 : allowExpire, allowIgnore);
