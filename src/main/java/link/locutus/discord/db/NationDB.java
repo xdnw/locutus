@@ -2237,6 +2237,7 @@ public class NationDB extends DBMainV2 {
 
         executeStmt("CREATE TABLE IF NOT EXISTS NATION_DESCRIPTIONS (id INT NOT NULL PRIMARY KEY, description TEXT NOT NULL)");
 
+        executeStmt("DROP TABLE IF EXISTS TREASURES4"); // Remove after restart
         executeStmt("CREATE TABLE IF NOT EXISTS TREASURES4 (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, color INT, continent INT, bonus INT NOT NULL, spawn_date BIGINT NOT NULL, nation_id INT NOT NULL, respawn_alert BIGINT NOT NULL)");
 
         // banned_nations
@@ -2424,7 +2425,9 @@ public class NationDB extends DBMainV2 {
         PoliticsAndWarV3 v3 = Locutus.imp().getV3();
 
         // get treasures fetchTreasures
-        Set<DBTreasure> treasuresToSave = new HashSet<>();
+        Set<DBTreasure> treasuresToUpdate = new HashSet<>();
+        Set<DBTreasure> treasuresToCreate = new HashSet<>();
+
         List<Treasure> newTreasures = v3.fetchTreasures();
         for (Treasure newTreasure : newTreasures) {
             String name = newTreasure.getName();
@@ -2434,7 +2437,7 @@ public class NationDB extends DBMainV2 {
             }
             if (existing == null) {
                 existing = new DBTreasure().set(newTreasure);
-                treasuresToSave.add(existing);
+                treasuresToCreate.add(existing);
                 synchronized (treasuresByName) {
                     treasuresByName.put(existing.getName(), existing);
                 }
@@ -2450,9 +2453,6 @@ public class NationDB extends DBMainV2 {
             if (copy != null && !copy.equalsExact(existing)) {
                 if (copy.getNation_id() != existing.getNation_id()) {
                     if (copy.getNation_id() > 0) {
-                        // is set now
-                        // remove set if empty
-//                        treasuresByNation.remove(copy.getNation_id(), existing);
                         synchronized (treasuresByNation) {
                             Set<DBTreasure> treasures = treasuresByNation.get(copy.getNation_id());
                             if (treasures != null) {
@@ -2470,16 +2470,51 @@ public class NationDB extends DBMainV2 {
                     }
                 }
 
-                treasuresToSave.add(existing);
+                if (existing.getId() != -1) {
+                    treasuresToUpdate.add(existing);
+                }
 
                 // new treasure event
                 if (eventConsumer != null) eventConsumer.accept(new TreasureUpdateEvent(copy, existing));
             }
         }
-        saveTreasures(treasuresToSave);
+        if (!treasuresToUpdate.isEmpty()) {
+            updateTreasuresDB(treasuresToUpdate);
+        }
+        if (!treasuresToCreate.isEmpty()) {
+            createTreasuresDB(treasuresToCreate);
+        }
     }
 
-    public synchronized void saveTreasures(Collection<DBTreasure> treasures) {
+    public synchronized void updateTreasuresDB(Collection<DBTreasure> treasures) {
+        String update = "UPDATE TREASURES4 SET name = ?, color = ?, continent = ?, bonus = ?, spawn_date = ?, nation_id = ?, respawn_alert = ? WHERE id = ?";
+        for (DBTreasure treasure : treasures) {
+            try (PreparedStatement stmt = getConnection().prepareStatement(update)) {
+                stmt.setString(1, treasure.getName());
+                if (treasure.getColor() == null) {
+                    stmt.setNull(2, Types.INTEGER);
+                } else {
+                    stmt.setInt(2, treasure.getColor().ordinal());
+                }
+                if (treasure.getContinent() == null) {
+                    stmt.setNull(3, Types.INTEGER);
+                } else {
+                    stmt.setInt(3, treasure.getContinent().ordinal());
+                }
+                stmt.setInt(4, treasure.getBonus());
+                stmt.setLong(5, treasure.getSpawnDate());
+                stmt.setInt(6, treasure.getNation_id());
+                stmt.setLong(7, treasure.getRespawnAlertDate());
+                stmt.setInt(8, treasure.getId());
+                stmt.executeUpdate();
+            } catch (SQLException e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public synchronized void createTreasuresDB(Collection<DBTreasure> treasures) {
         String insert = "INSERT OR REPLACE INTO TREASURES4 (id, name, color, continent, bonus, spawn_date, nation_id, respawn_alert) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         for (DBTreasure treasure : treasures) {
             try (PreparedStatement stmt = getConnection().prepareStatement(insert, Statement.RETURN_GENERATED_KEYS)) {

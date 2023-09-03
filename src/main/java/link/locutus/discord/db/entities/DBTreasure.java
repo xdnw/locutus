@@ -139,8 +139,7 @@ public class DBTreasure {
     }
 
     public long getDaysRemaining() {
-        long difference = (System.currentTimeMillis() - getSpawnDate()) + (TimeUnit.DAYS.toMillis(60));
-        return TimeUnit.MILLISECONDS.toDays(difference);
+        return getTimeUntilNextSpawn() / TimeUnit.DAYS.toMillis(1);
     }
 
     public void setSpawnDate(long spawn_date) {
