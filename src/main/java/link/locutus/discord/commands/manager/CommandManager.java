@@ -1,7 +1,6 @@
 package link.locutus.discord.commands.manager;
 
 import it.unimi.dsi.fastutil.chars.CharOpenHashSet;
-import it.unimi.dsi.fastutil.chars.CharSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv3.enums.NationLootType;
@@ -135,7 +134,6 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
-import link.locutus.discord.web.jooby.handler.DummyMessageOutput;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
@@ -158,7 +156,7 @@ public class CommandManager {
         this.prefix1 = Settings.commandPrefix(true).charAt(0);
         this.modernPrefixes = new CharOpenHashSet();
         modernPrefixes.add(Settings.commandPrefix(false).charAt(0));
-        for (String prefix : Settings.INSTANCE.DISCORD.COMMAND.ALERT_PREFIX) {
+        for (String prefix : Settings.INSTANCE.DISCORD.COMMAND.ALTERNATE_COMMAND_PREFIX) {
             modernPrefixes.add(prefix.charAt(0));
         }
         this.commandMap = new LinkedHashMap<>();
@@ -242,7 +240,7 @@ public class CommandManager {
         }
 
         // Channel blacklisting / whitelisting
-        if (char0 == prefix2 || jsonCommand) {
+        if (isModernPrefix(char0) || jsonCommand) {
             try {
                 modernized.run(guild, channel, msgUser, content, async, returnNotFound);
             } catch (Throwable e) {
