@@ -327,7 +327,7 @@ public class CommandManager2 {
 
     public void run(Guild guild, IMessageIO io, User author, String command, boolean async, boolean returnNotFound) {
         String fullCmdStr = DiscordUtil.trimContent(command).trim();
-        if (!fullCmdStr.isEmpty() && !Locutus.cmd().isModernPrefix(fullCmdStr.charAt(0))) {
+        if (!fullCmdStr.isEmpty() && Locutus.cmd().isModernPrefix(fullCmdStr.charAt(0))) {
             fullCmdStr = fullCmdStr.substring(1);
         }
         System.out.println("remove:|| full " + fullCmdStr);

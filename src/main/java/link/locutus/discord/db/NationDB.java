@@ -2237,7 +2237,7 @@ public class NationDB extends DBMainV2 {
 
         executeStmt("CREATE TABLE IF NOT EXISTS NATION_DESCRIPTIONS (id INT NOT NULL PRIMARY KEY, description TEXT NOT NULL)");
 
-        executeStmt("DROP TABLE IF EXISTS TREASURES4"); // Remove after restart
+//        executeStmt("DROP TABLE IF EXISTS TREASURES4"); // Remove after restart
         executeStmt("CREATE TABLE IF NOT EXISTS TREASURES4 (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, color INT, continent INT, bonus INT NOT NULL, spawn_date BIGINT NOT NULL, nation_id INT NOT NULL, respawn_alert BIGINT NOT NULL)");
 
         // banned_nations
