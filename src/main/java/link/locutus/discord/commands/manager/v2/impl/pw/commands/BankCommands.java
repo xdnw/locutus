@@ -3041,7 +3041,7 @@ public class BankCommands {
     @RolePermission(value = Roles.MEMBER)
     public String acceptTrades(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, DBNation receiver, @Default Map<ResourceType, Double> amount, @Switch("a") boolean useLogin, @Switch("f") boolean force) throws Exception {
         OffshoreInstance offshore = db.getOffshore();
-        if (offshore == null) return "No offshore is set in this guild: <https://docs.google.com/document/d/1QkN1FDh8Z8ENMcS5XX8zaCwS9QRBeBJdCmHN5TKu_l8/>";
+        if (offshore == null) return "No offshore is set in this guild: <https://github.com/xdnw/locutus/wiki/banking>";
 
         GuildDB receiverDB = Locutus.imp().getGuildDBByAA(receiver.getAlliance_id());
         if (receiverDB == null) return "Receiver is not in a guild with locutus";
@@ -3982,7 +3982,7 @@ public class BankCommands {
                         }
                     }
 
-                    response.append("Registered " + offshoreAlliance.getQualifiedId() + " as an offshore. See: https://docs.google.com/document/d/1QkN1FDh8Z8ENMcS5XX8zaCwS9QRBeBJdCmHN5TKu_l8/edit");
+                    response.append("Registered " + offshoreAlliance.getQualifiedId() + " as an offshore. See: https://github.com/xdnw/locutus/wiki/bankingedit");
                     if (aaIds.isEmpty()) {
                         response.append("\n(Your guild id, and the id of your account with the offshore is `" + root.getIdLong() + "`)");
                     }

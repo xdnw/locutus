@@ -371,10 +371,10 @@ public class DBNation implements NationOrAlliance {
 //            output.append("Error validating your discord: " + e.getMessage() + "\n");
 //        }
 
-        output.append("Registration successful. Use `" + Settings.commandPrefix(true) + "?` for a list of commands.\n");
-        if (db != null && db.getIdLong() == 216800987002699787L) {
-            output.append("note: for 60 days of VIP, please use `/validate` instead\n");
-        }
+        output.append("Registration successful.\n");
+        output.append("- " + MarkupUtil.markdownUrl("Wiki Pages", "https://github.com/xdnw/locutus/wiki") + "\n");
+        output.append("- " + MarkupUtil.markdownUrl("Initial Setup", "https://github.com/xdnw/locutus/wiki/initial_setup") + "\n");
+        output.append("- " + MarkupUtil.markdownUrl("Commands", "https://github.com/xdnw/locutus/wiki/commands") + "\n");
         if (db != null) {
             Role role = Roles.REGISTERED.toRole(db);
             if (role != null) {
