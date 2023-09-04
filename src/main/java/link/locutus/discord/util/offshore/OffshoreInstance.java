@@ -748,16 +748,16 @@ public class OffshoreInstance {
                 int taxAAId = taxAccount.getAlliance_id();
                 if (taxAAId == 0) {
 //                    return Map.entry(TransferStatus.INVALID_DESTINATION, "The tax bracket you specified either does not exist, or has no alliance: " + taxAccount.getQualifiedName());
-                    return new TransferResult(TransferStatus.INVALID_DESTINATION, receiver, amount, depositType.toString()).addMessage("The tax bracket you specified either does not exist, or has no alliance: " + taxAccount.getQualifiedName());
+                    return new TransferResult(TransferStatus.INVALID_DESTINATION, receiver, amount, depositType.toString()).addMessage("The tax bracket you specified either does not exist, or has no alliance: " + taxAccount.getQualifiedId());
                 }
                 AccessType aaAccess = allowedIds.get((long) taxAAId);
                 if (aaAccess == null) {
 //                    return Map.entry(TransferStatus.AUTHORIZATION, "You do not have permission to withdraw from the tax bracket: " + taxAccount.getQualifiedName());
-                    return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, depositType.toString()).addMessage("You do not have permission to withdraw from the tax bracket: " + taxAccount.getQualifiedName());
+                    return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, depositType.toString()).addMessage("You do not have permission to withdraw from the tax bracket: " + taxAccount.getQualifiedId());
                 }
                 if (aaAccess != AccessType.ECON) {
 //                    return Map.entry(TransferStatus.AUTHORIZATION, "You only have member permissions and cannot withdraw from the tax bracket: " + taxAccount.getQualifiedName());
-                    return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, depositType.toString()).addMessage("You only have member permissions and cannot withdraw from the tax bracket: " + taxAccount.getQualifiedName());
+                    return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, depositType.toString()).addMessage("You only have member permissions and cannot withdraw from the tax bracket: " + taxAccount.getQualifiedId());
                 }
                 allowedIds.entrySet().removeIf(f -> f.getKey() != taxAAId);
 
@@ -778,8 +778,8 @@ public class OffshoreInstance {
                     }
                     if (missing != null) {
                         if (!rssConversion) {
-                            String[] msg = {taxAccount.getQualifiedName() + " is missing `" + PnwUtil.resourcesToString(missing) + "`. (see " +
-                                    CM.deposits.check.cmd.create(taxAccount.getQualifiedName(), null, null, null, null, null, null, null, null, null) +
+                            String[] msg = {taxAccount.getQualifiedId() + " is missing `" + PnwUtil.resourcesToString(missing) + "`. (see " +
+                                    CM.deposits.check.cmd.create(taxAccount.getQualifiedId(), null, null, null, null, null, null, null, null, null) +
                                     " ).", "RESOURCE_CONVERSION is disabled (see " +
                                     GuildKey.RESOURCE_CONVERSION.getCommandObj(senderDB, true) +
                                     ")"};
@@ -790,7 +790,7 @@ public class OffshoreInstance {
                             }
                             reqMsg.append(msg + "\n");
                         } else if (taxDepoValue < txValue) {
-                            String msg = taxAccount.getQualifiedName() + "'s deposits are worth $" + MathMan.format(taxDepoValue) + "(market max) but you requested to withdraw $" + MathMan.format(txValue) + " worth of resources";
+                            String msg = taxAccount.getQualifiedId() + "'s deposits are worth $" + MathMan.format(taxDepoValue) + "(market max) but you requested to withdraw $" + MathMan.format(txValue) + " worth of resources";
                             allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                             if (allowedIds.isEmpty()) {
 //                                return Map.entry(TransferStatus.INSUFFICIENT_FUNDS, msg);
@@ -805,7 +805,7 @@ public class OffshoreInstance {
             if (requireConfirmation) {
                 StringBuilder body = new StringBuilder();
                 if (checkLastSuccessfulTransferMatches(receiver, amount)) {
-                    reqMsg.append("You have already transferred this exact amount to " + receiver.getQualifiedName() + "\n");
+                    reqMsg.append("You have already transferred this exact amount to " + receiver.getQualifiedId() + "\n");
                 }
                 if (reqMsg.length() > 0) {
                     body.append("**!! ERRORS !!:**\n");
@@ -978,7 +978,7 @@ public class OffshoreInstance {
                 case SENT_TO_ALLIANCE_BANK:
                 case SUCCESS: {
                     if (taxAccount != null) {
-                        result.addMessage("Deducted from tax account: " + taxAccount.getQualifiedName());
+                        result.addMessage("Deducted from tax account: " + taxAccount.getQualifiedId());
                     }
                     break;
                 }
@@ -1188,7 +1188,7 @@ public class OffshoreInstance {
                     {
                         if (addBalanceResult != null) {
                             for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : addBalanceResult.entrySet()) {
-                                result.addMessage("Subtracting " + PnwUtil.resourcesToString(entry.getValue()) + " from " + entry.getKey().getQualifiedName());
+                                result.addMessage("Subtracting " + PnwUtil.resourcesToString(entry.getValue()) + " from " + entry.getKey().getQualifiedId());
                             }
                         }
                     }

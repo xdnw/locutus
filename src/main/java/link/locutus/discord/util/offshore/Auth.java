@@ -2,12 +2,9 @@ package link.locutus.discord.util.offshore;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
-import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.PendingTreaty;
 import link.locutus.discord.db.entities.TaxBracket;
@@ -31,7 +28,6 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import rocker.guild.ia.message;
 
 import java.io.IOException;
 import java.net.CookieManager;
@@ -936,7 +932,7 @@ public class Auth {
                 senderId = senderNation.getAlliance_id();
                 senderType = senderNation.getAlliance().getReceiverType();
             } else {
-                throw new IllegalArgumentException("Sender " + senderNation.getQualifiedName() + " is not in alliances: " + StringMan.getString(aaIds));
+                throw new IllegalArgumentException("Sender " + senderNation.getQualifiedId() + " is not in alliances: " + StringMan.getString(aaIds));
             }
 
             StringBuilder response = new StringBuilder("Checking trades...");

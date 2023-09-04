@@ -757,6 +757,7 @@ public class NationUpdateProcessor {
         }
 
         if (memberRemoves >= 5) {
+            int aaRank = alliance.getRank();
             String title = memberRemoves + " departures from " + alliance.getName();
             String body = PnwUtil.getMarkdownUrl(alliance.getId(), true) +
                     "(-" + MathMan.format(scoreDrop) + " score)" +
@@ -764,6 +765,9 @@ public class NationUpdateProcessor {
             AlertUtil.forEachChannel(f -> true, GuildKey.ORBIS_ALLIANCE_EXODUS_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                 @Override
                 public void accept(MessageChannel channel, GuildDB guildDB) {
+                    Integer topX = GuildKey.ALLIANCE_EXODUS_TOP_X.getOrNull(guildDB);
+                    if (topX != null && topX < aaRank) return;
+
                     DiscordUtil.createEmbedCommand(channel, title, body);
                 }
             });

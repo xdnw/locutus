@@ -7,7 +7,6 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
@@ -23,7 +22,6 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.*;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.json.JSONObject;
 
 import java.util.List;
@@ -127,7 +125,7 @@ public class TransferCommand extends Command {
                 nationAccount != null ? nationAccount.getUrl() : null,
                 allianceAccount != null ? allianceAccount.getUrl() : null,
                 offshoreAccount != null ? offshoreAccount.getUrl() : null,
-                taxAccount != null ? taxAccount.getQualifiedName() : null,
+                taxAccount != null ? taxAccount.getQualifiedId() : null,
                 null,
                 String.valueOf(onlyMissingFunds),
                 expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),

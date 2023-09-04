@@ -8,7 +8,6 @@ import com.politicsandwar.graphql.model.NationsQueryRequest;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
@@ -34,9 +33,7 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.apiv1.domains.AllianceMembers;
-import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.task.deprecated.GetTaxesTask;
@@ -1033,7 +1030,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
     public PoliticsAndWarV3 getApiOrThrow(AlliancePermission... permissions) {
         PoliticsAndWarV3 api = getApi( permissions);
         if (api == null) {
-            String msg = "No api key found for " + getQualifiedName() + ". Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "\n" +
+            String msg = "No api key found for " + getMarkdownUrl() + ". Please use" + CM.credentials.addApiKey.cmd.toSlashMention() + "\n" +
                     "Api key can be found on <https://politicsandwar.com/account/>";
             if (permissions.length > 0) msg += " and ensure your in-game position grants: " + StringMan.getString(permissions);
             throw new IllegalArgumentException(msg);

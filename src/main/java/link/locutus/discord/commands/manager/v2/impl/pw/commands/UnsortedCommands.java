@@ -13,7 +13,6 @@ import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.info.optimal.OptimalBuild;
-import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
@@ -75,7 +74,6 @@ import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
-import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.channel.unions.DefaultGuildChannelUnion;
 import net.dv8tion.jda.api.requests.restaction.InviteAction;
@@ -1297,7 +1295,7 @@ public class UnsortedCommands {
 
         for (DBNation nation : nations) {
             if (!db.isAllianceId(nation.getAlliance_id())) {
-                return "Nation `" + nation.getName() + "` is in " + nation.getAlliance().getQualifiedName() + " but this server is registered to: "
+                return "Nation `" + nation.getName() + "` is in " + nation.getAlliance().getQualifiedId() + " but this server is registered to: "
                         + StringMan.getString(db.getAllianceIds()) + "\nSee: " + CM.settings.info.cmd.toSlashMention() + " with key `" + GuildKey.ALLIANCE_ID.name() + "`";
             }
         }
@@ -1484,7 +1482,7 @@ public class UnsortedCommands {
                 depositsAccount != null ? depositsAccount.getUrl() : null,
                 useAllianceBank != null ? useAllianceBank.getUrl() : null,
                 useOffshoreAccount != null ? useOffshoreAccount.getUrl() : null,
-                taxAccount != null ? taxAccount.getQualifiedName() : null,
+                taxAccount != null ? taxAccount.getQualifiedId() : null,
                 existingTaxAccount + "",
                 expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
                 Boolean.FALSE.toString(),
@@ -1608,7 +1606,7 @@ public class UnsortedCommands {
         }
         if (sendTo == null) {
             SimpleNationList tmp = new SimpleNationList(Collections.singleton(me));
-            tmp.setFilter(me.getQualifiedName());
+            tmp.setFilter(me.getQualifiedId());
             sendTo = tmp;
         }
         if (sendDM && !Roles.MAIL.hasOnRoot(author)) {

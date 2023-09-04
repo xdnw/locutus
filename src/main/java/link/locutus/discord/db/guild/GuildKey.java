@@ -1081,13 +1081,13 @@ public class GuildKey {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String WITHDRAW_IGNORES_GRANTS(@Me GuildDB db, @Me User user, boolean enabled) {
+        public String WITHDRAW_IGNORES_EXPIRE(@Me GuildDB db, @Me User user, boolean enabled) {
             return MEMBER_CAN_WITHDRAW_IGNORES_GRANTS.setAndValidate(db, user, enabled);
         }
 
         @Override
         public String help() {
-            return "Whether members's withdraw limit ignores their grants (true/false)";
+            return "Whether members's withdraw limit ignores their expiring grants (true/false)";
         }
     }.setupRequirements(f -> f.requiresCoalition(Coalition.OFFSHORE).requiresOffshore());
     public static GuildSetting<Boolean> DISPLAY_ITEMIZED_DEPOSITS = new GuildBooleanSetting(GuildSettingCategory.BANK_INFO) {
@@ -1936,6 +1936,18 @@ public class GuildKey {
             return "The #channel to receive alerts for treaty changes";
         }
     }.setupRequirements(f -> f.requireActiveGuild());
+    public static GuildSetting<MessageChannel> ALLIANCE_CREATE_ALERTS = new GuildChannelSetting(GuildSettingCategory.FOREIGN_AFFAIRS) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String ALLIANCE_CREATE_ALERTS(@Me GuildDB db, @Me User user, MessageChannel channel) {
+            return ALLIANCE_CREATE_ALERTS.setAndValidate(db, user, channel);
+        }
+        @Override
+        public String help() {
+            return "The #channel to receive alerts for alliance creation";
+        }
+    }.setupRequirements(f -> f.requireActiveGuild());
     public static GuildSetting<MessageChannel> ORBIS_LEADER_CHANGE_ALERT = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -1969,9 +1981,25 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "The #channel to receive alerts when multiple 5+ members leave an alliance  (top 80)";
+            return "The #channel to receive alerts when multiple 5+ members leave an alliance\n" +
+                    "See also: " + ALLIANCE_EXODUS_TOP_X.getCommandMention();
         }
     }.setupRequirements(f -> f.requireActiveGuild());
+
+    public static GuildSetting<Integer> ALLIANCE_EXODUS_TOP_X = new GuildIntegerSetting(GuildSettingCategory.ORBIS_ALERTS) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String ALLIANCE_EXODUS_TOP_X(@Me GuildDB db, @Me User user, int rank) {
+            if (rank <= 0) return "Invalid rank: `" + rank + "` (must be > 0)";
+            return ALLIANCE_EXODUS_TOP_X.setAndValidate(db, user, rank);
+        }
+        @Override
+        public String help() {
+            return "The rank threshold to post exodus alerts for";
+        }
+    }.setupRequirements(f -> f.requireActiveGuild().requires(ORBIS_ALLIANCE_EXODUS_ALERTS));
+
     public static GuildSetting<MessageChannel> ORBIS_OFFICER_MMR_CHANGE_ALERTS = new GuildChannelSetting(GuildSettingCategory.ORBIS_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")

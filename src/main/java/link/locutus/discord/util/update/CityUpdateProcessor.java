@@ -164,7 +164,7 @@ public class CityUpdateProcessor {
             }
 
             Set<MessageChannel> channels = new HashSet<>();
-            if (isGov) {
+            if (isGov && nation.getNumWars() == 0) {
                 AlertUtil.forEachChannel(f -> true, GuildKey.ORBIS_OFFICER_MMR_CHANGE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                     @Override
                     public void accept(MessageChannel channel, GuildDB guildDB) {
