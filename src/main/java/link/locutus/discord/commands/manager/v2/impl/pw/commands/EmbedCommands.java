@@ -36,6 +36,7 @@ import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
@@ -61,12 +62,23 @@ public class EmbedCommands {
     @Command(desc = "Create a simple embed with a title and description")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public void create(@Me IMessageIO io, String title, String description) {
-        io.create().embed(title, description).send();
+        io.create().embed(title, description.replace("\\n", "\n")).send();
     }
+
+    private void checkMessagePerms(User user, Guild guild, Message message) {
+        if (!message.isFromGuild()) {
+            throw new IllegalArgumentException("Embeds can only be edited in a guild");
+        }
+        if (message.getGuild().getIdLong() != guild.getIdLong() && !Roles.INTERNAL_AFFAIRS.has(user, message.getGuild())) {
+            throw new IllegalArgumentException("You can only edit embeds in your own guild or one you have `" + Roles.INTERNAL_AFFAIRS.name() + "` in");
+        }
+    }
+
 
     @Command(desc = "Set the title of an embed from this bot")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String title(Message discMessage, String title) {
+    public String title(@Me User user, @Me Guild guild, Message discMessage, String title) {
+        checkMessagePerms(user, guild, discMessage);
         DiscordMessageBuilder message = new DiscordMessageBuilder(discMessage.getChannel(), discMessage);
         List<MessageEmbed> embeds = message.getEmbeds();
         if (embeds.size() != 1) return "No embeds found";
@@ -83,14 +95,15 @@ public class EmbedCommands {
 
     @Command(desc = "Set the description of an embed from this bot")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String description(Message discMessage, String description) {
+    public String description(@Me User user, @Me Guild guild, Message discMessage, String description) {
+        checkMessagePerms(user, guild, discMessage);
         DiscordMessageBuilder message = new DiscordMessageBuilder(discMessage.getChannel(), discMessage);
         List<MessageEmbed> embeds = message.getEmbeds();
         if (embeds.size() != 1) return "No embeds found";
         MessageEmbed embed = embeds.get(0);
 
         EmbedBuilder builder = new EmbedBuilder(embed);
-        builder.setDescription(description);
+        builder.setDescription(description.replace("\\n", "\n"));
 
         message.clearEmbeds();
         message.embed(builder.build());
@@ -100,7 +113,8 @@ public class EmbedCommands {
 
     @Command(desc = "Remove a button from an embed from this bot")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String removeButton(Message message, @Arg("A comma separated list of button labels") @TextArea(',') List<String> labels) {
+    public String removeButton(@Me User user, @Me Guild guild, Message message, @Arg("A comma separated list of button labels") @TextArea(',') List<String> labels) {
+        checkMessagePerms(user, guild, message);
         if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
             throw new IllegalArgumentException("The message you linked is not from the bot. Only bot messages can be modified.");
         }
@@ -138,7 +152,8 @@ public class EmbedCommands {
             "Unlike `embed add button`, this does not parse and validate command input.")
     @NoFormat
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String addButtonRaw(Message message, String label, CommandBehavior behavior, String command, @Switch("c") MessageChannel channel) {
+    public String addButtonRaw(@Me User user, @Me Guild guild, Message message, String label, CommandBehavior behavior, String command, @Switch("c") MessageChannel channel) {
+        checkMessagePerms(user, guild, message);
         if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
             throw new IllegalArgumentException("The message you linked is not from the bot. Only bot messages can be modified.");
         }
@@ -166,14 +181,15 @@ public class EmbedCommands {
     @Command(desc = "Add a button to a discord embed from this bot which runs a command")
     @NoFormat
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String addButton(Message message, String label, CommandBehavior behavior, ICommand command,
+    public String addButton(@Me User user, @Me Guild guild, Message message, String label, CommandBehavior behavior, ICommand command,
                             @Default @Arg("The arguments and values you want to submit to the command\n" +
                                     "Example: `myarg1:myvalue1 myarg2:myvalue2`\n" +
                                     "For placeholders: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
                             String arguments, @Switch("c") MessageChannel channel) {
+        checkMessagePerms(user, guild, message);
         Set<String> validArguments = command.getUserParameterMap().keySet();
 
-        Map<String, String> parsed = CommandManager2.parseArguments(validArguments, arguments, true);
+        Map<String, String> parsed = arguments == null ? new HashMap<>() : CommandManager2.parseArguments(validArguments, arguments, true);
         // ensure required arguments aren't missing
         for (ParameterData param : command.getUserParameters()) {
             if (param.isOptional() || param.isFlag()) continue;
@@ -185,18 +201,19 @@ public class EmbedCommands {
         }
 
         String commandStr =  command.toCommandArgs(parsed);
-        return addButtonRaw(message, label, behavior, commandStr, channel);
+        return addButtonRaw(user, guild, message, label, behavior, commandStr, channel);
     }
 
     @Command(desc = "Add a modal button to a discord embed from this bot, which creates a prompt for a command")
     @NoFormat
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String addModal(Message message, String label, CommandBehavior behavior, ICommand command,
+    public String addModal(@Me User user, @Me Guild guild, Message message, String label, CommandBehavior behavior, ICommand command,
                            @Arg("A comma separated list of the command arguments to prompt for") String arguments,
                            @Arg("The default arguments and values you want to submit to the command\n" +
                                    "Example: `myarg1:myvalue1 myarg2:myvalue2`\n" +
                                    "For placeholders: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
                            @Default String defaults, @Switch("c") MessageChannel channel) {
+        checkMessagePerms(user, guild, message);
         if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
             throw new IllegalArgumentException("The message you linked is not from the bot. Only bot messages can be modified.");
         }

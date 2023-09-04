@@ -1601,7 +1601,6 @@ public class PoliticsAndWarV3 {
         projection.offer_amount();
         projection.buy_or_sell();
         projection.price();
-
         projection.date_accepted();
         projection.original_trade_id();
     }

@@ -3947,7 +3947,6 @@ public class DBNation implements NationOrAlliance {
         }
         tradesV3.removeIf(f -> f.getSender_id() == null || f.getSender_id() != expectedNationId);
         tradesV3.removeIf((Predicate<Trade>) f -> {
-            if (f.getAccepted()) return true;
             ResourceType resource = ResourceType.parse(f.getOffer_resource());
             if (f.getBuy_or_sell().equalsIgnoreCase(foodBuyOrSell)) {
                 if (resource != ResourceType.FOOD) {
