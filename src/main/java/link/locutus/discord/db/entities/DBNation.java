@@ -374,8 +374,15 @@ public class DBNation implements NationOrAlliance {
         output.append("Registration successful. See:\n");
         output.append("- " + MarkupUtil.markdownUrl("Wiki Pages", "https://github.com/xdnw/locutus/wiki") + "\n");
         output.append("- " + MarkupUtil.markdownUrl("Initial Setup", "https://github.com/xdnw/locutus/wiki/initial_setup") + "\n");
-        output.append("- " + MarkupUtil.markdownUrl("Commands", "https://github.com/xdnw/locutus/wiki/commands") + "\n");
-        output.append("- Support Server: <https://discord.gg/cUuskPDrB7>\n\n");
+        output.append("- " + MarkupUtil.markdownUrl("Commands", "https://github.com/xdnw/locutus/wiki/commands") + "\n\n");
+        output.append("Join the Support Server \n");
+        output.append("""
+                - Help using or configuring the bot
+                - Public banking/offshoring
+                - Requesting a feature
+                - General inquiries/feedback
+                <https://discord.gg/cUuskPDrB7>""")
+                .append("\n\nRunning auto role task...");
         if (db != null) {
             Role role = Roles.REGISTERED.toRole(db);
             if (role != null) {
