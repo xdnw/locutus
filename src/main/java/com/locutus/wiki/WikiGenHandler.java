@@ -72,9 +72,9 @@ public class WikiGenHandler {
         // alliance_placeholders
         pages.add(new WikiAlliancePlaceholdersPage(manager));
         //War Alerts
-        pages.add(new WikiWarAlertsPage(manager)); // <--- easy @@@ ===
+        pages.add(new WikiWarAlertsPage(manager));
 //        //Auto masking
-        pages.add(new WikiAutoMaskingPage(manager)); // <--- easy @@@ ===
+        pages.add(new WikiAutoMaskingPage(manager));
         // Embassies
         pages.add(new WikiEmbassyPage(manager));
         //Deposits System
@@ -126,6 +126,18 @@ public class WikiGenHandler {
 //        //Trade System (use trading guide)
 //        //- Link DocScripts trade tool (cause useful)
         pages.add(new WikiTradePage(manager)); // <---   #### @
+
+        // # Delegate servers
+        // war rooms delegate
+        // war alerts delegate
+        // copy channel id
+        // fa delegate
+
+        // # Self roles
+        // /settings_role ASSIGNABLE_ROLES
+        // and the commansd role self
+        // add role to all members
+        // mask command?
 
         WikiHelpPage help = new WikiHelpPage(manager, pages);
         pages.add(help);

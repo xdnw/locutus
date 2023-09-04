@@ -57,7 +57,4 @@ public class WikiCustomEmbeds extends WikiGen {
         );
     }
 
-    private String linkPage(String pageName) {
-        return MarkupUtil.markdownUrl("Locutus/Wiki/" + pageName, "../wiki/" + pageName);
-    }
 }

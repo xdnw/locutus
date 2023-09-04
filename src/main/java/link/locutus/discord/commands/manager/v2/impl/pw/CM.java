@@ -2571,13 +2571,7 @@ public class CM {
                 return createArgs("channel", channel);
             }
         }
-        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="ENEMY_MMR_CHANGE_ALERTS", field="ENEMY_MMR_CHANGE_ALERTS")
-        public static class ENEMY_MMR_CHANGE_ALERTS extends CommandRef {
-            public static final ENEMY_MMR_CHANGE_ALERTS cmd = new ENEMY_MMR_CHANGE_ALERTS();
-            public ENEMY_MMR_CHANGE_ALERTS create(String channel) {
-                return createArgs("channel", channel);
-            }
-        }
+
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="addBeigeReasons", field="ALLOWED_BEIGE_REASONS")
         public static class addBeigeReasons extends CommandRef {
             public static final addBeigeReasons cmd = new addBeigeReasons();
@@ -2964,6 +2958,13 @@ public class CM {
         }
     }
     public static class settings_war_alerts{
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="ENEMY_MMR_CHANGE_ALERTS", field="ENEMY_MMR_CHANGE_ALERTS")
+        public static class ENEMY_MMR_CHANGE_ALERTS extends CommandRef {
+            public static final ENEMY_MMR_CHANGE_ALERTS cmd = new ENEMY_MMR_CHANGE_ALERTS();
+            public ENEMY_MMR_CHANGE_ALERTS create(String channel) {
+                return createArgs("channel", channel);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="BLOCKADED_ALERTS", field="BLOCKADED_ALERTS")
         public static class BLOCKADED_ALERTS extends CommandRef {
             public static final BLOCKADED_ALERTS cmd = new BLOCKADED_ALERTS();

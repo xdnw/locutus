@@ -60,4 +60,13 @@ public abstract class WikiGen {
         return "### " + ref.toSlashCommand(true) + "\n" + ref.getCallable(true).toBasicMarkdown(manager.getStore(), null, "/", false, true) + "\n\n---\n\n";
     }
 
+
+    public String linkPage(String pageName) {
+        return MarkupUtil.markdownUrl("Locutus/Wiki/" + pageName, "../wiki/" + pageName);
+    }
+
+    public String hr() {
+        return "\n---\n";
+    }
+
 }

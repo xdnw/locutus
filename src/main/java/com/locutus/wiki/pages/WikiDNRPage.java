@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 
 public class WikiDNRPage extends WikiGen {
     public WikiDNRPage(CommandManager2 manager) {
-        super(manager, "do not raid");
+        super(manager, "do_not_raid");
     }
 
     @Override

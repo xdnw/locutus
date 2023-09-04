@@ -8,7 +8,7 @@ import link.locutus.discord.util.MarkupUtil;
 
 public class WikiBlockadePage extends WikiGen {
     public WikiBlockadePage(CommandManager2 manager) {
-        super(manager, "blockade tools");
+        super(manager, "blockade_tools");
     }
 
     @Override

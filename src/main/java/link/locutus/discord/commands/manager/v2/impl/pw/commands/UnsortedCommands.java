@@ -630,9 +630,20 @@ public class UnsortedCommands {
     }
 
     public enum ClearRolesEnum {
-        UNUSED,
-        ALLIANCE,
-        UNREGISTERED
+        UNUSED("Alliance name roles which have no members"),
+        ALLIANCE("All alliance name roles"),
+        UNREGISTERED("Alliance name roles with no valid in-game alliance");
+
+        private final String desc;
+
+        ClearRolesEnum(String s) {
+            this.desc = s;
+        }
+
+        @Override
+        public String toString() {
+            return name() + ": `" + desc + "`";
+        }
     }
 
     @Command(desc = "Clear the bot managed roles on discord")
