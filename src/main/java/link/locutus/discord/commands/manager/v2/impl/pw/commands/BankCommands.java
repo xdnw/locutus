@@ -3480,7 +3480,7 @@ public class BankCommands {
         StringBuilder response = new StringBuilder(body);
 
         if (!footers.isEmpty()) {
-            response.append("\n## Notes:\n");
+            response.append("\n## Tips:\n");
             for (int i = 0; i < footers.size(); i++) {
                 String footer = footers.get(i);
                 response.append("- " + footer + "\n");
