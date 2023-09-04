@@ -1,6 +1,5 @@
 package link.locutus.discord.pnw;
 
-import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -13,7 +12,6 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 
 import java.util.AbstractMap;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -36,8 +34,13 @@ public interface NationOrAllianceOrGuildOrTaxid {
         throw new IllegalArgumentException("Invalid state: " + this);
     }
 
-    default String getQualifiedName() {
+    default String getQualifiedId() {
         return getTypePrefix() + ":" + getIdLong();
+    }
+
+    default String getQualifiedName() {
+        String name = getName();
+        return getTypePrefix() + ":" + (name == null || name.isEmpty() ? getIdLong() : name);
     }
 
     default String getTypePrefix() {

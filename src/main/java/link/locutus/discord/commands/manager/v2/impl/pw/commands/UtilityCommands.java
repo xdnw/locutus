@@ -11,7 +11,6 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
-import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
@@ -30,7 +29,6 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.NationOrAlliance;
-import link.locutus.discord.pnw.NationScoreMap;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.pnw.json.CityBuild;
@@ -68,7 +66,6 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
-import org.kefirsf.bb.conf.If;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -90,9 +87,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -1432,7 +1427,7 @@ public class UtilityCommands {
 
                 //Run audit (if ia/econ, or self)
                 if ((myNation != null && myNation.getId() == nation.getId()) || Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild)) {
-                    CM.audit.run audit = CM.audit.run.cmd.create(nation.getQualifiedName(), null, null, null, null, null);
+                    CM.audit.run audit = CM.audit.run.cmd.create(nation.getQualifiedId(), null, null, null, null, null);
                     msg = msg.commandButton(CommandBehavior.EPHEMERAL, audit, "Audit");
                 }
                 //Bans
@@ -1495,50 +1490,50 @@ public class UtilityCommands {
 
                 // Militarization graph
                 CM.alliance.stats.metricsByTurn militarization =
-                        CM.alliance.stats.metricsByTurn.cmd.create(AllianceMetric.GROUND_PCT.name(), alliance.getQualifiedName(), "7d");
+                        CM.alliance.stats.metricsByTurn.cmd.create(AllianceMetric.GROUND_PCT.name(), alliance.getQualifiedId(), "7d");
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, militarization, "Military Graph");
                 // Tiering graph
                 CM.stats_tier.cityTierGraph tiering =
-                        CM.stats_tier.cityTierGraph.cmd.create(alliance.getQualifiedName(), "", null, null);
+                        CM.stats_tier.cityTierGraph.cmd.create(alliance.getQualifiedId(), "", null, null);
                 msg = msg.modal(CommandBehavior.EPHEMERAL, tiering, "City Tier Graph");
                 // strength graph
                 CM.stats_tier.strengthTierGraph strength =
-                        CM.stats_tier.strengthTierGraph.cmd.create(alliance.getQualifiedName(), "", null, null, null, null, null, null);
+                        CM.stats_tier.strengthTierGraph.cmd.create(alliance.getQualifiedId(), "", null, null, null, null, null, null);
                 msg = msg.modal(CommandBehavior.EPHEMERAL, strength, "Strength Tier Graph");
                 // mmr tier
                 CM.stats_tier.mmrTierGraph mmr =
-                        CM.stats_tier.mmrTierGraph.cmd.create(alliance.getQualifiedName(), "", null, null, null, null);
+                        CM.stats_tier.mmrTierGraph.cmd.create(alliance.getQualifiedId(), "", null, null, null, null);
                 msg = msg.modal(CommandBehavior.EPHEMERAL, mmr, "MMR Tier Graph");
                 // spy tier
                 CM.stats_tier.spyTierGraph spy =
-                        CM.stats_tier.spyTierGraph.cmd.create(alliance.getQualifiedName(), "", null, null, null);
+                        CM.stats_tier.spyTierGraph.cmd.create(alliance.getQualifiedId(), "", null, null, null);
                 msg = msg.modal(CommandBehavior.EPHEMERAL, spy, "Spy Tier Graph");
 
                 //- /coalition create - add
                 CM.coalition.create createCoalition =
-                        CM.coalition.create.cmd.create(alliance.getQualifiedName(), "");
+                        CM.coalition.create.cmd.create(alliance.getQualifiedId(), "");
                 msg = msg.modal(CommandBehavior.EPHEMERAL, createCoalition, "Create Coalition");
 
                 //- /coalition generate - sphere
                 CM.coalition.generate generateCoalition =
-                        CM.coalition.generate.cmd.create("", alliance.getQualifiedName(), "80");
+                        CM.coalition.generate.cmd.create("", alliance.getQualifiedId(), "80");
                 msg = msg.modal(CommandBehavior.EPHEMERAL, generateCoalition, "Add Sphere Coalition");
                 //- /alliance departures
                 CM.alliance.departures departures =
-                        CM.alliance.departures.cmd.create(alliance.getQualifiedName(), "", null, null, null, null, null);
+                        CM.alliance.departures.cmd.create(alliance.getQualifiedId(), "", null, null, null, null, null);
                 msg = msg.modal(CommandBehavior.EPHEMERAL, departures, "Departures");
                 //- loot
                 CM.nation.loot loot =
-                        CM.nation.loot.cmd.create(alliance.getQualifiedName(), "", null);
+                        CM.nation.loot.cmd.create(alliance.getQualifiedId(), "", null);
                 msg = msg.modal(CommandBehavior.EPHEMERAL, loot, "Loot");
 
                 // alliance cost
                 CM.alliance.cost cost =
-                        CM.alliance.cost.cmd.create(alliance.getQualifiedName(), null);
+                        CM.alliance.cost.cmd.create(alliance.getQualifiedId(), null);
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, cost, "Cost");
                 // offshore find
                 CM.offshore.findForCoalition findOffshore =
-                        CM.offshore.findForCoalition.cmd.create(alliance.getQualifiedName(), "200d");
+                        CM.offshore.findForCoalition.cmd.create(alliance.getQualifiedId(), "200d");
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, findOffshore, "Find Offshores");
 
                 msg.send();

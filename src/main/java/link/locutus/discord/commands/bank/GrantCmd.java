@@ -7,7 +7,6 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
@@ -39,7 +38,6 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -268,7 +266,7 @@ public class GrantCmd extends Command {
                 (nationAccount == null ? me : nationAccount).getUrl(),
                 allianceAccount != null ? allianceAccount.getUrl() : null,
                 offshoreAccount != null ? offshoreAccount.getUrl() : null,
-                taxAccount != null ? taxAccount.getQualifiedName() : null,
+                taxAccount != null ? taxAccount.getQualifiedId() : null,
                 flags.contains('t') ? "true" : null,
                 String.valueOf(flags.contains('o')),
                 expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null,

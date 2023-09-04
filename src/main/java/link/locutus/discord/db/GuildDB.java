@@ -35,7 +35,6 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.task.roles.AutoRoleTask;
@@ -50,7 +49,6 @@ import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
-import rocker.guild.ia.message;
 
 import javax.annotation.Nullable;
 import java.io.ByteArrayOutputStream;
@@ -79,7 +77,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -1654,7 +1651,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
             if (toSubtract != null) {
                 ammountEach.put(account, toSubtract.clone());
-                System.out.println("Add balance to: " + account.getQualifiedName() + " " + PnwUtil.resourcesToString(toSubtract) + "");
+                System.out.println("Add balance to: " + account.getQualifiedId() + " " + PnwUtil.resourcesToString(toSubtract) + "");
                 addTransfer(dateTime, 0, 0, account.getIdLong(), account.getReceiverType(), banker, offshoreNote, toSubtract);
             }
         }

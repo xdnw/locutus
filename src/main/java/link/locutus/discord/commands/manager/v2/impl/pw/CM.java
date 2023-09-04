@@ -2325,11 +2325,11 @@ public class CM {
                 return createArgs("userTurnLimit", userTurnLimit, "userDayLimit", userDayLimit, "guildTurnLimit", guildTurnLimit, "guildDayLimit", guildDayLimit);
             }
         }
-        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="register_openai_key", field="OPENAI_MODEL")
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="register_openai_key", field="OPENAI_KEY")
         public static class register_openai_key extends CommandRef {
             public static final register_openai_key cmd = new register_openai_key();
-            public register_openai_key create(String model) {
-                return createArgs("model", model);
+            public register_openai_key create(String apiKey) {
+                return createArgs("apiKey", apiKey);
             }
         }
     }
@@ -2448,10 +2448,10 @@ public class CM {
                 return createArgs("enabled", enabled);
             }
         }
-        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="WITHDRAW_IGNORES_GRANTS", field="MEMBER_CAN_WITHDRAW_IGNORES_GRANTS")
-        public static class WITHDRAW_IGNORES_GRANTS extends CommandRef {
-            public static final WITHDRAW_IGNORES_GRANTS cmd = new WITHDRAW_IGNORES_GRANTS();
-            public WITHDRAW_IGNORES_GRANTS create(String enabled) {
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="WITHDRAW_IGNORES_EXPIRE", field="MEMBER_CAN_WITHDRAW_IGNORES_GRANTS")
+        public static class WITHDRAW_IGNORES_EXPIRE extends CommandRef {
+            public static final WITHDRAW_IGNORES_EXPIRE cmd = new WITHDRAW_IGNORES_EXPIRE();
+            public WITHDRAW_IGNORES_EXPIRE create(String enabled) {
                 return createArgs("enabled", enabled);
             }
         }
@@ -2647,6 +2647,13 @@ public class CM {
         }
     }
     public static class settings_foreign_affairs{
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="ALLIANCE_CREATE_ALERTS", field="ALLIANCE_CREATE_ALERTS")
+        public static class ALLIANCE_CREATE_ALERTS extends CommandRef {
+            public static final ALLIANCE_CREATE_ALERTS cmd = new ALLIANCE_CREATE_ALERTS();
+            public ALLIANCE_CREATE_ALERTS create(String channel) {
+                return createArgs("channel", channel);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="DO_NOT_RAID_TOP_X", field="DO_NOT_RAID_TOP_X")
         public static class DO_NOT_RAID_TOP_X extends CommandRef {
             public static final DO_NOT_RAID_TOP_X cmd = new DO_NOT_RAID_TOP_X();
@@ -2719,6 +2726,13 @@ public class CM {
             public static final ACTIVITY_ALERTS cmd = new ACTIVITY_ALERTS();
             public ACTIVITY_ALERTS create(String channel) {
                 return createArgs("channel", channel);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="ALLIANCE_EXODUS_TOP_X", field="ALLIANCE_EXODUS_TOP_X")
+        public static class ALLIANCE_EXODUS_TOP_X extends CommandRef {
+            public static final ALLIANCE_EXODUS_TOP_X cmd = new ALLIANCE_EXODUS_TOP_X();
+            public ALLIANCE_EXODUS_TOP_X create(String rank) {
+                return createArgs("rank", rank);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="BAN_ALERT_CHANNEL", field="BAN_ALERT_CHANNEL")
@@ -4062,8 +4076,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="findBountyNations")
             public static class bounty extends CommandRef {
                 public static final bounty cmd = new bounty();
-                public bounty create(String onlyWeaker, String ignoreDNR, String numResults) {
-                    return createArgs("onlyWeaker", onlyWeaker, "ignoreDNR", ignoreDNR, "numResults", numResults);
+                public bounty create(String onlyWeaker, String ignoreDNR, String bountyTypes, String numResults) {
+                    return createArgs("onlyWeaker", onlyWeaker, "ignoreDNR", ignoreDNR, "bountyTypes", bountyTypes, "numResults", numResults);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="damage")

@@ -4,28 +4,22 @@ import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
-import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import org.json.JSONObject;
-import rocker.guild.ia.message;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -363,7 +357,7 @@ public class AddBalanceBuilder {
 
                 db.addBalanceTaxId(tx_datetime, sender.taxId, 0, banker, note, amount);
                 totalAdded = PnwUtil.add(totalAdded, amount);
-                response.add("Added " + PnwUtil.resourcesToString(amount) + " to " + sender.getQualifiedName());
+                response.add("Added " + PnwUtil.resourcesToString(amount) + " to " + sender.getQualifiedId());
             }
 
         }

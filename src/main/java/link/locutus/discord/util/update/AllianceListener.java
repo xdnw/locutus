@@ -328,7 +328,7 @@ public class AllianceListener {
 
         body.append(PnwUtil.getUrl(aaId, true));
 
-        AlertUtil.forEachChannel(f -> true, GuildKey.TREATY_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+        AlertUtil.forEachChannel(f -> true, GuildKey.ALLIANCE_CREATE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB guildDB) {
                 DiscordUtil.createEmbedCommand(channel, title, body.toString());

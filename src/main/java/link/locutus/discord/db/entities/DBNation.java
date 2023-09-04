@@ -3808,7 +3808,7 @@ public class DBNation implements NationOrAlliance {
                 senderId = senderNation.getAlliance_id();
                 senderType = senderNation.getAlliance().getReceiverType();
             } else {
-                throw new IllegalArgumentException("Sender " + senderNation.getQualifiedName() + " is not in alliances: " + StringMan.getString(aaIds));
+                throw new IllegalArgumentException("Sender " + senderNation.getQualifiedId() + " is not in alliances: " + StringMan.getString(aaIds));
             }
 
             StringBuilder response = new StringBuilder("Checking trades...");
