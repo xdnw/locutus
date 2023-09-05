@@ -78,7 +78,7 @@ public class WikiGenHandler {
         // Embassies
         pages.add(new WikiEmbassyPage(manager));
         //Deposits System
-        pages.add(new WikiDepositsPage(manager)); // <--- @@@ ===
+        pages.add(new WikiDepositsPage(manager));
 //        //Setup an offshore or bank
         pages.add(new WikiBankPage(manager));
 //        //Interview System

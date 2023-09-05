@@ -183,6 +183,7 @@ public class WikiBankPage extends WikiGen {
                 commandMarkdownSpoiler(CM.transfer.offshore.cmd),
                 "### Optional Settings:",
                 commandMarkdownSpoiler(CM.settings_bank_access.MEMBER_CAN_WITHDRAW_WARTIME.cmd),
+                commandMarkdownSpoiler(CM.settings_bank_access.NON_AA_MEMBERS_CAN_BANK.cmd),
                 "- last one, if their withdrawal limit ignores their grants when calculating total deposits\n",
                 commandMarkdownSpoiler(CM.settings_bank_access.WITHDRAW_IGNORES_EXPIRE.cmd),
                 "# Transfer commands",

@@ -1545,7 +1545,7 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "If the alliance can convert resources to cash.\n" +
+            return "If members can convert resources to cash.\n" +
                     "This is done virtually in " + CM.deposits.check.cmd.toSlashMention() +
                     "Resources are converted using market average\n" +
                     "Use `#cash` as the note when depositing or transferring funds";

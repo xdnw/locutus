@@ -2465,15 +2465,15 @@ public class CM {
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="addResourceChannel", field="RESOURCE_REQUEST_CHANNEL")
         public static class addResourceChannel extends CommandRef {
             public static final addResourceChannel cmd = new addResourceChannel();
-            public addResourceChannel create(String alliance) {
-                return createArgs("alliance", alliance);
+            public addResourceChannel create(String channel, String alliance) {
+                return createArgs("channel", channel, "alliance", alliance);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="removeResourceChannel", field="RESOURCE_REQUEST_CHANNEL")
         public static class removeResourceChannel extends CommandRef {
             public static final removeResourceChannel cmd = new removeResourceChannel();
-            public removeResourceChannel create() {
-                return createArgs();
+            public removeResourceChannel create(String channel) {
+                return createArgs("channel", channel);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="toggleGrants", field="GRANT_TEMPLATE_BLACKLIST")
@@ -2504,6 +2504,13 @@ public class CM {
             public static final DEPOSIT_ALERT_CHANNEL cmd = new DEPOSIT_ALERT_CHANNEL();
             public DEPOSIT_ALERT_CHANNEL create(String channel) {
                 return createArgs("channel", channel);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="DISPLAY_CONDENSED_DEPOSITS", field="DISPLAY_CONDENSED_DEPOSITS")
+        public static class DISPLAY_CONDENSED_DEPOSITS extends CommandRef {
+            public static final DISPLAY_CONDENSED_DEPOSITS cmd = new DISPLAY_CONDENSED_DEPOSITS();
+            public DISPLAY_CONDENSED_DEPOSITS create(String enabled) {
+                return createArgs("enabled", enabled);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="DISPLAY_ITEMIZED_DEPOSITS", field="DISPLAY_ITEMIZED_DEPOSITS")
@@ -2571,7 +2578,6 @@ public class CM {
                 return createArgs("channel", channel);
             }
         }
-
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="addBeigeReasons", field="ALLOWED_BEIGE_REASONS")
         public static class addBeigeReasons extends CommandRef {
             public static final addBeigeReasons cmd = new addBeigeReasons();
@@ -2958,13 +2964,6 @@ public class CM {
         }
     }
     public static class settings_war_alerts{
-        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="ENEMY_MMR_CHANGE_ALERTS", field="ENEMY_MMR_CHANGE_ALERTS")
-        public static class ENEMY_MMR_CHANGE_ALERTS extends CommandRef {
-            public static final ENEMY_MMR_CHANGE_ALERTS cmd = new ENEMY_MMR_CHANGE_ALERTS();
-            public ENEMY_MMR_CHANGE_ALERTS create(String channel) {
-                return createArgs("channel", channel);
-            }
-        }
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="BLOCKADED_ALERTS", field="BLOCKADED_ALERTS")
         public static class BLOCKADED_ALERTS extends CommandRef {
             public static final BLOCKADED_ALERTS cmd = new BLOCKADED_ALERTS();
@@ -2976,6 +2975,13 @@ public class CM {
         public static class DEFENSE_WAR_CHANNEL extends CommandRef {
             public static final DEFENSE_WAR_CHANNEL cmd = new DEFENSE_WAR_CHANNEL();
             public DEFENSE_WAR_CHANNEL create(String channel) {
+                return createArgs("channel", channel);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="ENEMY_MMR_CHANGE_ALERTS", field="ENEMY_MMR_CHANGE_ALERTS")
+        public static class ENEMY_MMR_CHANGE_ALERTS extends CommandRef {
+            public static final ENEMY_MMR_CHANGE_ALERTS cmd = new ENEMY_MMR_CHANGE_ALERTS();
+            public ENEMY_MMR_CHANGE_ALERTS create(String channel) {
                 return createArgs("channel", channel);
             }
         }
