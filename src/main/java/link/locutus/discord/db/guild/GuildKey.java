@@ -906,7 +906,7 @@ public class GuildKey {
         @Override
         public String help() {
             return "The #channel to receive alerts for defensive wars\n" +
-                    "Members and `" + Roles.MILCOM.name() + " are pinged for defensive wars\n" +
+                    "Members and `" + Roles.MILCOM.name() + "` are pinged for defensive wars\n" +
                     "To set the `" + Roles.MILCOM.name() + "` role, see: " + CM.role.setAlias.cmd.create(Roles.MILCOM.name(), "", null, null);
         }
     }.setupRequirements(f -> f.requiresAllies().requireActiveGuild().requireValidAlliance().requireFunction(new Consumer<GuildDB>() {
@@ -1103,6 +1103,20 @@ public class GuildKey {
         }
 
     }.setupRequirements(f -> f.requiresRole(Roles.MEMBER, true));
+
+    public static GuildSetting<Boolean> DISPLAY_CONDENSED_DEPOSITS = new GuildBooleanSetting(GuildSettingCategory.BANK_INFO) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String DISPLAY_CONDENSED_DEPOSITS(@Me GuildDB db, @Me User user, boolean enabled) {
+            return DISPLAY_CONDENSED_DEPOSITS.setAndValidate(db, user, enabled);
+        }
+        @Override
+        public String help() {
+            return "Display deposits in a condensed format";
+        }
+    }.setupRequirements(f -> f.requiresRole(Roles.MEMBER, true));
+
     public static GuildSetting<MessageChannel> LOST_WAR_CHANNEL = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -1290,7 +1304,9 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "The ingame rank required to get an alliance role. (default: member) Options: " + StringMan.getString(Rank.values());
+            return "The ingame rank required to get an alliance role.\n" +
+                    "Default: member\n" +
+                    "Options: " + StringMan.getString(Rank.values());
         }
     }.setupRequirements(f -> f.requires(AUTOROLE_ALLIANCES));
     public static GuildSetting<Integer> AUTOROLE_TOP_X = new GuildIntegerSetting(GuildSettingCategory.ROLE) {
@@ -1302,7 +1318,8 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "The number of top alliances to provide roles for, defaults to `0`";
+            return "The number of top alliances to provide roles for, defaults to `0`\n" +
+                    "Alliances added to `" + Coalition.MASKEDALLIANCES + "` are still included outside this range";
         }
     }.setupRequirements(f -> f.requires(AUTOROLE_ALLIANCES));
     public static GuildSetting<Integer> DO_NOT_RAID_TOP_X = new GuildIntegerSetting(GuildSettingCategory.FOREIGN_AFFAIRS) {
@@ -1528,7 +1545,7 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "If the alliance can convert resources to cash.\n" +
+            return "If members can convert resources to cash.\n" +
                     "This is done virtually in " + CM.deposits.check.cmd.toSlashMention() +
                     "Resources are converted using market average\n" +
                     "Use `#cash` as the note when depositing or transferring funds";
@@ -1842,7 +1859,7 @@ public class GuildKey {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String removeResourceChannel(@Me GuildDB db, @Me User user, @Me MessageChannel channel) {
+        public String removeResourceChannel(@Me GuildDB db, @Me User user, MessageChannel channel) {
             Map<Long, MessageChannel> existing = RESOURCE_REQUEST_CHANNEL.getOrNull(db, false);
             existing = existing == null ? new HashMap<>() : new LinkedHashMap<>(existing);
             if (!existing.values().contains(channel)) {
@@ -1858,7 +1875,7 @@ public class GuildKey {
         @Command(desc = "Set the resource withdrawal channel to the current channel\n" +
                 "Do not specify an alliance to set the default withdraw channel")
         @RolePermission(Roles.ADMIN)
-        public String addResourceChannel(@Me GuildDB db, @Me User user, @Me MessageChannel channel, @Default DBAlliance alliance) {
+        public String addResourceChannel(@Me GuildDB db, @Me User user, MessageChannel channel, @Default DBAlliance alliance) {
             Map<Long, MessageChannel> existing = RESOURCE_REQUEST_CHANNEL.getOrNull(db, false);
             existing = existing == null ? new HashMap<>() : new LinkedHashMap<>(existing);
             existing.put(alliance == null ? 0L : alliance.getId(), channel);
@@ -2012,7 +2029,7 @@ public class GuildKey {
             return "The #channel to receive alerts when gov members increase MMR (top 80)";
         }
     }.setupRequirements(f -> f.requireActiveGuild());
-    public static GuildSetting<MessageChannel> ENEMY_MMR_CHANGE_ALERTS = new GuildChannelSetting(GuildSettingCategory.BEIGE_ALERTS) {
+    public static GuildSetting<MessageChannel> ENEMY_MMR_CHANGE_ALERTS = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
@@ -2135,7 +2152,7 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "A comma separated list of audit types to ignore: " + StringMan.getString(AutoAuditType.values());
+            return "A comma separated list of audit types to ignore:\n" + StringMan.getString(AutoAuditType.values());
         }
     }.setupRequirements(f -> f.requires(MEMBER_AUDIT_ALERTS).requireValidAlliance());
     public static GuildSetting<Map<ResourceType, Double>> REWARD_REFERRAL = new GuildResourceSetting(GuildSettingCategory.REWARD) {

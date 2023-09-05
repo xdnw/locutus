@@ -400,6 +400,15 @@ public class PnwUtil {
     }
 
     public static Map<ResourceType, Double> parseResources(String arg, boolean allowBodmas) {
+        if (arg.contains("---+") && arg.contains("-+-")) {
+            arg = arg.replace("-+-", "---");
+            int start = arg.indexOf("---+");
+            arg = arg.substring(start + 4).trim();
+            arg = arg.replaceAll("([0-9]+)[ ]+", "$1,");
+            arg = arg.replace("\n", "");
+            arg = arg.replaceAll("[ ]+", " ");
+            arg = "{" + arg.replace(" | ", ":") + "}";
+        }
         if (arg.contains("\t") || arg.contains("    ")) {
             String[] split = arg.split("[\t]");
             if (split.length == 1) split = arg.split("[ ]{4}");
@@ -567,7 +576,7 @@ public class PnwUtil {
         return range * 0.01;
     }
 
-    public static Map.Entry<double[], String> createDepositEmbed(GuildDB db, NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild, Map<DepositType, double[]> categorized, Boolean showTaxesSeparately, double[] escrowed, long escrowExpire) {
+    public static Map.Entry<double[], String> createDepositEmbed(GuildDB db, NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild, Map<DepositType, double[]> categorized, Boolean showTaxesSeparately, double[] escrowed, long escrowExpire, boolean condenseFormat) {
         boolean withdrawIgnoresGrants = GuildKey.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS.getOrNull(db) == Boolean.TRUE;
 
         boolean hasEscrowed = (escrowed != null && !ResourceType.isZero(escrowed) && PnwUtil.convertedTotal(escrowed) > 0);
@@ -575,7 +584,9 @@ public class PnwUtil {
         StringBuilder response = new StringBuilder();
 
         List<String> footers = new ArrayList<>();
-        footers.add("value is based on current market prices");
+        if (!condenseFormat) {
+            footers.add("value is based on current market prices");
+        }
 
         double[] balance = ResourceType.getBuffer();
         double[] nonBalance = ResourceType.getBuffer();
@@ -599,21 +610,21 @@ public class PnwUtil {
 
         if (showTaxesSeparately) {
             if (categorized.containsKey(DepositType.DEPOSIT)) {
-                response.append("**#DEPOSIT:** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.DEPOSIT))));
+                response.append("**`#DEPOSIT:`** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.DEPOSIT))));
                 response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.DEPOSIT))).append("``` ");
             }
             if (categorized.containsKey(DepositType.TAX)) {
-                response.append("**#TAX:** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.TAX))));
+                response.append("**`#TAX:**` worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.TAX))));
                 response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.TAX))).append("``` ");
             } else if (nationOrAllianceOrGuild.isNation()) {
                 footers.add("No tax records are added to deposits");
             }
             if (categorized.containsKey(DepositType.LOAN)) {
-                response.append("**#LOAN/#GRANT:** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.LOAN))));
+                response.append("**`#LOAN/#GRANT`:** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.LOAN))));
                 response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.LOAN))).append("``` ");
             }
             if (categorized.containsKey(DepositType.GRANT)) {
-                response.append("**#EXPIRE:** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.GRANT))));
+                response.append("**`#EXPIRE:`** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.GRANT))));
                 response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.GRANT))).append("``` ");
             }
             if (hasEscrowed) {
@@ -628,21 +639,33 @@ public class PnwUtil {
                 response.append("\n```").append(PnwUtil.resourcesToString(balance)).append("``` ");
             }
         } else {
-            response.append("## Balance:\n");
-            response.append(PnwUtil.resourcesToFancyString(balance)).append("\n");
+            String prefix = condenseFormat ? "**" : "## ";
+            String suffix = condenseFormat ? "**" : "";
+            response.append(prefix + "Balance:" + suffix);
+            if (condenseFormat) {
+                response.append(" worth: `$" + MathMan.format(PnwUtil.convertedTotal(balance)) + "`\n");
+                response.append("```" + PnwUtil.resourcesToString(balance) + "``` ");
+            } else {
+                response.append("\n").append(PnwUtil.resourcesToFancyString(balance)).append("\n");
+            }
             response.append("**Includes:** `" + StringMan.join(balanceNotes, "`, `")).append("`\n");
             response.append("**Excludes:** `" + StringMan.join(excluded, "`, `")).append("`\n");
 
             if (hasEscrowed) {
-                response.append("\n## " + CM.escrow.withdraw.cmd.toSlashMention() + "**:**\n");
-                response.append(PnwUtil.resourcesToFancyString(escrowed)).append("\n");
+                response.append("\n" + prefix + CM.escrow.withdraw.cmd.toSlashMention() + ":" + suffix);
+                if (condenseFormat) {
+                    response.append(" worth: `$" + MathMan.format(PnwUtil.convertedTotal(escrowed)) + "`\n");
+                    response.append("```" + PnwUtil.resourcesToString(escrowed) + "``` ");
+                } else {
+                    response.append("\n").append(PnwUtil.resourcesToFancyString(escrowed)).append("\n");
+                }
                 if (escrowExpire > 0) {
                     response.append("- expires: " + DiscordUtil.timestamp(escrowExpire, null) + "\n");
                 }
             }
 
             if (!ResourceType.isZero(nonBalance)) {
-                response.append("\n## Expiring Debt:\n");
+                response.append("\n" + prefix + "Expiring Debt:" + suffix + "\n");
                 response.append("In addition to your balance, you owe the following:\n");
                 response.append("```\n" + PnwUtil.resourcesToString(nonBalance)).append("```\n- worth: $" + MathMan.format(PnwUtil.convertedTotal(nonBalance)) + "\n");
             }
@@ -765,7 +788,7 @@ public class PnwUtil {
             if (amt != null) out.append(String.format(leftAlignFormat, type.name(), MathMan.format(amt)));
         }
         out.append("```\n");
-        out.append("**Total" + (totalName != null && !totalName.isEmpty() ? " " + totalName : "") + "**: worth ~$" + MathMan.format(PnwUtil.convertedTotal(resources)) + "\n`" + PnwUtil.resourcesToString(resources) + "`");
+        out.append("**Total" + (totalName != null && !totalName.isEmpty() ? " " + totalName : "") + "**: worth ~$" + MathMan.format(PnwUtil.convertedTotal(resources)) + "\n```" + PnwUtil.resourcesToString(resources) + "``` ");
         return out.toString();
     }
 
@@ -916,30 +939,6 @@ public class PnwUtil {
         }
         total_cents = (total_cents + 50)  / 100;
         return total_cents * 0.01;
-    }
-
-    public static void main(String[] args) {
-        double start = 0.039999999999999994;
-        double end =  0.06;
-        // 1008588.99 | 1008457.93
-        // $1008457.93
-
-        System.out.println("start -> end: " + start + " -> " + end);
-
-        System.out.println(calculateInfra(start, end));
-//        // calculateInfra(2105, 2550)
-//        double total = 0;
-//        // run calculation 100,000 times, add to total. determine time ms taken
-//        long startMs = System.currentTimeMillis();
-//        for (int i = 0; i < 10000000; i++) {
-//            end += 1;
-//            if (end > 4000) {
-//                end -= 2000;
-//            }
-//            total += calculateInfra(start, end);
-//        }
-//        long endMs = System.currentTimeMillis();
-//        System.out.println("Total: " + total + " in " + (endMs - startMs) + "ms");
     }
 
     /**
