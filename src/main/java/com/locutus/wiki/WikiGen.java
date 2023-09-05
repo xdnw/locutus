@@ -2,10 +2,12 @@ package com.locutus.wiki;
 
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
+import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
+import rocker.data.spoiler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,13 +53,36 @@ public abstract class WikiGen {
     }
 
     public String commandMarkdownSpoiler(CommandRef ref) {
-        String title = "### " + ref.toSlashCommand(true);
-        String body = commandMarkdown(ref);
-        return MarkupUtil.spoiler(title, body);
+        return commandMarkdownSpoiler(ref, true);
+    }
+
+    public String commandMarkdownSpoiler(CommandRef ref, boolean prefixDescription) {
+        String title = "<bold><kbd>" + ref.toSlashCommand(false) + "</kbd><br></bold>";
+        ParametricCallable callable = ref.getCallable(true);
+        String body = MarkupUtil.markdownToHTML(callable.toBasicMarkdown(manager.getStore(), null, "/", false, true)) + "\n\n---\n\n";
+        String spoiler = MarkupUtil.spoiler(title, body);
+        if (prefixDescription) {
+            String desc = callable.simpleDesc().trim();
+            if (!desc.isEmpty()) {
+                String suffix = desc.contains("\n") ? "..." : "";
+                desc = desc.split("\n")[0] + suffix;
+                return "| :books:  " + desc + " |\n|-|\n\n" + spoiler;
+            }
+        }
+        return spoiler;
     }
 
     public String commandMarkdown(CommandRef ref) {
         return "### " + ref.toSlashCommand(true) + "\n" + ref.getCallable(true).toBasicMarkdown(manager.getStore(), null, "/", false, true) + "\n\n---\n\n";
+    }
+
+
+    public String linkPage(String pageName) {
+        return MarkupUtil.markdownUrl("Locutus/Wiki/" + pageName, "../wiki/" + pageName);
+    }
+
+    public String hr() {
+        return "\n---\n";
     }
 
 }

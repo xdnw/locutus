@@ -4,7 +4,7 @@ Welcome to Locutus, the All-In-One Discord bot designed for the web browser game
 
 ## User Setup Guide
 
-To get started with Locutus, please refer to the [User Setup Guide](https://docs.google.com/document/d/1Qq6Qe7KtCy-Dlqktz8bhNfrUpcbf7oM8F6gRVNR28Dw/edit). This guide will walk you through the necessary steps to set up and configure Locutus for your Discord server.
+To get started with Locutus, please refer to the [User Setup Guide](https://github.com/xdnw/locutus/wiki/initial_setup). This guide will walk you through the necessary steps to set up and configure Locutus for your Discord server.
 
 ## GitHub Wiki Pages
 

@@ -77,6 +77,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import org.json.JSONObject;
+import retrofit2.http.HEAD;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -3041,7 +3042,7 @@ public class BankCommands {
     @RolePermission(value = Roles.MEMBER)
     public String acceptTrades(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, DBNation receiver, @Default Map<ResourceType, Double> amount, @Switch("a") boolean useLogin, @Switch("f") boolean force) throws Exception {
         OffshoreInstance offshore = db.getOffshore();
-        if (offshore == null) return "No offshore is set in this guild: <https://docs.google.com/document/d/1QkN1FDh8Z8ENMcS5XX8zaCwS9QRBeBJdCmHN5TKu_l8/>";
+        if (offshore == null) return "No offshore is set in this guild: <https://github.com/xdnw/locutus/wiki/banking>";
 
         GuildDB receiverDB = Locutus.imp().getGuildDBByAA(receiver.getAlliance_id());
         if (receiverDB == null) return "Receiver is not in a guild with locutus";
@@ -3273,6 +3274,7 @@ public class BankCommands {
                            @Switch("i") boolean includeIgnored,
                            @Arg("Hide the escrow balance ") @Switch("h") boolean hideEscrowed
     ) throws IOException {
+        boolean condensedFormat = GuildKey.DISPLAY_CONDENSED_DEPOSITS.getOrNull(db) == Boolean.TRUE;
         if (!nationOrAllianceOrGuild.isNation() && !nationOrAllianceOrGuild.isTaxid()) {
             showTaxesSeparately = false;
         }
@@ -3354,19 +3356,21 @@ public class BankCommands {
                 footers.add("`#TAX` is for the portion of tax income that does NOT go into member holdings");
                 footers.add("`#DEPOSIT` is for the portion of tax income in member holdings");
             } else {
-                footers.add("Set `showTaxesSeparately` to show separate sections for tax income allocated to member holdings");
+                footers.add("Set `showTaxesSeparately` for breakdown of tax within member holdings");
             }
         }
 
         String title = "Deposits for: " + nationOrAllianceOrGuild.getQualifiedName();
-        Map.Entry<double[], String> balanceBody = PnwUtil.createDepositEmbed(db, nationOrAllianceOrGuild, accountDeposits, showTaxesSeparately, escrowed, escrowExpire);
+        Map.Entry<double[], String> balanceBody = PnwUtil.createDepositEmbed(db, nationOrAllianceOrGuild, accountDeposits, showTaxesSeparately, escrowed, escrowExpire, condensedFormat);
         double[] balance = balanceBody.getKey();
         String body = balanceBody.getValue();
         Map<String, Map.Entry<CommandRef, Boolean>> buttons = new LinkedHashMap<>();
 
         if (me != null && nationOrAllianceOrGuild == me) {
-            footers.add("Funds default to `#deposit` if no other note is used");
-            if (Boolean.TRUE.equals(db.getOrNull(GuildKey.RESOURCE_CONVERSION))) {
+            if (!condensedFormat) {
+                footers.add("Funds default to `#deposit` if no other note is used");
+            }
+            if (Boolean.TRUE.equals(db.getOrNull(GuildKey.RESOURCE_CONVERSION)) && !condensedFormat) {
                 footers.add("You can sell resources to the alliance by depositing with the note `#cash`");
             }
 //            if (PnwUtil.convertedTotal(balance) > 0 && Boolean.TRUE.equals(db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW))) {
@@ -3399,8 +3403,7 @@ public class BankCommands {
                 if (Roles.ECON_WITHDRAW_SELF.has(author, guild)) {
                     // add button, add note
                     buttons.put("withdraw escrow", Map.entry(CM.escrow.withdraw.cmd.create(nationOrAllianceOrGuild.getQualifiedId(), "", null), true));
-                    footers.add("Withdraw escrow using: " + CM.escrow.withdraw.cmd.toSlashMention() + " ");
-                } else {
+                } else if (!condensedFormat) {
                     footers.add("You do not have permission to withdraw escrowed funds");
                 }
             }
@@ -3420,7 +3423,7 @@ public class BankCommands {
             footers.add("To withdraw: " + CM.transfer.resources.cmd.toSlashMention() + " with `taxaccount: " + nationOrAllianceOrGuild.getQualifiedName() + "`");
 
             if (econ) {
-                footers.add("To add balance: " + CM.deposits.add.cmd.toSlashMention() + " with `acounts: " + nationOrAllianceOrGuild.getQualifiedName() + "`");
+                footers.add("To add balance: " + CM.deposits.add.cmd.toSlashMention() + " with `accounts: " + nationOrAllianceOrGuild.getQualifiedName() + "`");
             }
         } else if (nationOrAllianceOrGuild.isGuild()) {
             // trade deposit
@@ -3443,7 +3446,9 @@ public class BankCommands {
         if (!showTaxesSeparately && (nationOrAllianceOrGuild.isNation() || nationOrAllianceOrGuild.isTaxid())) {
             // add footer and button for showing separately
             String itemziedSetting = !econ ? "" : "or " + GuildKey.DISPLAY_ITEMIZED_DEPOSITS.getCommandMention() + " ";
-            footers.add("Use `showTaxesSeparately: True` " + itemziedSetting + "for a breakdown");
+            if (!condensedFormat) {
+                footers.add("Use `showTaxesSeparately: True` " + itemziedSetting + "for a breakdown");
+            }
             buttons.put("breakdown",
                     Map.entry(
                             CM.deposits.check.cmd.create(
@@ -3461,17 +3466,19 @@ public class BankCommands {
         }
 
         boolean canOffshore = db.isValidAlliance() && (Boolean.TRUE.equals(GuildKey.MEMBER_CAN_OFFSHORE.getOrNull(db)) || Roles.ECON_STAFF.has(author, guild));
-        if (canOffshore && ((nationOrAllianceOrGuild.isNation() && db.isValidAlliance()) || nationOrAllianceOrGuild.isAlliance())) {
+        if (canOffshore && (nationOrAllianceOrGuild.isNation() || nationOrAllianceOrGuild.isAlliance())) {
             Map.Entry<GuildDB, Integer> offshore = db.getOffshoreDB();
             if (offshore != null) {
                 buttons.put("offshore",
                         Map.entry(
                                 CM.offshore.send.cmd,
                                 false));
-                if (GuildKey.API_KEY.getOrNull(db) != null) {
-                    footers.add("To offshore: " + CM.offshore.send.cmd.toSlashMention() + "");
-                } else {
-                    footers.add("To offshore, send to " + PnwUtil.getMarkdownUrl(offshore.getValue(), true) + "");
+                if (!condensedFormat) {
+                    if (GuildKey.API_KEY.getOrNull(db) != null) {
+                        footers.add("To offshore: " + CM.offshore.send.cmd.toSlashMention() + "");
+                    } else {
+                        footers.add("To offshore, send to " + PnwUtil.getMarkdownUrl(offshore.getValue(), true) + "");
+                    }
                 }
             }
         }
@@ -3479,7 +3486,11 @@ public class BankCommands {
         StringBuilder response = new StringBuilder(body);
 
         if (!footers.isEmpty()) {
-            response.append("\n## Notes:\n");
+            if (condensedFormat) {
+                response.append("\n**Tips:**\n");
+            } else {
+                response.append("\n## Tips:\n");
+            }
             for (int i = 0; i < footers.size(); i++) {
                 String footer = footers.get(i);
                 response.append("- " + footer + "\n");
@@ -3512,12 +3523,12 @@ public class BankCommands {
                     if (stockpile != null && !stockpile.isEmpty() && stockpile.getOrDefault(ResourceType.CREDITS, 0d) != -1) {
                         Map<ResourceType, Double> excess = finalNation.checkExcessResources(db, stockpile);
                         if (!excess.isEmpty()) {
-                            response.append("Excess can be deposited: `" + PnwUtil.resourcesToString(excess) + "`\n");
+                            response.append("- Excess can be deposited: ```" + PnwUtil.resourcesToString(excess) + "```\n");
                         }
                     }
                     Map<ResourceType, Double> needed = finalNation.getResourcesNeeded(stockpile, 3, true);
                     if (!needed.isEmpty()) {
-                        response.append("Missing resources for the next 3 days: `" + PnwUtil.resourcesToString(needed) + "`\n");
+                        response.append("- Missing resources for the next 3 days: ```" + PnwUtil.resourcesToString(needed) + "```\n");
                     }
 
                     if (me != null && me.getNation_id() == finalNation.getNation_id() && Boolean.TRUE.equals(db.getOrNull(GuildKey.MEMBER_CAN_OFFSHORE)) && db.isValidAlliance()) {
@@ -3526,7 +3537,7 @@ public class BankCommands {
                             try {
                                 Map<ResourceType, Double> aaStockpile = me.getAlliance().getStockpile();
                                 if (aaStockpile != null && PnwUtil.convertedTotal(aaStockpile) > 5000000) {
-                                    response.append("You MUST offshore funds after depositing " + CM.offshore.send.cmd.toSlashMention() + " \n");
+                                    response.append("- The alliance bank has funds to offshore\n");
                                 }
                             } catch (Throwable ignore) {}
                         }
@@ -3536,7 +3547,6 @@ public class BankCommands {
                         try {
                             IMessageBuilder msg = msgFuture.get();
                             if (msg != null && msg.getId() > 0) {
-                                System.out.println("Send 2");
                                 msg.clearEmbeds().embed(title, response.toString()).send();
                             }
                         } catch (InterruptedException | ExecutionException e) {
@@ -3981,7 +3991,7 @@ public class BankCommands {
                         }
                     }
 
-                    response.append("Registered " + offshoreAlliance.getQualifiedId() + " as an offshore. See: https://docs.google.com/document/d/1QkN1FDh8Z8ENMcS5XX8zaCwS9QRBeBJdCmHN5TKu_l8/edit");
+                    response.append("Registered " + offshoreAlliance.getQualifiedId() + " as an offshore. See: https://github.com/xdnw/locutus/wiki/bankingedit");
                     if (aaIds.isEmpty()) {
                         response.append("\n(Your guild id, and the id of your account with the offshore is `" + root.getIdLong() + "`)");
                     }

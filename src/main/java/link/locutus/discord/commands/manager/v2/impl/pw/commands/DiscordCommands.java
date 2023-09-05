@@ -404,7 +404,7 @@ public class DiscordCommands {
 
     @Command(desc = "Return the discord invite link for the bot")
     public String invite() {
-        return "<https://docs.google.com/document/d/1Qq6Qe7KtCy-Dlqktz8bhNfrUpcbf7oM8F6gRVNR28Dw/edit?usp=sharing>";
+        return "<https://github.com/xdnw/locutus/wiki/banking>";
     }
 
     @Command(desc = "Unregister a nation to a discord user")

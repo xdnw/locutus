@@ -72,13 +72,13 @@ public class WikiGenHandler {
         // alliance_placeholders
         pages.add(new WikiAlliancePlaceholdersPage(manager));
         //War Alerts
-        pages.add(new WikiWarAlertsPage(manager)); // <--- easy @@@ ===
+        pages.add(new WikiWarAlertsPage(manager));
 //        //Auto masking
-        pages.add(new WikiAutoMaskingPage(manager)); // <--- easy @@@ ===
+        pages.add(new WikiAutoMaskingPage(manager));
         // Embassies
         pages.add(new WikiEmbassyPage(manager));
         //Deposits System
-        pages.add(new WikiDepositsPage(manager)); // <--- @@@ ===
+        pages.add(new WikiDepositsPage(manager));
 //        //Setup an offshore or bank
         pages.add(new WikiBankPage(manager));
 //        //Interview System
@@ -86,21 +86,21 @@ public class WikiGenHandler {
         //Recruitment System
         pages.add(new WikiRecruitmentPage(manager));
 //        //DNR system
-        pages.add(new WikiDNRPage(manager)); // <--- @@@ ===
+        pages.add(new WikiDNRPage(manager));
 //        //Coalitions system
-        pages.add(new WikiCoalitionsPage(manager)); // <--- @@@ ===
+        pages.add(new WikiCoalitionsPage(manager));
 //        //War Room System
         pages.add(new WikiWarRoomPage(manager)); // <--- easy @@ ===
 //        //Countering
-        pages.add(new WikiCounteringPage(manager)); // <--- @@
+        pages.add(new WikiCounteringPage(manager));
         //        //Tax Bracket Automation
         pages.add(new WikiTaxBracketPage(manager)); // <--- @@@ ===
         //Auditing System / Alliance MMR requirements
-        pages.add(new WikiAuditingPage(manager)); // <--- @@
+        pages.add(new WikiAuditingPage(manager));
 //        //Finding Targets / War panels
         pages.add(new WikiFindingTargetsPage(manager)); // <--- @@
 //        //Escrow System
-        pages.add(new WikiEscrowPage(manager)); // <--- @
+        pages.add(new WikiEscrowPage(manager));
 //        //Plan a blitz
         pages.add(new WikiBlitzPage(manager)); // <--- @
 //        //Send out targets
@@ -126,6 +126,18 @@ public class WikiGenHandler {
 //        //Trade System (use trading guide)
 //        //- Link DocScripts trade tool (cause useful)
         pages.add(new WikiTradePage(manager)); // <---   #### @
+
+        // # Delegate servers // <---
+        // war rooms delegate
+        // war alerts delegate
+        // copy channel id
+        // fa delegate
+
+        // # Self roles // <---
+        // /settings_role ASSIGNABLE_ROLES
+        // and the commansd role self
+        // add role to all members
+        // mask command?
 
         WikiHelpPage help = new WikiHelpPage(manager, pages);
         pages.add(help);

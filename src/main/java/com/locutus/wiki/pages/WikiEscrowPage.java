@@ -1,7 +1,11 @@
 package com.locutus.wiki.pages;
 
 import com.locutus.wiki.WikiGen;
+import link.locutus.discord.apiv1.enums.EscrowMode;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.StringMan;
 
 public class WikiEscrowPage extends WikiGen {
     public WikiEscrowPage(CommandManager2 manager) {
@@ -11,57 +15,58 @@ public class WikiEscrowPage extends WikiGen {
     @Override
     public String generateMarkdown() {
         return build(
-
+        """
+                Escrowed funds are not transferred in-game, but are added to a nation's escrow account.
+                
+                When escrowing via a transfer command, this can deduct from member balance based on the note used e.g. `#deposit`.
+                
+                Escrowing does not deduct from the alliance/guild's offshore when no funds are sent in-game.
+                
+                Overview:
+                - Escrowed funds can be withdrawn by the receiver when their blockade ends
+                - Escrow can be set to expire
+                - Bulk set, add, reset or view escrow for multiple nations
+                - Modify escrow based on deposits, cities, stockpile, or current military units
+                """,
+                "# Viewing escrow",
+                commandMarkdownSpoiler(CM.deposits.check.cmd),
+                commandMarkdownSpoiler(CM.escrow.view_sheet.cmd),
+                commandMarkdownSpoiler(CM.deposits.sheet.cmd),
+                "# Using escrow with transfer commands",
+                "Control whether a transfer is escrowed when",
+                "## Escrow modes",
+                "- " + StringMan.join(EscrowMode.values(), "\n- "),
+                "## Commands",
+                "Use the `escrowMode` argument for the transfer commands, e.g.",
+                CM.transfer.self.cmd.create("food=10", null, null, null, null, null, null, null, null, null, null, EscrowMode.WHEN_BLOCKADED.name(), null, null).toString(),
+                "### Slash commands:",
+                commandMarkdownSpoiler(CM.transfer.bulk.cmd),
+                commandMarkdownSpoiler(CM.transfer.resources.cmd),
+                commandMarkdownSpoiler(CM.transfer.raws.cmd),
+                commandMarkdownSpoiler(CM.transfer.self.cmd),
+                commandMarkdownSpoiler(CM.transfer.warchest.cmd),
+                "### Legacy commands:",
+                "Add an argument such as `escrow:WHEN_BLOCKADED` to the legacy `!` commands",
+                "# Withdraw escrow",
+                commandMarkdownSpoiler(CM.escrow.withdraw.cmd),
+                "# Add escrow",
+                """
+                Add amounts to nation's existing escrow balance
+                - Use negative to remove escrow amounts
+                - See the arguments for handling cities/stockpile/military units""",
+                commandMarkdownSpoiler(CM.escrow.add.cmd),
+                "## Set escrow",
+                """
+                Overwrite existing and set nations escrow balance
+                - See the arguments for handling cities/stockpile/military units""",
+                commandMarkdownSpoiler(CM.escrow.set.cmd),
+                "# Reset escrow",
+                CM.deposits.reset.cmd.create("", "true", "true", "true", "true", "false", null).toString(),
+                "# Add or set escrow using a sheet",
+                commandMarkdownSpoiler(CM.escrow.set_sheet.cmd),
+                "# Escrow alerts",
+                "Setup blockade alerts: " + linkPage("blockade_tools"),
+                CM.role.setAlias.cmd.create(Roles.ESCROW_GOV_ALERT.name(), "@escrowGovRole", null, null).toString()
         );
-       /*
-       State purpose of escrow system and how it generally works
-       i.e. escrow funds if a nation is blockaded that they can withdraw when they leave blockade
-
-       Escrow can be set to expire
-       You can set or add to the escrow for the entire alliance
-       You can modify the escrow based on nation deposits, number of cities, stockpile, or current military units
-
-        Will show up in member deposits
-        `/deposits check`
-
-       borg: /escrow withdraw receiver: amount:
-Withdraw from your escrow account
-/escrow add nations:
-Econ command to add to a nation's escrow
-/escrow set nations:
-Econ command to set nation's escrow
-/escrow set_sheet sheet:
-Import escrow values from a sheet
-/escrow view_sheet
-Get a sheet of escrow
-/deposits sheet
-Get a sheet of deposits + escrow
-/deposits reset nations:
-Reset deposits (incl escrow)
-Legacy commands with an escrow argument
-!warchest
-!disperse
-!grant
-!transfer
-(These typically redirect to /transfer resources or /transfer bulk)
-
-Slash commands with escrowMode argument
-/transfer bulk
-/transfer resources
-/transfer raws
-/transfer self
-/transfer warchest
-
-
-Escrow modes
-NEVER - Does not escrow. If a receiver is blockaded the command fails
-WHEN_BLOCKADED - If blockaded puts the funds into the escrow account for the receiver to withdraw later, else transfers funds
-ALWAYS - Does not transfer funds, always escrow
-
-
-Note: A transfer will deduct from nation deposits (if not #ignore) even if it gets escrowed.
-The escrowed funds can be withdrawn regardless of deposits (or other debt)
-The alliance's offshore balance is only deducted when funds are sent ingame (i.e. escrowing funds does not deduct from offshore balance)
-        */
     }
 }

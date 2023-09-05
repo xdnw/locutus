@@ -750,25 +750,43 @@ public class NationUpdateProcessor {
 
             if (nation.getActive_m() > 4880 || nation.getVm_turns() > 0 || nation.getCities() <= 3) continue;
 
-            departureInfo.add(PnwUtil.getMarkdownUrl(nation.getId(), false) + ", cities: " + nation.getCities() + ", " + entry.getValue().getValue());
-
-
+            String line = PnwUtil.getMarkdownUrl(nation.getId(), false) + ", c" + nation.getCities() + ", " + entry.getValue().getValue().name();
+            if (current.getAlliance_id() > 0) {
+                line += "-> " + current.getAllianceUrlMarkup(true);
+            } else {
+                line += " -> None";
+            }
+            departureInfo.add(line);
             memberRemoves++;
         }
+
+        CM.alliance.departures cmd = CM.alliance.departures.cmd.create(alliance.getQualifiedId(), "7d", "*,#alliance_id!=" + alliance.getId(), "true", "true", null, null);
 
         if (memberRemoves >= 5) {
             int aaRank = alliance.getRank();
             String title = memberRemoves + " departures from " + alliance.getName();
+
+
             String body = PnwUtil.getMarkdownUrl(alliance.getId(), true) +
-                    "(-" + MathMan.format(scoreDrop) + " score)" +
-                    "\n" + StringMan.join(departureInfo, "\n");
+                    "(-" + MathMan.format(scoreDrop) + " score)";
+
+            int remaining = 3950 - body.length();
+            for (int i = departureInfo.size() - 1; i >= 0; i--) {
+                String line = departureInfo.get(i);
+                if (remaining - line.length() - 1 < 0) {
+                    departureInfo = departureInfo.subList(i + 1, departureInfo.size());
+                    break;
+                }
+                remaining -= line.length() + 1;
+            }
+            body += "\n" + StringMan.join(departureInfo, "\n");
+            String finalBody = body;
             AlertUtil.forEachChannel(f -> true, GuildKey.ORBIS_ALLIANCE_EXODUS_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                 @Override
                 public void accept(MessageChannel channel, GuildDB guildDB) {
                     Integer topX = GuildKey.ALLIANCE_EXODUS_TOP_X.getOrNull(guildDB);
                     if (topX != null && topX < aaRank) return;
-
-                    DiscordUtil.createEmbedCommand(channel, title, body);
+                    new DiscordChannelIO(channel).create().embed(title, finalBody).commandButton(cmd, "list departures").sendWhenFree();
                 }
             });
         }

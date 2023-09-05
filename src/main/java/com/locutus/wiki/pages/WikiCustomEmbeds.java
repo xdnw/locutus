@@ -25,19 +25,19 @@ public class WikiCustomEmbeds extends WikiGen {
                 """
                 Create an embed with preset title, description and command buttons.
                 See:""",
-                commandMarkdownSpoiler(CM.embed.template.guerilla.cmd),
-                commandMarkdownSpoiler(CM.embed.template.spy_sheets.cmd),
-                commandMarkdownSpoiler(CM.embed.template.ally_enemy_sheets.cmd),
-                commandMarkdownSpoiler(CM.embed.template.spy_enemy.cmd),
-                commandMarkdownSpoiler(CM.embed.template.unblockade_requests.cmd),
-                commandMarkdownSpoiler(CM.embed.template.war_winning.cmd),
-                commandMarkdownSpoiler(CM.embed.template.member_econ.cmd),
-                commandMarkdownSpoiler(CM.embed.template.war_contested_range.cmd),
-                commandMarkdownSpoiler(CM.embed.template.deposits.cmd),
-                commandMarkdownSpoiler(CM.embed.template.raid.cmd),
-                "# View the commands for a template",
-                "To show the commands needed to create or copy a template",
-                commandMarkdown(CM.embed.info.cmd),
+                commandMarkdownSpoiler(CM.embed.template.guerilla.cmd, true),
+                commandMarkdownSpoiler(CM.embed.template.spy_sheets.cmd, true),
+                commandMarkdownSpoiler(CM.embed.template.ally_enemy_sheets.cmd, true),
+                commandMarkdownSpoiler(CM.embed.template.spy_enemy.cmd, true),
+                commandMarkdownSpoiler(CM.embed.template.unblockade_requests.cmd, true),
+                commandMarkdownSpoiler(CM.embed.template.war_winning.cmd, true),
+                commandMarkdownSpoiler(CM.embed.template.member_econ.cmd, true),
+                commandMarkdownSpoiler(CM.embed.template.war_contested_range.cmd, true),
+                commandMarkdownSpoiler(CM.embed.template.deposits.cmd, true),
+                commandMarkdownSpoiler(CM.embed.template.raid.cmd, true),
+                "# View the commands for an embed",
+                "To show the commands needed to create or copy an embed",
+                commandMarkdownSpoiler(CM.embed.info.cmd),
                 "# Create an embed with title and description",
                 CM.embed.create.cmd.create("Your Title", "Your Description").toString(),
                 "# Update the title and description",
@@ -48,16 +48,13 @@ public class WikiCustomEmbeds extends WikiGen {
                 "Copy the message url for an embed, and use the name of the button",
                 CM.embed.remove.button.cmd.create("", "button name").toString(),
                 "# Add a button to an embed",
-                commandMarkdown(CM.embed.add.command.cmd),
+                commandMarkdownSpoiler(CM.embed.add.command.cmd),
                 "# Add a modal (prompt button) to an embed",
-                commandMarkdown(CM.embed.add.modal.cmd),
+                commandMarkdownSpoiler(CM.embed.add.modal.cmd),
                 "# Multiple commands in one button",
                 "Use `\\n` for newlines between commands",
-                commandMarkdown(CM.embed.add.raw.cmd)
+                commandMarkdownSpoiler(CM.embed.add.raw.cmd)
         );
     }
 
-    private String linkPage(String pageName) {
-        return MarkupUtil.markdownUrl("Locutus/Wiki/" + pageName, "../wiki/" + pageName);
-    }
 }
