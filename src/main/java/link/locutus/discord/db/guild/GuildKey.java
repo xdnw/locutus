@@ -906,7 +906,7 @@ public class GuildKey {
         @Override
         public String help() {
             return "The #channel to receive alerts for defensive wars\n" +
-                    "Members and `" + Roles.MILCOM.name() + " are pinged for defensive wars\n" +
+                    "Members and `" + Roles.MILCOM.name() + "` are pinged for defensive wars\n" +
                     "To set the `" + Roles.MILCOM.name() + "` role, see: " + CM.role.setAlias.cmd.create(Roles.MILCOM.name(), "", null, null);
         }
     }.setupRequirements(f -> f.requiresAllies().requireActiveGuild().requireValidAlliance().requireFunction(new Consumer<GuildDB>() {

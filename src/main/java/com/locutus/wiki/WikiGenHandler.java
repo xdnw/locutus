@@ -96,11 +96,11 @@ public class WikiGenHandler {
         //        //Tax Bracket Automation
         pages.add(new WikiTaxBracketPage(manager)); // <--- @@@ ===
         //Auditing System / Alliance MMR requirements
-        pages.add(new WikiAuditingPage(manager)); // <--- @@
+        pages.add(new WikiAuditingPage(manager));
 //        //Finding Targets / War panels
         pages.add(new WikiFindingTargetsPage(manager)); // <--- @@
 //        //Escrow System
-        pages.add(new WikiEscrowPage(manager)); // <--- @
+        pages.add(new WikiEscrowPage(manager));
 //        //Plan a blitz
         pages.add(new WikiBlitzPage(manager)); // <--- @
 //        //Send out targets
@@ -127,13 +127,13 @@ public class WikiGenHandler {
 //        //- Link DocScripts trade tool (cause useful)
         pages.add(new WikiTradePage(manager)); // <---   #### @
 
-        // # Delegate servers
+        // # Delegate servers // <---
         // war rooms delegate
         // war alerts delegate
         // copy channel id
         // fa delegate
 
-        // # Self roles
+        // # Self roles // <---
         // /settings_role ASSIGNABLE_ROLES
         // and the commansd role self
         // add role to all members
