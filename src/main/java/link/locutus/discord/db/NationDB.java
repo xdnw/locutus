@@ -3623,7 +3623,9 @@ public class NationDB extends DBMainV2 {
                     score += nation.getScore();
                     nationsByAllianceFiltered.computeIfAbsent(aaId, f -> new ObjectArrayList<>()).add(nation);
                 }
-                scoreMap.put(aaId, score);
+                if (score > 0) {
+                    scoreMap.put(aaId, score);
+                }
             }
         }
         if (sortByScore) {

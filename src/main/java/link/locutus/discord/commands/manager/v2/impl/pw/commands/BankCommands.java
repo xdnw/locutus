@@ -3411,14 +3411,6 @@ public class BankCommands {
                                 CM.transfer.resources.cmd.create("", "", DepositType.IGNORE.name(), nationOrAllianceOrGuild.getQualifiedId(), null, null, null, null, null, null, null, null, null, null, null),
                                 true));
                 footers.add("To withdraw: " + CM.transfer.resources.cmd.toSlashMention() + " with `#ignore` as note");
-                Map.Entry<GuildDB, Integer> offshore = db.getOffshoreDB();
-                if (offshore != null) {
-                    if (GuildKey.API_KEY.getOrNull(db) != null) {
-                        footers.add("To offshore: " + CM.offshore.send.cmd.toSlashMention() + "");
-                    } else {
-                        footers.add("To offshore, send to " + PnwUtil.getMarkdownUrl(offshore.getValue(), true) + "");
-                    }
-                }
             }
         } else if (nationOrAllianceOrGuild.isTaxid()) {
             buttons.put("withdraw",
@@ -3468,13 +3460,20 @@ public class BankCommands {
                             ), false));
         }
 
-        boolean canOffshore = db.isValidAlliance() && (Boolean.TRUE.equals(GuildKey.MEMBER_CAN_OFFSHORE.getOrNull(db)) || Roles.ECON_STAFF.has(author, guild)) && db.getOffshore() != null;
-        if (canOffshore && (nationOrAllianceOrGuild.isNation() || nationOrAllianceOrGuild.isAlliance())) {
-            buttons.put("offshore",
-                    Map.entry(
-                            CM.offshore.send.cmd,
-                            false));
-            footers.add("To offshore: " + CM.offshore.send.cmd.toSlashMention() + "");
+        boolean canOffshore = db.isValidAlliance() && (Boolean.TRUE.equals(GuildKey.MEMBER_CAN_OFFSHORE.getOrNull(db)) || Roles.ECON_STAFF.has(author, guild));
+        if (canOffshore && ((nationOrAllianceOrGuild.isNation() && db.isValidAlliance()) || nationOrAllianceOrGuild.isAlliance())) {
+            Map.Entry<GuildDB, Integer> offshore = db.getOffshoreDB();
+            if (offshore != null) {
+                buttons.put("offshore",
+                        Map.entry(
+                                CM.offshore.send.cmd,
+                                false));
+                if (GuildKey.API_KEY.getOrNull(db) != null) {
+                    footers.add("To offshore: " + CM.offshore.send.cmd.toSlashMention() + "");
+                } else {
+                    footers.add("To offshore, send to " + PnwUtil.getMarkdownUrl(offshore.getValue(), true) + "");
+                }
+            }
         }
 
         StringBuilder response = new StringBuilder(body);
