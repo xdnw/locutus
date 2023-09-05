@@ -23,16 +23,16 @@ public class WikiRecruitmentPage extends WikiGen {
                 CM.role.setAlias.cmd.create(Roles.INTERNAL_AFFAIRS.name(), "@discordRole", null, null).toString(),
                 "# Setup a recruitment message",
                 "First ensure you have your alliance and api key set",
-                commandMarkdown(CM.settings_default.registerAlliance.cmd),
-                commandMarkdown(CM.settings_default.registerApiKey.cmd),
+                commandMarkdownSpoiler(CM.settings_default.registerAlliance.cmd),
+                commandMarkdownSpoiler(CM.settings_default.registerApiKey.cmd),
                 "Then set the message subject, content, and output channel",
-                commandMarkdown(CM.settings_recruit.RECRUIT_MESSAGE_SUBJECT.cmd),
-                commandMarkdown(CM.settings_recruit.RECRUIT_MESSAGE_CONTENT.cmd),
-                commandMarkdown(CM.settings_recruit.RECRUIT_MESSAGE_OUTPUT.cmd),
+                commandMarkdownSpoiler(CM.settings_recruit.RECRUIT_MESSAGE_SUBJECT.cmd),
+                commandMarkdownSpoiler(CM.settings_recruit.RECRUIT_MESSAGE_CONTENT.cmd),
+                commandMarkdownSpoiler(CM.settings_recruit.RECRUIT_MESSAGE_OUTPUT.cmd),
                 "Optional:",
-                commandMarkdown(CM.settings_recruit.RECRUIT_MESSAGE_DELAY.cmd),
+                commandMarkdownSpoiler(CM.settings_recruit.RECRUIT_MESSAGE_DELAY.cmd),
                 "# Send a test message",
-                commandMarkdown(CM.mail.recruit.cmd),
+                commandMarkdownSpoiler(CM.mail.recruit.cmd),
                 """
                 # Other recruitment strategies
                 - Members inviting their friends to the game

@@ -33,6 +33,7 @@ And /deposits add to adjust the balance of hte tax bracket (see also taxaccount 
        /deposits convertNegative
 
        Itemized deposits
+       condensed deposits
        /settings_bank_info DISPLAY_ITEMIZED_DEPOSITS
 
        Listing transfers

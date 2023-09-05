@@ -1304,7 +1304,9 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "The ingame rank required to get an alliance role. (default: member) Options: " + StringMan.getString(Rank.values());
+            return "The ingame rank required to get an alliance role.\n" +
+                    "Default: member\n" +
+                    "Options: " + StringMan.getString(Rank.values());
         }
     }.setupRequirements(f -> f.requires(AUTOROLE_ALLIANCES));
     public static GuildSetting<Integer> AUTOROLE_TOP_X = new GuildIntegerSetting(GuildSettingCategory.ROLE) {
@@ -2150,7 +2152,7 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "A comma separated list of audit types to ignore: " + StringMan.getString(AutoAuditType.values());
+            return "A comma separated list of audit types to ignore:\n" + StringMan.getString(AutoAuditType.values());
         }
     }.setupRequirements(f -> f.requires(MEMBER_AUDIT_ALERTS).requireValidAlliance());
     public static GuildSetting<Map<ResourceType, Double>> REWARD_REFERRAL = new GuildResourceSetting(GuildSettingCategory.REWARD) {

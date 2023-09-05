@@ -14,15 +14,15 @@ public class WikiCounteringPage extends WikiGen {
         return build(
                 "# Find a member in range of an enemy",
                 "Using the enemies nation link",
-                commandMarkdown(CM.war.counter.nation.cmd),
+                commandMarkdownSpoiler(CM.war.counter.nation.cmd),
                 "Using the war url",
-                commandMarkdown(CM.war.counter.url.cmd),
+                commandMarkdownSpoiler(CM.war.counter.url.cmd),
                 "# Create a sheet of uncountered enemies",
-                commandMarkdown(CM.war.counter.sheet.cmd),
+                commandMarkdownSpoiler(CM.war.counter.sheet.cmd),
                 "# Create a war room",
-                commandMarkdown(CM.war.room.create.cmd),
+                commandMarkdownSpoiler(CM.war.room.create.cmd),
                 "# Auto find counters and create war rooms",
-                commandMarkdown(CM.war.counter.auto.cmd),
+                commandMarkdownSpoiler(CM.war.counter.auto.cmd),
                 """
                         # General player tips for countering:
                         A counter is when an alliance declares a war on a nation for attacking one of its members/applicants. They are usually authorized counters for unprovoked attacks on members.

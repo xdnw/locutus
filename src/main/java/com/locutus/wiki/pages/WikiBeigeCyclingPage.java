@@ -43,7 +43,7 @@ public class WikiBeigeCyclingPage extends WikiGen {
                 CM.role.setAlias.cmd.create(Roles.ENEMY_BEIGE_ALERT_AUDITOR.name(), "@someRole",null, null).toSlashCommand(true),
                 "# Using Locutus to check if an enemy can be beiged",
                 CM.nation.canIBeige.cmd.toSlashCommand(true),
-                commandMarkdown(CM.nation.canIBeige.cmd),
+                commandMarkdownSpoiler(CM.nation.canIBeige.cmd),
                 """
                         # What is Beige
                         A nation defeated in war gets 2 more days of being on the beige color. Beige protects from new war declarations. We want to have active enemies always in war, so they don't have the opportunity to build back up.

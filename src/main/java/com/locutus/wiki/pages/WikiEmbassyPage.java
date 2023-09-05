@@ -15,9 +15,9 @@ public class WikiEmbassyPage extends WikiGen {
         return build(
                 "# Creating embassy category",
                 GuildKey.EMBASSY_CATEGORY.help(),
-                commandMarkdown(CM.embassy.cmd),
+                commandMarkdownSpoiler(CM.embassy.cmd),
                 "# Set the rank required for opening embassies:",
-                commandMarkdown(CM.settings_role.AUTOROLE_ALLIANCE_RANK.cmd),
+                commandMarkdownSpoiler(CM.settings_role.AUTOROLE_ALLIANCE_RANK.cmd),
                 "# Open an embassy",
                 "Ensure you are registered to the bot:",
                 CM.register.cmd.toSlashCommand(true),

@@ -77,7 +77,7 @@ public class WikiSetupPage extends WikiGen {
                 Use the register command to link your in-game nation to your discord.
                 This allows you to use nation related commands.""",
                 CM.register.cmd.toSlashCommand(true),
-                commandMarkdownSpoiler(CM.register.cmd),
+                commandMarkdownSpoiler(CM.register.cmd, false),
                 "Example:",
                 CM.register.cmd.create("https://politicsandwar.com/nation/id=189573").toSlashCommand(true),
                 "You can verify by using:",
@@ -89,7 +89,7 @@ public class WikiSetupPage extends WikiGen {
                 """
                         The bot uses discord roles to manage notifications and access to commands
                         You must register these discord roles using""",
-                commandMarkdownSpoiler(CM.role.setAlias.cmd),
+                commandMarkdownSpoiler(CM.role.setAlias.cmd, false),
                 "Let's register three discord roles to the bot (first create the discord roles if they do not exist)",
                 "- " + REGISTERED.name() + " - " + REGISTERED.getDesc(),
                 "- " + MEMBER.name() + " - " + MEMBER.getDesc(),
