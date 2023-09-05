@@ -1103,6 +1103,20 @@ public class GuildKey {
         }
 
     }.setupRequirements(f -> f.requiresRole(Roles.MEMBER, true));
+
+    public static GuildSetting<Boolean> DISPLAY_CONDENSED_DEPOSITS = new GuildBooleanSetting(GuildSettingCategory.BANK_INFO) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String DISPLAY_CONDENSED_DEPOSITS(@Me GuildDB db, @Me User user, boolean enabled) {
+            return DISPLAY_CONDENSED_DEPOSITS.setAndValidate(db, user, enabled);
+        }
+        @Override
+        public String help() {
+            return "Display deposits in a condensed format";
+        }
+    }.setupRequirements(f -> f.requiresRole(Roles.MEMBER, true));
+
     public static GuildSetting<MessageChannel> LOST_WAR_CHANNEL = new GuildChannelSetting(GuildSettingCategory.WAR_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")

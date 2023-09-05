@@ -86,13 +86,13 @@ public class WikiGenHandler {
         //Recruitment System
         pages.add(new WikiRecruitmentPage(manager));
 //        //DNR system
-        pages.add(new WikiDNRPage(manager)); // <--- @@@ ===
+        pages.add(new WikiDNRPage(manager));
 //        //Coalitions system
-        pages.add(new WikiCoalitionsPage(manager)); // <--- @@@ ===
+        pages.add(new WikiCoalitionsPage(manager));
 //        //War Room System
         pages.add(new WikiWarRoomPage(manager)); // <--- easy @@ ===
 //        //Countering
-        pages.add(new WikiCounteringPage(manager)); // <--- @@
+        pages.add(new WikiCounteringPage(manager));
         //        //Tax Bracket Automation
         pages.add(new WikiTaxBracketPage(manager)); // <--- @@@ ===
         //Auditing System / Alliance MMR requirements
