@@ -4015,22 +4015,17 @@ public class DBNation implements NationOrAlliance {
             for (Trade trade : tradesV3) {
                 try {
                     Trade completed = api.acceptPersonalTrade(trade.getId(), trade.getOffer_amount());
-                    try {
-                        System.out.println("Completed " + completed);
-                    } catch (Throwable ignored) {
-                        ignored.printStackTrace();
-                    }
-                    DBNation seller = DBNation.getById(trade.getSender_id());
-                    DBNation buyer = DBNation.getById(trade.getReceiver_id());
-                    if (trade.getBuy_or_sell().equalsIgnoreCase("buy")) {
+                    DBNation seller = DBNation.getById(completed.getSender_id());
+                    DBNation buyer = DBNation.getById(completed.getReceiver_id());
+                    if (completed.getBuy_or_sell().equalsIgnoreCase("buy")) {
                         DBNation tmp = buyer;
                         buyer = seller;
                         seller = tmp;
                     }
                     Auth.TradeResult response = new Auth.TradeResult(seller, buyer);
-                    response.setAmount(trade.getOffer_amount());
-                    response.setResource(ResourceType.parse(trade.getOffer_resource()));
-                    response.setPPU(trade.getPrice());
+                    response.setAmount(completed.getOffer_amount());
+                    response.setResource(ResourceType.parse(completed.getOffer_resource()));
+                    response.setPPU(completed.getPrice());
                     responses.add(response);
                     response.setResult(Auth.TradeResultType.SUCCESS);
                     response.setMessage("Accepted " + tradeToString.apply(trade));

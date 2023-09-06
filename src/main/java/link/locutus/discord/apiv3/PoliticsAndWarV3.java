@@ -1383,7 +1383,7 @@ public class PoliticsAndWarV3 {
         projection.receiver_id();
         projection.receiver_type();
 
-        return request(PagePriority.API_BANK_DEPOSIT, false, mutation, projection, Bankrec.class);
+        return request(PagePriority.API_BANK_DEPOSIT, false, mutation, projection, BankDepositMutationResponse.class).bankDeposit();
     }
 
     /**
@@ -1434,7 +1434,7 @@ public class PoliticsAndWarV3 {
         AcceptPersonalTradeMutationRequest mutation = new AcceptPersonalTradeMutationRequest();
         mutation.setId(id);
         mutation.setOffer_amount(amount);
-        return request(PagePriority.BANK_TRADE, false, mutation, tradeResponseProjection(), Trade.class);
+        return request(PagePriority.BANK_TRADE, false, mutation, tradeResponseProjection(), AcceptPersonalTradeMutationResponse.class).acceptPersonalTrade();
     }
 
     public AlliancePosition assignAlliancePosition(int nation_id, int position_id) {

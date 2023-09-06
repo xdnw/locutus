@@ -90,7 +90,7 @@ public class WikiGenHandler {
 //        //Coalitions system
         pages.add(new WikiCoalitionsPage(manager));
 //        //War Room System
-        pages.add(new WikiWarRoomPage(manager)); // <--- easy @@ ===
+        pages.add(new WikiWarRoomPage(manager));
 //        //Countering
         pages.add(new WikiCounteringPage(manager));
         //        //Tax Bracket Automation
