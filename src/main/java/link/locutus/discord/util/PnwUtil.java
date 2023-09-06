@@ -404,7 +404,7 @@ public class PnwUtil {
             arg = arg.replace("-+-", "---");
             int start = arg.indexOf("---+");
             arg = arg.substring(start + 4).trim();
-            arg = arg.replaceAll("([0-9]+)[ ]+", "$1,");
+            arg = arg.replaceAll("([0-9.]+)[ ]+", "$1,");
             arg = arg.replace("\n", "");
             arg = arg.replaceAll("[ ]+", " ");
             arg = "{" + arg.replace(" | ", ":") + "}";
