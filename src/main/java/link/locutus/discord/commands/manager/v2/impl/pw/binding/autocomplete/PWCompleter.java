@@ -45,8 +45,10 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AutoAuditType;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.ia.IACheckup;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
@@ -174,13 +176,16 @@ public class PWCompleter extends BindingHelper {
 
     @Autocomplete
     @Binding(types={DBNation.class})
-    public List<String> DBNation(String input) {
+    public List<Map.Entry<String, String>> DBNation(String input, @Me Guild guild) {
         if (input.isEmpty()) return null;
+        if (input.charAt(0) == '@') {
+            return completeUser(guild, input, true);
+        }
 
         List<DBNation> options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
         options = StringMan.getClosest(input, options, DBNation::getName, OptionData.MAX_CHOICES, true, true);
 
-        return options.stream().map(DBNation::getNation).collect(Collectors.toList());
+        return options.stream().map(f -> Map.entry(f.getName(), f.getQualifiedId())).collect(Collectors.toList());
     }
 
     @Autocomplete
@@ -196,9 +201,11 @@ public class PWCompleter extends BindingHelper {
 
     @Autocomplete
     @Binding(types={NationOrAlliance.class})
-    public List<Map.Entry<String, String>> NationOrAlliance(String input) {
+    public List<Map.Entry<String, String>> NationOrAlliance(String input, @Me Guild guild) {
         if (input.isEmpty()) return null;
-
+        if (input.charAt(0) == '@') {
+            return completeUser(guild, input, true);
+        }
         List<NationOrAlliance> options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
         options.addAll(Locutus.imp().getNationDB().getAlliances());
 
@@ -209,14 +216,16 @@ public class PWCompleter extends BindingHelper {
 
     @Autocomplete
     @Binding(types={NationOrAllianceOrGuild.class})
-    public List<Map.Entry<String, String>> NationOrAllianceOrGuild(String input, @Me User user) {
+    public List<Map.Entry<String, String>> NationOrAllianceOrGuild(String input, @Me User user, @Me Guild guild) {
         if (input.isEmpty()) return null;
-
+        if (input.charAt(0) == '@') {
+            return completeUser(guild, input, true);
+        }
         List<NationOrAllianceOrGuild> options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
         options.addAll(Locutus.imp().getNationDB().getAlliances());
         if (user != null) {
-            for (Guild guild : user.getMutualGuilds()) {
-                GuildDB db = Locutus.imp().getGuildDB(guild);
+            for (Guild other : user.getMutualGuilds()) {
+                GuildDB db = Locutus.imp().getGuildDB(other);
                 if (db != null) {
                     options.add(db);
                 }
@@ -226,10 +235,31 @@ public class PWCompleter extends BindingHelper {
         return options.stream().map(f -> Map.entry((f.isGuild() ? "guild:" : "") + f.getName(), f.getTypePrefix() + ":" + f.getIdLong())).collect(Collectors.toList());
     }
 
+    private List<Map.Entry<String, String>> completeUser(@Me Guild guild, String input, boolean removeTag) {
+        if (removeTag) input = input.substring(1);
+        List<Member> options = guild.getMembers();
+        Function<Member, String> getName = new Function<Member, String>() {
+            @Override
+            public String apply(Member member) {
+                String nick = member.getNickname();
+                String user = DiscordUtil.getFullUsername(member.getUser());
+                if (nick != null && !nick.equalsIgnoreCase(user)) {
+                    return nick + " " + user;
+                }
+                return user;
+            }
+        };
+        options = StringMan.getClosest(input, options, getName, OptionData.MAX_CHOICES, true, false);
+        return options.stream().map(f -> Map.entry(f.getEffectiveName(), f.getAsMention())).collect(Collectors.toList());
+    }
+
     @Autocomplete
     @Binding(types={NationOrAllianceOrGuildOrTaxid.class})
     public List<Map.Entry<String, String>> NationOrAllianceOrGuildOrTaxid(String input, @Me GuildDB db, @Me User user) {
         if (input.isEmpty()) return null;
+        if (input.charAt(0) == '@') {
+            return completeUser(db.getGuild(), input, true);
+        }
         AllianceList aaList = db.getAllianceList();
 
         List<NationOrAllianceOrGuildOrTaxid> options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
