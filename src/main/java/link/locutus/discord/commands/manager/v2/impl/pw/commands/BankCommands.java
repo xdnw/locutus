@@ -3991,7 +3991,7 @@ public class BankCommands {
                         }
                     }
 
-                    response.append("Registered " + offshoreAlliance.getQualifiedId() + " as an offshore. See: https://github.com/xdnw/locutus/wiki/bankingedit");
+                    response.append("Registered " + offshoreAlliance.getQualifiedId() + " as an offshore. See: https://github.com/xdnw/locutus/wiki/banking");
                     if (aaIds.isEmpty()) {
                         response.append("\n(Your guild id, and the id of your account with the offshore is `" + root.getIdLong() + "`)");
                     }
