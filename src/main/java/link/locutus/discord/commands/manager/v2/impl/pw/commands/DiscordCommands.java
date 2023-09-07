@@ -5,6 +5,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -162,7 +163,7 @@ public class DiscordCommands {
             }
 
             String url = emote.getImageUrl();
-            byte[] bytes = FileUtil.readBytesFromUrl(PagePriority.DISCORD_EMOJI_URL.ordinal(), url);
+            byte[] bytes = FileUtil.readBytesFromUrl(PagePriority.DISCORD_EMOJI_URL, url);
 
             channel.send("Creating emote: " + emote.getName() + " | " + url);
 
@@ -201,7 +202,7 @@ public class DiscordCommands {
             }
             body = body.replace("\\n", "\n");
 
-            System.out.println("Commands: " + commands);
+            System.out.println("Commands: " + commands.size());
             IMessageBuilder msg = channel.create().embed(title, body);
             for (int i = 0; i < commands.size(); i++) {
                 String cmd = commands.get(i);
@@ -312,46 +313,48 @@ public class DiscordCommands {
         return channel;
     }
 
-    @Command(desc = "Get info about a bot embed")
+    @Command(desc = "Show the title, description and commands for a bot embed")
     @RolePermission(value = Roles.ADMIN)
-    public String embedInfo(Message message) {
-        List<MessageEmbed> embeds = message.getEmbeds();
+    public String embedInfo(Message embedMessage, @Arg("Show commands to update`copyToMessage` with the info from the `embedMessage`") @Default Message copyToMessage) {
+        List<MessageEmbed> embeds = embedMessage.getEmbeds();
         if (embeds.size() != 1) return "No embed found.";
 
         MessageEmbed embed = embeds.get(0);
         String title = embed.getTitle();
         String desc = embed.getDescription();
-        Map<String, String> reactions = DiscordUtil.getReactions(embed);
-        Map<String, String> commands = new HashMap<>();
 
-        if (reactions == null || reactions.isEmpty()) {
-            return "No embed commands found.";
-        }
 
-        List<Button> buttons = message.getButtons();
-        for (Button button : buttons) {
-            String id = button.getId();
-            if (id == null) continue;
-            System.out.println("ID " + id);
-            if (id.isBlank()) {
-                commands.put(button.getLabel(), "");
-            } else if (MathMan.isInteger(id)) {
-                String cmd = reactions.get(id);
-                if (cmd != null) {
-                    commands.put(button.getLabel(), cmd);
-                } else {
-                    commands.put(button.getLabel(), id);
+        Map<String, List<DiscordUtil.CommandInfo>> commandMap = DiscordUtil.getCommands(embedMessage.isFromGuild() ? embedMessage.getGuild() : null, embed, embedMessage.getButtons(), embedMessage.getJumpUrl(), true);
+        List<String> commands = new ArrayList<>();
+
+        commands.add(CM.embed.create.cmd.create(title, desc).toSlashCommand(false));
+
+        String url = copyToMessage == null ? "" : copyToMessage.getJumpUrl();
+
+        for (Map.Entry<String, List<DiscordUtil.CommandInfo>> entry : commandMap.entrySet()) {
+            CommandBehavior behavior = null;
+            Long channelId = null;
+            List<String> current = new ArrayList<>();
+            for (DiscordUtil.CommandInfo info : entry.getValue()) {
+                if (info.behavior != null) {
+                    behavior = info.behavior;
                 }
-            } else {
-                commands.put(button.getLabel(), id);
+                if (info.channelId != null) {
+                    channelId = info.channelId;
+                }
+                current.add(info.command);
             }
-        }
-        if (buttons.isEmpty()) {
-            commands.putAll(reactions);
+            String label = entry.getKey();
+
+            String behaviorStr = (behavior == null ? CommandBehavior.DELETE_MESSAGE : behavior).name();
+            String cmdStr = CM.embed.add.raw.cmd.create(url, label, behaviorStr, StringMan.join(current, "\n"), channelId == null ? null : channelId.toString()).toSlashCommand(false);
+            commands.add(cmdStr);
         }
 
-        String cmd = CM.embed.commands.cmd.create(title, desc, StringMan.join(commands.values(), "\" \"")).toSlashCommand();
-        return "```" + cmd + "```";
+        return "Run the following commands:\n" +
+                "```\n" +
+                StringMan.join(commands, "\n") +
+                "\n```";
     }
 
     @Command(desc = "Update a bot embed")
@@ -401,7 +404,7 @@ public class DiscordCommands {
 
     @Command(desc = "Return the discord invite link for the bot")
     public String invite() {
-        return "<https://docs.google.com/document/d/1Qq6Qe7KtCy-Dlqktz8bhNfrUpcbf7oM8F6gRVNR28Dw/edit?usp=sharing>";
+        return "<https://github.com/xdnw/locutus/wiki/banking>";
     }
 
     @Command(desc = "Unregister a nation to a discord user")

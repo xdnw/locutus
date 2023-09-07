@@ -305,10 +305,10 @@ public class WarCategory {
                 break;
             case VICTORY:
                 room.setPlanning(false);
-                message = name1 + " looted " + PnwUtil.resourcesToString(attack.getLoot()) + " from " + name2;
+                message = name1 + " looted " + (attack.getLoot() == null ? "nothing" : PnwUtil.resourcesToString(attack.getLoot())) + " from " + name2;
                 break;
             case A_LOOT:
-                message = name1 + " looted " + PnwUtil.resourcesToString(attack.getLoot()) + " from " + PnwUtil.getName(attack.getAllianceIdLooted(), true);
+                message = name1 + " looted " + (attack.getLoot() == null ? "nothing" : PnwUtil.resourcesToString(attack.getLoot())) + " from " + PnwUtil.getName(attack.getAllianceIdLooted(), true);
                 break;
             case PEACE:
                 message = name1 + " agreed to peace with " + name2;
@@ -534,7 +534,7 @@ public class WarCategory {
                             String mailBody = MarkupUtil.transformURLIntoLinks(MarkupUtil.markdownToHTML(body.toString()));
 
                             try {
-                                attacker.sendMail(mailKey, title, mailBody);
+                                attacker.sendMail(mailKey, title, mailBody, false);
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }
@@ -715,7 +715,7 @@ public class WarCategory {
                 msg.clearEmbeds();
                 msg.clearButtons();
                 msg.embed(builder.build());
-                msg.commandButton(CommandBehavior.UNDO_REACTION, CM.war.room.pin.cmd, "Update");
+                msg.commandButton(CommandBehavior.UNPRESS, CM.war.room.pin.cmd, "Update");
                 try {
                     CompletableFuture<IMessageBuilder> sent = msg.send();
                     if (sent != null) msg = sent.get();

@@ -138,6 +138,10 @@ public class DBTreasure {
         return spawn_date;
     }
 
+    public long getDaysRemaining() {
+        return getTimeUntilNextSpawn() / TimeUnit.DAYS.toMillis(1);
+    }
+
     public void setSpawnDate(long spawn_date) {
         this.spawn_date = spawn_date;
     }

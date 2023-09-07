@@ -4,28 +4,22 @@ import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
-import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import org.json.JSONObject;
-import rocker.guild.ia.message;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -139,7 +133,7 @@ public class AddBalanceBuilder {
             tracked = PnwUtil.expandCoalition(tracked);
         }
 
-        double[] total = nation.getNetDeposits(db, tracked, true, true, 0L, 0L);
+        double[] total = nation.getNetDeposits(db, tracked, true, true, 0L, 0L, true);
         Map<ResourceType, Double> transfer = PnwUtil.subResourcesToA(new HashMap<>(), PnwUtil.resourcesToMap(total));
         return add(nation, transfer, "#deposit");
     }
@@ -150,7 +144,7 @@ public class AddBalanceBuilder {
 
     public AddBalanceBuilder reset(DBNation nation, Set<DepositType> types) {
         if (types.isEmpty()) throw new IllegalArgumentException("No types specified");
-        Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, 0, 0);
+        Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, 0, 0, true);
         double[] deposits = depoByType.get(DepositType.DEPOSIT);
 
         if (deposits != null && types.contains(DepositType.DEPOSIT)) {
@@ -168,7 +162,7 @@ public class AddBalanceBuilder {
         }
         long now = System.currentTimeMillis();
         if (depoByType.containsKey(DepositType.GRANT) && types.contains(DepositType.GRANT)) {
-            List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, -1, 0);
+            List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, -1, 0, true);
             for (Map.Entry<Integer, Transaction2> entry : transactions) {
                 Transaction2 tx = entry.getValue();
                 if (tx.note == null || !tx.note.contains("#expire") || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id())) continue;
@@ -363,7 +357,7 @@ public class AddBalanceBuilder {
 
                 db.addBalanceTaxId(tx_datetime, sender.taxId, 0, banker, note, amount);
                 totalAdded = PnwUtil.add(totalAdded, amount);
-                response.add("Added " + PnwUtil.resourcesToString(amount) + " to " + sender.getQualifiedName());
+                response.add("Added " + PnwUtil.resourcesToString(amount) + " to " + sender.getQualifiedId());
             }
 
         }

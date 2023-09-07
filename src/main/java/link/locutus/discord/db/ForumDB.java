@@ -142,19 +142,7 @@ public class ForumDB extends DBMain {
     }
 
     private static String get(String requestURL) throws IOException {
-        URL website = new URL(requestURL);
-        URLConnection connection = website.openConnection();
-        try (BufferedReader in = new BufferedReader(
-                new InputStreamReader(connection.getInputStream()))) {
-
-            StringBuilder response = new StringBuilder();
-            String inputLine;
-
-            while ((inputLine = in.readLine()) != null) {
-                response.append(inputLine);
-            }
-            return response.toString();
-        }
+        return FileUtil.readStringFromURL(PagePriority.FORUM_PAGE, requestURL);
     }
 
     public void scrapeTopic(int section_id, String section_name) throws SQLException, IOException {
@@ -227,7 +215,7 @@ public class ForumDB extends DBMain {
         List<DBComment> newComments = new ArrayList<>();
 
         String url = "https://forum.politicsandwar.com/index.php?/discover/&view=expanded";
-        String content = FileUtil.readStringFromURL(PagePriority.FORUM_PAGE.ordinal(), url);
+        String content = FileUtil.readStringFromURL(PagePriority.FORUM_PAGE, url);
         Document dom = Jsoup.parse(content);
         Elements elems = dom.select("[data-searchable]");
         for (Element elem : elems) {

@@ -1,40 +1,272 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import com.politicsandwar.graphql.model.Trade;
-import link.locutus.discord.commands.bank.Offshore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Operation;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
+import link.locutus.discord.commands.manager.v2.command.ICommand;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.SpreadSheet;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.User;
-import org.kefirsf.bb.conf.If;
+import net.dv8tion.jda.api.interactions.components.ActionRow;
+import net.dv8tion.jda.api.interactions.components.ItemComponent;
+import net.dv8tion.jda.api.interactions.components.buttons.Button;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public class EmbedCommands {
+    @Command(desc = "Create a simple embed with a title and description")
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public void create(@Me IMessageIO io, String title, String description) {
+        io.create().embed(title, description.replace("\\n", "\n")).send();
+    }
+
+    private void checkMessagePerms(User user, Guild guild, Message message) {
+        if (!message.isFromGuild()) {
+            throw new IllegalArgumentException("Embeds can only be edited in a guild");
+        }
+        if (message.getGuild().getIdLong() != guild.getIdLong() && !Roles.INTERNAL_AFFAIRS.has(user, message.getGuild())) {
+            throw new IllegalArgumentException("You can only edit embeds in your own guild or one you have `" + Roles.INTERNAL_AFFAIRS.name() + "` in");
+        }
+    }
+
+
+    @Command(desc = "Set the title of an embed from this bot")
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public String title(@Me User user, @Me Guild guild, Message discMessage, String title) {
+        checkMessagePerms(user, guild, discMessage);
+        DiscordMessageBuilder message = new DiscordMessageBuilder(discMessage.getChannel(), discMessage);
+        List<MessageEmbed> embeds = message.getEmbeds();
+        if (embeds.size() != 1) return "No embeds found";
+        MessageEmbed embed = embeds.get(0);
+
+        EmbedBuilder builder = new EmbedBuilder(embed);
+        builder.setTitle(title);
+
+        message.clearEmbeds();
+        message.embed(builder.build());
+        message.send();
+        return "Done! See: " + discMessage.getJumpUrl();
+    }
+
+    @Command(desc = "Set the description of an embed from this bot")
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public String description(@Me User user, @Me Guild guild, Message discMessage, String description) {
+        checkMessagePerms(user, guild, discMessage);
+        DiscordMessageBuilder message = new DiscordMessageBuilder(discMessage.getChannel(), discMessage);
+        List<MessageEmbed> embeds = message.getEmbeds();
+        if (embeds.size() != 1) return "No embeds found";
+        MessageEmbed embed = embeds.get(0);
+
+        EmbedBuilder builder = new EmbedBuilder(embed);
+        builder.setDescription(description.replace("\\n", "\n"));
+
+        message.clearEmbeds();
+        message.embed(builder.build());
+        message.send();
+        return "Done! See: " + discMessage.getJumpUrl();
+    }
+
+    @Command(desc = "Remove a button from an embed from this bot")
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public String removeButton(@Me User user, @Me Guild guild, Message message, @Arg("A comma separated list of button labels") @TextArea(',') List<String> labels) {
+        checkMessagePerms(user, guild, message);
+        if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
+            throw new IllegalArgumentException("The message you linked is not from the bot. Only bot messages can be modified.");
+        }
+        Set<String> labelSet = Set.copyOf(labels);
+        List<Button> buttons = message.getButtons();
+
+        Set<String> invalidLabels = new HashSet<>(labels);
+        Set<String> validLabels = new LinkedHashSet<>();
+        List<ActionRow> rows = new ArrayList<>(message.getActionRows());
+        for (int i = 0; i < rows.size(); i++) {
+            ActionRow row = rows.get(i);
+            List<ItemComponent> components = new ArrayList<>(row.getComponents());
+            components.stream().filter(f -> f instanceof Button).map(f -> ((Button) f).getLabel()).forEach(validLabels::add);
+            components.removeIf(f -> {
+                if (f instanceof Button button) {
+                    if (labelSet.contains(button.getLabel())) {
+                        invalidLabels.remove(button.getLabel());
+                        return true;
+                    }
+                }
+                return false;
+            });
+            rows.set(i, ActionRow.of(components));
+        }
+        if (!invalidLabels.isEmpty()) {
+            throw new IllegalArgumentException("Invalid labels: `" + StringMan.join(invalidLabels, ", ") + "`. Valid labels: `" + StringMan.join(validLabels, ", ") + "`");
+        }
+
+        RateLimitUtil.queue(message.editMessageComponents(rows));
+        return "Done! Deleted " + labels.size() + " buttons";
+    }
+
+    @Command(desc = "Add a button to a discord embed from this bot which runs a command\n" +
+            "Supports legacy commands and user command syntax.\n" +
+            "Unlike `embed add button`, this does not parse and validate command input.")
+    @NoFormat
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public String addButtonRaw(@Me User user, @Me Guild guild, Message message, String label, CommandBehavior behavior, String command, @Switch("c") MessageChannel channel) {
+        checkMessagePerms(user, guild, message);
+        if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
+            throw new IllegalArgumentException("The message you linked is not from the bot. Only bot messages can be modified.");
+        }
+        if (!label.matches("[a-zA-Z0-9 ]+")) {
+            throw new IllegalArgumentException("Label must be alphanumeric, not: `" + label + "`");
+        }
+
+        List<Button> buttons = message.getButtons();
+        for (Button button : buttons) {
+            if (button.getLabel().equalsIgnoreCase(label)) {
+                throw new IllegalArgumentException("The button label `" + label + "` already exists on the embed. Please remove it first: " + CM.embed.remove.button.cmd.toSlashMention());
+            }
+        }
+        if (buttons.size() >= 25) {
+            throw new IllegalArgumentException("You cannot have more than 25 buttons on an embed. Please remove one first: " + CM.embed.remove.button.cmd.toSlashMention());
+        }
+
+        Long channelId = channel == null ? null : channel.getIdLong();
+        new DiscordMessageBuilder(message.getChannel(), message)
+                .commandButton(behavior, channelId, command.replace("\\n", "\n"), label)
+                .send();
+        return "Done! Added button `" + label + "` to " + message.getJumpUrl();
+    }
+
+    @Command(desc = "Add a button to a discord embed from this bot which runs a command")
+    @NoFormat
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public String addButton(@Me User user, @Me Guild guild, Message message, String label, CommandBehavior behavior, ICommand command,
+                            @Default @Arg("The arguments and values you want to submit to the command\n" +
+                                    "Example: `myarg1:myvalue1 myarg2:myvalue2`\n" +
+                                    "For placeholders: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
+                            String arguments, @Switch("c") MessageChannel channel) {
+        checkMessagePerms(user, guild, message);
+        Set<String> validArguments = command.getUserParameterMap().keySet();
+
+        Map<String, String> parsed = arguments == null ? new HashMap<>() : CommandManager2.parseArguments(validArguments, arguments, true);
+        // ensure required arguments aren't missing
+        for (ParameterData param : command.getUserParameters()) {
+            if (param.isOptional() || param.isFlag()) continue;
+            String name = param.getName();
+            if (!parsed.containsKey(name) && !parsed.containsKey(name.toLowerCase(Locale.ROOT))) {
+                throw new IllegalArgumentException("The command `" + command.getFullPath() + "` has a required argument `" + name + "` that is missing from your `arguments` value: `" + arguments + "`.\n" +
+                        "See: " + CM.help.command.cmd.create(command.getFullPath()));
+            }
+        }
+
+        String commandStr =  command.toCommandArgs(parsed);
+        return addButtonRaw(user, guild, message, label, behavior, commandStr, channel);
+    }
+
+    @Command(desc = "Add a modal button to a discord embed from this bot, which creates a prompt for a command")
+    @NoFormat
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public String addModal(@Me User user, @Me Guild guild, Message message, String label, CommandBehavior behavior, ICommand command,
+                           @Arg("A comma separated list of the command arguments to prompt for") String arguments,
+                           @Arg("The default arguments and values you want to submit to the command\n" +
+                                   "Example: `myarg1:myvalue1 myarg2:myvalue2`\n" +
+                                   "For placeholders: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
+                           @Default String defaults, @Switch("c") MessageChannel channel) {
+        checkMessagePerms(user, guild, message);
+        if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
+            throw new IllegalArgumentException("The message you linked is not from the bot. Only bot messages can be modified.");
+        }
+        if (!label.matches("[a-zA-Z0-9 ]+")) {
+            throw new IllegalArgumentException("Label must be alphanumeric, not: `" + label + "`");
+        }
+        Set<String> validArguments = command.getUserParameterMap().keySet();
+
+        List<Button> buttons = message.getButtons();
+        for (Button button : buttons) {
+            if (button.getLabel().equalsIgnoreCase(label)) {
+                throw new IllegalArgumentException("The button label `" + label + "` already exists on the embed. Please remove it first: " + CM.embed.remove.button.cmd.toSlashMention());
+            }
+        }
+        if (buttons.size() >= 25) {
+            throw new IllegalArgumentException("You cannot have more than 25 buttons on an embed. Please remove one first: " + CM.embed.remove.button.cmd.toSlashMention());
+        }
+        Set<String> promptedArguments = new HashSet<>(StringMan.split(arguments, ','));
+        Map<String, String> providedArguments = defaults == null ? new HashMap<>() : CommandManager2.parseArguments(validArguments, defaults, true);
+
+        for (String arg : promptedArguments) {
+            String argLower = arg.toLowerCase(Locale.ROOT);
+            if (!validArguments.contains(arg) && !validArguments.contains(argLower)) {
+                throw new IllegalArgumentException("The command `" + command.getFullPath() + "` does not have an argument `" + arg + "`. Valid arguments: `" + StringMan.getString(validArguments) + "`");
+            }
+            if (providedArguments.containsKey(arg) || providedArguments.containsKey(argLower)) {
+                throw new IllegalArgumentException("You have specified the argument `" + arg + "` in both `arguments` and `defaults`. Please only specify it in one.");
+            }
+        }
+
+        for (ParameterData param : command.getUserParameters()) {
+            if (param.isOptional() || param.isFlag()) continue;
+            String name = param.getName();
+            String nameL = name.toLowerCase(Locale.ROOT);
+            if (!promptedArguments.contains(name) && !promptedArguments.contains(nameL) && !providedArguments.containsKey(name) && !providedArguments.containsKey(nameL)) {
+                throw new IllegalArgumentException("The command `" + command.getFullPath() + "` has a required argument `" + name + "` that is missing from your `arguments` or `defaults`.\n" +
+                        "See: " + CM.help.command.cmd.create(command.getFullPath()));
+            }
+        }
+
+        Map<String, String> full = new LinkedHashMap<>(providedArguments);
+        for (String arg : promptedArguments) {
+            full.put(arg, "");
+        }
+
+        Long channelId = channel == null ? null : channel.getIdLong();
+        new DiscordMessageBuilder(message.getChannel(), message)
+                .modal(behavior, channelId, command, full, label)
+                .send();
+        return "Done! Added modal button `" + label + "` to " + message.getJumpUrl();
+    }
+
+
 //    @Command(desc = "Add a command button to an embed")
 //    @RolePermission(Roles.INTERNAL_AFFAIRS)
 //    public String addCommand(Message message, String label, CommandRef command, @Default CommandBehavior behavior, @Default TextChannel output) {
@@ -143,7 +375,7 @@ Results are sorted best to last in <#995168236213633024>" "<#995168236213633024>
         CM.war.find.unprotected unprotected = CM.war.find.unprotected.cmd.create(
                 "*", "25", null, "true", null,  null, "90", null, null);
 
-        CommandBehavior behavior = CommandBehavior.UNDO_REACTION;
+        CommandBehavior behavior = CommandBehavior.UNPRESS;
         io.create().embed(title, body)
                 .commandButton(behavior, channelId, app, "7d_app")
                 .commandButton(behavior, channelId, members, "7d_members")
@@ -209,7 +441,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             CM.war.blockade.find breakCmd = CM.war.blockade.find.cmd.create("~allies,#active_m<2880", null, null, "10");
             CM.war.blockade.find breakUnpowered = CM.war.blockade.find.cmd.create("~allies,#ispowered=0,#active_m<2880", null, null, "10");
 
-            CommandBehavior behavior = CommandBehavior.UNDO_REACTION;
+            CommandBehavior behavior = CommandBehavior.UNPRESS;
             io.create().embed(title, body)
                     .commandButton(behavior, channelId, low, "low")
                     .commandButton(behavior, channelId, deposit, "deposit")
@@ -220,7 +452,8 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         }
 
         @Command(desc="Econ panel for members")
-        public void memberEconPanel(@Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel) {
+        @RolePermission(Roles.ADMIN)
+        public void memberEconPanel(@Me User user, @Me GuildDB db, @Me IMessageIO io, @Default MessageChannel outputChannel, @Switch("d") boolean showDepositsInDms) {
             Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
             String title = "Econ Panel";
             String body = """
@@ -240,7 +473,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             }
 
             CM.offshore.send send = CM.offshore.send.cmd.create(null, null, null);
-            CM.deposits.check deposits = CM.deposits.check.cmd.create("{nation_id}", null, null, null, null, null, null, null, null, null);
+            CM.deposits.check deposits = CM.deposits.check.cmd.create("{nation_id}", null, null, null, null, null, showDepositsInDms + "", null, null, null);
             CM.deposits.check depositsBreakdown = CM.deposits.check.cmd.create("{nation_id}", null, null, null, null, "true", null, null, null, null);
             CM.tax.info taxInfo = CM.tax.info.cmd.create("{nation_id}");
             CM.nation.revenue revenue = CM.nation.revenue.cmd.create("{nation_id}", "true", null);
@@ -249,7 +482,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             CM.trade.margin trademargin = CM.trade.margin.cmd.create(null);
             CM.trade.profit tradeprofit = CM.trade.profit.cmd.create("{nation_id}", "7d");
 
-            CommandBehavior behavior = CommandBehavior.UNDO_REACTION;
+            CommandBehavior behavior = CommandBehavior.UNPRESS;
             io.create().embed(title, body)
                     .commandButton(behavior, channelId, send, "offshore")
                     .commandButton(behavior, channelId, deposits, "balance")
@@ -319,7 +552,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             body += "\n\n> Results in <#" + channelId + ">";
         }
 
-        CommandBehavior behavior = CommandBehavior.UNDO_REACTION;
+        CommandBehavior behavior = CommandBehavior.UNPRESS;
 
         CM.war.find.damage damage = CM.war.find.damage.cmd.create(
                 "~enemies", null, null, null, null, null, null, null, null, null, null);
@@ -417,7 +650,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         CM.war.find.damage infra = CM.war.find.damage.cmd.create(
                 "~enemies,#active_m>2880||~enemies,#score" + greaterOrLess + scoreMax +"||~enemies,#barracks=0,#off=0", "true", "true", null, null, null, null, null, dmStr, null, null);
 
-        CommandBehavior behavior = CommandBehavior.UNDO_REACTION;
+        CommandBehavior behavior = CommandBehavior.UNPRESS;
         io.create().embed(title, body)
                 .commandButton(behavior, channelId, easy, "easy")
                 .commandButton(behavior, channelId, high, "high")
@@ -471,7 +704,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         CM.spy.find.target kill = CM.spy.find.target.cmd.create(
                 "~" + coalition + ",#active_m<1440", "*", null, null, "true", null);
 
-        CommandBehavior behavior = CommandBehavior.UNDO_REACTION;
+        CommandBehavior behavior = CommandBehavior.UNPRESS;
 
         io.create().embed(title, body)
             .commandButton(behavior, channelId, spy, "spy")
@@ -540,7 +773,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         CM.war.find.enemy beige = CM.war.find.enemy.cmd.create(
                 "~enemies,#color=beige", null, null, "true", "true", null, null, "true", null, dmStr, null);
 
-        CommandBehavior behavior = CommandBehavior.UNDO_REACTION;
+        CommandBehavior behavior = CommandBehavior.UNPRESS;
 
         io.create().embed(title, body)
             .commandButton(behavior, channelId, high, "high")
@@ -552,6 +785,102 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             .commandButton(behavior, channelId, beige, "beige")
             .send();
     }
+
+    @Command(desc = "Discord embed for checking deposits, withdrawing funds, viewing your stockpile, depositing resources and offshoring funds")
+    @HasOffshore
+    @RolePermission(Roles.ADMIN)
+    public void depositsPanel(@Me GuildDB db, @Me IMessageIO io, @Arg("Only applicable to corporate servers. The nation accepting trades for bank deposits. Defaults to the bot owner's nation") @Default DBNation bankerNation, @Switch("c") MessageChannel outputChannel) {
+        int nationId = Settings.INSTANCE.NATION_ID;
+        if (bankerNation != null) {
+            nationId = bankerNation.getId();
+        }
+        // if corporation
+        // trade accept
+        // else
+        // Press `offshore` to send funds offshore
+
+        // Add add credentials link to the panel, but not as a command button
+        String title = "Member Deposits Panel";
+        String body = """
+                Press `balance` to view your deposit balance
+                Press `self` to withdraw to your own nation
+                Press `other` to send your funds to another receiver
+                Press `stockpile` to view your stockpile
+                
+                """;
+
+        boolean isCorp = db.getAllianceIds().isEmpty();
+
+        List<CommandRef> addButtons = new ArrayList<>();
+        List<String> addLabels = new ArrayList<>();
+        List<Boolean> isModals = new ArrayList<>();
+
+        if (isCorp) {
+            body += "\nTo deposit, send a PRIVATE trade offer to " + PnwUtil.getMarkdownUrl(nationId, false) + ":\n" +
+                    "- Selling a resource for $0\n" +
+                    "- Buying food for OVER $100,000\n" +
+                    "Press `trade deposit` if you have sent trades\n" +
+                    "Press `trade deposit amount` if you want to create trades for an amount\n";
+
+            addButtons.add(CM.trade.accept.cmd.create(nationId + "", null, null, null));
+            addLabels.add("deposit trade");
+            isModals.add(false);
+
+            addButtons.add(CM.trade.accept.cmd.create(nationId + "", "", null, null));
+            addLabels.add("deposit trade amount");
+            isModals.add(false);
+        } else {
+            body += "\nTo deposit, go to your alliance bank page in-game.\n" +
+                    "Alternatively, set your api key with: " + CM.credentials.addApiKey.cmd.toSlashMention() + "\n" +
+                    "And then press" +
+                    "- `deposit custom` or `deposit auto`" +
+                    "- `offshore` to offshore funds";
+            addButtons.add(CM.bank.deposit.cmd.create("nation:{nation_id}", null, "", null, null, null, null, null, null, null, null, null, null, null, "true", "true"));
+            addLabels.add("deposit custom");
+            isModals.add(true);
+
+
+            CommandRef depositAuto = CM.bank.deposit.cmd.create("nation:{nation_id}", null, null, "7", null, null, "1", null, null, null, null, null, null, null, "true", "true");
+            addButtons.add(depositAuto);
+            addLabels.add("deposit auto");
+            isModals.add(false);
+            CommandRef offshore = CM.offshore.send.cmd.create(null, null, null);
+            addButtons.add(offshore);
+            addLabels.add("offshore");
+            isModals.add(false);
+        }
+
+        Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
+        if (channelId != null) {
+            body += "\n\n> Results in <#" + channelId + ">";
+        }
+
+        CM.deposits.check deposits = CM.deposits.check.cmd.create("nation:{nation_id}", null, null, null, null, null, null, null, null, null);
+        CM.transfer.self self = CM.transfer.self.cmd.create("", null, null, null, null, null, null, null, null, null, null, null, null, null);
+        CM.transfer.resources other = CM.transfer.resources.cmd.create("", "", null, "{nation_id}", null, null, null, null, null, null, null, null, null, null, null);
+        CM.nation.stockpile stockpile = CM.nation.stockpile.cmd.create("nation:{nation_id}");
+
+        CommandBehavior behavior = CommandBehavior.EPHEMERAL;
+
+        IMessageBuilder msg = io.create().embed(title, body)
+                .commandButton(behavior, channelId, deposits, "balance")
+                .modal(behavior, channelId, self, "self")
+                .modal(behavior, channelId, other, "other")
+                .commandButton(behavior, channelId, stockpile, "stockpile");
+
+        for (int i = 0; i < addButtons.size(); i++) {
+            CommandRef add = addButtons.get(i);
+            String label = addLabels.get(i);
+            boolean isModal = isModals.get(i);
+            if (isModal) {
+                msg = msg.modal(behavior, channelId, add, label);
+            } else {
+                msg = msg.commandButton(behavior, channelId, add, label);
+            }
+        }
+        msg.send();
+    }
+
 
     @Command(desc="Generates sheets for a coalition war:" +
             "- All enemies\n" +
@@ -704,7 +1033,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             footer = "\n\n> Output in " + outputChannel.getAsMention();
         }
 
-        CommandBehavior behavior = CommandBehavior.UNDO_REACTION;
+        CommandBehavior behavior = CommandBehavior.UNPRESS;
 
         io.create()
                 .embed("All Enemies Sheet", "Press `update` to update" + footer).commandButton(behavior, channelId,
@@ -748,6 +1077,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
     }
 
     @Command(desc = "Discord embed for sheet to update ally and enemy spy counts, generate and send spy blitz targets")
+    @RolePermission(Roles.ADMIN)
     public void spySheets(@Me GuildDB db, @Me IMessageIO io, @Default("spyops") @GuildCoalition String allies, @Default MessageChannel outputChannel, @Default SpreadSheet spySheet) throws GeneralSecurityException, IOException {
         if (allies == null) allies = Coalition.ALLIES.name();
 
@@ -769,7 +1099,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             footer += "\n\n> Output in " + outputChannel.getAsMention();
         }
 
-        CommandBehavior behavior = CommandBehavior.UNDO_REACTION;
+        CommandBehavior behavior = CommandBehavior.UNPRESS;
         Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
 
         String columns = StringMan.join(Arrays.asList(

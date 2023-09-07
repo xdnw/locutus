@@ -98,7 +98,7 @@ public class FASheet extends Command {
 
         sheet.set(0, 0);
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "fa").send();
         return null;
     }
 }

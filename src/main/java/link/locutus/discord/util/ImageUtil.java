@@ -55,6 +55,9 @@ public class ImageUtil {
 
     public static String getTextLocal(String imageUrl, ImageType type) {
         String pathStr = Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OCR.TESSERACT_LOCATION;
+        if (pathStr == null || pathStr == null) {
+            return null;
+        }
         EasyOCR ocr = new EasyOCR(pathStr);
         ocr.setTesseractOptions(EasyOCR.OPTION_LANG_ENG);
         File fileTmp = null; // 50MB limit
@@ -233,7 +236,7 @@ public class ImageUtil {
         String endpoint = "https://api.ocr.space/parse/imageurl?apikey=" + Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OCR.OCR_SPACE_KEY + "&isTable=true&OCREngine=2&url=";
 
         String url = endpoint + imageUrl;
-        String jsonStr = FileUtil.readStringFromURL(PagePriority.API_OCR.ordinal(), url);
+        String jsonStr = FileUtil.readStringFromURL(PagePriority.API_OCR, url);
         System.out.println(jsonStr);
         JSONObject json = new JSONObject(jsonStr);
         // ParsedResults > ParsedText

@@ -13,6 +13,8 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -33,9 +35,9 @@ public class SearchMailTask implements Callable<List<Mail>> {
 
     public SearchMailTask(Auth auth, String query, boolean checkUnread, boolean checkRead, boolean readContent, BiConsumer<Mail, List<String>> onEach) {
         if (query == null || query.isEmpty()) {
-            this.url = "" + Settings.INSTANCE.PNW_URL() + "/index.php?id=16&backpage=<<&maximum=100&minimum=0&od=DESC&searchTerm=";
+            this.url = "" + Settings.INSTANCE.PNW_URL() + "/index.php?id=16&backpage=%3C%3C&maximum=100&minimum=0&od=DESC&searchTerm=";
         } else {
-            this.url = "https://politicsandwar.com/index.php?id=16&backpage=%3C%3C&maximum=15000&minimum=0&od=DESC&searchTerm=" + query.replace(' ', '+');
+            this.url = "https://politicsandwar.com/index.php?id=16&backpage=%3C%3C&maximum=15000&minimum=0&od=DESC&searchTerm=" + URLEncoder.encode(query.replace(' ', '+'));
         }
         this.checkUnread = checkUnread;
         this.checkRead = checkRead;

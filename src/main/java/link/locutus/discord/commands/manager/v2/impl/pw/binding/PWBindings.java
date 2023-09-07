@@ -9,10 +9,8 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.binding.annotation.AllowDeleted;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.NationAttributeCallable;
-import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ICommandGroup;
@@ -31,10 +29,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.SimpleNationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
-import link.locutus.discord.commands.manager.v2.binding.annotation.AllianceDepositLimit;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.NationDepositLimit;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Operation;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
@@ -118,25 +113,46 @@ public class PWBindings extends BindingHelper {
             examples = """
             c1-9:*
             c10+:INACTIVE,VACATION_MODE,APPLICANT""")
-        public Map<CityRanges, Set<BeigeReason>> beigeReasonMap(@Me GuildDB db, String input) {
-            input = input.replace("=", ":");
+    public Map<CityRanges, Set<BeigeReason>> beigeReasonMap(@Me GuildDB db, String input) {
+        input = input.replace("=", ":");
 
-            Map<CityRanges, Set<BeigeReason>> result = new LinkedHashMap<>();
-            String[] split = input.trim().split("\\r?\\n");
-            if (split.length == 1) split = StringMan.split(input.trim(), ' ').toArray(new String[0]);
-            for (String s : split) {
-                String[] pair = s.split(":");
-                if (pair.length != 2) throw new IllegalArgumentException("Invalid `CITY_RANGE:BEIGE_REASON` pair: `" + s + "`");
-                CityRanges range = CityRanges.parse(pair[0]);
-                List<BeigeReason> list = StringMan.parseEnumList(BeigeReason.class, pair[1]);
-                result.put(range, new HashSet<>(list));
-            }
-            return result;
+        Map<CityRanges, Set<BeigeReason>> result = new LinkedHashMap<>();
+        String[] split = input.trim().split("\\r?\\n");
+        if (split.length == 1) split = StringMan.split(input.trim(), ' ').toArray(new String[0]);
+        for (String s : split) {
+            String[] pair = s.split(":");
+            if (pair.length != 2) throw new IllegalArgumentException("Invalid `CITY_RANGE:BEIGE_REASON` pair: `" + s + "`");
+            CityRanges range = CityRanges.parse(pair[0]);
+            List<BeigeReason> list = StringMan.parseEnumList(BeigeReason.class, pair[1]);
+            result.put(range, new HashSet<>(list));
         }
+        return result;
+    }
 
     @Binding(value = "A comma separated list of beige reasons for defeating an enemy in war")
     public Set<BeigeReason> BeigeReasons(String input) {
         return emumSet(BeigeReason.class, input);
+    }
+
+    @Binding(value = "A comma separated list of the status of a nation's loan")
+    public Set<DBLoan.Status> LoanStatuses(String input) {
+        return emumSet(DBLoan.Status.class, input);
+    }
+
+    @Binding(value = "The status of a nation's loan")
+    public DBLoan.Status LoanStatus(String input) {
+        return emum(DBLoan.Status.class, input);
+    }
+
+    @Binding
+    @GuildLoan
+    public DBLoan loan(LoanManager manager, String input) {
+        int id = PrimitiveBindings.Integer(input);
+        DBLoan loan = manager.getLoanById(id);
+        if (loan == null) {
+            throw new IllegalArgumentException("No loan found for id `" + id + "`");
+        }
+        return loan;
     }
 
     @Binding(value = "A reason beiging and defeating an enemy in war")
@@ -150,10 +166,9 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "The name of a created grant template")
-    public AGrantTemplate AGrantTemplate(@Me GuildDB db, String input) {
-        GrantTemplateManager manager = db.getGrantTemplateManager();
+    public AGrantTemplate AGrantTemplate(GrantTemplateManager manager, @Me GuildDB db, String input) {
         Set<AGrantTemplate> found = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(input));
-        if (found.isEmpty()) throw new IllegalArgumentException("No grant template found for `" + input + "`");
+        if (found.isEmpty()) throw new IllegalArgumentException("No grant template found for `" + input + "` see: " + CM.grant_template.list.cmd.toSlashMention());
         if (found.size() > 1) throw new IllegalArgumentException("Multiple grant templates found for `" + input + "`");
         return found.iterator().next();
     }
@@ -663,7 +678,6 @@ public class PWBindings extends BindingHelper {
                             continue;
                         }
                     } catch (IllegalArgumentException ignore) {
-                        ignore.printStackTrace();
                     }
                     if (db != null) {
                         if (arg.charAt(0) == '~') arg = arg.substring(1);
@@ -680,7 +694,7 @@ public class PWBindings extends BindingHelper {
             }
             result.addAll(nations(data, guild, StringMan.join(remainder, ",")));
         }
-        if (result.isEmpty()) throw new IllegalArgumentException("Invalid nations or alliances: " + input);
+        if (result.isEmpty()) throw new IllegalArgumentException("Invalid nations or alliances: `" + input + "`");
         return result;
     }
 
@@ -901,7 +915,7 @@ public class PWBindings extends BindingHelper {
     @Binding
     @Me
     public double[] deposits2(@Me GuildDB db, @Me DBNation nation) throws IOException {
-        return nation.getNetDeposits(db);
+        return nation.getNetDeposits(db, false);
     }
 
     @Binding
@@ -968,6 +982,21 @@ public class PWBindings extends BindingHelper {
     @Binding
     public DiscordDB discordDB() {
         return Locutus.imp().getDiscordDB();
+    }
+
+    @Binding
+    public ReportManager ReportManager() {
+        return Locutus.imp().getNationDB().getReportManager();
+    }
+
+    @Binding
+    public GrantTemplateManager grantTemplateManager(@Me GuildDB db) {
+        return db.getGrantTemplateManager();
+    }
+
+    @Binding
+    public LoanManager loanManager() {
+        return Locutus.imp().getNationDB().getLoanManager();
     }
 
     @Binding
@@ -1268,6 +1297,21 @@ public class PWBindings extends BindingHelper {
         TaxBracket bracket = brackets.get(taxId);
         if (bracket != null) return bracket;
         throw new IllegalArgumentException("Bracket " + taxId + " not found for alliance: " + StringMan.getString(db.getAllianceIds()));
+    }
+
+    @Binding
+    @ReportPerms
+    public ReportManager.Report getReport(ReportManager manager, int id) {
+        return getReportAll(manager, id);
+    }
+
+    @Binding
+    public ReportManager.Report getReportAll(ReportManager manager, int id) {
+        ReportManager.Report report = manager.getReport(id);
+        if (report == null) {
+            throw new IllegalArgumentException("No report found with id: `" + id + "`");
+        }
+        return report;
     }
 
 

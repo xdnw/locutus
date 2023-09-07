@@ -1,12 +1,12 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.AccessType;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.EscrowMode;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
-import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
@@ -15,8 +15,6 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.MMRInt;
 import link.locutus.discord.db.entities.TaxBracket;
@@ -40,6 +38,7 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.util.offshore.TransferResult;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -60,8 +59,13 @@ public class GrantCommands {
         int numDisabled = templates.stream().mapToInt(t -> t.isEnabled() ? 0 : 1).sum();
 
         if (templates.isEmpty()) {
-            String msg = "No templates found for category: " + category + "\n" +
-                    "Create one with " + category.getCommandMention();
+            String msg;
+            if (category == null) {
+                msg = "No templates found for all categories";
+            } else {
+                msg = "No templates found for category: " + category + "\n" +
+                        "Create one with " + category.getCommandMention();
+            }
             if (!listDisabled) {
                 msg += "\nUse `-d listDisabled` to list disabled templates";
             }
@@ -119,12 +123,12 @@ public class GrantCommands {
 
     @Command(desc = "Full information about a grant template")
     @RolePermission(Roles.MEMBER)
-    public String templateInfo(@Me GuildDB db, @Me JSONObject command, @Me Guild guild, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io, AGrantTemplate template, @Default DBNation receiver, @Default String value, @Switch("e") boolean showEdit) {
+    public String templateInfo(@Me GuildDB db, @Me JSONObject command, @Me Guild guild, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io, AGrantTemplate template, @Default DBNation receiver, @Default String value, @Switch("e") boolean show_command) {
         if (receiver == null) receiver = me;
-        if (showEdit) {
+        if (show_command) {
             return "### Edit Command\n`" + template.getCommandString() + "`";
         }
-        JSONObject editJson = command.put("showEdit", "true");
+        JSONObject editJson = command.put("show_command", "true");
         io.create().embed(template.getName(), template.toFullString(me, receiver, value))
                 .commandButton(editJson, "Edit").send();
         return null;
@@ -182,12 +186,16 @@ public class GrantCommands {
                                         @Switch("md") Integer maxDay,
                                         @Switch("mgd") Integer maxGranterDay,
                                         @Switch("mgt") Integer maxGranterTotal,
+                                        @Switch("expire") @Timediff Long allowExpire,
+                                        @Switch("ignore") boolean allowIgnore,
                                         @Switch("f") boolean force) {
+        System.out.println(1);
         name = name.toUpperCase(Locale.ROOT).trim();
         // Ensure name is alphanumericalund
         if (!name.matches("[A-Z0-9_-]+")) {
             throw new IllegalArgumentException("The name must be alphanumericalunderscore, not `" + name + "`");
         }
+        System.out.println(2);
         GrantTemplateManager manager = db.getGrantTemplateManager();
         // check a template does not exist by that name
         String finalName = name;
@@ -203,21 +211,37 @@ public class GrantCommands {
         if (bracket != null && useReceiverBracket) {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
-        ProjectTemplate template = new ProjectTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), project);
+        System.out.println(3);
+        ProjectTemplate template = new ProjectTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), project, allowExpire == null ? 0 : allowExpire, allowIgnore);
+        System.out.println(4);
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
+        System.out.println(5);
         if (existing != null && existing.getType() != template.getType()) {
             throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
         }
         // confirmation
         if (!force) {
+            System.out.println(6);
             String body = template.toFullString(me, null, null);
+            System.out.println(7);
+            Set<Integer> aaIds = db.getAllianceIds();
+            System.out.println(7.1);
+            Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(allowedRecipients.toCached(Long.MAX_VALUE));
+            System.out.println(7.2);
+            nations.removeIf(f -> !aaIds.contains(f.getAlliance_id()));
+            System.out.println(8);
+            if (nations.isEmpty()) {
+                body = "**WARNING: NO NATIONS MATCHING `" + allowedRecipients.getFilter() + "`**\n\n" + body;
+            }
             if (existing != null) {
                 body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
                         "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
                         "\n\n" + body;
             }
+            System.out.println(9);
             String prefix = existing != null ? "Overwrite " : "Create ";
             io.create().confirmation(prefix + "Template: " + template.getName(), body, command).send();
+            System.out.println(10);
             return null;
         }
         manager.saveTemplate(template);
@@ -250,6 +274,8 @@ public class GrantCommands {
                                       @Switch("md") Integer maxDay,
                                       @Switch("mgd") Integer maxGranterDay,
                                       @Switch("mgt") Integer maxGranterTotal,
+                                      @Switch("expire") @Timediff Long allowExpire,
+                                      @Switch("ignore") boolean allowIgnore,
                                       @Switch("f") boolean force) {
 
         name = name.toUpperCase(Locale.ROOT).trim();
@@ -274,8 +300,9 @@ public class GrantCommands {
         }
         byte[] buildBytes = build == null ? null : new JavaCity(build).toBytes();
 
-        BuildTemplate template = new BuildTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), buildBytes, only_new_cities, mmr.toNumber(),
-                allow_after_days, allow_after_offensive, allow_after_infra, allow_after_land_or_project, allow_all);
+        BuildTemplate template = new BuildTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), buildBytes, only_new_cities, mmr == null ? -1 : mmr.toNumber(),
+                allow_after_days == null ? 0 : allow_after_days,
+                allow_after_offensive, allow_after_infra, allow_after_land_or_project, allow_all, allowExpire == null ? 0 : allowExpire, allowIgnore);
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
         if (existing != null && existing.getType() != template.getType()) {
             throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
@@ -283,6 +310,12 @@ public class GrantCommands {
         // confirmation
         if (!force) {
             String body = template.toFullString(me, null, null);
+            Set<Integer> aaIds = db.getAllianceIds();
+            Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(allowedRecipients.toCached(Long.MAX_VALUE));
+            nations.removeIf(f -> !aaIds.contains(f.getAlliance_id()));
+            if (nations.isEmpty()) {
+                body = "**WARNING: NO NATIONS MATCHING `" + allowedRecipients.getFilter() + "`**\n\n" + body;
+            }
             if (existing != null) {
                 body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
                         "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
@@ -316,6 +349,8 @@ public class GrantCommands {
                                      @Switch("md") Integer maxDay,
                                      @Switch("mgd") Integer maxGranterDay,
                                      @Switch("mgt") Integer maxGranterTotal,
+                                     @Switch("expire") @Timediff Long allowExpire,
+                                     @Switch("ignore") boolean allowIgnore,
                                      @Switch("f") boolean force) {
         name = name.toUpperCase(Locale.ROOT).trim();
         // Ensure name is alphanumericalund
@@ -338,7 +373,7 @@ public class GrantCommands {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
 
-        CityTemplate template = new CityTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), minCity == null ? 0 : minCity, maxCity == null ? 0 : maxCity);
+        CityTemplate template = new CityTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), minCity == null ? 0 : minCity, maxCity == null ? 0 : maxCity, allowExpire == null ? 0 : allowExpire, allowIgnore);
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
         if (existing != null && existing.getType() != template.getType()) {
             throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
@@ -346,6 +381,12 @@ public class GrantCommands {
         // confirmation
         if (!force) {
             String body = template.toFullString(me, null, null);
+            Set<Integer> aaIds = db.getAllianceIds();
+            Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(allowedRecipients.toCached(Long.MAX_VALUE));
+            nations.removeIf(f -> !aaIds.contains(f.getAlliance_id()));
+            if (nations.isEmpty()) {
+                body = "**WARNING: NO NATIONS MATCHING `" + allowedRecipients.getFilter() + "`**\n\n" + body;
+            }
             if (existing != null) {
                 body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
                         "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
@@ -382,7 +423,8 @@ public class GrantCommands {
                                       @Switch("md") Integer maxDay,
                                       @Switch("mgd") Integer maxGranterDay,
                                       @Switch("mgt") Integer maxGranterTotal,
-
+                                      @Switch("expire") @Timediff Long allowExpire,
+                                      @Switch("ignore") boolean allowIgnore,
                                       @Switch("f") boolean force) {
         name = name.toUpperCase(Locale.ROOT).trim();
         // Ensure name is alphanumericalund
@@ -418,10 +460,10 @@ public class GrantCommands {
                 maxGranterDay == null ? 0 : maxGranterDay,
                 maxGranterTotal == null ? 0 : maxGranterTotal,
                 System.currentTimeMillis(),
-                level == null ? 0 : level,
+                level,
                 onlyNewCities,
                 requireNOffensives == null ? 0 : requireNOffensives,
-                allowRebuild);
+                allowRebuild, allowExpire == null ? 0 : allowExpire, allowIgnore);
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
         if (existing != null && existing.getType() != template.getType()) {
             throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
@@ -429,6 +471,12 @@ public class GrantCommands {
         // confirmation
         if (!force) {
             String body = template.toFullString(me, null, null);
+            Set<Integer> aaIds = db.getAllianceIds();
+            Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(allowedRecipients.toCached(Long.MAX_VALUE));
+            nations.removeIf(f -> !aaIds.contains(f.getAlliance_id()));
+            if (nations.isEmpty()) {
+                body = "**WARNING: NO NATIONS MATCHING `" + allowedRecipients.getFilter() + "`**\n\n" + body;
+            }
             if (existing != null) {
                 body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
                         "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
@@ -463,7 +511,8 @@ public class GrantCommands {
                                      @Switch("md") Integer maxDay,
                                      @Switch("mgd") Integer maxGranterDay,
                                      @Switch("mgt") Integer maxGranterTotal,
-
+                                     @Switch("expire") @Timediff Long allowExpire,
+                                     @Switch("ignore") boolean allowIgnore,
                                      @Switch("f") boolean force) {
         name = name.toUpperCase(Locale.ROOT).trim();
         // Ensure name is alphanumericalund
@@ -486,7 +535,7 @@ public class GrantCommands {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
 
-        LandTemplate template = new LandTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), level == null ? 0 : level, onlyNewCities);
+        LandTemplate template = new LandTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), level == null ? 0 : level, onlyNewCities, allowExpire == null ? 0 : allowExpire, allowIgnore);
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
         if (existing != null && existing.getType() != template.getType()) {
             throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
@@ -494,6 +543,12 @@ public class GrantCommands {
         // confirmation
         if (!force) {
             String body = template.toFullString(me, null, null);
+            Set<Integer> aaIds = db.getAllianceIds();
+            Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(allowedRecipients.toCached(Long.MAX_VALUE));
+            nations.removeIf(f -> !aaIds.contains(f.getAlliance_id()));
+            if (nations.isEmpty()) {
+                body = "**WARNING: NO NATIONS MATCHING `" + allowedRecipients.getFilter() + "`**\n\n" + body;
+            }
             if (existing != null) {
                 body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
                         "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
@@ -528,7 +583,8 @@ public class GrantCommands {
                                      @Switch("md") Integer maxDay,
                                      @Switch("mgd") Integer maxGranterDay,
                                      @Switch("mgt") Integer maxGranterTotal,
-
+                                     @Switch("expire") @Timediff Long allowExpire,
+                                     @Switch("ignore") boolean allowIgnore,
                                      @Switch("f") boolean force) {
         if (overdrawPercent == null) overdrawPercent = 20L;
         name = name.toUpperCase(Locale.ROOT).trim();
@@ -552,7 +608,7 @@ public class GrantCommands {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
 
-        RawsTemplate template = new RawsTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), days, overdrawPercent);
+        RawsTemplate template = new RawsTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), days, overdrawPercent, allowExpire == null ? 0 : allowExpire, allowIgnore);
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
         if (existing != null && existing.getType() != template.getType()) {
             throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
@@ -560,6 +616,12 @@ public class GrantCommands {
         // confirmation
         if (!force) {
             String body = template.toFullString(me, null, null);
+            Set<Integer> aaIds = db.getAllianceIds();
+            Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(allowedRecipients.toCached(Long.MAX_VALUE));
+            nations.removeIf(f -> !aaIds.contains(f.getAlliance_id()));
+            if (nations.isEmpty()) {
+                body = "**WARNING: NO NATIONS MATCHING `" + allowedRecipients.getFilter() + "`**\n\n" + body;
+            }
             if (existing != null) {
                 body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
                         "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
@@ -595,6 +657,8 @@ public class GrantCommands {
                                          @Switch("md") Integer maxDay,
                                          @Switch("mgd") Integer maxGranterDay,
                                          @Switch("mgt") Integer maxGranterTotal,
+                                         @Switch("expire") @Timediff Long allowExpire,
+                                         @Switch("ignore") boolean allowIgnore,
                                          @Switch("f") boolean force) {
         name = name.toUpperCase(Locale.ROOT).trim();
         // Ensure name is alphanumericalund
@@ -618,7 +682,7 @@ public class GrantCommands {
         }
 
         double[] allowancePerCityArr = allowancePerCity == null ? null : PnwUtil.resourcesToArray(allowancePerCity);
-        WarchestTemplate template = new WarchestTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), allowancePerCityArr, trackDays, subtractExpenditure, overdrawPercentCents);
+        WarchestTemplate template = new WarchestTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), allowancePerCityArr, trackDays, subtractExpenditure, overdrawPercentCents, allowExpire == null ? 0 : allowExpire, allowIgnore);
 
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
         if (existing != null && existing.getType() != template.getType()) {
@@ -628,6 +692,12 @@ public class GrantCommands {
         // confirmation
         if (!force) {
             String body = template.toFullString(me, null, null);
+            Set<Integer> aaIds = db.getAllianceIds();
+            Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(allowedRecipients.toCached(Long.MAX_VALUE));
+            nations.removeIf(f -> !aaIds.contains(f.getAlliance_id()));
+            if (nations.isEmpty()) {
+                body = "**WARNING: NO NATIONS MATCHING `" + allowedRecipients.getFilter() + "`**\n\n" + body;
+            }
             if (existing != null) {
                 body = "**OVERWRITE EXISTING TEMPLATE**\n\n" +
                         "View the existing template: " + CM.grant_template.info.cmd.toSlashMention() +
@@ -654,9 +724,23 @@ public class GrantCommands {
     public String templateSend(@Me GuildDB db, @Me Member selfMember, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
                                AGrantTemplate template,
                                DBNation receiver,
+                               @Switch("e") @Timediff Long expire,
+                               @Switch("i") boolean ignore,
                                @Switch("p") String customValue,
                                @Switch("em") EscrowMode escrowMode,
                                @Switch("f") boolean force) throws IOException {
+        if (expire != null) {
+            if (!template.allowsExpire()) {
+                throw new IllegalArgumentException("The template `" + template.getName() + "` does not allow expiration");
+            }
+            if (expire < template.getExpire()) {
+                throw new IllegalArgumentException("The template `" + template.getName() + "` does not allow expiration less than " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, template.getExpire()) + "ms");
+            }
+        }
+        if (ignore && !template.allowsIgnore()) {
+            throw new IllegalArgumentException("The template `" + template.getName() + "` does not allow `#ignore`");
+        }
+
         Role econRole = template.getEconRole();
         if (econRole == null) {
             throw new IllegalArgumentException("The template `" + template.getName() + "` does not have an `econRole` set. Please set one via " + template.getType().getCommandMention());
@@ -675,6 +759,9 @@ public class GrantCommands {
         }
 
         DepositType.DepositTypeInfo note = template.getDepositType(receiver, customValue);
+        if (ignore) {
+            note = note.ignore(true);
+        }
         double[] cost = template.getCost(me, receiver, customValue);
         List<Grant.Requirement> requirements = template.getDefaultRequirements(me, receiver, customValue);
         String instructions = template.getInstructions(me, receiver, customValue);
@@ -753,12 +840,12 @@ public class GrantCommands {
                 }
             }
             if (limit == null) {
-                throw new IllegalArgumentException("Grant template limits are set (see: " + CM.settings.info.cmd.toSlashMention() + " with key " + GuildKey.GRANT_TEMPLATE_LIMITS.name() + ")\n" +
+                throw new IllegalArgumentException("Grant template limits are set (see: " + CM.settings.info.cmd.create(GuildKey.GRANT_TEMPLATE_LIMITS.name(), null, null).toSlashMention() + ")\n" +
                         "However you have none of the roles set in the limits.");
             }
         }
 
-        Map.Entry<OffshoreInstance.TransferStatus, String> status;
+        TransferResult status;
         synchronized (OffshoreInstance.BANK_LOCK) {
             for (Grant.Requirement requirement : requirements) {
                 if (requirement.canOverride()) continue;
@@ -766,7 +853,7 @@ public class GrantCommands {
                     return "Failed requirement (2): " + requirement.getMessage();
                 }
             }
-            { // limits
+            if (limit != null) { // limits
 
                 Long duration = GuildKey.GRANT_LIMIT_DELAY.getOrNull(db);
                 if (duration == null) duration = TimeUnit.DAYS.toMillis(1);
@@ -805,7 +892,7 @@ public class GrantCommands {
                     receiver,
                     cost,
                     note,
-                    null,
+                    expire,
                     null,
                     false,
                     escrowMode,
@@ -813,8 +900,8 @@ public class GrantCommands {
                     false);
 
             //in the case an unknown error occurs while sending the grant
-            if (status.getKey() == OffshoreInstance.TransferStatus.OTHER) {
-                Set<Integer> blacklist = GuildKey.GRANT_TEMPLATE_BLACKLIST.get(db);
+            if (status.getStatus() == OffshoreInstance.TransferStatus.OTHER) {
+                Set<Integer> blacklist = GuildKey.GRANT_TEMPLATE_BLACKLIST.getOrNull(db);
                 if (blacklist == null) blacklist = new HashSet<>();
                 blacklist.add(receiver.getId());
                 GuildKey.GRANT_TEMPLATE_BLACKLIST.set(db, blacklist);
@@ -822,12 +909,12 @@ public class GrantCommands {
                 Role role = Roles.ECON.toRole(db);
                 String econGovMention = role == null ? "" : role.getAsMention();
 
-                throw new IllegalArgumentException(status.getValue() + econGovMention);
+                throw new IllegalArgumentException(status.getMessageJoined(true) + "\n" + econGovMention);
             }
 
 
             //saves grant record into the database
-            if (status.getKey() == OffshoreInstance.TransferStatus.SUCCESS) {
+            if (status.getStatus() == OffshoreInstance.TransferStatus.SUCCESS || status.getStatus() == OffshoreInstance.TransferStatus.SENT_TO_ALLIANCE_BANK) {
                 GrantTemplateManager.GrantSendRecord record = new GrantTemplateManager.GrantSendRecord(template.getName(), me.getId(), receiver.getId(), template.getType(), cost, System.currentTimeMillis());
                 db.getGrantTemplateManager().saveGrantRecord(record);
             }
@@ -1762,10 +1849,9 @@ public class GrantCommands {
 //
 //    }
 
-    @WhitelistPermission
     @Command
     @HasOffshore
-    @RolePermission(value = {Roles.ECON_STAFF, Roles.ECON, Roles.ECON_GRANT_SELF})
+    @RolePermission(value = {Roles.ECON_STAFF, Roles.ECON, Roles.ECON_WITHDRAW_SELF}, any = true)
     public String withdrawEscrowed(@Me OffshoreInstance offshore, @Me IMessageIO channel, @Me JSONObject command, @Me GuildDB db, @Me DBNation me, @Me User author, DBNation receiver, Map<ResourceType, Double> amount,
                                    @Switch("f") boolean force) throws IOException {
         // Require ECON_STAFF if receiver is not me
@@ -1869,20 +1955,18 @@ public class GrantCommands {
                 }
             }
             // - Send to self via #ignore
-            Map.Entry<OffshoreInstance.TransferStatus, String> result = offshore.transferFromAllianceDeposits(me, db, db::isAllianceId, receiver, amtArr, "#ignore");
-            switch (result.getKey()) {
-                case ALLIANCE_BANK:
+            TransferResult result = offshore.transferFromAllianceDeposits(me, db, db::isAllianceId, receiver, amtArr, "#ignore");
+            switch (result.getStatus()) {
+                case SENT_TO_ALLIANCE_BANK:
                 case SUCCESS: {
-                    message.append("Successfully withdrew " + PnwUtil.resourcesToString(amtArr) + " from escrowed resources for " + receiver.getNation()  +"\n" +
-                            result.getKey() + " -> " + result.getValue());
-                    return message.toString();
+                    channel.create().embed("Escrow " + result.toTitleString(), result.toEmbedString()).send();
+                    return null;
                 }
                 default:
                 case TURN_CHANGE:
                 case OTHER: {
-                    message.append("Failed to withdraw " + PnwUtil.resourcesToString(amtArr) + " from escrowed resources for " + receiver.getNation() + "\n" +
-                            result.getKey() + " -> " + result.getValue());
-                    return message.toString();
+                    channel.create().embed("Escrow " + result.toTitleString(), result.toEmbedString()).send();
+                    return null;
                 }
                 case BLOCKADE:
                 case MULTI:
@@ -1904,11 +1988,9 @@ public class GrantCommands {
                 case CONFIRMATION: {
                     // add balance back
                     db.setEscrowed(receiver, escrowedPair.getKey(), escrowDate);
-                    message.append("Failed to withdraw " + PnwUtil.resourcesToString(amtArr) + " from escrowed resources for " + receiver.getNation() + "\n" +
-                            result.getKey() + " -> " + result.getValue());
-                    // message for adding back, same as deduct one but add back
-                    message.append("Adding back `" + PnwUtil.resourcesToString(amtArr) + "` to escrow account for " + receiver.getNation() + "\n");
-                    return message.toString();
+                    result.addMessage("Adding back `" + PnwUtil.resourcesToString(amtArr) + "` to escrow account for " + receiver.getMarkdownUrl());
+                    channel.create().embed("Escrow " + result.toTitleString(), result.toEmbedString()).send();
+                    return null;
                 }
             }
         }

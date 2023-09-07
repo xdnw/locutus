@@ -2,12 +2,9 @@ package link.locutus.discord.util.offshore;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv1.domains.subdomains.AllianceMembersContainer;
-import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.PendingTreaty;
 import link.locutus.discord.db.entities.TaxBracket;
@@ -80,12 +77,12 @@ public class Auth {
         synchronized (this)
         {
             login(false);
-            String result = FileUtil.get(FileUtil.readStringFromURL(priority.ordinal(), urlStr, arguments, post, msCookieManager, i -> {}));
+            String result = FileUtil.get(FileUtil.readStringFromURL(priority, urlStr, arguments, post, msCookieManager, i -> {}));
             if (result.contains("<!--Logged Out-->")) {
                 logout();
                 msCookieManager = new CookieManager();
                 login(true);
-                result = FileUtil.get(FileUtil.readStringFromURL(priority.ordinal(), urlStr, arguments, post, msCookieManager, i -> {}));
+                result = FileUtil.get(FileUtil.readStringFromURL(priority, urlStr, arguments, post, msCookieManager, i -> {}));
                 if (result.contains("<!--Logged Out-->")) {
                     throw new IllegalArgumentException("Failed to login to PNW");
                 }
@@ -109,7 +106,7 @@ public class Auth {
             userPass.put("rememberme", "1");
             String url = "" + Settings.INSTANCE.PNW_URL() + "/login/";
 
-            String loginResult = FileUtil.get(FileUtil.readStringFromURL(PagePriority.LOGIN.ordinal(), url, userPass, this.getCookieManager()));
+            String loginResult = FileUtil.get(FileUtil.readStringFromURL(PagePriority.LOGIN, url, userPass, this.getCookieManager()));
             if (!loginResult.contains("Login Successful")) {
                 System.out.println(loginResult);
                 throw new IllegalArgumentException("Error: " + PnwUtil.parseDom(Jsoup.parse(loginResult), "columnheader"));
@@ -119,7 +116,7 @@ public class Auth {
     }
 
     public String logout() throws IOException {
-        String logout = FileUtil.readStringFromURL(PagePriority.LOGOUT.ordinal(), "" + Settings.INSTANCE.PNW_URL() + "/logout/");
+        String logout = FileUtil.readStringFromURL(PagePriority.LOGOUT, "" + Settings.INSTANCE.PNW_URL() + "/logout/");
         Document dom = Jsoup.parse(logout);
         clearCookies();
         return PnwUtil.getAlert(dom);
@@ -203,6 +200,59 @@ public class Auth {
         return Locutus.imp().getDiscordDB().getApiKey(nationId);
     }
 
+    public String createDepositTrade(DBNation receiver, ResourceType resource, int num) {
+        boolean isBuy;
+        int price; // aka PPU
+        int amount;
+        if (resource == ResourceType.MONEY) {
+            resource = ResourceType.FOOD;
+            isBuy = false;
+            if (num > 50000000) {
+                // amount must be whole number
+                // ppu * amount must be a whole number
+                // ppu * amount = num (or slightly below, due to rounding)
+                amount = (int) Math.ceil(num / 50000000d);
+                price = (int) Math.floor((double) num / amount);
+            } else {
+                price = num;
+                amount = 1;
+            }
+        } else {
+            isBuy = true;
+            price = 0;
+            amount = num;
+        }
+        return createTrade(receiver, resource, amount, price, isBuy);
+    }
+
+    public String createTrade(DBNation receiver, ResourceType resource, int amount, int ppu, boolean isBuy) {
+        String leadername = receiver.getLeader();
+        String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/trade/create?leadername=" + leadername;
+        Map<String, String> post = new HashMap<>();
+        post.put("resourceoffer", resource.name().toLowerCase());
+        post.put("offeramount", "" + amount);
+        post.put("wantamount", "" + ppu);
+        post.put("offertype", "personal");
+        post.put("leaderpersonal", leadername);
+        post.put("submit", isBuy ? "Buy" : "Sell");
+
+        return PnwUtil.withLogin(() -> {
+            String result = Auth.this.readStringFromURL(PagePriority.BANK_TRADE, url, emptyMap());
+            Document dom = Jsoup.parse(result);
+            String token = dom.select("input[name=sesh]").attr("value");
+            post.put("sesh", token);
+
+            result = Auth.this.readStringFromURL(PagePriority.TOKEN, url, post);
+            dom = Jsoup.parse(result);
+            String alert = PnwUtil.getAlert(dom);
+            if (alert.isEmpty()) {
+                return "(no output)";
+            }
+            return alert;
+        }, this);
+
+    }
+
     public String createAllianceEmbargo(int embargoFrom, NationOrAlliance embargo, String message) {
         Map<String, String> post = new HashMap<>();
 
@@ -216,10 +266,6 @@ public class Auth {
         return PnwUtil.withLogin(new Callable<String>() {
             @Override
             public String call() throws Exception {
-//                String result = Auth.this.readStringFromURL(url, emptyMap());
-//                Document dom = Jsoup.parse(result);
-//                String token = dom.getElementsByAttributeValue("name", "token").get(0).attr("value");
-
                 String result = Auth.this.readStringFromURL(PagePriority.EMBARGO, url, post);
                 return PnwUtil.getAlert(Jsoup.parse(result));
             }
@@ -618,7 +664,7 @@ public class Auth {
                                 continue;
                             }
 
-                        } else if (ppu > 100000) {
+                        } else if (ppu >= 100000) {
                             if (type != ResourceType.FOOD) {
                                 response.setMessage("Money trades must be sent as a food trade").setResult(TradeResultType.NOT_A_FOOD_TRADE);
                                 continue;
@@ -699,6 +745,8 @@ public class Auth {
         NOT_A_FOOD_TRADE,
         INCORRECT_PPU,
         CANNOT_DEPOSIT_CREDITS,
+
+        NO_BANK_ACCESS,
 
         SUCCESS,
     }
@@ -797,7 +845,6 @@ public class Auth {
         DBNation nation = getNation();
         int fromBank = nation.getAlliance_id();
         ApiKeyPool.ApiKey key = getApiKey();
-        PoliticsAndWarV3 v3 = new PoliticsAndWarV3(ApiKeyPool.create(key));
 
         Map<ResourceType, Double> stockpile = nation.getStockpile();
         Map<String, String> post = new HashMap<>();
@@ -885,7 +932,7 @@ public class Auth {
                 senderId = senderNation.getAlliance_id();
                 senderType = senderNation.getAlliance().getReceiverType();
             } else {
-                throw new IllegalArgumentException("Sender " + senderNation.getQualifiedName() + " is not in alliances: " + StringMan.getString(aaIds));
+                throw new IllegalArgumentException("Sender " + senderNation.getQualifiedId() + " is not in alliances: " + StringMan.getString(aaIds));
             }
 
             StringBuilder response = new StringBuilder("Checking trades...");
@@ -917,9 +964,9 @@ public class Auth {
                         for (int i = 0; i < toDeposit.length; i++) {
                             if (toDeposit[i] < 0) toDeposit[i] = 0;
                         }
-                        Map.Entry<OffshoreInstance.TransferStatus, String> transferResult = bank.transfer(offshore.getAlliance(), PnwUtil.resourcesToMap(toDeposit), "#ignore");
-                        response.append("\nOffshoring:\n- ").append(transferResult.getKey() + "->" + transferResult.getValue());
-                        if (transferResult.getKey() != OffshoreInstance.TransferStatus.SUCCESS) {
+                        TransferResult transferResult = bank.transfer(offshore.getAlliance(), PnwUtil.resourcesToMap(toDeposit), "#ignore");
+                        response.append("Offshore " + transferResult.toLineString());
+                        if (transferResult.getStatus() != OffshoreInstance.TransferStatus.SUCCESS) {
                             return false;
                         }
 

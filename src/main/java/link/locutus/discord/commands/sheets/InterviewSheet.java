@@ -101,7 +101,7 @@ public class InterviewSheet extends Command {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "interview").send();
         return null;
     }
 }

@@ -416,7 +416,7 @@ public class AuthBindings extends WebBindingHelper {
                             MarkupUtil.htmlUrl(Settings.INSTANCE.WEB.REDIRECT + " | Verify Login", authUrl);
 
                     ApiKeyPool pool = ApiKeyPool.create(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY);
-                    JsonObject result = nation.sendMail(pool, title, body);
+                    JsonObject result = nation.sendMail(pool, title, body, true);
                     JsonElement success = result.get("success");
                     if (success != null && success.getAsBoolean()) {
                         List<Mail> mails = new SearchMailTask(Locutus.imp().getRootAuth(), title, true, true, false, null).call();

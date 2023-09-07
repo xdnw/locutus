@@ -267,7 +267,7 @@ public class AllianceListener {
                 CM.alliance.stats.metricsByTurn graphCmd = CM.alliance.stats.metricsByTurn.cmd.create(AllianceMetric.GROUND_PCT.name(), StringMan.join(allowedIds, ","), "7d");
                 IMessageBuilder msg = new DiscordChannelIO(channel).create()
                         .embed(title, body.toString())
-                        .commandButton(CommandBehavior.DELETE_REACTION, graphCmd, "graph");
+                        .commandButton(CommandBehavior.EPHEMERAL, graphCmd, "graph");
 
                 if (role != null) {
                     msg.append(role.getAsMention());
@@ -290,7 +290,7 @@ public class AllianceListener {
         StringBuilder body = new StringBuilder();
 
         for (DBNation member : members) {
-            if (member.getPosition() < Rank.HEIR.id) continue;
+            if (member.getPosition() < Rank.HEIR.id || member.getVm_turns() > 0) continue;
             Map.Entry<Integer, Rank> lastAA = member.getPreviousAlliance();
 
             body.append("Leader: " + MarkupUtil.markdownUrl(member.getNation(), member.getNationUrl()) + "\n");
@@ -328,7 +328,7 @@ public class AllianceListener {
 
         body.append(PnwUtil.getUrl(aaId, true));
 
-        AlertUtil.forEachChannel(f -> true, GuildKey.TREATY_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
+        AlertUtil.forEachChannel(f -> true, GuildKey.ALLIANCE_CREATE_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB guildDB) {
                 DiscordUtil.createEmbedCommand(channel, title, body.toString());

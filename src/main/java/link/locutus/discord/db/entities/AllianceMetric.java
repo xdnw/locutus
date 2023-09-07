@@ -197,8 +197,6 @@ public enum AllianceMetric {
         public double apply(DBAlliance alliance) {
             Set<DBNation> nations = alliance.getNations();
             nations.removeIf(f -> f.isGray() || f.isBeige() || f.getPosition() <= Rank.APPLICANT.id || f.getVm_turns() > 0);
-            Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
-
 
             double[] totalRss = ResourceType.getBuffer();
             for (DBNation nation : nations) {

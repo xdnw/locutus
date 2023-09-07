@@ -534,6 +534,7 @@ public class GuildHandler {
         DBNation previous = event.getPrevious();
 
         onNewApplicant(current);
+        autoRoleMemberApp(current);
         Set<Integer> aaIds = db.getAllianceIds();
         if (!aaIds.isEmpty()) {
             if (aaIds.contains(previous.getAlliance_id()) && current.getAlliance_id() != previous.getAlliance_id()) {
@@ -542,6 +543,19 @@ public class GuildHandler {
                     addLeaveMessage(channel, previous, current);
                 }
             }
+        }
+    }
+
+    private void autoRoleMemberApp(DBNation current) {
+        if (current == null) return;
+        User user = current.getUser();
+        if (user == null) return;
+        Member member = db.getGuild().getMember(user);
+        if (member == null) return;
+        try {
+            db.getAutoRoleTask().autoRoleMemberApp(member, current);
+        } catch (RuntimeException e) {
+            e.printStackTrace();
         }
     }
 
@@ -565,7 +579,7 @@ public class GuildHandler {
 
         if (user != null && current.getActive_m() < 2880) {
             try {
-                double[] depoTotal = current.getNetDeposits(db);
+                double[] depoTotal = current.getNetDeposits(db, false);
                 body.append("\n\nPlease check the following:\n" +
                         "- Discord roles\n" +
                         "- Deposits: `" + PnwUtil.resourcesToString(depoTotal) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(depoTotal)));
@@ -592,6 +606,8 @@ public class GuildHandler {
 
     @Subscribe
     public void onNationDelete(NationDeleteEvent event) {
+        autoRoleMemberApp(event.getPrevious().getUser(), null);
+
         DBNation previous = event.getPrevious();
         MessageChannel channel = db.getOrNull(GuildKey.MEMBER_LEAVE_ALERT_CHANNEL);
         if (channel != null) {
@@ -605,6 +621,17 @@ public class GuildHandler {
                 body.append("\nUser: " + user.getAsMention());
             }
             DiscordUtil.createEmbedCommand(channel, title, body.toString());
+        }
+    }
+
+    private void autoRoleMemberApp(User user, DBNation nation) {
+        if (user == null) return;
+        Member member = getGuild().getMember(user);
+        if (member == null) return;
+        try {
+            db.getAutoRoleTask().autoRoleMemberApp(member, nation);
+        } catch (RuntimeException ignore) {
+            ignore.printStackTrace();
         }
     }
 
@@ -635,7 +662,7 @@ public class GuildHandler {
             subject = DiscordUtil.format(guild, output, null, to, subject);
         }
 
-        return to.sendMail(keys, subject, message);
+        return to.sendMail(keys, subject, message, false);
     }
 
     public Double getWithdrawLimit(int banker) {
@@ -1629,7 +1656,7 @@ public class GuildHandler {
                                     String title = "Do Not Raid/" + channel.getIdLong();
                                     String message = MarkupUtil.htmlUrl(war.toUrl(), war.toUrl()) + " violates the `Do Not Raid` list. If you were not asked to attack, please offer peace\n\nNote: This is an automated message";
 
-                                    nation.sendMail(key, title, message);
+                                    nation.sendMail(key, title, message, false);
                                 }
                             } catch (Throwable e) {
                                 e.printStackTrace();
@@ -2172,7 +2199,7 @@ public class GuildHandler {
                 ApiKeyPool keys = db.getMailKey();
                 if (keys != null) {
                     try {
-                        nation.sendMail(keys, "Beige Cycle Violation", explanation);
+                        nation.sendMail(keys, "Beige Cycle Violation", explanation, false);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -2357,6 +2384,7 @@ public class GuildHandler {
     private boolean sentNoIAMessage = false;
 
     private void sendMail(DBNation current) {
+        if (current.getPositionEnum().id > Rank.APPLICANT.id || current.getAgeDays() > 10) return;
         if (!sentMail.contains(current.getNation_id())) {
             sentMail.add(current.getNation_id());
 
@@ -2452,6 +2480,7 @@ public class GuildHandler {
     public void onNationChangePosition(NationChangePositionEvent event) {
         DBNation nation = event.getCurrent();
         onRefer(nation);
+        autoRoleMemberApp(event.getCurrent());
     }
 
     public void onRefer(DBNation nation) {
@@ -2500,10 +2529,10 @@ public class GuildHandler {
         DBNation nation = event.getBlockadedNation();
         MessageChannel channel = getDb().getOrNull(GuildKey.BLOCKADED_ALERTS);
         Role role = Roles.BLOCKADED_ALERT.toRole(guild);
-        blockadeAlert(nation, event.getBlockaderNation(), channel, role, null, "blockaded");
+        blockadeAlert(nation, event.getBlockaderNation(), channel, role, null, null, "blockaded");
     }
 
-    private void blockadeAlert(DBNation blockaded, DBNation blockader, MessageChannel channel, Role role, Role govRole, String titleSuffix) {
+    private void blockadeAlert(DBNation blockaded, DBNation blockader, MessageChannel channel, Role role, Role govRole, Role escrowRole, String titleSuffix) {
         if (channel == null) return;
 
         IMessageIO io = new DiscordChannelIO(channel);
@@ -2524,14 +2553,24 @@ public class GuildHandler {
         IMessageBuilder msg = io.create().embed(title, body.toString());
 
         if (govRole != null) {
-            msg.append(" (see below) " + govRole.getAsMention());
+            msg.append("\n(see below) " + govRole.getAsMention());
         }
 
         User user = blockaded.getUser();
         if (user != null && role != null) {
             Member member = getGuild().getMember(user);
             if (member != null && member.getRoles().contains(role)) {
-                msg.append(" (see below) " + member.getAsMention());
+                msg.append("\n(see below) " + member.getAsMention());
+            }
+        }
+        if (escrowRole != null) {
+            try {
+                Map.Entry<double[], Long> escrow = getDb().getEscrowed(blockaded);
+                if (escrow != null && !ResourceType.isZero(escrow.getKey())) {
+                    msg.append("\nHas Escrow " + escrowRole.getAsMention());
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
         msg.send();
@@ -2550,7 +2589,9 @@ public class GuildHandler {
         MessageChannel channel = getDb().getOrNull(GuildKey.UNBLOCKADED_ALERTS);
         Role role = blockaded ? null : Roles.UNBLOCKADED_ALERT.toRole(guild);
         Role govRole = blockaded ? null : Roles.UNBLOCKADED_GOV_ROLE_ALERT.toRole(guild);
-        blockadeAlert(nation, event.getBlockaderNation(), channel, role, govRole, title);
+        Role escrowRole = blockaded ? null : Roles.ESCROW_GOV_ALERT.toRole(guild);
+
+        blockadeAlert(nation, event.getBlockaderNation(), channel, role, govRole, escrowRole, title);
 
         processEscrow(nation);
 

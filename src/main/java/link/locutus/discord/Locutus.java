@@ -2,7 +2,6 @@ package link.locutus.discord;
 
 import com.google.common.eventbus.AsyncEventBus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.subscription.PnwPusherShardManager;
@@ -15,14 +14,13 @@ import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
-import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.stock.StockDB;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.config.yaml.Config;
 import link.locutus.discord.db.*;
 import link.locutus.discord.db.entities.AllianceMetric;
 import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBCity;
+import link.locutus.discord.db.entities.DiscordBan;
 import link.locutus.discord.db.entities.DiscordMeta;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
@@ -57,6 +55,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.emoji.EmojiUnion;
+import net.dv8tion.jda.api.events.guild.GuildBanEvent;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.invite.GuildInviteCreateEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
@@ -79,7 +78,6 @@ import net.dv8tion.jda.api.utils.ChunkingFilter;
 import net.dv8tion.jda.api.utils.Compression;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
-import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
@@ -109,7 +107,6 @@ public final class Locutus extends ListenerAdapter {
     private Guild server;
 
     private final PoliticsAndWarV2 pnwApi;
-    private final PoliticsAndWarV2 rootPnwApi;
 
     private final PoliticsAndWarV3 v3;
 
@@ -227,8 +224,6 @@ public final class Locutus extends ListenerAdapter {
 
         this.pnwApi = new PoliticsAndWarBuilder().addApiKeys(pool.toArray(new String[0])).setEnableCache(false).setTestServerMode(Settings.INSTANCE.TEST).build();
         System.out.println("remove:|| pnwapi " + (((-start)) + (start = System.currentTimeMillis())));
-        this.rootPnwApi = new PoliticsAndWarBuilder().addApiKeys(Settings.INSTANCE.API_KEY_PRIMARY).setEnableCache(false).setTestServerMode(Settings.INSTANCE.TEST).build();
-        System.out.println("remove:|| rootpnwapi " + (((-start)) + (start = System.currentTimeMillis())));
 
         ApiKeyPool v3Pool = ApiKeyPool.builder().addKey(Settings.INSTANCE.NATION_ID, Settings.INSTANCE.API_KEY_PRIMARY,Settings.INSTANCE.ACCESS_KEY).build();
         this.v3 = new PoliticsAndWarV3(v3Pool);
@@ -724,7 +719,7 @@ public final class Locutus extends ListenerAdapter {
             }, Settings.INSTANCE.TASKS.ACTIVE_NATION_SECONDS);
 
             addTaskSeconds(() -> {
-                runEventsAsync(bankDb::updateBankRecs);
+                runEventsAsync(f -> bankDb.updateBankRecs(false, f));
             }, Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS);
 
             addTaskSeconds(() -> {
@@ -736,7 +731,7 @@ public final class Locutus extends ListenerAdapter {
             }, Settings.INSTANCE.TASKS.ALL_NON_VM_NATIONS_SECONDS);
 
             addTaskSeconds(() -> {
-                runEventsAsync(nationDB::updateDirtyCities);
+                runEventsAsync(f -> nationDB.updateDirtyCities(false, f));
             }, Settings.INSTANCE.TASKS.OUTDATED_CITIES_SECONDS);
 
             if (Settings.INSTANCE.TASKS.FETCH_SPIES_INTERVAL_SECONDS > 0) {
@@ -747,13 +742,24 @@ public final class Locutus extends ListenerAdapter {
             }
 
             addTaskSeconds(() -> {
-                synchronized (warUpdateLock) {
+                try {
                     System.out.println("Start update wars 1");
-                    long start = System.currentTimeMillis();
-                    runEventsAsync(f -> warDb.updateActiveWars(f, false));
-                    runEventsAsync(warDb::fetchNewWars);
-                    runEventsAsync(warDb::updateAttacks);
+                    synchronized (warUpdateLock) {
+                        System.out.println("Start update wars 1.1");
+                        long start = System.currentTimeMillis();
+                        System.out.println("Start update wars 1.2");
+                        runEventsAsync(f -> warDb.updateActiveWars(f, false));
+                        System.out.println("Start update wars 1.3");
+                        runEventsAsync(warDb::fetchNewWars);
+                        System.out.println("Start update wars 1.4");
+                        runEventsAsync(warDb::updateAttacks);
+                        System.out.println("Start update wars 1.5");
+                    }
+                    System.out.println("End update wars 1.5");
+                } catch (Throwable e) {
+                    e.printStackTrace();
                 }
+
             }, Settings.INSTANCE.TASKS.ACTIVE_WAR_SECONDS);
 
 //            addTaskSeconds(() -> {
@@ -916,10 +922,6 @@ public final class Locutus extends ListenerAdapter {
         return pnwApi;
     }
 
-    public PoliticsAndWarV2 getRootPnwApiV2() {
-        return rootPnwApi;
-    }
-
     @Override
     public void onGuildMemberRoleAdd(@Nonnull GuildMemberRoleAddEvent event) {
         Guild guild = event.getGuild();
@@ -927,6 +929,17 @@ public final class Locutus extends ListenerAdapter {
         if (!db.hasAlliance()) return;
 
         executor.submit(() -> db.getHandler().onGuildMemberRoleAdd(event));
+    }
+
+    @Override
+    public void onGuildBan(@NotNull GuildBanEvent event) {
+        executor.submit(new Runnable() {
+            @Override
+            public void run() {
+                DiscordBan discordBan = new DiscordBan(event.getUser().getIdLong(), event.getGuild().getIdLong(), System.currentTimeMillis(), "");
+                getDiscordDB().addBans(List.of(discordBan));
+            }
+        });
     }
 
     @Override
@@ -1018,123 +1031,102 @@ public final class Locutus extends ListenerAdapter {
             User user = event.getUser();
             Guild guild = event.isFromGuild() ? event.getGuild() : message.isFromGuild() ? message.getGuild() : null;
             MessageChannel channel = event.getChannel();
+            List<MessageEmbed> embeds = message.getEmbeds();
+            MessageEmbed embed = !embeds.isEmpty() ? embeds.get(0) : null;
 
             InteractionHook hook = event.getHook();
             IMessageIO io = new DiscordHookIO(hook, event);
+            IMessageIO ioToUse = io;
 
-            String id = button.getId();
-            if (id == null) {
-                System.out.println("ID is null");
-                return;
-            }
-            if (id.isBlank()) {
-                RateLimitUtil.queue(message.delete());
-                return;
-            }
-            if (MathMan.isInteger(id)) {
-                List<MessageEmbed> embeds = message.getEmbeds();
-                if (embeds.size()  == 0) {
-                    io.send("No embed found: " + message.getJumpUrl());
-                    return;
-                }
-                Map<String, String> reactions = DiscordUtil.getReactions(message.getEmbeds().get(0));
-                if (reactions.isEmpty()) {
-                    io.send("No command info found: " + message.getJumpUrl());
-                    return;
-                }
-                String cmd = reactions.get(id);
-                if (cmd == null) {
-                    io.send("No command info found: " + message.getJumpUrl() + " | " + button.getId() + " | " + StringMan.getString(reactions));
-                    return;
-                }
-                id = cmd;
-            }
+            try {
+                Map<String, List<DiscordUtil.CommandInfo>> commandMap = DiscordUtil.getCommands(guild, embed, List.of(button), message.getJumpUrl(), false);
+                if (commandMap.isEmpty()) return;
 
-            System.out.println("ID " + id);
-            if (id.startsWith("<#")) {
-                String channelId = id.substring(0, id.indexOf('>') + 1);
-                channel = DiscordUtil.getChannel(message.getGuild(), channelId);
-                if (channel == null) {
-                    io.send("Unknown channel: <#" + channelId + ">");
-                    System.out.println("Unknown channel");
-                    return;
-                } else {
-                    io = new DiscordChannelIO(channel);
-                }
-                id = id.substring(id.indexOf(' ') + 1);
-            }
-            System.out.println("ID 2 " + id);
+                List<DiscordUtil.CommandInfo> commands = commandMap.values().iterator().next();
+                if (commands.isEmpty()) return;
 
-            CommandBehavior behavior = null;
-            if (id.length() > 0) {
-                System.out.println("Char 0 " + id.charAt(0));
-                char char0 = id.charAt(0);
-                behavior = CommandBehavior.getOrNull(char0 + "");
-                if (behavior != null) {
-                    id = id.substring(behavior.getValue().length());
-                } else {
-                    behavior = CommandBehavior.DELETE_MESSAGE;
-                }
-            }
-
-            if (behavior == CommandBehavior.DELETE_MESSAGE) {
-                io.setMessageDeleted();
-            }
-
-            System.out.println("ID 3 " + id + " " + behavior);
-
-            if (!id.contains("modal create")) {
-                if (behavior == CommandBehavior.EPHEMERAL) {
-                    event.deferReply(true).queue();
-                    hook.setEphemeral(true);
-                } else {
-                    RateLimitUtil.queue(event.deferEdit());
-                }
-            }
-
-            System.out.println("Id new " + id + " | " + behavior);
-            if (id.startsWith(Settings.commandPrefix(true)) || id.startsWith(Settings.commandPrefix(false))) {
-                String[] split = id.split("\\r?\\n(?=[" + Settings.commandPrefix(false) + "|" + Settings.commandPrefix(true) + "|{])");
+                boolean markedDeleted = false;
+                boolean deferred = false;
                 boolean success = false;
-                for (String cmd : split) {
-                    boolean result = handleCommandReaction(cmd, message, io, user, true);
-                    System.out.println("Handle " + cmd + " | " + result);
-                    success |= result;
+                boolean hasLegacyCommand = false;
+                CommandBehavior behavior = null;
+                for (DiscordUtil.CommandInfo info : commands) {
+                    behavior = info.behavior;
+                    if (behavior == CommandBehavior.DELETE_MESSAGE && !markedDeleted) {
+                        io.setMessageDeleted();
+                        markedDeleted = true;
+                    }
+                    if (info.command.isBlank()) {
+                        continue;
+                    }
+                    if (info.channelId != null) {
+                        if (ioToUse instanceof DiscordChannelIO channelIO && channelIO.getIdLong() == info.channelId) {
+                            continue;
+                        }
+                        GuildMessageChannel cmdChannel = getDiscordApi().getGuildChannelById(info.channelId);
+                        if (cmdChannel == null) {
+                            io.send("Channel not found: <#" + info.channelId + ">");
+                            continue;
+                        }
+                        ioToUse = new DiscordChannelIO(cmdChannel);
+                    }
+
+                    String id = info.command;
+
+                    if (!deferred && !id.contains("modal create")) {
+                        deferred = true;
+                        if (info.behavior == CommandBehavior.EPHEMERAL) {
+                            event.deferReply(true).queue();
+                            hook.setEphemeral(true);
+                        } else {
+                            RateLimitUtil.queue(event.deferEdit());
+                        }
+                    }
+
+                    if (!id.isEmpty() && (id.startsWith(Settings.commandPrefix(true)) || commandManager.isModernPrefix(id.charAt(0)))) {
+                        success |= handleCommandReaction(id, message, ioToUse, user, true);
+                        hasLegacyCommand = true;
+                    } else if (id.startsWith("{")) {
+                        getCommandManager().getV2().run(guild, channel, user, message, ioToUse, id, true, true);
+                    } else if (!id.isEmpty()) {
+                        RateLimitUtil.queue(event.reply("Unknown command: `" + id + "`"));
+                        return;
+                    }
                 }
-                if (!success) behavior = null;
-            } else if (id.startsWith("{")){
-                getCommandManager().getV2().run(guild, channel, user, message, io, id, true, true);
-            } else if (!id.isEmpty()) {
-                RateLimitUtil.queue(event.reply("Unknown command: " + id));
+                if (hasLegacyCommand && !success) {
+                    behavior = null;
+                }
+
+                if (behavior != null) {
+                    switch (behavior) {
+                        case DELETE_MESSAGE -> {
+                            io.setMessageDeleted();
+                            RateLimitUtil.queue(message.delete());
+                        }
+                        case EPHEMERAL, UNPRESS -> {
+                            // unsupported
+                        }
+                        case DELETE_PRESSED_BUTTON -> {
+                            List<ActionRow> rows = new ArrayList<>(message.getActionRows());
+                            for (int i = 0; i < rows.size(); i++) {
+                                ActionRow row = rows.get(i);
+                                List<ItemComponent> components = new ArrayList<>(row.getComponents());
+                                if (components.remove(button)) {
+                                    rows.set(i, ActionRow.of(components));
+                                }
+                            }
+                            rows.removeIf(f -> f.getComponents().isEmpty());
+                            RateLimitUtil.queue(message.editMessageComponents(rows));
+                        }
+                        case DELETE_BUTTONS -> {
+                            RateLimitUtil.queue(message.editMessageComponents(new ArrayList<>()));
+                        }
+                    }
+                }
+            } catch (IllegalArgumentException e) {
+                io.send(e.getMessage());
                 return;
             }
-
-            if (behavior != null) {
-                switch (behavior) {
-                    case DELETE_MESSAGE -> {
-                        RateLimitUtil.queue(message.delete());
-                    }
-                    case EPHEMERAL,UNDO_REACTION -> {
-                        // unsupported
-                    }
-                    case DELETE_REACTION -> {
-                        List<ActionRow> rows = new ArrayList<>(message.getActionRows());
-                        for (int i = 0; i < rows.size(); i++) {
-                            ActionRow row = rows.get(i);
-                            List<ItemComponent> components = new ArrayList<>(row.getComponents());
-                            if (components.remove(button)) {
-                                rows.set(i, ActionRow.of(components));
-                            }
-                        }
-                        rows.removeIf(f -> f.getComponents().isEmpty());
-                        RateLimitUtil.queue(message.editMessageComponents(rows));
-                    }
-                    case DELETE_REACTIONS -> {
-                        RateLimitUtil.queue(message.editMessageComponents(new ArrayList<>()));
-                    }
-                }
-            }
-
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -1308,7 +1300,7 @@ public final class Locutus extends ListenerAdapter {
 
         DiscordChannelIO io = new DiscordChannelIO(channel, () -> message);
 
-        String[] split = raw.split("\\r?\\n(?=[" + Settings.commandPrefix(false) + "|" + Settings.commandPrefix(true) + "|{])");
+        String[] split = raw.split("\\r?\\n(?=[" + StringMan.join(commandManager.getAllPrefixes(), "|") + "|{])");
         System.out.println("Split " + StringMan.getString(split));
         for (String cmd : split) {
             success |= handleCommandReaction(cmd, message, io, user, async);

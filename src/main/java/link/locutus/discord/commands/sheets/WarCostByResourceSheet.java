@@ -230,7 +230,7 @@ public class WarCostByResourceSheet extends Command {
             e.printStackTrace();
         }
         sheet.set(0, 0);
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "war_cost_resource").send();
         return null;
     }
 }

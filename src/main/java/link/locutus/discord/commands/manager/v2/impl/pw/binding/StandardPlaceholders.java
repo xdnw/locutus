@@ -28,7 +28,7 @@ public class StandardPlaceholders {
                 return null;
             }
         }
-        return ScriptUtil.getEngine().eval(text) + "";
+        return ScriptUtil.evalNumber(text) + "";
     }
 
     @Command

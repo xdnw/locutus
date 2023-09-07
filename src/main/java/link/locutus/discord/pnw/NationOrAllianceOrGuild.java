@@ -50,7 +50,7 @@ public interface NationOrAllianceOrGuild extends NationOrAllianceOrGuildOrTaxid 
         throw new IllegalArgumentException("Invalid state: " + this);
     }
 
-    default String getQualifiedName() {
+    default String getQualifiedId() {
         return getTypePrefix() + ":" + getIdLong();
     }
 

@@ -217,7 +217,7 @@ public class BlitzSheet extends Command {
         sheet.clear("A:Z");
         sheet.write(rowData);
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "blitz").send();
         return null;
 
 //        int att1Index = 13;

@@ -1,21 +1,30 @@
 package link.locutus.discord.commands.manager.v2.command;
 
+import com.google.gson.Gson;
 import de.vandermeer.asciitable.AT_Context;
 import de.vandermeer.asciitable.AsciiTable;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.RateLimitUtil;
+import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
+import org.springframework.messaging.MessageChannel;
+import rocker.guild.ia.message;
 
 import javax.annotation.CheckReturnValue;
 import java.nio.charset.StandardCharsets;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
@@ -41,6 +50,42 @@ public interface IMessageBuilder {
     IMessageBuilder commandLinkInline(CommandRef ref);
 
     @CheckReturnValue
+    default IMessageBuilder modal(CommandBehavior behavior, CommandRef cmd, String message) {
+        return modal(behavior, null, cmd, message);
+    }
+
+    @CheckReturnValue
+    default IMessageBuilder modal(CommandBehavior behavior, Long outputChannel, ICommand cmd, Map<String, String> arguments, String message) {
+        return modal(behavior, outputChannel, cmd.getFullPath(), arguments, message);
+    }
+
+    @CheckReturnValue
+    default IMessageBuilder modal(CommandBehavior behavior, Long outputChannel, CommandRef cmd, String message) {
+        return modal(behavior, outputChannel, cmd.getPath(), cmd.getArguments(), message);
+    }
+
+    @CheckReturnValue
+    default IMessageBuilder modal(CommandBehavior behavior, Long outputChannel, String path, Map<String, String> arguments, String message) {
+            Iterator<Map.Entry<String, String>> iter = arguments.entrySet().iterator();
+            Set<String> promptFor = new LinkedHashSet<>();
+            while (iter.hasNext()) {
+                Map.Entry<String, String> entry = iter.next();
+                if (entry.getValue() == null) {
+                    iter.remove();
+                } else if (entry.getValue().isEmpty()) {
+                    promptFor.add(entry.getKey().toLowerCase(Locale.ROOT));
+                    iter.remove();
+                }
+            }
+            // convert keys to lowercase
+            arguments = arguments.entrySet().stream().collect(Collectors.toMap(e -> e.getKey().toLowerCase(Locale.ROOT),
+                    Map.Entry::getValue, (a, b) -> b, LinkedHashMap::new));
+            String argumentJson = arguments.isEmpty() ? null : new Gson().toJson(arguments);
+            CM.modal.create attach = CM.modal.create.cmd.create(path, StringMan.join(promptFor, ","), argumentJson);
+            return commandButton(behavior, attach, message);
+        }
+
+    @CheckReturnValue
     default IMessageBuilder commandButton(CommandBehavior behavior, CommandRef ref, String message) {
         return commandButton(behavior, null, ref, message);
     }
@@ -52,17 +97,26 @@ public interface IMessageBuilder {
 
     @CheckReturnValue
     default IMessageBuilder commandButton(CommandBehavior behavior, Long outputChannel, CommandRef ref, String message) {
+        return commandButton(behavior, outputChannel, ref.toCommandArgs(), message);
+    }
+
+    @CheckReturnValue
+    default IMessageBuilder commandButton(CommandBehavior behavior, Long outputChannel, ICommand ref, Map<String, String> args, String message) {
+        return commandButton(behavior, outputChannel, ref.toCommandArgs(args), message);
+    }
+
+    @CheckReturnValue
+    default IMessageBuilder commandButton(CommandBehavior behavior, Long outputChannel, String command, String message) {
         StringBuilder cmd = new StringBuilder();
         if (outputChannel != null) cmd.append("<#").append(outputChannel).append("> ");
         if (behavior != null && behavior != CommandBehavior.DELETE_MESSAGE) cmd.append(behavior.getValue());
-        cmd.append(ref.toCommandArgs());
+        cmd.append(command);
         return commandButton(cmd.toString(), message);
     }
 
     @CheckReturnValue
-    default IMessageBuilder modal(CommandBehavior behavior, CommandRef ref, String message) {
+    default IMessageBuilder modalLegacy(CommandBehavior behavior, CommandRef ref, String message) {
         CM.fun.say say = CM.fun.say.cmd.create(behavior.getValue() + ref.toSlashCommand());
-        // TODO modal
         commandButton(behavior, say, message);
         return this;
     }
@@ -164,7 +218,7 @@ public interface IMessageBuilder {
             nextPageCmd = new JSONObject(arguments).put("page", page + 1).toString();
         } else {
             String cmdCleared = command.replaceAll("-p " + "[0-9]+", "");
-            if (!cmdCleared.startsWith(Settings.commandPrefix(false))) {
+            if (!cmdCleared.isEmpty() && !Locutus.cmd().isModernPrefix(cmdCleared.charAt(0))) {
                 cmdCleared = Settings.commandPrefix(false) + cmdCleared;
             }
             previousPageCmd = cmdCleared + " -p " + (page - 1);
@@ -227,6 +281,10 @@ public interface IMessageBuilder {
 
     default IMessageBuilder confirmation(String title, String body, JSONObject command, String parameter, String message) {
         return embed(title, body).commandButton(command.put(parameter, "true").toString(), message);
+    }
+
+    default IMessageBuilder confirmation(JSONObject command, String parameter, String message) {
+        return commandButton(command.put(parameter, "true").toString(), message);
     }
 
     @CheckReturnValue

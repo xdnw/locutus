@@ -2,18 +2,22 @@ package link.locutus.discord.web.test;
 
 import cn.easyproject.easyocr.ImageType;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
+import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.util.ImageUtil;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.StringMan;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class TestCommands {
 
@@ -22,10 +26,23 @@ public class TestCommands {
         return null;
     }
 
-    @Command
-    public String modal(@Me IMessageIO io, ICommand command, List<String> arguments, @Default String defaults) {
-        Map<String, String> args = defaults == null ? new HashMap<>() : PnwUtil.parseMap(defaults);
-        io.modal().create(command, args, arguments).send();
+    @Command(desc = "Create a discord modal for a bot command\n" +
+            "This will make a popup prompting for the command arguments you specify and submit any defaults you provide\n" +
+            "Note: This is intended to be used in conjuction with the card command")
+    public String modal(@Me IMessageIO io, ICommand command,
+                        @Arg("A comma separated list of the command arguments to prompt for") String arguments,
+                        @Arg("The default arguments and values you want to submit to the command\n" +
+                                "Example: `myarg1:myvalue1 myarg2:myvalue2`")
+                        @Default String defaults) {
+        Map<String, String> args;
+        if (defaults == null) {
+            args = new HashMap<>();
+        } else if (defaults.startsWith("{") && defaults.endsWith("}")) {
+            args = PnwUtil.parseMap(defaults);
+        } else {
+            args = CommandManager2.parseArguments(command.getUserParameterMap().keySet(), defaults, true);
+        }
+        io.modal().create(command, args, StringMan.split(arguments, ',')).send();
         return null;
     }
 

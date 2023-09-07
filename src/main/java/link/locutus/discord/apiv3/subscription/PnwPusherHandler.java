@@ -224,7 +224,7 @@ public class PnwPusherHandler {
 
         private String getChannel() {
             try {
-                String channelInfo = FileUtil.readStringFromURL(PagePriority.PUSHER.ordinal(), getEndpoint());
+                String channelInfo = FileUtil.readStringFromURL(PagePriority.PUSHER, getEndpoint());
                 JsonElement json = parser.parse(channelInfo);
                 if (json.isJsonObject()) {
                     JsonElement channel = json.getAsJsonObject().get("channel");

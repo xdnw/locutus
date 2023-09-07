@@ -59,7 +59,7 @@ public class SyncBankTask implements Callable<Boolean>, Runnable {
                         if (-last + (last = System.currentTimeMillis()  ) > 2000) {
                             update.accept("(" + done + "/" + size + ") Fetching transactions for " + entry.getValue().getNation());
                         }
-                        nation.getTransactions(1);
+                        nation.getTransactions(1, false);
                     }
                 }
 

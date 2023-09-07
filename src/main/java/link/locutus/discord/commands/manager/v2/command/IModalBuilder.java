@@ -63,7 +63,7 @@ public interface IModalBuilder {
                 throw new IllegalArgumentException("Argument " + key + " is not a valid argument for command " + command.getFullPath(" ") + "\n" +
                         "Options: " + paramMap.keySet().toString());
             }
-            String desc = param.getExpandedDescription(false, false, true);
+            String desc = param.getName() + ": " + param.getExpandedDescription(false, false, true);
             if (desc.length() > 45) {
                 // 3 dots unicode char
                 desc = desc.substring(0, 44) + "\u2026";

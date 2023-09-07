@@ -166,7 +166,7 @@ public class DBMainV2 implements Closeable {
         return stmt;
     }
 
-    protected PreparedStatement prepareQuery(String sql) throws SQLException {
+    public PreparedStatement prepareQuery(String sql) throws SQLException {
         PreparedStatement stmt = getConnection().prepareStatement(sql);
         stmt.setFetchSize(10000);
         return stmt;
@@ -267,7 +267,7 @@ public class DBMainV2 implements Closeable {
             }
         }
     }
-    protected int update(String sql, Consumer<PreparedStatement> withStmt) {
+    public int update(String sql, Consumer<PreparedStatement> withStmt) {
         synchronized (this) {
             try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
                 withStmt.accept(stmt);

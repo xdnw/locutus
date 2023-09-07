@@ -87,7 +87,7 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
         return runWithKey(apiKey -> {
             try {
                 String urlStr = baseUrl + url.getUrl(apiKey, arg, query);
-                String json = FileUtil.readStringFromURL(priority.ordinal(), urlStr);
+                String json = FileUtil.readStringFromURL(priority, urlStr);
 
                 if (removeHeader) {
                     String successStr = "success\":";
@@ -121,11 +121,11 @@ public class PoliticsAndWarV2 implements IPoliticsAndWar {
         return getGson().fromJson(json, type);
     }
 
-    public List<BankRecord> getBankRecords(int nationId) {
+    public List<BankRecord> getBankRecords(int nationId, boolean priority) {
         try {
             Type type = new TypeToken<List<BankRecord>>() {
             }.getType();
-            return get(PagePriority.API_BANK_RECS, QueryURLV2.BANK_RECORDS, type, nationId + "", null);
+            return get(priority ? PagePriority.API_BANK_RECS_MANUAL : PagePriority.API_BANK_RECS_AUTO, QueryURLV2.BANK_RECORDS, type, nationId + "", null);
         } catch (Throwable e) {
             if (e.getMessage().toLowerCase().contains("error_msg\":\"no results to display.")) {
                 return new ArrayList<>();

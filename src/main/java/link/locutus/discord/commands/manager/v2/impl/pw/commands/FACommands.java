@@ -283,7 +283,9 @@ public class FACommands {
         if (category == null) {
             return "Embassies are disabled. To set it up, use " + GuildKey.EMBASSY_CATEGORY.getCommandMention() + "";
         }
-        if (nation.getPosition() < Rank.OFFICER.id && !Roles.FOREIGN_AFFAIRS.has(user, guild)) return "You are not an officer";
+        Rank reqRank = GuildKey.AUTOROLE_ALLIANCE_RANK.getOrNull(db);
+        if (reqRank == null) reqRank = Rank.MEMBER;
+        if (nation.getPosition() < reqRank.id && !Roles.FOREIGN_AFFAIRS.has(user, guild)) return "You are not a member";
         User nationUser = nation.getUser();
         if (nationUser == null) return "Nation " + nation.getNationUrl() + " is not registered";
         Member member = guild.getMember(nationUser);

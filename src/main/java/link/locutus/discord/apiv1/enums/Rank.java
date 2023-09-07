@@ -1,6 +1,7 @@
 package link.locutus.discord.apiv1.enums;
 
 import com.politicsandwar.graphql.model.AlliancePositionEnum;
+import com.politicsandwar.graphql.model.DefaultAlliancePosition;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -63,5 +64,24 @@ public enum Rank {
 
     public static Rank byId(int id) {
         return byId.get(id);
+    }
+
+    public DefaultAlliancePosition toV3() {
+        switch (this) {
+            case REMOVE:
+                return DefaultAlliancePosition.REMOVE;
+            case APPLICANT:
+                return DefaultAlliancePosition.APPLICANT;
+            case MEMBER:
+                return DefaultAlliancePosition.MEMBER;
+            case OFFICER:
+                return DefaultAlliancePosition.OFFICER;
+            case HEIR:
+                return DefaultAlliancePosition.HEIR;
+            case LEADER:
+                return DefaultAlliancePosition.LEADER;
+            default:
+                throw new IllegalStateException("Unknown position: " + this);
+        }
     }
 }

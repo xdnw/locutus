@@ -74,12 +74,12 @@ public class SlashCommandManager extends ListenerAdapter {
         OPTION_TYPES.put(int.class, OptionType.INTEGER);
         OPTION_TYPES.put(short.class, OptionType.INTEGER);
         OPTION_TYPES.put(byte.class, OptionType.INTEGER);
-        OPTION_TYPES.put(long.class, OptionType.INTEGER);
         OPTION_TYPES.put(Integer.class, OptionType.INTEGER);
         OPTION_TYPES.put(Short.class, OptionType.INTEGER);
         OPTION_TYPES.put(Byte.class, OptionType.INTEGER);
-        OPTION_TYPES.put(Long.class, OptionType.INTEGER);
 
+        OPTION_TYPES.put(long.class, OptionType.STRING);
+        OPTION_TYPES.put(Long.class, OptionType.STRING);
         OPTION_TYPES.put(double.class, OptionType.NUMBER);
         OPTION_TYPES.put(float.class, OptionType.NUMBER);
         OPTION_TYPES.put(Double.class, OptionType.NUMBER);
@@ -634,7 +634,7 @@ public class SlashCommandManager extends ListenerAdapter {
                         String value;
                         if (o instanceof Map.Entry<?, ?> entry) {
                             name = entry.getKey().toString();
-                            value = entry.getKey().toString();
+                            value = entry.getValue().toString();
                         } else {
                             name = o.toString();
                             value = o.toString();

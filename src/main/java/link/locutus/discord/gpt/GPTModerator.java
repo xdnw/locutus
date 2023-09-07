@@ -5,6 +5,7 @@ import com.theokanning.openai.moderation.Moderation;
 import com.theokanning.openai.moderation.ModerationRequest;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.io.PagePriority;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -82,7 +83,7 @@ public class GPTModerator implements IModerator{
         JSONObject argsJs = new JSONObject(arguments);
         byte[] dataBinary = argsJs.toString().getBytes(StandardCharsets.UTF_8);
 
-        CompletableFuture<String> result = FileUtil.readStringFromURL(1, url, dataBinary,  FileUtil.RequestType.POST, null, apply);
+        CompletableFuture<String> result = FileUtil.readStringFromURL(PagePriority.GPT_MODERATE, url, dataBinary,  FileUtil.RequestType.POST, null, apply);
         String jsonStr = FileUtil.get(result);
         // parse to JSONObject (org.json)
         return new JSONObject(jsonStr);

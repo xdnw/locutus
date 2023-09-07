@@ -117,7 +117,7 @@ public class AlertMailTask extends CaughtRunnable implements BiConsumer<Mail, Li
                 builder.embed(title, body.toString());
                 DBNation receiver = Locutus.imp().getNationDB().getNationByLeader(mail.leader);
                 CM.mail.reply mailCmd = CM.mail.reply.cmd.create(receiver.getNation(), url, null, auth.getNation().getNation());
-                builder.modal(CommandBehavior.DELETE_REACTION, mailCmd, "\uD83D\uDCE7 Reply");
+                builder.modal(CommandBehavior.DELETE_PRESSED_BUTTON, mailCmd, "\uD83D\uDCE7 Reply");
 
                 builder.send();
 

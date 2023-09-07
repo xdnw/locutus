@@ -17,6 +17,7 @@ import org.apache.commons.lang3.StringEscapeUtils;
 import org.json.JSONObject;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -26,6 +27,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class ParametricCallable implements ICommand {
 
@@ -465,11 +467,29 @@ public class ParametricCallable implements ICommand {
                             throw new RuntimeException(e);
                         }
                         if (!Objects.equals(def, current)) {
-                            permValues.add(permMeth.getName() + ": " + StringMan.getString(current));
+                            String currentStr;
+                            if (current.getClass().isArray()) {
+                                List<String> stringList = new ArrayList<>();
+                                int length = Array.getLength(current);
+                                for (int i = 0; i < length; i++) {
+                                    Object element = Array.get(current, i);
+                                    stringList.add(StringMan.getString(element));
+                                }
+                                currentStr = String.join("/", stringList);
+                            } else {
+                                currentStr = current.toString();
+                            }
+                            if (permMeth.getName().equalsIgnoreCase("value")) {
+                                permValues.add(currentStr);
+                            } else if (current.getClass() == Boolean.class) {
+                                permValues.add(permMeth.getName());
+                            } else {
+                                permValues.add(permMeth.getName() + ": " + StringMan.getString(current));
+                            }
                         }
                     }
 
-                    String title = permAnnotation.annotationType().getSimpleName() + "(" + String.join(", ", permValues) + ")";
+                    String title = permAnnotation.annotationType().getSimpleName().replaceFirst("(?i)permission", "") + "(" + String.join(", ", permValues) + ")";
                     String body = parser.getDescription();
                     permissionInfo.put(title, body);
                 }

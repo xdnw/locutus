@@ -208,7 +208,7 @@ public class MultiReport {
         DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
         try {
             if (nation != null) {
-                new GetUid(nation).call();
+                new GetUid(nation, true).call();
             }
         } catch (Exception e) {
             e.printStackTrace();

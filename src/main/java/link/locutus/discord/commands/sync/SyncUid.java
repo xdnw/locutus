@@ -35,7 +35,7 @@ public class SyncUid extends Command {
             for (DBNation nation : nations) {
                 if (!Locutus.imp().getDiscordDB().getUuids(nation.getNation_id()).isEmpty()) continue;
 
-                BigInteger uid = new GetUid(nation).call();
+                BigInteger uid = new GetUid(nation, false).call();
             }
         } else {
             Map<BigInteger, Set<Integer>> map = Locutus.imp().getDiscordDB().getUuidMap();
@@ -45,7 +45,7 @@ public class SyncUid extends Command {
                 for (int nationId : entry.getValue()) {
                     DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
                     if (nation != null) {
-                        new GetUid(nation).call();
+                        new GetUid(nation, false).call();
                     }
                 }
             }

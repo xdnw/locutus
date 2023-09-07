@@ -152,9 +152,31 @@ public enum MilitaryUnit {
     public int getCap(DBNation nation, boolean update) {
         return getCap(() -> nation.getCityMap(update).values(), nation::hasProject);
     }
+
+    public int getMaxMMRCap(int numCities, Predicate<Project> hasProject) {
+        switch (this) {
+            case MONEY,INFRASTRUCTURE:
+                return Integer.MAX_VALUE;
+            case SOLDIER:
+            case TANK:
+            case AIRCRAFT:
+            case SHIP:
+                MilitaryBuilding building = getBuilding();
+                if (building == null) throw new IllegalArgumentException("Unknown building: " + this);
+                return building.max() * building.cap(hasProject) * numCities;
+            case MISSILE:
+            case NUKE:
+                return Integer.MAX_VALUE;
+            case SPIES:
+                return hasProject.test(Projects.INTELLIGENCE_AGENCY) ? 60 : 50;
+            default:
+                throw new IllegalArgumentException("Unknown cap: " + this);
+        }
+    }
+
     public int getCap(Supplier<Collection<JavaCity>> citiesSupplier, Predicate<Project> hasProject) {
         switch (this) {
-            case MONEY:
+            case MONEY,INFRASTRUCTURE:
                 return Integer.MAX_VALUE;
             case SOLDIER:
             case TANK:

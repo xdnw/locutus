@@ -82,7 +82,7 @@ public class NationOrExchange {
             // add a trade
 
             StringBuilder response = new StringBuilder();
-            response.append("Successfully transfered " + MathMan.format(amount) + "x" + exchange.symbol);
+            response.append("Successfully transferred " + MathMan.format(amount) + "x" + exchange.symbol);
 
             String title = "Funds received";
             TextChannel channel = exchange.getChannel();
@@ -112,7 +112,7 @@ public class NationOrExchange {
             if (receiver.isNation()) {
                 DBNation nation = receiver.getNation();
                 try {
-                    nation.sendMail(ApiKeyPool.create(Locutus.imp().getRootAuth().getApiKey()), title, body.toString());
+                    nation.sendMail(ApiKeyPool.create(Locutus.imp().getRootAuth().getApiKey()), title, body.toString(), false);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

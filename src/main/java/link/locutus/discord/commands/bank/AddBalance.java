@@ -120,7 +120,7 @@ public class AddBalance extends Command {
                         tracked = PnwUtil.expandCoalition(tracked);
                     }
 
-                    double[] total = nation.getNetDeposits(guildDb, tracked, true, true, 0L, 0L);
+                    double[] total = nation.getNetDeposits(guildDb, tracked, true, true, 0L, 0L, false);
                     transfer = PnwUtil.subResourcesToA(new HashMap<>(), PnwUtil.resourcesToMap(total));
                 } else if (args.size() == 3) {
                     ResourceType resource = ResourceType.parse(args.get(1).toUpperCase());

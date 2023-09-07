@@ -1,14 +1,24 @@
 package link.locutus.discord.util;
 
 import com.google.common.math.DoubleMath;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonParseException;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.stock.Exchange;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.TradeDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
+import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 import com.google.common.hash.Hashing;
 import com.google.common.reflect.TypeToken;
@@ -20,6 +30,9 @@ import link.locutus.discord.apiv1.domains.subdomains.AllianceBankContainer;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.User;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.json.JSONObject;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -192,51 +205,6 @@ public class PnwUtil {
             result.put(tag.toLowerCase(), value);
         }
         return result;
-    }
-
-    public static boolean isNoteFromDeposits(String note, long id, long date) {
-        // TODO also update processDeposit if this is updated
-        Map<String, String> notes = PnwUtil.parseTransferHashNotes(note);
-        for (Map.Entry<String, String> entry : notes.entrySet()) {
-            String tag = entry.getKey();
-            String value = entry.getValue();
-            switch (tag) {
-                case "#nation":
-                case "#alliance":
-                case "#guild":
-                case "#account":
-                case "#cash":
-                case "#expire":
-                    return false;
-                case "#ignore":
-                    return false;
-                case "#deposit":
-                case "#deposits":
-                case "#trade":
-                case "#trades":
-                case "#trading":
-                case "#credits":
-                case "#buy":
-                case "#sell":
-                case "#warchest":
-                case "#raws":
-                case "#raw":
-                case "#tax":
-                case "#taxes":
-                case "#disperse":
-                case "#disburse":
-                case "#loan":
-                case "#grant":
-                    if (value != null && !value.isEmpty() && date > Settings.INSTANCE.LEGACY_SETTINGS.MARKED_DEPOSITS_DATE && MathMan.isInteger(value) && id != Long.parseLong(value)) {
-                        return false;
-                    }
-                default:
-                    return true;
-
-
-            }
-        }
-        return true;
     }
 
     public static void processDeposit(Transaction2 record, GuildDB guildDB, Set<Long> tracked, int sign, Map<DepositType, double[]> result, double[] amount, String note, long date, Predicate<Transaction2> allowExpiry, boolean allowConversion, boolean allowArbitraryConversion, boolean ignoreMarkedDeposits, boolean includeIgnored) {
@@ -427,6 +395,20 @@ public class PnwUtil {
     }
 
     public static Map<ResourceType, Double> parseResources(String arg) {
+        boolean allowBodmas = arg.contains("{") && StringMan.containsAny("+-*/^", arg.replaceAll("\\{[^}]+}", ""));
+        return parseResources(arg, allowBodmas);
+    }
+
+    public static Map<ResourceType, Double> parseResources(String arg, boolean allowBodmas) {
+        if (arg.contains("---+") && arg.contains("-+-")) {
+            arg = arg.replace("-+-", "---");
+            int start = arg.indexOf("---+");
+            arg = arg.substring(start + 4).trim();
+            arg = arg.replaceAll("([0-9.]+)[ ]+", "$1,");
+            arg = arg.replace("\n", "");
+            arg = arg.replaceAll("[ ]+", " ");
+            arg = "{" + arg.replace(" | ", ":") + "}";
+        }
         if (arg.contains("\t") || arg.contains("    ")) {
             String[] split = arg.split("[\t]");
             if (split.length == 1) split = arg.split("[ ]{4}");
@@ -444,19 +426,19 @@ public class PnwUtil {
         arg = arg.trim();
         String original = arg;
         if (!arg.contains(":") && !arg.contains("=")) {
-            arg = arg.replaceAll("([0-9])[ ]([a-zA-Z])", "$1:$2");
-            arg = arg.replaceAll("([a-zA-Z])[ ]([0-9])", "$1:$2");
+            arg = arg.replaceAll("([-0-9])[ ]([a-zA-Z])", "$1:$2");
+            arg = arg.replaceAll("([a-zA-Z])[ ]([-0-9])", "$1:$2");
         }
         arg = arg.replace('=', ':').replaceAll("([0-9]),([0-9])", "$1$2").toUpperCase();
         arg = arg.replaceAll("([0-9.]+):([a-zA-Z]{3,})", "$2:$1");
         arg = arg.replace(" ", "");
-        double sign = 1;
-        if (arg.charAt(0) == '-') {
-            sign = -1;
-            arg = arg.substring(1);
-        }
-        if (arg.charAt(0) == '$') {
+        if (arg.startsWith("$") || arg.startsWith("-$")) {
             if (!arg.contains(",")) {
+                int sign = 1;
+                if (arg.startsWith("-")) {
+                    sign = -1;
+                    arg = arg.substring(1);
+                }
                 Map<ResourceType, Double> result = new LinkedHashMap<>();
                 result.put(ResourceType.MONEY, MathMan.parseDouble(arg) * sign);
                 return result;
@@ -472,34 +454,33 @@ public class PnwUtil {
         arg = arg.replace("ALUMINIUM:", "ALUMINUM:");
         arg = arg.replace("CASH:", "MONEY:");
 
-        Type type = new TypeToken<Map<ResourceType, Double>>() {}.getType();
-        if (arg.charAt(0) != '{' && arg.charAt(arg.length() - 1) != '}') {
+        if (!arg.contains("{") && !arg.contains("}")) {
             arg = "{" + arg + "}";
         }
-
-        int preMultiply = arg.indexOf("*{");
-        int postMultiply = arg.indexOf("}*");
-        if (preMultiply != -1) {
-            String[] split = arg.split("\\*\\{", 2);
-            arg = "{" + split[1];
-            sign *= MathMan.parseDouble(split[0]);
+        if (arg.startsWith("-{")) {
+            arg = "{}" + arg;
         }
-        if (postMultiply != -1) {
-            String[] split = arg.split("\\}\\*", 2);
-            arg = split[0] + "}";
-            sign *= MathMan.parseDouble(split[1]);
-        }
+        arg = arg.replace("(-{", "({}-{");
 
         Map<ResourceType, Double> result;
         try {
-            JSONObject json = new JSONObject(arg);
-            json.remove("TRANSACTION_COUNT");
-            for (String rssType : json.keySet()) {
-                ResourceType.parse(rssType);
+            Function<String, Map<ResourceType, Double>> parse = f -> {
+                if (f.contains("TRANSACTION_COUNT")) {
+                    f = f.replaceAll("\"TRANSACTION_COUNT\":[0-9]+,", "");
+                    f = f.replaceAll(",\"TRANSACTION_COUNT\":[0-9]+", "");
+                }
+                return RESOURCE_GSON.fromJson(f, RESOURCE_TYPE);
+            };
+            if (allowBodmas) {
+                result = PnwUtil.resourcesToMap(ArrayUtil.calculate(arg, arg1 -> {
+                    Map<ResourceType, Double> map = parse.apply(arg1);
+                    double[] arr = resourcesToArray(map);
+                    return new ArrayUtil.DoubleArray(arr);
+                }).toArray());
+            } else {
+                result = parse.apply(arg);
             }
-            result = new Gson().fromJson(json.toString(), type);
         } catch (Exception e) {
-            // [0-9]+[ASMGBILUOCF$]( [0-9]+[ASMGBILUOCF$])*
             if (original.toUpperCase(Locale.ROOT).matches("[0-9]+[ASMGBILUOCF$]([ ][0-9]+[ASMGBILUOCF$])*")) {
                 String[] split = original.split(" ");
                 result = new LinkedHashMap<>();
@@ -510,20 +491,200 @@ public class PnwUtil {
                     result.put(type1, amount);
                 }
             } else {
-                throw new IllegalArgumentException("Invalid resource json: `" + arg + "` (" + e.getMessage() + ")");
+                return handleResourceError(arg, e);
             }
         }
         if (result.containsKey(null)) {
-            throw new IllegalArgumentException("Invalid resource type specified in map: `" + arg + "`");
-        }
-        if (sign != 1) {
-            for (Map.Entry<ResourceType, Double> entry : result.entrySet()) {
-                entry.setValue(entry.getValue() * sign);
-            }
+            return handleResourceError(arg, null);
         }
         return result;
     }
 
+    private static Map<ResourceType, Double> handleResourceError(String arg, Exception e) {
+        StringBuilder response = new StringBuilder("Invalid resource amounts: `" + arg + "`\n");
+        if (e != null) {
+            String msg = e.getMessage();
+            if (msg.startsWith("No enum constant")) {
+                String rssInput = msg.substring(msg.lastIndexOf(".") + 1);
+                List<ResourceType> closest = StringMan.getClosest(rssInput, ResourceType.valuesList, false);
+
+                response.append("You entered `" + rssInput + "` which is not a valid resource.");
+                if (closest.size() > 0) {
+                    response.append(" Did you mean: `").append(closest.get(0)).append("`");
+                }
+                response.append("\n");
+            } else {
+                response.append("Error: `").append(e.getMessage()).append("`\n");
+            }
+        }
+        response.append("Valid resources are: `").append(StringMan.join(ResourceType.values, ", ")).append("`").append("\n");
+        response.append("""
+                You can enter a single resource like this:
+                `food=10`
+                `$15`
+                Use commas for multiple resources:
+                `food=10,gas=20,money=30`
+                Use k,m,b,t for thousands, millions, billions, trillions:
+                `food=10k,gas=20m,money=30b`
+                Use curly braces for operations:
+                `{food=3*(2+1),coal=-3}*{food=112,coal=2513}*1.5+{coal=1k}^0.5`""");
+        throw new IllegalArgumentException(response.toString());
+    }
+    private static Type RESOURCE_TYPE = new TypeToken<Map<ResourceType, Double>>() {}.getType();
+    private static Gson RESOURCE_GSON = new GsonBuilder()
+            .registerTypeAdapter(RESOURCE_TYPE, new DoubleDeserializer())
+            .create();
+
+    /**
+     * @param offensive (else defensive)
+     * @param isWar (else spy)
+     * @param isMin (else max)
+     * @return
+     */
+    public static double getAttackRange(boolean offensive, boolean isWar, boolean isMin, double score) {
+        long scoreInt = Math.round(score * 100);
+        long range;
+        if (offensive) {
+            if (isWar) {
+                if (isMin) {
+                    range = Math.round(scoreInt * 0.75);
+                } else {
+                    range = Math.round(scoreInt * 1.75);
+                }
+            } else {
+                if (isMin) {
+                    range = Math.round(scoreInt * 0.4);
+                } else {
+                    range = Math.round(scoreInt * 2.5);
+                }
+            }
+        } else {
+            if (isWar) {
+                if (isMin) {
+                    range = Math.round(scoreInt / 1.75);
+                } else {
+                    range = Math.round(scoreInt / 0.75);
+                }
+            } else {
+                if (isMin) {
+                    range = Math.round(scoreInt / 2.5);
+                } else {
+                    range = Math.round(scoreInt / 0.4);
+                }
+            }
+        }
+        return range * 0.01;
+    }
+
+    public static Map.Entry<double[], String> createDepositEmbed(GuildDB db, NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild, Map<DepositType, double[]> categorized, Boolean showTaxesSeparately, double[] escrowed, long escrowExpire, boolean condenseFormat) {
+        boolean withdrawIgnoresGrants = GuildKey.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS.getOrNull(db) == Boolean.TRUE;
+
+        boolean hasEscrowed = (escrowed != null && !ResourceType.isZero(escrowed) && PnwUtil.convertedTotal(escrowed) > 0);
+
+        StringBuilder response = new StringBuilder();
+
+        List<String> footers = new ArrayList<>();
+        if (!condenseFormat) {
+            footers.add("value is based on current market prices");
+        }
+
+        double[] balance = ResourceType.getBuffer();
+        double[] nonBalance = ResourceType.getBuffer();
+        List<String> balanceNotes = new ArrayList<>(Arrays.asList("#deposit", "#tax", "#loan", "#grant", "#expire"));
+
+        List<String> excluded = new ArrayList<>(Arrays.asList("/escrow"));
+        if (withdrawIgnoresGrants) {
+            balanceNotes.remove("#expire");
+            excluded.add("#expire");
+        }
+
+        for (Map.Entry<DepositType, double[]> entry : categorized.entrySet()) {
+            DepositType type = entry.getKey();
+            double[] current = entry.getValue();
+            if (!withdrawIgnoresGrants || type != DepositType.GRANT) {
+                ResourceType.add(balance, current);
+            } else {
+                ResourceType.add(nonBalance, current);
+            }
+        }
+
+        if (showTaxesSeparately) {
+            if (categorized.containsKey(DepositType.DEPOSIT)) {
+                response.append("**`#DEPOSIT:`** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.DEPOSIT))));
+                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.DEPOSIT))).append("``` ");
+            }
+            if (categorized.containsKey(DepositType.TAX)) {
+                response.append("**`#TAX:**` worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.TAX))));
+                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.TAX))).append("``` ");
+            } else if (nationOrAllianceOrGuild.isNation()) {
+                footers.add("No tax records are added to deposits");
+            }
+            if (categorized.containsKey(DepositType.LOAN)) {
+                response.append("**`#LOAN/#GRANT`:** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.LOAN))));
+                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.LOAN))).append("``` ");
+            }
+            if (categorized.containsKey(DepositType.GRANT)) {
+                response.append("**`#EXPIRE:`** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.GRANT))));
+                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.GRANT))).append("``` ");
+            }
+            if (hasEscrowed) {
+                response.append("**" + CM.escrow.withdraw.cmd.toSlashMention() + ":** worth: $" + MathMan.format(PnwUtil.convertedTotal(escrowed)));
+                if (escrowExpire > 0) {
+                    response.append(" expires: " + DiscordUtil.timestamp(escrowExpire, null));
+                }
+                response.append("\n```").append(PnwUtil.resourcesToString(escrowed)).append("``` ");
+            }
+            if (categorized.size() > 1) {
+                response.append("**Balance:** (`" + StringMan.join(balanceNotes, "`|`") + "`) worth: $" + MathMan.format(PnwUtil.convertedTotal(balance)) + ")");
+                response.append("\n```").append(PnwUtil.resourcesToString(balance)).append("``` ");
+            }
+        } else {
+            String prefix = condenseFormat ? "**" : "## ";
+            String suffix = condenseFormat ? "**" : "";
+            response.append(prefix + "Balance:" + suffix);
+            if (condenseFormat) {
+                response.append(" worth: `$" + MathMan.format(PnwUtil.convertedTotal(balance)) + "`\n");
+                response.append("```" + PnwUtil.resourcesToString(balance) + "``` ");
+            } else {
+                response.append("\n").append(PnwUtil.resourcesToFancyString(balance)).append("\n");
+            }
+            response.append("**Includes:** `" + StringMan.join(balanceNotes, "`, `")).append("`\n");
+            response.append("**Excludes:** `" + StringMan.join(excluded, "`, `")).append("`\n");
+
+            if (hasEscrowed) {
+                response.append("\n" + prefix + CM.escrow.withdraw.cmd.toSlashMention() + ":" + suffix);
+                if (condenseFormat) {
+                    response.append(" worth: `$" + MathMan.format(PnwUtil.convertedTotal(escrowed)) + "`\n");
+                    response.append("```" + PnwUtil.resourcesToString(escrowed) + "``` ");
+                } else {
+                    response.append("\n").append(PnwUtil.resourcesToFancyString(escrowed)).append("\n");
+                }
+                if (escrowExpire > 0) {
+                    response.append("- expires: " + DiscordUtil.timestamp(escrowExpire, null) + "\n");
+                }
+            }
+
+            if (!ResourceType.isZero(nonBalance)) {
+                response.append("\n" + prefix + "Expiring Debt:" + suffix + "\n");
+                response.append("In addition to your balance, you owe the following:\n");
+                response.append("```\n" + PnwUtil.resourcesToString(nonBalance)).append("```\n- worth: $" + MathMan.format(PnwUtil.convertedTotal(nonBalance)) + "\n");
+            }
+        }
+        return Map.entry(balance, response.toString());
+    }
+
+    private static class DoubleDeserializer implements JsonDeserializer<Map<ResourceType, Double>> {
+        @Override
+        public Map<ResourceType, Double> deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
+            Map<ResourceType, Double> map = new LinkedHashMap<>();
+            json.getAsJsonObject().entrySet().forEach(entry -> {
+                ResourceType key = ResourceType.valueOf(entry.getKey());
+                Double value = PrimitiveBindings.Double(entry.getValue().getAsString());
+                map.put(key, value);
+            });
+            return map;
+        }
+    }
 
     public static Integer parseAllianceId(String arg) {
         if (arg.toLowerCase().startsWith("aa:")) arg = arg.substring(3);
@@ -627,7 +788,7 @@ public class PnwUtil {
             if (amt != null) out.append(String.format(leftAlignFormat, type.name(), MathMan.format(amt)));
         }
         out.append("```\n");
-        out.append("**Total" + (totalName != null && !totalName.isEmpty() ? " " + totalName : "") + "**: worth ~$" + MathMan.format(PnwUtil.convertedTotal(resources)) + "\n`" + PnwUtil.resourcesToString(resources) + "`");
+        out.append("**Total" + (totalName != null && !totalName.isEmpty() ? " " + totalName : "") + "**: worth ~$" + MathMan.format(PnwUtil.convertedTotal(resources)) + "\n```" + PnwUtil.resourcesToString(resources) + "``` ");
         return out.toString();
     }
 
@@ -778,30 +939,6 @@ public class PnwUtil {
         }
         total_cents = (total_cents + 50)  / 100;
         return total_cents * 0.01;
-    }
-
-    public static void main(String[] args) {
-        double start = 0.039999999999999994;
-        double end =  0.06;
-        // 1008588.99 | 1008457.93
-        // $1008457.93
-
-        System.out.println("start -> end: " + start + " -> " + end);
-
-        System.out.println(calculateInfra(start, end));
-//        // calculateInfra(2105, 2550)
-//        double total = 0;
-//        // run calculation 100,000 times, add to total. determine time ms taken
-//        long startMs = System.currentTimeMillis();
-//        for (int i = 0; i < 10000000; i++) {
-//            end += 1;
-//            if (end > 4000) {
-//                end -= 2000;
-//            }
-//            total += calculateInfra(start, end);
-//        }
-//        long endMs = System.currentTimeMillis();
-//        System.out.println("Total: " + total + " in " + (endMs - startMs) + "ms");
     }
 
     /**
@@ -1120,7 +1257,7 @@ public class PnwUtil {
     }
 
     public static String getMarkdownUrl(int nationId, boolean isAA) {
-        return MarkupUtil.markdownUrl(PnwUtil.getName(nationId, isAA), PnwUtil.getUrl(nationId, isAA));
+        return MarkupUtil.markdownUrl(PnwUtil.getName(nationId, isAA), "<" + PnwUtil.getUrl(nationId, isAA) + ">");
     }
 
     public static int parseTaxId(String url) {

@@ -1447,7 +1447,7 @@ public class WarDB extends DBMainV2 {
         }
         updateWars(dbWars, null, eventConsumer);
 
-        if (activeWarsToFetch.size() > 0) {
+        if (!activeWarsToFetch.isEmpty()) {
             int notDeleted = 0;
             for (int warId : activeWarsToFetch) {
                 DBWar war = activeWars.getWar(warId);
@@ -1540,6 +1540,7 @@ public class WarDB extends DBMainV2 {
         int maxId = activeWars.getActiveWars().keySet().stream().mapToInt(i -> i).max().orElse(0);
         if (maxId == 0) return;
         PoliticsAndWarV3 api = Locutus.imp().getV3();
+        System.out.println("Fetch new wars " + maxId);
         List<War> warsQl = api.fetchWarsWithInfo(r -> {
             r.setMin_id(maxId + 1);
             r.setActive(false);

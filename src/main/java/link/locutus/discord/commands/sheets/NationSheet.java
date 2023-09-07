@@ -122,7 +122,7 @@ public class NationSheet extends Command implements Noformat {
         sheet.clear("A:ZZ");
         sheet.set(0, 0);
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "nations").send();
         return null;
 //        I need, Nation name, nation link, score, war range, offensive/defensive slots open, military count (planes/tanks/ships/soldiers)
     }

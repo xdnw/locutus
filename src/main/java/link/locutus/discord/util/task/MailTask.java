@@ -24,9 +24,11 @@ public class MailTask implements Callable<String> {
     private final String message;
     private final Auth auth;
     private final MessageChannel output;
+    private final boolean priority;
 
-    public MailTask(Auth auth, DBNation nation, String subject, String message, MessageChannel output) {
+    public MailTask(Auth auth, boolean priority, DBNation nation, String subject, String message, MessageChannel output) {
         this.nation = nation;
+        this.priority = priority;
         this.subject = subject;
         this.message = message;
         this.auth = auth;
@@ -46,7 +48,7 @@ public class MailTask implements Callable<String> {
                 msgPost.put("sndmsg", "Send Message");
 
                 String url = "" + Settings.INSTANCE.PNW_URL() + "/inbox/message/";
-                String msgResponse = auth.readStringFromURL(PagePriority.MAIL_SEND, url, msgPost);
+                String msgResponse = auth.readStringFromURL(priority ? PagePriority.MAIL_SEND_SINGLE : PagePriority.MAIL_SEND_BULK, url, msgPost);
                 if (msgResponse.contains("You have successfully sent a message.")) {
                     return "Message sent to " + nation.getNation() + "! (check your out folder)";
                 } else if (msgResponse.contains("because they are less than 3 minutes old. Please give new players some time to catch their")) {

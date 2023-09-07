@@ -107,6 +107,36 @@ public class StringMan {
         return null;
     }
 
+    public static String formatJsonLikeText(String input) {
+        int indentationLevel = 0;
+        StringBuilder formattedText = new StringBuilder();
+
+        for (char c : input.toCharArray()) {
+            if (c == '{' || c == '[') {
+                formattedText.append("\n").append(indentSpaces(indentationLevel));
+                formattedText.append(c).append("\n");
+                indentationLevel++;
+                formattedText.append(indentSpaces(indentationLevel));
+            } else if (c == '}' || c == ']') {
+                indentationLevel--;
+                formattedText.append("\n").append(indentSpaces(indentationLevel));
+                formattedText.append(c);
+            } else {
+                formattedText.append(c);
+            }
+        }
+
+        return formattedText.toString();
+    }
+
+    public static String indentSpaces(int count) {
+        StringBuilder spaces = new StringBuilder();
+        for (int i = 0; i < count * 4; i++) { // Using 4 spaces for each level of indentation
+            spaces.append(" ");
+        }
+        return spaces.toString();
+    }
+
     public static byte[] getDiffBytes(String a, String b) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         DataOutputStream dos = new DataOutputStream(out);

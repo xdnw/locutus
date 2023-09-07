@@ -36,6 +36,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.test.TestCommands;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import org.jooq.Param;
 import org.json.JSONObject;
 
 import javax.annotation.Nullable;
@@ -47,6 +48,8 @@ import java.util.*;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static link.locutus.discord.util.StringMan.isQuote;
 
 public class CommandManager2 {
     private final CommandGroup commands;
@@ -97,19 +100,18 @@ public class CommandManager2 {
             lowerCase.put(param.toLowerCase(Locale.ROOT), param);
         }
 
-
         Map<String, String> result = new LinkedHashMap<>();
-        Pattern pattern = Pattern.compile("(?i)(^| )(" + StringMan.join(lowerCase.keySet(), "|") + "): [^ ]");
+        Pattern pattern = Pattern.compile("(?i)(^| |,)(" + String.join("|", lowerCase.keySet()) + "):[ ]{0,1}[^ ]");
         Matcher matcher = pattern.matcher(input);
 
-        Pattern fuzzyArg = !checkUnbound ? null : Pattern.compile("(?i) ([a-zA-Z]+): [^ ]");
+        Pattern fuzzyArg = !checkUnbound ? null : Pattern.compile("(?i)[ ,]([a-zA-Z]+):[ ]{0,1}[^ ]");
 
         Map<String, Integer> argStart = new LinkedHashMap<>();
         Map<String, Integer> argEnd = new LinkedHashMap<>();
         String lastArg = null;
         while (matcher.find()) {
             String argName = matcher.group(2).toLowerCase(Locale.ROOT);
-            int index = matcher.end(2) + 2;
+            int index = matcher.end(2) + 1;
             Integer existing = argStart.put(argName, index);
             if (existing != null)
                 throw new IllegalArgumentException("Duplicate argument `" + argName + "` in `" + input + "`");
@@ -127,20 +129,26 @@ public class CommandManager2 {
             String id = entry.getKey();
             int start = entry.getValue();
             int end = argEnd.get(id);
-            String value = input.substring(start, end);
+            String value = input.substring(start, end).trim();
+            boolean hasQuote = false;
+            if (value.length() > 1 && isQuote(value.charAt(0)) && isQuote(value.charAt(value.length() - 1))) {
+                value = value.substring(1, value.length() - 1);
+                hasQuote = true;
+            }
 
-            if (fuzzyArg != null) {
+            if (fuzzyArg != null && !hasQuote) {
                 Matcher valueMatcher = fuzzyArg.matcher(value);
                 if (valueMatcher.find()) {
                     String fuzzyArgName = valueMatcher.group(1);
-                    throw new IllegalArgumentException("Invalid argument: `" + fuzzyArgName + "` for `" + input + "` options: " + StringMan.getString(params));
+                    throw new IllegalArgumentException("Invalid argument: `" + fuzzyArgName + "` for `" + input + "` options: " + (params) + "\n" +
+                            "Please use quotes if you did not intend to specify an argument: `" + value + "`");
                 }
             }
             result.put(lowerCase.get(id), value);
         }
 
         if (argStart.isEmpty()) {
-            throw new IllegalArgumentException("No arguments found` for `" + input + "` options: " + StringMan.getString(params));
+            throw new IllegalArgumentException("No arguments found` for `" + input + "` options: " + (params));
         }
 
         return result;
@@ -153,9 +161,24 @@ public class CommandManager2 {
 
         this.commands.registerMethod(new UtilityCommands(), List.of("building"), "buildingCost", "cost");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncBans", "bans");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "list"), "hasSameNetworkAsBan", "multis");
 
         this.commands.registerMethod(new GPTCommands(), List.of("help"), "find_placeholder", "find_nation_placeholder");
         this.commands.registerMethod(new BankCommands(), List.of("escrow"), "escrowSheetCmd", "view_sheet");
+
+        this.commands.registerMethod(new IACommands(), List.of("nation", "list"), "viewBans", "bans");
+
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "importLinkedBans", "multi_bans");
+
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "depositsPanel", "deposits");
+
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed"), "create", "create");
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed"), "title", "title");
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed"), "description", "description");
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "remove"), "removeButton", "button");
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "add"), "addButton", "command");
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "add"), "addModal", "modal");
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "add"), "addButtonRaw", "raw");
 
         for (GuildSetting setting : GuildKey.values()) {
             List<String> path = List.of("settings_" + setting.getCategory().name().toLowerCase(Locale.ROOT));
@@ -177,6 +200,35 @@ public class CommandManager2 {
                 String commandName = entry.getValue();
                 this.commands.registerMethod(setting, path, methodName, commandName);
             }
+        }
+
+        {
+            // report commands
+            ReportCommands reportCommands = new ReportCommands();
+            this.commands.registerMethod(reportCommands, List.of("report", "sheet"), "reportSheet", "generate");
+            this.commands.registerMethod(reportCommands, List.of("report", "upload"), "importLegacyBlacklist", "legacy_reports");
+
+            this.commands.registerMethod(reportCommands, List.of("report", "loan"), "addLoan", "add");
+            this.commands.registerMethod(reportCommands, List.of("report", "loan"), "updateLoan", "update");
+            this.commands.registerMethod(reportCommands, List.of("report", "loan"), "deleteLoan", "remove");
+            this.commands.registerMethod(reportCommands, List.of("report", "loan"), "purgeLoans", "purge");
+            this.commands.registerMethod(reportCommands, List.of("report", "loan"), "markAllLoansAsUpdated", "update_all");
+            this.commands.registerMethod(reportCommands, List.of("report", "loan"), "getLoanSheet", "sheet");
+            this.commands.registerMethod(reportCommands, List.of("report", "loan"), "importLoans", "upload");
+
+            this.commands.registerMethod(reportCommands, List.of("report"), "createReport", "add");
+            this.commands.registerMethod(reportCommands, List.of("report"), "removeReport", "remove");
+            this.commands.registerMethod(reportCommands, List.of("report"), "approveReport", "approve");
+            this.commands.registerMethod(reportCommands, List.of("report", "comment"), "comment", "add");
+            this.commands.registerMethod(reportCommands, List.of("report"), "purgeReports", "purge");
+            this.commands.registerMethod(reportCommands, List.of("report"), "ban", "ban");
+            this.commands.registerMethod(reportCommands, List.of("report"), "unban", "unban");
+            this.commands.registerMethod(reportCommands, List.of("report"), "searchReports", "search");
+            this.commands.registerMethod(reportCommands, List.of("report"), "showReport", "show");
+            this.commands.registerMethod(reportCommands, List.of("report"), "riskFactors", "analyze");
+
+            this.commands.registerMethod(reportCommands, List.of("report", "comment"), "removeComment", "delete");
+            this.commands.registerMethod(reportCommands, List.of("report", "comment"), "purgeComments", "purge");
         }
 
         HelpCommands help = new HelpCommands();
@@ -277,8 +329,8 @@ public class CommandManager2 {
 
     public void run(Guild guild, IMessageIO io, User author, String command, boolean async, boolean returnNotFound) {
         String fullCmdStr = DiscordUtil.trimContent(command).trim();
-        if (fullCmdStr.startsWith(Settings.commandPrefix(false))) {
-            fullCmdStr = fullCmdStr.substring(Settings.commandPrefix(false).length());
+        if (!fullCmdStr.isEmpty() && Locutus.cmd().isModernPrefix(fullCmdStr.charAt(0))) {
+            fullCmdStr = fullCmdStr.substring(1);
         }
         System.out.println("remove:|| full " + fullCmdStr);
         Message message = null;
@@ -343,53 +395,84 @@ public class CommandManager2 {
 
     public void run(LocalValueStore<Object> existingLocals, IMessageIO io, String fullCmdStr, boolean async, boolean returnNotFound) {
         Runnable task = () -> {
-            if (fullCmdStr.startsWith("{")) {
-                JSONObject json = new JSONObject(fullCmdStr);
-                Map<String, Object> arguments = json.toMap();
-                Map<String, String> stringArguments = new HashMap<>();
-                for (Map.Entry<String, Object> entry : arguments.entrySet()) {
-                    stringArguments.put(entry.getKey(), entry.getValue().toString());
-                }
-
-                String pathStr = arguments.remove("").toString();
-                run(existingLocals, io, pathStr, stringArguments, async);
-                return;
-            }
-            List<String> args = StringMan.split(fullCmdStr, ' ');
-            List<String> original = new ArrayList<>(args);
-            CommandCallable callable = commands.getCallable(args, true);
-            if (callable == null) {
-                if (returnNotFound) {
-                    List<String> validIds = new ArrayList<>(getCommands().primarySubCommandIds());
-                    List<String> closest = StringMan.getClosest(args.get(0), validIds, false);
-                    if (closest.size() > 5) closest = closest.subList(0, 5);
-                    io.send("No command found for `" + StringMan.getString(args.get(0)) + "`\n" +
-                            "Did you mean:\n- " + StringMan.join(closest, "\n- ") +
-                            "\n\nSee also: " + CM.help.find_command.cmd.toSlashMention());
-                } else {
-                    System.out.println("No cmd found for " + StringMan.getString(original));
-                }
-                return;
-            }
-
-            LocalValueStore locals = createLocals(existingLocals, null, null, null, null, io, null);
-
-            if (callable instanceof ParametricCallable parametric) {
-                ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
-                handleCall(io, () -> {
-                    try {
-                        Map<ParameterData, Map.Entry<String, Object>> map = parametric.parseArgumentsToMap(stack);
-                        Object[] parsed = parametric.argumentMapToArray(map);
-                        return parametric.call(null, locals, parsed);
-                    } catch (RuntimeException e) {
-                        Throwable e2 = e;
-                        while (e2.getCause() != null && e2.getCause() != e2) e2 = e2.getCause();
-                        throw new CommandUsageException(callable, e2.getMessage());
+            try {
+                if (fullCmdStr.startsWith("{")) {
+                    JSONObject json = new JSONObject(fullCmdStr);
+                    Map<String, Object> arguments = json.toMap();
+                    Map<String, String> stringArguments = new HashMap<>();
+                    for (Map.Entry<String, Object> entry : arguments.entrySet()) {
+                        stringArguments.put(entry.getKey(), entry.getValue().toString());
                     }
-                });
-            } else if (callable instanceof CommandGroup group) {
-                handleCall(io, group, locals);
-            } else throw new IllegalArgumentException("Invalid command class " + callable.getClass());
+
+                    String pathStr = arguments.remove("").toString();
+                    run(existingLocals, io, pathStr, stringArguments, async);
+                    return;
+                }
+                if (fullCmdStr.isEmpty()) {
+                    if (returnNotFound) {
+                        io.send("You did not enter a command");
+                        return;
+                    }
+                    return;
+                }
+                StringBuilder remaining = new StringBuilder();
+                CommandCallable callable = commands.getCallable(fullCmdStr, remaining);
+                if (callable instanceof CommandGroup group && !remaining.isEmpty()) {
+                    if (returnNotFound) {
+                        String commandId = fullCmdStr.replace(remaining.toString(), "");
+                        if (commandId.isEmpty()) {
+                            commandId = fullCmdStr.split(" ")[0];
+                        }
+                        // last string in split by space
+                        String[] lastCommandIdSplit = commandId.split(" ");
+                        String lastCommandId = lastCommandIdSplit[lastCommandIdSplit.length - 1];
+                        List<String> validIds = new ArrayList<>(group.primarySubCommandIds());
+                        List<String> closest = StringMan.getClosest(lastCommandId, validIds, false);
+                        if (closest.size() > 5) closest = closest.subList(0, 5);
+
+                        io.send("No command found for `" + commandId + "`\n" +
+                                "Did you mean:\n- " + group.getFullPath() + StringMan.join(closest, "\n- " + group.getFullPath()) +
+                                "\n\nSee also: " + CM.help.find_command.cmd.toSlashMention());
+                    }
+                    return;
+                }
+
+                if (!remaining.isEmpty() && callable instanceof ParametricCallable pc) {
+                    try {
+                        Set<String> params = pc.getUserParameterMap().keySet();
+                        Map<String, String> parsed = parseArguments(params, remaining.toString(), false);
+                        String pathStr = callable.getFullPath();
+                        run(existingLocals, io, pathStr, parsed, async);
+                        return;
+                    } catch (IllegalArgumentException ignore) {
+                        ignore.printStackTrace();
+                    }
+                }
+
+                List<String> args = StringMan.split(remaining.toString(), ' ');
+
+                LocalValueStore locals = createLocals(existingLocals, null, null, null, null, io, null);
+
+                if (callable instanceof ParametricCallable parametric) {
+                    ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
+                    handleCall(io, () -> {
+                        try {
+                            Map<ParameterData, Map.Entry<String, Object>> map = parametric.parseArgumentsToMap(stack);
+                            Object[] parsed = parametric.argumentMapToArray(map);
+                            return parametric.call(null, locals, parsed);
+                        } catch (RuntimeException e) {
+                            Throwable e2 = e;
+                            while (e2.getCause() != null && e2.getCause() != e2) e2 = e2.getCause();
+                            e2.printStackTrace();
+                            throw new CommandUsageException(callable, e2.getMessage());
+                        }
+                    });
+                } else if (callable instanceof CommandGroup group) {
+                    handleCall(io, group, locals);
+                } else throw new IllegalArgumentException("Invalid command class " + callable.getClass());
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
         };
         if (async) Locutus.imp().getExecutor().submit(task);
         else task.run();
@@ -494,7 +577,6 @@ public class CommandManager2 {
                     }
                 }
 
-                System.out.println("Create title " + title + " | " + body.toString());
                 io.create().embed(title, body.toString()).send();
             } catch (IllegalArgumentException e) {
                 e.printStackTrace();

@@ -35,7 +35,6 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.task.roles.AutoRoleTask;
@@ -50,7 +49,6 @@ import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
-import rocker.guild.ia.message;
 
 import javax.annotation.Nullable;
 import java.io.ByteArrayOutputStream;
@@ -79,7 +77,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -152,6 +149,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 if (grantTemplateManager == null) {
                     grantTemplateManager = new GrantTemplateManager(this);
                     try {
+                        System.out.println("Loading grant templates for " + guild.getName());
                         grantTemplateManager.loadTemplates();
                     } catch (SQLException | InvocationTargetException | InstantiationException |
                              IllegalAccessException e) {
@@ -438,7 +436,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             return "No escrowed resources found.";
         }
 
-        double[] deposits = nation.getNetDeposits(this, false);
+        double[] deposits = nation.getNetDeposits(this, false, false);
 
         User user = nation.getUser();
 
@@ -929,21 +927,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
 
         };
-        {
-            String create = "CREATE TABLE IF NOT EXISTS `LOANS` (`loan_id` INTEGER PRIMARY KEY AUTOINCREMENT, `server` BIGINT NOT NULL, `message`, `receiver` INT NOT NULL, `resources` BLOB NOT NULL, `due` BIGINT NOT NULL, `repaid` BIGINT NOT NULL)";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(create);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        };
-        {
-            // Escroew
-            String create = "";
-        }
-
 
 //        {
 //            String create = "CREATE TABLE IF NOT EXISTS `BEIGE_TARGET_ALERTS` (`user` INT NOT NULL, `target`)";
@@ -1301,37 +1284,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return result;
     }
 
-    public List<DBLoan> getLoansByNation(int nationId) {
-        List<DBLoan> loans = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM LOANS where receiver = ? ORDER BY loan_id desc")) {
-            stmt.setInt(1, nationId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    loans.add(new DBLoan(rs));
-                }
-            }
-            return loans;
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public DBLoan getLoanById(int loanId) {
-        List<DBLoan> loans = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM LOANS where loan_id = ?")) {
-            stmt.setInt(1, loanId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    return new DBLoan(rs);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
     public Map<DepositType, double[]> getTaxBracketDeposits(int taxId, long cutOff, boolean includeExpired, boolean includeIgnored) {
         List<BankDB.TaxDeposit> records;
         if (cutOff == 0) {
@@ -1447,61 +1399,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
 //
 //    }
 
-    public DBLoan getLoanByMessageId(long loanId) {
-        List<DBLoan> loans = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM LOANS where message = ?")) {
-            stmt.setLong(1, loanId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    return new DBLoan(rs);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public List<DBLoan> getExpiredLoans() {
-        List<DBLoan> loans = new ArrayList<>();
-        try (PreparedStatement stmt = prepareQuery("select * FROM LOANS where due < ? AND repaid = 0")) {
-            stmt.setLong(1, System.currentTimeMillis());
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    loans.add(new DBLoan(rs));
-                }
-            }
-            return loans;
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public void addLoan(DBLoan loan) {
-        update("INSERT OR REPLACE INTO `LOANS`(`server`, `message`, `receiver`, `resources`, `due`, `repaid`) VALUES(?, ?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setLong(1, loan.loanerGuildOrAA);
-            stmt.setLong(2, loan.loanerNation);
-            stmt.setLong(3, loan.nationId);
-            stmt.setBytes(4, ArrayUtil.toByteArray(ArrayUtil.dollarToCents(loan.resources)));
-            stmt.setLong(5, loan.dueDate);
-            stmt.setInt(6, loan.status.ordinal());
-        });
-    }
-
-    public void updateLoan(DBLoan loan) {
-        if (loan.loanId == -1) throw new IllegalArgumentException("Loan has no id");
-        update("INSERT OR REPLACE INTO `LOANS`(`loan_id`, `server`, `message`, `receiver`, `resources`, `due`, `repaid`) VALUES(?, ?, ?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, loan.loanId);
-            stmt.setLong(2, loan.loanerGuildOrAA);
-            stmt.setLong(3, loan.loanerNation);
-            stmt.setLong(4, loan.nationId);
-            stmt.setBytes(5, ArrayUtil.toByteArray(ArrayUtil.dollarToCents(loan.resources)));
-            stmt.setLong(6, loan.dueDate);
-            stmt.setInt(7, loan.status.ordinal());
-        });
-    }
-
     public IAutoRoleTask getAutoRoleTask() {
         if (this.autoRoleTask == null) {
             synchronized (this) {
@@ -1593,22 +1490,31 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 } else {
                     int aaId = bankerNation.getAlliance_id();
                     if (!channelWithdrawAccounts.contains((long) aaId)) {
+                        String footer = "";
+                        if (!channelWithdrawAccounts.isEmpty()) {
+                            if (GuildKey.NON_AA_MEMBERS_CAN_BANK.getOrNull(this) == Boolean.TRUE) {
+                                return channelWithdrawAccounts.iterator().next();
+                            }
+                            if (!isAllianceId(aaId)) {
+                                footer = "\nTo allow non members to bank, see: " + GuildKey.NON_AA_MEMBERS_CAN_BANK.getCommandMention();
+                            }
+                        }
                         if (throwError) {
                             if (channelWithdrawAccounts.isEmpty()) {
                                 MessageChannel defaultChannel = getResourceChannel(aaId);
                                 if (defaultChannel == null) {
-                                    throw new IllegalArgumentException("Please set a default resource channel with " + CM.settings_bank_access.addResourceChannel.cmd.toSlashMention());
+                                    throw new IllegalArgumentException("Please set a default resource channel with " + CM.settings_bank_access.addResourceChannel.cmd.toSlashMention() + footer);
                                 } else if (messageChannelIdOrNull != null && messageChannelIdOrNull != defaultChannel.getIdLong()) {
-                                    throw new IllegalArgumentException("Please use the resource channel: " + defaultChannel.getAsMention());
+                                    throw new IllegalArgumentException("Please use the resource channel: " + defaultChannel.getAsMention() + footer);
                                 }
                             }
                             if (getResourceChannel(aaId) == null) {
-                                throw new IllegalArgumentException("Please set a resource channel for your alliance with " + CM.settings_bank_access.addResourceChannel.cmd.toSlashMention());
+                                throw new IllegalArgumentException("Please set a resource channel for your alliance with " + CM.settings_bank_access.addResourceChannel.cmd.toSlashMention() + footer);
                             }
                             if (channelWithdrawAccounts.isEmpty()) {
-                                throw new IllegalArgumentException("This channel is not authorized for withdrawals in your alliance: " + aaId);
+                                throw new IllegalArgumentException("This channel is not authorized for withdrawals in your alliance: " + aaId + footer);
                             }
-                            throw new IllegalArgumentException("This channel is only authorized for the alliance/accounts: " + StringMan.getString(channelWithdrawAccounts) + " (your alliance id is: " + aaId + ")");
+                            throw new IllegalArgumentException("This channel is only authorized for the alliance/accounts: " + StringMan.getString(channelWithdrawAccounts) + " (your alliance id is: " + aaId + ")" + footer);
                         }
                     } else if (bankerNation.getPositionEnum().id <= Rank.APPLICANT.id) {
                         if (throwError) {
@@ -1745,7 +1651,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
             if (toSubtract != null) {
                 ammountEach.put(account, toSubtract.clone());
-                System.out.println("Add balance to: " + account.getQualifiedName() + " " + PnwUtil.resourcesToString(toSubtract) + "");
+                System.out.println("Add balance to: " + account.getQualifiedId() + " " + PnwUtil.resourcesToString(toSubtract) + "");
                 addTransfer(dateTime, 0, 0, account.getIdLong(), account.getReceiverType(), banker, offshoreNote, toSubtract);
             }
         }
@@ -1958,7 +1864,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
 
             if (senderNation != null) {
-                double[] deposits = senderNation.getNetDeposits(senderDB);
+                double[] deposits = senderNation.getNetDeposits(senderDB, true);
                 checkDeposits(deposits, amount, "nation", senderNation.getName());
             }
 
@@ -2521,7 +2427,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         FALSE("No nickname given"),
         LEADER("Set to leader name"),
         NATION("Set to nation name"),
-        DISCORD("Set to discord name")
+        DISCORD("Set to discord name"),
+        NICKNAME("Set to discord nickname")
         ;
 
         private final String description;
@@ -3225,6 +3132,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public void addRole(Roles locutusRole, long discordRole, long allianceId) {
+        loadRoles();
         deleteRole(locutusRole, allianceId, false);
         roleToAccountToDiscord.computeIfAbsent(locutusRole, f -> new ConcurrentHashMap<>()).put(allianceId, discordRole);
         update("INSERT OR REPLACE INTO `ROLES2`(`role`, `alias`, `alliance`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
@@ -3238,6 +3146,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
     public void deleteRole(Roles role, long alliance, boolean updateCache) {
         if (updateCache) {
+            loadRoles();
             Map<Long, Long> existing = roleToAccountToDiscord.get(role);
             if (existing != null) {
                 existing.remove(alliance);
@@ -3250,6 +3159,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public void deleteRole(Roles role) {
+        loadRoles();
         roleToAccountToDiscord.remove(role);
         update("DELETE FROM `ROLES2` WHERE `role` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setLong(1, role.getId());
@@ -3257,6 +3167,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public  Map<Roles, Map<Long, Long>> getMappingRaw() {
+        loadRoles();
         return Collections.unmodifiableMap(roleToAccountToDiscord);
     }
 
@@ -3276,7 +3187,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     private void loadRoles() {
-        if (roleToAccountToDiscord.isEmpty() && !cachedRoleAliases) {
+        if (!cachedRoleAliases) {
             synchronized (roleToAccountToDiscord) {
                 if (cachedRoleAliases) return;
                 cachedRoleAliases = true;
@@ -3285,10 +3196,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                         while (rs.next()) {
                             try {
                                 Roles role = Roles.getRoleById(rs.getInt("role"));
+                                if (role == null) continue;
                                 long alias = rs.getLong("alias");
                                 long alliance = rs.getLong("alliance");
                                 roleToAccountToDiscord.computeIfAbsent(role, f -> new ConcurrentHashMap<>()).put(alliance, alias);
                             } catch (IllegalArgumentException ignore) {
+                                ignore.printStackTrace();
                             }
                         }
                     }

@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.politicsandwar.graphql.model.AlliancePosition;
 import com.politicsandwar.graphql.model.Nation;
 import com.politicsandwar.graphql.model.NationResponseProjection;
 import com.politicsandwar.graphql.model.NationsQueryRequest;
@@ -27,6 +28,7 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
+import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -83,6 +85,43 @@ import java.util.stream.Collectors;
 
 public class IACommands {
 
+    @Command(desc = "View the list of bans for a nation id")
+    public String viewBans(int nationId) {
+        PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(nationId);
+        Long userId = user == null ? null : user.getDiscordId();
+        List<DBBan> bans;
+        if (userId != null) {
+            bans = Locutus.imp().getNationDB().getBansForUser(userId, nationId);
+        } else {
+            bans = Locutus.imp().getNationDB().getBansForNation(nationId);
+        }
+        if (bans.isEmpty()) return "Nation: " + nationId + " has no bans";
+        StringBuilder response = new StringBuilder("Nation: " + nationId + " has " + bans.size() + " bans\n");
+        for (DBBan ban : bans) {
+//            ban.date
+//            ban.reason
+            response.append("### nation:" + ban.nation_id);
+            if (ban.discord_id != 0) {
+                response.append(" | discord:");
+                String name = DiscordUtil.getUserName(ban.discord_id);
+                if (name != null && !name.equals(ban.discord_id + "")) {
+                    response.append("`" + name + "` | ");
+                }
+                response.append("`" + ban.discord_id+ "`");
+            }
+            response.append(" | created:" + DiscordUtil.timestamp(ban.date, null));
+            if (ban.isExpired()) {
+                response.append(" | expired:" + DiscordUtil.timestamp(ban.getEndDate(), null));
+            } else if (ban.days_left == -1){
+                response.append(" | PERMANENT");
+            } else {
+                response.append(" | ending:" + DiscordUtil.timestamp(ban.getEndDate(), null));
+            }
+            response.append("\n>>> " + ban.reason + "\n\n");
+        }
+        return response.toString();
+    }
+
     @Command(desc = "Generate a sheet of nations and their day change\n" +
             "Nations not in an alliance registered to this guild can only show the public day change estimate based on unit purchases")
     @RolePermission(Roles.INTERNAL_AFFAIRS_STAFF)
@@ -99,7 +138,7 @@ public class IACommands {
         for (DBAlliance alliance : subList.getAlliances()) {
             PoliticsAndWarV3 api = alliance.getApi(AlliancePermission.SEE_RESET_TIMERS);
             if (api != null) {
-                for (Nation nation : api.fetchNations(new Consumer<NationsQueryRequest>() {
+                for (Nation nation : api.fetchNations(true, new Consumer<NationsQueryRequest>() {
                     @Override
                     public void accept(NationsQueryRequest nationsQueryRequest) {
                         nationsQueryRequest.setAlliance_id(List.of(alliance.getId()));
@@ -144,7 +183,7 @@ public class IACommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).append("Timezone is the UTC update timezone as displayed in-game on the account page").send();
+        sheet.attach(io.create(), "day_change").append("Timezone is the UTC update timezone as displayed in-game on the account page").send();
     }
 
     @Command(desc = "Add a discord role to all users in a server")
@@ -260,7 +299,7 @@ public class IACommands {
         StringBuilder result = new StringBuilder();
         result.append(GuildKey.ASSIGNABLE_ROLES.set(db, assignable)).append("\n");
 
-        result.append(StringMan.getString(requireRole) + " can now add/remove " + StringMan.getString(assignableRoles) + " via " + CM.role.add.cmd.toSlashMention() + " / " + CM.role.remove.cmd.toSlashMention() + "\n" +
+        result.append(StringMan.getString(requireRole) + " can now add/remove " + StringMan.getString(assignableRoles) + " via " + CM.self.add.cmd.toSlashMention() + " / " + CM.self.remove.cmd.toSlashMention() + "\n" +
                 "- To see a list of current mappings, use " + CM.settings.info.cmd.create(GuildKey.ASSIGNABLE_ROLES.name(), null, null) + "");
         return result.toString();
     }
@@ -783,7 +822,9 @@ public class IACommands {
 
 
 
-    @Command(desc = "Reply to an in-game mail message")
+    @Command(desc = "Reply to an in-game mail message\n" +
+            "Supports subject and body nation placeholders\n" +
+            "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
     @RolePermission(Roles.MAIL)
     @IsAlliance
     public String reply(@Me GuildDB db, @Me DBNation me, @Me User author, @Me IMessageIO channel, @Arg("The nation you are replying to") DBNation receiver, @Arg("The url of the mail") String url, String message, @Arg("The account to reply with\nMust be the same account that received the mail") @Switch("s") DBNation sender) throws IOException {
@@ -795,7 +836,7 @@ public class IACommands {
             auth = me.getAuth();
         } else {
             auth = sender.getAuth(true);
-            GuildDB authDB = Locutus.imp().getGuildDB(sender.getAlliance_id());
+            GuildDB authDB = Locutus.imp().getGuildDBByAA(sender.getAlliance_id());
             boolean hasPerms = (Roles.INTERNAL_AFFAIRS.hasOnRoot(author)) || (authDB != null && Roles.INTERNAL_AFFAIRS.has(author, authDB.getGuild()));
             if (authDB == null) {
                 return "No discord guild found for sender's alliance (sender: " + sender.getNation() + ", alliance: " + sender.getAllianceName() + "). See: " + GuildKey.ALLIANCE_ID.getCommandMention();
@@ -871,12 +912,17 @@ public class IACommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "loot").send();
         return null;
     }
 
 
-    @Command(desc = "Send in-game mail to a list of nations")
+    @Command(desc = "Send in-game mail to a list of nations\n" +
+            "Supports subject and body nation placeholders\n" +
+            "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>\n" +
+            "Append the channel id to the subject to direct responses there:\n" +
+            "`Hello Nation/12345678910`\n" +
+            "(Note: DM Borg to setup mail responses)")
     @NoFormat
     public String mail(@Me DBNation me, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO channel, @Me User author, Set<DBNation> nations, String subject, @TextArea String message, @Switch("f") boolean confirm, @Arg("Send from the api key registered to the guild") @Switch("l") boolean sendFromGuildAccount, @Arg("The api key to use to send the mail") @Switch("a") String apiKey) throws IOException {
         message = MarkupUtil.transformURLIntoLinks(message);
@@ -942,7 +988,7 @@ public class IACommands {
             try {
                 String subjectF = DiscordUtil.format(db.getGuild(), channel, nation.getUser(), nation, subject);
                 String messageF = DiscordUtil.format(db.getGuild(), channel, nation.getUser(), nation, message);
-                full.add(String.valueOf(nation.sendMail(key, subjectF, messageF)));
+                full.add(String.valueOf(nation.sendMail(key, subjectF, messageF, nations.size() == 1)));
             } catch (Throwable e) {
                 e.printStackTrace();
                 full.add("Error sending mail to " + nation.getName() + " (" + nation.getId() + "): " + e.getMessage());
@@ -1125,9 +1171,7 @@ public class IACommands {
         if (position.hasAnyOfficerPermissions() || nationPosition != null) requiredPermissions.add(AlliancePermission.CHANGE_PERMISSIONS);
         if (nationPosition == null && nation.getPositionEnum() == Rank.APPLICANT) requiredPermissions.add(AlliancePermission.ACCEPT_APPLICANTS);
         if (position == DBAlliancePosition.REMOVE || position == DBAlliancePosition.APPLICANT) requiredPermissions.add(AlliancePermission.REMOVE_MEMBERS);
-        Auth auth = DBAlliance.getOrCreate(allianceId).getAuth(requiredPermissions.toArray(new AlliancePermission[0]));
-        if (auth == null) return "No auth for this guild found for: " + StringMan.getString(requiredPermissions);
-        if (auth.getNationId() == nation.getNation_id()) return "You cannot change position of the nation connected to Locutus.";
+        if (nation.getPositionEnum().id >= Rank.HEIR.id) return "You cannot change position of the nation heir or above";
 
         User discordUser = nation.getUser();
 
@@ -1196,14 +1240,24 @@ public class IACommands {
             }
         }
 
-        String result = auth.setRank(nation, position);
 
-        if (result.contains("Set player rank ingame.") && nationPosition == null) {
-            db.getHandler().onSetRank(author, channel, nation, position);
+        PoliticsAndWarV3 api = DBAlliance.getOrCreate(allianceId).getApi(AlliancePermission.ACCEPT_APPLICANTS);
+        if (api == null) {
+            return "No api key found. Please use" + GuildKey.API_KEY.getCommandMention();
         }
-        response.append("\n(Via Account: " + auth.getNation().getNation() + ")");
-        response.append(result);
-        response.append("\nSee also " + CM.self.list.cmd.toSlashMention() + " / " + CM.role.add.cmd.toSlashMention());
+        AlliancePosition result;
+        if (position == DBAlliancePosition.REMOVE) {
+            result = api.assignAlliancePosition(nation.getId(), Rank.REMOVE);
+        } else if (position == DBAlliancePosition.APPLICANT) {
+            result = api.assignAlliancePosition(nation.getId(), Rank.APPLICANT);
+        } else {
+            result = api.assignAlliancePosition(nation.getId(), position.getId());
+        }
+        nation.setAlliancePositionId(result.getId());
+        db.getHandler().onSetRank(author, channel, nation, position);
+        response.append("Set to " + position.getName());
+
+        response.append("\nSee also " + CM.self.list.cmd.toSlashMention() + " / " + CM.self.add.cmd.toSlashMention());
         return response.toString();
     }
 
@@ -1234,8 +1288,12 @@ public class IACommands {
         return "Moved " + tc.getAsMention() + " to " + category.getName();
     }
 
-    @Command(desc = "Bulk send the result of a bot command to a list of nations")
+    @Command(desc = "Bulk send the result of a bot command to a list of nations in your alliance\n" +
+            "The command will run as each user\n" +
+            "Nations which are not registered or lack permission to use a command will result in an error\n" +
+            "It is recommended to review the output sheet before confirming and sending the results")
     @RolePermission(value=Roles.ADMIN)
+    @IsAlliance
     @NoFormat
     public String mailCommandOutput(NationPlaceholders placeholders, ValueStore store, @Me GuildDB db, @Me Guild guild, @Me User author, @Me IMessageIO channel,
                                     @Arg("Nations to mail command results to") Set<DBNation> nations,
@@ -1260,6 +1318,16 @@ public class IACommands {
 
         if (nations.size() > 300 && !Roles.ADMIN.hasOnRoot(author)) {
             return "Max allowed: 300 nations.";
+        }
+
+        List<String> notInAA = new ArrayList<>();
+        for (DBNation nation : nations) {
+            if (!db.isAllianceId(nation.getAlliance_id())) {
+                notInAA.add(nation.getNationUrlMarkup(true));
+            }
+        }
+        if (!notInAA.isEmpty()) {
+            return "The following nations are not in the alliance:\n - " + String.join("\n - ", notInAA);
         }
 
         if (nations.isEmpty()) return "No nations specified";
@@ -1323,7 +1391,7 @@ public class IACommands {
         String title = "Send " + success + " messages";
         StringBuilder embed = new StringBuilder();
         IMessageBuilder msg = channel.create();
-        sheet.attach(msg, embed, false, 0);
+        sheet.attach(msg, "mail_command", embed, false, 0);
         embed.append("\nPress `confirm` to confirm");
         CM.mail.sheet cmd = CM.mail.sheet.cmd.create(sheet.getURL(), null);
 
@@ -1334,7 +1402,8 @@ public class IACommands {
     }
 
     @Command(desc = "Bulk send in-game mail from a google sheet\n" +
-            "Columns: nation, subject, body")
+            "Columns: `nation`, `subject`, `body`\n" +
+            "Other bulk mail commands forward to this command")
     @HasApi
     @RolePermission(Roles.ADMIN)
     public String mailSheet(@Me GuildDB db, @Me JSONObject command, @Me IMessageIO io, @Me User author, SpreadSheet sheet, @Switch("f") boolean confirm) {
@@ -1393,7 +1462,7 @@ public class IACommands {
             String title = "Send " + messageMap.size() + " to nations in " + alliances.size() + " alliances";
             StringBuilder body = new StringBuilder("Messages:");
             IMessageBuilder msg = io.create();
-            sheet.attach(msg, body, false, 0);
+            sheet.attach(msg, "mail", body, false, 0);
 
             if (inactive > 0) body.append("Inactive Receivers: " + inactive + "\n");
             if (vm > 0) body.append("vm Receivers: " + vm + "\n");
@@ -1419,7 +1488,7 @@ public class IACommands {
 
             String result;
             try {
-                JsonObject json = nation.sendMail(keys, subject, body);
+                JsonObject json = nation.sendMail(keys, subject, body, false);
                 result = json + "";
             } catch (IOException e) {
                 errors++;

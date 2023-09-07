@@ -95,6 +95,9 @@ public class ArgumentStack {
                     map.put(flagStr, "true");
                 } else if (valueFlags.contains(flagStr)) {
                     args.remove(i);
+                    if (args.isEmpty()) {
+                        throw new IllegalArgumentException("No value provided for flag: `-" + flagStr + "`. Expected input e.g. `-" + flagStr + " SomeValue`");
+                    }
                     String value = args.remove(i);
                     map.put(flagStr, value);
                 }

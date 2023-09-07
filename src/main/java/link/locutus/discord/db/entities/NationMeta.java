@@ -111,6 +111,8 @@ public enum NationMeta {
 
     GPT_OPTIONS,
 
+    REPORT_BAN,
+
     GPT_MODERATED,
 
     GPT_SOURCES,

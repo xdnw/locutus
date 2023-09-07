@@ -1,11 +1,7 @@
 package link.locutus.discord.config;
 
 import link.locutus.discord.Locutus;
-import link.locutus.discord.network.ProxyHandler;
 import link.locutus.discord.config.yaml.Config;
-import link.locutus.discord.db.GuildDB;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.io.File;
 import java.util.*;
@@ -104,8 +100,6 @@ public class Settings extends Config {
         return legacy ? Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX : Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX;
     }
 
-    //
-
     public String PNW_URL() {
         return "https://" + (TEST ? "test." : "") + "politicsandwar.com";
     }
@@ -174,8 +168,7 @@ public class Settings extends Config {
     }
 
     @Comment({
-            "How often in seconds a task is run (set to 0 to disable)",
-            "Note: Politics and war is rate limited. You may experience issues if you run tasks too frequently"
+            "Artificual intelligence is used for features such as natural language responses, search and image processing",
     })
     public static class TASKS {
         @Comment("If any turn related tasks are run (default: true)")
@@ -469,7 +462,10 @@ public class Settings extends Config {
             public String LEGACY_COMMAND_PREFIX = "!";
 
             @Comment("The prefix used for v2 commands (single character)")
-            public String COMMAND_PREFIX = "$";
+            public String COMMAND_PREFIX = "/";
+
+            @Comment("Additional prefixes supported for message commands (single character)")
+            public List<String> ALTERNATE_COMMAND_PREFIX = Arrays.asList("$");
         }
     }
 

@@ -14,6 +14,8 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -55,6 +57,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
+import link.locutus.discord.util.offshore.TransferResult;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -74,16 +77,13 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import org.json.JSONObject;
+import retrofit2.http.HEAD;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.security.GeneralSecurityException;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -101,11 +101,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -463,7 +465,7 @@ public class BankCommands {
                 } else {
                     sheet = sheetAmounts.getSheet();
                 }
-                sheet.attach(msg, body, false, 0);
+                sheet.attach(msg, "deposit", body, false, 0);
             }
 
             // total / worth
@@ -510,7 +512,7 @@ public class BankCommands {
             if (mailResults) {
                 String subject = "Deposit Resources/" + channelId;
                 try {
-                    JsonObject mailResult = nation.sendMail(key, subject, body.toString());
+                    JsonObject mailResult = nation.sendMail(key, subject, body.toString(), true);
                     result.append("\n- **mail**: ").append("`" + mailResult + "`");
                     sentMail = true;
                 } catch (Throwable e) {
@@ -691,7 +693,8 @@ public class BankCommands {
     @RolePermission(value = {Roles.MEMBER, Roles.ECON, Roles.ECON_STAFF}, alliance = true, any=true)
     @HasOffshore
     @IsAlliance
-    public static String offshore(@Me User user, @Me GuildDB db, @Arg("Offshore alliance to send funds to") @Default DBAlliance to, @Arg("The amount of resources to keep in the bank") @Default("{}") Map<ResourceType, Double> warchest,
+    public static String offshore(@Me User user, @Me GuildDB db, @Me IMessageIO io,
+                                  @Arg("Offshore alliance to send funds to") @Default DBAlliance to, @Arg("The amount of resources to keep in the bank") @Default("{}") Map<ResourceType, Double> warchest,
                                   @Arg("The account to offshore with (defaults to the sender alliance)") @Default NationOrAllianceOrGuild account) throws IOException {
         if (account != null && account.isNation()) {
             throw new IllegalArgumentException("You can't offshore into a nation. You can only offshore into an alliance or guild. Value provided: `Nation:" + account.getName() + "`");
@@ -718,14 +721,14 @@ public class BankCommands {
             }
             to = offshore.getAlliance();
         } else {
-            if (!offshores.contains(to.getAlliance_id())) return "Please add the offshore using " + CM.coalition.add.cmd.create(to.getQualifiedName(), Coalition.OFFSHORE.name()) + "";
+            if (!offshores.contains(to.getAlliance_id())) return "Please add the offshore using " + CM.coalition.add.cmd.create(to.getQualifiedId(), Coalition.OFFSHORE.name()) + "";
         }
         Set<DBAlliance> alliances = allianceList.getAlliances();
         if (alliances.size() == 1 && alliances.iterator().next().equals(to)) {
             throw new IllegalArgumentException("You cannot offshore to yourself");
         }
 
-        List<String> results = new ArrayList<>();
+        List<TransferResult> results = new ArrayList<>();
         for (DBAlliance from : alliances) {
             if (from.getAlliance_id() == to.getAlliance_id()) continue;
             Map<ResourceType, Double> resources = from.getStockpile();
@@ -743,11 +746,26 @@ public class BankCommands {
                 note = "#alliance=" + from.getAlliance_id();
             }
             note += " #tx_id=" + UUID.randomUUID().toString();
-            Map.Entry<OffshoreInstance.TransferStatus, String> response = bank.transferUnsafe(null, to, resources, note);
-            results.add(from.getName() + " -> " + to.getName() + ": " + response.getKey() + " (" + response.getValue() + ")");
+            TransferResult response = bank.transferUnsafe(null, to, resources, note);
+            results.add(response);
         }
-
-        return "Offshored:\n- " + String.join("\n- ", results);
+        if (results.size() == 1) {
+            TransferResult result = results.get(0);
+            String title = result.toTitleString();
+            String body = result.toEmbedString();
+            io.create().embed(title, body).send();
+            return null;
+        } else {
+            String title = "Offshored for " + alliances.size() + " alliances";
+            int success = results.stream().mapToInt(f -> f.getStatus().isSuccess() ? 1 : 0).sum();
+            int failed = results.size() - success;
+            if (failed > 0) {
+                title += " (" + success + " successful, " + failed + " failed)";
+            }
+            String body = results.stream().map(TransferResult::toLineString).collect(Collectors.joining("\n"));
+            io.create().embed(title, body).send();
+            return null;
+        }
     }
 
     @Command(desc = "Generate csv of war cost by nation between alliances (for reimbursement)\n" +
@@ -1216,7 +1234,7 @@ public class BankCommands {
             }
 
             if (subtractDeposits) {
-                double[] deposits = nation.getNetDeposits(db, -1L);
+                double[] deposits = nation.getNetDeposits(db, -1L, true);
                 for (int i = 0; i < deposits.length; i++) {
                     double amt = deposits[i];
                     if (amt > 0) {
@@ -1352,7 +1370,7 @@ public class BankCommands {
                     depositsAccount != null ? depositsAccount.getUrl() : null,
                     useAllianceBank != null ? useAllianceBank.getUrl() : null,
                     useOffshoreAccount != null ? useOffshoreAccount.getUrl() : null,
-                    taxAccount != null ? taxAccount.getQualifiedName() : null,
+                    taxAccount != null ? taxAccount.getQualifiedId() : null,
                     existingTaxAccount + "",
                     Boolean.FALSE.toString(),
                     expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
@@ -1375,7 +1393,7 @@ public class BankCommands {
                     depositsAccount != null ? depositsAccount.getUrl() : null,
                     useAllianceBank != null ? useAllianceBank.getUrl() : null,
                     useOffshoreAccount != null ? useOffshoreAccount.getUrl() : null,
-                    taxAccount != null ? taxAccount.getQualifiedName() : null,
+                    taxAccount != null ? taxAccount.getQualifiedId() : null,
                     existingTaxAccount + "",
                     expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
                     Boolean.FALSE.toString(),
@@ -1520,7 +1538,7 @@ public class BankCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "revenue").send();
         return null;
     }
 
@@ -1561,7 +1579,7 @@ public class BankCommands {
             double[] total = stockpileArr2.clone();
             double[] depo = ResourceType.getBuffer();
             if (!ignoreDeposits) {
-                depo = nation.getNetDeposits(db, includeGrants, forceUpdate ? 0L : -1L);
+                depo = nation.getNetDeposits(db, includeGrants, forceUpdate ? 0L : -1L, false);
                 if (!doNotNormalizeDeposits) {
                     depo = PnwUtil.normalize(depo);
                 }
@@ -1704,7 +1722,7 @@ public class BankCommands {
         response.append("Total Warchest: `" + PnwUtil.resourcesToString(totalWarchest) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalWarchest)) + "\n");
         response.append("Net Warchest Req (warchest- requirements): `" + PnwUtil.resourcesToString(totalNet) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalNet)));
 
-        sheet.attach(io.create(), response, false, 0).append(response.toString()).send();
+        sheet.attach(io.create(), "warchest", response, false, 0).append(response.toString()).send();
         return null;
     }
 
@@ -1760,7 +1778,7 @@ public class BankCommands {
                 note += " #expire=timestamp:" + (System.currentTimeMillis() + timediff);
             }
         }
-        Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, 0, 0);
+        Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, 0, 0, true);
 
         double[] toAdd = depoByType.get(from);
         if (toAdd == null || ResourceType.isZero(toAdd)) {
@@ -1802,31 +1820,31 @@ public class BankCommands {
         double[] totalEscrow = ResourceType.getBuffer();
 
         for (DBNation nation : nations.getNations()) {
-            Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, force ? 0L : -1L, 0);
+            Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, force ? 0L : -1L, 0, true);
 
             double[] deposits = depoByType.get(DepositType.DEPOSIT);
             if (deposits != null && !ignoreBankDeposits && !ResourceType.isZero(deposits)) {
-                response.append("Subtracting `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(deposits) + " #deposit`\n");
+                response.append("Subtracting `" + nation.getQualifiedId() + " " + PnwUtil.resourcesToString(deposits) + " #deposit`\n");
                 ResourceType.subtract(totalDeposits, deposits);
                 if (force) db.subBalance(now, nation, me.getNation_id(), "#deposit", deposits);
             }
 
             double[] tax = depoByType.get(DepositType.TAX);
             if (tax != null && !ignoreTaxes && !ResourceType.isZero(tax)) {
-                response.append("Subtracting `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(tax) + " #tax`\n");
+                response.append("Subtracting `" + nation.getQualifiedId() + " " + PnwUtil.resourcesToString(tax) + " #tax`\n");
                 ResourceType.subtract(totalTax, tax);
                 if (force) db.subBalance(now, nation, me.getNation_id(), "#tax", tax);
             }
 
             double[] loan = depoByType.get(DepositType.LOAN);
             if (loan != null && !ignoreLoans && !ResourceType.isZero(loan)) {
-                response.append("Subtracting `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(loan) + " #loan`\n");
+                response.append("Subtracting `" + nation.getQualifiedId() + " " + PnwUtil.resourcesToString(loan) + " #loan`\n");
                 ResourceType.subtract(totalLoan, loan);
                 if (force) db.subBalance(now, nation, me.getNation_id(), "#loan", loan);
             }
 
             if (depoByType.containsKey(DepositType.GRANT) && !ignoreGrants) {
-                List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, -1, 0);
+                List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, -1, 0, true);
                 for (Map.Entry<Integer, Transaction2> entry : transactions) {
                     Transaction2 tx = entry.getValue();
                     if (tx.note == null || !tx.note.contains("#expire") || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id()))
@@ -1843,11 +1861,11 @@ public class BankCommands {
                         tx.tx_datetime = System.currentTimeMillis();
                         int sign = entry.getKey();
                         if (sign == 1) {
-                            response.append("Subtracting `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(tx.resources) + " " + noteCopy + "`\n");
+                            response.append("Subtracting `" + nation.getQualifiedId() + " " + PnwUtil.resourcesToString(tx.resources) + " " + noteCopy + "`\n");
                             ResourceType.subtract(totalExpire, tx.resources);
                             if (force) db.subBalance(now, nation, me.getNation_id(), noteCopy, tx.resources);
                         } else if (sign == -1) {
-                            response.append("Adding `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(tx.resources) + " " + noteCopy + "`\n");
+                            response.append("Adding `" + nation.getQualifiedId() + " " + PnwUtil.resourcesToString(tx.resources) + " " + noteCopy + "`\n");
                             ResourceType.add(totalExpire, tx.resources);
                             if (force) db.addBalance(now, nation, me.getNation_id(), noteCopy, tx.resources);
                         }
@@ -1859,7 +1877,7 @@ public class BankCommands {
                 try {
                     Map.Entry<double[], Long> escrowedPair = db.getEscrowed(nation);
                     if (escrowedPair != null && !ResourceType.isZero(escrowedPair.getKey())) {
-                        response.append("Subtracting escrow: `" + nation.getQualifiedName() + " " + PnwUtil.resourcesToString(escrowedPair.getKey()) + "`\n");
+                        response.append("Subtracting escrow: `" + nation.getQualifiedId() + " " + PnwUtil.resourcesToString(escrowedPair.getKey()) + "`\n");
                         ResourceType.subtract(totalEscrow, escrowedPair.getKey());
                         if (force) db.setEscrowed(nation, null, 0);
                     }
@@ -2012,7 +2030,7 @@ public class BankCommands {
             }
             AccessType accessType = allowedIds.get((long) aaId);
             if (accessType == null) {
-                return "You do not have access to the alliance stockpile information for " + DBAlliance.getOrCreate(aaId).getQualifiedName();
+                return "You do not have access to the alliance stockpile information for " + DBAlliance.getOrCreate(aaId).getQualifiedId();
             }
             if (me.getId() != receiver.getId()) {
                 if (accessType != AccessType.ECON) {
@@ -2026,7 +2044,7 @@ public class BankCommands {
             }
         }
 
-        Map.Entry<OffshoreInstance.TransferStatus, String> result;
+        TransferResult result;
         try {
             result = offshore.transferFromNationAccountWithRoleChecks(
                     author,
@@ -2046,19 +2064,21 @@ public class BankCommands {
                     bypassChecks
             );
         } catch (IllegalArgumentException | IOException e) {
-            result = new AbstractMap.SimpleEntry<>(OffshoreInstance.TransferStatus.OTHER, e.getMessage());
+//            result = new AbstractMap.SimpleEntry<>(OffshoreInstance.TransferStatus.OTHER, e.getMessage());
+            result = new TransferResult(OffshoreInstance.TransferStatus.OTHER, receiver, transfer, depositType.toString()).addMessage(e.getMessage());
         }
-        if (result.getKey() == OffshoreInstance.TransferStatus.CONFIRMATION) {
+        if (result.getStatus() == OffshoreInstance.TransferStatus.CONFIRMATION) {
             String worth = "$" + MathMan.format(PnwUtil.convertedTotal(transfer));
             String title = "Send (worth: " + worth + ") to " + receiver.getTypePrefix() + ":" + receiver.getName();
             if (receiver.isNation()) {
                 title += " | " + receiver.asNation().getAlliance();
             }
-            channel.create().confirmation(title, result.getValue(), command, "force", "Send").cancelButton().send();
+            channel.create().confirmation(title, result.getMessageJoined(false), command, "force", "Send").cancelButton().send();
             return null;
         }
 
-        return "**Transfer: " + result.getKey() + ":**\n" + result.getValue();
+        channel.create().embed(result.toTitleString(), result.toEmbedString()).send();
+        return null;
     }
 
     @Command(desc = "Sheet of projects each nation has")
@@ -2100,7 +2120,7 @@ public class BankCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "projects").send();
         return null;
     }
 
@@ -2147,7 +2167,7 @@ public class BankCommands {
         sheet.clearAll();
         sheet.set(0, 0);
         // appent resource string and worth
-        sheet.attach(io.create()).append("Total Escrowed: `" + PnwUtil.resourcesToString(totalEscrowed) + "` | worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalEscrowed))).send();
+        sheet.attach(io.create(), "escrow").append("Total Escrowed: `" + PnwUtil.resourcesToString(totalEscrowed) + "` | worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalEscrowed))).send();
         return null;
     }
 
@@ -2294,7 +2314,7 @@ public class BankCommands {
 
         boolean updateBulk = Settings.INSTANCE.TASKS.BANK_RECORDS_INTERVAL_SECONDS > 0;
         if (updateBulk) {
-            Locutus.imp().getBankDB().updateBankRecs(Event::post);
+            Locutus.imp().getBankDB().updateBankRecs(false, Event::post);
         }
 
         long last = System.currentTimeMillis();
@@ -2304,7 +2324,7 @@ public class BankCommands {
                 if (tmp != null) msgFuture = tmp.clear().append("calculating for: " + nation.getNation()).send();
                 last = System.currentTimeMillis();
             }
-            Map<DepositType, double[]> deposits = nation.getDeposits(db, tracked, useTaxBase, useOffset, (updateBulk && !force) ? -1 : 0L, 0L);
+            Map<DepositType, double[]> deposits = nation.getDeposits(db, tracked, useTaxBase, useOffset, (updateBulk && !force) ? -1 : 0L, 0L, false);
             double[] buffer = ResourceType.getBuffer();
 
             header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
@@ -2334,7 +2354,7 @@ public class BankCommands {
                 total = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, total, value);
             }
             header.set(7, String.format("%.2f", PnwUtil.convertedTotal(total)));
-            List<Transaction2> transactions = nation.getTransactions(Long.MAX_VALUE);
+            List<Transaction2> transactions = nation.getTransactions(Long.MAX_VALUE, false);
             long lastDeposit = 0;
             for (Transaction2 transaction : transactions) {
                 if (transaction.sender_id == nation.getNation_id()) {
@@ -2366,7 +2386,7 @@ public class BankCommands {
         sheet.set(0, 0);
 
         IMessageBuilder msg = channel.create();
-        sheet.attach(msg);
+        sheet.attach(msg, "deposits");
 
         if (!noEscrowSheet) {
             Map.Entry<SpreadSheet, double[]> pair = escrowSheet(db, nations, null);
@@ -2374,7 +2394,7 @@ public class BankCommands {
             // attach sheet
             escrowSheet.clearAll();
             escrowSheet.set(0, 0);
-            escrowSheet.attach(msg);
+            escrowSheet.attach(msg, "escrow");
 
             double[] escrowTotal = pair.getValue();
             aaTotalPositive = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, aaTotalPositive, escrowTotal);
@@ -2515,11 +2535,11 @@ public class BankCommands {
         for (DBNation nation : nations) {
             double[] depo;
             if (depositType != null) {
-                Map<DepositType, double[]> depoByCategory = nation.getDeposits(db, null, true, true, -1, 0L);
+                Map<DepositType, double[]> depoByCategory = nation.getDeposits(db, null, true, true, -1, 0L, false);
                 depo = depoByCategory.get(depositType.type);
                 if (depo == null) continue;
             } else {
-                depo = nation.getNetDeposits(db, null, true, true, includeGrants, -1, 0L);
+                depo = nation.getNetDeposits(db, null, true, true, includeGrants, -1, 0L, false);
             }
             double[] amtAdd = ResourceType.getBuffer();
             boolean add = false;
@@ -2604,7 +2624,7 @@ public class BankCommands {
         List<Transaction2> transactions = new ArrayList<>();
         if (nationOrAllianceOrGuild.isNation()) {
             DBNation nation = nationOrAllianceOrGuild.asNation();
-            List<Map.Entry<Integer, Transaction2>> natTrans = nation.getTransactions(db, null, useTaxBase, useOffset, 0, timeframe);
+            List<Map.Entry<Integer, Transaction2>> natTrans = nation.getTransactions(db, null, useTaxBase, useOffset, 0, timeframe, false);
             for (Map.Entry<Integer, Transaction2> entry : natTrans) {
                 transactions.add(entry.getValue());
             }
@@ -2655,8 +2675,9 @@ public class BankCommands {
 
 
     @Command(desc = "Send multiple transfers to nations/alliances according to a sheet\n" +
-                    "The transfer sheet columns must be `nations` (which has the nations or alliance name/id/url), " +
-                    "and then there must be a column named for each resource type you wish to transfer")
+                    "The transfer sheet columns must be `nations` (which has the nations or alliance name/id/url)\n" +
+                    "and then there must be a column named for each resource type you wish to transfer\n" +
+            "OR use a column called `resources` which has a resource list (e.g. a json object of the resources)")
     @RolePermission(value = {Roles.ECON_WITHDRAW_SELF, Roles.ECON}, alliance = true, any = true)
     public static String transferBulk(@Me IMessageIO io, @Me JSONObject command, @Me User user, @Me DBNation me, @Me GuildDB db, TransferSheet sheet, DepositType.DepositTypeInfo depositType,
 
@@ -2736,7 +2757,7 @@ public class BankCommands {
             if (escrow_mode != null && escrow_mode != EscrowMode.NEVER) {
                 desc.append("Escrow Mode: `" + escrow_mode + "`\n");
             }
-            sheet.getSheet().attach(msg, desc, true, desc.length());
+            sheet.getSheet().attach(msg, "transfers", desc, true, desc.length());
 
             key = UUID.randomUUID();
             APPROVED_BULK_TRANSFER.put(key, transfers);
@@ -2785,11 +2806,12 @@ public class BankCommands {
             NationOrAlliance receiver = entry.getKey();
             double[] amount = PnwUtil.resourcesToArray(entry.getValue());
 
-            Map.Entry<OffshoreInstance.TransferStatus, String> result = null;
+            TransferResult result = null;
             TaxBracket taxAccountFinal = taxAccount;
             if (existingTaxAccount) {
                 if (!receiver.isNation()) {
-                    result = new AbstractMap.SimpleEntry<>(OffshoreInstance.TransferStatus.INVALID_DESTINATION, "Cannot use `existingTaxAccount` for transfers to alliances");
+//                    result = new AbstractMap.SimpleEntry<>(OffshoreInstance.TransferStatus.INVALID_DESTINATION, "Cannot use `existingTaxAccount` for transfers to alliances");
+                    result = new TransferResult(OffshoreInstance.TransferStatus.INVALID_DESTINATION, receiver, amount, depositType.toString()).addMessage("Cannot use `existingTaxAccount` for transfers to alliances");
                 } else {
                     taxAccountFinal = receiver.asNation().getTaxBracket();
                 }
@@ -2815,16 +2837,15 @@ public class BankCommands {
                             bypassChecks
                     );
                 } catch (IllegalArgumentException | IOException e) {
-                    result = new AbstractMap.SimpleEntry<>(OffshoreInstance.TransferStatus.OTHER, e.getMessage());
+                    result = new TransferResult(OffshoreInstance.TransferStatus.OTHER, receiver, amount, depositType.toString()).addMessage(e.getMessage());
                 }
             }
 
-            output.append(receiver.getUrl() + "\t" + receiver.isAlliance() + "\t" + StringMan.getString(amount) + "\t" + result.getKey() + "\t" + "\"" + result.getValue() + "\"");
+            output.append(receiver.getUrl() + "\t" + receiver.isAlliance() + "\t" + StringMan.getString(amount) + "\t" + result.getStatus() + "\t" + "\"" + result.getMessageJoined(false).replace("\n", " ") + "\"");
             output.append("\n");
-            if (result.getKey() == OffshoreInstance.TransferStatus.SUCCESS || result.getKey() == OffshoreInstance.TransferStatus.ALLIANCE_BANK) {
+            if (result.getStatus() == OffshoreInstance.TransferStatus.SUCCESS || result.getStatus() == OffshoreInstance.TransferStatus.SENT_TO_ALLIANCE_BANK) {
                 totalSent = PnwUtil.add(totalSent, PnwUtil.resourcesToMap(amount));
-
-                io.send(PnwUtil.resourcesToString(amount) + " -> " + receiver.getUrl() + " | **" + result.getKey() + "**: " + result.getValue());
+                io.create().embed(result.toTitleString(), result.toEmbedString()).send();
             }
         }
 
@@ -2870,9 +2891,9 @@ public class BankCommands {
         } else if (alliance.isNation()){
             Long removed = offshore.disabledNations.remove(alliance.getId());
             if (removed == null) {
-                return "No transfers are locked for " + alliance.getQualifiedName();
+                return "No transfers are locked for " + alliance.getQualifiedId();
             }
-            return "Enabled transfers for " + alliance.getQualifiedName();
+            return "Enabled transfers for " + alliance.getQualifiedId();
         }
         if (alliance.isGuild()) {
             offshore.disabledGuilds.remove(alliance.asGuild().getIdLong());
@@ -2973,7 +2994,7 @@ public class BankCommands {
 
         sheet.clear("A:Z");
         sheet.set(0, 0);
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "tax_rates").send();
         return null;
     }
 
@@ -3019,9 +3040,9 @@ public class BankCommands {
             "The receiver must be authenticated with the bot and have bank access in an alliance\n" +
             "Only resources sold for $0 or food bought for cash are accepted")
     @RolePermission(value = Roles.MEMBER)
-    public String acceptTrades(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, DBNation receiver, @Switch("f") boolean force) throws Exception {
+    public String acceptTrades(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, DBNation receiver, @Default Map<ResourceType, Double> amount, @Switch("a") boolean useLogin, @Switch("f") boolean force) throws Exception {
         OffshoreInstance offshore = db.getOffshore();
-        if (offshore == null) return "No offshore is set in this guild: <https://docs.google.com/document/d/1QkN1FDh8Z8ENMcS5XX8zaCwS9QRBeBJdCmHN5TKu_l8/>";
+        if (offshore == null) return "No offshore is set in this guild: <https://github.com/xdnw/locutus/wiki/banking>";
 
         GuildDB receiverDB = Locutus.imp().getGuildDBByAA(receiver.getAlliance_id());
         if (receiverDB == null) return "Receiver is not in a guild with locutus";
@@ -3042,10 +3063,18 @@ public class BankCommands {
             return null;
         }
 
-        Auth auth = receiver.getAuth(true);
-        if (auth == null) return "Receiver is not authenticated with Locutus: " + CM.credentials.login.cmd.toSlashMention() + "";
+        Map.Entry<Boolean, String> result;
+        if (amount != null) {
+            result = receiver.tradeAndOffshoreDeposit(db, me, PnwUtil.resourcesToArray(amount));
+        } else if (!useLogin) {
+            result = receiver.acceptAndOffshoreTrades(db, me);
+        } else {
+            Auth auth = receiver.getAuth(true);
+            if (auth == null) return "Receiver is not authenticated with Locutus: " + CM.credentials.login.cmd.toSlashMention() + "\n" +
+                    "Alternatively, set `useApi: True`";
 
-        Map.Entry<Boolean, String> result = auth.acceptAndOffshoreTrades(db, me.getNation_id());
+            result = auth.acceptAndOffshoreTrades(db, me.getNation_id());
+        }
         if (!result.getKey()) {
             return "__**ERROR: No funds have been added to your account**__\n" +
                     result.getValue();
@@ -3101,7 +3130,7 @@ public class BankCommands {
         }
         txSheet.write(transfers).build();
 
-        txSheet.getSheet().attach(io.create()).send();
+        txSheet.getSheet().attach(io.create(), "tax_deposits").send();
         return null;
     }
 
@@ -3141,7 +3170,7 @@ public class BankCommands {
         }
         sheet.clear("A:Z");
         sheet.set(0, 0);
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "tax_records").send();
         return null;
     }
 
@@ -3193,7 +3222,7 @@ public class BankCommands {
         if (receiver.isGuild()) receiverGuild = receiver.asGuild().getGuild();;
 
         if (!confirm) {
-            String title = "Send to " + receiver.getQualifiedName();
+            String title = "Send to " + receiver.getQualifiedId();
             String url = receiver.getUrl();
             if (url == null) url = receiver.getIdLong() + "";
             StringBuilder body = new StringBuilder();
@@ -3206,7 +3235,7 @@ public class BankCommands {
             body.append("\nWorth: ~$" + MathMan.format(PnwUtil.convertedTotal(amount)));
             body.append("\nSender DB: " + senderDB.getGuild());
             body.append("\nSender Offshore: " + PnwUtil.getMarkdownUrl(offshore.getAllianceId(), true));
-            body.append("\nReceiver: " + MarkupUtil.markdownUrl(receiver.getQualifiedName(), url));
+            body.append("\nReceiver: " + MarkupUtil.markdownUrl(receiver.getQualifiedId(), url));
             if (receiverAlliance != null) body.append("\nReceiver AA: " + MarkupUtil.markdownUrl(receiverAlliance.getName(), receiverAlliance.getUrl()));
             if (receiverGuild != null) body.append("\nReceiver Guild: " + receiverGuild.toString());
             body.append("\n\nPress `Confirm` to confirm");
@@ -3217,7 +3246,7 @@ public class BankCommands {
 
         double[] amountArr = PnwUtil.resourcesToArray(amount);
         if (senderDB.sendInternal(user, me, senderDB, senderAlliance, senderNation, receiverDB, receiverAlliance, receiverNation, amountArr)) {
-            return "Sent `" + PnwUtil.resourcesToString(amount) + "` to " + receiver.getQualifiedName() + ". See: " + CM.deposits.check.cmd.toSlashMention();
+            return "Sent `" + PnwUtil.resourcesToString(amount) + "` to " + receiver.getQualifiedId() + ". See: " + CM.deposits.check.cmd.toSlashMention();
         } else {
             return "Failed to transfer funds.";
         }
@@ -3245,6 +3274,13 @@ public class BankCommands {
                            @Switch("i") boolean includeIgnored,
                            @Arg("Hide the escrow balance ") @Switch("h") boolean hideEscrowed
     ) throws IOException {
+        boolean condensedFormat = GuildKey.DISPLAY_CONDENSED_DEPOSITS.getOrNull(db) == Boolean.TRUE;
+        if (!nationOrAllianceOrGuild.isNation() && !nationOrAllianceOrGuild.isTaxid()) {
+            showTaxesSeparately = false;
+        }
+        if (showTaxesSeparately == null) {
+            showTaxesSeparately = (db.getOrNull(GuildKey.DISPLAY_ITEMIZED_DEPOSITS) == Boolean.TRUE);
+        }
         if (timeCutoff == null) timeCutoff = 0L;
         Set<Long> offshoreIds = offshores == null ? null : offshores.stream().map(f -> f.getIdLong()).collect(Collectors.toSet());
         if (offshoreIds != null) offshoreIds = PnwUtil.expandCoalition(offshoreIds);
@@ -3252,13 +3288,11 @@ public class BankCommands {
 //        boolean hasAdmin = Roles.ECON.has(author, guild);
 //        AllianceList allowed = Roles.ECON.getAllianceList(author, db);
 
-        StringBuilder response = new StringBuilder();
-        response.append("**" + nationOrAllianceOrGuild.getQualifiedName() + "**:\n");
-        List<String> footers = new ArrayList<>();
-
         Map<DepositType, double[]> accountDeposits = new HashMap<>();
         double[] escrowed = null;
         long escrowExpire = 0;
+
+        List<String> footers = new ArrayList<>();
 
         if (nationOrAllianceOrGuild.isAlliance()) {
             DBAlliance alliance = nationOrAllianceOrGuild.asAlliance();
@@ -3283,7 +3317,6 @@ public class BankCommands {
             } else if (otherDb != db && offshore.getGuildDB() != db) {
                 return "You do not have permisssion to check another alliance's deposits";
             } else {
-                // txList
                 double[] deposits = PnwUtil.resourcesToArray(offshore.getDeposits(alliance.getAlliance_id(), true));
                 accountDeposits.put(DepositType.DEPOSIT, deposits);
             }
@@ -3303,7 +3336,7 @@ public class BankCommands {
             DBNation nation = nationOrAllianceOrGuild.asNation();
             if (nation != me && !Roles.INTERNAL_AFFAIRS.has(author, guild) && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild) && !Roles.ECON.has(author, guild)) return "You do not have permission to check other nation's deposits";
             // txList
-            accountDeposits = nation.getDeposits(db, offshoreIds, !includeBaseTaxes, !ignoreInternalOffsets, 0L, timeCutoff, includeIgnored, includeExpired, f -> true);
+            accountDeposits = nation.getDeposits(db, offshoreIds, !includeBaseTaxes, !ignoreInternalOffsets, 0L, timeCutoff, includeIgnored, includeExpired, f -> true, true);
             if (!hideEscrowed) {
                 Map.Entry<double[], Long> escoredPair = db.getEscrowed(nation);
                 if (escoredPair != null) {
@@ -3320,146 +3353,182 @@ public class BankCommands {
             accountDeposits.putAll(deposits);
 
             if (showTaxesSeparately) {
-                footers.add("#TAX is for the portion of tax income that does NOT go into member holdings");
-                footers.add("#DEPOSIT is for the portion of tax income in member holdings");
+                footers.add("`#TAX` is for the portion of tax income that does NOT go into member holdings");
+                footers.add("`#DEPOSIT` is for the portion of tax income in member holdings");
             } else {
-                footers.add("Set 'showTaxesSeparately' to show separate sections for tax income allocated to member holdings");
+                footers.add("Set `showTaxesSeparately` for breakdown of tax within member holdings");
             }
-            footers.add("See " + CM.deposits.add.cmd.create("tax_id=" + nationOrAllianceOrGuild.getId(), null, "#TAX", null).toSlashCommand(false));
         }
 
-        double[] total = escrowed != null ? escrowed.clone() : new double[ResourceType.values.length];
-        double[] totalNoGrants = new double[ResourceType.values.length];
-        double[] taxAndDeposits = new double[ResourceType.values.length];
-        Map<DepositType, double[]> categorized = new HashMap<>();
+        String title = "Deposits for: " + nationOrAllianceOrGuild.getQualifiedName();
+        Map.Entry<double[], String> balanceBody = PnwUtil.createDepositEmbed(db, nationOrAllianceOrGuild, accountDeposits, showTaxesSeparately, escrowed, escrowExpire, condensedFormat);
+        double[] balance = balanceBody.getKey();
+        String body = balanceBody.getValue();
+        Map<String, Map.Entry<CommandRef, Boolean>> buttons = new LinkedHashMap<>();
 
-        for (Map.Entry<DepositType, double[]> entry : accountDeposits.entrySet()) {
-            DepositType type = entry.getKey();
-            double[] existing = categorized.computeIfAbsent(type, f -> new double[ResourceType.values.length]);
-            double[] current = entry.getValue();
+        if (me != null && nationOrAllianceOrGuild == me) {
+            if (!condensedFormat) {
+                footers.add("Funds default to `#deposit` if no other note is used");
+            }
+            if (Boolean.TRUE.equals(db.getOrNull(GuildKey.RESOURCE_CONVERSION)) && !condensedFormat) {
+                footers.add("You can sell resources to the alliance by depositing with the note `#cash`");
+            }
+//            if (PnwUtil.convertedTotal(balance) > 0 && Boolean.TRUE.equals(db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW))) {
+//                if (Roles.ECON_WITHDRAW_SELF.has(author, db.getGuild())) {
+//                    footers.add("To withdraw, use: `" + CM.transfer.self.cmd.toSlashMention() + "` ");
+//                }
+//            }
+        }
+        boolean econStaff = Roles.ECON_STAFF.has(author, guild);
+        boolean econ = Roles.ECON.has(author, guild);
 
-            for (int i = 0 ; i < existing.length; i++) {
-                existing[i] += current[i];
-                total[i] += current[i];
-                if (type != DepositType.GRANT) {
-                    totalNoGrants[i] += current[i];
-                    if (type != DepositType.LOAN) {
-                        taxAndDeposits[i] += current[i];
+        if (nationOrAllianceOrGuild.isNation()) {
+            boolean canWithdraw = econ || (PnwUtil.convertedTotal(balance) > 0 && Boolean.TRUE.equals(db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW)) && Roles.ECON_WITHDRAW_SELF.has(author, guild));
+            if (canWithdraw) {
+                // add button, add note
+                if (me != null && me.getId() == nationOrAllianceOrGuild.getId()) {
+                    buttons.put("withdraw",
+                            Map.entry(
+                                    CM.transfer.self.cmd.create("", DepositType.DEPOSIT.name(), null, null, null, null, null, null, null, null, null, null, null, null),
+                                    true));
+                }
+                buttons.put("withdraw elsewhere",
+                        Map.entry(
+                                CM.transfer.resources.cmd.create("", "", DepositType.DEPOSIT.name(), nationOrAllianceOrGuild.getQualifiedId(), null, null, null, null, null, null, null, null, null, null, null),
+                                true));
+                footers.add("To withdraw: " + CM.transfer.self.cmd.toSlashMention() + " or " + CM.transfer.resources.cmd.toSlashMention() + " ");
+            }
+            boolean canEscrow = escrowed != null && !ResourceType.isZero(escrowed) && Roles.ECON_WITHDRAW_SELF.has(author, guild);
+            if (escrowed != null && !ResourceType.isZero(escrowed)) {
+                if (Roles.ECON_WITHDRAW_SELF.has(author, guild)) {
+                    // add button, add note
+                    buttons.put("withdraw escrow", Map.entry(CM.escrow.withdraw.cmd.create(nationOrAllianceOrGuild.getQualifiedId(), "", null), true));
+                } else if (!condensedFormat) {
+                    footers.add("You do not have permission to withdraw escrowed funds");
+                }
+            }
+        } else if (nationOrAllianceOrGuild.isAlliance()) {
+            if (econ) {
+                buttons.put("withdraw",
+                        Map.entry(
+                                CM.transfer.resources.cmd.create("", "", DepositType.IGNORE.name(), nationOrAllianceOrGuild.getQualifiedId(), null, null, null, null, null, null, null, null, null, null, null),
+                                true));
+                footers.add("To withdraw: " + CM.transfer.resources.cmd.toSlashMention() + " with `#ignore` as note");
+            }
+        } else if (nationOrAllianceOrGuild.isTaxid()) {
+            buttons.put("withdraw",
+                    Map.entry(
+                            CM.transfer.resources.cmd.create("", "", "", nationOrAllianceOrGuild.getQualifiedId(), null, null, nationOrAllianceOrGuild.getQualifiedName(), null, null, null, null, null, null, null, null),
+                            true));
+            footers.add("To withdraw: " + CM.transfer.resources.cmd.toSlashMention() + " with `taxaccount: " + nationOrAllianceOrGuild.getQualifiedName() + "`");
+
+            if (econ) {
+                footers.add("To add balance: " + CM.deposits.add.cmd.toSlashMention() + " with `accounts: " + nationOrAllianceOrGuild.getQualifiedName() + "`");
+            }
+        } else if (nationOrAllianceOrGuild.isGuild()) {
+            // trade deposit
+            if (econ) {
+                buttons.put("withdraw",
+                        Map.entry(
+                                CM.transfer.resources.cmd.create("", "", DepositType.IGNORE.name(), null, null, null, null, null, null, null, null, null, null, null, null),
+                                true));
+                footers.add("To withdraw: " + CM.transfer.resources.cmd.toSlashMention() + " with `#ignore` as note");
+                Map.Entry<GuildDB, Integer> offshore = db.getOffshoreDB();
+                if (offshore != null) {
+                    Set<Integer> aaIds = db.getAllianceIds();
+                    String note = aaIds.isEmpty() ? "#guild=" + guild.getIdLong() : "#alliance=" + aaIds.iterator().next();
+                    footers.add("Send to " + PnwUtil.getMarkdownUrl(offshore.getValue(), true) + " with note `" + note + "` to offshore\n" +
+                            "Or " + MarkupUtil.markdownUrl("send a trade", "https://github.com/xdnw/locutus/wiki/banking#for-my-corporation"));
+                }
+            }
+        }
+
+        if (!showTaxesSeparately && (nationOrAllianceOrGuild.isNation() || nationOrAllianceOrGuild.isTaxid())) {
+            // add footer and button for showing separately
+            String itemziedSetting = !econ ? "" : "or " + GuildKey.DISPLAY_ITEMIZED_DEPOSITS.getCommandMention() + " ";
+            if (!condensedFormat) {
+                footers.add("Use `showTaxesSeparately: True` " + itemziedSetting + "for a breakdown");
+            }
+            buttons.put("breakdown",
+                    Map.entry(
+                            CM.deposits.check.cmd.create(
+                                    nationOrAllianceOrGuild.getQualifiedId(),
+                                    offshoreIds == null || offshoreIds.isEmpty() ? null : StringMan.join(offshoreIds, ","),
+                                    timeCutoff != null && timeCutoff > 0 ? "timestamp:" + timeCutoff : null,
+                                    includeBaseTaxes ? "true" : null,
+                                    ignoreInternalOffsets ? "true" : null,
+                                    "true",
+                                    replyInDMs ? "true" : null,
+                                    includeExpired ? "true" : null,
+                                    includeIgnored ? "true" : null,
+                                    hideEscrowed ? "true" : null
+                            ), false));
+        }
+
+        boolean canOffshore = db.isValidAlliance() && (Boolean.TRUE.equals(GuildKey.MEMBER_CAN_OFFSHORE.getOrNull(db)) || Roles.ECON_STAFF.has(author, guild));
+        if (canOffshore && (nationOrAllianceOrGuild.isNation() || nationOrAllianceOrGuild.isAlliance())) {
+            Map.Entry<GuildDB, Integer> offshore = db.getOffshoreDB();
+            if (offshore != null) {
+                buttons.put("offshore",
+                        Map.entry(
+                                CM.offshore.send.cmd,
+                                false));
+                if (!condensedFormat) {
+                    if (GuildKey.API_KEY.getOrNull(db) != null) {
+                        footers.add("To offshore: " + CM.offshore.send.cmd.toSlashMention() + "");
+                    } else {
+                        footers.add("To offshore, send to " + PnwUtil.getMarkdownUrl(offshore.getValue(), true) + "");
                     }
                 }
             }
         }
 
-        footers.add("value is based on current market prices");
-
-        if (showTaxesSeparately == Boolean.TRUE || (db.getOrNull(GuildKey.DISPLAY_ITEMIZED_DEPOSITS) == Boolean.TRUE)) {
-            if (categorized.containsKey(DepositType.DEPOSIT)) {
-                response.append("#DEPOSIT: (worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.DEPOSIT))) + ")");
-                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.DEPOSIT))).append("``` ");
-            }
-            if (categorized.containsKey(DepositType.TAX)) {
-                response.append("#TAX (worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.TAX))) + ")");
-                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.TAX))).append("``` ");
-            } else if (nationOrAllianceOrGuild.isNation()) {
-                footers.add("No tax records are added to deposits");
-            }
-            if (categorized.containsKey(DepositType.LOAN)) {
-                response.append("#LOAN/#GRANT (worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.LOAN))) + ")");
-                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.LOAN))).append("``` ");
-            }
-            if (categorized.containsKey(DepositType.GRANT)) {
-                response.append("#EXPIRE (worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.GRANT))) + ")");
-                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.GRANT))).append("``` ");
-            }
-            if (escrowed != null && !ResourceType.isZero(escrowed)) {
-                response.append("ESCROWED: (worth: $" + MathMan.format(PnwUtil.convertedTotal(escrowed)) + ")");
-                if (escrowExpire > 0) {
-                    response.append(" expires: " + DiscordUtil.timestamp(escrowExpire, null));
-                }
-                response.append("\n```").append(PnwUtil.resourcesToString(escrowed)).append("``` ");
-            }
-            if (categorized.size() > 1) {
-                response.append("Total: (worth: $" + MathMan.format(PnwUtil.convertedTotal(total)) + ")");
-                response.append("\n```").append(PnwUtil.resourcesToString(total)).append("``` ");
-            }
-        } else {
-            String totalTitle = "Total (`#expire`|`#loan`|`#tax`|`#deposit`: worth $";
-            String noGrantTitle = "Excluding `#expire` (worth: $";
-            String safekeepTitle = "Safekeep (`#tax`|`#deposit`: worth $";
-            boolean hasPriorCategory = false;
-            if (categorized.containsKey(DepositType.GRANT)) {
-                response.append(totalTitle + MathMan.format(PnwUtil.convertedTotal(total)) + ")");
-                response.append("\n```").append(PnwUtil.resourcesToString(total)).append("``` ");
-                footers.add("Unlike loans, debt from grants will expire if you stay (see the transaction for the timeframe)");
-                hasPriorCategory = true;
-            }
-            if (categorized.containsKey(DepositType.LOAN)) {
-                response.append((hasPriorCategory ? noGrantTitle : totalTitle) + MathMan.format(PnwUtil.convertedTotal(totalNoGrants)) + ")");
-                response.append("\n```").append(PnwUtil.resourcesToString(totalNoGrants)).append("``` ");
-                hasPriorCategory = true;
-            }
-
-            response.append((hasPriorCategory ? safekeepTitle : totalTitle) + MathMan.format(PnwUtil.convertedTotal(taxAndDeposits)) + ")");
-            response.append("\n```").append(PnwUtil.resourcesToString(taxAndDeposits)).append("``` ");
-            if (escrowed != null && !ResourceType.isZero(escrowed)) {
-                response.append("\nEscrowed: (worth: $" + MathMan.format(PnwUtil.convertedTotal(escrowed)) + ")");
-                if (escrowExpire > 0) {
-                    response.append(" expires: " + DiscordUtil.timestamp(escrowExpire, null));
-                }
-                response.append("\n```").append(PnwUtil.resourcesToString(escrowed)).append("``` ");
-            }
-        }
-        if (me != null && nationOrAllianceOrGuild == me) {
-            footers.add("Funds default to #deposit if no other note is used");
-            if (Boolean.TRUE.equals(db.getOrNull(GuildKey.RESOURCE_CONVERSION))) {
-                footers.add("You can sell resources to the alliance by depositing with the note #cash");
-            }
-            if (PnwUtil.convertedTotal(total) > 0 && Boolean.TRUE.equals(db.getOrNull(GuildKey.MEMBER_CAN_WITHDRAW))) {
-                Role role = Roles.ECON_WITHDRAW_SELF.toRole(db.getGuild());
-                if (db.getGuild().getMember(author).getRoles().contains(role)) {
-                    footers.add("To withdraw, use: `" + CM.transfer.self.cmd.toSlashMention() + "` ");
-                }
-            }
-        }
-        if (escrowed != null && !ResourceType.isZero(escrowed)) {
-            footers.add("Use: " + CM.escrow.withdraw.cmd.toSlashMention());
-        }
+        StringBuilder response = new StringBuilder(body);
 
         if (!footers.isEmpty()) {
+            if (condensedFormat) {
+                response.append("\n**Tips:**\n");
+            } else {
+                response.append("\n## Tips:\n");
+            }
             for (int i = 0; i < footers.size(); i++) {
                 String footer = footers.get(i);
-                response.append("\n`note" + (i == 0 ? "" : i)).append(": " + footer + "`");
+                response.append("- " + footer + "\n");
             }
         }
 
         IMessageIO output = replyInDMs ? new DiscordChannelIO(RateLimitUtil.complete(author.openPrivateChannel()), null) : channel;
-        CompletableFuture<IMessageBuilder> msgFuture = output.send(response.toString());
+
+        IMessageBuilder msg = output.create().embed(title, response.toString());
+        for (Map.Entry<String, Map.Entry<CommandRef, Boolean>> entry : buttons.entrySet()) {
+            String label = entry.getKey();
+            CommandRef cmd = entry.getValue().getKey();
+            boolean isModal = entry.getValue().getValue();
+            if (isModal) {
+                msg = msg.modal(CommandBehavior.EPHEMERAL, cmd, label);
+            } else {
+                msg = msg.commandButton(CommandBehavior.EPHEMERAL, cmd, label);
+            }
+        }
+
+        CompletableFuture<IMessageBuilder> msgFuture = msg.send();
 
         if (me != null && nationOrAllianceOrGuild.isNation() && nationOrAllianceOrGuild.asNation().getPosition() > 1 && db.isWhitelisted() && db.getOrNull(GuildKey.API_KEY) != null && db.getAllianceIds(true).contains(nationOrAllianceOrGuild.asNation().getAlliance_id())) {
             DBNation finalNation = nationOrAllianceOrGuild.asNation();
             Locutus.imp().getExecutor().submit(new Runnable() {
                 @Override
                 public void run() {
-                    List<String> tips2 = new ArrayList<>();
-                    StringBuilder append = new StringBuilder();
+                    int initialLength = response.length();
                     Map<ResourceType, Double> stockpile = finalNation.getStockpile();
                     if (stockpile != null && !stockpile.isEmpty() && stockpile.getOrDefault(ResourceType.CREDITS, 0d) != -1) {
                         Map<ResourceType, Double> excess = finalNation.checkExcessResources(db, stockpile);
                         if (!excess.isEmpty()) {
-                            tips2.add("Excess can be deposited: " + PnwUtil.resourcesToString(excess));
-                            if (Boolean.TRUE.equals(db.getOrNull(GuildKey.DEPOSIT_INTEREST))) {
-                                List<Transaction2> transactions = finalNation.getTransactions(-1);
-                                long last = 0;
-                                for (Transaction2 transaction : transactions) last = Math.max(transaction.tx_datetime, last);
-                                if (System.currentTimeMillis() - last > TimeUnit.DAYS.toMillis(5)) {
-                                    tips2.add("Deposit frequently to be eligible for interest on your deposits");
-                                }
-                            }
+                            response.append("- Excess can be deposited: ```" + PnwUtil.resourcesToString(excess) + "```\n");
                         }
                     }
                     Map<ResourceType, Double> needed = finalNation.getResourcesNeeded(stockpile, 3, true);
                     if (!needed.isEmpty()) {
-                        tips2.add("Missing resources for the next 3 days: " + PnwUtil.resourcesToString(needed));
+                        response.append("- Missing resources for the next 3 days: ```" + PnwUtil.resourcesToString(needed) + "```\n");
                     }
 
                     if (me != null && me.getNation_id() == finalNation.getNation_id() && Boolean.TRUE.equals(db.getOrNull(GuildKey.MEMBER_CAN_OFFSHORE)) && db.isValidAlliance()) {
@@ -3468,17 +3537,18 @@ public class BankCommands {
                             try {
                                 Map<ResourceType, Double> aaStockpile = me.getAlliance().getStockpile();
                                 if (aaStockpile != null && PnwUtil.convertedTotal(aaStockpile) > 5000000) {
-                                    tips2.add("You MUST offshore funds after depositing `" + CM.offshore.send.cmd.toSlashMention() + "` ");
+                                    response.append("- The alliance bank has funds to offshore\n");
                                 }
                             } catch (Throwable ignore) {}
                         }
                     }
 
-                    if (!tips2.isEmpty()) {
-                        for (String tip : tips2) append.append("\n`tip: " + tip + "`");
-
+                    if (response.length() != initialLength) {
                         try {
-                            msgFuture.get().append(append.toString()).send();
+                            IMessageBuilder msg = msgFuture.get();
+                            if (msg != null && msg.getId() > 0) {
+                                msg.clearEmbeds().embed(title, response.toString()).send();
+                            }
                         } catch (InterruptedException | ExecutionException e) {
                             throw new RuntimeException(e);
                         }
@@ -3604,7 +3674,7 @@ public class BankCommands {
 
         String totalStr = PnwUtil.resourcesToFancyString(aaTotal);
         totalStr += "\n`note:total ignores nations with alliance info disabled`";
-        sheet.attach(channel.create().embed("Nation Stockpiles", totalStr)).send();
+        sheet.attach(channel.create().embed("Nation Stockpiles", totalStr), "stockpiles").send();
         return null;
     }
 
@@ -3683,7 +3753,7 @@ public class BankCommands {
         StringBuilder response = new StringBuilder();
         if (failedFetch) response.append("\nnote: Please set an api key with " + CM.credentials.addApiKey.cmd.toSlashMention() + " to view updated tax brackets");
 
-        sheet.attach(io.create(), response.toString()).send();
+        sheet.attach(io.create(), "tax_brackets", response.toString()).send();
         return null;
     }
 
@@ -3921,7 +3991,7 @@ public class BankCommands {
                         }
                     }
 
-                    response.append("Registered " + offshoreAlliance.getQualifiedName() + " as an offshore. See: https://docs.google.com/document/d/1QkN1FDh8Z8ENMcS5XX8zaCwS9QRBeBJdCmHN5TKu_l8/edit");
+                    response.append("Registered " + offshoreAlliance.getQualifiedId() + " as an offshore. See: https://github.com/xdnw/locutus/wiki/banking");
                     if (aaIds.isEmpty()) {
                         response.append("\n(Your guild id, and the id of your account with the offshore is `" + root.getIdLong() + "`)");
                     }

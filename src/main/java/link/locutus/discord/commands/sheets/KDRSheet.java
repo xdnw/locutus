@@ -183,7 +183,7 @@ public class KDRSheet extends Command {
             e.printStackTrace();
         }
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "kdr").send();
         return null;
     }
 }

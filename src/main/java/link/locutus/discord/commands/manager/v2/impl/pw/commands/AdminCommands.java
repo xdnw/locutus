@@ -1,6 +1,8 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.locutus.wiki.WikiGenHandler;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.RequestTracker;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -36,7 +38,7 @@ import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.DocPrinter2;
+import com.locutus.wiki.CommandWikiPages;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
@@ -51,12 +53,12 @@ import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.EditAllianceTask;
 import link.locutus.discord.util.update.AllianceListener;
-import link.locutus.discord.util.update.NationUpdateProcessor;
 import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.Rank;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
 import link.locutus.discord.util.update.WarUpdateProcessor;
 import link.locutus.discord.web.jooby.WebRoot;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -67,11 +69,12 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
-import rocker.guild.ia.message;
 
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.math.BigInteger;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.security.GeneralSecurityException;
 import java.sql.SQLException;
@@ -90,6 +93,7 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -119,14 +123,51 @@ public class AdminCommands {
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
-    public String showFileQueue() {
+    public String syncDiscordBans() {
+        List<Guild> checkGuilds = new ArrayList<>();
+        for (GuildDB db : Locutus.imp().getGuildDatabases().values()) {
+            if (db.isAlliance()) {
+                checkGuilds.add(db.getGuild());
+            }
+        }
+        List<DiscordBan> toAdd = new ArrayList<>();
+        for (Guild guild : checkGuilds) {
+            Role botRole = guild.getBotRole();
+            if (botRole == null) continue;
+            if (!botRole.hasPermission(Permission.BAN_MEMBERS)) continue;
+            try {
+                List<Guild.Ban> bans = RateLimitUtil.complete(guild.retrieveBanList());
+                for (Guild.Ban ban : bans) {
+                    User user = ban.getUser();
+                    String reason = ban.getReason();
+                    if (reason == null) reason = "";
+
+                    // long user, long server, long date, String reason
+                    DiscordBan discordBan = new DiscordBan(user.getIdLong(), guild.getIdLong(), System.currentTimeMillis(), reason);
+                    toAdd.add(discordBan);
+                }
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+        }
+
+        Locutus.imp().getDiscordDB().addBans(toAdd);
+        return "Done! Saved " + toAdd.size() + " bans.";
+    }
+
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String showFileQueue(@Me IMessageIO io, @Default @Timestamp Long timestamp, @Switch("r") Integer numResults) throws URISyntaxException {
         PageRequestQueue handler = FileUtil.getPageRequestQueue();
         PriorityQueue<PageRequestQueue.PageRequestTask<?>> jQueue = handler.getQueue();
 
         Map<PagePriority, Integer> pagePriorities = new HashMap<>();
         int unknown = 0;
+        int size = 0;
         synchronized (jQueue) {
-            for (PageRequestQueue.PageRequestTask<?> task : jQueue) {
+            ArrayList<PageRequestQueue.PageRequestTask<?>> copy = new ArrayList<>(jQueue);
+            size = copy.size();
+            for (PageRequestQueue.PageRequestTask<?> task : copy) {
                 long priority = task.getPriority();
                 int ordinal = (int) (priority / Integer.MAX_VALUE);
                 if (ordinal >= PagePriority.values.length) unknown++;
@@ -139,16 +180,56 @@ public class AdminCommands {
         List<Map.Entry<PagePriority, Integer>> entries = new ArrayList<>(pagePriorities.entrySet());
         // sort
         entries.sort((o1, o2) -> o2.getValue() - o1.getValue());
+        if (numResults == null) numResults = 25;
 
         StringBuilder sb = new StringBuilder();
-        sb.append("File Queue:\n");
+        sb.append("**File Queue:** " + size + "\n");
         for (Map.Entry<PagePriority, Integer> entry : entries) {
             sb.append(entry.getKey().name()).append(": ").append(entry.getValue()).append("\n");
         }
         if (unknown > 0) {
             sb.append("Unknown: ").append(unknown).append("\n");
         }
-        return sb.toString();
+
+        if (timestamp != null) {
+            RequestTracker tracker = handler.getTracker();
+            Map<String, Integer> byDomain = tracker.getCountByDomain(timestamp);
+            Map<String, Integer> byUrl = tracker.getCountByUrl(timestamp);
+
+            sb.append("\n**By Domain:**\n");
+            int domainI = 1;
+            for (Map.Entry<String, Integer> entry : byDomain.entrySet()) {
+                sb.append("- " + entry.getKey()).append(": ").append(entry.getValue()).append("\n");
+                if (domainI++ >= numResults) break;
+            }
+
+            sb.append("\n**By URL:**\n");
+            int urlI = 1;
+            for (Map.Entry<String, Integer> entry : byUrl.entrySet()) {
+                sb.append("- " + entry.getKey()).append(": ").append(entry.getValue()).append("\n");
+                if (urlI++ >= numResults) break;
+            }
+
+            RequestTracker v3Tracker = PoliticsAndWarV3.getRequestTracker();
+            Map<String, Integer> v3Request = v3Tracker.getCountByDomain(timestamp);
+            if (!v3Request.isEmpty()) {
+                sb.append("\n**V3 By Domain:**\n");
+                int v3I = 1;
+                for (Map.Entry<String, Integer> entry : v3Request.entrySet()) {
+                    sb.append("- " + entry.getKey()).append(": ").append(entry.getValue()).append("\n");
+                    if (v3I++ >= numResults) break;
+                }
+            }
+
+        }
+
+
+        if (numResults > 25) {
+            io.create().file("queue.txt", sb.toString()).send();
+            return null;
+        } else {
+            return sb.toString();
+        }
     }
 
     @Command
@@ -156,26 +237,8 @@ public class AdminCommands {
     public String dumpWiki(@Default String pathRelative) throws IOException, InvocationTargetException, IllegalAccessException {
         if (pathRelative == null) pathRelative = "../locutus.wiki";
         CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
-
-        String commandsStr = DocPrinter2.printCommands(manager.getCommands(), manager.getStore(), manager.getPermisser());
-        String argumentsStr = DocPrinter2.printParsers(manager.getStore());
-        String placeholderStr = DocPrinter2.printPlaceholders(manager.getNationPlaceholders(), manager.getStore());
-        String aaPlaceholderStr = DocPrinter2.printPlaceholders(manager.getNationPlaceholders(), manager.getStore());
-
-        // write commandsStr to file `path` + File.separator + "commands.md"
-        File file = new File(pathRelative + File.separator + "commands.md");
-        Files.write(file.toPath(), commandsStr.getBytes());
-
-        // write argumentsStr   to file `path` + File.separator + "arguments.md"
-        file = new File(pathRelative + File.separator + "arguments.md");
-        Files.write(file.toPath(), argumentsStr.getBytes());
-
-        // write placeholderStr to file `path` + File.separator + "kingdom_placeholders.md"
-        file = new File(pathRelative + File.separator + "nation_placeholders.md");
-        Files.write(file.toPath(), placeholderStr.getBytes());
-
-        file = new File(pathRelative + File.separator + "alliance_placeholders.md");
-        Files.write(file.toPath(), aaPlaceholderStr.getBytes());
+        WikiGenHandler generator = new WikiGenHandler(pathRelative, manager);
+        generator.writeDefaults();
 
         return "Done!";
     }
@@ -217,7 +280,7 @@ public class AdminCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "login_times").send();
         return null;
     }
 
@@ -230,7 +293,7 @@ public class AdminCommands {
         }
         int count = 0;
         // read string from url
-        String csvTabSeparated = FileUtil.readStringFromURL(PagePriority.DISCORD_IDS_ENDPOINT.ordinal(), url);
+        String csvTabSeparated = FileUtil.readStringFromURL(PagePriority.DISCORD_IDS_ENDPOINT, url);
         // split into lines
         String[] lines = csvTabSeparated.split("\n");
         // iterate each line
@@ -479,7 +542,7 @@ public class AdminCommands {
             }
             if ((!result && sendDM) || sendMail) {
                 try {
-                    nation.sendMail(keys, subject, personal);
+                    nation.sendMail(keys, subject, personal, false);
                 } catch (IllegalArgumentException e) {
                     failedToMail.add(nation.getNation_id());
                 }
@@ -826,43 +889,31 @@ public class AdminCommands {
                 "To unregister, use " + CM.role.unregister.cmd.create(locutusRole.name(), null).toSlashCommand() + "";
     }
 
-    public String printApiStats(PoliticsAndWarV2 api) {
-        Map<String, AtomicInteger> methodUsage = api.getMethodUsageStats();
-        List<Map.Entry<String, AtomicInteger>> sorted = new ArrayList<>(methodUsage.entrySet());
-        sorted.sort((o1, o2) -> Integer.compare(o2.getValue().intValue(), o1.getValue().intValue()));
-
-        StringBuilder response = new StringBuilder("API usage by method:\n");
-        for (Map.Entry<String, AtomicInteger> entry : sorted) {
-            response.append("- " + entry.getKey() + ": " + entry.getValue().intValue() + "\n");
-        }
-        response.append("\n\n------------------------\n\nApi stacktraces (>100 calls)");
-        for (Map.Entry<String, AtomicInteger> entry : sorted) {
-            if (entry.getValue().intValue() < 100) break;
-
-            response.append("\n\n**" + entry.getKey() + "** |||| ==== |||| :\n");
-            Set<List<StackTraceElement>> traces = api.getMethodToStacktrace().get(entry.getKey());
-            for (List<StackTraceElement> trace : traces) {
-                response.append("\nTrace:\n" + StringMan.stacktraceToString(trace.toArray(new StackTraceElement[0])));
+    public String printApiStats(ApiKeyPool keys) {
+        Map<String, String> map = new LinkedHashMap<>();
+        for (ApiKeyPool.ApiKey key : keys.getKeys()) {
+            PoliticsAndWarV3 v3 = new PoliticsAndWarV3(ApiKeyPool.create(key));
+            try {
+                ApiKeyDetails stats = v3.getApiKeyStats();
+                map.put(key.getKey(), StringMan.formatJsonLikeText(stats.toString()));
+            } catch (Throwable e) {
+                map.put(key.getKey(), e.getMessage());
             }
-
         }
-        return "```" + response.toString() + "```";
-    }
+        StringBuilder response = new StringBuilder();
 
-    @Command()
-    @RolePermission(value = Roles.ADMIN, root = true)
-    public String rootApiUsageStats() {
-        PoliticsAndWarV2 api = Locutus.imp().getRootPnwApiV2();
-        System.out.println(printApiStats(api));
-        return "Done! (see console)";
+        // Convert map to simple message (newline for each / header)
+        for (Map.Entry<String, String> entry : map.entrySet()) {
+            response.append("**Key `" + entry.getKey() + "`:\n```json\n" + entry.getValue() + "\n```\n\n");
+        }
+        return response.toString();
     }
 
     @Command()
     @RolePermission(value = Roles.ADMIN, root = true)
     public String apiUsageStats(@Me DBAlliance alliance, boolean cached) {
         ApiKeyPool keys = alliance.getApiKeys();
-        PoliticsAndWarV2 api = new PoliticsAndWarV2(keys, Settings.INSTANCE.TEST, cached);
-        System.out.println(printApiStats(api));
+        System.out.println(printApiStats(keys));
         return "Done! (see console)";
     }
 
@@ -890,38 +941,40 @@ public class AdminCommands {
     @Command(desc = "Check if current api keys are valid")
     @RolePermission(value = Roles.ADMIN, root = true)
     public String validateAPIKeys() {
-        Set<String> keys = Locutus.imp().getPnwApiV2().getApiKeyUsageStats().keySet();
-        Map<String, String> failed = new LinkedHashMap<>();
-        Map<String, ApiKeyDetails> success = new LinkedHashMap<>();
-        for (String key : keys) {
-            try {
-                ApiKeyDetails stats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
-                if (stats != null && stats.getNation() != null && stats.getNation().getId() != null) {
-                    success.put(key, stats);
-                } else {
-                    failed.put(key, "Error: null (1)");
-                }
-            } catch (Throwable e) {
-                failed.put(key, e.getMessage());
-            }
-        }
-        StringBuilder response = new StringBuilder();
-        for (Map.Entry<String, String> e : failed.entrySet()) {
-            response.append(e.getKey() + ": " + e.getValue() + "\n");
-        }
-        for (Map.Entry<String, ApiKeyDetails> e : success.entrySet()) {
-            String key = e.getKey();
-            ApiKeyDetails record = e.getValue();
-            int natId = record.getNation().getId();
-            DBNation nation = DBNation.getById(natId);
-            if (nation != null) {
-                response.append(key + ": " + record.toString() + " | " + nation.getNation() + " | " + nation.getAllianceName() + " | " + nation.getPosition() + "\n");
-            } else {
-                response.append(e.getKey() + ": " + e.getValue() + "\n");
-            }
-        }
-        System.out.println(response); // keep
-        return "Done (see console)";
+        // Validate v3 keys used in the guild db?
+        return "TODO";
+//        Set<String> keys = Locutus.imp().getPnwApiV2().getApiKeyUsageStats().keySet();
+//        Map<String, String> failed = new LinkedHashMap<>();
+//        Map<String, ApiKeyDetails> success = new LinkedHashMap<>();
+//        for (String key : keys) {
+//            try {
+//                ApiKeyDetails stats = new PoliticsAndWarV3(ApiKeyPool.builder().addKeyUnsafe(key).build()).getApiKeyStats();
+//                if (stats != null && stats.getNation() != null && stats.getNation().getId() != null) {
+//                    success.put(key, stats);
+//                } else {
+//                    failed.put(key, "Error: null (1)");
+//                }
+//            } catch (Throwable e) {
+//                failed.put(key, e.getMessage());
+//            }
+//        }
+//        StringBuilder response = new StringBuilder();
+//        for (Map.Entry<String, String> e : failed.entrySet()) {
+//            response.append(e.getKey() + ": " + e.getValue() + "\n");
+//        }
+//        for (Map.Entry<String, ApiKeyDetails> e : success.entrySet()) {
+//            String key = e.getKey();
+//            ApiKeyDetails record = e.getValue();
+//            int natId = record.getNation().getId();
+//            DBNation nation = DBNation.getById(natId);
+//            if (nation != null) {
+//                response.append(key + ": " + record.toString() + " | " + nation.getNation() + " | " + nation.getAllianceName() + " | " + nation.getPosition() + "\n");
+//            } else {
+//                response.append(e.getKey() + ": " + e.getValue() + "\n");
+//            }
+//        }
+//        System.out.println(response); // keep
+//        return "Done (see console)";
     }
 
     @Command(desc = "Test your alliance recruitment message by sending it to the bot creator's nation")
@@ -1307,7 +1360,7 @@ public class AdminCommands {
         OffshoreInstance bank = alliance.getBank();
         bank.sync(timestamp, false);
 
-        Locutus.imp().getBankDB().updateBankRecs(Event::post);
+        Locutus.imp().getBankDB().updateBankRecs(false, Event::post);
         return "Done!";
     }
 
@@ -1362,6 +1415,136 @@ public class AdminCommands {
             result.append("\n");
         }
         return result.toString().trim();
+    }
+
+    @Command
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public synchronized String importLinkedBans() throws IOException {
+        Locutus.imp().getNationDB().importMultiBans();
+        return "Done";
+    }
+
+    @Command
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public synchronized String hasSameNetworkAsBan(@Me IMessageIO io, @Me User author, Set<DBNation> nations, @Switch("e") boolean listExpired, @Switch("f") boolean forceUpdate) throws IOException {
+        if (forceUpdate && nations.size() > 300 && !Roles.ADMIN.hasOnRoot(author)) {
+            throw new IllegalArgumentException("Too many nations to update");
+        }
+        Map<Integer, BigInteger> latestUids = Locutus.imp().getDiscordDB().getLatestUidByNation();
+        Map<BigInteger, Set<Integer>> uidsByNation = new HashMap<>();
+        Map<BigInteger, Set<DBNation>> uidsByNationExisting = new HashMap<>();
+        for (Map.Entry<Integer, BigInteger> entry : latestUids.entrySet()) {
+            BigInteger uid = entry.getValue();
+            int nationId = entry.getKey();
+            uidsByNation.computeIfAbsent(uid, k -> new HashSet<>()).add(nationId);
+            DBNation nation = DBNation.getById(nationId);
+            if (nation != null) {
+                uidsByNationExisting.computeIfAbsent(uid, k -> new HashSet<>()).add(nation);
+            }
+        }
+
+        // remove uidsBynationExisting when values size <= 1
+        uidsByNationExisting.entrySet().removeIf(entry -> entry.getValue().size() <= 1);
+        uidsByNationExisting.entrySet().removeIf(entry -> {
+            boolean contains = false;
+            for (DBNation nation : entry.getValue()) {
+                if (nations.contains(nation)) {
+                    contains = true;
+                    break;
+                }
+            }
+            return !contains;
+        });
+
+        if (forceUpdate && uidsByNationExisting.size() > 0) {
+            Set<DBNation> nationsToUpdate = new HashSet<>();
+
+            CompletableFuture<IMessageBuilder> msgFuture = io.sendMessage("Updating...");
+            IMessageBuilder msg = null;
+
+            long start = System.currentTimeMillis();
+            for (Set<DBNation> nationSet : uidsByNationExisting.values()) {
+                nationsToUpdate.addAll(nationSet);
+            }
+            int i = 1;
+            for (DBNation nation : nationsToUpdate) {
+                if (System.currentTimeMillis() - start > 10000) {
+                    msg = io.updateOptionally(msgFuture, "Updating " + nation.getNation() + "(" + i + "/" + nationsToUpdate.size() + ")");
+                    start = System.currentTimeMillis();
+                }
+                nation.fetchUid(true);
+                i++;
+            }
+            if (msg != null && msg.getId() > 0) {
+                io.delete(msg.getId());
+            }
+            return hasSameNetworkAsBan(io, author, nations, listExpired, false);
+        }
+
+        // get the bans
+        Map<Integer, DBBan> bans = Locutus.imp().getNationDB().getBansByNation();
+
+        Map<DBNation, Set<DBBan>> sameNetworkBans = new HashMap<>();
+
+        for (DBNation nation : nations) {
+            BigInteger uid = latestUids.get(nation.getId());
+            if (uid == null) continue;
+            Set<Integer> nationIds = uidsByNation.get(uid);
+
+            List<DBBan> natBans = nation.getBans();
+            if (!listExpired) natBans.removeIf(DBBan::isExpired);
+
+            if (!natBans.isEmpty()) {
+                sameNetworkBans.put(nation, new HashSet<>(natBans));
+            }
+
+            for (int id : nationIds) {
+                if (id == nation.getId()) continue;
+                DBBan ban = bans.get(id);
+                if (ban != null && (listExpired || !ban.isExpired())) {
+                    sameNetworkBans.computeIfAbsent(nation, k -> new HashSet<>()).add(ban);
+                }
+            }
+        }
+
+        StringBuilder response = new StringBuilder();
+
+        if (!uidsByNationExisting.isEmpty()) {
+            response.append("## Active nations sharing the same network:\n");
+            for (Map.Entry<BigInteger, Set<DBNation>> entry : uidsByNationExisting.entrySet()) {
+                response.append(entry.getKey().toString(16)).append(":\n");
+                for (DBNation nation : entry.getValue()) {
+                    response.append("- ").append(nation.getNationUrl()).append("\n");
+                }
+            }
+            response.append("\n");
+        }
+        if (!sameNetworkBans.isEmpty()) {
+            response.append("## Bans on the same network:\n");
+            for (Map.Entry<DBNation, Set<DBBan>> entry : sameNetworkBans.entrySet()) {
+                DBNation nation = entry.getKey();
+                if (!nations.contains(nation)) continue;
+                // Key then dot points, with nation url
+                response.append(entry.getKey().getNationUrl()).append(":\n");
+                for (DBBan ban : entry.getValue()) {
+                    StringBuilder banStr = new StringBuilder("nation:" + ban.nation_id);
+                    if (ban.discord_id > 0) {
+                        banStr.append(" discord:").append(ban.discord_id);
+                    }
+                    if (ban.isExpired()) {
+                        banStr.append(" (expired)");
+                    } else {
+                        banStr.append(" (expires ").append(TimeUtil.secToTime(TimeUnit.MILLISECONDS, ban.getTimeRemaining())).append(")");
+                    }
+                    banStr.append(": `" + ban.reason.replace("\n", " ") + "`");
+                    response.append("- ").append(banStr).append("\n");
+                }
+            }
+        }
+
+        response.append("\nDone!");
+
+        return response.toString();
     }
 
     @Command

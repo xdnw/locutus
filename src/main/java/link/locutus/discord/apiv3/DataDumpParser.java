@@ -438,7 +438,7 @@ public class DataDumpParser {
             }
         }
 
-        Locutus.imp().runEventsAsync(Locutus.imp().getWarDb()::updateAllWarsV2);
+        Locutus.imp().runEventsAsync(Locutus.imp().getWarDb()::updateAllWars);
         Locutus.imp().runEventsAsync(Locutus.imp().getWarDb()::updateAttacks);
 
         Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWarsSince(minDate - TimeUnit.DAYS.toMillis(5));
@@ -491,7 +491,7 @@ public class DataDumpParser {
         }
 
         // add bank recs
-        Locutus.imp().runEventsAsync(Locutus.imp().getBankDB()::updateBankRecs);
+        Locutus.imp().runEventsAsync(f -> Locutus.imp().getBankDB().updateBankRecs(false, f));
         for (Transaction2 transaction : Locutus.imp().getBankDB().getTransactions(minDate, false)) {
             tracker.bankEvent(new TransactionEvent(transaction));
         }
@@ -507,8 +507,6 @@ public class DataDumpParser {
         })) {
             tracker.onBaseball(new BaseballGameEvent(game));
         }
-
-        double[] EMPTY = ResourceType.getBuffer();
 
         Map<Long, Map<Continent, Double>> radsByDay = Locutus.imp().getNationDB().getRadiationByTurns();
 
@@ -800,7 +798,7 @@ public class DataDumpParser {
 
     public Map<Long, File> load(String url, File savePath) throws IOException, ParseException {
         Map<Long, File> filesByDate = new LinkedHashMap<>();
-        Document dom = Jsoup.parse(FileUtil.readStringFromURL(PagePriority.DATA_DUMP.ordinal(), url));
+        Document dom = Jsoup.parse(FileUtil.readStringFromURL(PagePriority.DATA_DUMP, url));
         for (Element a : dom.select("a")) {
             String subUrl = a.attr("href");
             if (subUrl != null && subUrl.contains(".zip")) {
@@ -818,7 +816,7 @@ public class DataDumpParser {
 
     private void download(String fileUrl, File savePath) throws IOException {
         System.out.println("Saving " + savePath);
-        byte[] bytes = FileUtil.readBytesFromUrl(PagePriority.DATA_DUMP.ordinal(), fileUrl);
+        byte[] bytes = FileUtil.readBytesFromUrl(PagePriority.DATA_DUMP, fileUrl);
         assert bytes != null;
         try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(bytes))) {
             ZipEntry entry = in.getNextEntry();

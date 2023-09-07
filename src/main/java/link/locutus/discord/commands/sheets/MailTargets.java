@@ -264,7 +264,7 @@ public class MailTargets extends Command {
             subject = entry.getValue().getKey();
             String body = entry.getValue().getValue();
 
-            attacker.sendMail(keys, subject, body);
+            attacker.sendMail(keys, subject, body, true);
 
             if (flags.contains('d')) {
                 String markup = MarkupUtil.htmlToMarkdown(body);

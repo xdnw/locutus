@@ -15,6 +15,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
 
+import javax.annotation.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -25,12 +26,14 @@ import java.util.function.Function;
 public class ProjectTemplate extends AGrantTemplate<Void>{
     private final Project project;
     public ProjectTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
-        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), Projects.values[rs.getInt("project")]);
+        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), Projects.get(rs.getInt("project")),
+                rs.getLong("expire"),
+                rs.getBoolean("allow_ignore"));
     }
 
     // create new constructor  with typed parameters instead of resultset
-    public ProjectTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, Project project) {
-        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated);
+    public ProjectTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, Project project, long expiryOrZero, boolean allowIgnore) {
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore);
         this.project = project;
     }
 
@@ -42,8 +45,8 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
     }
 
     @Override
-    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal) {
-        return CM.grant_template.create.project.cmd.create(name, allowedRecipients, project.name(), econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, null).toString();
+    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowIgnore) {
+        return CM.grant_template.create.project.cmd.create(name, allowedRecipients, project.name(), econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, allowExpire, allowIgnore, null).toString();
 
     }
 
@@ -63,7 +66,7 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver, Void parsed) {
+    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Void parsed) {
         List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, parsed);
 
         // has a timer
@@ -75,12 +78,12 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
         }));
 
         // received project already
-        list.add(new Grant.Requirement("Received project " + project + " already", false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Received transfer for " + project + " already", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
                 String findNote = "#project=" + project.name().toLowerCase();
                 String findNotr2 = "#project=" + project.ordinal();
-                for (Transaction2 transaction : nation.getTransactions()) {
+                for (Transaction2 transaction : nation.getTransactions(true)) {
                     if (transaction.note == null) continue;
                     String noteLower = transaction.note.toLowerCase();
                     if (noteLower.contains(findNote) || noteLower.contains(findNotr2)) return false;
@@ -121,20 +124,24 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
         }));
 
         // max city
-        list.add(new Grant.Requirement("Project requires at most " + project.maxCities() + " cities", false, new Function<DBNation, Boolean>() {
-            @Override
-            public Boolean apply(DBNation nation) {
-                return project.maxCities() <= 0 || nation.getCities() <= project.maxCities();
-            }
-        }));
+        if (project.maxCities() != 0) {
+            list.add(new Grant.Requirement("Project requires at most " + project.maxCities() + " cities", false, new Function<DBNation, Boolean>() {
+                @Override
+                public Boolean apply(DBNation nation) {
+                    return project.maxCities() <= 0 || nation.getCities() <= project.maxCities();
+                }
+            }));
+        }
 
         // min city
-        list.add(new Grant.Requirement("Project requires at least " + project.maxCities() + " cities", false, new Function<DBNation, Boolean>() {
-            @Override
-            public Boolean apply(DBNation nation) {
-                return project.requiredCities() <= 0 || nation.getCities() >= project.requiredCities();
-            }
-        }));
+        if (project.maxCities() != 0) {
+            list.add(new Grant.Requirement("Project requires at least " + project.maxCities() + " cities", false, new Function<DBNation, Boolean>() {
+                @Override
+                public Boolean apply(DBNation nation) {
+                    return project.requiredCities() <= 0 || nation.getCities() >= project.requiredCities();
+                }
+            }));
+        }
 
         // domestic policy is technological advancement
         list.add(new Grant.Requirement("Domestic policy must be technological advancement", true, new Function<DBNation, Boolean>() {
@@ -156,7 +163,7 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setInt(13, project.ordinal());
+        stmt.setInt(15, project.ordinal());
     }
 
     @Override

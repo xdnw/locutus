@@ -13,7 +13,6 @@ import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.info.optimal.OptimalBuild;
-import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
@@ -75,7 +74,6 @@ import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
-import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.channel.unions.DefaultGuildChannelUnion;
 import net.dv8tion.jda.api.requests.restaction.InviteAction;
@@ -104,7 +102,7 @@ public class UnsortedCommands {
             @Arg("Nations to list in the sheet\n" +
                     "Defaults to the guild alliance")
             @Default NationList nations,
-            @Default @Arg("A space separated list of columns to add to the sheet\n" +
+            @Default @TextArea @Arg("A space separated list of columns to add to the sheet\n" +
                     "Can include NationAttribute as placeholders in columns\n" +
                     "All NationAttribute placeholders must be surrounded by {} e.g. {nation}")
             List<String> addColumns,
@@ -199,7 +197,7 @@ public class UnsortedCommands {
         sheet.clear("A:ZZ");
         sheet.set(0, 0);
 
-        sheet.attach(channel.create()).send();
+        sheet.attach(channel.create(), "spy_free").send();
     }
 
     @Command(desc = "Get an alert on discord when a target logs in within the next 5 days\n" +
@@ -348,7 +346,7 @@ public class UnsortedCommands {
 
         IMessageBuilder msg = io.create();
         msg.append("Notes:\n- " + StringMan.join(messages, "\n- "));
-        sheet.attach(msg).send();
+        sheet.attach(msg, "tax_revenue").send();
         return null;
     }
 
@@ -368,7 +366,7 @@ public class UnsortedCommands {
             totals = alliance.getStockpile();
         } else {
             DBNation nation = nationOrAlliance.asNation();
-            if (nation != me) {
+            if (nation.getId() != me.getId()) {
                 boolean noPerm = false;
                 if (!Roles.ECON.has(author, guild) && !Roles.MILCOM.has(author, guild) && !Roles.INTERNAL_AFFAIRS.has(author, guild) && !Roles.INTERNAL_AFFAIRS_STAFF.has(author, guild)) {
                     noPerm = true;
@@ -632,9 +630,20 @@ public class UnsortedCommands {
     }
 
     public enum ClearRolesEnum {
-        UNUSED,
-        ALLIANCE,
-        UNREGISTERED
+        UNUSED("Alliance name roles which have no members"),
+        ALLIANCE("All alliance name roles"),
+        UNREGISTERED("Alliance name roles with no valid in-game alliance");
+
+        private final String desc;
+
+        ClearRolesEnum(String s) {
+            this.desc = s;
+        }
+
+        @Override
+        public String toString() {
+            return name() + ": `" + desc + "`";
+        }
     }
 
     @Command(desc = "Clear the bot managed roles on discord")
@@ -699,7 +708,8 @@ public class UnsortedCommands {
     @RolePermission(Roles.ADMIN)
     public synchronized String clearNicks(@Me Guild guild,
                                           @Arg("Undo the last recent use of this command")
-                                          @Default boolean undo) throws ExecutionException, InterruptedException {
+                                          @Default Boolean undo) throws ExecutionException, InterruptedException {
+        if (undo == null) undo = false;
         if (previousNicksGuild != guild.getIdLong()) {
             previousNicksGuild = guild.getIdLong();
             previous.clear();
@@ -1296,7 +1306,7 @@ public class UnsortedCommands {
 
         for (DBNation nation : nations) {
             if (!db.isAllianceId(nation.getAlliance_id())) {
-                return "Nation `" + nation.getName() + "` is in " + nation.getAlliance().getQualifiedName() + " but this server is registered to: "
+                return "Nation `" + nation.getName() + "` is in " + nation.getAlliance().getQualifiedId() + " but this server is registered to: "
                         + StringMan.getString(db.getAllianceIds()) + "\nSee: " + CM.settings.info.cmd.toSlashMention() + " with key `" + GuildKey.ALLIANCE_ID.name() + "`";
             }
         }
@@ -1354,7 +1364,7 @@ public class UnsortedCommands {
                     markdown += ("\n\nPlease get in contact with us via discord for assistance");
                     markdown = markdown.replace("\n", "<br>").replace(" STARPLACEHOLDER ", " * ");
 
-                    JsonObject response = nation.sendMail(keys, title, markdown);
+                    JsonObject response = nation.sendMail(keys, title, markdown, false);
                     String userStr = nation.getNation() + "/" + nation.getNation_id();
                     resultMsg.append("\n" + userStr + ": " + response);
                 }
@@ -1483,7 +1493,7 @@ public class UnsortedCommands {
                 depositsAccount != null ? depositsAccount.getUrl() : null,
                 useAllianceBank != null ? useAllianceBank.getUrl() : null,
                 useOffshoreAccount != null ? useOffshoreAccount.getUrl() : null,
-                taxAccount != null ? taxAccount.getQualifiedName() : null,
+                taxAccount != null ? taxAccount.getQualifiedId() : null,
                 existingTaxAccount + "",
                 expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
                 Boolean.FALSE.toString(),
@@ -1607,7 +1617,7 @@ public class UnsortedCommands {
         }
         if (sendTo == null) {
             SimpleNationList tmp = new SimpleNationList(Collections.singleton(me));
-            tmp.setFilter(me.getQualifiedName());
+            tmp.setFilter(me.getQualifiedId());
             sendTo = tmp;
         }
         if (sendDM && !Roles.MAIL.hasOnRoot(author)) {
@@ -1698,7 +1708,7 @@ public class UnsortedCommands {
             }
             if ((!result && sendDM) || sendMail) {
                 try {
-                    nation.sendMail(keys, subject, personal);
+                    nation.sendMail(keys, subject, personal, false);
                 } catch (IllegalArgumentException | IOException e) {
                     failedToMail.add(nation.getNation_id());
                 }
@@ -1755,6 +1765,6 @@ public class UnsortedCommands {
             msg.commandButton(CommandBehavior.EPHEMERAL, cmd, "view").send();
         }
 
-        return "Done. See " + CM.announcement.find.cmd.toSlashMention();
+        return "Done. See " + CM.announcement.find.cmd.toSlashMention() + "\n" + author.getAsMention();
     }
 }

@@ -17,6 +17,7 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
 import net.dv8tion.jda.api.entities.Role;
 
+import javax.annotation.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -31,12 +32,14 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     private final boolean allow_rebuild;
 
     public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
-        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), rs.getLong("level"), rs.getBoolean("only_new_cities"), rs.getInt("require_n_offensives"), rs.getBoolean("allow_rebuild"));
+        this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), rs.getLong("level"), rs.getBoolean("only_new_cities"), rs.getInt("require_n_offensives"), rs.getBoolean("allow_rebuild"),
+                rs.getLong("expire"),
+                rs.getBoolean("allow_ignore"));
     }
 
     // create new constructor  with typed parameters instead of resultset
-    public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long level, boolean onlyNewCities, int require_n_offensives, boolean allow_rebuild) {
-        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated);
+    public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long level, boolean onlyNewCities, int require_n_offensives, boolean allow_rebuild, long expiryOrZero, boolean allowIgnore) {
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore);
         this.level = level;
         this.onlyNewCities = onlyNewCities;
         this.require_n_offensives = require_n_offensives;
@@ -73,10 +76,10 @@ public class InfraTemplate extends AGrantTemplate<Double>{
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setLong(13, level);
-        stmt.setBoolean(14, onlyNewCities);
-        stmt.setLong(15, require_n_offensives);
-        stmt.setBoolean(16, allow_rebuild);
+        stmt.setLong(15, level);
+        stmt.setBoolean(16, onlyNewCities);
+        stmt.setLong(17, require_n_offensives);
+        stmt.setBoolean(18, allow_rebuild);
     }
 
     @Override
@@ -92,15 +95,16 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     }
 
     @Override
-    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal) {
+    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowIgnore) {
         return CM.grant_template.create.infra.cmd.create(name, allowedRecipients,
                 level + "", onlyNewCities ? "true" : null,
                 require_n_offensives > 0 ? "true" : null,
-                allow_rebuild ? "true" : null, econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, null).toString();
+                allow_rebuild ? "true" : null, econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, allowExpire, allowIgnore, null).toString();
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(DBNation sender, DBNation receiver, Double amount) {
+    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Double amount) {
+        if (amount == null) amount = (double) level;
         List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, amount);
 
         if (amount > level) {
@@ -181,7 +185,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
 
     public Map<Integer, Map<Long, Double>> getTopCityInfraGrant(DBNation receiver) {
 
-        List<Transaction2> transactions = receiver.getTransactions(0);
+        List<Transaction2> transactions = receiver.getTransactions(0, true);
 
         Map<Integer, Map<Long, Double>> grants = Grant.getInfraGrantsByCityByDate(receiver, transactions);
 

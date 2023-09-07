@@ -99,14 +99,14 @@ public class MailCommand extends Command implements Noformat {
             ApiKeyPool key;
             if (flags.contains('l') || myKey == null) {
                 if (!Roles.MAIL.has(author, db.getGuild())) {
-                    return "You do not have the role `MAIL` (see " + CM.role.setAlias.cmd.toSlashMention() + " OR use`" + Settings.commandPrefix(false) + "credentials addApiKey` to add your own key.";
+                    return "You do not have the role `MAIL` (see " + CM.role.setAlias.cmd.toSlashMention() + " OR use`" + CM.credentials.addApiKey.cmd.toSlashMention() + "` to add your own key.";
                 }
                 key = db.getMailKey();
             } else {
                 key = ApiKeyPool.builder().addKey(myKey).build();
             }
             if (key == null) {
-                return "No api key found. Please use`" + Settings.commandPrefix(false) + "credentials addApiKey`";
+                return "No api key found. Please use`" + CM.credentials.addApiKey.cmd.toSlashMention() + "`";
             }
 
 
@@ -153,7 +153,7 @@ public class MailCommand extends Command implements Noformat {
                     }
                     start = System.currentTimeMillis();
                 }
-                response.append(nation.sendMail(key, subject, message)).append("\n");
+                response.append(nation.sendMail(key, subject, message, nations.size() == 1)).append("\n");
             }
 
             if (msg != null && msg.getId() > 0) {

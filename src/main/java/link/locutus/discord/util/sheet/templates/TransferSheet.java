@@ -126,7 +126,7 @@ public class TransferSheet {
                     transfer.put(type, transfer.getOrDefault(type, 0d) + amt);
                     continue;
                 } catch (IllegalArgumentException ignore) {}
-                if (rssName.toString().equalsIgnoreCase("cost_raw") || rssName.toString().equalsIgnoreCase("deposit_raw")) {
+                if (rssName.toString().equalsIgnoreCase("cost_raw") || rssName.toString().equalsIgnoreCase("deposit_raw") || rssName.toString().equalsIgnoreCase("resources")) {
                     for (Map.Entry<ResourceType, Double> entry : PnwUtil.parseResources(amtStr.toString()).entrySet()) {
                         transfer.putIfAbsent(entry.getKey(), entry.getValue());
                     }

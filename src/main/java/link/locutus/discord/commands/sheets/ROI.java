@@ -276,7 +276,7 @@ public class ROI extends Command {
             sheet.setHeader(header);
             for (ROIResult result : roiMap) {
                 DBNation nation = result.nation;
-                Map<ResourceType, Double> deposits = PnwUtil.resourcesToMap(nation.getNetDeposits(guildDb));
+                Map<ResourceType, Double> deposits = PnwUtil.resourcesToMap(nation.getNetDeposits(guildDb, false));
                 double depositsConverted = PnwUtil.convertedTotal(deposits);
 
                 header.clear();
@@ -325,7 +325,7 @@ public class ROI extends Command {
             } catch (Throwable e) {
                 e.printStackTrace();
             }
-            sheet.attach(channel.create()).send();
+            sheet.attach(channel.create(), "roi").send();
             return null;
         } else {
             StringBuilder output = new StringBuilder("Weekly ROI (" + days + " days):\n");

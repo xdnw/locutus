@@ -383,7 +383,7 @@ public class IndexPages extends PageHelper {
                 e.printStackTrace();
             }
         }
-        double[] deposits = nation.getNetDeposits(db, -1L);
+        double[] deposits = nation.getNetDeposits(db, -1L, true);
         System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (7)");
 
         List<Announcement.PlayerAnnouncement> announcements = db.getPlayerAnnouncementsByNation(nation.getNation_id(), true);

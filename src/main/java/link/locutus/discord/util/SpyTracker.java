@@ -38,8 +38,8 @@ import java.util.function.Consumer;
 
 public class SpyTracker {
     public SpyTracker() {
-        long delay = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1);
-        Locutus.imp().getCommandManager().getExecutor().schedule(new Runnable() {
+        long delay = TimeUnit.MINUTES.toMillis(1);
+        Locutus.imp().getCommandManager().getExecutor().scheduleWithFixedDelay(new Runnable() {
             @Override
             public void run() {
                 try {
@@ -48,7 +48,7 @@ public class SpyTracker {
                     e.printStackTrace();
                 }
             }
-        }, delay, TimeUnit.MILLISECONDS);
+        }, delay, delay, TimeUnit.MILLISECONDS);
     }
 
     public void loadCasualties(Integer allianceId) {
@@ -58,7 +58,7 @@ public class SpyTracker {
             api = DBAlliance.getOrCreate(allianceId).getApi(AlliancePermission.SEE_SPIES);
             if (api == null) return;
         }
-        List<Nation> nations = api.fetchNations(new Consumer<NationsQueryRequest>() {
+        List<Nation> nations = api.fetchNations(false, new Consumer<NationsQueryRequest>() {
             @Override
             public void accept(NationsQueryRequest f) {
                 f.setVmode(false);
@@ -510,7 +510,7 @@ public class SpyTracker {
         if (activitiesToFlag.isEmpty()) return;
 
         String url = "https://politicsandwar.com/index.php?id=15&keyword=&cat=everything&ob=lastactive&od=DESC&maximum=50&minimum=0&search=Go&vmode=false";
-        String html = FileUtil.readStringFromURL(PagePriority.ACTIVE_PAGE.ordinal(), url);
+        String html = FileUtil.readStringFromURL(PagePriority.ACTIVE_PAGE, url);
 
         List<Integer> nationIds = PnwUtil.getNationsFromTable(html, 0);
         Map<Integer, Integer> nationIdIndex = new HashMap<>();

@@ -32,27 +32,31 @@ public class PnwPusherShardManager {
 
     public void load() {
         this.root = new PnwPusherHandler().connect(null, new Consumer<ConnectionStateChange>() {
-            private long lastFetch = System.currentTimeMillis();
+//            private long lastFetch = System.currentTimeMillis();
             @Override
             public void accept(ConnectionStateChange connectionStateChange) {
-                if (spyTracker != null && connectionStateChange.getPreviousState() == ConnectionState.RECONNECTING) {
-                    if (System.currentTimeMillis() - lastFetch > TimeUnit.MINUTES.toMillis(5)) {
-                        lastFetch = System.currentTimeMillis();
-                    }
-                    Set<Integer> aasToUpdate;
-                    synchronized (runningAlliances) {
-                        aasToUpdate = new HashSet<>(runningAlliances);
-                    }
-                    for (int aaId : aasToUpdate) {
-                        DBAlliance alliance = DBAlliance.get(aaId);
-                        if (alliance == null) continue;
-                        spyTracker.loadCasualties(aaId);
-                    }
-                }
+//                if (spyTracker != null && connectionStateChange.getPreviousState() == ConnectionState.RECONNECTING) {
+//                    if (System.currentTimeMillis() - lastFetch > TimeUnit.MINUTES.toMillis(5)) {
+//                        lastFetch = System.currentTimeMillis();
+//                    }
+//                    Set<Integer> aasToUpdate;
+//                    synchronized (runningAlliances) {
+//                        aasToUpdate = new HashSet<>(runningAlliances);
+//                    }
+//                    for (int aaId : aasToUpdate) {
+//                        DBAlliance alliance = DBAlliance.get(aaId);
+//                        if (alliance == null) continue;
+//                        spyTracker.loadCasualties(aaId);
+//                    }
+//                }
             }
         });
         this.spyTracker = new SpyTracker();
         this.spyTracker.loadCasualties(null);
+    }
+
+    public SpyTracker getSpyTracker() {
+        return spyTracker;
     }
 
     public void setupSubscriptions(DBAlliance alliance) {
@@ -117,7 +121,7 @@ public class PnwPusherShardManager {
             root.subscribeBuilder(Settings.INSTANCE.API_KEY_PRIMARY, Nation.class, PnwPusherEvent.UPDATE).build(nations -> {
                 try {
                     spyTracker.updateCasualties(nations);
-                    Locutus.imp().runEventsAsync(f -> Locutus.imp().getNationDB().updateNations(nations, f));
+                    Locutus.imp().runEventsAsync(f -> Locutus.imp().getNationDB().updateNations(nations, f, -1));
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
@@ -125,7 +129,7 @@ public class PnwPusherShardManager {
             });
             System.out.println("Loading alliances");
             for (DBAlliance alliance : nationDB.getAlliances()) {
-                if (!alliance.getNations(f -> f.active_m() < 10000 && f.getPositionEnum().id > Rank.APPLICANT.id && f.getVm_turns() == 0).isEmpty()) {
+                if (!alliance.getNations(f -> f.active_m() < 7200 && f.getPositionEnum().id > Rank.APPLICANT.id && f.getVm_turns() == 0).isEmpty()) {
                     try {
                         setupSubscriptions(alliance);
                     } catch (Throwable e) {
@@ -159,11 +163,6 @@ public class PnwPusherShardManager {
 //        }
 //
         root.connect();
-    }
-
-    public void onAllianceError(int allianceId){
-        System.out.println("Alliance error " + allianceId);
-        spyTracker.loadCasualties(allianceId);
     }
 
     public String getAllianceKey(int allianceId) {

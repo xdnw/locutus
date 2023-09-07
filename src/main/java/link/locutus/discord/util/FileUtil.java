@@ -1,10 +1,12 @@
 package link.locutus.discord.util;
 
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.util.io.PagePriority;
 import link.locutus.discord.util.io.PageRequestQueue;
 import link.locutus.discord.util.offshore.Auth;
 import org.apache.commons.io.IOUtils;
 import org.eclipse.jetty.util.UrlEncoded;
+import org.springframework.web.client.HttpClientErrorException;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.io.BufferedReader;
@@ -17,19 +19,24 @@ import java.io.UnsupportedEncodingException;
 import java.net.CookieManager;
 import java.net.HttpCookie;
 import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -81,16 +88,20 @@ public final class FileUtil {
         return Thread.currentThread().getContextClassLoader();
     }
 
-    public static <T> T submit(int priority, Supplier<T> task) {
-        return get(pageRequestQueue.submit(task, getPriority(priority)));
+    public static <T> T submit(int priority, int maxBuffer, int maxDelay, Supplier<T> task, String url) {
+        return get(pageRequestQueue.submit(task, getPriority(priority), maxBuffer, maxDelay, url));
+    }
+
+    public static <T> T submit(int priority, int maxBuffer, int maxDelay, Supplier<T> task, URI url) {
+        return get(pageRequestQueue.submit(task, getPriority(priority), maxBuffer, maxDelay, url));
     }
 
     public static PageRequestQueue getPageRequestQueue() {
         return pageRequestQueue;
     }
 
-    public static byte[] readBytesFromUrl(int priority, String urlStr) {
-        return submit(priority, () -> {
+    public static byte[] readBytesFromUrl(PagePriority priority, String urlStr) {
+        return submit(priority.ordinal(), priority.getAllowedBufferingMs(), priority.getAllowableDelayMs(), () -> {
             try (InputStream is = new URL(urlStr).openStream()) {
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 byte[] byteChunk = new byte[4096]; // Or whatever size you want to read in at a time.
@@ -106,30 +117,67 @@ public final class FileUtil {
                 e.printStackTrace ();
                 return null;
             }
-        });
+        }, urlStr);
     }
 
-    public static String readStringFromURL(int priority, String requestURL) throws IOException {
-        return submit(priority, () -> {
+    private static void check409Error(URLConnection connection) throws IOException {
+        if (connection instanceof HttpURLConnection http) {
+            if (http.getResponseCode() == 429) {
+                Integer retryAfter = null;
+                String retry = http.getHeaderField("Retry-After");
+                if (retry != null && MathMan.isInteger(retry)) {
+                    retryAfter = Integer.parseInt(retry);
+                }
+                throw new TooManyRequests("Too many requests", retryAfter);
+            }
+        }
+    }
+
+    public static class TooManyRequests extends RuntimeException {
+        private final Integer retryAfter;
+
+        public TooManyRequests(String message, Integer retryAfter) {
+            super(message);
+            this.retryAfter = retryAfter;
+        }
+
+        public Integer getRetryAfter() {
+            return retryAfter;
+        }
+    }
+
+    public static String readStringFromURL(PagePriority priority, String requestURL) throws IOException {
+        return readStringFromURL(priority.ordinal(), priority.getAllowedBufferingMs(), priority.getAllowableDelayMs(), requestURL);
+    }
+
+    public static String readStringFromURL(int priority, int maxBuffer, int maxDelay, String requestURL) throws IOException {
+        return submit(priority, maxBuffer, maxDelay, () -> {
                 try {
                     URL website = new URL(requestURL);
                     URLConnection connection = website.openConnection();
-                    try (BufferedReader in = new BufferedReader(
-                            new InputStreamReader(connection.getInputStream()))) {
+                    try {
+                        try (BufferedReader in = new BufferedReader(
+                                new InputStreamReader(connection.getInputStream()))) {
 
-                        StringBuilder response = new StringBuilder();
-                        String inputLine;
+                            StringBuilder response = new StringBuilder();
+                            String inputLine;
 
-                        while ((inputLine = in.readLine()) != null) {
-                            response.append(inputLine);
+                            while ((inputLine = in.readLine()) != null) {
+                                response.append(inputLine);
+                            }
+                            return response.toString();
                         }
-                        return response.toString();
+                    } catch (IOException e) {
+                        check409Error(connection);
+                        e.printStackTrace();
+                        throw new RuntimeException(e);
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
-                    return null;
+                    throw new RuntimeException(e);
                 }
-            }
+            },
+            requestURL
         );
     }
 
@@ -139,15 +187,15 @@ public final class FileUtil {
         return split[0] + "?" + UrlEncoded.encodeString(split[1], StandardCharsets.UTF_8);
     }
 
-    public static CompletableFuture<String> readStringFromURL(int priority, String urlStr, Map<String, String> arguments) throws IOException {
+    public static CompletableFuture<String> readStringFromURL(PagePriority priority, String urlStr, Map<String, String> arguments) throws IOException {
         return readStringFromURL(priority, urlStr, arguments, null);
     }
 
-    public static CompletableFuture<String> readStringFromURL(int priority, String urlStr, Map<String, String> arguments, CookieManager msCookieManager) throws IOException {
+    public static CompletableFuture<String> readStringFromURL(PagePriority priority, String urlStr, Map<String, String> arguments, CookieManager msCookieManager) throws IOException {
         return readStringFromURL(priority, urlStr, arguments, true, msCookieManager, i -> {});
     }
 
-    public static CompletableFuture<String> readStringFromURL(int priority, String urlStr, Map<String, String> arguments, boolean post, CookieManager msCookieManager, Consumer<HttpURLConnection> apply) throws IOException {
+    public static CompletableFuture<String> readStringFromURL(PagePriority priority, String urlStr, Map<String, String> arguments, boolean post, CookieManager msCookieManager, Consumer<HttpURLConnection> apply) throws IOException {
         StringJoiner sj = new StringJoiner("&");
         for (Map.Entry<String, String> entry : arguments.entrySet())
             sj.add(URLEncoder.encode(entry.getKey(), "UTF-8") + "="
@@ -179,7 +227,7 @@ public final class FileUtil {
         return requestOrder.incrementAndGet() + Integer.MAX_VALUE * (long) priority;
     }
 
-    public static CompletableFuture<String> readStringFromURL(int priority, String urlStr, byte[] dataBinary, RequestType type, CookieManager msCookieManager, Consumer<HttpURLConnection> apply) {
+    public static CompletableFuture<String> readStringFromURL(PagePriority priority, String urlStr, byte[] dataBinary, RequestType type, CookieManager msCookieManager, Consumer<HttpURLConnection> apply) {
         Supplier<String> fetch = new Supplier<String>() {
             @Override
             public String get() {
@@ -249,6 +297,7 @@ public final class FileUtil {
 
                         return new String(bytes, StandardCharsets.UTF_8);
                     } catch (IOException e) {
+                        check409Error(http);
                         try (InputStream is = http.getErrorStream()) {
                             if (is != null) {
                                 throw new IOException(e.getMessage() + ":\n" + IOUtils.toString(is, StandardCharsets.UTF_8));
@@ -290,7 +339,7 @@ public final class FileUtil {
                     }
                 }
             }
-        }, getPriority(priority));
+        }, getPriority(priority.ordinal()), priority.getAllowedBufferingMs(), priority.getAllowableDelayMs(), urlStr);
         return task;
     }
 }

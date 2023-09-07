@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.war.RaidCommand;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.commands.external.guild.WarRoom;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
@@ -92,6 +93,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -288,7 +290,7 @@ public class WarCommands {
             "Sorted by best nation loot\n" +
             "Defaults to 7d inactive")
     @RolePermission(value = {Roles.MEMBER, Roles.APPLICANT}, any=true)
-    public String raid(@Me DBNation me, @Me GuildDB db, @Me Guild guild, @Me User user, @Me TextChannel channel,
+    public String raid(@Me DBNation me, @Me GuildDB db, @Me Guild guild, @Me User user, @Me IMessageIO channel,
                        @Default("*") Set<DBNation> targets,
                        @Switch("r") @Default("5") Integer numResults,
                        @Switch("a") @Timediff Long activeTimeCutoff,
@@ -300,10 +302,33 @@ public class WarCommands {
                        @Switch("s") Integer defensiveSlots,
                        @Switch("d") boolean ignoreDNR,
                        @Switch("l") boolean ignoreBankLoot,
-                       @Switch("c") boolean ignoreCityRevenue) {
-        throw new UnsupportedOperationException("This is a stub");
-    }
+                       @Switch("c") boolean ignoreCityRevenue) throws ExecutionException, InterruptedException {
 
+        DBNation nation = DiscordUtil.getNation(user);
+        if (nation == null) return null;
+
+        boolean dms = false;
+
+        RaidCommand cmd = new RaidCommand();
+        Set<DBNation> allNations = new LinkedHashSet<>(Locutus.imp().getNationDB().getNations().values());
+        if (vmTurns == null) vmTurns = 0;
+        if (defensiveSlots == null) defensiveSlots = -1;
+        boolean active = activeTimeCutoff != null && activeTimeCutoff <= 60;
+        long minutesInactive = activeTimeCutoff == null ? 10000 : TimeUnit.MILLISECONDS.toMinutes(activeTimeCutoff);
+        double score = nationScore == null ? me.getScore() : nationScore;
+
+        if (nationScore != null && !Roles.MILCOM.has(user, guild)) {
+            return "You do not have permission to specify a score";
+        }
+        Set<Integer> ignoreAlliances = new HashSet<>();
+        boolean includeAlliances = false;
+        double minLoot = Double.NEGATIVE_INFINITY;
+        if (numResults == null) numResults = 5;
+        if (beigeTurns == null) beigeTurns = -1;
+
+        String result = cmd.onCommand2(channel, user, db, me, targets, allNations, weakground, dms, vmTurns, defensiveSlots, beigeTurns != null && beigeTurns > 0, !ignoreDNR, ignoreAlliances, includeAlliances, active, minutesInactive, score, minLoot, beigeTurns, ignoreBankLoot, ignoreCityRevenue, numResults);
+        return result;
+    }
     @Command(desc = "List your wars you are allowed to beige\n" +
             "As set by this guild's configured beige policy: `ALLOWED_BEIGE_REASONS`")
     @RolePermission(Roles.MEMBER)
@@ -1233,37 +1258,39 @@ public class WarCommands {
         }
     }
 
-    @Command(desc = "Find nations that have a treasure")
+    @Command(desc = "Find nations in war range that have a treasure")
     @RolePermission(Roles.MEMBER)
-    public void findTreasureNations(@Me User Author, @Me DBNation me, @Me GuildDB guildDB, @Me IMessageIO channel, @Switch("r") boolean StrongerThan, @Switch("d") boolean FollowDNR, @Switch("n") @Default("5") Integer numResults) {
+    public void findTreasureNations(@Me User Author, @Me DBNation me, @Me GuildDB guildDB, @Me IMessageIO channel, @Arg("Only list enemies with less ground than you") @Switch("r") boolean onlyWeaker, @Arg("Ignore the do not raid settings for this server") @Switch("d") boolean ignoreDNR, @Switch("n") @Default("5") Integer numResults) {
 
-        StringBuilder response = new StringBuilder("**Results for " + me.getNation() + "**:");
+        StringBuilder response = new StringBuilder("**Results for " + me.getNation() + "**:\n");
         Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(f -> f.isInWarRange(me));
         Function<DBNation, Boolean> canRaid = guildDB.getCanRaid();
-        Integer count = 0;
+        int count = 0;
 
         nations.removeIf(f -> f.getVm_turns() != 0);
 
-        if(FollowDNR)
+        if(!ignoreDNR)
             nations.removeIf(f -> !canRaid.apply(f));
 
-        if(StrongerThan)
+        if(onlyWeaker)
             nations.removeIf(f -> f.getStrength() > me.getStrength());
 
-        Map<DBNation, DBTreasure> nationTreasures = nations.stream().collect(Collectors.toMap(n -> n, n -> Locutus.imp().getNationDB().getTreasure(n.getNation_id())));
-        nations.removeIf(f -> nationTreasures.get(f) == null);
+        Map<DBNation, Set<DBTreasure>> nationTreasures = new HashMap<>();
+        for (DBNation nation : nations) {
+//            nations.stream().collect(Collectors.toMap(n -> n, n -> Locutus.imp().getNationDB().getTreasure(n.getNation_id())));
+            Set<DBTreasure> treasures = Locutus.imp().getNationDB().getTreasure(nation.getNation_id());
+            if (!treasures.isEmpty()) {
+                nationTreasures.put(nation, treasures);
+            }
+        }
 
-        Iterator<DBNation> iter = nations.iterator();
-        while (iter.hasNext()) {
-            DBNation nation = iter.next();
-            response.append("\n```")
-                    .append(String.format("%2s", nation.treasureDays())).append(" \uD83D\uDC8E ").append(" | ")
-                    .append(String.format("%2s", nation.getCities())).append(" \uD83C\uDFD9").append(" | ")
-                    .append(String.format("%6s", nation.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
-                    .append(String.format("%5s", nation.getTanks())).append(" \u2699").append(" | ")
-                    .append(String.format("%5s", nation.getAircraft())).append(" \u2708").append(" | ")
-                    .append(String.format("%4s", nation.getShips())).append(" \u26F5").append(" | ")
-                    .append(String.format("%1s", nation.getDef())).append(" \uD83D\uDEE1");
+        long currentTurn = TimeUtil.getTurn();
+        for (Map.Entry<DBNation, Set<DBTreasure>> entry : nationTreasures.entrySet()) {
+            DBNation nation = entry.getKey();
+            Set<DBTreasure> treasures = entry.getValue();
+            String treasureStr = treasures.stream().map(f -> f.getDaysRemaining() + "d").collect(Collectors.joining(", "));
+            response.append("treasure: " + treasureStr + " | ");
+            response.append(nation.toMarkdown(true, true, true, false, false)).append("\n");
 
             if(count >= numResults)
                 break;
@@ -1278,39 +1305,54 @@ public class WarCommands {
         }
     }
 
-    @Command(desc = "Find nations with high bounties")
+    @Command(desc = "Find nations with high bounties within your war range")
     @RolePermission(Roles.MEMBER)
-    public void findBountyNations(@Me User Author, @Me DBNation me, @Me GuildDB guildDB, @Me IMessageIO channel, @Switch("r") boolean StrongerThan, @Switch("d") boolean FollowDNR, @Switch("n") @Default("5") Integer numResults) {
+    public void findBountyNations(@Me User Author, @Me DBNation me, @Me GuildDB guildDB, @Me IMessageIO channel,
+                                  @Arg("Only list enemies with less ground than you") @Switch("r") boolean onlyWeaker,
+                                  @Arg("Ignore the do not raid settings for this server") @Switch("d") boolean ignoreDNR,
+                                  @Switch("b") Set<WarType> bountyTypes,
+                                  @Switch("n") @Default("5") Integer numResults) {
 
-        StringBuilder response = new StringBuilder("**Results for " + me.getNation() + "**:");
+        StringBuilder response = new StringBuilder("**Results for " + me.getNation() + "**:\n");
         Set<DBNation> nations = Locutus.imp().getNationDB().getNationsMatching(f -> f.isInWarRange(me));
         Function<DBNation, Boolean> canRaid = guildDB.getCanRaid();
-        Integer count = 0;
+        int count = 0;
 
         nations.removeIf(f -> f.getVm_turns() != 0);
 
-        if(FollowDNR)
+        if(!ignoreDNR)
             nations.removeIf(f -> !canRaid.apply(f));
 
-        if(StrongerThan)
+        if(onlyWeaker)
             nations.removeIf(f -> f.getStrength() > me.getStrength());
 
         Map<DBNation, Set<DBBounty>> nationBounties = nations.stream().collect(Collectors.toMap(n -> n, n -> Locutus.imp().getWarDb().getBounties(n.getNation_id())));
+        if (bountyTypes != null && !bountyTypes.isEmpty())
+        for (Set<DBBounty> bounties : nationBounties.values()) {
+            bounties.removeIf(f -> !bountyTypes.contains(f.getType()));
+        }
         nations.removeIf(f -> nationBounties.get(f).isEmpty());
 
-        Iterator<DBNation> iter = nations.iterator();
-        while (iter.hasNext()) {
-            DBNation nation = iter.next();
+        Map<DBNation, Map<WarType, Long>> bountySums = new HashMap<>();
+        Map<DBNation, Long> maxBounty = new HashMap<>();
+
+        for (DBNation nation : nations) {
             Set<DBBounty> bounties = nationBounties.get(nation);
             Map<WarType, Long> bountySum = bounties.stream().collect(Collectors.groupingBy(DBBounty::getType, Collectors.summingLong(DBBounty::getAmount)));
-            response.append("\n```")
-                    .append(String.format("%6s", bountySum.toString())).append(" | ")
-                    .append(String.format("%2s", nation.getCities())).append(" \uD83C\uDFD9").append(" | ")
-                    .append(String.format("%6s", nation.getSoldiers())).append(" \uD83D\uDC82").append(" | ")
-                    .append(String.format("%5s", nation.getTanks())).append(" \u2699").append(" | ")
-                    .append(String.format("%5s", nation.getAircraft())).append(" \u2708").append(" | ")
-                    .append(String.format("%4s", nation.getShips())).append(" \u26F5").append(" | ")
-                    .append(String.format("%1s", nation.getDef())).append(" \uD83D\uDEE1");
+            bountySums.put(nation, bountySum);
+            WarType maxType = bountySum.entrySet().stream().max(Comparator.comparingLong(Map.Entry::getValue)).get().getKey();
+            maxBounty.put(nation, bountySum.get(maxType));
+        }
+
+        List<DBNation> sorted = nations.stream().sorted(Comparator.comparingLong(maxBounty::get).reversed()).toList();
+
+        for (DBNation nation : sorted) {
+            Map<WarType, Long> bountySum = bountySums.get(nation);
+            Map<String, String> bountySumComma = bountySum.entrySet().stream().collect(Collectors.toMap(e -> e.getKey().toString(), e -> MathMan.format(e.getValue())));
+
+            String bountyStr = bountySumComma.toString().replace("{", "").replace("}", "").replace(" ", "");
+            response.append("bounty: " + bountyStr + " | ");
+            response.append(nation.toMarkdown(true, true, true, false, false)).append("\n");
 
             if(count >= numResults)
                 break;
@@ -2019,7 +2061,7 @@ public class WarCommands {
         SpySheet.generateSpySheet(sheet, targets);
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "spy_intel").send();
         return null;
     }
 
@@ -2338,7 +2380,7 @@ public class WarCommands {
         sheet.clearAll();
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "activity").send();
         return null;
     }
 
@@ -2499,7 +2541,7 @@ public class WarCommands {
         sheet.set(0, 0);
         String response = "";
         if (!forceUpdate) response += "\nNote: Results may be outdated, add `-f` to update.";
-        sheet.attach(io.create(), response).send();
+        sheet.attach(io.create(), "mmr", response).send();
         return null;
     }
 
@@ -2648,7 +2690,7 @@ public class WarCommands {
 
         sheet.clearAll();
         sheet.set(0, 0);
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "deserter").send();
         return null;
     }
 
@@ -2778,7 +2820,7 @@ public class WarCommands {
 
             sheet.set(0, 0);
 
-            sheet.attach(io.create()).send();
+            sheet.attach(io.create(), "combatant").send();
             return null;
         } catch (Throwable e) {
             e.printStackTrace();
@@ -3162,7 +3204,7 @@ public class WarCommands {
             String body = entry.getValue().getValue();
 
             try {
-                attacker.sendMail(key, subject, body);
+                attacker.sendMail(key, subject, body, true);
             } catch (Throwable e) {
                 mailErrors.put(attacker, (e.getMessage() + " ").split("\n")[0]);
                 continue;
@@ -3536,7 +3578,7 @@ public class WarCommands {
         sheet.clear("A:Z");
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "wars").send();
         return null;
     }
 
@@ -3791,7 +3833,7 @@ public class WarCommands {
 
         sheet.set(0, 0);
 
-        sheet.attach(io.create()).send();
+        sheet.attach(io.create(), "counter").send();
         return null;
     }
 

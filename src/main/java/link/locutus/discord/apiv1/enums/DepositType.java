@@ -26,7 +26,7 @@ public enum DepositType {
     private DepositType parent;
 
     DepositType(String description) {
-        this(null, null);
+        this(null, description);
     }
 
     DepositType(DepositType parent, String description) {

@@ -2,10 +2,9 @@ package link.locutus.discord.commands.manager.v2.command;
 
 public enum CommandBehavior {
     DELETE_MESSAGE(""), // delete message
-    UNDO_REACTION("~"),
-    DELETE_REACTIONS("_"),
-
-    DELETE_REACTION("."),
+    UNPRESS("~"),
+    DELETE_BUTTONS("_"),
+    DELETE_PRESSED_BUTTON("."),
     EPHEMERAL("="),
     ;
 

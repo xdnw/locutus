@@ -13,8 +13,7 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.*;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.NationAttributeCallable;
+import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
@@ -27,8 +26,11 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeD
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.ReportManager;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.grant.AGrantTemplate;
+import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.gpt.pwembed.PWGPTHandler;
@@ -43,12 +45,10 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AutoAuditType;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Autocomplete;
-import link.locutus.discord.commands.manager.v2.binding.annotation.AllianceDepositLimit;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.task.ia.IACheckup;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
@@ -93,6 +93,20 @@ public class PWCompleter extends BindingHelper {
     }
 
     @Autocomplete
+    @Binding(types={AGrantTemplate.class})
+    public List<Map.Entry<String, String>> AGrantTemplate(GrantTemplateManager manager, @Me GuildDB db, String input) {
+        List<AGrantTemplate> options = new ArrayList<>(manager.getTemplates());
+        if (options == null || options.isEmpty()) return null;
+        options = StringMan.getClosest(input, options, f -> f.getType() + "/" + f.getName(), OptionData.MAX_CHOICES, true);
+        return options.stream().map(new Function<AGrantTemplate, Map.Entry<String, String>>() {
+            @Override
+            public Map.Entry<String, String> apply(AGrantTemplate f) {
+                return Map.entry(f.getType() + "/" + f.getName(), f.getName());
+            }
+        }).collect(Collectors.toList());
+    }
+
+    @Autocomplete
     @Binding(types={DBAlliancePosition.class})
     public List<Map.Entry<String, String>> DBAlliancePosition(@Me GuildDB db, String input) {
         AllianceList alliances = db.getAllianceList();
@@ -127,14 +141,51 @@ public class PWCompleter extends BindingHelper {
     }
 
     @Autocomplete
+    @ReportPerms
+    @Binding(types={ReportManager.Report.class})
+    public List<Map.Entry<String, String>> reports(ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input) {
+        return reports(manager, me, author, db, input, true);
+    }
+
+
+    @Autocomplete
+    @Binding(types={ReportManager.Report.class})
+    public List<Map.Entry<String, String>> reportsAll(ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input) {
+        return reports(manager, me, author, db, input, false);
+    }
+
+    public List<Map.Entry<String, String>> reports(ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input, boolean checkPerms) {
+        List<ReportManager.Report> options = manager.loadReports(null);
+        if (checkPerms) {
+            options.removeIf(f -> !f.hasPermission(me, author, db));
+        }
+
+        options = StringMan.getClosest(input, options, f -> "#" + f.reportId + " " + f.getTitle(), OptionData.MAX_CHOICES, true, true);
+
+        return options.stream().map(f -> Map.entry("#" + f.reportId + " " + f.getTitle(), f.reportId + "")).collect(Collectors.toList());
+    }
+
+    @Autocomplete
+    @GuildLoan
+    @Binding(types={DBLoan.class})
+    public List<Map.Entry<String, String>> loan(LoanManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input) {
+        List<DBLoan> options = manager.getLoansByGuildDB(db);
+        options = StringMan.getClosest(input, options, f -> f.getLineString(true, false), OptionData.MAX_CHOICES, true, true);
+        return options.stream().map(f -> Map.entry(f.getLineString(true, false), f.loanId + "")).collect(Collectors.toList());
+    }
+
+    @Autocomplete
     @Binding(types={DBNation.class})
-    public List<String> DBNation(String input) {
+    public List<Map.Entry<String, String>> DBNation(String input, @Me Guild guild) {
         if (input.isEmpty()) return null;
+        if (input.charAt(0) == '@') {
+            return completeUser(guild, input, true);
+        }
 
         List<DBNation> options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
         options = StringMan.getClosest(input, options, DBNation::getName, OptionData.MAX_CHOICES, true, true);
 
-        return options.stream().map(DBNation::getNation).collect(Collectors.toList());
+        return options.stream().map(f -> Map.entry(f.getName(), f.getQualifiedId())).collect(Collectors.toList());
     }
 
     @Autocomplete
@@ -150,9 +201,11 @@ public class PWCompleter extends BindingHelper {
 
     @Autocomplete
     @Binding(types={NationOrAlliance.class})
-    public List<Map.Entry<String, String>> NationOrAlliance(String input) {
+    public List<Map.Entry<String, String>> NationOrAlliance(String input, @Me Guild guild) {
         if (input.isEmpty()) return null;
-
+        if (input.charAt(0) == '@') {
+            return completeUser(guild, input, true);
+        }
         List<NationOrAlliance> options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
         options.addAll(Locutus.imp().getNationDB().getAlliances());
 
@@ -163,14 +216,16 @@ public class PWCompleter extends BindingHelper {
 
     @Autocomplete
     @Binding(types={NationOrAllianceOrGuild.class})
-    public List<Map.Entry<String, String>> NationOrAllianceOrGuild(String input, @Me User user) {
+    public List<Map.Entry<String, String>> NationOrAllianceOrGuild(String input, @Me User user, @Me Guild guild) {
         if (input.isEmpty()) return null;
-
+        if (input.charAt(0) == '@') {
+            return completeUser(guild, input, true);
+        }
         List<NationOrAllianceOrGuild> options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
         options.addAll(Locutus.imp().getNationDB().getAlliances());
         if (user != null) {
-            for (Guild guild : user.getMutualGuilds()) {
-                GuildDB db = Locutus.imp().getGuildDB(guild);
+            for (Guild other : user.getMutualGuilds()) {
+                GuildDB db = Locutus.imp().getGuildDB(other);
                 if (db != null) {
                     options.add(db);
                 }
@@ -180,10 +235,31 @@ public class PWCompleter extends BindingHelper {
         return options.stream().map(f -> Map.entry((f.isGuild() ? "guild:" : "") + f.getName(), f.getTypePrefix() + ":" + f.getIdLong())).collect(Collectors.toList());
     }
 
+    private List<Map.Entry<String, String>> completeUser(@Me Guild guild, String input, boolean removeTag) {
+        if (removeTag) input = input.substring(1);
+        List<Member> options = guild.getMembers();
+        Function<Member, String> getName = new Function<Member, String>() {
+            @Override
+            public String apply(Member member) {
+                String nick = member.getNickname();
+                String user = DiscordUtil.getFullUsername(member.getUser());
+                if (nick != null && !nick.equalsIgnoreCase(user)) {
+                    return nick + " " + user;
+                }
+                return user;
+            }
+        };
+        options = StringMan.getClosest(input, options, getName, OptionData.MAX_CHOICES, true, false);
+        return options.stream().map(f -> Map.entry(f.getEffectiveName(), f.getAsMention())).collect(Collectors.toList());
+    }
+
     @Autocomplete
     @Binding(types={NationOrAllianceOrGuildOrTaxid.class})
     public List<Map.Entry<String, String>> NationOrAllianceOrGuildOrTaxid(String input, @Me GuildDB db, @Me User user) {
         if (input.isEmpty()) return null;
+        if (input.charAt(0) == '@') {
+            return completeUser(db.getGuild(), input, true);
+        }
         AllianceList aaList = db.getAllianceList();
 
         List<NationOrAllianceOrGuildOrTaxid> options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
@@ -372,6 +448,12 @@ public class PWCompleter extends BindingHelper {
         return StringMan.completeEnum(input, UnsortedCommands.ClearRolesEnum.class);
     }
 
+    @Autocomplete
+    @Binding(types={DBLoan.Status.class})
+    public List<String> LoanStatus(String input) {
+        return StringMan.completeEnum(input, DBLoan.Status.class);
+    }
+
     {
         {
             Key key = Key.of(TypeToken.getParameterized(Set.class, DBAlliance.class).getType(), Autocomplete.class);
@@ -393,11 +475,29 @@ public class PWCompleter extends BindingHelper {
             });
         }
 
+
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, DBLoan.Status.class).getType(), Autocomplete.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(DBLoan.Status.class, input.toString(), OptionData.MAX_CHOICES);
+                }));
+            });
+        }
+
         {
             Key key = Key.of(TypeToken.getParameterized(Set.class, BeigeReason.class).getType(), Autocomplete.class);
             addBinding(store -> {
                 store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
                     return StringMan.autocompleteCommaEnum(BeigeReason.class, input.toString(), OptionData.MAX_CHOICES);
+                }));
+            });
+        }
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, AutoAuditType.class).getType(), Autocomplete.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                    return StringMan.autocompleteCommaEnum(AutoAuditType.class, input.toString(), OptionData.MAX_CHOICES);
                 }));
             });
         }
