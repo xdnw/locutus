@@ -372,9 +372,9 @@ public class DBNation implements NationOrAlliance {
 //        }
 
         output.append("Registration successful. See:\n");
-        output.append("- " + MarkupUtil.markdownUrl("Wiki Pages", "https://github.com/xdnw/locutus/wiki") + "\n");
-        output.append("- " + MarkupUtil.markdownUrl("Initial Setup", "https://github.com/xdnw/locutus/wiki/initial_setup") + "\n");
-        output.append("- " + MarkupUtil.markdownUrl("Commands", "https://github.com/xdnw/locutus/wiki/commands") + "\n\n");
+        output.append("- " + MarkupUtil.markdownUrl("Wiki Pages", "<https://github.com/xdnw/locutus/wiki>") + "\n");
+        output.append("- " + MarkupUtil.markdownUrl("Initial Setup", "<https://github.com/xdnw/locutus/wiki/initial_setup>") + "\n");
+        output.append("- " + MarkupUtil.markdownUrl("Commands", "<https://github.com/xdnw/locutus/wiki/commands>") + "\n\n");
         output.append("Join the Support Server \n");
         output.append("""
                 - Help using or configuring the bot
@@ -3833,13 +3833,15 @@ public class DBNation implements NationOrAlliance {
                 }
             }
 
-            if (ResourceType.isZero(toDeposit) || PnwUtil.convertedTotal(toDeposit) <= 0) {
+            if (ResourceType.isZero(toDeposit)) {
+                response.append("\n- No trades to deposit " + PnwUtil.resourcesToString(toDeposit));
                 return Map.entry(false, response.toString());
             }
             int receiverId;
             try {
                 Bankrec deposit = receiverApi.depositIntoBank(toDeposit, "#ignore");
-                double[] amt = ResourceType.fromApiV3(deposit, ResourceType.getBuffer());
+                System.out.println("Depositing " + deposit);
+                double[] amt = toDeposit.clone();//ResourceType.fromApiV3(deposit, ResourceType.getBuffer());
                 response.append("\nDeposited: `" + PnwUtil.resourcesToString(amt) + "`");
                 if (!ResourceType.equals(toDeposit, amt)) {
                     response.append("\n- Error Depositing: " + PnwUtil.resourcesToString(toDeposit) + " != " + PnwUtil.resourcesToString(amt));
@@ -3916,7 +3918,7 @@ public class DBNation implements NationOrAlliance {
                 for (Map.Entry<ResourceType, Integer> entry : amountMap.entrySet()) {
                     String trade = auth.createDepositTrade(senderNation, entry.getKey(), entry.getValue());
                 }
-                return senderNation.acceptTrades(getNation_id(), true);
+                return senderNation.acceptTrades(getNation_id(), false);
 
             }
         };
@@ -3965,12 +3967,12 @@ public class DBNation implements NationOrAlliance {
                     errors.put(f, Map.entry(foodBuyOrSell + " offers must be at least $100,000 to deposit", Auth.TradeResultType.INCORRECT_PPU));
                     return true;
                 }
-                if (f.getReceiver_id() == null) {
-                    errors.put(f, Map.entry("Receiver id is null", Auth.TradeResultType.NOT_A_BUY_OFFER));
+                if (f.getSender_id() == null) {
+                    errors.put(f, Map.entry("Sender id is null", Auth.TradeResultType.NOT_A_BUY_OFFER));
                     return true;
                 }
-                if (f.getReceiver_id() != expectedNationId) {
-                    errors.put(f, Map.entry("Receiver id is not expected nation id (" + f.getSender_id() + " != " + expectedNationId + ")", Auth.TradeResultType.NOT_A_BUY_OFFER));
+                if (f.getSender_id() != expectedNationId) {
+                    errors.put(f, Map.entry("Sender id is not expected nation id (" + f.getSender_id() + " != " + expectedNationId + ")", Auth.TradeResultType.NOT_A_BUY_OFFER));
                     return true;
                 }
                 return false;
@@ -4015,12 +4017,18 @@ public class DBNation implements NationOrAlliance {
                     Trade completed = api.acceptPersonalTrade(trade.getId(), trade.getOffer_amount());
                     DBNation seller = DBNation.getById(completed.getSender_id());
                     DBNation buyer = DBNation.getById(completed.getReceiver_id());
-
+                    if (completed.getBuy_or_sell().equalsIgnoreCase("buy")) {
+                        DBNation tmp = buyer;
+                        buyer = seller;
+                        seller = tmp;
+                    }
                     Auth.TradeResult response = new Auth.TradeResult(seller, buyer);
                     response.setAmount(completed.getOffer_amount());
                     response.setResource(ResourceType.parse(completed.getOffer_resource()));
                     response.setPPU(completed.getPrice());
                     responses.add(response);
+                    response.setResult(Auth.TradeResultType.SUCCESS);
+                    response.setMessage("Accepted " + tradeToString.apply(trade));
 
                 } catch (Throwable e) {
                     errors.put(trade, Map.entry(e.getMessage(), Auth.TradeResultType.UNKNOWN_ERROR));
