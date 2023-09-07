@@ -15,6 +15,7 @@ import com.locutus.wiki.pages.WikiCounteringPage;
 import com.locutus.wiki.pages.WikiCustomEmbeds;
 import com.locutus.wiki.pages.WikiCustomSheetsPage;
 import com.locutus.wiki.pages.WikiDNRPage;
+import com.locutus.wiki.pages.WikiDelegateServers;
 import com.locutus.wiki.pages.WikiDepositsPage;
 import com.locutus.wiki.pages.WikiEmbassyPage;
 import com.locutus.wiki.pages.WikiEscrowPage;
@@ -26,6 +27,7 @@ import com.locutus.wiki.pages.WikiLoanPage;
 import com.locutus.wiki.pages.WikiNationPlaceholdersPage;
 import com.locutus.wiki.pages.WikiRecruitmentPage;
 import com.locutus.wiki.pages.WikiReportPage;
+import com.locutus.wiki.pages.WikiSelfRoles;
 import com.locutus.wiki.pages.WikiSendTargetsPage;
 import com.locutus.wiki.pages.WikiSetupPage;
 import com.locutus.wiki.pages.WikiSpyWarPage;
@@ -82,7 +84,7 @@ public class WikiGenHandler {
 //        //Setup an offshore or bank
         pages.add(new WikiBankPage(manager));
 //        //Interview System
-        pages.add(new WikiInterviewPage(manager)); // <--- @@ ===
+        pages.add(new WikiInterviewPage(manager)); // <--- 1
         //Recruitment System
         pages.add(new WikiRecruitmentPage(manager));
 //        //DNR system
@@ -94,19 +96,19 @@ public class WikiGenHandler {
 //        //Countering
         pages.add(new WikiCounteringPage(manager));
         //        //Tax Bracket Automation
-        pages.add(new WikiTaxBracketPage(manager)); // <--- @@@ ===
+        pages.add(new WikiTaxBracketPage(manager));
         //Auditing System / Alliance MMR requirements
         pages.add(new WikiAuditingPage(manager));
 //        //Finding Targets / War panels
-        pages.add(new WikiFindingTargetsPage(manager)); // <--- @@
+        pages.add(new WikiFindingTargetsPage(manager)); // <--- 2
 //        //Escrow System
         pages.add(new WikiEscrowPage(manager));
 //        //Plan a blitz
-        pages.add(new WikiBlitzPage(manager)); // <--- @
+        pages.add(new WikiBlitzPage(manager)); // <--- 3
 //        //Send out targets
-        pages.add(new WikiSendTargetsPage(manager)); // <--- easy @
+        pages.add(new WikiSendTargetsPage(manager)); // <--- easy 4
 //        //Spy war
-        pages.add(new WikiSpyWarPage(manager)); // <--- easy @
+        pages.add(new WikiSpyWarPage(manager)); // <--- easy 5
 //        //Blockade System
         pages.add(new WikiBlockadePage(manager));
 //        //Beige cycling tutorial
@@ -119,13 +121,15 @@ public class WikiGenHandler {
         pages.add(new WikiAntiLeakPage(manager));
         //Making custom embeds
         pages.add(new WikiCustomEmbeds(manager));
+        pages.add(new WikiDelegateServers(manager)); // <--- 6
 //        //Making custom spreadsheets
-        pages.add(new WikiCustomSheetsPage(manager)); // <---   #### @
+        pages.add(new WikiCustomSheetsPage(manager)); // <--- 7
 //        //Statistics System
-        pages.add(new WikiStatisticsPage(manager)); // <---   ####
+        pages.add(new WikiStatisticsPage(manager)); // <--- 8
 //        //Trade System (use trading guide)
 //        //- Link DocScripts trade tool (cause useful)
-        pages.add(new WikiTradePage(manager)); // <---   #### @
+        pages.add(new WikiTradePage(manager)); // <--- 9
+        pages.add(new WikiSelfRoles(manager)); // <--- 10
 
         // # Delegate servers // <---
         // war rooms delegate
