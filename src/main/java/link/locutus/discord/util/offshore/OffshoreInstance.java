@@ -165,6 +165,7 @@ public class OffshoreInstance {
 
         int finalBankMetaI = bankMetaI;
         if (!Settings.USE_V2) {
+            System.out.println("Fetch alliance bank records");
             List<Bankrec> bankRecs = api.fetchAllianceBankRecs(allianceId, f -> {
                 f.or_id(List.of(allianceId));
                 f.rtype(List.of(2));

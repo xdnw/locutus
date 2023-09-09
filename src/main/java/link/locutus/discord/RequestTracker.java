@@ -63,7 +63,7 @@ public class RequestTracker {
         runWithRetryAfter(task, 0);
     }
 
-    private void runWithRetryAfter(PageRequestQueue.PageRequestTask task, int depth) {
+    private void runWithRetryAfter(final PageRequestQueue.PageRequestTask task, int depth) {
         long now = System.currentTimeMillis();
         long retryMs = getRetryAfter(task.getUrl());
         boolean isRateLimited = false;
@@ -71,14 +71,23 @@ public class RequestTracker {
         try {
             if (retryMs > now) {
                 try {
-                    Thread.sleep(retryMs - now);
+                    long diff = retryMs - now;
+                    if (diff > 60000) {
+                        diff = 60000;
+                        System.out.println("Rate limited on " + task.getUrl() + " for " + (retryMs - now) + "ms, but limiting to 60s");
+                    }
+                    System.out.println("Rate limited on " + task.getUrl() + " for " + (retryMs - now) + "ms");
+                    Thread.sleep(diff);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
             }
             addRequest(task.getUrl());
             Supplier supplier = task.getTask();
-            task.complete(supplier.get());
+            if (!task.complete(supplier.get())) {
+                new Exception().printStackTrace();
+                task.completeExceptionally(new RuntimeException("Task failed"));
+            }
             return;
         } catch (FileUtil.TooManyRequests e) {
             if (depth > 3) {
@@ -106,40 +115,49 @@ public class RequestTracker {
             throw e;
         }
         if (isRateLimited) {
-            int domainId = getDomainId(task.getUrl());
-            // print rate limit when it hits (retry after, + how many requests on that domain + the domain)
-            {
-                int requestsPast2m = getDomainRequestsSince(domainId, now - TimeUnit.MINUTES.toMillis(2));
-                System.err.println(":||Rate Limited On:\n" +
-                        "- Domain: " + task.getUrl().getHost() + "\n" +
-                        "- Retry After: " + retryAfter + "\n" +
-                        "- Requests Past 2m: " + requestsPast2m + "\n" +
-                        "- URL: " + task.getUrl());
-            }
-
-            now = System.currentTimeMillis();
-            int delayS = depth > 0 ? depth > 1 ? 60 : 30 : 6;
-            if (retryAfter == null) retryAfter = delayS;
-            long minimumRetry = now + TimeUnit.SECONDS.toMillis(delayS);
-
-            setRetryAfter(task.getUrl(), retryAfter);
-            DOMAIN_HAS_RATE_LIMITING.put(domainId, true);
-
-            Object lock = DOMAIN_LOCKS.computeIfAbsent(domainId, k -> new Object());
-            synchronized (lock) {
-                now = System.currentTimeMillis();
-                long timestamp = Math.max(minimumRetry, getRetryAfter(task.getUrl()));
-                if (timestamp > now) {
-                    // sleep remaining ms
-                    long sleepMs = timestamp - now;
-                    try {
-                        System.out.println("Sleeping for " + sleepMs + "ms");
-                        Thread.sleep(sleepMs);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
+            try {
+                int domainId = getDomainId(task.getUrl());
+                // print rate limit when it hits (retry after, + how many requests on that domain + the domain)
+                {
+                    int requestsPast2m = getDomainRequestsSince(domainId, now - TimeUnit.MINUTES.toMillis(2));
+                    System.err.println(":||Rate Limited On:\n" +
+                            "- Domain: " + task.getUrl().getHost() + "\n" +
+                            "- Retry After: " + retryAfter + "\n" +
+                            "- Requests Past 2m: " + requestsPast2m + "\n" +
+                            "- URL: " + task.getUrl());
                 }
-                runWithRetryAfter(task, depth + 1);
+
+                now = System.currentTimeMillis();
+                int delayS = depth > 0 ? depth > 1 ? 60 : 30 : 6;
+                if (retryAfter == null) retryAfter = delayS;
+                long minimumRetry = now + TimeUnit.SECONDS.toMillis(delayS);
+
+                setRetryAfter(task.getUrl(), retryAfter);
+                DOMAIN_HAS_RATE_LIMITING.put(domainId, true);
+
+                Object lock = DOMAIN_LOCKS.computeIfAbsent(domainId, k -> new Object());
+                synchronized (lock) {
+                    now = System.currentTimeMillis();
+                    long timestamp = Math.max(minimumRetry, getRetryAfter(task.getUrl()));
+                    if (timestamp > now) {
+                        // sleep remaining ms
+                        long sleepMs = timestamp - now;
+                        try {
+                            if (sleepMs > 60000) {
+                                sleepMs = 60000;
+                                System.out.println("Sleeping for " + sleepMs + "ms, but limiting to 60s");
+                            }
+                            System.out.println("Sleeping for " + sleepMs + "ms");
+                            Thread.sleep(sleepMs);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    runWithRetryAfter(task, depth + 1);
+                }
+            } catch (Throwable e) {
+                task.completeExceptionally(e);
+                throw e;
             }
         }
     }

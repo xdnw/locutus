@@ -9,6 +9,7 @@ import link.locutus.discord.RequestTracker;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -42,6 +43,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public class PoliticsAndWarV3 {
     static {
@@ -78,8 +80,24 @@ public class PoliticsAndWarV3 {
         this("https://api" + (Settings.INSTANCE.TEST ? "-test" : "") + ".politicsandwar.com/graphql", pool);
     }
 
+    public ApiKeyPool getPool() {
+        return pool;
+    }
+
     public String getUrl(String key) {
         return endpoint + "?api_key=" + key;
+    }
+
+    public void throwInvalid(AlliancePermission alliancePermission, String message) {
+        String validKeysStr;
+        List<ApiKeyPool.ApiKey> keys = pool.getKeys();
+        if (keys.isEmpty()) {
+            validKeysStr = "No valid keys";
+        } else {
+            validKeysStr = keys.stream().map(key -> PnwUtil.getMarkdownUrl(key.getNationId(), false)).collect(Collectors.joining(","));
+        }
+        message = "Error accessing `" + alliancePermission.name() + "`" + (message == null || message.isEmpty() ? "" : " " + message) + ". " + validKeysStr;
+        throw new IllegalArgumentException(message);
     }
 
     public enum ErrorResponse {
@@ -1193,6 +1211,7 @@ public class PoliticsAndWarV3 {
         if (result.me() == null) throw new GraphQLException("Error fetching api key");
         return result.me();
     }
+
     public Tradeprice getTradePrice() {
         List<Tradeprice> allResults = new ArrayList<>();
 
@@ -1378,10 +1397,12 @@ public class PoliticsAndWarV3 {
         if (note != null) mutation.setNote(note);
 
         BankrecResponseProjection projection = new BankrecResponseProjection();
+        createBankRecProjection().accept(projection);
         projection.id();
         projection.date();
         projection.receiver_id();
         projection.receiver_type();
+
 
         return request(PagePriority.API_BANK_DEPOSIT, false, mutation, projection, BankDepositMutationResponse.class).bankDeposit();
     }

@@ -3840,8 +3840,7 @@ public class DBNation implements NationOrAlliance {
             int receiverId;
             try {
                 Bankrec deposit = receiverApi.depositIntoBank(toDeposit, "#ignore");
-                System.out.println("Depositing " + deposit);
-                double[] amt = toDeposit.clone();//ResourceType.fromApiV3(deposit, ResourceType.getBuffer());
+                double[] amt = ResourceType.fromApiV3(deposit, ResourceType.getBuffer());
                 response.append("\nDeposited: `" + PnwUtil.resourcesToString(amt) + "`");
                 if (!ResourceType.equals(toDeposit, amt)) {
                     response.append("\n- Error Depositing: " + PnwUtil.resourcesToString(toDeposit) + " != " + PnwUtil.resourcesToString(amt));
@@ -3849,6 +3848,7 @@ public class DBNation implements NationOrAlliance {
                 }
                 receiverId = deposit.getReceiver_id();
             } catch (Throwable e) {
+                e.printStackTrace();
                 response.append("\n- Error Depositing: " + e.getMessage());
                 return Map.entry(false, response.toString());
             }

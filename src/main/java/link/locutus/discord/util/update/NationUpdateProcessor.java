@@ -9,6 +9,7 @@ import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -786,7 +787,7 @@ public class NationUpdateProcessor {
                 public void accept(MessageChannel channel, GuildDB guildDB) {
                     Integer topX = GuildKey.ALLIANCE_EXODUS_TOP_X.getOrNull(guildDB);
                     if (topX != null && topX < aaRank) return;
-                    new DiscordChannelIO(channel).create().embed(title, finalBody).commandButton(cmd, "list departures").sendWhenFree();
+                    new DiscordChannelIO(channel).create().embed(title, finalBody).commandButton(CommandBehavior.EPHEMERAL, cmd, "list departures").sendWhenFree();
                 }
             });
         }

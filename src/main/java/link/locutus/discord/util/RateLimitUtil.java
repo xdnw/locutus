@@ -42,6 +42,38 @@ public class RateLimitUtil {
         return 50;
     }
 
+    private static Map<Class, String> lastErrorMsg = new ConcurrentHashMap<>();
+
+    private static String getRateLimitMessage(Map<Long, Exception> category, long cutoff) {
+        StringBuilder response = new StringBuilder("\n\n----------- RATE LIMIT: " + requestsThisMinute.size() + " -------------");
+        // sort the map
+        Map<Class, Map<Long, Exception>> sorted = rateLimitByClass.entrySet().stream()
+                .sorted(Map.Entry.comparingByValue(Comparator.comparingInt(value -> -value.keySet().stream().filter(f -> f > cutoff).mapToInt(f -> 1).sum())))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+
+        for (Map.Entry<Class, Map<Long, Exception>> entry : sorted.entrySet()) {
+            category = entry.getValue();
+            if (category.size() > 1) category.entrySet().removeIf(f -> f.getKey() < cutoff);
+            if (category.size() > 1) {
+                response.append("\n\n" + entry.getKey().getSimpleName() + " = " + category.size());
+                Map<String, Integer> exceptionStrings = new HashMap<>();
+                for (Exception value : category.values()) {
+                    String key = StringMan.stacktraceToString(value.getStackTrace());
+                    int amt = exceptionStrings.getOrDefault(key, 0) + 1;
+                    exceptionStrings.put(key, amt);
+                }
+                // sort exceptionStrings
+                exceptionStrings = exceptionStrings.entrySet().stream()
+                        .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+                for (Map.Entry<String, Integer> entry2 : exceptionStrings.entrySet()) {
+                    response.append("\n- " + entry2.getValue() + ": " + entry2.getKey());
+                }
+            }
+        }
+        return response.toString();
+    }
+
     private static <T> RestAction<T> addRequest(RestAction<T> action) {
         long now = System.currentTimeMillis();
         long cutoff = now - TimeUnit.MINUTES.toMillis(1);
@@ -56,36 +88,9 @@ public class RateLimitUtil {
             if (lastLimitTime < cutoff || requestsThisMinute.size() > lastLimitTotal + 10) {
                 lastLimitTime = now;
                 lastLimitTotal = requestsThisMinute.size();
+                String msg = getRateLimitMessage(category, cutoff);
 
-                new Exception().printStackTrace();
-
-                StringBuilder response = new StringBuilder("\n\n----------- RATE LIMIT: " + requestsThisMinute.size() + " -------------");
-                // sort the map
-                Map<Class, Map<Long, Exception>> sorted = rateLimitByClass.entrySet().stream()
-                        .sorted(Map.Entry.comparingByValue(Comparator.comparingInt(value -> -value.keySet().stream().filter(f -> f > cutoff).mapToInt(f -> 1).sum())))
-                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
-
-                for (Map.Entry<Class, Map<Long, Exception>> entry : sorted.entrySet()) {
-                    category = entry.getValue();
-                    if (category.size() > 1) category.entrySet().removeIf(f -> f.getKey() < cutoff);
-                    if (category.size() > 1) {
-                        response.append("\n\n" + entry.getKey().getSimpleName() + " = " + category.size());
-                        Map<String, Integer> exceptionStrings = new HashMap<>();
-                        for (Exception value : category.values()) {
-                            String key = StringMan.stacktraceToString(value.getStackTrace());
-                            int amt = exceptionStrings.getOrDefault(key, 0) + 1;
-                            exceptionStrings.put(key, amt);
-                        }
-                        // sort exceptionStrings
-                        exceptionStrings = exceptionStrings.entrySet().stream()
-                                .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
-                                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
-                        for (Map.Entry<String, Integer> entry2 : exceptionStrings.entrySet()) {
-                            response.append("\n- " + entry2.getValue() + ": " + entry2.getKey());
-                        }
-                    }
-                }
-                System.out.println(response);
+                lastErrorMsg.put(action.getClass(), msg);
             }
         } else {
             lastLimitTotal = 0;
