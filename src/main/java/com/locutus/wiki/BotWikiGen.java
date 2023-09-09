@@ -1,23 +1,19 @@
 package com.locutus.wiki;
 
-import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
-import rocker.data.spoiler;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
-public abstract class WikiGen {
+public abstract class BotWikiGen {
     private final String pageName;
     private final CommandManager2 manager;
 
-    public WikiGen(CommandManager2 manager, String pageName) {
+    public BotWikiGen(CommandManager2 manager, String pageName) {
         this.pageName = pageName;
         this.manager = manager;
     }

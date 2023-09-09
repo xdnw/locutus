@@ -6,8 +6,10 @@ import com.knuddels.jtokkit.api.EncodingRegistry;
 import com.knuddels.jtokkit.api.ModelType;
 import com.theokanning.openai.moderation.Moderation;
 import com.theokanning.openai.moderation.ModerationRequest;
+import link.locutus.discord.util.StringMan;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -19,6 +21,38 @@ public class GPTUtil {
 //    }
 
     private static EncodingRegistry REGISTRY = Encodings.newDefaultEncodingRegistry();
+
+    public String getSummaryPrompt(List<String> previousSummary , String text, int maxSummarySize, Function<String, Integer> sizeFunction) {
+        String prompt = """
+        # Goal
+        You will be provided both `context` and `text` from a user guide for the game Politics And War.\s
+        Take the information in `text` and organize it into dot points of standalone factual knowledge (start each line with `- `).\s
+        Use the `context` solely to understand `text` but do not create facts solely from it.
+        Do not make anything up.\s
+        Preserve syntax, formulas and precision.
+                        
+        # Context:
+        {context}
+                        
+        # Text:
+        {text}
+                        
+        # Fact summary:""";
+        int size = 0;
+        List<String> lines = new ArrayList<>();
+        for (int i = previousSummary.size() - 1; i >= 0; i--) {
+            String line = previousSummary.get(i);
+            size += sizeFunction.apply(line);
+            if (size > maxSummarySize) break;
+            lines.add(line);
+        }
+        // reverse lines
+        Collections.reverse(lines);
+        String context = StringMan.join(lines, "\n");
+        String promptFilled = prompt.replace("{context}", context).replace("{text}", text);
+
+        return prompt;
+    }
 
     public static void checkThrowModeration2(List<Moderation> moderations, String text) {
         for (Moderation result : moderations) {

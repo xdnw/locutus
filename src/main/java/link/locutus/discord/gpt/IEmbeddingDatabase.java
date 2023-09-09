@@ -31,7 +31,6 @@ public interface IEmbeddingDatabase {
     void registerHashes(EmbeddingSource source, Set<Long> hashes, boolean deleteAbsent);
     EmbeddingSource getSource(String name, long guild_id);
     EmbeddingSource getOrCreateSource(String name, long guild_id);
-    Map<Long, Set<EmbeddingSource>> getEmbeddingSources();
     Set<EmbeddingSource> getSources(Predicate<Long> guildPredicateOrNull, Predicate<EmbeddingSource> sourcePredicate);
     Map<Long, String> getContent(Set<Long> hashes);
     public String getText(long hash);
@@ -45,4 +44,5 @@ public interface IEmbeddingDatabase {
     public void addConvertingDocument(List<ConvertingDocument> documents);
     public void addChunks(List<DocumentChunk> chunks);
     public List<DocumentChunk> getChunks(int source_id);
+    public EmbeddingSource getEmbeddingSource(long guildId, int source_id);
 }

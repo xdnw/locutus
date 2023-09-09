@@ -1,9 +1,9 @@
 package com.locutus.wiki.pages;
 
-import com.locutus.wiki.WikiGen;
+import com.locutus.wiki.BotWikiGen;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 
-public class WikiSendTargetsPage extends WikiGen {
+public class WikiSendTargetsPage extends BotWikiGen {
     public WikiSendTargetsPage(CommandManager2 manager) {
         super(manager, "sending targets");
     }

@@ -1,12 +1,10 @@
 package com.locutus.wiki.pages;
 
-import com.locutus.wiki.WikiGen;
+import com.locutus.wiki.BotWikiGen;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
-import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.util.MarkupUtil;
 
-public class WikiCustomEmbeds extends WikiGen {
+public class WikiCustomEmbeds extends BotWikiGen {
     public WikiCustomEmbeds(CommandManager2 manager) {
         super(manager, "embeds");
     }

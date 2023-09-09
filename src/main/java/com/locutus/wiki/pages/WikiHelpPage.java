@@ -1,8 +1,6 @@
 package com.locutus.wiki.pages;
 
-import com.locutus.wiki.WikiGen;
-import com.locutus.wiki.WikiGenHandler;
-import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import com.locutus.wiki.BotWikiGen;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.guild.GuildKey;
@@ -11,11 +9,11 @@ import link.locutus.discord.util.MarkupUtil;
 import java.util.ArrayList;
 import java.util.List;
 
-public class WikiHelpPage extends WikiGen {
-    private final List<WikiGen> pages;
+public class WikiHelpPage extends BotWikiGen {
+    private final List<BotWikiGen> pages;
     private final String urlPrefix;
 
-    public WikiHelpPage(CommandManager2 manager, List<WikiGen>pages) {
+    public WikiHelpPage(CommandManager2 manager, List<BotWikiGen>pages) {
         super(manager, "home");
         this.pages = new ArrayList<>(pages);
         this.urlPrefix = "../wiki/";
@@ -24,7 +22,7 @@ public class WikiHelpPage extends WikiGen {
     @Override
     public String generateMarkdown() {
         StringBuilder pageList = new StringBuilder();
-        for (WikiGen page : pages) {
+        for (BotWikiGen page : pages) {
             if (page.generateMarkdown().trim().isEmpty()) continue;
             String url = urlPrefix + page.getPageName().replace(" ", "_");
             pageList.append("### " + MarkupUtil.markdownUrl(page.getPageName(), url)).append("\n");

@@ -1,6 +1,6 @@
 package com.locutus.wiki.pages;
 
-import com.locutus.wiki.WikiGen;
+import com.locutus.wiki.BotWikiGen;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.entities.Coalition;
@@ -8,7 +8,7 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 
-public class WikiBankPage extends WikiGen {
+public class WikiBankPage extends BotWikiGen {
     public WikiBankPage(CommandManager2 manager) {
         super(manager, "banking");
     }

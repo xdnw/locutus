@@ -23,8 +23,10 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.EmbeddingSource;
+import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
+import link.locutus.discord.gpt.imps.ConvertingDocument;
 import link.locutus.discord.gpt.imps.EmbeddingType;
 import link.locutus.discord.gpt.pwembed.ArgumentEmbeddingAdapter;
 import link.locutus.discord.gpt.pwembed.GPTProvider;
@@ -36,6 +38,7 @@ import link.locutus.discord.user.Roles;
 import com.locutus.wiki.CommandWikiPages;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -45,6 +48,8 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -66,7 +71,7 @@ public class GPTCommands {
             "When the command is run, the document is added to the queue, and the user will be alerted when the conversion finishes.\n" +
             "Users have the option to check the progress of the conversion using a command.")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS, root = true)
-    public synchronized String generate_factsheet(PWGPTHandler gpt, @Me GuildDB db, @Me IMessageIO io, @Me JSONObject command, String googleDocumentUrl, String document_description, @Switch("s") SpreadSheet sheet, @Switch("f") boolean confirm) throws GeneralSecurityException, IOException {
+    public synchronized String generate_factsheet(PWGPTHandler gpt, @Me GuildDB db, @Me IMessageIO io, @Me User user, @Me JSONObject command, String googleDocumentUrl, String document_name, @Switch("f") boolean confirm) throws GeneralSecurityException, IOException {
         String baseUrl = "https://docs.google.com/document/d/";
         if (!googleDocumentUrl.startsWith(baseUrl)) {
             return "Invalid Google Document URL. Expecting `https://docs.google.com/document/d/...`, received: `" + googleDocumentUrl + "`";
@@ -95,7 +100,7 @@ public class GPTCommands {
             String title = "Generate factsheet?";
             StringBuilder body = new StringBuilder();
             body.append("This will generate a factsheet with the following parameters:\n");
-            body.append("Document description: `").append(document_description).append("`\n");
+            body.append("Document name: `").append(document_name).append("`\n");
             body.append("Input lines: `").append(lines.length).append("`\n");
 
             IMessageBuilder msg = io.create();
@@ -104,25 +109,21 @@ public class GPTCommands {
             return null;
         }
 
-        List<String> converted = gpt.convertDocument(markdown, document_description);
-
-        if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKeys.ANSWER_SHEET);
+        // Check no document conversion already occuring
+        List<ConvertingDocument> documents = gpt.getDocumentConversions(db.getGuild());
+        if (!documents.isEmpty()) {
+            return "You must wait for the current document conversion to finish before starting another one: TODO CM REF";
         }
 
-        // set values in sheet
-        List<String> header = new ArrayList<>(Arrays.asList("description"));
-        sheet.addRow(header);
-        for (String line : converted) {
-            header.set(0, line);
-            sheet.addRow(header);
-        }
+        // User user, Guild guild, ProviderType provider, String documentName, String markdown, String prompt
+        ConvertingDocument document = gpt.createDocumentConversion(user,
+                db.getGuild(),
+                ProviderType.OPENAI,
+                document_name,
+                markdown,
+                null);
 
-        sheet.clear("A:Z");
-        sheet.set(0, 0);
-
-        sheet.attach(io.create(), "facts", null, false, 0).send();
-        return null;
+        return "Added document " + document.toString() + " to the queue. Use TODO CM REF to view the progress of the conversion.";
     }
 
     @Command(desc = "This command provides a list of accessible embedding datasets used for prompting GPT.\n" +

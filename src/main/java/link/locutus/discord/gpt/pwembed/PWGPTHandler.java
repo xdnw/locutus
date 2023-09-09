@@ -7,15 +7,12 @@ import com.google.common.collect.HashBiMap;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.knuddels.jtokkit.api.ModelType;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
@@ -25,6 +22,7 @@ import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
+import link.locutus.discord.gpt.imps.DocumentChunk;
 import link.locutus.discord.gpt.imps.EmbeddingInfo;
 import link.locutus.discord.gpt.imps.EmbeddingType;
 import link.locutus.discord.gpt.GptHandler;
@@ -491,17 +489,60 @@ public class PWGPTHandler {
         return result;
     }
 
+    private boolean initDocs = false;
+
     public void initDocumentConversion() {
-        IEmbeddingDatabase embeddings = getHandler().getEmbeddings();
-        List<ConvertingDocument> documents = embeddings.getUnconvertedDocuments();
+        if (initDocs) return;
+        initDocs = true;
+
+        List<ConvertingDocument> docs = getEmbeddings().getUnconvertedDocuments();
 
         // add these documents to the queue
 
         // while free, submit
     }
 
-    public List<String> convertDocument(String markdown, String documentDescription) {
+    private String getDocumentPrompt() {
+        return """
+        # Goal
+        You will be provided both `context` and `text` from a user guide for the game Politics And War.\s
+        Take the information in `text` and organize it into dot points of standalone factual knowledge (start each line with `- `).\s
+        Use the `context` solely to understand `text` but do not create facts solely from it.
+        Do not make anything up.\s
+        Preserve syntax, formulas and precision.
+                        
+        # Context:
+        {context}
+                        
+        # Text:
+        {text}
+                        
+        # Fact summary:""";
+    }
 
+    public ConvertingDocument createDocumentConversion(User user, Guild guild, ProviderType provider, String documentName, String markdown, String prompt) {
+        ConvertingDocument document = new ConvertingDocument();
+
+        EmbeddingSource source = getEmbeddings().getOrCreateSource(documentName, guild.getIdLong());
+
+        document.source_id = source.source_id;
+        if (prompt == null) prompt = getDocumentPrompt();
+        document.prompt = prompt;
+        document.converted = false;
+        document.use_global_context = true;
+        document.provider_type = provider.ordinal();
+        document.user = user.getIdLong();
+        document.error = null;
+        document.date = System.currentTimeMillis();
+
+//        createContextChunks(markdown);
+        if (true) throw new UnsupportedOperationException("Not implemented yet");
+
+        getEmbeddings().addConvertingDocument(List.of(document));
+
+        this.initDocumentConversion();
+
+        return document;
     }
 
     public Set<ProviderType> getProviderTypes(DBNation nation) {
@@ -622,5 +663,20 @@ public class PWGPTHandler {
         }
 
         return sources;
+    }
+
+    private IEmbeddingDatabase getEmbeddings() {
+        return getHandler().getEmbeddings();
+    }
+
+    public List<ConvertingDocument> getDocumentConversions(Guild guild) {
+        List<ConvertingDocument> documents = new ArrayList<>();
+        for (ConvertingDocument document : getEmbeddings().getUnconvertedDocuments()) {
+            EmbeddingSource source = getEmbeddings().getEmbeddingSource(guild.getIdLong(), document.source_id);
+            if (source != null) {
+                documents.add(document);
+            }
+        }
+        return documents;
     }
 }
