@@ -159,7 +159,7 @@ public class AdminCommands {
     @RolePermission(value = Roles.ADMIN, root = true)
     public String showFileQueue(@Me IMessageIO io, @Default @Timestamp Long timestamp, @Switch("r") Integer numResults) throws URISyntaxException {
         PageRequestQueue handler = FileUtil.getPageRequestQueue();
-        PriorityQueue<PageRequestQueue.PageRequestTask<?>> jQueue = handler.getQueue();
+        List<PageRequestQueue.PageRequestTask<?>> jQueue = handler.getQueue();
 
         Map<PagePriority, Integer> pagePriorities = new HashMap<>();
         int unknown = 0;

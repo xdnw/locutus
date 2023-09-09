@@ -731,7 +731,7 @@ public class BankCommands {
         List<TransferResult> results = new ArrayList<>();
         for (DBAlliance from : alliances) {
             if (from.getAlliance_id() == to.getAlliance_id()) continue;
-            Map<ResourceType, Double> resources = from.getStockpile();
+            Map<ResourceType, Double> resources = from.getStockpile(true);
             Iterator<Map.Entry<ResourceType, Double>> iterator = resources.entrySet().iterator();
             while (iterator.hasNext()) {
                 Map.Entry<ResourceType, Double> entry = iterator.next();

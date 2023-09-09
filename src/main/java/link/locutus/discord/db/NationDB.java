@@ -350,6 +350,7 @@ public class NationDB extends DBMainV2 {
                 if (getAlliance(id) == null) newIds.add(id);
             }
         }
+        System.out.println("Update new alliances");
         return updateAlliancesById(new ArrayList<>(newIds), eventConsumer);
     }
 
@@ -366,6 +367,7 @@ public class NationDB extends DBMainV2 {
         Set<Integer> updated = processUpdatedAlliances(alliances, eventConsumer);
 
         if (!toDelete.isEmpty()) {
+            System.out.println("Update deleted alliances");
             updateAlliancesById(new ArrayList<>(toDelete), eventConsumer);
 //            deleteAlliances(toDelete, eventConsumer);
         }
@@ -670,6 +672,7 @@ public class NationDB extends DBMainV2 {
             ids.addAll(getActiveAlliancesToUpdate(pad, Rank.MEMBER, AlliancePermission.EDIT_ALLIANCE_INFO, AlliancePermission.CHANGE_PERMISSIONS));
         }
 
+        System.out.println("Update outdated alliances");
         // Add new alliances as padding
         return updateNewAlliances(ids, eventConsumer);
     }

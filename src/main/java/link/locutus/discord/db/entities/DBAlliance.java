@@ -1051,8 +1051,15 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     public Map<ResourceType, Double> getStockpile() {
+        return getStockpile(false);
+    }
+
+    public Map<ResourceType, Double> getStockpile(boolean throwError) {
         PoliticsAndWarV3 api = getApiOrThrow(AlliancePermission.VIEW_BANK);
         double[] stockpile = api.getAllianceStockpile(allianceId);
+        if (stockpile == null && throwError) {
+            api.throwInvalid(AlliancePermission.VIEW_BANK, "for alliance " + getMarkdownUrl());
+        }
         return stockpile == null ? null : PnwUtil.resourcesToMap(stockpile);
     }
 
