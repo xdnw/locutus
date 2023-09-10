@@ -2405,7 +2405,7 @@ public class WarCommands {
                 "\u2708",
                 "\u26F5",
                 "spy",
-                "spy_2d",
+                "spy_buy_days",
                 "spy_cap",
                 "barracks",
                 "factory",
@@ -2443,7 +2443,7 @@ public class WarCommands {
 
         Set<Integer> nationIds = nations.stream().map(f -> f.getNation_id()).collect(Collectors.toSet());
         long dayCutoff = TimeUtil.getDay() - 2;
-        Map<Integer, Integer> lastSpyCounts = Locutus.imp().getNationDB().getLastSpiesByNation(nationIds, dayCutoff);
+//        Map<Integer, Integer> lastSpyCounts = Locutus.imp().getNationDB().getLastSpiesByNation(nationIds, dayCutoff);
 
         if (forceUpdate) {
             new SimpleNationList(nations).updateCities(true);
@@ -2467,6 +2467,8 @@ public class WarCommands {
 
                 List<Object> row = new ArrayList<>(header);
 
+                double daysSpies = nation.daysSinceLastSpyBuy();
+
                 Map<Integer, JavaCity> cities = nation.getCityMap(false, false);
                 int i = 0;
                 for (Map.Entry<Integer, JavaCity> cityEntry : cities.entrySet()) {
@@ -2480,7 +2482,7 @@ public class WarCommands {
                     drydocks += cityDrydocks;
                     if (showCities) {
                         String url = MarkupUtil.sheetUrl("CITY " + (++i), PnwUtil.getCityUrl(cityEntry.getKey()));
-                        setRowMMRSheet(url, row, nation, lastSpyCounts.get(nation.getNation_id()), cityBarracks, cityFactories, cityHangars, cityDrydocks, 0, 0, 0, 0);
+                        setRowMMRSheet(url, row, nation, daysSpies, cityBarracks, cityFactories, cityHangars, cityDrydocks, 0, 0, 0, 0);
                         sheet.addRow(row);
                     }
                 }
@@ -2512,7 +2514,7 @@ public class WarCommands {
                 airBuyTotal += airBuy;
                 navyBuyTotal += navyBuy;
 
-                setRowMMRSheet("NATION", row, nation, lastSpyCounts.get(nation.getNation_id()), barracks, factories, hangars, drydocks, soldierBuy, tankBuy, airBuy, navyBuy);
+                setRowMMRSheet("NATION", row, nation, daysSpies, barracks, factories, hangars, drydocks, soldierBuy, tankBuy, airBuy, navyBuy);
                 sheet.addRow(row);
             }
 
@@ -2533,7 +2535,7 @@ public class WarCommands {
             total.setAlliance_id(aaId);
 
             List<Object> row = new ArrayList<>(header);
-            setRowMMRSheet("ALLIANCE", row, total, null, barracksTotal, factoriesTotal, hangarsTotal, drydocksTotal, soldierBuyTotal, tankBuyTotal, airBuyTotal, navyBuyTotal);
+            setRowMMRSheet("ALLIANCE", row, total, -1, barracksTotal, factoriesTotal, hangarsTotal, drydocksTotal, soldierBuyTotal, tankBuyTotal, airBuyTotal, navyBuyTotal);
             sheet.addRow(row);
         }
 
@@ -2545,7 +2547,7 @@ public class WarCommands {
         return null;
     }
 
-    private void setRowMMRSheet(String name, List<Object> row, DBNation nation, Integer lastSpies, double barracks, double factories, double hangars, double drydocks, double soldierBuy, double tankBuy, double airBuy, double navyBuy) {
+    private void setRowMMRSheet(String name, List<Object> row, DBNation nation, double lastSpies, double barracks, double factories, double hangars, double drydocks, double soldierBuy, double tankBuy, double airBuy, double navyBuy) {
         row.set(0, name);
         row.set(1, MarkupUtil.sheetUrl(nation.getNation(), PnwUtil.getUrl(nation.getNation_id(), false)));
         row.set(2, MarkupUtil.sheetUrl(nation.getAllianceName(), PnwUtil.getUrl(nation.getAlliance_id(), true)));
@@ -2567,7 +2569,7 @@ public class WarCommands {
 
         int spyCap = nation.getSpyCap();
         row.set(12, nation.getSpies() + "");
-        row.set(13, lastSpies + "");
+        row.set(13, MathMan.format(lastSpies));
         row.set(14, spyCap);
 
         row.set(15, barracks);

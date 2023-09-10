@@ -127,6 +127,11 @@ public class WarUpdateProcessor {
                 e.printStackTrace();
             }
         }
+        try {
+            WarUpdateProcessor.checkActiveConflicts();
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
         long diff = System.currentTimeMillis() - start;
         if (diff > 500) {
             System.out.println("Took " + diff + "ms to process " + wars.size() + " wars");

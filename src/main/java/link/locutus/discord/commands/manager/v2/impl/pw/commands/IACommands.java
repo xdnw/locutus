@@ -439,34 +439,29 @@ public class IACommands {
             if (!db.isAllianceId(nation.getAlliance_id()) || nation.getPosition() < 1) return "Nation is not a member: " + nation.getNationUrl() + "(see `#position>1,<args>`,";
         }
 
-        Set<Integer> result = new SimpleNationList(nations).updateSpies(false);
-        if (result.isEmpty()) {
-            return "Could not update spies (see " + GuildKey.API_KEY.getCommandMention() + ")";
-        }
+//        Set<Integer> result = new SimpleNationList(nations).updateSpies(false);
+//        if (result.isEmpty()) {
+//            return "Could not update spies (see " + GuildKey.API_KEY.getCommandMention() + ")";
+//        }
 
         long dayCutoff = TimeUtil.getDay() - 2;
         Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
-        Map<Integer, Integer> lastSpyCounts = Locutus.imp().getNationDB().getLastSpiesByNation(nationIds, dayCutoff);
 
         List<String> errors = new ArrayList<>();
         List<DBNation> notUpdated = new ArrayList<>();
         List<DBNation> lacking = new ArrayList<>();
         for (DBNation nation : nations) {
-            Integer spies = nation.getSpies();
-            if (!result.contains(nation.getNation_id()) || spies == null) {
-                errors.add(nation.getNation() + "\t" + nation.getUrl() + "\t" + "UNABLE TO UPDATE SPIES");
-                notUpdated.add(nation);
-                continue;
-            }
+            int spies = nation.getSpies();
+//            if (!result.contains(nation.getNation_id()) || spies == null) {
+//                errors.add(nation.getNation() + "\t" + nation.getUrl() + "\t" + "UNABLE TO UPDATE SPIES");
+//                notUpdated.add(nation);
+//                continue;
+//            }
             int spyCap = nation.getSpyCap();
-            if (spies >= spyCap) continue;
+            if (spies >= spyCap - 1) continue;
 
-            Integer lastSpies = lastSpyCounts.get(nation.getNation_id());
-            if (lastSpies == null) {
-                errors.add(nation.getNation() + "\t" + nation.getUrl() + "\t" + "NO PREVIOUS DATA");
-                continue;
-            }
-            if (lastSpies.equals(spies) && spies < spyCap - 1) {
+            double days = spies == 0 ? Integer.MAX_VALUE : nation.daysSinceLastSpyBuy();
+            if (days > 1) {
                 lacking.add(nation);
             }
         }

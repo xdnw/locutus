@@ -1084,8 +1084,8 @@ public class CM {
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="deposits")
         public static class check extends CommandRef {
             public static final check cmd = new check();
-            public check create(String nationOrAllianceOrGuild, String offshores, String timeCutoff, String includeBaseTaxes, String ignoreInternalOffsets, String showTaxesSeparately, String replyInDMs, String includeExpired, String includeIgnored, String hideEscrowed) {
-                return createArgs("nationOrAllianceOrGuild", nationOrAllianceOrGuild, "offshores", offshores, "timeCutoff", timeCutoff, "includeBaseTaxes", includeBaseTaxes, "ignoreInternalOffsets", ignoreInternalOffsets, "showTaxesSeparately", showTaxesSeparately, "replyInDMs", replyInDMs, "includeExpired", includeExpired, "includeIgnored", includeIgnored, "hideEscrowed", hideEscrowed);
+            public check create(String nationOrAllianceOrGuild, String offshores, String timeCutoff, String includeBaseTaxes, String ignoreInternalOffsets, String showCategories, String replyInDMs, String includeExpired, String includeIgnored, String hideEscrowed) {
+                return createArgs("nationOrAllianceOrGuild", nationOrAllianceOrGuild, "offshores", offshores, "timeCutoff", timeCutoff, "includeBaseTaxes", includeBaseTaxes, "ignoreInternalOffsets", ignoreInternalOffsets, "showCategories", showCategories, "replyInDMs", replyInDMs, "includeExpired", includeExpired, "includeIgnored", includeIgnored, "hideEscrowed", hideEscrowed);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="convertNegativeDeposits")

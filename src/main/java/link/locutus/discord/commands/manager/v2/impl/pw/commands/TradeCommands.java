@@ -1144,7 +1144,7 @@ public class TradeCommands {
 
     @Command(desc = "Generate a graph comparing market values of two resource amounts by day")
     @RolePermission(value = Roles.MEMBER)
-    public String compareStockpileValueByDay(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, Map<ResourceType, Double> stockpile1, Map<ResourceType, Double> stockpile2, @Range(min=1, max=3000) int numDays) throws IOException, GeneralSecurityException {
+    public String compareStockpileValueByDay(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, Map<ResourceType, Double> stockpile1, Map<ResourceType, Double> stockpile2, @Range(min=1, max=3000) int numDays, @Switch("j") boolean attachJson) throws IOException, GeneralSecurityException {
         Map<ResourceType, Map<Long, Double>> avgByRss = new HashMap<>();
         long minDay = Long.MAX_VALUE;
         long maxDay = Long.MIN_VALUE;
@@ -1213,13 +1213,13 @@ public class TradeCommands {
             table.add(day, (Void) null);
         }
 
-        table.write(channel, true);
+        table.write(channel, true, attachJson);
         return "Done!";
     }
 
     @Command(desc = "Generate a graph of average buy and sell trade price by day")
     @RolePermission(value = Roles.MEMBER)
-    public String tradepricebyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, List<ResourceType> resources, int numDays) throws IOException, GeneralSecurityException {
+    public String tradepricebyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, List<ResourceType> resources, int numDays, @Switch("j") boolean attachJson) throws IOException, GeneralSecurityException {
         if (numDays <= 1) return "Invalid number of days";
         resources.remove(ResourceType.MONEY);
         resources.remove(ResourceType.CREDITS);
@@ -1267,7 +1267,7 @@ public class TradeCommands {
         }
 
 
-        table.write(channel, true);
+        table.write(channel, true, attachJson);
 
         return "Done!";
     }
@@ -1276,7 +1276,7 @@ public class TradeCommands {
     @RolePermission(value = Roles.MEMBER)
     public String trademarginbyday(@Me IMessageIO channel, TradeManager manager, @Range(min=1, max=300) int numDays,
                                    @Arg("Use the margin percent instead of absolute difference")
-                                   @Default("true") boolean percent) throws IOException, GeneralSecurityException {
+                                   @Default("true") boolean percent, @Switch("j") boolean attachJson) throws IOException, GeneralSecurityException {
         long now = System.currentTimeMillis();
         long cutoff = now - TimeUnit.DAYS.toMillis(numDays + 1);
 
@@ -1358,7 +1358,7 @@ public class TradeCommands {
             }
 
 
-            table.write(channel, true);
+            table.write(channel, true, attachJson);
         }
 
 
@@ -1367,21 +1367,21 @@ public class TradeCommands {
 
     @Command(desc = "Generate a graph of average trade buy and sell volume by day")
     @RolePermission(value = Roles.MEMBER)
-    public String tradevolumebyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int numDays) throws IOException, GeneralSecurityException {
+    public String tradevolumebyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int numDays, @Switch("j") boolean attachJson) throws IOException, GeneralSecurityException {
         String title = "volume by day";
-        rssTradeByDay(title, channel, numDays, offers -> manager.volumeByResource(offers));
+        rssTradeByDay(title, channel, numDays, offers -> manager.volumeByResource(offers), attachJson);
         return null;
     }
 
     @Command(desc = "Generate a graph of average trade buy and sell total by day")
     @RolePermission(value = Roles.MEMBER)
-    public String tradetotalbyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int numDays) throws IOException, GeneralSecurityException {
+    public String tradetotalbyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int numDays, @Switch("j") boolean attachJson) throws IOException, GeneralSecurityException {
         String title = "total by day";
-        rssTradeByDay(title, channel, numDays, offers -> manager.totalByResource(offers));
+        rssTradeByDay(title, channel, numDays, offers -> manager.totalByResource(offers), attachJson);
         return null;
     }
 
-    public void rssTradeByDay(String title, IMessageIO channel, int days, Function<Collection<DBTrade>, long[]> rssFunction) throws IOException {
+    public void rssTradeByDay(String title, IMessageIO channel, int days, Function<Collection<DBTrade>, long[]> rssFunction, boolean attachJson) throws IOException {
         TradeManager manager = Locutus.imp().getTradeManager();
         link.locutus.discord.db.TradeDB tradeDb = manager.getTradeDb();
 
@@ -1431,7 +1431,7 @@ public class TradeCommands {
                 }
             }
 
-            table.write(channel, true);
+            table.write(channel, true, attachJson);
         }
     }
 
