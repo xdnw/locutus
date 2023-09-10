@@ -134,6 +134,7 @@ public class DocumentConverter {
     }
 
     private ConcurrentHashMap<Integer, Object> conversionLocks = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<Integer, Boolean> conversionStatus = new ConcurrentHashMap<>();
 
     private void submitDocument(GuildDB db, ConvertingDocument document, boolean throwError) {
         if (document.converted) {
@@ -207,11 +208,36 @@ public class DocumentConverter {
                 return;
             }
 
+            Boolean status = conversionStatus.get(document.source_id);
+            if (status == Boolean.FALSE) {
+                if (document.error == null) {
+                    document.error = "Document conversion manually cancelled";
+                }
+                getEmbeddings().addConvertingDocument(List.of(document));
+                if (throwError) {
+                    throw new IllegalArgumentException(document.error);
+                }
+                return;
+            }
+            if (status == Boolean.TRUE) {
+                if (throwError) {
+                    throw new IllegalArgumentException("Document `#" + document.source_id + "` is already being converted");
+                }
+                return;
+            }
+            // put status true
             DocumentChunk chunk = chunks.get(0);
-        }
 
-        // get first unfinished chunk
-        // if no unfinished chunk, mark as converted etc.
+            // schedule task
+            {
+                // move this to the task
+                // TODO add guards for already running
+
+                conversionStatus.put(document.source_id, true);
+
+                // try finally, removing conversion status
+            }
+        }
 
 
         // submit chunks
