@@ -2514,7 +2514,7 @@ public class WarCommands {
                 airBuyTotal += airBuy;
                 navyBuyTotal += navyBuy;
 
-                setRowMMRSheet("NATION", row, nation, daysSpies.get(nation.getNation_id()), barracks, factories, hangars, drydocks, soldierBuy, tankBuy, airBuy, navyBuy);
+                setRowMMRSheet("NATION", row, nation, daysSpies, barracks, factories, hangars, drydocks, soldierBuy, tankBuy, airBuy, navyBuy);
                 sheet.addRow(row);
             }
 
