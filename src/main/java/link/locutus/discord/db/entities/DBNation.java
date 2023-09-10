@@ -1567,7 +1567,6 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "Most recent spy count")
-    @RolePermission(value = Roles.MILCOM)
     public int getSpies() {
         return Math.max(spies, 0);
     }
@@ -4979,6 +4978,11 @@ public class DBNation implements NationOrAlliance {
         return hasUnitBuyToday(MilitaryUnit.MISSILE);
     }
 
+    @Command(desc = "purchased spies today")
+    public boolean hasBoughtSpiesToday() {
+        return hasUnitBuyToday(MilitaryUnit.SPIES);
+    }
+
     @Command(desc = "Days since last soldier purchase")
     public double daysSinceLastSoldierBuy() {
         Long result = getLastUnitBuy(MilitaryUnit.SOLDIER);
@@ -5000,6 +5004,12 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "Days since last ship purchase")
     public double daysSinceLastShipBuy() {
         Long result = getLastUnitBuy(MilitaryUnit.SHIP);
+        return result == null ? Long.MAX_VALUE : (((double) (System.currentTimeMillis() - result)) / TimeUnit.DAYS.toMillis(1));
+    }
+
+    @Command(desc = "Days since last spy purchase")
+    public double daysSinceLastSpyBuy() {
+        Long result = getLastUnitBuy(MilitaryUnit.SPIES);
         return result == null ? Long.MAX_VALUE : (((double) (System.currentTimeMillis() - result)) / TimeUnit.DAYS.toMillis(1));
     }
 

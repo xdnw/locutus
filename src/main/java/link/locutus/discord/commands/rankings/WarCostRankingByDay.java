@@ -235,7 +235,7 @@ public class WarCostRankingByDay extends Command {
         }
 
         for (TimeNumericTable<Map<String, WarAttackParser>> table : tables) {
-            table.write(channel, true);
+            table.write(channel, true, false);
         }
         if (tables.isEmpty()) return "Please use one of the flag";
 
