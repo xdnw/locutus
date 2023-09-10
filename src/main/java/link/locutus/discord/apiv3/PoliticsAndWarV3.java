@@ -1463,7 +1463,7 @@ public class PoliticsAndWarV3 {
         mutation.setId(nation_id);
         mutation.setPosition_id(position_id);
         AlliancePositionResponseProjection projection = new AlliancePositionResponseProjection().id();
-        return request(PagePriority.RANK_SET, false, mutation, projection, AlliancePosition.class);
+        return request(PagePriority.RANK_SET, false, mutation, projection, AssignAlliancePositionMutationResponse.class).assignAlliancePosition();
     }
 
     public AlliancePosition assignAlliancePosition(int nation_id, Rank rank) {
@@ -1472,7 +1472,7 @@ public class PoliticsAndWarV3 {
         mutation.setId(nation_id);
         mutation.setDefault_position(v3);
         AlliancePositionResponseProjection projection = new AlliancePositionResponseProjection().id();
-        return request(PagePriority.RANK_SET, false, mutation, projection, AlliancePosition.class);
+        return request(PagePriority.RANK_SET, false, mutation, projection, AssignAlliancePositionMutationResponse.class).assignAlliancePosition();
     }
 
     private TreatyResponseProjection treatyResponseProjection() {
