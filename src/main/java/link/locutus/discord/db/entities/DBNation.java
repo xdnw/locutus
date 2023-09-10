@@ -3835,9 +3835,10 @@ public class DBNation implements NationOrAlliance {
                 response.append("\n- No trades to deposit " + PnwUtil.resourcesToString(toDeposit));
                 return Map.entry(false, response.toString());
             }
+            double[] depositPositive = PnwUtil.max(toDeposit.clone(), ResourceType.getBuffer());
             int receiverId;
             try {
-                Bankrec deposit = receiverApi.depositIntoBank(toDeposit, "#ignore");
+                Bankrec deposit = receiverApi.depositIntoBank(depositPositive, "#ignore");
                 double[] amt = ResourceType.fromApiV3(deposit, ResourceType.getBuffer());
                 response.append("\nDeposited: `" + PnwUtil.resourcesToString(amt) + "`");
                 if (!ResourceType.equals(toDeposit, amt)) {
@@ -3857,7 +3858,7 @@ public class DBNation implements NationOrAlliance {
                 for (int i = 0; i < toDeposit.length; i++) {
                     if (toDeposit[i] < 0) toDeposit[i] = 0;
                 }
-                TransferResult transferResult = bank.transfer(offshore.getAlliance(), PnwUtil.resourcesToMap(toDeposit), "#ignore");
+                TransferResult transferResult = bank.transfer(offshore.getAlliance(), PnwUtil.resourcesToMap(depositPositive), "#ignore");
                 response.append("Offshore " + transferResult.toLineString());
                 if (transferResult.getStatus() != OffshoreInstance.TransferStatus.SUCCESS) {
                     response.append("\n- Depositing failed");
