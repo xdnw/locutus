@@ -481,7 +481,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "{nation}", value = "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
-    public NationPlaceholder placeholder(ValueStore store, PermissionHandler permisser, String input) {
+    public static NationPlaceholder placeholder(ValueStore store, PermissionHandler permisser, String input) {
         CommandManager2 v2 = Locutus.imp().getCommandManager().getV2();
         NationPlaceholders placeholders = v2.getNationPlaceholders();
         ParametricCallable ph = placeholders.get(input);
@@ -661,7 +661,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "borg,AA:Cataclysm", value = "A comma separated list of nations and alliances")
-    public Set<NationOrAlliance> nationOrAlliance(ParameterData data, @Default @Me Guild guild, String input) {
+    public static Set<NationOrAlliance> nationOrAlliance(ParameterData data, @Default @Me Guild guild, String input) {
         Set<NationOrAlliance> result = new LinkedHashSet<>();
 
         for (String group : input.split("\\|+")) {

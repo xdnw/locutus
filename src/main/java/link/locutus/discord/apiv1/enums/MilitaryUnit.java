@@ -22,32 +22,32 @@ import java.util.function.Supplier;
 import static link.locutus.discord.apiv1.enums.ResourceType.*;
 
 public enum MilitaryUnit {
-    SOLDIER("soldiers", 0.0004,
+    SOLDIER("soldiers", "\uD83D\uDC82", 0.0004,
             ResourceType.MONEY.builder(5).build(),
             ResourceType.MONEY.builder(1.25).add(ResourceType.FOOD, 1/750d).build(),
             true,
             MUNITIONS.toArray(1 / 5000d)
     ),
-    TANK("tanks", 0.025,
+    TANK("tanks", "\u2699",0.025,
             ResourceType.MONEY.builder(60).add(STEEL, 0.5d).build(),
             ResourceType.MONEY.toArray(50),
             true,
             GASOLINE.builder(1 / 100d).add(MUNITIONS, 1 / 100d).build()
         ),
-    AIRCRAFT("aircraft", 0.3,
+    AIRCRAFT("aircraft", "\u2708", 0.3,
             ResourceType.MONEY.builder(4000).add(ALUMINUM, 5).build(),
             ResourceType.MONEY.toArray(500),
             true,
             GASOLINE.builder(1 / 4d).add(MUNITIONS, 1 / 4d).build()
     ),
-    SHIP("navy", 1,
+    SHIP("navy", "\uD83D\uDEA2", 1,
             ResourceType.MONEY.builder(50000).add(STEEL, 30).build(),
             ResourceType.MONEY.toArray(3375),
             true,
             GASOLINE.builder(1.5).add(MUNITIONS, 2.5).build()
     ),
 
-    MONEY(null, 0,
+    MONEY(null, "\uD83D\uDCB2", 0,
             // Is a unit type because you can airstrike money
             ResourceType.MONEY.builder(1).build(),
             ResourceType.MONEY.toArray(0),
@@ -55,7 +55,7 @@ public enum MilitaryUnit {
             ResourceType.getBuffer()
     ),
 
-    MISSILE("missiles", 5,
+    MISSILE("missiles", "\uD83D\uDE80", 5,
             ResourceType.MONEY.builder(150000).add(ALUMINUM, 100).add(GASOLINE, 75).add(MUNITIONS, 75).build(),
             ResourceType.MONEY.toArray(21000),
             true,
@@ -66,7 +66,7 @@ public enum MilitaryUnit {
             return this.score * Math.min(50, amt);
         }
     },
-    NUKE("nukes", 15,
+    NUKE("nukes", "\u2622", 15,
              ResourceType.MONEY.builder(1750000).add(ALUMINUM, 750).add(GASOLINE, 500).add(URANIUM, 250).build(),
             ResourceType.MONEY.toArray(35000),
             true,
@@ -78,14 +78,14 @@ public enum MilitaryUnit {
         }
     },
 
-    SPIES("spies", 0,
+    SPIES("spies", "\uD83D\uDD0E", 0,
             ResourceType.MONEY.builder(50_000).build(),
             ResourceType.MONEY.toArray(2400),
             true,
             ResourceType.MONEY.toArray(3500)
     ),
 
-    INFRASTRUCTURE(null, 1 / 40d,
+    INFRASTRUCTURE(null, "\uD83C\uDFD7", 1 / 40d,
             // Is a unit type because you can airstrike infra
             ResourceType.MONEY.toArray(0),
             ResourceType.MONEY.toArray(0),
@@ -101,14 +101,15 @@ public enum MilitaryUnit {
     protected final double score;
     private final double[] consumption;
     private double costConverted = -1;
-    private final String name;
+    private final String name, emoji;
     private final double[] upkeepPeace;
     private final double[] upkeepWar;
 
     public static MilitaryUnit[] values = values();
 
-    MilitaryUnit(String name, double score, double[] cost, double[] peacetimeUpkeep, boolean multiplyWartimeUpkeep, double[] consumption) {
+    MilitaryUnit(String name, String emoji, double score, double[] cost, double[] peacetimeUpkeep, boolean multiplyWartimeUpkeep, double[] consumption) {
         this.name = name;
+        this.emoji = emoji;
         this.cost = cost;
         this.upkeepPeace = peacetimeUpkeep;
         if (multiplyWartimeUpkeep) {
@@ -118,6 +119,10 @@ public enum MilitaryUnit {
         }
         this.consumption = consumption;
         this.score = score;
+    }
+
+    public String getEmoji() {
+        return emoji;
     }
 
     public int getMaxPerDay(int cities, Predicate<Project> hasProject) {

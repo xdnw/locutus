@@ -1434,7 +1434,7 @@ public class UtilityCommands {
                 CM.nation.list.bans bans = CM.nation.list.bans.cmd.create(nation.getId() + "");
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, bans, "Bans");
                 //Reports
-                CM.report.search reports = CM.report.search.cmd.create(nation.getNationUrl(), null, null, null);
+                CM.report.search reports = CM.report.search.cmd.create(nation.getNation_id() + "", null, null, null);
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, reports, "Reports");
                 //Projects
                 CM.project.slots projects = CM.project.slots.cmd.create(nation.getNationUrl());
