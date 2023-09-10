@@ -1577,7 +1577,6 @@ public class DBNation implements NationOrAlliance {
             DBNation copyOriginal = new DBNation(this);
             this.spies = spies;
 
-            Locutus.imp().getNationDB().setSpies(getNation_id(), spies);
             Locutus.imp().getNationDB().saveNation(this);
 
             new NationChangeUnitEvent(copyOriginal, this, MilitaryUnit.SPIES).post();

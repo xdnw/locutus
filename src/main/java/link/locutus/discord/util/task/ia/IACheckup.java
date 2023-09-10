@@ -1139,16 +1139,10 @@ public class IACheckup {
         if (currentSpies == null || currentSpies >= maxSpies - 1) return null;
 
 
-        long cutoff = TimeUtil.getDay() - 2;
-        Map.Entry<Integer, Long> lastSpies = Locutus.imp().getNationDB().getLatestSpyCount(nation.getNation_id(), cutoff);
-        if (lastSpies == null) return null;
-
-        if (lastSpies.getKey().equals(currentSpies)) {
-            String message = "You have " + nation.getSpies() + " spies. Spies can perform various operations, (like destroying planes), and can do so daily, without using a war slot, or bringing you out of beige. You should always purchase max spies every day";
-            return new AbstractMap.SimpleEntry<>(nation.getSpies(), message);
-        }
-
-        return null;
+        boolean buySpies = nation.getSpies() == 0 || nation.daysSinceLastSpyBuy() > 1;
+        if (!buySpies) return null;
+        String message = "You have " + nation.getSpies() + " spies. Spies can perform various operations, (like destroying planes), and can do so daily, without using a war slot, or bringing you out of beige. You should always purchase max spies every day";
+        return new AbstractMap.SimpleEntry<>(nation.getSpies(), message);
     }
 
     private Map.Entry<Object, String> checkTanks(DBNation nation, Map<Integer, JavaCity> cities) {
