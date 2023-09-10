@@ -1,4 +1,4 @@
-package link.locutus.discord.gpt.pwembed;
+package link.locutus.discord.gpt.pw;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -11,8 +11,8 @@ import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.IModerator;
 import link.locutus.discord.gpt.ModerationResult;
 import link.locutus.discord.gpt.imps.IText2Text;
+import link.locutus.discord.gpt.imps.ProviderType;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -30,9 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class SimpleGPTProvider extends GPTProvider {

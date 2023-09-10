@@ -8,20 +8,17 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.WikiCategory;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.EmbeddingSource;
-import link.locutus.discord.gpt.pwembed.GPTProvider;
-import link.locutus.discord.gpt.pwembed.PWGPTHandler;
-import link.locutus.discord.gpt.pwembed.ProviderType;
+import link.locutus.discord.gpt.pw.GPTProvider;
+import link.locutus.discord.gpt.pw.PWGPTHandler;
+import link.locutus.discord.gpt.imps.ProviderType;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.entities.Guild;
 
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import static link.locutus.discord.commands.manager.v2.binding.BindingHelper.emum;
 
 public class GPTBindings extends BindingHelper {
     @Binding(value = "A GPT model name")

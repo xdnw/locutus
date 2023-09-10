@@ -37,7 +37,7 @@ import com.locutus.wiki.pages.WikiTradePage;
 import com.locutus.wiki.pages.WikiWarAlertsPage;
 import com.locutus.wiki.pages.WikiWarRoomPage;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
-import link.locutus.discord.gpt.pwembed.PWGPTHandler;
+import link.locutus.discord.gpt.pw.PWGPTHandler;
 
 import java.io.File;
 import java.io.IOException;

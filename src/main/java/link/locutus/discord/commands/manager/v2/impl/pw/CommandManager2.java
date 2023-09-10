@@ -30,13 +30,11 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
-import link.locutus.discord.gpt.pwembed.PWGPTHandler;
+import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.web.test.TestCommands;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import org.jooq.Param;
 import org.json.JSONObject;
 
 import javax.annotation.Nullable;

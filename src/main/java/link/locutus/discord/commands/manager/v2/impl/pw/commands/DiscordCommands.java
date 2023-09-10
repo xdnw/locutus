@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import com.theokanning.openai.moderation.Moderation;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
@@ -18,7 +17,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.GptHandler;
 import link.locutus.discord.gpt.ModerationResult;
-import link.locutus.discord.gpt.pwembed.PWGPTHandler;
+import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
@@ -34,7 +33,6 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.emoji.RichCustomEmoji;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
-import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.requests.restaction.PermissionOverrideAction;
 import org.json.JSONObject;
 

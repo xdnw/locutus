@@ -1,17 +1,14 @@
-package link.locutus.discord.gpt.pwembed;
+package link.locutus.discord.gpt.pw;
 
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.gpt.ISummarizer;
 import link.locutus.discord.gpt.imps.IText2Text;
+import link.locutus.discord.gpt.imps.ProviderType;
 import net.dv8tion.jda.api.entities.User;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.Closeable;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
-import java.util.function.Consumer;
 
 public abstract class GPTProvider implements Closeable {
     private final IText2Text text2Text;

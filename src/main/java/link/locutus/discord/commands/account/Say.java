@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.account;
 
-import com.theokanning.openai.moderation.Moderation;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -9,7 +8,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.GptHandler;
 import link.locutus.discord.gpt.ModerationResult;
-import link.locutus.discord.gpt.pwembed.PWGPTHandler;
+import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
