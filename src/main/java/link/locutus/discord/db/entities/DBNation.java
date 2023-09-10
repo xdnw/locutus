@@ -4084,7 +4084,7 @@ public class DBNation implements NationOrAlliance {
             String prefix = "";
             if (user != null) {
                 long created = user.getTimeCreated().toEpochSecond() * 1000L;
-                body.append(user.getAsMention() + " | " + DiscordUtil.userUrl(user.getIdLong(), false) + " | " + DiscordUtil.timestamp(created, null));
+                body.append(user.getAsMention() + " | " + MarkupUtil.markdownUrl(DiscordUtil.getFullUsername(user), DiscordUtil.userUrl(user.getIdLong(), false)) + " | " + DiscordUtil.timestamp(created, null));
                 prefix = " | ";
             }
             List<DBBan> bans = getBans();
@@ -4098,7 +4098,7 @@ public class DBNation implements NationOrAlliance {
             }
             body.append("\n");
         }
-        //Infra: 1500/2000 | Cities: 15 (6 unpowered) | Off: 5/5 | Def: 1/3
+        body.append("\n");
         {
             Collection<DBCity> cities = _getCitiesV3().values();
             double infra = 0;
@@ -4122,8 +4122,6 @@ public class DBNation implements NationOrAlliance {
             }
             body.append(" | ").append("Off: `").append(getOff()).append("/").append(getMaxOff()).append("` | ");
             body.append("Def: `").append(getDef()).append("/").append(3).append("`\n");
-
-
         }
         //VM: Timestamp(Started) - Timestamp(ends) (5 turns)
         if (getVm_turns() > 0) {
@@ -4132,7 +4130,7 @@ public class DBNation implements NationOrAlliance {
         //Domestic/War policy | beige turns | score
         body.append("`").append(this.domestic_policy.name()).append("` | `").append(this.war_policy.name()).append("` | `").append(MathMan.format(score) + "ns").append("` | `").append(getContinent().name()).append("`\n");
         //MMR[Building]: 1/2/3 | MMR[Unit]: 5/6/7
-        body.append("MMR[Build]=`").append(getMMRBuildingStr()).append("` | MMR[Unit]=`").append(getMMR()).append("`\n");
+        body.append("\n");
         //
         //Units: Now/Buyable/Cap
         body.append("Units: Now/Remaining Buy/Cap (assumes 5553)\n");
@@ -4144,6 +4142,7 @@ public class DBNation implements NationOrAlliance {
             if (cap == Integer.MAX_VALUE) cap = -1;
             body.append(unit.name()).append(": `").append(getUnits(unit)).append("/").append(getRemainingUnitBuy(unit, dcTimestamp)).append("/").append(cap).append("`").append("\n");
         }
+        body.append("MMR[Build]=`").append(getMMRBuildingStr()).append("` | MMR[Unit]=`").append(getMMR()).append("`\n");
         //
         //Attack Range: War= | Spy=
         {
