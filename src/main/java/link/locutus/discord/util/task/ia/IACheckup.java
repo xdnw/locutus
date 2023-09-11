@@ -1134,9 +1134,9 @@ public class IACheckup {
     }
 
     private Map.Entry<Object, String> checkSpies(DBNation nation) {
-        int maxSpies = nation.getSpyCap() - 1;
+        int maxSpies = nation.getSpyCap();
         Integer currentSpies = nation.getSpies();
-        if (currentSpies == null || currentSpies >= maxSpies - 1) return null;
+        if (currentSpies == null || currentSpies >= maxSpies) return null;
 
 
         boolean buySpies = nation.getSpies() == 0 || nation.daysSinceLastSpyBuy() > 1;

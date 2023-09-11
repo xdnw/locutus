@@ -3841,8 +3841,8 @@ public class DBNation implements NationOrAlliance {
                 Bankrec deposit = receiverApi.depositIntoBank(depositPositive, "#ignore");
                 double[] amt = ResourceType.fromApiV3(deposit, ResourceType.getBuffer());
                 response.append("\nDeposited: `" + PnwUtil.resourcesToString(amt) + "`");
-                if (!ResourceType.equals(toDeposit, amt)) {
-                    response.append("\n- Error Depositing: " + PnwUtil.resourcesToString(toDeposit) + " != " + PnwUtil.resourcesToString(amt));
+                if (!ResourceType.equals(depositPositive, amt)) {
+                    response.append("\n- Error Depositing: " + PnwUtil.resourcesToString(depositPositive) + " != " + PnwUtil.resourcesToString(amt));
                     return Map.entry(false, response.toString());
                 }
                 receiverId = deposit.getReceiver_id();

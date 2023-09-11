@@ -31,6 +31,8 @@ import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.net.CookieManager;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -227,7 +229,8 @@ public class Auth {
 
     public String createTrade(DBNation receiver, ResourceType resource, int amount, int ppu, boolean isBuy) {
         String leadername = receiver.getLeader();
-        String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/trade/create?leadername=" + leadername;
+        String leaderUrlEscape = URLEncoder.encode(leadername, StandardCharsets.UTF_8);
+        String url = "" + Settings.INSTANCE.PNW_URL() + "/nation/trade/create?leadername=" + leaderUrlEscape;
         Map<String, String> post = new HashMap<>();
         post.put("resourceoffer", resource.name().toLowerCase());
         post.put("offeramount", "" + amount);

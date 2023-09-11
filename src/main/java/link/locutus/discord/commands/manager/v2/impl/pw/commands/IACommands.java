@@ -458,7 +458,7 @@ public class IACommands {
 //                continue;
 //            }
             int spyCap = nation.getSpyCap();
-            if (spies >= spyCap - 1) continue;
+            if (spies >= spyCap) continue;
 
             double days = spies == 0 ? Integer.MAX_VALUE : nation.daysSinceLastSpyBuy();
             if (days > 1) {
