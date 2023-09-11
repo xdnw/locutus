@@ -26,12 +26,14 @@ import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 
 public class SimpleGPTProvider extends GPTProvider {
     private final Logger logger;
@@ -202,7 +204,7 @@ public class SimpleGPTProvider extends GPTProvider {
 
         DBNation nation = DiscordUtil.getNation(user);
         if (nation != null) {
-            Map<String, String> myOptions = Locutus.imp().getCommandManager().getV2().getPwgptHandler().getOptions(nation, this);
+            Map<String, String> myOptions = Locutus.imp().getCommandManager().getV2().getPwgptHandler().getPlayerGPTConfig().getOptions(nation, this);
             if (!myOptions.isEmpty()) {
                 result.append("Your Options: `").append(myOptions).append("`\n");
             }
@@ -225,7 +227,7 @@ public class SimpleGPTProvider extends GPTProvider {
     private final Map<Integer, Object> userLocks = new Int2ObjectOpenHashMap<>();
 
     @Override
-    public Future<String> submit(GuildDB db, User user, DBNation nation, Map<String, String> options, String input) {
+    public CompletableFuture<String> submit(GuildDB db, User user, DBNation nation, Map<String, String> options, String input) {
         if (paused) {
             throw new IllegalStateException("Executor is paused, cannot submit new task." + getPauseStr());
         }
@@ -258,7 +260,7 @@ public class SimpleGPTProvider extends GPTProvider {
             System.out.println("Moderation: " + modResult);
             logger.info("GPT-{}: {} ({}) - {}", type, db.getId(), user.getName(), input);
 
-            return executor.submit(() -> {
+            Supplier<String> task = () -> {
                 try {
                     long delay = System.currentTimeMillis() - start;
                     try {
@@ -287,7 +289,8 @@ public class SimpleGPTProvider extends GPTProvider {
                         userLocks.remove(nation.getId());
                     }
                 }
-            });
+            };
+            return CompletableFuture.supplyAsync(task, executor);
         } catch (Throwable t) {
             synchronized (userLocks) {
                 userLocks.remove(nation.getId());

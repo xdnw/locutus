@@ -109,18 +109,18 @@ public class GPTCommands {
         }
 
         // Check no document conversion already occuring
-        List<ConvertingDocument> documents = gpt.getDocumentConversions(db.getGuild());
+        List<ConvertingDocument> documents = gpt.getConverter().getDocumentConversions(db.getGuild());
         if (!documents.isEmpty()) {
             return "You must wait for the current document conversion to finish before starting another one: TODO CM REF";
         }
 
         // User user, Guild guild, ProviderType provider, String documentName, String markdown, String prompt
-        ConvertingDocument document = gpt.createDocumentConversion(user,
-                db.getGuild(),
-                ProviderType.OPENAI,
+        ConvertingDocument document = gpt.getConverter().createDocumentAndChunks(user,
+                db,
                 document_name,
                 markdown,
-                null);
+                null,
+                ProviderType.PROCESS);
 
         return "Added document " + document.toString() + " to the queue. Use TODO CM REF to view the progress of the conversion.";
     }
@@ -299,7 +299,7 @@ public class GPTCommands {
             "This includes status, rate limits, execution time, model, permissions, options.")
     @RolePermission(Roles.AI_COMMAND_ACCESS)
     public String listChatProviders(PWGPTHandler pwGpt, @Me GuildDB db, @Me User user) {
-        Set<GPTProvider> providers = pwGpt.getProviders(db);
+        Set<GPTProvider> providers = pwGpt.getProviderManager().getProviders(db);
 
         if (providers.isEmpty()) {
             return "No providers found";
@@ -320,7 +320,7 @@ public class GPTCommands {
             "Use provider list command to view types.")
     @RolePermission(Roles.AI_COMMAND_ACCESS)
     public String setChatProviders(PWGPTHandler pwGpt, @Me GuildDB db, @Me User user, @Me DBNation nation, Set<ProviderType> providerTypes) {
-        Set<ProviderType> existing = pwGpt.getProviderTypes(nation);
+        Set<ProviderType> existing = pwGpt.getProviderManager().getProviderTypes(nation);
         // if equal, return
         if (existing.equals(providerTypes)) {
             return "You are already using these providers";
@@ -338,7 +338,7 @@ public class GPTCommands {
                 }
             }
         }
-        pwGpt.setProviderTypes(nation, providerTypes);
+        pwGpt.getProviderManager().setProviderTypes(nation, providerTypes);
 
         return response.toString();
     }
@@ -349,7 +349,7 @@ public class GPTCommands {
             "Refer to API docs for details: <https://platform.openai.com/docs/api-reference/chat/create>")
     @RolePermission(Roles.AI_COMMAND_ACCESS)
     public String chatProviderConfigure(PWGPTHandler pwGpt, @Me GuildDB db, @Me User user, @Me DBNation nation, GPTProvider provider, Map<String, String> options) {
-        Map<String, Map<String, String>> config = pwGpt.setAndValidateOptions(nation, provider, options);
+        Map<String, Map<String, String>> config = pwGpt.getPlayerGPTConfig().setAndValidateOptions(nation, provider, options);
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         String json = gson.toJson(config);
         return "Set options for " + provider.getId() + ".\nCurrent configuration:\n```json\n" + json + "\n```";

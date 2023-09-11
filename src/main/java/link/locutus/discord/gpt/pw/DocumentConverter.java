@@ -22,7 +22,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -165,8 +167,7 @@ public class DocumentConverter {
         EmbeddingSource source = getEmbeddings().getEmbeddingSource(db.getIdLong(), document.source_id);
         if (source == null) {
             String msg = "Cannot find document source `" + document.source_id + "` in guild " + db.getGuild() + " (was it deleted?)";
-            document.error = msg;
-            getEmbeddings().addConvertingDocument(List.of(document));
+            getEmbeddings().setDocumentError(document, msg);
             if (throwError) {
                 throw new IllegalArgumentException(msg);
             }
@@ -177,8 +178,7 @@ public class DocumentConverter {
         if (guildId == 0) {
             // TODO set error
             String msg = "Document `" + source.getQualifiedName() + "` (`#" + source.source_id + "`) has no assigned guild";
-            document.error = msg;
-            getEmbeddings().addConvertingDocument(List.of(document));
+            getEmbeddings().setDocumentError(document, msg);
             if (throwError) {
                 throw new IllegalArgumentException(msg);
             }
@@ -188,18 +188,18 @@ public class DocumentConverter {
         Member member = db.getGuild().getMemberById(document.user);
         if (member == null) {
             String msg = "Document submitted by user `" + DiscordUtil.getUserName(document.user) + "` but cannot be found in " + db.getGuild();
-            document.error = msg;
+            getEmbeddings().setDocumentError(document, msg);
             if (throwError) {
                 throw new IllegalArgumentException(msg);
             }
             return;
         }
 
-        GPTProvider provider = getGenerator(db, member.getUser(), document.getProviderType());
+        User user = member.getUser();
+        GPTProvider provider = getGenerator(db, user, document.getProviderType());
         if (provider == null) {
             String msg = "Cannot find provider for document `" + source.getQualifiedName() + "` (`#" + source.source_id + "`) in guild " + db.getGuild();
-            document.error = msg;
-            getEmbeddings().addConvertingDocument(List.of(document));
+            getEmbeddings().setDocumentError(document, msg);
             if (throwError) {
                 throw new IllegalArgumentException(msg);
             }
@@ -219,17 +219,13 @@ public class DocumentConverter {
             List<String> outputSplit = chunks.stream().filter(f -> f.converted).flatMap(f -> Arrays.stream(f.output.split("\n[ ]+-"))).toList();
             chunks.removeIf(f -> f.converted);
             if (chunks.isEmpty()) {
-                document.converted = true;
-                getEmbeddings().addConvertingDocument(List.of(document));
+                setConverted(document);
                 return;
             }
 
             Boolean status = conversionStatus.get(document.source_id);
             if (status == Boolean.FALSE) {
-                if (document.error == null) {
-                    document.error = "Document conversion manually cancelled";
-                }
-                getEmbeddings().addConvertingDocument(List.of(document));
+                getEmbeddings().setDocumentErrorIfAbsent(document, "Document conversion manually cancelled");
                 if (throwError) {
                     throw new IllegalArgumentException(document.error);
                 }
@@ -253,7 +249,6 @@ public class DocumentConverter {
                 }
             };
 
-            // public String getSummaryPrompt(String prompt, List<String> previousSummary , String text, int maxSummarySize, Function<String, Integer> sizeFunction, Function<String, List<String>> getClosestFacts) {
             String text = getSummaryPrompt(document.prompt,
                     outputSplit,
                     chunk.text,
@@ -262,29 +257,47 @@ public class DocumentConverter {
                     getClosestFacts
             );
 
-            // schedule task
-            {
-                // move this to the task
-                // TODO add guards for already running
+            boolean isLastChunk = chunks.size() == 1;
 
-                conversionStatus.put(document.source_id, true);
+            try {
+                CompletableFuture<String> future = provider.submit(db, user, null, null, text);
 
-                // try finally, removing conversion status
+                future.thenAcceptAsync(s -> {
+                    synchronized (lock) {
+                        chunk.output = s;
+                        chunk.converted = true;
+                        conversionStatus.remove(document.source_id);
+                        if (isLastChunk) {
+                            setConverted(document);
+                        } else {
+                            submitDocument(db, document, false);
+                        }
+                    }
+                }).exceptionally(e -> {
+                    synchronized (lock) {
+                        getEmbeddings().setDocumentError(document, e.getMessage());
+                        conversionStatus.remove(document.source_id);
+                        return null;
+                    }
+                });
+
+            } catch (Throwable e) {
+                getEmbeddings().setDocumentError(document, e.getMessage());
+                conversionStatus.remove(document.source_id);
             }
         }
+    }
 
-
-        // submit chunks
-        // if all chunks are submitted, mark document as submitted
+    private void setConverted(ConvertingDocument document) {
+        document.converted = true;
+        getEmbeddings().addConvertingDocument(List.of(document));
     }
 
     public void initDocumentConversion(GuildDB db) {
         List<ConvertingDocument> docs = getDocumentConversions(db.getGuild());
-
-        // If doc is unfinished
-
-        // add these documents to the queue
-
-        // while free, submit
+        for (ConvertingDocument doc : docs) {
+            if (doc.converted || doc.error != null) continue;
+            submitDocument(db, doc, false);
+        }
     }
 }

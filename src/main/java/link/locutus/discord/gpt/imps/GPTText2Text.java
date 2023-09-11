@@ -33,11 +33,6 @@ public class GPTText2Text implements IText2Text{
     }
 
     @Override
-    public ProviderType getType() {
-        return ProviderType.OPENAI;
-    }
-
-    @Override
     public String getId() {
         return model.name();
     }

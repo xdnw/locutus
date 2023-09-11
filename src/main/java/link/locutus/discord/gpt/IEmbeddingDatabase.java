@@ -46,4 +46,16 @@ public interface IEmbeddingDatabase {
     public void addChunks(List<DocumentChunk> chunks);
     public List<DocumentChunk> getChunks(int source_id);
     public EmbeddingSource getEmbeddingSource(long guildId, int source_id);
+
+    default void setDocumentError(ConvertingDocument document, String error) {
+        document.error = error;
+        addConvertingDocument(List.of(document));
+    }
+
+    default void setDocumentErrorIfAbsent(ConvertingDocument document, String error) {
+        if (document.error == null) {
+            document.error = error;
+        }
+        addConvertingDocument(List.of(document));
+    }
 }

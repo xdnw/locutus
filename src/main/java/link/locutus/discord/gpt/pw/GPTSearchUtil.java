@@ -112,7 +112,7 @@ public class GPTSearchUtil {
 
         DBNation nation = DiscordUtil.getNation(user);
         if (nation != null && useGPT && pwGpt != null) {
-            GPTProvider provider = pwGpt.getDefaultProvider(db, user, nation);
+            GPTProvider provider = pwGpt.getProviderManager().getDefaultProvider(db, user, nation);
             if (provider != null) {
                 closest = getClosest.apply(100);
                 int cap = provider.getSizeCap();

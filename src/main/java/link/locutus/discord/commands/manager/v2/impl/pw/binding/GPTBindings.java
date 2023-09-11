@@ -64,12 +64,12 @@ public class GPTBindings extends BindingHelper {
 
     @Binding
     public GPTProvider provider(PWGPTHandler handler, @Me GuildDB db, String input) {
-        for (GPTProvider provider : handler.getProviders(db)) {
+        for (GPTProvider provider : handler.getProviderManager().getProviders(db)) {
             if (provider.getId().equalsIgnoreCase(input)) {
                 return provider;
             }
         }
-        String names = handler.getProviders(db).stream().map(f -> f.getId()).collect(Collectors.joining(", "));
+        String names = handler.getProviderManager().getProviders(db).stream().map(GPTProvider::getId).collect(Collectors.joining(", "));
         throw new IllegalArgumentException("No provider found with name " + input + "\nOptions: " + names);
     }
 

@@ -205,9 +205,15 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
 
     private void createSourcesTable() {
         ctx().execute("CREATE TABLE IF NOT EXISTS sources (source_id INTEGER PRIMARY KEY AUTOINCREMENT, source_name VARCHAR NOT NULL, date_added BIGINT NOT NULL, hash BIGINT NOT NULL, guild_id BIGINT NOT NULL)");
-        ctx().alterTable("sources")
-                .addColumnIfNotExists("hash", SQLDataType.BIGINT.notNull())
-                .execute();
+//        ctx().alterTable("sources")
+//                .addColumnIfNotExists("hash", SQLDataType.BIGINT.notNull())
+//                .execute();
+        // add column
+        try {
+            ctx().execute("ALTER TABLE sources ADD COLUMN hash BIGINT NOT NULL DEFAULT 0");
+        } catch (DataAccessException ignore) {
+            ignore.printStackTrace();
+        }
     }
 
     private void createDocumentQueueTable() {
@@ -230,7 +236,11 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
                 "text VARCHAR NOT NULL," +
                 "output VARCHAR, PRIMARY KEY (source_id, chunk_index))");
         // add column output if not exist (to update legacy table)
-        ctx().alterTable("document_chunks").addColumnIfNotExists("output", SQLDataType.VARCHAR).execute();
+        try {
+            ctx().execute("ALTER TABLE document_chunks ADD COLUMN output VARCHAR");
+        } catch (DataAccessException ignore) {
+            ignore.printStackTrace();
+        }
     }
 
     public void loadUnconvertedDocuments() {

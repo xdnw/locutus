@@ -67,12 +67,18 @@ public class PWGPTHandler {
     private final CommandManager2 cmdManager;
     private final PlayerGPTConfig PlayerGPTConfig;
     private final ProviderManager providerManager;
+    private final DocumentConverter converter;
 
     public PWGPTHandler(CommandManager2 manager) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
         this.cmdManager = manager;
         this.handler = new GptHandler();
         this.providerManager = new ProviderManager(handler);
         this.PlayerGPTConfig = new PlayerGPTConfig();
+        this.converter = new DocumentConverter(getEmbeddings(), providerManager, handler.getModerator());
+    }
+
+    public DocumentConverter getConverter() {
+        return converter;
     }
 
     public PlayerGPTConfig getPlayerGPTConfig() {
