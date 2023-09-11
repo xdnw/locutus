@@ -3835,9 +3835,10 @@ public class DBNation implements NationOrAlliance {
                 response.append("\n- No trades to deposit " + PnwUtil.resourcesToString(toDeposit));
                 return Map.entry(false, response.toString());
             }
+            double[] depositPositive = PnwUtil.max(toDeposit.clone(), ResourceType.getBuffer());
             int receiverId;
             try {
-                Bankrec deposit = receiverApi.depositIntoBank(toDeposit, "#ignore");
+                Bankrec deposit = receiverApi.depositIntoBank(depositPositive, "#ignore");
                 double[] amt = ResourceType.fromApiV3(deposit, ResourceType.getBuffer());
                 response.append("\nDeposited: `" + PnwUtil.resourcesToString(amt) + "`");
                 if (!ResourceType.equals(toDeposit, amt)) {
@@ -3857,7 +3858,7 @@ public class DBNation implements NationOrAlliance {
                 for (int i = 0; i < toDeposit.length; i++) {
                     if (toDeposit[i] < 0) toDeposit[i] = 0;
                 }
-                TransferResult transferResult = bank.transfer(offshore.getAlliance(), PnwUtil.resourcesToMap(toDeposit), "#ignore");
+                TransferResult transferResult = bank.transfer(offshore.getAlliance(), PnwUtil.resourcesToMap(depositPositive), "#ignore");
                 response.append("Offshore " + transferResult.toLineString());
                 if (transferResult.getStatus() != OffshoreInstance.TransferStatus.SUCCESS) {
                     response.append("\n- Depositing failed");
@@ -4084,7 +4085,7 @@ public class DBNation implements NationOrAlliance {
             String prefix = "";
             if (user != null) {
                 long created = user.getTimeCreated().toEpochSecond() * 1000L;
-                body.append(user.getAsMention() + " | " + DiscordUtil.userUrl(user.getIdLong(), false) + " | " + DiscordUtil.timestamp(created, null));
+                body.append(user.getAsMention() + " | " + MarkupUtil.markdownUrl(DiscordUtil.getFullUsername(user), DiscordUtil.userUrl(user.getIdLong(), false)) + " | " + DiscordUtil.timestamp(created, null));
                 prefix = " | ";
             }
             List<DBBan> bans = getBans();
@@ -4098,7 +4099,7 @@ public class DBNation implements NationOrAlliance {
             }
             body.append("\n");
         }
-        //Infra: 1500/2000 | Cities: 15 (6 unpowered) | Off: 5/5 | Def: 1/3
+        body.append("\n");
         {
             Collection<DBCity> cities = _getCitiesV3().values();
             double infra = 0;
@@ -4122,8 +4123,6 @@ public class DBNation implements NationOrAlliance {
             }
             body.append(" | ").append("Off: `").append(getOff()).append("/").append(getMaxOff()).append("` | ");
             body.append("Def: `").append(getDef()).append("/").append(3).append("`\n");
-
-
         }
         //VM: Timestamp(Started) - Timestamp(ends) (5 turns)
         if (getVm_turns() > 0) {
@@ -4132,18 +4131,25 @@ public class DBNation implements NationOrAlliance {
         //Domestic/War policy | beige turns | score
         body.append("`").append(this.domestic_policy.name()).append("` | `").append(this.war_policy.name()).append("` | `").append(MathMan.format(score) + "ns").append("` | `").append(getContinent().name()).append("`\n");
         //MMR[Building]: 1/2/3 | MMR[Unit]: 5/6/7
-        body.append("MMR[Build]=`").append(getMMRBuildingStr()).append("` | MMR[Unit]=`").append(getMMR()).append("`\n");
+        body.append("\n");
         //
         //Units: Now/Buyable/Cap
-        body.append("Units: Now/Remaining Buy/Cap (assumes 5553)\n");
+        body.append("**Units:** Now/Remaining Buy/Cap (assumes 5553)\n```json\n");
         //Soldier: 0/0/0
         long dcTurn = this.getTurnsFromDC();
         long dcTimestamp = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - dcTurn);
         for (MilitaryUnit unit : new MilitaryUnit[]{MilitaryUnit.SOLDIER, MilitaryUnit.TANK, MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP, MilitaryUnit.SPIES, MilitaryUnit.MISSILE, MilitaryUnit.NUKE}) {
             int cap = getUnitCap(unit, false);
             if (cap == Integer.MAX_VALUE) cap = -1;
-            body.append(unit.name()).append(": `").append(getUnits(unit)).append("/").append(getRemainingUnitBuy(unit, dcTimestamp)).append("/").append(cap).append("`").append("\n");
+            // 6 chars
+            String unitsStr = String.format("%6s", getUnits(unit));
+            // getRemainingUnitBuy(unit, dcTimestamp)
+            String remainingStr = String.format("%6s", getRemainingUnitBuy(unit, dcTimestamp));
+            String capStr = String.format("%6s", cap);
+            body.append(String.format("%2s", unit.getEmoji())).append(" ").append(unitsStr).append("|").append(remainingStr).append("|").append(capStr).append("").append("\n");
         }
+        body.append("\n```\n");
+        body.append("MMR[Build]=`").append(getMMRBuildingStr()).append("` | MMR[Unit]=`").append(getMMR()).append("`\n\n");
         //
         //Attack Range: War= | Spy=
         {
@@ -4152,7 +4158,7 @@ public class DBNation implements NationOrAlliance {
             double offSpyMin = PnwUtil.getAttackRange(true, false, true, score);
             double offSpyMax = PnwUtil.getAttackRange(true, false, false, score);
             // use MathMan.format to format doubles
-            body.append("Attack Range: War=`").append(MathMan.format(offWarMin)).append("-").append(MathMan.format(offWarMax)).append("` | Spy=`").append(MathMan.format(offSpyMin)).append("-").append(MathMan.format(offSpyMax)).append("`\n");
+            body.append("**Attack Range**: War=`").append(MathMan.format(offWarMin)).append("-").append(MathMan.format(offWarMax)).append("` | Spy=`").append(MathMan.format(offSpyMin)).append("-").append(MathMan.format(offSpyMax)).append("`\n");
         }
         //Defense Range: War= | Spy=
         {
@@ -4161,8 +4167,9 @@ public class DBNation implements NationOrAlliance {
             double defSpyMin = PnwUtil.getAttackRange(false, false, true, score);
             double defSpyMax = PnwUtil.getAttackRange(false, false, false, score);
             // use MathMan.format to format doubles
-            body.append("Defense Range: War=`").append(MathMan.format(defWarMin)).append("-").append(MathMan.format(defWarMax)).append("` | Spy=`").append(MathMan.format(defSpyMin)).append("-").append(MathMan.format(defSpyMax)).append("`\n");
+            body.append("**Defense Range**: War=`").append(MathMan.format(defWarMin)).append("-").append(MathMan.format(defWarMax)).append("` | Spy=`").append(MathMan.format(defSpyMin)).append("-").append(MathMan.format(defSpyMax)).append("`\n");
         }
+        body.append("\n");
         //
         Map<String, Integer> timerStr = new LinkedHashMap<>();
         //(optional) Timers: city=1, project=1, color=1, war=, domestic=1
@@ -4177,19 +4184,28 @@ public class DBNation implements NationOrAlliance {
         long domesticTurns = getDomesticPolicyTurns();
         if (domesticTurns > 0) timerStr.put("domestic", (int) domesticTurns);
         if (!timerStr.isEmpty()) {
-            body.append("Timers: `" + timerStr.toString() + "`\n");
+            body.append("**Timers:** `" + timerStr.toString() + "`\n");
         }
         //(optional) Active wars
         //
         //Revenue: {}
         // - Worth: $10
         double[] revenue = getRevenue();
-        body.append("Revenue: `").append(PnwUtil.resourcesToString(revenue)).append("`\n");
-        body.append(" - worth: `$").append(MathMan.format(PnwUtil.convertedTotal(revenue))).append("`\n");
+        body.append("**Revenue:**");
+        body.append(" worth: `$").append(MathMan.format(PnwUtil.convertedTotal(revenue))).append("`");
+        body.append("\n```json\n").append(PnwUtil.resourcesToString(revenue)).append("\n``` ");
         //
+        body.append("\n");
         //Projects: 5/10 | [Projects] (bold VDS and ID)
-        body.append("Projects: ").append(getNumProjects()).append("/").append(projectSlots()).append(" ")
-                .append(getProjects().stream().map(f -> (f == Projects.IRON_DOME || f == Projects.VITAL_DEFENSE_SYSTEM ? "**" + f.name() + "**" : f.name()).toLowerCase(Locale.ROOT)).collect(Collectors.joining(","))).append("\n");
+        List<Project> projects = new ArrayList<>(getProjects());
+        projects.sort(Comparator.comparing(Project::name));
+        Function<String, String> toAcronym = s -> Arrays.stream(s.split("_")).map(w -> w.substring(0, 1)).collect(Collectors.joining()).toUpperCase(Locale.ROOT);
+
+        body.append("**Projects:** ").append(getNumProjects()).append("/").append(projectSlots()).append("\n- ")
+                .append(projects.stream().map(f -> {
+                    String name = toAcronym.apply(f.name());
+                    return (f == Projects.IRON_DOME || f == Projects.VITAL_DEFENSE_SYSTEM ? "**" + name + "**" : name);
+                }).collect(Collectors.joining(", "))).append("\n");
 
         Set<Integer> blockaded = this.getBlockadedBy();
         if (!blockaded.isEmpty()) {
@@ -4641,24 +4657,6 @@ public class DBNation implements NationOrAlliance {
             total += this.ships * MilitaryUnit.SHIP.getConvertedCost();
         }
         return total;
-    }
-
-    public double getAttr(String attribute) {
-        try {
-            Field field = DBNation.class.getDeclaredField(attribute);
-            field.setAccessible(true);
-            return ((Number) field.get(this)).doubleValue();
-        } catch (IllegalAccessException | NoSuchFieldException e) {
-            try {
-                Method method = DBNation.class.getDeclaredMethod(attribute);
-                if (method.getReturnType() == double.class) {
-                    return (double) method.invoke(this);
-                }
-            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ex) {
-                ex.printStackTrace();
-            }
-            return 0;
-        }
     }
     public Activity getActivity() {
         return new Activity(getNation_id());
