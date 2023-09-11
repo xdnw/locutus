@@ -8,13 +8,15 @@ public class EmbeddingSource {
     public final int source_id;
     public final String source_name;
     public final long date_added;
+    public final long source_hash;
     public final long guild_id;
 
-    public EmbeddingSource(int source_id, String source_name, long date_added, long guild_id) {
+    public EmbeddingSource(int source_id, String source_name, long date_added, long source_hash, long guild_id) {
         this.source_id = source_id;
         this.source_name = source_name;
         this.date_added = date_added;
         this.guild_id = guild_id;
+        this.source_hash = source_hash;
     }
 
     @Override

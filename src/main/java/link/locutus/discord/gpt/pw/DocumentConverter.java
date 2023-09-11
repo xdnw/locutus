@@ -6,6 +6,7 @@ import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.GptHandler;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
+import link.locutus.discord.gpt.IModerator;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
 import link.locutus.discord.gpt.imps.DocumentChunk;
 import link.locutus.discord.gpt.imps.IText2Text;
@@ -18,18 +19,22 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class DocumentConverter {
     private final IEmbeddingDatabase embeddings;
     private final ProviderManager providerManager;
+    private final IModerator moderator;
 
-    public DocumentConverter(IEmbeddingDatabase embeddings, ProviderManager providerManager) {
+    public DocumentConverter(IEmbeddingDatabase embeddings, ProviderManager providerManager, IModerator moderator) {
         this.embeddings = embeddings;
         this.providerManager = providerManager;
+        this.moderator = moderator;
     }
 
     public IEmbeddingDatabase getEmbeddings() {
@@ -120,7 +125,17 @@ public class DocumentConverter {
 
         List<String> chunkTexts = chunkTexts(markdown, generator);
 
-        List<DocumentChunk> chunks;
+        List<DocumentChunk> chunks = new ArrayList<>();
+        for (int i = 0; i < chunkTexts.size(); i++) {
+            String text = chunkTexts.get(i);
+            GPTUtil.checkThrowModeration(moderator.moderate(text), text);
+            DocumentChunk chunk = new DocumentChunk();
+            chunk.source_id = source.source_id;
+            chunk.chunk_index = i;
+            chunk.converted = false;
+            chunk.text = text;
+            chunks.add(chunk);
+        }
 
         getEmbeddings().addConvertingDocument(List.of(document));
 
@@ -201,6 +216,7 @@ public class DocumentConverter {
                 return;
             }
             List<DocumentChunk> chunks = getEmbeddings().getChunks(document.source_id);
+            List<String> outputSplit = chunks.stream().filter(f -> f.converted).flatMap(f -> Arrays.stream(f.output.split("\n[ ]+-"))).toList();
             chunks.removeIf(f -> f.converted);
             if (chunks.isEmpty()) {
                 document.converted = true;
@@ -226,7 +242,25 @@ public class DocumentConverter {
                 return;
             }
             // put status true
+            conversionStatus.put(document.source_id, true);
+
             DocumentChunk chunk = chunks.get(0);
+
+            Function<String, List<String>> getClosestFacts = new Function<String, List<String>>() {
+                @Override
+                public List<String> apply(String s) {
+                    return new ArrayList<>();
+                }
+            };
+
+            // public String getSummaryPrompt(String prompt, List<String> previousSummary , String text, int maxSummarySize, Function<String, Integer> sizeFunction, Function<String, List<String>> getClosestFacts) {
+            String text = getSummaryPrompt(document.prompt,
+                    outputSplit,
+                    chunk.text,
+                    provider.getSizeCap() * 2 / 3,
+                    provider::getSize,
+                    getClosestFacts
+            );
 
             // schedule task
             {

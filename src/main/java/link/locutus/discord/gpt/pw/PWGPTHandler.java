@@ -364,6 +364,11 @@ public class PWGPTHandler {
         return getSources(guild, true, excludeTypes, includeWikiCategories, excludeWikiCategories, excludeSourceIds, addSourceIds);
     }
 
+    public EmbeddingType getSourceType(EmbeddingSource source) {
+        EmbeddingType singleType = sourceMap.inverse().get(source);
+        return singleType;
+    }
+
     public Set<EmbeddingSource> getSelectedSources(Guild guild, DBNation nation, boolean allowRoot) {
         ByteBuffer jsonBuffer = nation.getMeta(NationMeta.GPT_SOURCES);
         if (jsonBuffer == null) {
@@ -387,7 +392,7 @@ public class PWGPTHandler {
                                            Set<Integer> addSources) {
         Set<EmbeddingSource> sources = new HashSet<>();
         for (EmbeddingSource source : getSources(guild, allowRoot)) {
-            EmbeddingType type = sourceMap.inverse().get(source);
+            EmbeddingType type = getSourceType(source);
             if (excludeTypes != null && excludeTypes.contains(type)) {
                 continue;
             }

@@ -204,7 +204,10 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
     }
 
     private void createSourcesTable() {
-        ctx().execute("CREATE TABLE IF NOT EXISTS sources (source_id INTEGER PRIMARY KEY AUTOINCREMENT, source_name VARCHAR NOT NULL, date_added BIGINT NOT NULL, guild_id BIGINT NOT NULL)");
+        ctx().execute("CREATE TABLE IF NOT EXISTS sources (source_id INTEGER PRIMARY KEY AUTOINCREMENT, source_name VARCHAR NOT NULL, date_added BIGINT NOT NULL, hash BIGINT NOT NULL, guild_id BIGINT NOT NULL)");
+        ctx().alterTable("sources")
+                .addColumnIfNotExists("hash", SQLDataType.BIGINT.notNull())
+                .execute();
     }
 
     private void createDocumentQueueTable() {
@@ -224,7 +227,10 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
                 "source_id INTEGER NOT NULL, " +
                 "chunk_index INTEGER NOT NULL, " +
                 "converted BOOLEAN NOT NULL, " +
-                "text VARCHAR NOT NULL, PRIMARY KEY (source_id, chunk_index))");
+                "text VARCHAR NOT NULL," +
+                "output VARCHAR, PRIMARY KEY (source_id, chunk_index))");
+        // add column output if not exist (to update legacy table)
+        ctx().alterTable("document_chunks").addColumnIfNotExists("output", SQLDataType.VARCHAR).execute();
     }
 
     public void loadUnconvertedDocuments() {
@@ -264,8 +270,8 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
         }
         ctx().transaction(() -> {
         for (DocumentChunk chunk : chunks) {
-            ctx().execute("INSERT OR REPLACE INTO document_chunks (source_id, chunk_index, converted, text) VALUES (?, ?, ?, ?)",
-                    chunk.source_id, chunk.chunk_index, chunk.converted, chunk.text);
+            ctx().execute("INSERT OR REPLACE INTO document_chunks (source_id, chunk_index, converted, text, output) VALUES (?, ?, ?, ?, ?)",
+                    chunk.source_id, chunk.chunk_index, chunk.converted, chunk.text, chunk.output);
         }
         });
     }
@@ -301,18 +307,28 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
         if (source == null) {
             long date_added = System.currentTimeMillis();
             // create
-            source = new EmbeddingSource(-1, name, date_added, guild_id);
+            source = new EmbeddingSource(-1, name, date_added, 0, guild_id);
             ctx().execute("INSERT INTO sources (source_name, date_added, guild_id) VALUES (?, ?, ?)", source.source_name, source.date_added, source.guild_id);
             // set source id
             @Nullable Record result = ctx().fetchOne("SELECT source_id FROM sources WHERE source_name = ? AND date_added = ? AND guild_id = ?", source.source_name, source.date_added, source.guild_id);
             int source_id = (Integer) result.getValue("source_id");
-            source = new EmbeddingSource(source_id, source.source_name, source.date_added, source.guild_id);
+            source = new EmbeddingSource(source_id, source.source_name, source.date_added, 0, source.guild_id);
             // add to map
             embeddingSourcesByGuild.computeIfAbsent(source.guild_id, k -> new ConcurrentHashMap<>()).put(source.source_id, source);
             return source;
         } else {
             return source;
         }
+    }
+
+    @Override
+    public void updateSources(List<EmbeddingSource> sources) {
+        ctx().transaction(() -> {
+            for (EmbeddingSource source : sources) {
+                ctx().execute("UPDATE sources SET source_name = ?, date_added = ?, guild_id = ? WHERE source_id = ?",
+                        source.source_name, source.date_added, source.guild_id, source.source_id);
+            }
+        });
     }
 
     private void importLegacyDate() {
@@ -356,9 +372,10 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
             String source_name = r.get("source_name", String.class);
             long date_added = r.get("date_added", Long.class);
             long guild_id = r.get("guild_id", Long.class);
+            long hash = r.get("hash", Long.class);
 
             // embeddingSources is a map of guild_id to set<EmbeddingSource>
-            EmbeddingSource source = new EmbeddingSource(source_id, source_name, date_added, guild_id);
+            EmbeddingSource source = new EmbeddingSource(source_id, source_name, date_added, hash, guild_id);
             embeddingSourcesByGuild.computeIfAbsent(guild_id, k -> new ConcurrentHashMap<>()).put(source.source_id, source);
         });
     }

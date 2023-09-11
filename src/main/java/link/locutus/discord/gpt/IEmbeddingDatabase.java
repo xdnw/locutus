@@ -31,6 +31,7 @@ public interface IEmbeddingDatabase {
     void registerHashes(EmbeddingSource source, Set<Long> hashes, boolean deleteAbsent);
     EmbeddingSource getSource(String name, long guild_id);
     EmbeddingSource getOrCreateSource(String name, long guild_id);
+    void updateSources(List<EmbeddingSource> sources);
     Set<EmbeddingSource> getSources(Predicate<Long> guildPredicateOrNull, Predicate<EmbeddingSource> sourcePredicate);
     Map<Long, String> getContent(Set<Long> hashes);
     public String getText(long hash);
