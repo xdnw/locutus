@@ -26,6 +26,7 @@ import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
+import link.locutus.discord.gpt.imps.DocumentChunk;
 import link.locutus.discord.gpt.imps.EmbeddingType;
 import link.locutus.discord.gpt.pw.ArgumentEmbeddingAdapter;
 import link.locutus.discord.gpt.pw.GPTProvider;
@@ -64,6 +65,25 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class GPTCommands {
 
+    @Command
+    public String showConverting(PWGPTHandler gpt, @Me User user, @Me IMessageIO io, @Me GuildDB db, @Switch("r") boolean showRoot, @Switch("a") boolean showAll) {
+        if (showAll && !Roles.ADMIN.hasOnRoot(user)) {
+            return "You must be a bot admin to use the `showAll`";
+        }
+        List<ConvertingDocument> documents = gpt.getHandler().getEmbeddings().getUnconvertedDocuments();
+        if (documents.isEmpty()) {
+            return "No documents are currently being converted. See TODO CM REF to view documents";
+        }
+        StringBuilder builder = new StringBuilder(documents.size() + " documents in queue:");
+        for (ConvertingDocument document : documents) {
+            List<DocumentChunk> chunks = gpt.getHandler().getEmbeddings().getChunks(document.source_id);
+            int converted = (int) chunks.stream().filter(f -> f.converted).count();
+            source = gpt.getHandler().getEmbeddings().getSource(document.source_id)
+
+            builder.append("`#" + document.source_id + "` " + document)
+        }
+    }
+
     @Command(desc = "This command allows you to convert a public Google document (of document type) into a Google spreadsheet of facts.\n" +
             "The output format will have a single column with a header row labeled \"facts.\" Each fact will be standalone and not order dependent.\n" +
             "The information is extracted using the user's configured GPT provider.\n" +
@@ -71,6 +91,10 @@ public class GPTCommands {
             "Users have the option to check the progress of the conversion using a command.")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS, root = true)
     public synchronized String generate_factsheet(PWGPTHandler gpt, @Me GuildDB db, @Me IMessageIO io, @Me User user, @Me JSONObject command, String googleDocumentUrl, String document_name, @Switch("f") boolean confirm) throws GeneralSecurityException, IOException {
+        // if document name is not alphanumerical space under dash
+        if (!document_name.matches("[a-zA-Z0-9\\s_-]+")) {
+            throw new IllegalArgumentException("The `document_name` must be alphanumerical, not `" + document_name + "`");
+        }
         String baseUrl = "https://docs.google.com/document/d/";
         if (!googleDocumentUrl.startsWith(baseUrl)) {
             return "Invalid Google Document URL. Expecting `https://docs.google.com/document/d/...`, received: `" + googleDocumentUrl + "`";

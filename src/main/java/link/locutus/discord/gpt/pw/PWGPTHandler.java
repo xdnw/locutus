@@ -5,16 +5,15 @@ import ai.djl.repository.zoo.ModelNotFoundException;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
-import com.knuddels.jtokkit.api.ModelType;
+import com.locutus.wiki.game.PWWikiUtil;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.db.entities.NationMeta;
@@ -24,33 +23,19 @@ import link.locutus.discord.gpt.IEmbeddingDatabase;
 import link.locutus.discord.gpt.imps.EmbeddingInfo;
 import link.locutus.discord.gpt.imps.EmbeddingType;
 import link.locutus.discord.gpt.GptHandler;
-import link.locutus.discord.gpt.imps.GPTText2Text;
 import link.locutus.discord.gpt.imps.IEmbeddingAdapter;
-import link.locutus.discord.gpt.imps.IText2Text;
-import link.locutus.discord.gpt.imps.ProviderType;
-import link.locutus.discord.util.RateLimitUtil;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.logging.log4j.core.config.builder.api.AppenderComponentBuilder;
-import org.apache.logging.log4j.core.config.builder.api.ComponentBuilder;
-import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilder;
-import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory;
-import org.apache.logging.log4j.core.config.builder.api.LoggerComponentBuilder;
-import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -58,12 +43,14 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class PWGPTHandler {
 
     private final GptHandler handler;
     private final BiMap<EmbeddingType, EmbeddingSource> sourceMap = HashBiMap.create();
-    private final Map<EmbeddingSource, IEmbeddingAdapter<?>> adapterMap2 = new HashMap<>();
+    private final Map<EmbeddingSource, IEmbeddingAdapter<?>> adapterMap2 = new ConcurrentHashMap<>();
+    private final Map<Integer, WikiPagePW> gameWikiPagesBySourceId = new ConcurrentHashMap<>();
     private final CommandManager2 cmdManager;
     private final PlayerGPTConfig PlayerGPTConfig;
     private final ProviderManager providerManager;
@@ -111,12 +98,96 @@ public class PWGPTHandler {
         registerSettingEmbeddings();
         registerNationMetricBindings();
         registerArgumentBindings();
+        try {
+            registerWikiPagesLegacy();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 //        registerFormulaBindings("Formula");
 //        registerAcronymBindings("Acronym");
 //        registerPageSectionBindings("Wiki Page");
 //        registerTutorialBindings("Tutorial");
 
         providerManager.registerDefaults();
+    }
+
+    public static void main(String[] args) throws IOException {
+//
+    }
+
+    private void registerWikiPagesLegacy() throws IOException {
+//        Map<String, String> pageUrls = PWWikiUtil.getAllPages();
+//        PWWikiUtil.fetchDefaultPages();
+//        PWWikiUtil.saveDefaultPages();
+
+        Gson gsonPretty = new GsonBuilder().setPrettyPrinting().create();
+        Gson gson = new Gson();
+
+        Map<String, WikiPagePW> pages = new LinkedHashMap<>();
+
+        Set<String> allCategories = new LinkedHashSet<>();
+        for (Map.Entry<String, String> pageEntry : PWWikiUtil.getSitemapCached().entrySet()) {
+            String pageName = pageEntry.getKey();
+            Map<String, Object> map = PWWikiUtil.getPageJson(pageName);
+            if (map == null) {
+                System.out.println("No page found for " + pageName);
+                continue;
+            }
+            List<String> categories = (List<String>) map.get("categories");
+            System.out.println("Categories for " + pageName + ": " + categories);
+            for (String category : categories) {
+                allCategories.add(category);
+            }
+//            if (categories.removeIf(f -> f.matches("\\d+ more"))) {
+//                String json = gsonPretty.toJson(map);
+//                String slug = PWWikiUtil.slugify(pageName, false);
+//                String fileName = "wiki/json/" + slug + ".json";
+//                System.out.println("Writing to " + fileName);
+//                try (FileWriter writer = new FileWriter(fileName)) {
+//                    writer.write(json);
+//                }
+//            }
+            String json = gson.toJson(map);
+            long hash = getEmbeddings().getHash(json);
+
+            String sourceName = "wiki/" + pageName;
+
+            WikiPagePW wikiPage = new WikiPagePW(pageName, pageEntry.getValue(), hash, new LinkedHashSet<>(categories));
+            pages.put(sourceName, wikiPage);
+        }
+
+        Set<EmbeddingSource> wikiSources = getEmbeddings().getSources(f -> f == 0, f -> f.source_name.startsWith("wiki/"));
+        // Delete unused sources
+        for (EmbeddingSource source : wikiSources) {
+            String sourceName = source.source_name;
+            if (!pages.containsKey(sourceName)) {
+                getEmbeddings().deleteSource(source);
+            }
+        }
+
+        // register current sources
+        for (Map.Entry<String, WikiPagePW> entry : pages.entrySet()) {
+            String sourceName = entry.getKey();
+            WikiPagePW page = entry.getValue();
+            EmbeddingSource source = getEmbeddings().getOrCreateSource(sourceName, 0);
+            gameWikiPagesBySourceId.put(source.source_id, entry.getValue());
+
+            List<String> summary = page.getSummaryData();
+            if (summary != null && !summary.isEmpty()) {
+                System.out.println("Found Summary for " + page.getName() + ": " + summary);
+
+                // entry source , null
+                Stream<Map.Entry<String, String>> stream = summary.stream().map(f -> new AbstractMap.SimpleEntry<>(f, null));
+                handler.registerEmbeddings(source, stream, false, true);
+            } else {
+                System.out.println("No summary for " + page.getSlug());
+            }
+        }
+
+
+        System.out.println("All categories: ");
+        System.out.println(allCategories);
+
     }
 
 //    public String generateSolution(ValueStore store, GuildDB db, User user, String userInput) {
@@ -371,6 +442,9 @@ public class PWGPTHandler {
     }
 
     public EmbeddingType getSourceType(EmbeddingSource source) {
+        if (gameWikiPagesBySourceId.containsKey(source.source_id)) {
+            return EmbeddingType.Game_Wiki_Page;
+        }
         EmbeddingType singleType = sourceMap.inverse().get(source);
         return singleType;
     }

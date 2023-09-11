@@ -52,7 +52,8 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
     private final Long2ObjectOpenHashMap<float[]> vectors;
     private final Map<Integer, Set<Long>> textHashBySource;
     private final Map<Integer, Map<Long, Long>> expandedTextHashBySource;
-    private final Map<Long, Map<Integer, EmbeddingSource>> embeddingSourcesByGuild;
+//    private final Map<Long, Map<Integer, EmbeddingSource>> embeddingSourcesByGuild;
+    private final Map<Integer, EmbeddingSource> embeddingSources;
     private final Map<Integer, ConvertingDocument> unconvertedDocuments;
     private final Map<Integer, Map<Integer, DocumentChunk>> documentChunks;
 
@@ -61,7 +62,8 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
         this.vectors = new Long2ObjectOpenHashMap<>();
         this.textHashBySource = new Int2ObjectOpenHashMap<>();
         this.expandedTextHashBySource = new Int2ObjectOpenHashMap<>();
-        this.embeddingSourcesByGuild = new ConcurrentHashMap<>();
+//        this.embeddingSourcesByGuild = new ConcurrentHashMap<>();
+        this.embeddingSources = new ConcurrentHashMap<>();
         this.unconvertedDocuments = new ConcurrentHashMap<>();
         this.documentChunks = new ConcurrentHashMap<>();
 
@@ -205,15 +207,6 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
 
     private void createSourcesTable() {
         ctx().execute("CREATE TABLE IF NOT EXISTS sources (source_id INTEGER PRIMARY KEY AUTOINCREMENT, source_name VARCHAR NOT NULL, date_added BIGINT NOT NULL, hash BIGINT NOT NULL, guild_id BIGINT NOT NULL)");
-//        ctx().alterTable("sources")
-//                .addColumnIfNotExists("hash", SQLDataType.BIGINT.notNull())
-//                .execute();
-        // add column
-        try {
-            ctx().execute("ALTER TABLE sources ADD COLUMN hash BIGINT NOT NULL DEFAULT 0");
-        } catch (DataAccessException ignore) {
-            ignore.printStackTrace();
-        }
     }
 
     private void createDocumentQueueTable() {
@@ -235,12 +228,6 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
                 "converted BOOLEAN NOT NULL, " +
                 "text VARCHAR NOT NULL," +
                 "output VARCHAR, PRIMARY KEY (source_id, chunk_index))");
-        // add column output if not exist (to update legacy table)
-        try {
-            ctx().execute("ALTER TABLE document_chunks ADD COLUMN output VARCHAR");
-        } catch (DataAccessException ignore) {
-            ignore.printStackTrace();
-        }
     }
 
     public void loadUnconvertedDocuments() {
@@ -291,7 +278,7 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
     }
 
     @Override
-    public EmbeddingSource getEmbeddingSource(long guildId, int source_id) {
+    public EmbeddingSource getEmbeddingSource(int source_id) {
         Map<Integer, EmbeddingSource> sourcesByGuild = embeddingSourcesByGuild.get(guildId);
         if (sourcesByGuild == null) {
             return null;
@@ -302,17 +289,8 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
     @Override
     public synchronized EmbeddingSource getOrCreateSource(String name, long guild_id) {
         name = name.toLowerCase();
-        // get existing
-        Map<Integer, EmbeddingSource> sourcesByGuild = embeddingSourcesByGuild.get(guild_id);
-        EmbeddingSource source = null;
-        if (sourcesByGuild != null) {
-            for (EmbeddingSource other : sourcesByGuild.values()) {
-                if (other.source_name.equals(name)) {
-                    source = other;
-                    break;
-                }
-            }
-        }
+
+        EmbeddingSource source = this.getSource(name, guild_id);
 
         if (source == null) {
             long date_added = System.currentTimeMillis();
@@ -324,7 +302,8 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
             int source_id = (Integer) result.getValue("source_id");
             source = new EmbeddingSource(source_id, source.source_name, source.date_added, 0, source.guild_id);
             // add to map
-            embeddingSourcesByGuild.computeIfAbsent(source.guild_id, k -> new ConcurrentHashMap<>()).put(source.source_id, source);
+//            embeddingSourcesByGuild.computeIfAbsent(source.guild_id, k -> new ConcurrentHashMap<>()).put(source.source_id, source);
+            embeddingSources.put(source.source_id, source);
             return source;
         } else {
             return source;
@@ -386,7 +365,8 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
 
             // embeddingSources is a map of guild_id to set<EmbeddingSource>
             EmbeddingSource source = new EmbeddingSource(source_id, source_name, date_added, hash, guild_id);
-            embeddingSourcesByGuild.computeIfAbsent(guild_id, k -> new ConcurrentHashMap<>()).put(source.source_id, source);
+//            embeddingSourcesByGuild.computeIfAbsent(guild_id, k -> new ConcurrentHashMap<>()).put(source.source_id, source);
+            embeddingSources.put(source.source_id, source);
         });
     }
 
@@ -434,7 +414,8 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
         ctx().execute("DELETE FROM sources WHERE source_id = ?", source_id);
         ctx().execute("DELETE FROM vector_sources WHERE source_id = ?", source_id);
 
-        embeddingSourcesByGuild.getOrDefault(source.guild_id, Collections.emptyMap()).remove(source.source_id);
+//        embeddingSourcesByGuild.getOrDefault(source.guild_id, Collections.emptyMap()).remove(source.source_id);
+        embeddingSources.remove(source.source_id);
         // textHashBySource
         textHashBySource.remove(source_id);
         // expandedTextHashBySource
@@ -468,7 +449,7 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
             }
             if (fullContent != null) {
                 String full = fullContent.get();
-                if (full != null) {
+                if (full != null && !full.equals(embeddingText)) {
                     saveExpandedText(embeddingHash, source.source_id, full);
                 }
             }
@@ -519,17 +500,20 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
 
     @Override
     public EmbeddingSource getSource(String name, long guild_id) {
-        return this.embeddingSourcesByGuild.getOrDefault(guild_id, Collections.emptyMap()).values().stream().filter(s -> s.source_name.equals(name)).findAny().orElse(null);
+        for (EmbeddingSource source : embeddingSources.values()) {
+            if (source.guild_id == guild_id && source.source_name.equals(name)) {
+                return source;
+            }
+        }
+        return null;
     }
 
     public Set<EmbeddingSource> getSources(Predicate<Long> guildPredicateOrNull, Predicate<EmbeddingSource> sourcePredicate) {
         Set<EmbeddingSource> result = new LinkedHashSet<>();
-        for (Map.Entry<Long, Map<Integer, EmbeddingSource>> entry : embeddingSourcesByGuild.entrySet()) {
-            if (guildPredicateOrNull == null || guildPredicateOrNull.test(entry.getKey())) {
-                for (EmbeddingSource source : entry.getValue().values()) {
-                    if (sourcePredicate == null || sourcePredicate.test(source)) {
-                        result.add(source);
-                    }
+        for (EmbeddingSource source : embeddingSources.values()) {
+            if (guildPredicateOrNull == null || guildPredicateOrNull.test(source.guild_id)) {
+                if (sourcePredicate == null || sourcePredicate.test(source)) {
+                    result.add(source);
                 }
             }
         }

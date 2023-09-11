@@ -15,12 +15,13 @@ import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
-public class PWWIkiUtil {
+public class PWWikiUtil {
 
     private static Set<String> SKIP_PAGES = new HashSet<>();
     static {
@@ -120,7 +121,8 @@ public class PWWIkiUtil {
                 }
 
                 // Skip if title contains "Category:"
-                if (text.contains("Category:") || href.contains("Category:")) {
+                String hrefLower = href.toLowerCase(Locale.ROOT);
+                if (hrefLower.contains("category:") || hrefLower.contains("user:") || hrefLower.contains("file:") || hrefLower.contains("template:")) {
                     continue;
                 }
 
@@ -142,10 +144,6 @@ public class PWWIkiUtil {
         }
 
         return pages;
-    }
-
-    public static void main(String[] args) throws IOException {
-        fetchDefaultPages();
     }
 
     public static void getTable(Map<String, List<String>> blocks, Element pageElement, String title) {
@@ -220,6 +218,8 @@ public class PWWIkiUtil {
             for (Element categoryLink : categoryLinks) {
                 categoryList.add(categoryLink.text().trim());
             }
+            // remove category if matches number more e.g. `4 more`
+            categoryList.removeIf(category -> category.matches("\\d+ more"));
             blocks.put("categories", categoryList);
         }
 
@@ -311,15 +311,19 @@ public class PWWIkiUtil {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
         // Create a FileWriter to save the JSON data
-        try (FileWriter writer = new FileWriter("wiki/json/" + slug + ".json")) {
+        File file = new File("wiki/json/" + slug + ".json");
+        // create dir and file if not exist
+        file.getParentFile().mkdirs();
+        file.createNewFile();
+        try (FileWriter writer = new FileWriter(file)) {
             gson.toJson(blocks, writer);
         }
     }
 
     public static void fetchDefaultPages() throws IOException {
-        Set<String> pagesToSave = new HashSet<>();
-        pagesToSave.add("Frequently_Asked_Questions");
-        pagesToSave.add("Paperless");
+        Map<String, String> pagesToSave = new LinkedHashMap<>();
+        pagesToSave.put("Frequently Asked Questions", "Frequently_Asked_Questions");
+        pagesToSave.put("Paperless", "Paperless");
 
         String[] categoriesToSave = {"Wars", "Alliances", "Treaties", "Guides", "Mechanics", "API"};
 
@@ -332,29 +336,32 @@ public class PWWIkiUtil {
             for (Map.Entry<String, String> entry : pages.entrySet()) {
                 String page = entry.getKey();
                 String url = entry.getValue();
-                // Get page name
-                String pageName = page.substring(page.lastIndexOf("/") + 1);
-                pageName = java.net.URLDecoder.decode(pageName, "UTF-8");
-
-                // Remove bad characters
-                pageName = pageName.replaceAll("[^\\w\\s-]", "");
-
-                // Replace spaces with underscores
-                pageName = pageName.replace(" ", "_");
-
-                // Save to the set
-                pagesToSave.add(pageName);
+                // only last text after bracket, strip query string
+                url = url.replace("https://politicsandwar.fandom.com/wiki/", "");
+                url = url.replace("/wiki/", "");
+                if (url.contains("?")) {
+                    url = url.substring(0, url.indexOf("?"));
+                }
+                String hrefLower = url.toLowerCase();
+                if (hrefLower.contains("category:") || hrefLower.contains("user:") || hrefLower.contains("file:") || hrefLower.contains("template:")) {
+                    continue;
+                }
+                pagesToSave.put(page, url);
             }
         }
 
         // Save to sitemap.json
-        FileWriter writer = new FileWriter("wiki/sitemap.json");
+        File file = new File("wiki/sitemap.json");
+        file.getParentFile().mkdirs();
+        file.createNewFile();
+        FileWriter writer = new FileWriter(file);
         new Gson().toJson(pagesToSave, writer);
         writer.close();
+        System.out.println("Write sitemap " + file.getAbsolutePath());
     }
 
-    public static List<String> getSitemapCached() throws IOException {
-        String filename = "sitemap.json";
+    public static Map<String, String> getSitemapCached() throws IOException {
+        String filename = "wiki/sitemap.json";
         File file = new File(filename);
 
         // If the file does not exist, fetch and save to sitemap.json
@@ -364,22 +371,25 @@ public class PWWIkiUtil {
         }
 
         // Load sitemap.json
-        System.out.println("Loading sitemap.json");
+        System.out.println("Loading " + file.getAbsolutePath());
         Gson gson = new Gson();
         FileReader reader = new FileReader(filename);
-        List<String> sitemap = gson.fromJson(reader, List.class);
+        Map<String, String> sitemap = gson.fromJson(reader, LinkedHashMap.class);
         reader.close();
+        System.out.println(sitemap);
         return sitemap;
     }
 
     public static void saveDefaultPages() throws IOException {
-        List<String> pagesToSave = getSitemapCached();
+        Map<String, String> pagesToSave = getSitemapCached();
 
         // Iterate through each page
-        for (String page : pagesToSave) {
-            String url = "https://politicsandwar.fandom.com/wiki/" + java.net.URLEncoder.encode(page, "UTF-8");
+        for (Map.Entry<String, String> entry : pagesToSave.entrySet()) {
+            String name = entry.getKey();
+            String urlSub = entry.getValue();
+            String url = "https://politicsandwar.fandom.com/wiki/" + urlSub;
             // Strip non-filename characters
-            String slug = slugify(page, false);
+            String slug = slugify(name, false);
 
             if (SKIP_PAGES.contains(slug)) {
                 continue;
@@ -394,7 +404,7 @@ public class PWWIkiUtil {
 
             // Save to JSON
             System.out.println("Saving " + slug + ".json");
-            saveToJson(page, url);
+            saveToJson(name, url);
         }
     }
 

@@ -216,7 +216,7 @@ public class DocumentConverter {
                 return;
             }
             List<DocumentChunk> chunks = getEmbeddings().getChunks(document.source_id);
-            List<String> outputSplit = chunks.stream().filter(f -> f.converted).flatMap(f -> Arrays.stream(f.output.split("\n[ ]+-"))).toList();
+            List<String> outputSplit = chunks.stream().filter(f -> f.converted).flatMap(f -> Arrays.stream(f.output.split("\n- "))).toList();
             chunks.removeIf(f -> f.converted);
             if (chunks.isEmpty()) {
                 setConverted(document);
