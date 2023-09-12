@@ -1,11 +1,11 @@
 package com.locutus.wiki.pages;
 
-import com.locutus.wiki.WikiGen;
+import com.locutus.wiki.BotWikiGen;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.guild.GuildKey;
 
-public class WikiEmbassyPage extends WikiGen {
+public class WikiEmbassyPage extends BotWikiGen {
     public WikiEmbassyPage(CommandManager2 manager) {
         super(manager, "embassies");
     }

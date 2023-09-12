@@ -11,11 +11,7 @@ public enum EmbeddingType {
 
     Formula,
 
-    Page_Section,
-
-    Example,
-
-    Intent,
-
     User_Input,
+
+    Game_Wiki_Page,
 }

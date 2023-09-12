@@ -20,6 +20,7 @@ import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
@@ -141,6 +142,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         this.guild = guild;
         System.out.println(guild + " | AA:" + StringMan.getString(getInfo("ALLIANCE_ID", false)));
         importLegacyRoles();
+        PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+        if (gpt != null) {
+            gpt.getConverter().initDocumentConversion(this);
+        }
     }
 
     public GrantTemplateManager getGrantTemplateManager() {

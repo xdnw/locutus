@@ -30,13 +30,11 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
-import link.locutus.discord.gpt.pwembed.PWGPTHandler;
+import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.web.test.TestCommands;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import org.jooq.Param;
 import org.json.JSONObject;
 
 import javax.annotation.Nullable;
@@ -250,8 +248,8 @@ public class CommandManager2 {
             GPTCommands gptCommands = new GPTCommands();
 
             this.commands.registerMethod(gptCommands, List.of("chat", "spreadsheet"), "generate_factsheet", "convert");
-            this.commands.registerMethod(gptCommands, List.of("chat", "embedding"), "list_documents", "list");
-            this.commands.registerMethod(gptCommands, List.of("chat", "embedding"), "view_document", "view");
+            this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "list_documents", "list");
+            this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "view_document", "view");
             this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "delete_document", "delete");
             this.commands.registerMethod(gptCommands, List.of("chat", "spreadsheet"), "save_embeddings", "save");
             this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "listChatProviders", "list");
@@ -259,6 +257,10 @@ public class CommandManager2 {
             this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatProviderConfigure", "configure");
             this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatResume", "resume");
             this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatPause", "pause");
+            this.commands.registerMethod(gptCommands, List.of("chat", "conversion"), "showConverting", "list");
+            this.commands.registerMethod(gptCommands, List.of("channel", "rename"), "emojifyChannels", "bulk");
+
+            this.commands.registerMethod(gptCommands, List.of("chat"), "unban", "unban");
 
             this.commands.registerMethod(gptCommands, List.of("help"), "find_command2", "find_command");
 

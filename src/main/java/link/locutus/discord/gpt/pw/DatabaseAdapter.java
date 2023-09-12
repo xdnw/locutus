@@ -1,14 +1,8 @@
-package link.locutus.discord.gpt.pwembed;
+package link.locutus.discord.gpt.pw;
 
-import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
-import link.locutus.discord.gpt.imps.EmbeddingAdapter;
-import link.locutus.discord.gpt.imps.EmbeddingType;
 import link.locutus.discord.gpt.imps.IEmbeddingAdapter;
-
-import java.util.Map;
 
 public class DatabaseAdapter implements IEmbeddingAdapter<Long> {
     private final IEmbeddingDatabase database;

@@ -1,22 +1,17 @@
 package com.locutus.wiki.pages;
 
-import com.locutus.wiki.WikiGen;
+import com.locutus.wiki.BotWikiGen;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.entities.Coalition;
-import link.locutus.discord.db.guild.GuildBooleanSetting;
-import link.locutus.discord.db.guild.GuildChannelSetting;
-import link.locutus.discord.db.guild.GuildLongSetting;
-import link.locutus.discord.db.guild.GuildSetting;
-import link.locutus.discord.db.guild.GuildSettingCategory;
 import link.locutus.discord.user.Roles;
 
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
-public class WikiDepositsPage extends WikiGen {
+public class WikiDepositsPage extends BotWikiGen {
     public WikiDepositsPage(CommandManager2 manager) {
         super(manager, "deposits");
     }

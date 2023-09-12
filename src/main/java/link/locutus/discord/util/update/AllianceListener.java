@@ -264,7 +264,7 @@ public class AllianceListener {
 
                 body.append("\n**Press `graph` for 7d ground graph.**");
 
-                CM.alliance.stats.metricsByTurn graphCmd = CM.alliance.stats.metricsByTurn.cmd.create(AllianceMetric.GROUND_PCT.name(), StringMan.join(allowedIds, ","), "7d");
+                CM.alliance.stats.metricsByTurn graphCmd = CM.alliance.stats.metricsByTurn.cmd.create(AllianceMetric.GROUND_PCT.name(), StringMan.join(allowedIds, ","), "7d", null);
                 IMessageBuilder msg = new DiscordChannelIO(channel).create()
                         .embed(title, body.toString())
                         .commandButton(CommandBehavior.EPHEMERAL, graphCmd, "graph");

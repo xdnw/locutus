@@ -1,4 +1,4 @@
-package link.locutus.discord.gpt.pwembed;
+package link.locutus.discord.gpt.pw;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -112,7 +112,7 @@ public class GPTSearchUtil {
 
         DBNation nation = DiscordUtil.getNation(user);
         if (nation != null && useGPT && pwGpt != null) {
-            GPTProvider provider = pwGpt.getDefaultProvider(db, user, nation);
+            GPTProvider provider = pwGpt.getProviderManager().getDefaultProvider(db, user, nation);
             if (provider != null) {
                 closest = getClosest.apply(100);
                 int cap = provider.getSizeCap();
@@ -169,7 +169,7 @@ public class GPTSearchUtil {
                 prompt = prompt.replace("{commands}", String.join("\n\n", commandTexts));
                 System.out.println(prompt);
 
-                Map<String, String> options = pwGpt.getOptions(nation, provider);
+                Map<String, String> options = pwGpt.getPlayerGPTConfig().getOptions(nation, provider);
                 if (provider.getOptions().containsKey("temperature")) {
                     options.putIfAbsent("temperature", "0.5");
                 }

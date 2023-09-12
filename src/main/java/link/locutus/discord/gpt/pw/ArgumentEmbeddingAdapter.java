@@ -1,4 +1,4 @@
-package link.locutus.discord.gpt.pwembed;
+package link.locutus.discord.gpt.pw;
 
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
