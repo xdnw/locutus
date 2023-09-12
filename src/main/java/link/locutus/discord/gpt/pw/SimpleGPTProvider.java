@@ -415,6 +415,11 @@ public class SimpleGPTProvider extends GPTProvider {
         if (nation == null) {
             throw new IllegalArgumentException("User " + user.getName() + " must be registered to a nation. See " + CM.register.cmd.toSlashMention());
         }
+        boolean isAdmin = Roles.ADMIN.hasOnRoot(user);
+        if (isAdmin) {
+            return true;
+        }
+        boolean isWhitelisted = isAdmin || Roles.AI_COMMAND_ACCESS.hasOnRoot(user);
 
         if (requireGuild != 0) {
             if (db.getIdLong() != requireGuild) {
@@ -436,9 +441,7 @@ public class SimpleGPTProvider extends GPTProvider {
             if (created.plusDays(50).isAfter(OffsetDateTime.now())) {
                 throw new IllegalArgumentException("The GPT provider `" + this.getText2Text().getId() + "` can only be used in guilds that are at least 50 days old.");
             }
-
-            // root
-            if (Roles.AI_COMMAND_ACCESS.hasOnRoot(user)) {
+            if (isWhitelisted) {
                 return true;
             }
         } else {
