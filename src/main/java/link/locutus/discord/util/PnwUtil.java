@@ -610,22 +610,22 @@ public class PnwUtil {
 
         if (showCategories) {
             if (categorized.containsKey(DepositType.DEPOSIT)) {
-                response.append("**`#DEPOSIT:`** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.DEPOSIT))));
-                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.DEPOSIT))).append("``` ");
+                response.append("**`#DEPOSIT`** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.DEPOSIT))));
+                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.DEPOSIT))).append("```\n");
             }
             if (categorized.containsKey(DepositType.TAX)) {
-                response.append("**`#TAX:**` worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.TAX))));
-                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.TAX))).append("``` ");
+                response.append("**`#TAX`** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.TAX))));
+                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.TAX))).append("```\n");
             } else if (nationOrAllianceOrGuild.isNation()) {
                 footers.add("No tax records are added to deposits");
             }
             if (categorized.containsKey(DepositType.LOAN)) {
-                response.append("**`#LOAN/#GRANT`:** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.LOAN))));
-                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.LOAN))).append("``` ");
+                response.append("**`#LOAN/#GRANT`** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.LOAN))));
+                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.LOAN))).append("```\n");
             }
             if (categorized.containsKey(DepositType.GRANT)) {
-                response.append("**`#EXPIRE:`** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.GRANT))));
-                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.GRANT))).append("``` ");
+                response.append("**`#EXPIRE`** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.GRANT))));
+                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.GRANT))).append("```\n");
             }
             if (hasEscrowed) {
                 response.append("**" + CM.escrow.withdraw.cmd.toSlashMention() + ":** worth: $" + MathMan.format(PnwUtil.convertedTotal(escrowed)));

@@ -60,6 +60,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -735,11 +736,11 @@ public class NationUpdateProcessor {
         if (alliance == null || alliance.getRank() > 120) return;
 
         List<String> departureInfo = new ArrayList<>();
-        departureInfo.add(PnwUtil.getMarkdownUrl(current.getId(), false) + ", cities: " + current.getCities() + ", " + Rank.byId(previous.getPosition()));
         int memberRemoves = 0;
 
         double scoreDrop = 0;
-        Map<Integer, Map.Entry<Long, Rank>> removes = alliance.getRemoves();
+        Map<Integer, Map.Entry<Long, Rank>> removes = new LinkedHashMap<>(alliance.getRemoves());
+        removes.put(current.getNation_id(), new AbstractMap.SimpleEntry<>(System.currentTimeMillis(), Rank.byId(previous.getPosition())));
         long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
         for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {
             if (entry.getValue().getKey() < cutoff) continue;

@@ -422,7 +422,7 @@ public class AutoRoleTask implements IAutoRoleTask {
             default:
                 return;
         }
-        boolean setName = true;
+        boolean setName = leaderOrNation != null;
 
         String effective = member.getEffectiveName();
         if (autoAll && effective.contains("/")) {
