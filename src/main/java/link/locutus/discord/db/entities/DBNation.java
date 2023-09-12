@@ -4112,7 +4112,7 @@ public class DBNation implements NationOrAlliance {
             }
             infra /= cities.size();
             body.append("I:`" + MathMan.format(infra)).append("` (max:`").append(MathMan.format(maxCityInfra()) + "`)").append(" \uD83C\uDFD7\uFE0F | ");
-            body.append("C:`").append(cities.size());
+            body.append("`c").append(cities.size());
             if (unpowered == 0) {
                 body.append("`");
             } else if (unpowered == cities.size()) {
@@ -4121,7 +4121,7 @@ public class DBNation implements NationOrAlliance {
                 body.append("` (").append(unpowered).append(" \uD83E\uDEAB)");
             }
             body.append(" | O:").append("`").append(getOff()).append("/").append(getMaxOff()).append("` \uD83D\uDDE1\uFE0F | ");
-            body.append("D:`").append(getDef()).append("/").append(3).append("` \uD83D\uDEE1\uFE0F").append("` | `").append(MathMan.format(score) + "ns`\n");
+            body.append("D:`").append(getDef()).append("/").append(3).append("` \uD83D\uDEE1\uFE0F").append(" | `").append(MathMan.format(score) + "ns`\n");
         }
         //Domestic/War policy | beige turns | score
         String colorStr = getColor().name();
@@ -4141,6 +4141,8 @@ public class DBNation implements NationOrAlliance {
         long dcTurn = this.getTurnsFromDC();
         long dcTimestamp = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - dcTurn);
         for (MilitaryUnit unit : new MilitaryUnit[]{MilitaryUnit.SOLDIER, MilitaryUnit.TANK, MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP, MilitaryUnit.SPIES, MilitaryUnit.MISSILE, MilitaryUnit.NUKE}) {
+            if (unit == MilitaryUnit.MISSILE && !hasProject(Projects.MISSILE_LAUNCH_PAD)) continue;
+            if (unit == MilitaryUnit.NUKE && !hasProject(Projects.NUCLEAR_RESEARCH_FACILITY)) continue;
             int cap = getUnitCap(unit, false);
             if (cap == Integer.MAX_VALUE) cap = -1;
             // 6 chars
@@ -4150,7 +4152,7 @@ public class DBNation implements NationOrAlliance {
             String capStr = String.format("%6s", cap);
             body.append(String.format("%2s", unit.getEmoji())).append(" ").append(unitsStr).append("|").append(remainingStr).append("|").append(capStr).append("").append("\n");
         }
-        body.append("\n```\n");
+        body.append("``` ");
         body.append("MMR[Build]=`").append(getMMRBuildingStr()).append("` | MMR[Unit]=`").append(getMMR()).append("`\n\n");
         //
         //Attack Range: War= | Spy=
