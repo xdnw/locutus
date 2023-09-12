@@ -257,6 +257,8 @@ public class CommandManager2 {
             this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatProviderConfigure", "configure");
             this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatResume", "resume");
             this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatPause", "pause");
+            this.commands.registerMethod(gptCommands, List.of("chat", "conversion"), "showConverting", "list");
+            this.commands.registerMethod(gptCommands, List.of("channel", "rename"), "emojifyChannels", "bulk");
 
             this.commands.registerMethod(gptCommands, List.of("chat"), "unban", "unban");
 

@@ -100,7 +100,7 @@ public class DocumentConverter {
     public List<ConvertingDocument> getDocumentConversions(Guild guild) {
         List<ConvertingDocument> documents = new ArrayList<>();
         for (ConvertingDocument document : getEmbeddings().getUnconvertedDocuments()) {
-            EmbeddingSource source = getEmbeddings().getEmbeddingSource(guild.getIdLong(), document.source_id);
+            EmbeddingSource source = getEmbeddings().getEmbeddingSource(document.source_id);
             if (source != null) {
                 documents.add(document);
             }
@@ -164,7 +164,7 @@ public class DocumentConverter {
             if (throwError) throw new IllegalArgumentException(document.error);
             return;
         }
-        EmbeddingSource source = getEmbeddings().getEmbeddingSource(db.getIdLong(), document.source_id);
+        EmbeddingSource source = getEmbeddings().getEmbeddingSource(document.source_id);
         if (source == null) {
             String msg = "Cannot find document source `" + document.source_id + "` in guild " + db.getGuild() + " (was it deleted?)";
             getEmbeddings().setDocumentError(document, msg);

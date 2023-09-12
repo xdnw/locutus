@@ -279,11 +279,7 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
 
     @Override
     public EmbeddingSource getEmbeddingSource(int source_id) {
-        Map<Integer, EmbeddingSource> sourcesByGuild = embeddingSourcesByGuild.get(guildId);
-        if (sourcesByGuild == null) {
-            return null;
-        }
-        return sourcesByGuild.get(source_id);
+        return embeddingSources.get(source_id);
     }
 
     @Override

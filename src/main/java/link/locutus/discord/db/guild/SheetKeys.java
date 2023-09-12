@@ -52,4 +52,5 @@ public enum SheetKeys {
     ESCROW_SHEET,
     REPORTS_SHEET,
     LOANS_SHEET,
+    RENAME_CHANNELS,
 }

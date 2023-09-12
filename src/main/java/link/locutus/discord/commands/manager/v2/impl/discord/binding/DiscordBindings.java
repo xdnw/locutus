@@ -80,6 +80,15 @@ public class DiscordBindings extends BindingHelper {
         return roles;
     }
 
+    @Binding(examples = "interview,warcat,public", value = "A comma separated list of discord categories")
+    public static Set<Category> categories(@Me Guild guild, String input) {
+        Set<Category> categories = new LinkedHashSet<>();
+        for (String arg : input.split(",")) {
+            categories.add(category(guild, arg, null));
+        }
+        return categories;
+    }
+
     @Binding(value = "A discord role permission")
     public Permission key(String input) {
         return emum(Permission.class, input);
@@ -91,7 +100,7 @@ public class DiscordBindings extends BindingHelper {
     }
 
     @Binding(value = "A discord category name or mention", examples = "category-name")
-    public Category category(@Me Guild guild, String category, @Default ParameterData param) {
+    public static Category category(@Me Guild guild, String category, @Default ParameterData param) {
         if (guild == null) throw new IllegalArgumentException("Event did not happen inside a guild.");
         if (category.charAt(0) == '<' && category.charAt(category.length() - 1) == '>') {
             category = category.substring(1, category.length() - 1);

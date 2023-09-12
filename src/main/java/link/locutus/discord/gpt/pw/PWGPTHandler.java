@@ -98,11 +98,11 @@ public class PWGPTHandler {
         registerSettingEmbeddings();
         registerNationMetricBindings();
         registerArgumentBindings();
-        try {
-            registerWikiPagesLegacy();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+//        try {
+//            registerWikiPagesLegacy();
+//        } catch (IOException e) {
+//            throw new RuntimeException(e);
+//        }
 //        registerFormulaBindings("Formula");
 //        registerAcronymBindings("Acronym");
 //        registerPageSectionBindings("Wiki Page");
