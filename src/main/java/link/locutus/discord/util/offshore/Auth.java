@@ -248,7 +248,12 @@ public class Auth {
             result = Auth.this.readStringFromURL(PagePriority.TOKEN, url, post);
             dom = Jsoup.parse(result);
             String alert = PnwUtil.getAlert(dom);
-            if (alert.isEmpty()) {
+            if (alert == null) {
+                if (result.contains("/human/")) {
+                    throw new IllegalArgumentException("Nation " + PnwUtil.getMarkdownUrl(nationId, false) + " has a captcha to complete: https://politicsandwar.com/human/");
+                }
+            }
+            if (alert == null || alert.isEmpty()) {
                 return "(no output)";
             }
             return alert;

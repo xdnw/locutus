@@ -420,7 +420,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
         {
             DBAlliance parent = getCachedParentOfThisOffshore();
             if (parent != null) {
-                body.append(prefix).append(MarkupUtil.markdownUrl("Offshore of: ", parent.getMarkdownUrl()));
+                body.append(prefix).append("Offshore of: " + parent.getMarkdownUrl());
                 prefix = " | ";
             } else {
                 for (DBAlliance other : Locutus.imp().getNationDB().getAlliances()) {

@@ -3917,7 +3917,7 @@ public class DBNation implements NationOrAlliance {
                 for (Map.Entry<ResourceType, Integer> entry : amountMap.entrySet()) {
                     String trade = auth.createDepositTrade(senderNation, entry.getKey(), entry.getValue());
                 }
-                return senderNation.acceptTrades(getNation_id(), false);
+                return senderNation.acceptTrades(getNation_id(), true);
 
             }
         };
@@ -4111,27 +4111,29 @@ public class DBNation implements NationOrAlliance {
                 if (!value.powered) unpowered++;
             }
             infra /= cities.size();
-            buildingInfra /= cities.size();
-            body.append("Infra: `").append(MathMan.format(infra)).append("/").append(MathMan.format(buildingInfra)).append("` | ");
-            body.append("Cities: `").append(cities.size());
+            body.append("I:`" + MathMan.format(infra)).append("` (max:`").append(MathMan.format(maxCityInfra()) + "`)").append(" \uD83C\uDFD7\uFE0F | ");
+            body.append("`c").append(cities.size());
             if (unpowered == 0) {
                 body.append("`");
             } else if (unpowered == cities.size()) {
-                body.append("` (unpowered)");
+                body.append("` (\uD83E\uDEAB)");
             } else {
-                body.append("` (").append(unpowered).append(" unpowered)");
+                body.append("` (").append(unpowered).append(" \uD83E\uDEAB)");
             }
-            body.append(" | ").append("Off: `").append(getOff()).append("/").append(getMaxOff()).append("` | ");
-            body.append("Def: `").append(getDef()).append("/").append(3).append("`\n");
-        }
-        //VM: Timestamp(Started) - Timestamp(ends) (5 turns)
-        if (getVm_turns() > 0) {
-            body.append("VM: ").append(DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(entered_vm), null)).append(" - ").append(DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(leaving_vm), null)).append(" (").append(getVm_turns()).append(" turns)").append("\n");
+            body.append(" | O:").append("`").append(getOff()).append("/").append(getMaxOff()).append("` \uD83D\uDDE1\uFE0F | ");
+            body.append("D:`").append(getDef()).append("/").append(3).append("` \uD83D\uDEE1\uFE0F").append(" | `").append(MathMan.format(score) + "ns`\n");
         }
         //Domestic/War policy | beige turns | score
-        body.append("`").append(this.domestic_policy.name()).append("` | `").append(this.war_policy.name()).append("` | `").append(MathMan.format(score) + "ns").append("` | `").append(getContinent().name()).append("`\n");
+        String colorStr = getColor().name();
+        if (color == NationColor.BEIGE) colorStr += "=" + getBeigeTurns();
+        body.append("`").append(this.domestic_policy.name()).append("` | `").append(this.war_policy.name()).append("` | `")
+                .append(getContinent().name()).append("` | `" + colorStr).append("` | ").append(DiscordUtil.timestamp(lastActiveMs(), null)).append(" \u23F0\n");
         //MMR[Building]: 1/2/3 | MMR[Unit]: 5/6/7
         body.append("\n");
+        //VM: Timestamp(Started) - Timestamp(ends) (5 turns)
+        if (getVm_turns() > 0) {
+            body.append("**VM: **").append(DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(entered_vm), null)).append(" - ").append(DiscordUtil.timestamp(TimeUtil.getTimeFromTurn(leaving_vm), null)).append(" (").append(getVm_turns()).append(" turns left)").append("\n");
+        }
         //
         //Units: Now/Buyable/Cap
         body.append("**Units:** Now/Remaining Buy/Cap (assumes 5553)\n```json\n");
@@ -4139,6 +4141,8 @@ public class DBNation implements NationOrAlliance {
         long dcTurn = this.getTurnsFromDC();
         long dcTimestamp = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - dcTurn);
         for (MilitaryUnit unit : new MilitaryUnit[]{MilitaryUnit.SOLDIER, MilitaryUnit.TANK, MilitaryUnit.AIRCRAFT, MilitaryUnit.SHIP, MilitaryUnit.SPIES, MilitaryUnit.MISSILE, MilitaryUnit.NUKE}) {
+            if (unit == MilitaryUnit.MISSILE && !hasProject(Projects.MISSILE_LAUNCH_PAD)) continue;
+            if (unit == MilitaryUnit.NUKE && !hasProject(Projects.NUCLEAR_RESEARCH_FACILITY)) continue;
             int cap = getUnitCap(unit, false);
             if (cap == Integer.MAX_VALUE) cap = -1;
             // 6 chars
@@ -4148,7 +4152,7 @@ public class DBNation implements NationOrAlliance {
             String capStr = String.format("%6s", cap);
             body.append(String.format("%2s", unit.getEmoji())).append(" ").append(unitsStr).append("|").append(remainingStr).append("|").append(capStr).append("").append("\n");
         }
-        body.append("\n```\n");
+        body.append("``` ");
         body.append("MMR[Build]=`").append(getMMRBuildingStr()).append("` | MMR[Unit]=`").append(getMMR()).append("`\n\n");
         //
         //Attack Range: War= | Spy=
