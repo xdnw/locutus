@@ -11,6 +11,15 @@ public class WikiInterviewPage extends WikiGen {
     @Override
     public String generateMarkdown() {
         return build(
+            // about
+
+            "# Interview category",
+            "",
+            "## Interview category sorting",
+                // describe, name your category `interview-<name>`
+                "## the following categories are available",
+                // IACategory
+                // description of each
 
         );
        /*

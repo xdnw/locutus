@@ -760,7 +760,7 @@ public class IACategory {
                 return false;
             }
         },
-        ENTRY("people still doing the initial interview / not a member yet") {
+        ENTRY("Users or nations which are unregistered or are not an applicant in-game") {
             @Override
             public boolean matches(IACategory iaCat, GuildDB db, Set<Integer> allianceIds, GuildMessageChannel channel, IAChannel iaChan) {
                 if (iaChan == null) return true;
@@ -776,6 +776,7 @@ public class IACategory {
             public boolean matches(IACategory iaCat, GuildDB db, Set<Integer> allianceIds, GuildMessageChannel channel, IAChannel iaChan) {
                 if (iaChan == null) return false;
                 DBNation nation = iaChan.getNation();
+                if (nation.getCities() >= 10) return false;
                 if (Roles.GRADUATED.has(nation.getUser(), db.getGuild())) return false;
                 if (nation.getOff() < 4 && nation.getCities() < 10 && (nation.getDef() == 0 || !nation.isBeige())) {
                     return true;
