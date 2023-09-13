@@ -1666,6 +1666,52 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(ENEMY_BEIGED_ALERT_VIOLATIONS).requireValidAlliance());
 
+    public static GuildSetting<Map<NationFilter, Role>> CONDITIONAL_ROLES = new GuildSetting<Map<NationFilter, Role>>(GuildSettingCategory.ROLE, Map.class, NationFilter.class, Role.class) {
+
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String REQUIRED_MMR(@Me GuildDB db, @Me User user, Map<NationFilter, Role> roleMap) {
+            return CONDITIONAL_ROLES.setAndValidate(db, user, roleMap);
+        }
+
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String addRequiredMMR(@Me GuildDB db, @Me User user, NationFilter filter, Role mmr) {
+            Map<NationFilter, Role> existing = CONDITIONAL_ROLES.getOrNull(db, false);
+            existing = existing == null ? new HashMap<>() : new LinkedHashMap<>(existing);
+            existing.put(filter, mmr);
+            return CONDITIONAL_ROLES.setAndValidate(db, user, existing);
+        }
+
+
+        @Override
+        public String toString(Map<NationFilter, Role> filterToRoles) {
+            StringBuilder result = new StringBuilder();
+            for (Map.Entry<NationFilter, Role> entry : filterToRoles.entrySet()) {
+                result.append(entry.getKey().getFilter() + ":@" + entry.getValue().getName() + "\n");
+            }
+            return result.toString().trim();
+        }
+
+        @Override
+        public String help() {
+            String response = "A list of filters to a role.\n" +
+                    "In the form:\n" +
+                    "```\n" +
+                    "#cities<10:@someRole\n" +
+                    "#cities>=10:@otherRole\n" +
+                    "```\n" +
+                    "All nation filters are supported.\n" +
+                    "Use `*` as the filter to match all nations.\n" +
+                    "Only alliance members are given roles\n" +
+                    "Use " + CM.role.autoassign.cmd.toSlashMention() + " to assign";
+
+            return response;
+        }
+    }.setupRequirements(f -> f.requires(ALLIANCE_ID));
+
     public static GuildSetting<Map<NationFilter, MMRMatcher>> REQUIRED_MMR = new GuildSetting<Map<NationFilter, MMRMatcher>>(GuildSettingCategory.AUDIT, Map.class, NationFilter.class, MMRMatcher.class) {
 
         @NoFormat
