@@ -725,11 +725,13 @@ public class GrantCommands {
                                AGrantTemplate template,
                                DBNation receiver,
                                @Switch("e") @Timediff Long expire,
-                               @Switch("i") boolean ignore,
+                               @Switch("i") Boolean ignore,
                                @Switch("p") String customValue,
                                @Switch("em") EscrowMode escrowMode,
                                @Switch("f") boolean force) throws IOException {
-        if (expire != null) {
+        boolean hasAdmin = Roles.ECON.has(selfMember);
+        if (ignore == null) ignore = template.allowsIgnore();
+        if (expire != null && !hasAdmin) {
             if (!template.allowsExpire()) {
                 throw new IllegalArgumentException("The template `" + template.getName() + "` does not allow expiration");
             }
@@ -737,7 +739,7 @@ public class GrantCommands {
                 throw new IllegalArgumentException("The template `" + template.getName() + "` does not allow expiration less than " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, template.getExpire()) + "ms");
             }
         }
-        if (ignore && !template.allowsIgnore()) {
+        if (ignore && !template.allowsIgnore() && !hasAdmin) {
             throw new IllegalArgumentException("The template `" + template.getName() + "` does not allow `#ignore`");
         }
 
@@ -747,7 +749,7 @@ public class GrantCommands {
         }
         Role selfRole = template.getSelfRole();
 
-        boolean hasEconRole = selfMember.getRoles().contains(econRole) || Roles.ECON.has(selfMember);
+        boolean hasEconRole = hasAdmin || selfMember.getRoles().contains(econRole);
         if (!hasEconRole) {
             if (receiver.getNation_id() != me.getNation_id() || selfRole == null) {
                 throw new IllegalArgumentException("You must have the role `" + econRole.getName() + "` to send grants to other nations");
@@ -766,20 +768,6 @@ public class GrantCommands {
         List<Grant.Requirement> requirements = template.getDefaultRequirements(me, receiver, customValue);
         String instructions = template.getInstructions(me, receiver, customValue);
 
-        // validate requirements
-//        List<Grant.Requirement> failedRequirements = new ArrayList<>();
-//        requirements = template.getDefaultRequirements(me, receiver, customValue);
-//        boolean canOverride = Roles.ECON.has(selfMember);
-//        for (Grant.Requirement requirement : requirements) {
-//            if (!requirement.apply(receiver.asNation())) {
-//                failedRequirements.add(requirement);
-//                if (requirement.canOverride() && canOverride) continue;
-//                else {
-//                    return "Failed requirement: " + requirement.getMessage();
-//                }
-//            }
-//        }
-
         for (int i = 0; i < cost.length; i++) {
             if (cost[i] < 0)
                 cost[i] = 0;
@@ -796,16 +784,8 @@ public class GrantCommands {
 
         // confirmation
         if (!force) {
-            // add failedRequirements to message
             String title = "Send grant: " + template.getName();
             StringBuilder body = new StringBuilder();
-//            if (!failedRequirements.isEmpty()) {
-//                body.append("### Failed requirements:\n");
-//                for (Grant.Requirement requirement : failedRequirements) {
-//                    body.append("- ").append(requirement.getMessage()).append("\n");
-//                }
-//                body.append("\n\n");
-//            }
             body.append(template.toFullString(me, receiver, parsed));
             io.create().confirmation(title, body.toString(), command).send();
             return null;

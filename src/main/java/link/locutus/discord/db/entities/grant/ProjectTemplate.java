@@ -135,7 +135,7 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
 
         // min city
         if (project.maxCities() != 0) {
-            list.add(new Grant.Requirement("Project requires at least " + project.maxCities() + " cities", false, new Function<DBNation, Boolean>() {
+            list.add(new Grant.Requirement("Project requires at least " + project.requiredCities() + " cities", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
                     return project.requiredCities() <= 0 || nation.getCities() >= project.requiredCities();
