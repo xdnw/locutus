@@ -764,7 +764,7 @@ public class GPTCommands {
             for (Map.Entry<TextChannel, Map.Entry<String, String>> entry : emojis.entrySet()) {
                 TextChannel channel = entry.getKey();
                 String emoji = entry.getValue().getKey();
-                String desc = entry.getValue().getValue();
+                String desc = channel.getTopic() != null && !channel.getTopic().isEmpty() ? channel.getTopic() : entry.getValue().getValue();
 
                 String newName = emoji + "|" + channel.getName();
 
@@ -813,8 +813,8 @@ public class GPTCommands {
             List<Object> row = rows.get(i);
             String channelId = String.valueOf(row.get(channelIdIndex));
             String name = String.valueOf(row.get(nameIndex)).replace("|", "\u2502");
-            String desc = descIndex == null || row.get(descIndex) == null ? null : String.valueOf(row.get(descIndex));
-            if (desc.isEmpty()) desc = null;
+            String desc = descIndex == null || row.size() <= descIndex || row.get(descIndex) == null ? null : String.valueOf(row.get(descIndex));
+            if (desc == null || desc.isEmpty()) desc = null;
 
             TextChannel channel = guild.getTextChannelById(channelId);
             if (channel == null) {
