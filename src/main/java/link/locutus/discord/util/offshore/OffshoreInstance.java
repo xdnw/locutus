@@ -1438,6 +1438,7 @@ public class OffshoreInstance {
 //                return Map.entry(TransferStatus.INVALID_API_KEY, "Invalid API key");
                 return new TransferResult(TransferStatus.INVALID_API_KEY, receiver, transfer, note).addMessage("Invalid API key");
             } catch (RuntimeException e) {
+                e.printStackTrace();
                 String msg = e.getMessage();
                 return categorize(receiver, transfer, note, msg);
             }

@@ -1374,6 +1374,7 @@ public class PoliticsAndWarV3 {
         BankrecResponseProjection projection = new BankrecResponseProjection();
         projection.id();
         projection.date();
+        createBankRecProjection().accept(projection);
 
         return request(PagePriority.API_BANK_SEND, false, mutation, projection, BankWithdrawMutationResponse.class).bankWithdraw();
     }
