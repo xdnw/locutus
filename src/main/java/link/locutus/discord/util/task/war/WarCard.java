@@ -19,6 +19,8 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -292,6 +294,19 @@ public class WarCard {
     }
 
     public void update(List<AbstractCursor> attacks, boolean checkGC, boolean checkAC, boolean checkBlockade) {
+        boolean isSorted = true;
+        int id = -1;
+        for (AbstractCursor attack : attacks) {
+            if (attack.getWar_attack_id() < id) {
+                isSorted = false;
+                break;
+            }
+            id = attack.getWar_attack_id();
+        }
+        if (!isSorted) {
+            System.out.println("MAP is not sorted");
+            attacks.sort(Comparator.comparingInt(AbstractCursor::getWar_attack_id));
+        }
         Map.Entry<Integer, Integer> res = this.war.getResistance(attacks);
         this.attackerResistance = res.getKey();
         this.defenderResistance = res.getValue();

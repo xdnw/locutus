@@ -551,7 +551,7 @@ public class BankCommands {
                         result.append("\n- **api**: No `API_KEY` set. See " + CM.credentials.addApiKey.cmd.toSlashMention());
                     } else {
                         String noteStr = note != null ? note.toString() : "#deposit";
-                        Bankrec rec = new PoliticsAndWarV3(ApiKeyPool.create(api)).depositIntoBank(resources, noteStr);
+                        new PoliticsAndWarV3(ApiKeyPool.create(api)).depositIntoBank(resources, noteStr);
                         sentApi = true;
                         result.append("\n- **api**: Deposited `" + PnwUtil.resourcesToString(resources) + "` | `" + noteStr + "` into bank");
                     }

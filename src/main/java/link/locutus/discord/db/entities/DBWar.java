@@ -208,35 +208,22 @@ public class DBWar {
                 attTurnMap[1]++;
         }
 
-        boolean selfAttack = false;
-        boolean enemyAttack = false;
-
-        for (AbstractCursor attack : attacks) {
-            if (attack.getAttacker_id() == attacker_id) {
-                selfAttack = true;
-            } else {
-                enemyAttack = true;
-            }
-        }
-
         int wastedMap = 0;
         boolean fortified = false;
-        boolean wasted = false;
 
         outer:
         for (AbstractCursor attack : attacks) {
             long[] turnMap;
             if (attack.getAttacker_id() == attacker_id) {
-                selfAttack = true;
                 turnMap = attTurnMap;
             } else {
-                enemyAttack = true;
                 turnMap = defTurnMap;
             }
             long lastTurn = turnMap[0];
             long turn = TimeUtil.getTurn(attack.getDate());
-            int mapUsed = 0;
+            int mapUsed;
             switch (attack.getAttack_type()) {
+
                 case FORTIFY:
                     if (attack.getAttacker_id() == attacker_id) {
                         fortified = true;
@@ -244,6 +231,7 @@ public class DBWar {
                 case GROUND:
                     mapUsed = 3;
                     break;
+
                 case AIRSTRIKE_INFRA:
                 case AIRSTRIKE_SOLDIER:
                 case AIRSTRIKE_TANK:
@@ -257,15 +245,16 @@ public class DBWar {
                     mapUsed = 8;
                     break;
                 case NUKE:
-
                     mapUsed = 12;
                     break;
+                case PEACE:
+                    continue;
                 default:
                     break outer;
             }
             turnMap[1] += (turn - lastTurn);
             if (turnMap[1] > 12) {
-                wastedMap += turnMap[1] - 12;
+                wastedMap += (int) (turnMap[1] - 12);
                 turnMap[1] = 12;
             }
             turnMap[1] -= mapUsed;

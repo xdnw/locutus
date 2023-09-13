@@ -1429,9 +1429,11 @@ public class OffshoreInstance {
             try {
                 PoliticsAndWarV3 api = getAlliance().getApiOrThrow(AlliancePermission.WITHDRAW_BANK);
                 Bankrec result = api.transferFromBank(PnwUtil.resourcesToArray(transfer), receiver, note);
+                double[] amt = ResourceType.fromApiV3(result, ResourceType.getBuffer());
                 setLastSuccessfulTransfer(receiver, PnwUtil.resourcesToArray(transfer));
 //                return Map.entry(TransferStatus.SUCCESS, msg);
-                return new TransferResult(TransferStatus.SUCCESS, receiver, transfer, note).addMessage("Success: " + result.toString());
+                String amtStr = PnwUtil.resourcesToString(amt);
+                return new TransferResult(TransferStatus.SUCCESS, receiver, amt, note).addMessage("Success: " + amtStr);
             } catch (HttpClientErrorException.Unauthorized e) {
 //                return Map.entry(TransferStatus.INVALID_API_KEY, "Invalid API key");
                 return new TransferResult(TransferStatus.INVALID_API_KEY, receiver, transfer, note).addMessage("Invalid API key");
