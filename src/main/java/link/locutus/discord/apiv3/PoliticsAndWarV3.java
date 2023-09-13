@@ -1375,7 +1375,7 @@ public class PoliticsAndWarV3 {
         projection.id();
         projection.date();
 
-        return request(PagePriority.API_BANK_SEND, false, mutation, projection, Bankrec.class);
+        return request(PagePriority.API_BANK_SEND, false, mutation, projection, BankWithdrawMutationResponse.class).bankWithdraw();
     }
 
 
@@ -1420,7 +1420,7 @@ public class PoliticsAndWarV3 {
         projection.date();
 
         try {
-            request(PagePriority.API_BOT_KEY, false, mutation, projection, Bankrec.class);
+            BankDepositMutationResponse response = request(PagePriority.API_BOT_KEY, false, mutation, projection, BankDepositMutationResponse.class);
             return false;
         } catch (RuntimeException e) {
             if (e.getMessage().contains("The bot key you provided is not valid.")) {
@@ -1490,13 +1490,13 @@ public class PoliticsAndWarV3 {
     public Treaty approveTreaty(int id) {
         ApproveTreatyMutationRequest mutation = new ApproveTreatyMutationRequest();
         mutation.setId(id);
-        return request(PagePriority.API_TREATY_APPROVE, false, mutation, treatyResponseProjection(), Treaty.class);
+        return request(PagePriority.API_TREATY_APPROVE, false, mutation, treatyResponseProjection(), ApproveTreatyMutationResponse.class).approveTreaty();
     }
 
     public Treaty cancelTreaty(int id) {
         CancelTreatyMutationRequest mutation = new CancelTreatyMutationRequest();
         mutation.setId(id);
-        return request(PagePriority.API_TREATY_CANCEL, false, mutation, treatyResponseProjection(), Treaty.class);
+        return request(PagePriority.API_TREATY_CANCEL, false, mutation, treatyResponseProjection(), CancelTreatyMutationResponse.class).cancelTreaty();
     }
 
     public Treaty proposeTreaty(int alliance_id, int length, TreatyType type, String url) {
@@ -1505,7 +1505,7 @@ public class PoliticsAndWarV3 {
         mutation.setLength(length);
         mutation.setType(type.getId());
         mutation.setUrl(url);
-        return request(PagePriority.API_TREATY_SEND, false, mutation, treatyResponseProjection(), Treaty.class);
+        return request(PagePriority.API_TREATY_SEND, false, mutation, treatyResponseProjection(), ProposeTreatyMutationResponse.class).proposeTreaty();
     }
 
     private TaxBracketResponseProjection createTaxBracketProjection() {
@@ -1525,7 +1525,7 @@ public class PoliticsAndWarV3 {
         AssignTaxBracketMutationRequest mutation = new AssignTaxBracketMutationRequest();
         mutation.setId(taxId);
         mutation.setTarget_id(nationId);
-        return request(PagePriority.API_TAX_ASSIGN, false, mutation, createTaxBracketProjection(), TaxBracket.class);
+        return request(PagePriority.API_TAX_ASSIGN, false, mutation, createTaxBracketProjection(), AssignTaxBracketMutationResponse.class).assignTaxBracket();
     }
 
     public TaxBracket createTaxBracket(String name, Integer moneyRate, Integer rssRate) {
@@ -1534,13 +1534,13 @@ public class PoliticsAndWarV3 {
         mutation.setMoney_tax_rate(moneyRate);
         mutation.setResource_tax_rate(rssRate);
 
-        return request(PagePriority.API_TAX_CREATE, false, mutation, createTaxBracketProjection(), TaxBracket.class);
+        return request(PagePriority.API_TAX_CREATE, false, mutation, createTaxBracketProjection(), CreateTaxBracketMutationResponse.class).createTaxBracket();
     }
 
     public void deleteTaxBracket(int id) {
         DeleteTaxBracketMutationRequest request = new DeleteTaxBracketMutationRequest();
         request.setId(id);
-        request(PagePriority.API_TAX_DELETE, false, request, createTaxBracketProjection(), TaxBracket.class);
+        request(PagePriority.API_TAX_DELETE, false, request, createTaxBracketProjection(), DeleteTaxBracketMutationResponse.class).deleteTaxBracket();
     }
 
     public TaxBracket editTaxBracket(int id, String name, Integer moneyRate, Integer rssRate) {
@@ -1550,7 +1550,7 @@ public class PoliticsAndWarV3 {
         if (moneyRate != null) mutation.setMoney_tax_rate(moneyRate);
         if (rssRate != null) mutation.setResource_tax_rate(rssRate);
 
-        return request(PagePriority.API_TAX_EDIT, false, mutation, createTaxBracketProjection(), TaxBracket.class);
+        return request(PagePriority.API_TAX_EDIT, false, mutation, createTaxBracketProjection(), EditTaxBracketMutationResponse.class).editTaxBracket();
     }
 
     public Map<Integer, TaxBracket> fetchTaxBrackets(int allianceId, boolean priority) {
