@@ -81,7 +81,7 @@ public class Messages {
                     ia-auto:\uD83E\uDDBE | automation buttons for internal affairs (IA)
                     spy-info-n-ops:\uD83D\uDD0D | Post your spy operations and information here
                     spy-requests:\uD83D\uDD0D | Request spy operations against an enemy here
-                    def-spyops:\uD83D\uDD75️ | Alerts for defensive spy attacks
+                    def-spyops:\uD83D\uDD75 | Alerts for defensive spy attacks
                     beige-loot:\uD83D\uDCB0 | Alerts and commands for nation loot information
                     request-counters:\uD83C\uDD98 | post requests for counter attacks here
                     ma-guides:\uD83D\uDCDF | member guides for military affairs (MA)

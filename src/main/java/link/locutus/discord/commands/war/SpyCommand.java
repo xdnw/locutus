@@ -94,8 +94,9 @@ public class SpyCommand extends Command {
         int result = nation.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE, true, true);
         Long timeUpdated = nation.getTimeUpdatedSpies();
         long timeAgo = System.currentTimeMillis() - (timeUpdated == null ? 0 : timeUpdated);
+        String timeAgoStr = timeUpdated == null || timeUpdated == 0 ? "Unknown" :  TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeAgo);
 
-        StringBuilder response = new StringBuilder(nation.getNation() + " has " + result + " spies (updated: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, timeAgo) + " ago)");
+        StringBuilder response = new StringBuilder(nation.getNation() + " has " + result + " spies (updated: " + timeAgoStr + " ago)");
         response.append("\nRecommended:");
 
         int minSafety = requiredSafety == null ? 1 : requiredSafety;

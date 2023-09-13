@@ -747,7 +747,7 @@ public class GrantCommands {
         }
         Role selfRole = template.getSelfRole();
 
-        boolean hasEconRole = selfMember.getRoles().contains(econRole);
+        boolean hasEconRole = selfMember.getRoles().contains(econRole) || Roles.ECON.has(selfMember);
         if (!hasEconRole) {
             if (receiver.getNation_id() != me.getNation_id() || selfRole == null) {
                 throw new IllegalArgumentException("You must have the role `" + econRole.getName() + "` to send grants to other nations");
@@ -928,14 +928,14 @@ public class GrantCommands {
             grantMessage.append(receiver.getUser().getAsMention());
 
         //build a string consisting of the template name, status, and instructions
-        grantMessage.append("# " + template.getName());
         grantMessage.append("\n");
-        grantMessage.append(status.toString());
+        grantMessage.append(status.toEmbedString());
         grantMessage.append("\n");
         grantMessage.append(instructions);
 
-        //return message
-        return grantMessage.toString();
+        String title = template.getName() + " grant sent to " + receiver.getName();
+        io.create().embed(title, grantMessage.toString()).send();
+        return null;
     }
 
     // register all the require commands
@@ -1894,8 +1894,6 @@ public class GrantCommands {
             channel.create().confirmation(title, body.toString(), command).send();
             return null;
         }
-
-
 
         // get a lock for nation
         final Object lock = OffshoreInstance.NATION_LOCKS.computeIfAbsent(receiver.getId(), f -> new Object());
