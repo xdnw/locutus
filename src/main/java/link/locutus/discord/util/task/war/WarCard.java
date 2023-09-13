@@ -294,19 +294,6 @@ public class WarCard {
     }
 
     public void update(List<AbstractCursor> attacks, boolean checkGC, boolean checkAC, boolean checkBlockade) {
-        boolean isSorted = true;
-        int id = -1;
-        for (AbstractCursor attack : attacks) {
-            if (attack.getWar_attack_id() < id) {
-                isSorted = false;
-                break;
-            }
-            id = attack.getWar_attack_id();
-        }
-        if (!isSorted) {
-            System.out.println("MAP is not sorted");
-            attacks.sort(Comparator.comparingInt(AbstractCursor::getWar_attack_id));
-        }
         Map.Entry<Integer, Integer> res = this.war.getResistance(attacks);
         this.attackerResistance = res.getKey();
         this.defenderResistance = res.getValue();
