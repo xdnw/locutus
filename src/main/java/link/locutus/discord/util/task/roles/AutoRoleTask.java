@@ -2,6 +2,7 @@ package link.locutus.discord.util.task.roles;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
@@ -60,6 +61,7 @@ public class AutoRoleTask implements IAutoRoleTask {
 
     private Function<Integer, Boolean> allowedAAs = f -> true;
     private Map<Integer, Set<Role>> cityRoleMap;
+    private Map<NationFilter, Role> conditionalRoles;
     private Set<Role> cityRoles;
     private Rank autoRoleRank;
     private boolean autoRoleMembersApps;
