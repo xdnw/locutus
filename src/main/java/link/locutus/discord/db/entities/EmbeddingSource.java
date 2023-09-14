@@ -8,7 +8,7 @@ public class EmbeddingSource {
     public final int source_id;
     public final String source_name;
     public final long date_added;
-    public final long source_hash;
+    public long source_hash;
     public final long guild_id;
 
     public EmbeddingSource(int source_id, String source_name, long date_added, long source_hash, long guild_id) {

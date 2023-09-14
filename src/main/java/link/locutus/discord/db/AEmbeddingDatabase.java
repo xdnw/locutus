@@ -6,7 +6,6 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
@@ -17,29 +16,27 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.scheduler.TriConsumer;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jooq.DSLContext;
 import org.jooq.Record;
+import org.jooq.TransactionalRunnable;
 import org.jooq.exception.DataAccessException;
 import org.jooq.impl.SQLDataType;
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
-import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -71,15 +68,24 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         this.unconvertedDocuments = new ConcurrentHashMap<>();
         this.documentChunks = new ConcurrentHashMap<>();
 
+        createTables();
+
         // import old data
         importLegacyDate();
-
         loadVectors();
         loadHashesBySource();
         loadSources();
         loadExpandedTextMeta();
-
         loadUnconvertedDocuments();
+    }
+
+    public GptDatabase getDatabase() {
+        return database;
+    }
+
+    @Override
+    public void close() {
+        database.close();
     }
 
     @Override
@@ -119,6 +125,10 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         }
     }
 
+    private DSLContext ctx() {
+        return database.ctx();
+    }
+
     public void deleteHash(int source, long hash) {
         ctx().execute("DELETE FROM vector_sources WHERE hash = ? AND source_id = ?", hash, source);
     }
@@ -143,7 +153,8 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     public synchronized void saveVector(long hash, float[] vector) {
         byte[] data = ArrayUtil.toByteArray(vector);
         vectors.put(hash, vector);
-        ctx().execute("INSERT INTO vectors (hash, data) VALUES (?, ?)", hash, data);
+        String table = "vectors_" + vectorName;
+        ctx().execute("INSERT INTO " + table + " (hash, data) VALUES (?, ?)", hash, data);
     }
 
     private void createVectorTextTable() {
@@ -237,7 +248,16 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
                 "provider_type INTEGER NOT NULL, " +
                 "user BIGINT NOT NULL, " +
                 "error VARCHAR, " +
-                "date BIGINT NOT NULL, PRIMARY KEY (source_id))");
+                "date BIGINT NOT NULL, " +
+                "hash BIGINT NOT NULL, " +
+                "PRIMARY KEY (source_id))");
+
+        // alert table add hash inside try catch DataAccessException
+        try {
+            ctx().execute("ALTER TABLE document_queue ADD COLUMN hash BIGINT NOT NULL DEFAULT 0");
+        } catch (DataAccessException e) {
+            e.printStackTrace();
+        }
     }
 
     private void createChunksTable() {
@@ -278,10 +298,10 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         for (ConvertingDocument document : documents) {
             unconvertedDocuments.put(document.source_id, document);
         }
-        ctx().transaction(() -> {
+        ctx().transaction((TransactionalRunnable) -> {
             for (ConvertingDocument document : documents) {
-                ctx().execute("INSERT OR REPLACE INTO document_queue (source_id, prompt, converted, use_global_context, provider_type, user, error, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                        document.source_id, document.prompt, document.converted, document.use_global_context, document.provider_type, document.user, document.error, document.date);
+                ctx().execute("INSERT OR REPLACE INTO document_queue (source_id, prompt, converted, use_global_context, provider_type, user, error, date, hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        document.source_id, document.prompt, document.converted, document.use_global_context, document.provider_type, document.user, document.error, document.date, document.hash);
             }
         });
     }
@@ -290,7 +310,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         for (DocumentChunk chunk : chunks) {
             documentChunks.computeIfAbsent(chunk.source_id, k -> new ConcurrentHashMap<>()).put(chunk.source_id, chunk);
         }
-        ctx().transaction(() -> {
+        ctx().transaction((TransactionalRunnable) -> {
         for (DocumentChunk chunk : chunks) {
             ctx().execute("INSERT OR REPLACE INTO document_chunks (source_id, chunk_index, converted, text, output) VALUES (?, ?, ?, ?, ?)",
                     chunk.source_id, chunk.chunk_index, chunk.converted, chunk.text, chunk.output);
@@ -300,6 +320,16 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
 
     public List<DocumentChunk> getChunks(int source_id) {
         return new ArrayList<>(documentChunks.getOrDefault(source_id, Collections.emptyMap()).values());
+    }
+
+    @Override
+    public void deleteDocumentAndChunks(int sourceId) {
+        documentChunks.remove(sourceId);
+        unconvertedDocuments.remove(sourceId);
+        ctx().transaction((TransactionalRunnable) -> {
+            ctx().execute("DELETE FROM document_queue WHERE source_id = ?", sourceId);
+            ctx().execute("DELETE FROM document_chunks WHERE source_id = ?", sourceId);
+        });
     }
 
     @Override
@@ -333,7 +363,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
 
     @Override
     public void updateSources(List<EmbeddingSource> sources) {
-        ctx().transaction(() -> {
+        ctx().transaction((TransactionalRunnable) -> {
             for (EmbeddingSource source : sources) {
                 ctx().execute("UPDATE sources SET source_name = ?, date_added = ?, guild_id = ? WHERE source_id = ?",
                         source.source_name, source.date_added, source.guild_id, source.source_id);
@@ -347,7 +377,8 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
                 long hash = r.get("hash", Long.class);
                 byte[] data = r.get("data", byte[].class);
                 String id = r.get("id", String.class);
-                ctx().execute("INSERT INTO vectors (hash, data) VALUES (?, ?)", hash, data);
+                String table = "vectors_" + vectorName;
+                ctx().execute("INSERT INTO " + table + " (hash, data) VALUES (?, ?)", hash, data);
                 ctx().execute("INSERT INTO vector_text (hash, description) VALUES (?, ?)", hash, id);
             });
             ctx().dropTableIfExists("embeddings_2").execute();
@@ -355,7 +386,8 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     }
 
     public void loadVectors() {
-            ctx().select().from("vectors").fetch().forEach(r -> {
+        String table = "vectors_" + vectorName;
+            ctx().select().from(table).fetch().forEach(r -> {
             long hash = r.get("hash", Long.class);
             byte[] data = r.get("data", byte[].class);
             float[] vector = ArrayUtil.toFloatArray(data);
@@ -391,7 +423,6 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         });
     }
 
-    @Override
     public synchronized void createTables() {
         // vectors: long hash, byte[] data
         createVectorsTable();

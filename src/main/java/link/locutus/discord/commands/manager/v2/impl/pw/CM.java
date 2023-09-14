@@ -948,8 +948,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="generate_factsheet")
             public static class convert extends CommandRef {
                 public static final convert cmd = new convert();
-                public convert create(String googleDocumentUrl, String document_name, String confirm) {
-                    return createArgs("googleDocumentUrl", googleDocumentUrl, "document_name", document_name, "confirm", confirm);
+                public convert create(String googleDocumentUrl, String document_name, String force) {
+                    return createArgs("googleDocumentUrl", googleDocumentUrl, "document_name", document_name, "force", force);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="save_embeddings")

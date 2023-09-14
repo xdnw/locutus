@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -408,7 +409,7 @@ public class PWWikiUtil {
         }
     }
 
-    public static Map<String, Object> getPageJson(String pageName) throws IOException {
+    public static File getPageFile(String pageName) throws IOException {
         String fileName = slugify(pageName, false);
 
         if (SKIP_PAGES.contains(fileName)) {
@@ -421,9 +422,12 @@ public class PWWikiUtil {
             String url = "https://politicsandwar.fandom.com/wiki/" + java.net.URLEncoder.encode(pageName, "UTF-8");
             saveToJson(pageName, url);
         }
+        return jsonFile;
+    }
 
-        // Load the JSON
-        try (FileReader reader = new FileReader(jsonFile)) {
+    public static Map<String, Object> getPageJson(String pageName) throws IOException {
+        File file = getPageFile(pageName);
+        try (FileReader reader = new FileReader(file)) {
             return new Gson().fromJson(reader, Map.class);
         } catch (IOException e) {
             e.printStackTrace();

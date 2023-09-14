@@ -20,18 +20,6 @@ import java.util.Set;
 import java.util.function.BiPredicate;
 
 public class GPTTest {
-    public static void main2(String[] args) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
-        Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-        GptHandler handler = new GptHandler();
-
-        IEmbeddingDatabase embedding = handler.getEmbeddings();
-
-//        List<ModerationResult> blah = handler.getModerator().moderate("self harm");
-//        System.out.println(blah);
-
-//        String response = handler.getText2text().generate("What is your name?");
-//        System.out.println(response);
-    }
 
     public static void main(String[] args) throws SQLException, LoginException, InterruptedException, ClassNotFoundException {
         Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());

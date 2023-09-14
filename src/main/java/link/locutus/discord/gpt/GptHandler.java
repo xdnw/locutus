@@ -19,8 +19,10 @@ import link.locutus.discord.gpt.imps.GPTText2Text;
 import link.locutus.discord.gpt.imps.IText2Text;
 import link.locutus.discord.gpt.imps.MiniEmbedding;
 import link.locutus.discord.gpt.imps.ProcessText2Text;
+import link.locutus.discord.gpt.pw.GptDatabase;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 
+import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
@@ -46,7 +48,7 @@ public class GptHandler {
     private final IModerator moderator;
     private final ProcessText2Text processT2;
 
-    public GptHandler() throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
+    public GptHandler(GptDatabase database) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
         this.registry = Encodings.newDefaultEncodingRegistry();
         this.service = new OpenAiService(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, Duration.ofSeconds(120));
 
@@ -57,7 +59,7 @@ public class GptHandler {
         this.moderator = new GPTModerator(service);
 //        this.embeddingDatabase = new AdaEmbedding(registry, service);
         // TODO change ^ that to mini
-        this.embeddingDatabase = new MiniEmbedding(platform);
+        this.embeddingDatabase = new MiniEmbedding(platform, database);
 
         File scriptPath = new File("../gpt4free/my_project/gpt3_5_turbo.py");
         File venvExe = new File("../gpt4free/venv/Scripts/python.exe");
@@ -103,12 +105,12 @@ public class GptHandler {
      * @param deleteMissing if embeddings in the source not included will be deleted
      * @return the ids of the embeddings
      */
-    public List<Long> registerEmbeddings(EmbeddingSource source, List<String> descriptions, List<String> expandedDescriptions, boolean moderate, boolean deleteMissing) {
-        checkArgument(descriptions.size() == expandedDescriptions.size(), "descriptions and expandedDescriptions must be the same size");
+    public List<Long> registerEmbeddings(EmbeddingSource source, List<String> descriptions, @Nullable List<String> expandedDescriptions, boolean moderate, boolean deleteMissing) {
+        checkArgument(expandedDescriptions == null || descriptions.size() == expandedDescriptions.size(), "descriptions and expandedDescriptions must be the same size");
         // create a stream Map.Entry<String, String> from descriptions and expandedDescriptions
         Map<String, String> map = new HashMap<>();
         for (int i = 0; i < descriptions.size(); i++) {
-            map.put(descriptions.get(i), expandedDescriptions.get(i));
+            map.put(descriptions.get(i), expandedDescriptions == null ? null : expandedDescriptions.get(i));
         }
         return registerEmbeddings(source, map.entrySet().stream(), moderate, deleteMissing);
     }

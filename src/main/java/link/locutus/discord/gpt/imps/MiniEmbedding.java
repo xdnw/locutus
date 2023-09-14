@@ -9,6 +9,7 @@ import ai.djl.repository.zoo.ZooModel;
 import ai.djl.translate.TranslateException;
 import ai.djl.util.Platform;
 import link.locutus.discord.db.AEmbeddingDatabase;
+import link.locutus.discord.gpt.pw.GptDatabase;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -19,8 +20,8 @@ public class MiniEmbedding extends AEmbeddingDatabase {
     private final ZooModel<String, float[]> model;
     private final Predictor<String, float[]> predictor;
 
-    public MiniEmbedding(Platform platform) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
-        super("minilm");
+    public MiniEmbedding(Platform platform, GptDatabase database) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
+        super("minilm", database);
         this.platform = platform;
         criteria = Criteria.builder()
                 .setTypes(String.class, float[].class)
@@ -45,5 +46,6 @@ public class MiniEmbedding extends AEmbeddingDatabase {
     @Override
     public synchronized void close() {
         this.model.close();
+        super.close();
     }
 }

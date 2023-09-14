@@ -8,6 +8,7 @@ import com.theokanning.openai.embedding.Embedding;
 import com.theokanning.openai.embedding.EmbeddingRequest;
 import com.theokanning.openai.embedding.EmbeddingResult;
 import link.locutus.discord.db.AEmbeddingDatabase;
+import link.locutus.discord.gpt.pw.GptDatabase;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -17,8 +18,8 @@ public class AdaEmbedding extends AEmbeddingDatabase {
     private final Encoding embeddingEncoder;
     private final OpenAiService service;
 
-    public AdaEmbedding(EncodingRegistry registry, OpenAiService service) throws SQLException, ClassNotFoundException {
-        super("gpt");
+    public AdaEmbedding(EncodingRegistry registry, OpenAiService service, GptDatabase database) throws SQLException, ClassNotFoundException {
+        super("ada", database);
         this.registry = registry;
         this.service = service;
         this.embeddingEncoder = registry.getEncodingForModel(ModelType.TEXT_EMBEDDING_ADA_002);
@@ -46,4 +47,5 @@ public class AdaEmbedding extends AEmbeddingDatabase {
         }
         return target;
     }
+
 }

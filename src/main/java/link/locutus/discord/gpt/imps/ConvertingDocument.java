@@ -10,6 +10,7 @@ public class ConvertingDocument {
     public long user;
     public String error;
     public long date;
+    public long hash;
 
     public ProviderType getProviderType() {
         return ProviderType.values()[provider_type];
