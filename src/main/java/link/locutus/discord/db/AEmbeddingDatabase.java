@@ -6,7 +6,6 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
@@ -17,8 +16,8 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.scheduler.TriConsumer;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jooq.DSLContext;
 import org.jooq.Record;
 import org.jooq.exception.DataAccessException;
 import org.jooq.impl.SQLDataType;
@@ -29,17 +28,13 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
-import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -71,14 +66,14 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         this.unconvertedDocuments = new ConcurrentHashMap<>();
         this.documentChunks = new ConcurrentHashMap<>();
 
+        createTables();
+
         // import old data
         importLegacyDate();
-
         loadVectors();
         loadHashesBySource();
         loadSources();
         loadExpandedTextMeta();
-
         loadUnconvertedDocuments();
     }
 
@@ -117,6 +112,10 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
                 }
             }
         }
+    }
+
+    private DSLContext ctx() {
+        return database.ctx();
     }
 
     public void deleteHash(int source, long hash) {
@@ -391,7 +390,6 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         });
     }
 
-    @Override
     public synchronized void createTables() {
         // vectors: long hash, byte[] data
         createVectorsTable();
