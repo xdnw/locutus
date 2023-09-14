@@ -16,6 +16,11 @@ public class DelegateAutoRoleTask implements IAutoRoleTask {
     }
 
     @Override
+    public AutoRoleInfo autoRoleConditions(Member member, DBNation nation) {
+        return task.autoRoleConditions(member, nation);
+    }
+
+    @Override
     public AutoRoleInfo autoRoleMemberApp(Member member, DBNation nation) {
         return task.autoRoleMemberApp(member, nation);
     }

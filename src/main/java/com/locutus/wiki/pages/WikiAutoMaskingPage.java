@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
+import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 
@@ -76,6 +77,9 @@ public class WikiAutoMaskingPage extends BotWikiGen {
                 - Run the auto role command.
                 
                 No other formats are currently supported.""",
+                "# Conditional roles",
+                GuildKey.CONDITIONAL_ROLES.help(),
+                commandMarkdownSpoiler(CM.settings_role.CONDITIONAL_ROLES.cmd),
                 "# Sync roles",
                 "Give the aliased locutus roles to all members based on the roles they have in their respective alliance server",
                 "This cannot be enabled on an alliance server, and is intended for coalitions",

@@ -42,9 +42,11 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -112,6 +114,8 @@ public class AutoRoleTask implements IAutoRoleTask {
         this.cityRoleMap = new ConcurrentHashMap<>(DiscordUtil.getCityRoles(roles));
         this.cityRoles = new HashSet<>();
         for (Set<Role> value : cityRoleMap.values()) cityRoles.addAll(value);
+
+        this.conditionalRoles = GuildKey.CONDITIONAL_ROLES.getOrNull(db);
 
         fetchTaxRoles(true);
 
@@ -192,6 +196,17 @@ public class AutoRoleTask implements IAutoRoleTask {
             info.put("Auto Role Members/Apps", infoStr.toString());
         } else {
             info.put("Auto Role Members/Apps", "False (see: " + CM.settings_role.AUTOROLE_MEMBER_APPS.cmd.toSlashMention() + ")");
+        }
+        if (conditionalRoles != null && !conditionalRoles.isEmpty()) {
+            StringBuilder infoStr = new StringBuilder();
+            for (Map.Entry<NationFilter, Role> entry : conditionalRoles.entrySet()) {
+                NationFilter condition = entry.getKey();
+                Role role = entry.getValue();
+                infoStr.append("- " + condition.getFilter()).append(": ").append(role.getAsMention()).append("\n");
+            }
+            info.put("Conditional Roles", infoStr.toString());
+        } else {
+            info.put("Conditional Roles", "None (see: " + GuildKey.CONDITIONAL_ROLES.getCommandMention() + ")");
         }
 
         StringBuilder result = new StringBuilder();
@@ -474,9 +489,8 @@ public class AutoRoleTask implements IAutoRoleTask {
             autoRoleAlliance(info, member, nation, autoAll);
         }
 
-        if (nation != null) {
-            autoRoleCities(info, member, nation);
-        }
+        autoRoleCities(info, member, nation);
+        autoRoleConditions(info, member, nation);
 
         if (autoRoleMembersApps && !autoRoleAllyGov) {
             setAutoRoleMemberApp(info, member, nation);
@@ -613,6 +627,15 @@ public class AutoRoleTask implements IAutoRoleTask {
         return info;
     }
 
+
+    @Override
+    public AutoRoleInfo autoRoleConditions(Member member, DBNation nation) {
+        AutoRoleInfo info = new AutoRoleInfo(db, "");
+        autoRoleConditions(info, member, nation);
+        info.execute();
+        return info;
+    }
+
     @Override
     public AutoRoleInfo autoRoleMemberApp(Member member, DBNation nation) {
         if (!autoRoleMembersApps) return null;
@@ -676,12 +699,35 @@ public class AutoRoleTask implements IAutoRoleTask {
         }
     }
 
-    public void autoRoleCities(AutoRoleInfo info, Member member, DBNation nation) {
-        if (nation == null) {
-            return;
+    public void autoRoleConditions(AutoRoleInfo info, Member member, DBNation nation) {
+        if (conditionalRoles == null || conditionalRoles.isEmpty()) return;
+        if (nation != null && isMember(member, nation)) {
+            for (Map.Entry<NationFilter, Role> entry : conditionalRoles.entrySet()) {
+                Predicate<DBNation> condition = entry.getKey().toCached(TimeUnit.MINUTES.toMillis(1));
+                List<Role> memberRoles = member.getRoles();
+                if (condition.test(nation)) {
+                    if (!memberRoles.contains(entry.getValue())) {
+                        info.addRoleToMember(member, entry.getValue());
+                    }
+                } else {
+                    if (memberRoles.contains(entry.getValue())) {
+                        info.removeRoleFromMember(member, entry.getValue());
+                    }
+                }
+            }
+        } else {
+            List<Role> memberRoles = member.getRoles();
+            for (Role role : conditionalRoles.values()) {
+                if (memberRoles.contains(role)) {
+                    info.removeRoleFromMember(member, role);
+                }
+            }
         }
+    }
+
+    public void autoRoleCities(AutoRoleInfo info, Member member, DBNation nation) {
         if (cityRoles.isEmpty()) return;
-        if (isMember(member, nation)) {
+        if (nation != null && isMember(member, nation)) {
             Set<Role> allowed = new HashSet<>(cityRoleMap.getOrDefault(nation.getCities(), new HashSet<>()));
             List<Role> memberRoles = member.getRoles();
             for (Role role : allowed) {

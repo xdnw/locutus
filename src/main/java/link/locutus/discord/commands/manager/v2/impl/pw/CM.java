@@ -2925,11 +2925,25 @@ public class CM {
                 return createArgs("topScoreRank", topScoreRank);
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="CONDITIONAL_ROLES", field="CONDITIONAL_ROLES")
+        public static class CONDITIONAL_ROLES extends CommandRef {
+            public static final CONDITIONAL_ROLES cmd = new CONDITIONAL_ROLES();
+            public CONDITIONAL_ROLES create(String roleMap) {
+                return createArgs("roleMap", roleMap);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="addAssignableRole", field="ASSIGNABLE_ROLES")
         public static class addAssignableRole extends CommandRef {
             public static final addAssignableRole cmd = new addAssignableRole();
             public addAssignableRole create(String role, String roles) {
                 return createArgs("role", role, "roles", roles);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="addConditionalRole", field="CONDITIONAL_ROLES")
+        public static class addConditionalRole extends CommandRef {
+            public static final addConditionalRole cmd = new addConditionalRole();
+            public addConditionalRole create(String filter, String role) {
+                return createArgs("filter", filter, "role", role);
             }
         }
     }
