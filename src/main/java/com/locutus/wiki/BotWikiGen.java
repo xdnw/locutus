@@ -45,7 +45,7 @@ public abstract class BotWikiGen {
     public abstract String generateMarkdown();
 
     public String build(String... content) {
-        return StringMan.join(content, "\n\n");
+        return StringMan.join(content, "\n\n").replaceAll("<\\/(\\w{1,25}(\\s+\\w{1,25}){0,2}):\\d+>", "`/$1`");
     }
 
     public String commandMarkdownSpoiler(CommandRef ref) {

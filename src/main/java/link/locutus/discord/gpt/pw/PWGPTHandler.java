@@ -14,6 +14,7 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.DBMainV3;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.db.entities.NationMeta;
@@ -56,7 +57,11 @@ public class PWGPTHandler {
     private final ProviderManager providerManager;
     private final DocumentConverter converter;
 
+    private final GptDatabase database;
+
     public PWGPTHandler(CommandManager2 manager) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
+        this.database = new GptDatabase();
+
         this.cmdManager = manager;
         this.handler = new GptHandler();
         this.providerManager = new ProviderManager(handler);
@@ -116,6 +121,7 @@ public class PWGPTHandler {
     }
 
     private void registerWikiPagesLegacy() throws IOException {
+        IEmbeddingDatabase embeddings = getEmbeddings();
 //        Map<String, String> pageUrls = PWWikiUtil.getAllPages();
 //        PWWikiUtil.fetchDefaultPages();
 //        PWWikiUtil.saveDefaultPages();

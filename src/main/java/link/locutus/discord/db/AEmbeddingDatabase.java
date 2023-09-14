@@ -12,6 +12,7 @@ import link.locutus.discord.gpt.IEmbeddingDatabase;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
 import link.locutus.discord.gpt.imps.DocumentChunk;
 import link.locutus.discord.gpt.imps.EmbeddingInfo;
+import link.locutus.discord.gpt.pw.GptDatabase;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
@@ -47,7 +48,7 @@ import java.util.stream.Collectors;
 import static graphql.com.google.common.base.Preconditions.checkArgument;
 import static graphql.com.google.common.base.Preconditions.checkNotNull;
 
-public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingDatabase, Closeable {
+public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeable {
 
     private final Long2ObjectOpenHashMap<float[]> vectors;
     private final Map<Integer, Set<Long>> textHashBySource;
@@ -56,9 +57,12 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
     private final Map<Integer, EmbeddingSource> embeddingSources;
     private final Map<Integer, ConvertingDocument> unconvertedDocuments;
     private final Map<Integer, Map<Integer, DocumentChunk>> documentChunks;
+    private final String vectorName;
+    private final GptDatabase database;
 
-    public AEmbeddingDatabase(String name) throws SQLException, ClassNotFoundException {
-        super(Settings.INSTANCE.DATABASE, name, false);
+    public AEmbeddingDatabase(String name, GptDatabase database) throws SQLException, ClassNotFoundException {
+        this.database = database;
+        this.vectorName = name;
         this.vectors = new Long2ObjectOpenHashMap<>();
         this.textHashBySource = new Int2ObjectOpenHashMap<>();
         this.expandedTextHashBySource = new Int2ObjectOpenHashMap<>();
@@ -120,11 +124,20 @@ public abstract class AEmbeddingDatabase extends DBMainV3 implements IEmbeddingD
     }
 
     private void createVectorsTable() {
-        ctx().createTableIfNotExists("vectors")
+        String tableName = "vectors_" + vectorName;
+        ctx().createTableIfNotExists(tableName)
                 .column("hash", SQLDataType.BIGINT.notNull())
                 .column("data", SQLDataType.BINARY.notNull())
                 .primaryKey("hash")
                 .execute();
+
+        // `vectors` exits, import it
+        try {
+            ctx().execute("INSERT INTO " + tableName + " (hash, data) SELECT hash, data FROM vectors");
+            ctx().execute("DROP TABLE vectors");
+        } catch (Throwable ignore) {
+
+        }
     }
 
     public synchronized void saveVector(long hash, float[] vector) {

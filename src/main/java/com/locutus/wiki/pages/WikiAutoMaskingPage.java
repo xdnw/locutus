@@ -79,7 +79,7 @@ public class WikiAutoMaskingPage extends BotWikiGen {
                 No other formats are currently supported.""",
                 "# Conditional roles",
                 GuildKey.CONDITIONAL_ROLES.help(),
-                commandMarkdownSpoiler(CM.settings_role.CONDITIONAL_ROLES.cmd),
+                commandMarkdownSpoiler(CM.settings_role.addConditionalRole.cmd),
                 "# Sync roles",
                 "Give the aliased locutus roles to all members based on the roles they have in their respective alliance server",
                 "This cannot be enabled on an alliance server, and is intended for coalitions",
