@@ -1,26 +1,35 @@
 package link.locutus.discord.gpt.pw;
 
+import com.google.gson.Gson;
 import com.locutus.wiki.game.PWWikiUtil;
+import link.locutus.discord.gpt.IEmbeddingDatabase;
 import link.locutus.discord.util.FileUtil;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class WikiPagePW {
     private final String name;
     private final String url;
-    private final Set<String> categories;
-    private final long hash;
+    private Set<String> categories;
+    private long hash;
 
     public WikiPagePW(String name, String url, long hash, Set<String> categories) {
         this.name = name;
         this.url = url;
-        this.hash = hash;
         this.categories = categories;
+        this.hash = hash;
+    }
+
+    public long getHash() {
+        return hash;
     }
 
     public String getSlug() {
@@ -33,6 +42,16 @@ public class WikiPagePW {
 
     public String getName() {
         return name;
+    }
+
+    public Map<String, Object> getPageData(IEmbeddingDatabase embeddings) throws IOException {
+        Map<String, Object> map = PWWikiUtil.getPageJson(name);
+        if (map == null) return null;
+        Gson gson = new Gson();
+        this.categories = new LinkedHashSet<>((List<String>) map.get("categories"));
+        String json = gson.toJson(map);
+        this.hash = embeddings.getHash(json);
+        return map;
     }
 
     public List<String> getSummaryData() throws IOException {
@@ -57,5 +76,9 @@ public class WikiPagePW {
             lines.add(line);
         }
         return lines;
+    }
+
+    public Set<String> getCategories() {
+        return categories;
     }
 }

@@ -58,4 +58,6 @@ public interface IEmbeddingDatabase {
         }
         addConvertingDocument(List.of(document));
     }
+
+
 }

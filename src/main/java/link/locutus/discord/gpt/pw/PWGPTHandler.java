@@ -51,22 +51,27 @@ public class PWGPTHandler {
     private final GptHandler handler;
     private final BiMap<EmbeddingType, EmbeddingSource> sourceMap = HashBiMap.create();
     private final Map<EmbeddingSource, IEmbeddingAdapter<?>> adapterMap2 = new ConcurrentHashMap<>();
-    private final Map<Integer, WikiPagePW> gameWikiPagesBySourceId = new ConcurrentHashMap<>();
     private final CommandManager2 cmdManager;
     private final PlayerGPTConfig PlayerGPTConfig;
     private final ProviderManager providerManager;
     private final DocumentConverter converter;
 
     private final GptDatabase database;
+    private final WikiManager wikiManager;
 
     public PWGPTHandler(CommandManager2 manager) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
         this.database = new GptDatabase();
 
         this.cmdManager = manager;
-        this.handler = new GptHandler();
+        this.handler = new GptHandler(database);
         this.providerManager = new ProviderManager(handler);
         this.PlayerGPTConfig = new PlayerGPTConfig();
         this.converter = new DocumentConverter(getEmbeddings(), providerManager, handler.getModerator());
+        this.wikiManager = new WikiManager(database);
+    }
+
+    public WikiManager getWikiManager() {
+        return wikiManager;
     }
 
     public DocumentConverter getConverter() {
@@ -118,82 +123,6 @@ public class PWGPTHandler {
 
     public static void main(String[] args) throws IOException {
 //
-    }
-
-    private void registerWikiPagesLegacy() throws IOException {
-        IEmbeddingDatabase embeddings = getEmbeddings();
-//        Map<String, String> pageUrls = PWWikiUtil.getAllPages();
-//        PWWikiUtil.fetchDefaultPages();
-//        PWWikiUtil.saveDefaultPages();
-
-        Gson gsonPretty = new GsonBuilder().setPrettyPrinting().create();
-        Gson gson = new Gson();
-
-        Map<String, WikiPagePW> pages = new LinkedHashMap<>();
-
-        Set<String> allCategories = new LinkedHashSet<>();
-        for (Map.Entry<String, String> pageEntry : PWWikiUtil.getSitemapCached().entrySet()) {
-            String pageName = pageEntry.getKey();
-            Map<String, Object> map = PWWikiUtil.getPageJson(pageName);
-            if (map == null) {
-                System.out.println("No page found for " + pageName);
-                continue;
-            }
-            List<String> categories = (List<String>) map.get("categories");
-            System.out.println("Categories for " + pageName + ": " + categories);
-            for (String category : categories) {
-                allCategories.add(category);
-            }
-//            if (categories.removeIf(f -> f.matches("\\d+ more"))) {
-//                String json = gsonPretty.toJson(map);
-//                String slug = PWWikiUtil.slugify(pageName, false);
-//                String fileName = "wiki/json/" + slug + ".json";
-//                System.out.println("Writing to " + fileName);
-//                try (FileWriter writer = new FileWriter(fileName)) {
-//                    writer.write(json);
-//                }
-//            }
-            String json = gson.toJson(map);
-            long hash = getEmbeddings().getHash(json);
-
-            String sourceName = "wiki/" + pageName;
-
-            WikiPagePW wikiPage = new WikiPagePW(pageName, pageEntry.getValue(), hash, new LinkedHashSet<>(categories));
-            pages.put(sourceName, wikiPage);
-        }
-
-        Set<EmbeddingSource> wikiSources = getEmbeddings().getSources(f -> f == 0, f -> f.source_name.startsWith("wiki/"));
-        // Delete unused sources
-        for (EmbeddingSource source : wikiSources) {
-            String sourceName = source.source_name;
-            if (!pages.containsKey(sourceName)) {
-                getEmbeddings().deleteSource(source);
-            }
-        }
-
-        // register current sources
-        for (Map.Entry<String, WikiPagePW> entry : pages.entrySet()) {
-            String sourceName = entry.getKey();
-            WikiPagePW page = entry.getValue();
-            EmbeddingSource source = getEmbeddings().getOrCreateSource(sourceName, 0);
-            gameWikiPagesBySourceId.put(source.source_id, entry.getValue());
-
-            List<String> summary = page.getSummaryData();
-            if (summary != null && !summary.isEmpty()) {
-                System.out.println("Found Summary for " + page.getName() + ": " + summary);
-
-                // entry source , null
-                Stream<Map.Entry<String, String>> stream = summary.stream().map(f -> new AbstractMap.SimpleEntry<>(f, null));
-                handler.registerEmbeddings(source, stream, false, true);
-            } else {
-                System.out.println("No summary for " + page.getSlug());
-            }
-        }
-
-
-        System.out.println("All categories: ");
-        System.out.println(allCategories);
-
     }
 
 //    public String generateSolution(ValueStore store, GuildDB db, User user, String userInput) {
@@ -448,11 +377,10 @@ public class PWGPTHandler {
     }
 
     public EmbeddingType getSourceType(EmbeddingSource source) {
-        if (gameWikiPagesBySourceId.containsKey(source.source_id)) {
+        if (wikiManager.getWikiPageBySource(source.source_id) != null) {
             return EmbeddingType.Game_Wiki_Page;
         }
-        EmbeddingType singleType = sourceMap.inverse().get(source);
-        return singleType;
+        return sourceMap.inverse().get(source);
     }
 
     public Set<EmbeddingSource> getSelectedSources(Guild guild, DBNation nation, boolean allowRoot) {

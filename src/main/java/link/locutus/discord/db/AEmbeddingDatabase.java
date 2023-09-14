@@ -23,6 +23,7 @@ import org.jooq.exception.DataAccessException;
 import org.jooq.impl.SQLDataType;
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -75,6 +76,15 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         loadSources();
         loadExpandedTextMeta();
         loadUnconvertedDocuments();
+    }
+
+    public GptDatabase getDatabase() {
+        return database;
+    }
+
+    @Override
+    public void close() {
+        database.close();
     }
 
     @Override

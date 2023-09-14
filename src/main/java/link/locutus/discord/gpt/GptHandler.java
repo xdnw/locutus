@@ -19,6 +19,7 @@ import link.locutus.discord.gpt.imps.GPTText2Text;
 import link.locutus.discord.gpt.imps.IText2Text;
 import link.locutus.discord.gpt.imps.MiniEmbedding;
 import link.locutus.discord.gpt.imps.ProcessText2Text;
+import link.locutus.discord.gpt.pw.GptDatabase;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 
 import java.io.File;
@@ -46,7 +47,7 @@ public class GptHandler {
     private final IModerator moderator;
     private final ProcessText2Text processT2;
 
-    public GptHandler() throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
+    public GptHandler(GptDatabase database) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
         this.registry = Encodings.newDefaultEncodingRegistry();
         this.service = new OpenAiService(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, Duration.ofSeconds(120));
 
@@ -57,7 +58,7 @@ public class GptHandler {
         this.moderator = new GPTModerator(service);
 //        this.embeddingDatabase = new AdaEmbedding(registry, service);
         // TODO change ^ that to mini
-        this.embeddingDatabase = new MiniEmbedding(platform);
+        this.embeddingDatabase = new MiniEmbedding(platform, database);
 
         File scriptPath = new File("../gpt4free/my_project/gpt3_5_turbo.py");
         File venvExe = new File("../gpt4free/venv/Scripts/python.exe");
