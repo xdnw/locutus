@@ -66,8 +66,8 @@ public class PWGPTHandler {
         this.handler = new GptHandler(database);
         this.providerManager = new ProviderManager(handler);
         this.PlayerGPTConfig = new PlayerGPTConfig();
-        this.converter = new DocumentConverter(getEmbeddings(), providerManager, handler.getModerator());
-        this.wikiManager = new WikiManager(database);
+        this.converter = new DocumentConverter(getEmbeddings(), providerManager, handler.getModerator(), handler);
+        this.wikiManager = new WikiManager(database, handler.getEmbeddings(), handler);
     }
 
     public WikiManager getWikiManager() {
@@ -377,7 +377,7 @@ public class PWGPTHandler {
     }
 
     public EmbeddingType getSourceType(EmbeddingSource source) {
-        if (wikiManager.getWikiPageBySource(source.source_id) != null) {
+        if (wikiManager.getWikiPageBySourceId(source.source_id) != null) {
             return EmbeddingType.Game_Wiki_Page;
         }
         return sourceMap.inverse().get(source);

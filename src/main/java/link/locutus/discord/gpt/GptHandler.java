@@ -22,6 +22,7 @@ import link.locutus.discord.gpt.imps.ProcessText2Text;
 import link.locutus.discord.gpt.pw.GptDatabase;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 
+import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
@@ -104,12 +105,12 @@ public class GptHandler {
      * @param deleteMissing if embeddings in the source not included will be deleted
      * @return the ids of the embeddings
      */
-    public List<Long> registerEmbeddings(EmbeddingSource source, List<String> descriptions, List<String> expandedDescriptions, boolean moderate, boolean deleteMissing) {
-        checkArgument(descriptions.size() == expandedDescriptions.size(), "descriptions and expandedDescriptions must be the same size");
+    public List<Long> registerEmbeddings(EmbeddingSource source, List<String> descriptions, @Nullable List<String> expandedDescriptions, boolean moderate, boolean deleteMissing) {
+        checkArgument(expandedDescriptions == null || descriptions.size() == expandedDescriptions.size(), "descriptions and expandedDescriptions must be the same size");
         // create a stream Map.Entry<String, String> from descriptions and expandedDescriptions
         Map<String, String> map = new HashMap<>();
         for (int i = 0; i < descriptions.size(); i++) {
-            map.put(descriptions.get(i), expandedDescriptions.get(i));
+            map.put(descriptions.get(i), expandedDescriptions == null ? null : expandedDescriptions.get(i));
         }
         return registerEmbeddings(source, map.entrySet().stream(), moderate, deleteMissing);
     }

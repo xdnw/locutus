@@ -21,6 +21,8 @@ public class WikiPagePW {
     private Set<String> categories;
     private long hash;
 
+    private long dateModified;
+
     public WikiPagePW(String name, String url, long hash, Set<String> categories) {
         this.name = name;
         this.url = url;
@@ -52,6 +54,16 @@ public class WikiPagePW {
         String json = gson.toJson(map);
         this.hash = embeddings.getHash(json);
         return map;
+    }
+
+    public File getFile() throws IOException {
+        return PWWikiUtil.getPageFile(name);
+    }
+
+    public Long getLastModified() throws IOException {
+        File file = getFile();
+        if (file == null) return null;
+        return file.lastModified();
     }
 
     public List<String> getSummaryData() throws IOException {

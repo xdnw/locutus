@@ -1,6 +1,9 @@
 package link.locutus.discord.gpt.pw;
 
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.GPTUtil;
@@ -22,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -32,11 +36,13 @@ public class DocumentConverter {
     private final IEmbeddingDatabase embeddings;
     private final ProviderManager providerManager;
     private final IModerator moderator;
+    private final GptHandler handler;
 
-    public DocumentConverter(IEmbeddingDatabase embeddings, ProviderManager providerManager, IModerator moderator) {
+    public DocumentConverter(IEmbeddingDatabase embeddings, ProviderManager providerManager, IModerator moderator, GptHandler handler) {
         this.embeddings = embeddings;
         this.providerManager = providerManager;
         this.moderator = moderator;
+        this.handler = handler;
     }
 
     public IEmbeddingDatabase getEmbeddings() {
@@ -111,9 +117,13 @@ public class DocumentConverter {
     public ConvertingDocument createDocumentAndChunks(User user, GuildDB db, String documentName, String markdown, String prompt, ProviderType type) {
         GPTProvider generator = getGenerator(db, user, type);
 
-        ConvertingDocument document = new ConvertingDocument();
-
         EmbeddingSource source = getEmbeddings().getOrCreateSource(documentName, db.getIdLong());
+        long hash = embeddings.getHash(markdown);
+        if (hash == source.source_hash) {
+            throw new IllegalArgumentException("An identical document already exists: `" + documentName + "`. See: " + CM.chat.dataset.view.cmd.create(source.getQualifiedName(), null, null));
+        }
+
+        ConvertingDocument document = new ConvertingDocument();
 
         document.source_id = source.source_id;
         if (prompt == null) prompt = getDocumentPrompt();
@@ -124,6 +134,7 @@ public class DocumentConverter {
         document.user = user.getIdLong();
         document.error = null;
         document.date = System.currentTimeMillis();
+        document.hash = hash;
 
         List<String> chunkTexts = chunkTexts(markdown, generator);
 
@@ -216,7 +227,7 @@ public class DocumentConverter {
                 return;
             }
             List<DocumentChunk> chunks = getEmbeddings().getChunks(document.source_id);
-            List<String> outputSplit = chunks.stream().filter(f -> f.converted).flatMap(f -> Arrays.stream(f.output.split("\n- "))).toList();
+            List<String> outputSplit = chunks.stream().filter(f -> f.converted).flatMap(f -> f.getOutputList().stream()).toList();
             chunks.removeIf(f -> f.converted);
             if (chunks.isEmpty()) {
                 setConverted(document);
@@ -291,6 +302,24 @@ public class DocumentConverter {
     private void setConverted(ConvertingDocument document) {
         document.converted = true;
         getEmbeddings().addConvertingDocument(List.of(document));
+        // get or create source
+        EmbeddingSource source = getEmbeddings().getEmbeddingSource(document.source_id);
+        if (source != null) {
+            // get chunks
+            List<DocumentChunk> chunks = getEmbeddings().getChunks(document.source_id);
+            List<String> facts = new ArrayList<>();
+            for (DocumentChunk chunk : chunks) {
+                if (chunk.output == null) continue;
+                facts.addAll(chunk.getOutputList());
+            }
+            handler.registerEmbeddings(source, facts, null, false, true);
+            source.source_hash = document.hash;
+            getEmbeddings().updateSources(List.of(source));
+        } else {
+            System.out.println("Cannot find source for document `#" + document.source_id + "`");
+        }
+
+        getEmbeddings().deleteDocumentAndChunks(document.source_id);
     }
 
     public void initDocumentConversion(GuildDB db) {

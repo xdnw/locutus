@@ -10,6 +10,7 @@ import org.jooq.DSLContext;
 
 import java.io.IOException;
 import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -34,7 +35,7 @@ public class WikiManager {
         createTables();
     }
 
-    public Set<WikiPagePW> getOutdatedPages() {
+    public Set<WikiPagePW> getModifiedPages() throws IOException {
         // return list of pages where hash of file != hash
         Set<WikiPagePW> pages = new LinkedHashSet<>();
         // iterate over each page
@@ -44,33 +45,44 @@ public class WikiManager {
 
             WikiPagePW page = entry.getValue();
 
-
             // get hash of file
-            long hash = page.getHash();
+            long oldHash = source.source_hash;
             // get hash of page
-            long fileHash = page.getFileHash();
+            page.getPageData(embeddings);
+            long newHash = page.getHash();
             // if they are different
-            if (hash != fileHash) {
+            if (oldHash != newHash) {
                 // add page to list
                 pages.add(page);
             }
         }
 
-        // add a fetchHash method
-        // move code in method below that has existing gethash to that method
-
-
-
+        return pages;
     }
 
-    public void updateWikiPages(long updateOlderThan, int maxFetches) {
-        // use file last modified date
+    public List<WikiPagePW> getOutdatedPages(long updateOlderThan) throws IOException {
+        List<Map.Entry<WikiPagePW, Long>> pages = new ArrayList<>();
+        PWWikiUtil.fetchDefaultPages();
+        importFileCategories(true, false);
 
-        // TODO update the sitemap
+        // iterate pages
+        long now = System.currentTimeMillis();
+        for (Map.Entry<Integer, WikiPagePW> entry : gameWikiPagesBySourceId.entrySet()) {
+//            int sourceId = entry.getKey();
+//            EmbeddingSource source = embeddings.getEmbeddingSource(sourceId);
+            WikiPagePW page = entry.getValue();
 
-        // Download missing pages
+            Long lastModified = page.getLastModified();
+            if (lastModified == null) continue;
+            if (lastModified < updateOlderThan) {
+                long ageDiff = Math.max(0, now - lastModified);
+                pages.add(Map.entry(page, ageDiff));
+            }
+        }
+        List<WikiPagePW> list = new ArrayList<>(pages.stream().sorted(Map.Entry.comparingByValue()).map(Map.Entry::getKey).toList());
+        Collections.reverse(list);
+        return list;
     }
-
 
 
     private DSLContext ctx() {
@@ -127,16 +139,27 @@ public class WikiManager {
         });
     }
 
-    public void importFileCategories() throws IOException {
+    public void importFileCategories(boolean deleteMissing, boolean importSummary) throws IOException {
         Map<String, WikiPagePW> pages = readFileCategories();
+        if (pages.isEmpty()) {
+            throw new IllegalArgumentException("No pages found");
+        }
         System.out.println("Importing " + pages.size() + " pages");
 
-        Set<EmbeddingSource> wikiSources = embeddings.getSources(f -> f == 0, f -> f.source_name.startsWith("wiki/"));
-        // Delete unused sources
-        for (EmbeddingSource source : wikiSources) {
-            String sourceName = source.source_name;
-            if (!pages.containsKey(sourceName)) {
-                embeddings.deleteSource(source);
+        if (deleteMissing) {
+            Set<EmbeddingSource> wikiSources = embeddings.getSources(f -> f == 0, f -> f.source_name.startsWith("wiki/"));
+            for (EmbeddingSource source : wikiSources) {
+                String sourceName = source.source_name;
+                if (!pages.containsKey(sourceName)) {
+                    deleteWikiPage(source.source_id, true);
+                }
+            }
+            for (Map.Entry<Integer, WikiPagePW> entry : this.gameWikiPagesBySourceId.entrySet()) {
+                WikiPagePW page = entry.getValue();
+                if (!pages.containsKey(page.getName())) {
+                    int sourceId = entry.getKey();
+                    deleteWikiPage(sourceId, true);
+                }
             }
         }
 
@@ -147,15 +170,17 @@ public class WikiManager {
             EmbeddingSource source = embeddings.getOrCreateSource(sourceName, 0);
             gameWikiPagesBySourceId.put(source.source_id, entry.getValue());
 
-            List<String> summary = page.getSummaryData();
-            if (summary != null && !summary.isEmpty()) {
-                System.out.println("Found Summary for " + page.getName() + ": " + summary);
+            if (importSummary) {
+                List<String> summary = page.getSummaryData();
+                if (summary != null && !summary.isEmpty()) {
+                    System.out.println("Found Summary for " + page.getName() + ": " + summary);
 
-                // entry source , null
-                Stream<Map.Entry<String, String>> stream = summary.stream().map(f -> new AbstractMap.SimpleEntry<>(f, null));
-                handler.registerEmbeddings(source, stream, false, true);
-            } else {
-                System.out.println("No summary for " + page.getSlug());
+                    // entry source , null
+                    Stream<Map.Entry<String, String>> stream = summary.stream().map(f -> new AbstractMap.SimpleEntry<>(f, null));
+                    handler.registerEmbeddings(source, stream, false, true);
+                } else {
+                    System.out.println("No summary for " + page.getSlug());
+                }
             }
         }
     }
@@ -170,7 +195,6 @@ public class WikiManager {
                 System.out.println("No page found for " + pageName);
                 continue;
             }
-            long hash = wikiPage.getHash();
             String sourceName = "wiki/" + pageName;
             pages.put(sourceName, wikiPage);
         }

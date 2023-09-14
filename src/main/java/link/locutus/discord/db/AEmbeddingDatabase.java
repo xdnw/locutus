@@ -246,7 +246,16 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
                 "provider_type INTEGER NOT NULL, " +
                 "user BIGINT NOT NULL, " +
                 "error VARCHAR, " +
-                "date BIGINT NOT NULL, PRIMARY KEY (source_id))");
+                "date BIGINT NOT NULL, " +
+                "hash BIGINT NOT NULL, " +
+                "PRIMARY KEY (source_id))");
+
+        // alert table add hash inside try catch DataAccessException
+        try {
+            ctx().execute("ALTER TABLE document_queue ADD COLUMN hash BIGINT NOT NULL DEFAULT 0");
+        } catch (DataAccessException e) {
+            e.printStackTrace();
+        }
     }
 
     private void createChunksTable() {
@@ -289,8 +298,8 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         }
         ctx().transaction(() -> {
             for (ConvertingDocument document : documents) {
-                ctx().execute("INSERT OR REPLACE INTO document_queue (source_id, prompt, converted, use_global_context, provider_type, user, error, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                        document.source_id, document.prompt, document.converted, document.use_global_context, document.provider_type, document.user, document.error, document.date);
+                ctx().execute("INSERT OR REPLACE INTO document_queue (source_id, prompt, converted, use_global_context, provider_type, user, error, date, hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        document.source_id, document.prompt, document.converted, document.use_global_context, document.provider_type, document.user, document.error, document.date, document.hash);
             }
         });
     }
@@ -309,6 +318,16 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
 
     public List<DocumentChunk> getChunks(int source_id) {
         return new ArrayList<>(documentChunks.getOrDefault(source_id, Collections.emptyMap()).values());
+    }
+
+    @Override
+    public void deleteDocumentAndChunks(int sourceId) {
+        documentChunks.remove(sourceId);
+        unconvertedDocuments.remove(sourceId);
+        ctx().transaction(() -> {
+            ctx().execute("DELETE FROM document_queue WHERE source_id = ?", sourceId);
+            ctx().execute("DELETE FROM document_chunks WHERE source_id = ?", sourceId);
+        });
     }
 
     @Override

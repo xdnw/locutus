@@ -1,5 +1,7 @@
 package link.locutus.discord.gpt.imps;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class DocumentChunk {
@@ -9,4 +11,10 @@ public class DocumentChunk {
     public boolean converted;
     public String text;
     public String output;
+
+    public List<String> getOutputList() {
+        if (output == null) return null;
+        if (output.isEmpty()) return Collections.emptyList();
+        return Arrays.asList(output.split("\n- "));
+    }
 }
