@@ -151,6 +151,7 @@ public class DocumentConverter {
         }
 
         getEmbeddings().addConvertingDocument(List.of(document));
+        getEmbeddings().addChunks(chunks);
 
         this.submitDocument(db, document, true);
 

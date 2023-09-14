@@ -83,7 +83,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class GPTCommands {
 
-    @Command
+    @Command(desc = "Show the documents currently converting to a dataset\n" +
+            "Datasets are a list of information that can be used to generate chat responses")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS, root = true)
     public String showConverting(PWGPTHandler gpt, @Me User user, @Me IMessageIO io, @Me GuildDB db, @Switch("r") boolean showRoot, @Switch("a") boolean showOtherGuilds) {
         if (showOtherGuilds && !Roles.ADMIN.hasOnRoot(user)) {
@@ -125,17 +126,25 @@ public class GPTCommands {
         return builder.toString();
     }
 
-    @Command(desc = "This command allows you to convert a public Google document (of document type) into a Google spreadsheet of facts.\n" +
+    @Command(desc = "Convert a public Google document (of document type) into a Google spreadsheet of facts.\n" +
             "The output format will have a single column with a header row labeled \"facts.\" Each fact will be standalone and not order dependent.\n" +
             "The information is extracted using the user's configured GPT provider.\n" +
             "When the command is run, the document is added to the queue, and the user will be alerted when the conversion finishes.\n" +
             "Users have the option to check the progress of the conversion using a command.")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS, root = true)
-    public synchronized String generate_factsheet(PWGPTHandler gpt, @Me GuildDB db, @Me IMessageIO io, @Me User user, @Me JSONObject command, String googleDocumentUrl, String document_name, @Switch("f") boolean confirm) throws GeneralSecurityException, IOException {
+    public synchronized String generate_factsheet(PWGPTHandler gpt, @Me GuildDB db, @Me IMessageIO io, @Me User user, @Me JSONObject command, String googleDocumentUrl, String document_name, @Switch("f") boolean force) throws GeneralSecurityException, IOException {
         // if document name is not alphanumerical space under dash
+        document_name = document_name.toLowerCase(Locale.ROOT);
         if (!document_name.matches("[a-zA-Z0-9\\s_-]+")) {
             throw new IllegalArgumentException("The `document_name` must be alphanumerical, not `" + document_name + "`");
         }
+
+        // ensure no document exists already
+        EmbeddingSource existing = gpt.getEmbeddings().getSource(document_name, db.getIdLong());
+        if (existing != null) {
+            throw new IllegalArgumentException("A document with the name `" + document_name + "` already exists. Delete it with: " + CM.chat.dataset.delete.cmd.toSlashMention());
+        }
+
         String baseUrl = "https://docs.google.com/document/d/";
         if (!googleDocumentUrl.startsWith(baseUrl)) {
             return "Invalid Google Document URL. Expecting `https://docs.google.com/document/d/...`, received: `" + googleDocumentUrl + "`";
@@ -160,7 +169,7 @@ public class GPTCommands {
             return "Document has too many lines (`" + lines.length + "`). Max lines is " + maxLines;
         }
 
-        if (!confirm) {
+        if (!force) {
             String title = "Generate factsheet?";
             StringBuilder body = new StringBuilder();
             body.append("This will generate a factsheet with the following parameters:\n");
@@ -187,7 +196,7 @@ public class GPTCommands {
                 null,
                 ProviderType.PROCESS);
 
-        return "Added document " + document.toString() + " to the queue. Use TODO CM REF to view the progress of the conversion.";
+        return "Added document `#" + document.source_id + "` | `" + document_name + "` to the queue. Use TODO CM REF to view the progress of the conversion.";
     }
 
     @Command(desc = "This command provides a list of accessible embedding datasets used for prompting GPT.\n" +

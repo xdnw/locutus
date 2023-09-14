@@ -422,7 +422,7 @@ public class PWGPTHandler {
         return sources;
     }
 
-    private IEmbeddingDatabase getEmbeddings() {
+    public IEmbeddingDatabase getEmbeddings() {
         return getHandler().getEmbeddings();
     }
 }

@@ -19,6 +19,7 @@ import link.locutus.discord.util.scheduler.TriConsumer;
 import org.jetbrains.annotations.Nullable;
 import org.jooq.DSLContext;
 import org.jooq.Record;
+import org.jooq.TransactionalRunnable;
 import org.jooq.exception.DataAccessException;
 import org.jooq.impl.SQLDataType;
 
@@ -297,7 +298,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         for (ConvertingDocument document : documents) {
             unconvertedDocuments.put(document.source_id, document);
         }
-        ctx().transaction(() -> {
+        ctx().transaction((TransactionalRunnable) -> {
             for (ConvertingDocument document : documents) {
                 ctx().execute("INSERT OR REPLACE INTO document_queue (source_id, prompt, converted, use_global_context, provider_type, user, error, date, hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                         document.source_id, document.prompt, document.converted, document.use_global_context, document.provider_type, document.user, document.error, document.date, document.hash);
@@ -309,7 +310,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         for (DocumentChunk chunk : chunks) {
             documentChunks.computeIfAbsent(chunk.source_id, k -> new ConcurrentHashMap<>()).put(chunk.source_id, chunk);
         }
-        ctx().transaction(() -> {
+        ctx().transaction((TransactionalRunnable) -> {
         for (DocumentChunk chunk : chunks) {
             ctx().execute("INSERT OR REPLACE INTO document_chunks (source_id, chunk_index, converted, text, output) VALUES (?, ?, ?, ?, ?)",
                     chunk.source_id, chunk.chunk_index, chunk.converted, chunk.text, chunk.output);
@@ -325,7 +326,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     public void deleteDocumentAndChunks(int sourceId) {
         documentChunks.remove(sourceId);
         unconvertedDocuments.remove(sourceId);
-        ctx().transaction(() -> {
+        ctx().transaction((TransactionalRunnable) -> {
             ctx().execute("DELETE FROM document_queue WHERE source_id = ?", sourceId);
             ctx().execute("DELETE FROM document_chunks WHERE source_id = ?", sourceId);
         });
@@ -362,7 +363,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
 
     @Override
     public void updateSources(List<EmbeddingSource> sources) {
-        ctx().transaction(() -> {
+        ctx().transaction((TransactionalRunnable) -> {
             for (EmbeddingSource source : sources) {
                 ctx().execute("UPDATE sources SET source_name = ?, date_added = ?, guild_id = ? WHERE source_id = ?",
                         source.source_name, source.date_added, source.guild_id, source.source_id);
