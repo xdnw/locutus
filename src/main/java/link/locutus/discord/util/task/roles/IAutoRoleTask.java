@@ -11,7 +11,7 @@ import java.util.function.Supplier;
 
 public interface IAutoRoleTask {
     AutoRoleInfo autoRoleCities(Member member, DBNation nation);
-
+    AutoRoleInfo autoRoleConditions(Member member, DBNation nation);
     AutoRoleInfo autoRoleMemberApp(Member member, DBNation nation);
 
     AutoRoleInfo updateTaxRoles(Map<DBNation, TaxBracket> brackets);

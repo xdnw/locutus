@@ -15,6 +15,7 @@ import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ICommandGroup;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
@@ -67,6 +68,7 @@ import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 
@@ -195,29 +197,62 @@ public class PWBindings extends BindingHelper {
             examples = """
             #cities<10:505X
             #cities>=10:0250""")
-        public Map<NationFilter, MMRMatcher> mmrMathcerMap(@Me GuildDB db, String input) {
-            Map<NationFilter, MMRMatcher> filterToMMR = new LinkedHashMap<>();
-            for (String line : input.split("\n")) {
-                String[] split = line.split("[:]");
-                if (split.length != 2) continue;
+    public Map<NationFilter, MMRMatcher> mmrMathcerMap(@Me GuildDB db, String input) {
+        Map<NationFilter, MMRMatcher> filterToMMR = new LinkedHashMap<>();
+        for (String line : input.split("\n")) {
+            String[] split = line.split("[:]");
+            if (split.length != 2) continue;
 
-                String filterStr = split[0].trim();
+            String filterStr = split[0].trim();
 
-                boolean containsNation = false;
-                for (String arg : filterStr.split(",")) {
-                    if (!arg.startsWith("#")) containsNation = true;
-                    if (arg.contains("tax_id=")) containsNation = true;
-                    if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) containsNation = true;
-                }
-                if (!containsNation) filterStr += ",*";
-                DiscordUtil.parseNations(db.getGuild(), filterStr); // validate
-                NationFilterString filter = new NationFilterString(filterStr, db.getGuild());
-                MMRMatcher mmr = new MMRMatcher(split[1]);
-                filterToMMR.put(filter, mmr);
+            boolean containsNation = false;
+            for (String arg : filterStr.split(",")) {
+                if (!arg.startsWith("#")) containsNation = true;
+                if (arg.contains("tax_id=")) containsNation = true;
+                if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) containsNation = true;
             }
-
-            return filterToMMR;
+            if (!containsNation) filterStr += ",*";
+            DiscordUtil.parseNations(db.getGuild(), filterStr); // validate
+            NationFilterString filter = new NationFilterString(filterStr, db.getGuild());
+            MMRMatcher mmr = new MMRMatcher(split[1]);
+            filterToMMR.put(filter, mmr);
         }
+
+        return filterToMMR;
+    }
+
+    @Binding(value = "Auto assign roles based on conditions\n" +
+            "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>\n" +
+            "Accepts a list of filters to a role.\n" +
+            "In the form:\n" +
+            "```\n" +
+            "#cities<10:@someRole\n" +
+            "#cities>=10:@otherRole\n" +
+            "```\n" +
+            "Use `*` as the filter to match all nations.\n" +
+            "Only alliance members can be given role")
+    public Map<NationFilter, Role> conditionalRole(@Me GuildDB db, String input) {
+        Map<NationFilter, Role> filterToRole = new LinkedHashMap<>();
+        for (String line : input.split("\n")) {
+            String[] split = line.split("[:]");
+            if (split.length != 2) continue;
+
+            String filterStr = split[0].trim();
+
+            boolean containsNation = false;
+            for (String arg : filterStr.split(",")) {
+                if (!arg.startsWith("#")) containsNation = true;
+                if (arg.contains("tax_id=")) containsNation = true;
+                if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) containsNation = true;
+            }
+            if (!containsNation) filterStr += ",*";
+            DiscordUtil.parseNations(db.getGuild(), filterStr); // validate
+            NationFilterString filter = new NationFilterString(filterStr, db.getGuild());
+            Role role = DiscordBindings.role(db.getGuild(), split[1]);
+            filterToRole.put(filter, role);
+        }
+        return filterToRole;
+    }
 
     @Binding(value = """
             A map of nation filters to tax rates

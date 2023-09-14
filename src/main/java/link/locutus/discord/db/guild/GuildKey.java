@@ -1667,46 +1667,54 @@ public class GuildKey {
     }.setupRequirements(f -> f.requires(ENEMY_BEIGED_ALERT_VIOLATIONS).requireValidAlliance());
 
     public static GuildSetting<Map<NationFilter, Role>> CONDITIONAL_ROLES = new GuildSetting<Map<NationFilter, Role>>(GuildSettingCategory.ROLE, Map.class, NationFilter.class, Role.class) {
-
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String REQUIRED_MMR(@Me GuildDB db, @Me User user, Map<NationFilter, Role> roleMap) {
+        public String CONDITIONAL_ROLES(@Me GuildDB db, @Me User user, Map<NationFilter, Role> roleMap) {
             return CONDITIONAL_ROLES.setAndValidate(db, user, roleMap);
         }
 
         @NoFormat
         @Command(descMethod = "help")
         @RolePermission(Roles.ADMIN)
-        public String addRequiredMMR(@Me GuildDB db, @Me User user, NationFilter filter, Role mmr) {
+        public String addConditionalRole(@Me GuildDB db, @Me User user, NationFilter filter, Role role) {
             Map<NationFilter, Role> existing = CONDITIONAL_ROLES.getOrNull(db, false);
             existing = existing == null ? new HashMap<>() : new LinkedHashMap<>(existing);
-            existing.put(filter, mmr);
+            existing.put(filter, role);
             return CONDITIONAL_ROLES.setAndValidate(db, user, existing);
         }
 
+        @Override
+        public String toReadableString(GuildDB db, Map<NationFilter, Role> filterToRoles) {
+            StringBuilder result = new StringBuilder();
+            for (Map.Entry<NationFilter, Role> entry : filterToRoles.entrySet()) {
+                result.append(entry.getKey().getFilter() + ":" + entry.getValue().getName() + "\n");
+            }
+            return result.toString().trim();
+        }
 
         @Override
         public String toString(Map<NationFilter, Role> filterToRoles) {
             StringBuilder result = new StringBuilder();
             for (Map.Entry<NationFilter, Role> entry : filterToRoles.entrySet()) {
-                result.append(entry.getKey().getFilter() + ":@" + entry.getValue().getName() + "\n");
+                result.append(entry.getKey().getFilter() + ":" + entry.getValue().getId() + "\n");
             }
             return result.toString().trim();
         }
 
         @Override
         public String help() {
-            String response = "A list of filters to a role.\n" +
+            String response = "Auto assign roles based on conditions\n" +
+                    "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>\n" +
+                    "Accepts a list of filters to a role.\n" +
                     "In the form:\n" +
                     "```\n" +
                     "#cities<10:@someRole\n" +
                     "#cities>=10:@otherRole\n" +
                     "```\n" +
-                    "All nation filters are supported.\n" +
                     "Use `*` as the filter to match all nations.\n" +
-                    "Only alliance members are given roles\n" +
-                    "Use " + CM.role.autoassign.cmd.toSlashMention() + " to assign";
+                    "Only alliance members can be given roles\n" +
+                    "Use " + CM.role.autoassign.cmd.toSlashMention() + " to auto assign";
 
             return response;
         }
@@ -1743,13 +1751,15 @@ public class GuildKey {
 
         @Override
         public String help() {
-            String response = "A list of filters to required MMR.\n" +
+            String response = "Set the required MMR based on nation criteria\n" +
+                    "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>\n" +
+                    "Accepts a list of filters to the required MMR.\n" +
                     "In the form:\n" +
                     "```\n" +
                     "#cities<10:505X\n" +
                     "#cities>=10:0250\n" +
                     "```\n" +
-                    "All nation filters are supported. Use `*` as the city filter to match all nations.";
+                    "Use `*` as the filter to match all nations.";
 
             return response;
         }
