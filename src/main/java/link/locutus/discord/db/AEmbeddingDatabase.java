@@ -152,7 +152,8 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     public synchronized void saveVector(long hash, float[] vector) {
         byte[] data = ArrayUtil.toByteArray(vector);
         vectors.put(hash, vector);
-        ctx().execute("INSERT INTO vectors (hash, data) VALUES (?, ?)", hash, data);
+        String table = "vectors_" + vectorName;
+        ctx().execute("INSERT INTO " + table + " (hash, data) VALUES (?, ?)", hash, data);
     }
 
     private void createVectorTextTable() {
@@ -375,7 +376,8 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
                 long hash = r.get("hash", Long.class);
                 byte[] data = r.get("data", byte[].class);
                 String id = r.get("id", String.class);
-                ctx().execute("INSERT INTO vectors (hash, data) VALUES (?, ?)", hash, data);
+                String table = "vectors_" + vectorName;
+                ctx().execute("INSERT INTO " + table + " (hash, data) VALUES (?, ?)", hash, data);
                 ctx().execute("INSERT INTO vector_text (hash, description) VALUES (?, ?)", hash, id);
             });
             ctx().dropTableIfExists("embeddings_2").execute();
@@ -383,7 +385,8 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     }
 
     public void loadVectors() {
-            ctx().select().from("vectors").fetch().forEach(r -> {
+        String table = "vectors_" + vectorName;
+            ctx().select().from(table).fetch().forEach(r -> {
             long hash = r.get("hash", Long.class);
             byte[] data = r.get("data", byte[].class);
             float[] vector = ArrayUtil.toFloatArray(data);
