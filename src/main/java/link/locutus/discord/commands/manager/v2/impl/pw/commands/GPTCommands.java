@@ -631,12 +631,15 @@ public class GPTCommands {
             "The sheet expects columns `id`, `name` and optionally `description`\n" +
             "If you do not provide a sheet, emojis and descriptions will be generated from the channel names")
     @RolePermission(Roles.ADMIN)
-    public void emojifyChannels(@Me JSONObject command, @Me GuildDB db, @Me Guild guild, @Me IMessageIO io, @Me User user, @Me DBNation me, @Default SpreadSheet sheet, @Switch("e") Set<Category> excludeCategories, @Switch("c") Set<Category> includeCategories, @Switch("f") boolean force) throws GeneralSecurityException, IOException {
+    public void emojifyChannels(@Me JSONObject command, @Me GuildDB db, @Me Guild guild, @Me IMessageIO io, @Me User user, @Me DBNation me, @Default SpreadSheet sheet, @Switch("e") Set<Category> excludeCategories, @Switch("c") Set<Category> includeCategories, @Switch("f") boolean force, @Switch("j") boolean popCultureQuotes) throws GeneralSecurityException, IOException {
         if (sheet != null && (excludeCategories != null || includeCategories != null)) {
             throw new IllegalArgumentException("Cannot specify both a sheet and categories");
         }
         if (excludeCategories != null && includeCategories != null) {
             throw new IllegalArgumentException("Cannot specify both exclude and include categories (pick one)");
+        }
+        if (popCultureQuotes && sheet != null) {
+            throw new IllegalArgumentException("Cannot specify both a `sheet` and `popCultureQuotes` mode. `popCultureQuotes` is only for generating channel topic messages for a sheet.");
         }
 
         List<String> errors = new ArrayList<>();
@@ -699,7 +702,7 @@ public class GPTCommands {
                 channelsBuilder.append("- " + channel.getName()).append("\n");
             }
 
-            String prompt = Messages.PROMPT_EMOJIFY;
+            String prompt = popCultureQuotes ? Messages.PROMPT_EMOJIFY_QUOTE : Messages.PROMPT_EMOJIFY;
             prompt = prompt.replace("{channels}", channelsBuilder.toString());
 
             Map<String, String> options = gpt.getPlayerGPTConfig().getOptions(me, provider);

@@ -105,6 +105,7 @@ public class Messages {
                     lounge: \uD83D\uDCAC | General lounge for members
                     econ-announcements: \uD83D\uDCE2 | Announcements related to alliance economics
                     info: \uD83D\uDCDD | General information channel
+                    academy-gov-info: \uD83D\uDD17 | Information for mentors of the academy
                     priority-targets: \u2757 | Channel for priority enemy target alerts
                     general: \uD83D\uDCAC | General discussion channel
                     war-questions-or-talk: \u2753 | Channel for discussing war-related questions and topics
@@ -135,6 +136,66 @@ public class Messages {
                     verified: \u2705 | Chat channel for verified players
                     music: \uD83C\uDFB5 | Voice channel for music
                     voice-chat: \uD83C\uDF99\uFE0F | Voice channel for talking
+                    high-court: \uD83E\uDD98 | Channel for discussions and deliberations within the high court
                     recruitment-spam:\uD83E\uDEA7 | channel for logging recruitment messages sent
                     ```""";
+
+    public static String PROMPT_EMOJIFY_QUOTE = """
+            # Follow These Instructions Exactly:
+            Add a topic message to each input channel using a matching example or be create and use a new pop culture quote.
+            For example, a channel named `music`, `ranking` or `c33` have no matches to the examples and should use a new quote, whilst `defensive-wars` and `def-alerts` or `defensives` all match and should use the example quote.
+                                
+            # Input Channel:
+            ```
+            {channels}
+            ```
+                                
+            # Examples
+            ```
+            lost-wars:🥈 | Our enemies are innovative and resourceful, and so are we. They never stop thinking about new ways to harm our country and our people, and neither do we.
+            enlist-with-us: 📜 | Join the Mobile Infantry and save the world. Service guarantees citizenship. I'm doing my part.
+            recruitment-spam:🪧 | Because nothing says 'Join us!' like a good old-fashioned spam
+            ask-questions-here: 🙋 | What do you get when you combine a rhetorical question and a joke?
+            advisors: 👴 | Back in my day, we didn't have advisors. We had to figure things out ourselves, uphill, both ways!
+            pirate-code: 🏴 | What's a pirate's favourite programming language? R. Although there are those that say his true love be the C.
+            beige-loot: 💰 | Maybe The Real Treasure Was the Friends We Made Along the Way
+            membership: 🧒 | Membership has its privileges.
+            inactive: 💀 | Where conversations go to die.
+            meme-central: 🤡 | Why so serious!
+            info: 📝 | The information superhighway of the alliance.
+            fa-gov: 💬 | Bringing the pen to the gunfight since NPOLT
+            academy-gov-info: 🔗 | Linking you to the knowledge you didn't know you needed.
+            general: 💬 | Look out, we've got a keyboard warrior over here.
+            debate-channel: 💬 | Why hello there fellow master-debaters.
+            queen-chat:💬 | Off with their heads!
+            leave-of-absence:👋 | I'll be back
+            role-buttons:⭕ | roles for me but not for thee
+            offensive-wars:🗡️ | War. War never changes... but these alerts do!
+            defensive-wars:🔰 | To defend or not to defend, that is the question!
+            bot-channel:🤖 | I'm sorry, Dave. I'm afraid I can't do that
+            announcements:🚨 | Listen up, everyone! We've got announcements hotter than a jalapeño!
+            projects:🚧 | If you build it, they will come.
+            grant-request: 💸 | Build, Baby, Build
+            priority-targets: ❗ | Release the Kraken!
+            war-questions-or-talk: ❓ | I love the smell of napalm in the morning.
+            c3: 🐜 | Ants, Mr. Rico, millions of 'em!
+            c11: 🦐 | That's a big shrimp!
+            c12: 🐟 | Just keep swimming.
+            high-court: 🦘 | Where the kangaroos of justice hop to conclusions.
+            withdraw-funds:🏧 | Keep the change, ya filthy animal.
+            spy-info-n-ops:🔍 | I spy with my little eye...
+            econ-staff:💰 | In the world of economics, money talks, but it doesn't always make cents.
+            land-program:🌾 | Life is like a box of wheatfields. You never know what you're gonna plow.
+            news:📰 | Stay classy, alliance. And now, here's a channel with the news.
+            ia-auto:🦾 | I, for one, welcome our new robotic overlords.
+            spy-requests:🔍 | The name's Ops, Spy Ops.
+            ma-guides:📟 | Guide me, google document, you're my only hope.
+            gw28-trophy-room:🏆 | We don't need roads where we're going... just lots of trophies.
+            lounge: 💬 | Speak softly and carry a big e-peen.
+            join-us: 🎫 | Don't let the door hit you on the way in
+            blockaded: 🚢 | You shall not pass!
+            ```
+                                
+            # Response
+            ```""";
 }
