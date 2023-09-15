@@ -753,8 +753,8 @@ public class NationUpdateProcessor {
             if (nation.getActive_m() > 4880 || nation.getVm_turns() > 0 || nation.getCities() <= 3) continue;
 
             String line = PnwUtil.getMarkdownUrl(nation.getId(), false) + ", c" + nation.getCities() + ", " + entry.getValue().getValue().name();
-            if (current.getAlliance_id() > 0) {
-                line += "-> " + current.getAllianceUrlMarkup(true);
+            if (nation.getAlliance_id() > 0) {
+                line += "-> " + nation.getAllianceUrlMarkup(true);
             } else {
                 line += " -> None";
             }

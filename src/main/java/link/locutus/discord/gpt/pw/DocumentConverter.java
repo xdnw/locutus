@@ -16,6 +16,7 @@ import link.locutus.discord.gpt.imps.DocumentChunk;
 import link.locutus.discord.gpt.imps.EmbeddingType;
 import link.locutus.discord.gpt.imps.IText2Text;
 import link.locutus.discord.gpt.imps.ProviderType;
+import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -51,22 +52,22 @@ public class DocumentConverter {
         return embeddings;
     }
 
-    private String getDocumentPrompt() {
+    private String getDocumentPrompt(String documentName) {
         return """
-        # Goal
-        You will be provided both `context` and `text` from a user guide for the game Politics And War.\s
-        Take the information in `text` and organize it into dot points of standalone factual knowledge (start each line with `- `).\s
-        Use the `context` solely to understand `text` but do not create facts solely from it.
-        Do not make anything up.\s
-        Preserve syntax, formulas and precision.
-                        
-        # Context:
-        {context}
-                        
-        # Text:
-        {text}
-                        
-        # Fact summary:""";
+                Please extract a complete list of standalone facts about the following page.\s
+                Start all lines with `- `
+                Be precise and accurate.
+                                
+                # Context:
+                ```
+                {context}
+                ```
+                                
+                # Page:
+                ```
+                {text}
+                ```
+                """.replace("{context}", "Document named `" + documentName + "`\n{context}");
     }
 
     public String getSummaryPrompt(String prompt, List<String> previousSummary , String text, int maxSummarySize, Function<String, Integer> sizeFunction, Function<String, List<String>> getClosestFacts) {
@@ -77,6 +78,7 @@ public class DocumentConverter {
             if (!closestEmbeddings.isEmpty()) {
                 int globalRemaining = maxSummarySize / 2;
                 for (String line : closestEmbeddings) {
+                    line = line.replace("```", "\"\"\"");
                     int size = sizeFunction.apply(line);
                     if (size > globalRemaining) break;
                     globalRemaining -= size;
@@ -95,8 +97,8 @@ public class DocumentConverter {
         }
         // reverse lines
         Collections.reverse(lines);
-        String context = StringMan.join(lines, "\n");
-        return prompt.replace("{context}", context).replace("{text}", text);
+        String context = StringMan.join(lines, "\n").replace("```", "\"\"\"");
+        return prompt.replace("{context}", context).replace("{text}", text.replace("```", "\"\"\""));
     }
 
     public List<String> chunkTexts(String markdown, GPTProvider generator) {
@@ -128,7 +130,7 @@ public class DocumentConverter {
         ConvertingDocument document = new ConvertingDocument();
 
         document.source_id = source.source_id;
-        if (prompt == null) prompt = getDocumentPrompt();
+        if (prompt == null) prompt = getDocumentPrompt(documentName);
         document.prompt = prompt;
         document.converted = false;
         document.use_global_context = true;
@@ -151,6 +153,8 @@ public class DocumentConverter {
             chunk.text = text;
             chunks.add(chunk);
         }
+
+        System.out.println("Add chunks to document: " + chunks.size() + " chunks");
 
         getEmbeddings().addConvertingDocument(List.of(document));
         getEmbeddings().addChunks(chunks);
@@ -289,8 +293,10 @@ public class DocumentConverter {
 
                 future.thenAcceptAsync(s -> {
                     synchronized (lock) {
-                        chunk.output = s;
+                        chunk.output = MarkupUtil.unescapeMarkdown(s);
                         chunk.converted = true;
+                        getEmbeddings().addChunks(List.of(chunk));
+
                         conversionStatus.remove(document.source_id);
                         if (isLastChunk) {
                             setConverted(document);

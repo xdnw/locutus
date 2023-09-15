@@ -861,8 +861,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="emojifyChannels")
             public static class bulk extends CommandRef {
                 public static final bulk cmd = new bulk();
-                public bulk create(String sheet, String excludeCategories, String includeCategories, String force) {
-                    return createArgs("sheet", sheet, "excludeCategories", excludeCategories, "includeCategories", includeCategories, "force", force);
+                public bulk create(String sheet, String excludeCategories, String includeCategories, String force, String popCultureQuotes) {
+                    return createArgs("sheet", sheet, "excludeCategories", excludeCategories, "includeCategories", includeCategories, "force", force, "popCultureQuotes", popCultureQuotes);
                 }
             }
         }
@@ -883,6 +883,13 @@ public class CM {
                     return createArgs("googleDocumentUrl", googleDocumentUrl, "document_name", document_name, "force", force);
                 }
             }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="deleteConversion")
+            public static class delete extends CommandRef {
+                public static final delete cmd = new delete();
+                public delete create(String source) {
+                    return createArgs("source", source);
+                }
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="showConverting")
             public static class list extends CommandRef {
                 public static final list cmd = new list();
@@ -890,20 +897,34 @@ public class CM {
                     return createArgs("showRoot", showRoot, "showOtherGuilds", showOtherGuilds);
                 }
             }
-        }
-        public static class dataset{
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="save_embeddings")
-            public static class import_sheet extends CommandRef {
-                public static final import_sheet cmd = new import_sheet();
-                public import_sheet create(String sheet, String document_name, String force) {
-                    return createArgs("sheet", sheet, "document_name", document_name, "force", force);
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="pauseConversion")
+            public static class pause extends CommandRef {
+                public static final pause cmd = new pause();
+                public pause create(String source) {
+                    return createArgs("source", source);
                 }
             }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="resumeConversion")
+            public static class resume extends CommandRef {
+                public static final resume cmd = new resume();
+                public resume create(String source) {
+                    return createArgs("source", source);
+                }
+            }
+        }
+        public static class dataset{
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="delete_document")
             public static class delete extends CommandRef {
                 public static final delete cmd = new delete();
                 public delete create(String source, String force) {
                     return createArgs("source", source, "force", force);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="save_embeddings")
+            public static class import_sheet extends CommandRef {
+                public static final import_sheet cmd = new import_sheet();
+                public import_sheet create(String sheet, String document_name, String force) {
+                    return createArgs("sheet", sheet, "document_name", document_name, "force", force);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="list_documents")
@@ -1106,8 +1127,8 @@ public class CM {
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="deposits")
         public static class check extends CommandRef {
             public static final check cmd = new check();
-            public check create(String nationOrAllianceOrGuild, String offshores, String timeCutoff, String includeBaseTaxes, String ignoreInternalOffsets, String showCategories, String replyInDMs, String includeExpired, String includeIgnored, String hideEscrowed) {
-                return createArgs("nationOrAllianceOrGuild", nationOrAllianceOrGuild, "offshores", offshores, "timeCutoff", timeCutoff, "includeBaseTaxes", includeBaseTaxes, "ignoreInternalOffsets", ignoreInternalOffsets, "showCategories", showCategories, "replyInDMs", replyInDMs, "includeExpired", includeExpired, "includeIgnored", includeIgnored, "hideEscrowed", hideEscrowed);
+            public check create(String nationOrAllianceOrGuild, String offshores, String timeCutoff, String includeBaseTaxes, String ignoreInternalOffsets, String showCategories, String replyInDMs, String includeExpired, String includeIgnored, String allowCheckDeleted, String hideEscrowed) {
+                return createArgs("nationOrAllianceOrGuild", nationOrAllianceOrGuild, "offshores", offshores, "timeCutoff", timeCutoff, "includeBaseTaxes", includeBaseTaxes, "ignoreInternalOffsets", ignoreInternalOffsets, "showCategories", showCategories, "replyInDMs", replyInDMs, "includeExpired", includeExpired, "includeIgnored", includeIgnored, "allowCheckDeleted", allowCheckDeleted, "hideEscrowed", hideEscrowed);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="convertNegativeDeposits")

@@ -108,6 +108,20 @@ public class MarkupUtil {
         return result;
     }
 
+    public static String unescapeMarkdown(String input) {
+        // Replace escaped characters
+        String unescaped = input.replaceAll("\\\\([*_{}\\[\\]()#+.!|\\-])", "$1");
+
+        // Replace HTML entities
+        unescaped = unescaped.replaceAll("&amp;", "&")
+                .replaceAll("&lt;", "<")
+                .replaceAll("&gt;", ">")
+                .replaceAll("&quot;", "\"")
+                .replaceAll("&#39;", "'");
+
+        return unescaped;
+    }
+
     public static String htmlColor(String color, String text) {
         return "<span style='color:" + color + "'>" + text + "</span>";
     }

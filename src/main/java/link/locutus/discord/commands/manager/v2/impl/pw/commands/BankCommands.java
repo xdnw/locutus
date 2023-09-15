@@ -667,12 +667,12 @@ public class BankCommands {
                         responses.add("`note: set an internal taxrate with `" + CM.nation.set.taxinternal.cmd.toSlashMention() + "` or globally with `" + CM.settings.info.cmd.toSlashMention() + "` and key: " + GuildKey.TAX_BASE.name() + "`");
                     }
                     responses.add("\nTo view alliance wide bracket tax totals, use: " +
-                        CM.deposits.check.cmd.create("tax_id=" + bracket.taxId, null, null, null, null, "true", null, null, null, null));
+                        CM.deposits.check.cmd.create("tax_id=" + bracket.taxId, null, null, null, null, "true", null, null, null, null, null));
                 }
             }
         }
 
-        CM.deposits.check checkCmd = CM.deposits.check.cmd.create(nation.getId() + "", null, null, null, null, "true", null, null, null, null);
+        CM.deposits.check checkCmd = CM.deposits.check.cmd.create(nation.getId() + "", null, null, null, null, "true", null, null, null, null, null);
         responses.add("\nTo view a breakdown of your deposits, use: " + checkCmd);
 
         String title = "Tax info for " + nation.getName();
@@ -3463,6 +3463,7 @@ public class BankCommands {
                                     replyInDMs ? "true" : null,
                                     includeExpired ? "true" : null,
                                     includeIgnored ? "true" : null,
+                                    null,
                                     hideEscrowed ? "true" : null
                             ), false));
         }
@@ -3902,7 +3903,7 @@ public class BankCommands {
                 body.append("Changing offshores will close the account with your previous offshore provider\n");
                 body.append("Your current offshore is set to: " + currentOffshore.getAllianceId() + "\n");
                 body.append("To check your funds with the current offshore, use " +
-                        CM.deposits.check.cmd.create(idStr, null, null, null, null, null, null, null, null, null));
+                        CM.deposits.check.cmd.create(idStr, null, null, null, null, null, null, null, null, null, null));
                 body.append("\nIt is recommended to withdraw all funds from the current offshore before changing, as Locutus may not be able to access the account after closing it`");
 
                 confirmButton.embed(title, body.toString()).send();

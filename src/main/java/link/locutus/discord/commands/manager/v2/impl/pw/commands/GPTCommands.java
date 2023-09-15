@@ -245,7 +245,7 @@ public class GPTCommands {
                 document_name,
                 markdown,
                 null,
-                ProviderType.PROCESS);
+                ProviderType.OPENAI);
 
         return "Added document `#" + document.source_id + "` | `" + document_name + "` to the queue. Use TODO CM REF to view the progress of the conversion.";
     }
@@ -283,7 +283,7 @@ public class GPTCommands {
     @Command(desc = "Delete your custom datasets.\n" +
             "Default datasets cannot be deleted, and if a custom dataset is deleted, tasks will fall back to using the base datasets.")
     @RolePermission(value = Roles.ADMIN)
-    public String delete_document(PWGPTHandler gpt, @Me GuildDB db, @Me IMessageIO io, @Me JSONObject command, EmbeddingSource source, @Switch("f") boolean force) {
+    public String delete_document(PWGPTHandler gpt, @Me User user, @Me GuildDB db, @Me IMessageIO io, @Me JSONObject command, EmbeddingSource source, @Switch("f") boolean force) {
         if (source.guild_id != db.getIdLong()) {
             throw new IllegalArgumentException("Document `" + source.source_name + "` is owned another guild: `" + DiscordUtil.getGuildName(source.guild_id) + "`");
         }
@@ -296,6 +296,12 @@ public class GPTCommands {
             body.append("Vectors: `").append(numVectors).append("`.\n");
             io.create().confirmation(title, body.toString(), command).send();
             return null;
+        }
+
+        ConvertingDocument document = gpt.getHandler().getEmbeddings().getConvertingDocument(source.source_id);
+        if (document != null) {
+            gpt.getConverter().pauseConversion(document, "Deleted by " + user.getName());
+            gpt.getEmbeddings().deleteDocumentAndChunks(document.source_id);
         }
 
         gpt.getHandler().getEmbeddings().deleteSource(source);
@@ -909,7 +915,7 @@ public class GPTCommands {
 
             body.append("\n\nReview and edit: " + MarkupUtil.markdownUrl("sheet:RENAME_CHANNELS", sheet.getURL()));
 
-            IMessageBuilder msg = io.create().confirmation(title, body.toString(), CM.channel.rename.bulk.cmd.create("sheet:" + sheet.getSpreadsheetId(), null, null, "true"));
+            IMessageBuilder msg = io.create().confirmation(title, body.toString(), CM.channel.rename.bulk.cmd.create("sheet:" + sheet.getSpreadsheetId(), null, null, "true", null));
             if (!errors.isEmpty()) {
                 msg = msg.file("errors.txt", String.join("\n", errors));
             }

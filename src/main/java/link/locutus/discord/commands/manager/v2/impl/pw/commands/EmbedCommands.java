@@ -473,8 +473,8 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             }
 
             CM.offshore.send send = CM.offshore.send.cmd.create(null, null, null);
-            CM.deposits.check deposits = CM.deposits.check.cmd.create("{nation_id}", null, null, null, null, null, showDepositsInDms + "", null, null, null);
-            CM.deposits.check depositsBreakdown = CM.deposits.check.cmd.create("{nation_id}", null, null, null, null, "true", null, null, null, null);
+            CM.deposits.check deposits = CM.deposits.check.cmd.create("{nation_id}", null, null, null, null, null, showDepositsInDms + "", null, null, null, null);
+            CM.deposits.check depositsBreakdown = CM.deposits.check.cmd.create("{nation_id}", null, null, null, null, "true", null, null, null, null, null);
             CM.tax.info taxInfo = CM.tax.info.cmd.create("{nation_id}");
             CM.nation.revenue revenue = CM.nation.revenue.cmd.create("{nation_id}", "true", null);
             CM.city.optimalBuild optimalbuild = CM.city.optimalBuild.cmd.create("{city 1}", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
@@ -855,7 +855,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             body += "\n\n> Results in <#" + channelId + ">";
         }
 
-        CM.deposits.check deposits = CM.deposits.check.cmd.create("nation:{nation_id}", null, null, null, null, null, null, null, null, null);
+        CM.deposits.check deposits = CM.deposits.check.cmd.create("nation:{nation_id}", null, null, null, null, null, null, null, null, null, null);
         CM.transfer.self self = CM.transfer.self.cmd.create("", null, null, null, null, null, null, null, null, null, null, null, null, null);
         CM.transfer.resources other = CM.transfer.resources.cmd.create("", "", null, "{nation_id}", null, null, null, null, null, null, null, null, null, null, null);
         CM.nation.stockpile stockpile = CM.nation.stockpile.cmd.create("nation:{nation_id}");

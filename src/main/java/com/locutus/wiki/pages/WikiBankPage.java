@@ -106,7 +106,7 @@ public class WikiBankPage extends BotWikiGen {
                         Use the command with either your alliance or guild id.
                         The command must be run in the guild for that account.
                         - [How-To: Obtaining Guild Id](https://support.discord.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID-)""",
-                CM.deposits.check.cmd.create("", null, null, null, null, null, null, null, null, null).toString(),
+                CM.deposits.check.cmd.create("", null, null, null, null, null, null, null, null, null, null).toString(),
                 "# Using the local alliance",
                 """
                         It is recommended to use an offshore instead, to avoid loot losses.
@@ -149,7 +149,7 @@ public class WikiBankPage extends BotWikiGen {
                 CM.coalition.add.cmd.create("", Coalition.OFFSHORING.name()).toString(),
                 "### Check deposits of alliances or guilds",
                 "In the offshore server, as above, use the deposits command with the alliance or guild id you wish to check",
-                CM.deposits.check.cmd.create("", null, null, null, null, null, null, null, null, null).toString(),
+                CM.deposits.check.cmd.create("", null, null, null, null, null, null, null, null, null, null).toString(),
                 "### Adjust the balance of any alliance or corporation",
                 """
                     Deposits are automatically tracked, but you may need to adjust balances if funds are sent from another source, using the wrong note, or to set initial amounts.

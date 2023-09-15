@@ -313,7 +313,7 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
 
     public void addChunks(List<DocumentChunk> chunks) {
         for (DocumentChunk chunk : chunks) {
-            documentChunks.computeIfAbsent(chunk.source_id, k -> new ConcurrentHashMap<>()).put(chunk.source_id, chunk);
+            documentChunks.computeIfAbsent(chunk.source_id, k -> new ConcurrentHashMap<>()).put(chunk.chunk_index, chunk);
         }
         ctx().transaction((TransactionalRunnable) -> {
         for (DocumentChunk chunk : chunks) {
@@ -324,7 +324,9 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     }
 
     public List<DocumentChunk> getChunks(int source_id) {
-        return new ArrayList<>(documentChunks.getOrDefault(source_id, Collections.emptyMap()).values());
+        ArrayList<DocumentChunk> result = new ArrayList<>(documentChunks.getOrDefault(source_id, Collections.emptyMap()).values());
+        result.sort(Comparator.comparingInt(o -> o.chunk_index));
+        return result;
     }
 
     @Override

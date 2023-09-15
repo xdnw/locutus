@@ -1916,7 +1916,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             try {
                 checkDeposits(guildDepo, amount, senderAlliance != null ? "Alliance" : "Guild", accountName);
             } catch (IllegalArgumentException e) {
-                CM.deposits.check cmd = CM.deposits.check.cmd.create(accountName, null, null, null, null, null, null, null, null, null);
+                CM.deposits.check cmd = CM.deposits.check.cmd.create(accountName, null, null, null, null, null, null, null, null,null, null);
                 throw new IllegalArgumentException(e.getMessage() + "\n" + "See: " + cmd);
             }
 

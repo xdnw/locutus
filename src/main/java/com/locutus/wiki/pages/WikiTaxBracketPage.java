@@ -40,7 +40,7 @@ public class WikiTaxBracketPage extends BotWikiGen {
             "This can be useful to tracking how much members pay into a growth circle",
             "### Checking bracket balance",
             "Obtain the id of the tax bracket from the alliance's tax page",
-            CM.deposits.check.cmd.create("#tax_id=1234", null, null, null, null, Boolean.TRUE + "", null, null, null, null).toString(),
+            CM.deposits.check.cmd.create("#tax_id=1234", null, null, null, null, Boolean.TRUE + "", null, null, null, null, null).toString(),
             "### Withdrawing from the tax bracket account",
             "Use e.g. `taxAccount: #tax_id=1234` argument in any transfer slash command e.g.",
             CM.transfer.resources.cmd.create("Borg", "food=100", null, null, null, null, "#tax_id=1234", null, null, null, null, null, null, null, null).toString(),

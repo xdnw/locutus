@@ -63,9 +63,6 @@ public class GPTText2Text implements IText2Text{
             builder.maxTokens(optObj.maxTokens);
         }
 
-        builder = builder.temperature(optObj.temperature);
-
-
         ChatCompletionRequest completionRequest = builder.build();
         ChatCompletionResult completion = service.createChatCompletion(completionRequest);
         List<String> results = new ArrayList<>();
@@ -92,7 +89,7 @@ public class GPTText2Text implements IText2Text{
     }
 
     private static class OpenAiOptions {
-        public Double temperature = 0.7;
+        public Double temperature = null;
         public String[] stopSequences = null;
         public Double topP = null;
         public Double presencePenalty = null;
@@ -101,7 +98,7 @@ public class GPTText2Text implements IText2Text{
 
         public OpenAiOptions setOptions(GPTText2Text parent, Map<String, String> options) {
             // reset options
-            temperature = 0.7;
+            temperature = null;
             stopSequences = null;
             topP = null;
             presencePenalty = null;

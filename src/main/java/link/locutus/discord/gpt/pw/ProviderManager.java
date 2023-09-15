@@ -75,7 +75,7 @@ public class ProviderManager {
         synchronized (result) {
             String openAiKey = GuildKey.OPENAI_KEY.getOrNull(db);
             ModelType expectedModel = GuildKey.OPENAI_MODEL.getOrNull(db);
-            if (expectedModel == null) expectedModel = ModelType.GPT_3_5_TURBO;
+            if (expectedModel == null) expectedModel = ModelType.GPT_4;
 
             int[] limits = GuildKey.GPT_USAGE_LIMITS.getOrNull(db);
 
@@ -203,7 +203,7 @@ public class ProviderManager {
         if (Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY != null) {
             SimpleGPTProvider provider = new SimpleGPTProvider(
                     ProviderType.OPENAI,
-                    handler.createOpenAiText2Text(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, ModelType.GPT_3_5_TURBO),
+                    handler.createOpenAiText2Text(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, ModelType.GPT_4),
                     handler.getModerator(),
                     true,
                     logger);

@@ -40,7 +40,6 @@ import static com.pusher.client.util.internal.Preconditions.checkArgument;
 import static com.pusher.client.util.internal.Preconditions.checkNotNull;
 
 public class GptHandler {
-    private final Encoding chatEncoder;
     private final EncodingRegistry registry;
     private final OpenAiService service;
     private final Platform platform;
@@ -51,8 +50,6 @@ public class GptHandler {
     public GptHandler(GptDatabase database) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
         this.registry = Encodings.newDefaultEncodingRegistry();
         this.service = new OpenAiService(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, Duration.ofSeconds(120));
-
-        this.chatEncoder = registry.getEncodingForModel(ModelType.GPT_3_5_TURBO);
 
         this.platform = Platform.detectPlatform("pytorch");
 
@@ -85,10 +82,6 @@ public class GptHandler {
 
     public IEmbeddingDatabase getEmbeddings() {
         return embeddingDatabase;
-    }
-
-    public int getChatTokenSize(String text) {
-        return chatEncoder.encode(text).size();
     }
 
     public void checkModeration(String text) {
