@@ -94,7 +94,7 @@ public class GPTCommands {
         }
         gpt.getConverter().pauseConversion(document, "Manually paused by " + user.getName());
         return "Paused conversion for `" + source.getQualifiedName() + "`\n" +
-                "Resume with: TODO CM ref";
+                "Resume with: " + CM.chat.conversion.resume.cmd.toSlashMention();
     }
 
     // resume conversion
@@ -110,7 +110,7 @@ public class GPTCommands {
         if (reason != null) {
             response += "\nPrevious Error: `" + reason + "`";
         }
-        return response + "\nPause with TODO CM REF";
+        return response + "\nPause with " + CM.chat.conversion.pause.cmd.toSlashMention();
     }
 
     @Command(desc = "Delete a conversion task for a google document to a chat dataset")
@@ -123,7 +123,7 @@ public class GPTCommands {
         gpt.getConverter().pauseConversion(document, "Deleted by " + user.getName());
         gpt.getEmbeddings().deleteDocumentAndChunks(document.source_id);
         return "Deleted conversion for `" + source.getQualifiedName() + "`\n" +
-                "This does not delete the dataset. See: TODO CM ref";
+                "This does not delete the dataset. See: " + CM.chat.dataset.delete.cmd.toSlashMention();
     }
 
 
@@ -151,7 +151,7 @@ public class GPTCommands {
             sourceMap.entrySet().removeIf(f -> f.getValue().guild_id != 0 && f.getValue().guild_id != db.getIdLong());
         }
         if (sourceMap.isEmpty()) {
-            return "No documents are currently being converted. See TODO CM REF to view documents";
+            return "No documents are currently being converted. See " + CM.chat.dataset.list.cmd.toSlashMention() + " to view documents";
         }
         StringBuilder builder = new StringBuilder(sourceMap.size() + " documents in queue:");
         for (Map.Entry<ConvertingDocument, EmbeddingSource> entry : sourceMap.entrySet()) {
@@ -245,7 +245,7 @@ public class GPTCommands {
         // Check no document conversion already occuring
         List<ConvertingDocument> documents = gpt.getConverter().getDocumentConversions(db.getGuild());
         if (!documents.isEmpty()) {
-            return "You must wait for the current document conversion to finish before starting another one: TODO CM REF";
+            return "You must wait for the current document conversion to finish before starting another one: " + CM.chat.conversion.list.cmd.toSlashMention();
         }
 
         // User user, Guild guild, ProviderType provider, String documentName, String markdown, String prompt
@@ -256,7 +256,9 @@ public class GPTCommands {
                 null,
                 ProviderType.OPENAI);
 
-        return "Added document `#" + document.source_id + "` | `" + document_name + "` to the queue. Use TODO CM REF to view the progress of the conversion.";
+        return "Added document `#" + document.source_id + "` | `" + document_name + "` to the queue. Use " +
+                CM.chat.conversion.list.cmd.toSlashMention() + " to view conversion progress, and " +
+                CM.chat.dataset.list.cmd.toSlashMention() + " to view completed datasets.";
     }
 
     @Command(desc = "This command provides a list of accessible embedding datasets used for prompting GPT.\n" +
