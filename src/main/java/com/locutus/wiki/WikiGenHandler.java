@@ -1,5 +1,6 @@
 package com.locutus.wiki;
 
+import com.locutus.wiki.pages.WikiAiTools;
 import com.locutus.wiki.pages.WikiAlliancePlaceholdersPage;
 import com.locutus.wiki.pages.WikiAntiLeakPage;
 import com.locutus.wiki.pages.WikiArgumentsPage;
@@ -128,6 +129,8 @@ public class WikiGenHandler {
 //        //- Link DocScripts trade tool (cause useful)
         pages.add(new WikiTradePage(manager)); // <--- 9
         pages.add(new WikiSelfRoles(manager)); // <--- 10
+
+        pages.add(new WikiAiTools(manager)); // <--- 10
 
         // # Delegate servers // <---
         // war rooms delegate

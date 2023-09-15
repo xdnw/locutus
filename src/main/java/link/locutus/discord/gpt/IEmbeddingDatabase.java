@@ -42,6 +42,7 @@ public interface IEmbeddingDatabase {
     int countVectors(EmbeddingSource existing);
     void deleteSource(EmbeddingSource source);
     public List<ConvertingDocument> getUnconvertedDocuments();
+    public ConvertingDocument getConvertingDocument(int source_id);
     public void addConvertingDocument(List<ConvertingDocument> documents);
     public void addChunks(List<DocumentChunk> chunks);
     public List<DocumentChunk> getChunks(int source_id);

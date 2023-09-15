@@ -54,6 +54,7 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.ChannelType;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import org.apache.commons.lang3.Conversion;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.json.JSONObject;
 import org.w3c.dom.Text;
@@ -83,16 +84,65 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class GPTCommands {
 
+    @Command(desc = "Pause conversion for a google document to a chat dataset\n" +
+            "Conversion can be resumed later")
+    @RolePermission(value = Roles.INTERNAL_AFFAIRS)
+    public String pauseConversion(PWGPTHandler gpt, @Me User user, @Me IMessageIO io, @Me GuildDB db, EmbeddingSource source) {
+        ConvertingDocument document = gpt.getEmbeddings().getConvertingDocument(source.source_id);
+        if (document == null) {
+            return "No converting document found for `" + source.getQualifiedName() + "`";
+        }
+        gpt.getConverter().pauseConversion(document, "Manually paused by " + user.getName());
+        return "Paused conversion for `" + source.getQualifiedName() + "`\n" +
+                "Resume with: TODO CM ref";
+    }
+
+    // resume conversion
+    @Command(desc = "Resume conversion for a google document to a chat dataset")
+    @RolePermission(value = Roles.INTERNAL_AFFAIRS)
+    public String resumeConversion(PWGPTHandler gpt, @Me User user, @Me IMessageIO io, @Me GuildDB db, EmbeddingSource source) {
+        ConvertingDocument document = gpt.getEmbeddings().getConvertingDocument(source.source_id);
+        if (document == null) {
+            return "No converting document found for `" + source.getQualifiedName() + "`";
+        }
+        String reason = gpt.getConverter().resumeConversion(db, document);
+        String response = "Resumed conversion for `" + source.getQualifiedName() + "`";
+        if (reason != null) {
+            response += "\nPrevious Error: `" + reason + "`";
+        }
+        return response + "\nPause with TODO CM REF";
+    }
+
+    @Command(desc = "Delete a conversion task for a google document to a chat dataset")
+    @RolePermission(value = Roles.INTERNAL_AFFAIRS)
+    public String deleteConversion(PWGPTHandler gpt, @Me User user, @Me IMessageIO io, @Me GuildDB db, EmbeddingSource source) {
+        ConvertingDocument document = gpt.getEmbeddings().getConvertingDocument(source.source_id);
+        if (document == null) {
+            return "No converting document found for `" + source.getQualifiedName() + "`";
+        }
+        gpt.getConverter().pauseConversion(document, "Deleted by " + user.getName());
+        gpt.getEmbeddings().deleteDocumentAndChunks(document.source_id);
+        return "Deleted conversion for `" + source.getQualifiedName() + "`\n" +
+                "This does not delete the dataset. See: TODO CM ref";
+    }
+
+
     @Command(desc = "Show the documents currently converting to a dataset\n" +
             "Datasets are a list of information that can be used to generate chat responses")
-    @RolePermission(value = Roles.INTERNAL_AFFAIRS, root = true)
+    @RolePermission(value = Roles.INTERNAL_AFFAIRS)
     public String showConverting(PWGPTHandler gpt, @Me User user, @Me IMessageIO io, @Me GuildDB db, @Switch("r") boolean showRoot, @Switch("a") boolean showOtherGuilds) {
         if (showOtherGuilds && !Roles.ADMIN.hasOnRoot(user)) {
             return "You must be a bot admin to use the `showAll`";
         }
         List<ConvertingDocument> documents2 = gpt.getHandler().getEmbeddings().getUnconvertedDocuments();
-        Map<ConvertingDocument, EmbeddingSource> sourceMap = documents2.stream()
-                .collect(Collectors.toMap(Function.identity(), f -> gpt.getHandler().getEmbeddings().getEmbeddingSource(f.source_id)));
+        Map<ConvertingDocument, EmbeddingSource> sourceMap = new LinkedHashMap<>();
+        for (ConvertingDocument document : documents2) {
+            EmbeddingSource source = gpt.getHandler().getEmbeddings().getEmbeddingSource(document.source_id);
+            if (source == null) {
+                System.out.println("No source found for " + document.source_id);
+            }
+            sourceMap.put(document, source);
+        }
         if (!showRoot) {
             sourceMap.entrySet().removeIf(f -> f.getValue().guild_id == 0);
         }

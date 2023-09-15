@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.GptHandler;
@@ -12,6 +13,7 @@ import link.locutus.discord.gpt.IEmbeddingDatabase;
 import link.locutus.discord.gpt.IModerator;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
 import link.locutus.discord.gpt.imps.DocumentChunk;
+import link.locutus.discord.gpt.imps.EmbeddingType;
 import link.locutus.discord.gpt.imps.IText2Text;
 import link.locutus.discord.gpt.imps.ProviderType;
 import link.locutus.discord.util.PnwUtil;
@@ -172,10 +174,6 @@ public class DocumentConverter {
             }
             return;
         }
-        if (document.error != null) {
-            if (throwError) throw new IllegalArgumentException(document.error);
-            return;
-        }
         EmbeddingSource source = getEmbeddings().getEmbeddingSource(document.source_id);
         if (source == null) {
             String msg = "Cannot find document source `" + document.source_id + "` in guild " + db.getGuild() + " (was it deleted?)";
@@ -215,6 +213,21 @@ public class DocumentConverter {
             if (throwError) {
                 throw new IllegalArgumentException(msg);
             }
+            return;
+        }
+
+        DBNation nation = DiscordUtil.getNation(user);
+        if (nation == null) {
+            String msg = "Cannot find nation for user `" + user.getName() + "` in guild " + db.getGuild();
+            getEmbeddings().setDocumentError(document, msg);
+            if (throwError) {
+                throw new IllegalArgumentException(msg);
+            }
+            return;
+        }
+
+        if (document.error != null) {
+            if (throwError) throw new IllegalArgumentException(document.error);
             return;
         }
 
@@ -272,7 +285,7 @@ public class DocumentConverter {
             boolean isLastChunk = chunks.size() == 1;
 
             try {
-                CompletableFuture<String> future = provider.submit(db, user, null, null, text);
+                CompletableFuture<String> future = provider.submit(db, user, nation, null, text);
 
                 future.thenAcceptAsync(s -> {
                     synchronized (lock) {
@@ -286,6 +299,7 @@ public class DocumentConverter {
                         }
                     }
                 }).exceptionally(e -> {
+                    e.printStackTrace();
                     synchronized (lock) {
                         getEmbeddings().setDocumentError(document, e.getMessage());
                         conversionStatus.remove(document.source_id);
@@ -298,6 +312,22 @@ public class DocumentConverter {
                 conversionStatus.remove(document.source_id);
             }
         }
+    }
+
+    public void pauseConversion(ConvertingDocument document, String reason) {
+        conversionStatus.put(document.source_id, false);
+        document.error = "Paused: " + reason;
+        getEmbeddings().addConvertingDocument(List.of(document));
+    }
+
+    public String resumeConversion(GuildDB db, ConvertingDocument document) {
+        // conversionStatus remove if false
+        boolean removed = conversionStatus.remove(document.source_id, false);
+        String existingError = document.error;
+        document.error = null;
+        getEmbeddings().addConvertingDocument(List.of(document));
+        submitDocument(db, document, true);
+        return existingError;
     }
 
     private void setConverted(ConvertingDocument document) {

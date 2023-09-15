@@ -876,6 +876,13 @@ public class CM {
     }
     public static class chat{
         public static class conversion{
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="generate_factsheet")
+            public static class add_document extends CommandRef {
+                public static final add_document cmd = new add_document();
+                public add_document create(String googleDocumentUrl, String document_name, String force) {
+                    return createArgs("googleDocumentUrl", googleDocumentUrl, "document_name", document_name, "force", force);
+                }
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="showConverting")
             public static class list extends CommandRef {
                 public static final list cmd = new list();
@@ -885,6 +892,13 @@ public class CM {
             }
         }
         public static class dataset{
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="save_embeddings")
+            public static class import_sheet extends CommandRef {
+                public static final import_sheet cmd = new import_sheet();
+                public import_sheet create(String sheet, String document_name, String force) {
+                    return createArgs("sheet", sheet, "document_name", document_name, "force", force);
+                }
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="delete_document")
             public static class delete extends CommandRef {
                 public static final delete cmd = new delete();
@@ -941,22 +955,6 @@ public class CM {
                 public static final set cmd = new set();
                 public set create(String providerTypes) {
                     return createArgs("providerTypes", providerTypes);
-                }
-            }
-        }
-        public static class spreadsheet{
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="generate_factsheet")
-            public static class convert extends CommandRef {
-                public static final convert cmd = new convert();
-                public convert create(String googleDocumentUrl, String document_name, String force) {
-                    return createArgs("googleDocumentUrl", googleDocumentUrl, "document_name", document_name, "force", force);
-                }
-            }
-            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GPTCommands.class,method="save_embeddings")
-            public static class save extends CommandRef {
-                public static final save cmd = new save();
-                public save create(String sheet, String document_name, String force) {
-                    return createArgs("sheet", sheet, "document_name", document_name, "force", force);
                 }
             }
         }

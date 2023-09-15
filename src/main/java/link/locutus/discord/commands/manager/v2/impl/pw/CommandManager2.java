@@ -247,18 +247,22 @@ public class CommandManager2 {
 
             GPTCommands gptCommands = new GPTCommands();
 
-            this.commands.registerMethod(gptCommands, List.of("chat", "spreadsheet"), "generate_factsheet", "convert");
             this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "list_documents", "list");
             this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "view_document", "view");
             this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "delete_document", "delete");
-            this.commands.registerMethod(gptCommands, List.of("chat", "spreadsheet"), "save_embeddings", "save");
+            this.commands.registerMethod(gptCommands, List.of("chat", "dataset"), "save_embeddings", "import_sheet");
             this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "listChatProviders", "list");
             this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "setChatProviders", "set");
             this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatProviderConfigure", "configure");
             this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatResume", "resume");
             this.commands.registerMethod(gptCommands, List.of("chat", "providers"), "chatPause", "pause");
-            this.commands.registerMethod(gptCommands, List.of("chat", "conversion"), "showConverting", "list");
             this.commands.registerMethod(gptCommands, List.of("channel", "rename"), "emojifyChannels", "bulk");
+
+            this.commands.registerMethod(gptCommands, List.of("chat", "conversion"), "showConverting", "list");
+            this.commands.registerMethod(gptCommands, List.of("chat", "conversion"), "generate_factsheet", "add_document");
+            this.commands.registerMethod(gptCommands, List.of("chat", "conversion"), "pauseConversion", "pause");
+            this.commands.registerMethod(gptCommands, List.of("chat", "conversion"), "resumeConversion", "resume");
+            this.commands.registerMethod(gptCommands, List.of("chat", "conversion"), "deleteConversion", "delete");
 
             this.commands.registerMethod(gptCommands, List.of("chat"), "unban", "unban");
 

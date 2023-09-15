@@ -50,7 +50,6 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     private final Long2ObjectOpenHashMap<float[]> vectors;
     private final Map<Integer, Set<Long>> textHashBySource;
     private final Map<Integer, Map<Long, Long>> expandedTextHashBySource;
-//    private final Map<Long, Map<Integer, EmbeddingSource>> embeddingSourcesByGuild;
     private final Map<Integer, EmbeddingSource> embeddingSources;
     private final Map<Integer, ConvertingDocument> unconvertedDocuments;
     private final Map<Integer, Map<Integer, DocumentChunk>> documentChunks;
@@ -63,7 +62,6 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         this.vectors = new Long2ObjectOpenHashMap<>();
         this.textHashBySource = new Int2ObjectOpenHashMap<>();
         this.expandedTextHashBySource = new Int2ObjectOpenHashMap<>();
-//        this.embeddingSourcesByGuild = new ConcurrentHashMap<>();
         this.embeddingSources = new ConcurrentHashMap<>();
         this.unconvertedDocuments = new ConcurrentHashMap<>();
         this.documentChunks = new ConcurrentHashMap<>();
@@ -294,6 +292,11 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         return new ArrayList<>(this.unconvertedDocuments.values());
     }
 
+    @Override
+    public ConvertingDocument getConvertingDocument(int source_id) {
+        return unconvertedDocuments.get(source_id);
+    }
+
     public void addConvertingDocument(List<ConvertingDocument> documents) {
         for (ConvertingDocument document : documents) {
             unconvertedDocuments.put(document.source_id, document);
@@ -353,7 +356,6 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
             int source_id = (Integer) result.getValue("source_id");
             source = new EmbeddingSource(source_id, source.source_name, source.date_added, 0, source.guild_id);
             // add to map
-//            embeddingSourcesByGuild.computeIfAbsent(source.guild_id, k -> new ConcurrentHashMap<>()).put(source.source_id, source);
             embeddingSources.put(source.source_id, source);
             return source;
         } else {
@@ -418,7 +420,6 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
 
             // embeddingSources is a map of guild_id to set<EmbeddingSource>
             EmbeddingSource source = new EmbeddingSource(source_id, source_name, date_added, hash, guild_id);
-//            embeddingSourcesByGuild.computeIfAbsent(guild_id, k -> new ConcurrentHashMap<>()).put(source.source_id, source);
             embeddingSources.put(source.source_id, source);
         });
     }
@@ -465,13 +466,15 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
         ctx().execute("DELETE FROM expanded_text WHERE source_id = ?", source_id);
         ctx().execute("DELETE FROM sources WHERE source_id = ?", source_id);
         ctx().execute("DELETE FROM vector_sources WHERE source_id = ?", source_id);
+        deleteDocumentAndChunks(source_id);
 
-//        embeddingSourcesByGuild.getOrDefault(source.guild_id, Collections.emptyMap()).remove(source.source_id);
         embeddingSources.remove(source.source_id);
         // textHashBySource
         textHashBySource.remove(source_id);
         // expandedTextHashBySource
         expandedTextHashBySource.remove(source_id);
+        unconvertedDocuments.remove(source_id);
+        documentChunks.remove(source_id);
     }
 
     @Override

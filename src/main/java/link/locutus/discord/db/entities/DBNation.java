@@ -4722,6 +4722,7 @@ public class DBNation implements NationOrAlliance {
         }
         return PnwUtil.calculateLand(from, to) * (to > from ? factor : 1);
     }
+
     public double printScore() {
         double base = 10;
         System.out.println("base " + base);
