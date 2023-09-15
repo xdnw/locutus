@@ -3272,6 +3272,7 @@ public class BankCommands {
                            @Switch("e") boolean includeExpired,
                            @Arg("Include transfers marked as ignore")
                            @Switch("i") boolean includeIgnored,
+                           @Switch("z") boolean allowCheckDeleted,
                            @Arg("Hide the escrow balance ") @Switch("h") boolean hideEscrowed
     ) throws IOException {
         boolean condensedFormat = GuildKey.DISPLAY_CONDENSED_DEPOSITS.getOrNull(db) == Boolean.TRUE;
@@ -3296,27 +3297,28 @@ public class BankCommands {
 
         if (nationOrAllianceOrGuild.isAlliance()) {
             DBAlliance alliance = nationOrAllianceOrGuild.asAlliance();
-            GuildDB otherDb = alliance.getGuildDB();
 
-            if (otherDb == null) throw new IllegalArgumentException("No guild found for " + alliance);
+            GuildDB otherDb2 = alliance.getGuildDB();
+            if (otherDb2 == null && !allowCheckDeleted) throw new IllegalArgumentException("No guild found for " + alliance);
 
-            OffshoreInstance offshore = otherDb.getOffshore();
-
-
-            if (!Roles.ECON.has(author, otherDb.getGuild()) && (offshore == null || !Roles.ECON.has(author, offshore.getGuildDB().getGuild()))) {
-                return "You do not have permisssion to check another alliance's deposits";
-            }
+            OffshoreInstance offshore = otherDb2 == null && allowCheckDeleted ? db.getOffshore() : otherDb2.getOffshore();
 
             if (offshore == null) {
-                if (otherDb == db) {
+                if (otherDb2 == db) {
+                    if (!Roles.ECON.has(author, otherDb2.getGuild())) {
+                        return "You do not have permisssion to check another alliance's deposits";
+                    }
                     Map<ResourceType, Double> stock = alliance.getStockpile();
                     accountDeposits.put(DepositType.DEPOSIT, PnwUtil.resourcesToArray(stock));
                 } else {
                     return "No offshore is set. In this server, use " + CM.coalition.add.cmd.create("AA:" + alliance.getAlliance_id(), Coalition.OFFSHORE.name()) + " and from the offshore server use " + CM.coalition.add.cmd.create("AA:" + alliance.getAlliance_id(), Coalition.OFFSHORING.name()) + "";
                 }
-            } else if (otherDb != db && offshore.getGuildDB() != db) {
+            } else if (otherDb2 != db && offshore.getGuildDB() != db) {
                 return "You do not have permisssion to check another alliance's deposits";
             } else {
+                if ((otherDb2 == null || !Roles.ECON.has(author, otherDb2.getGuild())) && (!Roles.ECON.has(author, offshore.getGuildDB().getGuild()))) {
+                    return "You do not have permisssion to check another alliance's deposits";
+                }
                 double[] deposits = PnwUtil.resourcesToArray(offshore.getDeposits(alliance.getAlliance_id(), true));
                 accountDeposits.put(DepositType.DEPOSIT, deposits);
             }

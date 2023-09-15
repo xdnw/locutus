@@ -4081,6 +4081,7 @@ public class DBNation implements NationOrAlliance {
         }
         body.append("\n");
         User user = getUser();
+        int len = body.length();
         {
             String prefix = "";
             if (user != null) {
@@ -4097,9 +4098,10 @@ public class DBNation implements NationOrAlliance {
             if (reports > 0) {
                 body.append(prefix).append(reports + " reports");
             }
-            body.append("\n");
+            if (len != body.length()) {
+                body.append("\n\n");
+            }
         }
-        body.append("\n");
         {
             Collection<DBCity> cities = _getCitiesV3().values();
             double infra = 0;
@@ -4111,7 +4113,12 @@ public class DBNation implements NationOrAlliance {
                 if (!value.powered) unpowered++;
             }
             infra /= cities.size();
-            body.append("I:`" + MathMan.format(infra)).append("` (max:`").append(MathMan.format(maxCityInfra()) + "`)").append(" \uD83C\uDFD7\uFE0F | ");
+            body.append("I:`" + MathMan.format(infra)).append("` ");
+            double maxCityInfra = maxCityInfra();
+            if (maxCityInfra > infra) {
+                body.append("(max:`").append(MathMan.format(maxCityInfra) + "`)");
+            }
+            body.append(" \uD83C\uDFD7\uFE0F | ");
             body.append("`c").append(cities.size());
             if (unpowered == 0) {
                 body.append("`");

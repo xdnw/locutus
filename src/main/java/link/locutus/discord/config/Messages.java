@@ -105,6 +105,7 @@ public class Messages {
                     lounge: \uD83D\uDCAC | General lounge for members
                     econ-announcements: \uD83D\uDCE2 | Announcements related to alliance economics
                     info: \uD83D\uDCDD | General information channel
+                    academy-gov-info: \uD83D\uDD17 | Information for mentors of the academy
                     priority-targets: \u2757 | Channel for priority enemy target alerts
                     general: \uD83D\uDCAC | General discussion channel
                     war-questions-or-talk: \u2753 | Channel for discussing war-related questions and topics
@@ -135,6 +136,66 @@ public class Messages {
                     verified: \u2705 | Chat channel for verified players
                     music: \uD83C\uDFB5 | Voice channel for music
                     voice-chat: \uD83C\uDF99\uFE0F | Voice channel for talking
+                    high-court: \uD83E\uDD98 | Channel for discussions and deliberations within the high court
                     recruitment-spam:\uD83E\uDEA7 | channel for logging recruitment messages sent
                     ```""";
+
+    public static String PROMPT_EMOJIFY_QUOTE = """
+            # Follow These Instructions Exactly:
+            Add a topic message to each input channel using a matching example or be create and use a new pop culture quote.
+            For example, a channel named `music`, `ranking` or `c33` have no matches to the examples and should use a new quote, whilst `defensive-wars` and `def-alerts` or `defensives` all match and should use the example quote.
+                                
+            # Input Channel:
+            ```
+            {channels}
+            ```
+                                
+            # Examples
+            ```
+            lost-wars:\uD83E\uDD48 | Our enemies are innovative and resourceful, and so are we. They never stop thinking about new ways to harm our country and our people, and neither do we.
+            enlist-with-us: \uD83D\uDCDC | Join the Mobile Infantry and save the world. Service guarantees citizenship. I'm doing my part.
+            recruitment-spam:\uD83E\uDEA7 | Because nothing says 'Join us!' like a good old-fashioned spam
+            ask-questions-here: \uD83D\uDE4B | What do you get when you combine a rhetorical question and a joke?
+            advisors: \uD83D\uDC74 | Back in my day, we didn't have advisors. We had to figure things out ourselves, uphill, both ways!
+            pirate-code: \uD83C\uDFF4 | What's a pirate's favourite programming language? R. Although there are those that say his true love be the C.
+            beige-loot: \uD83D\uDCB0 | Maybe The Real Treasure Was the Friends We Made Along the Way
+            membership: \uD83E\uDDD2 | Membership has its privileges.
+            inactive: \uD83D\uDC80 | Where conversations go to die.
+            meme-central: \uD83E\uDD21 | Why so serious!
+            info: \uD83D\uDCDD | The information superhighway of the alliance.
+            fa-gov: \uD83D\uDCAC | Bringing the pen to the gunfight since NPOLT
+            academy-gov-info: \uD83D\uDD17 | Linking you to the knowledge you didn't know you needed.
+            general: \uD83D\uDCAC | Look out, we've got a keyboard warrior over here.
+            debate-channel: \uD83D\uDCAC | Why hello there fellow master-debaters.
+            queen-chat:\uD83D\uDCAC | Off with their heads!
+            leave-of-absence:\uD83D\uDC4B | I'll be back
+            role-buttons:\u2B55 | roles for me but not for thee
+            offensive-wars:\uD83D\uDDE1\uFE0F | War. War never changes... but these alerts do!
+            defensive-wars:\uD83D\uDD30 | To defend or not to defend, that is the question!
+            bot-channel:\uD83E\uDD16 | I'm sorry, Dave. I'm afraid I can't do that
+            announcements:\uD83D\uDEA8 | Listen up, everyone! We've got announcements hotter than a jalapeno!
+            projects:\uD83D\uDEA7 | If you build it, they will come.
+            grant-request: \uD83D\uDCB8 | Build, Baby, Build
+            priority-targets: \u2757 | Release the Kraken!
+            war-questions-or-talk: \u2753 | I love the smell of napalm in the morning.
+            c3: \uD83D\uDC1C | Ants, Mr. Rico, millions of 'em!
+            c11: \uD83E\uDD90 | That's a big shrimp!
+            c12: \uD83D\uDC1F | Just keep swimming.
+            high-court: \uD83E\uDD98 | Where the kangaroos of justice hop to conclusions.
+            withdraw-funds:\uD83C\uDFE7 | Keep the change, ya filthy animal.
+            spy-info-n-ops:\uD83D\uDD0D | I spy with my little eye...
+            econ-staff:\uD83D\uDCB0 | In the world of economics, money talks, but it doesn't always make cents.
+            land-program:\uD83C\uDF3E | Life is like a box of wheatfields. You never know what you're gonna plow.
+            news:\uD83D\uDCF0 | Stay classy, alliance. And now, here's a channel with the news.
+            ia-auto:\uD83E\uDDBE | I, for one, welcome our new robotic overlords.
+            spy-requests:\uD83D\uDD0D | The name's Ops, Spy Ops.
+            ma-guides:\uD83D\uDCDF | Guide me, google document, you're my only hope.
+            gw28-trophy-room:\uD83C\uDFC6 | We don't need roads where we're going... just lots of trophies.
+            lounge: \uD83D\uDCAC | Speak softly and carry a big e-peen.
+            join-us: \uD83C\uDFAB | Don't let the door hit you on the way in
+            blockaded: \uD83D\uDEA2 | You shall not pass!
+            ```
+                                
+            # Response
+            ```""";
 }

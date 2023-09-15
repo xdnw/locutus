@@ -2662,6 +2662,20 @@ public class GuildHandler {
         DBWar previous = event.getPrevious();
         DBWar current = event.getCurrent();
 
+        DBNation attacker = current.getNation(true);
+        DBNation defender = current.getNation(false);
+        if (attacker != null && defender != null) {
+            boolean attInactiveNone = attacker.getAlliance_id() == 0 && attacker.active_m() > 2880;
+            boolean defInactiveNone = defender.getAlliance_id() == 0 && defender.active_m() > 2880;
+            if (attInactiveNone || defInactiveNone) {
+                return;
+            }
+            Boolean hideApps = db.getOrNull(GuildKey.HIDE_APPLICANT_WARS);
+            if (hideApps == Boolean.TRUE && (attacker.getPosition() <= Rank.APPLICANT.id || defender.getPosition() <= Rank.APPLICANT.id)) {
+               return;
+            }
+        }
+
         String title = "War " + previous.getStatus() + " -> " + current.getStatus();
         StringBuilder body = new StringBuilder();
         body.append("War: " + MarkupUtil.markdownUrl("Click Here", current.toUrl())).append("\n");
