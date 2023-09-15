@@ -208,16 +208,25 @@ public class GPTCommands {
         }
 
         // max length
-        int maxLineLength = 200;
-        String[] lines = markdown.split("\n");
-        for (String line : lines) {
+        int maxLineLength = 1000;
+        List<String> lines = new ArrayList<>();
+//        String[] lines = markdown.split("\n");
+        // split by newline or period space
+        for (String line : markdown.split("\n")) {
             if (line.length() > maxLineLength) {
-                return "Line `" + line + "` is too long (`" + line.length() + "`). Max length is " + maxLineLength + " characters";
+                for (String line2 : line.split("\\. ")) {
+                    if (line2.length() > maxLineLength) {
+                        return "Line `" + line2 + "` is too long (`" + line2.length() + "`). Max length is " + maxLineLength + " characters";
+                    }
+                    lines.add(line2);
+                }
+            } else {
+                lines.add(line);
             }
         }
         int maxLines = 1000;
-        if (lines.length > maxLines) {
-            return "Document has too many lines (`" + lines.length + "`). Max lines is " + maxLines;
+        if (lines.size() > maxLines) {
+            return "Document has too many lines (`" + lines.size() + "`). Max lines is " + maxLines;
         }
 
         if (!force) {
@@ -225,7 +234,7 @@ public class GPTCommands {
             StringBuilder body = new StringBuilder();
             body.append("This will generate a factsheet with the following parameters:\n");
             body.append("Document name: `").append(document_name).append("`\n");
-            body.append("Input lines: `").append(lines.length).append("`\n");
+            body.append("Input lines: `").append(lines.size()).append("`\n");
 
             IMessageBuilder msg = io.create();
             msg.file("input.md", markdown);

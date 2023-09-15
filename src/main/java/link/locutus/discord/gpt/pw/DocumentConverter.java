@@ -54,20 +54,24 @@ public class DocumentConverter {
 
     private String getDocumentPrompt(String documentName) {
         return """
-                Please extract a complete list of standalone facts about the following page.\s
-                Start all lines with `- `
-                Be precise and accurate.
-                                
-                # Context:
+                Please rewrite the page as a list of standalone dot points.
+                Include every tiny detail that could be relevant, such as syntax.
+                Keep adding points until you have included everything.
+                Start all dot points with `- `
+                Include any headings within each of its dot points rather than as a separate line. e.g.
+                - Heading Name: First Dot point text
+                - Heading Name: Second Dot point text
+                - Heading Name.Subheading Name: Third Dot point text
+                
+                # Previous Dot Points:
                 ```
                 {context}
                 ```
-                                
+                
                 # Page:
                 ```
                 {text}
-                ```
-                """.replace("{context}", "Document named `" + documentName + "`\n{context}");
+                ```""".replace("{context}", "Document named `" + documentName + "`\n{context}");
     }
 
     public String getSummaryPrompt(String prompt, List<String> previousSummary , String text, int maxSummarySize, Function<String, Integer> sizeFunction, Function<String, List<String>> getClosestFacts) {
@@ -281,7 +285,7 @@ public class DocumentConverter {
             String text = getSummaryPrompt(document.prompt,
                     outputSplit,
                     chunk.text,
-                    provider.getSizeCap() * 2 / 3,
+                    provider.getSizeCap() * 2 / 4,
                     provider::getSize,
                     getClosestFacts
             );
