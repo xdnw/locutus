@@ -140,6 +140,7 @@ public class GPTCommands {
             EmbeddingSource source = gpt.getHandler().getEmbeddings().getEmbeddingSource(document.source_id);
             if (source == null) {
                 System.out.println("No source found for " + document.source_id);
+                continue;
             }
             sourceMap.put(document, source);
         }

@@ -276,6 +276,8 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
     public void loadUnconvertedDocuments() {
         ctx().execute("DELETE FROM document_queue WHERE converted = ?", true);
         ctx().execute("DELETE FROM document_chunks WHERE converted = ?", true);
+        // delete where source_id not in sources
+        ctx().execute("DELETE FROM document_queue WHERE source_id NOT IN (SELECT source_id FROM sources)");
         ctx().execute("DELETE FROM document_chunks WHERE source_id NOT IN (SELECT source_id FROM document_queue)");
 
         List<ConvertingDocument> docs = ctx().selectFrom("document_queue").fetchInto(ConvertingDocument.class);
