@@ -7,8 +7,10 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.math.ArrayUtil;
 import org.apache.commons.lang3.StringEscapeUtils;
 
 import java.lang.reflect.Type;
@@ -21,7 +23,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-public class Placeholders<T> {
+public abstract class Placeholders<T> {
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
     private final CommandGroup commands;
@@ -133,6 +135,14 @@ public class Placeholders<T> {
         }
         return null;
     }
+
+    public Set<T> parseSet(String input, ValueStore store) {
+        return ArrayUtil.parseQuery(input,
+                f -> parse(store, f),
+                s -> getFilter(store, s));
+    }
+
+    public abstract Set<T> parse(ValueStore store, String input);
 
     public String getCmd(String input) {
         int argStart = input.indexOf('(');

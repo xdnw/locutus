@@ -3,38 +3,18 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
-import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.math.ArrayUtil;
-import link.locutus.discord.util.offshore.OffshoreInstance;
-import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.apiv1.enums.DepositType;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.util.PnwUtil.convertedTotal;
@@ -81,7 +61,7 @@ public class DepositsSheet extends Command {
         } else {
             nations = (DiscordUtil.parseNations(guild, args.get(0)));
             if (args.size() == 2) {
-                Set<Integer> alliances = DiscordUtil.parseAlliances(guild, args.get(1));
+                Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, args.get(1));
                 tracked = new LinkedHashSet<>();
                 for (Integer alliance : alliances) tracked.add(alliance.longValue());
                 tracked = PnwUtil.expandCoalition(tracked);

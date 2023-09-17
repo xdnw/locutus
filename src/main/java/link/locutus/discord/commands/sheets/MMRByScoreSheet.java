@@ -3,7 +3,6 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.SheetKeys;
@@ -12,7 +11,6 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,7 +56,7 @@ public class MMRByScoreSheet extends Command {
 
         for (int column = 0; column < args.size(); column++) {
             String arg = args.get(column);
-            Set<Integer> aaIds = DiscordUtil.parseAlliances(null, arg);
+            Set<Integer> aaIds = DiscordUtil.parseAllianceIds(null, arg);
             Set<DBNation> nations = Locutus.imp().getNationDB().getNations(aaIds);
             nations.removeIf(t -> t.getVm_turns() > 0 || t.getActive_m() > minutesInactive);
 

@@ -12,7 +12,6 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.Collection;
 import java.util.List;
@@ -50,7 +49,7 @@ public class UnitRanking extends Command {
             if (group.equals("*")) {
                 nations = (Locutus.imp().getNationDB().getNations().values());
             } else {
-                Set<Integer> alliances = DiscordUtil.parseAlliances(guild, group);
+                Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, group);
                 if (alliances == null || alliances.isEmpty()) {
                     return "Invalid aa/coalition: " + group;
                 }

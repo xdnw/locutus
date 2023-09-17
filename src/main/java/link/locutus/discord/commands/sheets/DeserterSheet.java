@@ -4,7 +4,6 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Activity;
 import link.locutus.discord.db.entities.DBNation;
@@ -18,7 +17,6 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.Rank;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -58,7 +56,7 @@ public class DeserterSheet extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 2) return usage(args.size(), 2, channel);
 
-        Set<Integer> aaIds = DiscordUtil.parseAlliances(guild, args.get(0));
+        Set<Integer> aaIds = DiscordUtil.parseAllianceIds(guild, args.get(0));
         if (aaIds == null || aaIds.isEmpty()) return "Unknown alliances: " + aaIds;
 
         Map<Integer, Map.Entry<Long, Rank>> removes = new HashMap<>();

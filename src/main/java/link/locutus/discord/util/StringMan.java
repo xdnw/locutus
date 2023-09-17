@@ -472,6 +472,7 @@ public class StringMan {
         List<String> result = new ArrayList<>();
         int start = 0;
         int bracket = 0;
+        List<Character> findBracket = new ArrayList<>();
         boolean inQuotes = false;
         char quoteChar = 0;
         char lastChar = ' ';
@@ -480,10 +481,14 @@ public class StringMan {
             if (currentChar == '\u201C') currentChar = '\u201D';
             boolean atLastChar = current == input.length() - 1;
             switch (currentChar) {
+                case '[':
+                case '(':
                 case '{':
                     bracket++;
                     break;
                 case '}':
+                case ')':
+                case ']':
                     bracket--;
                     break;
             }

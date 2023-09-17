@@ -669,7 +669,7 @@ public class PWBindings extends BindingHelper {
 
     @Binding(examples = "#position>1,#cities<=5", value = "A comma separated list of filters (can include nations and alliances)")
     public NationFilter nationFilter(@Default @Me Guild guild, String input) {
-        nations(null, guild, input + "||*");
+        nations(null, guild, input + "|*");
         return new NationFilterString(input, guild);
     }
 
@@ -796,15 +796,38 @@ public class PWBindings extends BindingHelper {
         if (result.isEmpty()) throw new IllegalArgumentException("Invalid nations or alliances: " + input);
         return result;
     }
+
     @Binding(examples = "Cataclysm,790", value = "A comma separated list of alliances")
     public static Set<DBAlliance> alliances(@Default @Me Guild guild, String input) {
-        Set<Integer> aaIds = DiscordUtil.parseAlliances(guild, input);
+        Set<Integer> aaIds = DiscordUtil.parseAllianceIds(guild, input);
         if (aaIds == null) throw new IllegalArgumentException("Invalid alliances: " + input);
         Set<DBAlliance> alliances = new HashSet<>();
         for (Integer aaId : aaIds) {
             alliances.add(DBAlliance.getOrCreate(aaId));
         }
         return alliances;
+    }
+//
+//    @Binding(examples = "Cataclysm,790", value = "A comma separated list of alliances")
+//    public static Set<DBAlliance> alliances(ValueStore store, @Default @Me Guild guild, String input, AlliancePlaceholders placeholders) {
+//
+//        // make function parsing non hash
+//
+//        for (String arg : StringMan.split(input, ',')) {
+//            arg = arg.trim();
+//            if (arg.isEmpty()) {
+//                throw new IllegalArgumentException("Empty argument. Did you use an extra comma? (input: `" + input + "`)");
+//            }
+//            char char0 = arg.charAt(0);
+//            if (char0 == '#') {
+//                Predicate<DBAlliance> filter = placeholders.getFilter(store, arg.substring(1));
+//            }
+//        }
+//    }
+
+    public static void main(String[] args) {
+        //
+        // (*,#cities(5,4)>{cities}*3)||test
     }
 
     @Binding(examples = "ACTIVE,EXPIRED", value = "A comma separated list of war statuses")

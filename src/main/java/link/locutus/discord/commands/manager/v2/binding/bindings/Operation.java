@@ -38,10 +38,10 @@ public enum Operation {
             return switch (Operation.this) {
                 case LESSER_EQUAL -> val1.compareTo(compareTo) <= 0;
                 case GREATER_EQUAL -> val1.compareTo(compareTo) >= 0;
-                case EQUAL -> val1.equalsIgnoreCase(compareTo);
+                case EQUAL -> val1.equalsIgnoreCase(compareTo) || val1.matches(compareTo);
                 case GREATER -> val1.compareTo(compareTo) > 0;
                 case LESSER -> val1.compareTo(compareTo) < 0;
-                case NOT_EQUAL -> !val1.equalsIgnoreCase(compareTo);
+                case NOT_EQUAL -> !val1.equalsIgnoreCase(compareTo) && !val1.matches(compareTo);
             };
         };
     }

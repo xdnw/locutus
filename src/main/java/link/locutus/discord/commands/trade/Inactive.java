@@ -11,7 +11,6 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -53,7 +52,7 @@ public class Inactive extends Command {
         }
         long minutes = TimeUnit.DAYS.toMinutes(days);
 
-        Set<Integer> allianceIds = DiscordUtil.parseAlliances(guild, args.get(0));
+        Set<Integer> allianceIds = DiscordUtil.parseAllianceIds(guild, args.get(0));
         if (allianceIds == null) {
             if (args.get(0).equalsIgnoreCase("*")) {
                 allianceIds = new HashSet<>();

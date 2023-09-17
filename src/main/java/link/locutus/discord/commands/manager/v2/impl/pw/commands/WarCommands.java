@@ -208,7 +208,7 @@ public class WarCommands {
     @CoalitionPermission(Coalition.RAIDPERMS)
     @RolePermission(Roles.BEIGE_ALERT)
     public String beigeReminder(@Me GuildDB db, @Me DBNation me,
-                                @Filter("*,#color=beige,#vm_turns=0,#warrange={score}||*,#vm_turns>0,#vm_turns<168,#warrange={score}") Set<DBNation> targets,
+                                @Filter("*,#color=beige,#vm_turns=0,#warrange={score}|*,#vm_turns>0,#vm_turns<168,#warrange={score}") Set<DBNation> targets,
                                 @Arg("Require targets to have at least this much loot\n" +
                                  "Resources are valued at weekly market average prices")
                                 @Default Double requiredLoot,

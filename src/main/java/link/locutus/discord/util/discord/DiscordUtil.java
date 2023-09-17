@@ -82,7 +82,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import static link.locutus.discord.util.MathMan.parseFilter;
 import static link.locutus.discord.util.MathMan.parseStringFilter;
@@ -1029,7 +1028,7 @@ public class DiscordUtil {
                     continue;
                 } else if (name.contains("tax_id=")) {
                     int taxId = PnwUtil.parseTaxId(name);
-                    nations.addAll(Locutus.imp().getNationDB().getNationsMatching(f -> f.getTax_id() == taxId));
+                    nations.addAll(Locutus.imp().getNationDB().getNationsByBracket(taxId));
                     continue;
                 } else if (name.startsWith("https://docs.google.com/spreadsheets/") || name.startsWith("sheet:")) {
                     String key = SpreadSheet.parseId(name);
@@ -1111,7 +1110,7 @@ public class DiscordUtil {
                     nations.removeIf(f -> not.contains(f));
                     continue;
                 } else if (name.toLowerCase().startsWith("aa:")) {
-                    Set<Integer> alliances = parseAlliances(guild, name.split(":", 2)[1].trim());
+                    Set<Integer> alliances = parseAllianceIds(guild, name.split(":", 2)[1].trim());
                     if (alliances == null) throw new IllegalArgumentException("Invalid alliance: `" + name + "`");
                     Set<DBNation> allianceMembers = Locutus.imp().getNationDB().getNations(alliances);
                     if (noApplicants) {
@@ -1128,7 +1127,7 @@ public class DiscordUtil {
 
                 DBNation nation = name.contains("/alliance/") ? null : parseNation(name, allowDeleted);
                 if (nation == null || name.contains("/alliance/")) {
-                    Set<Integer> alliances = parseAlliances(guild, name);
+                    Set<Integer> alliances = parseAllianceIds(guild, name);
                     if (alliances == null) {
                         Role role = guild != null ? getRole(guild, name) : null;
                         if (role != null) {
@@ -1188,7 +1187,7 @@ public class DiscordUtil {
                             Set<Integer> allies;
                             String[] argSplit = filterArg.split("=", 2);
                             if (argSplit.length == 2) {
-                                allies = parseAlliances(guild, argSplit[1]);
+                                allies = parseAllianceIds(guild, argSplit[1]);
                             } else {
                                 allies = new HashSet<>();
                                 Set<Integer> aaIds = db.getAllianceIds();
@@ -1222,18 +1221,18 @@ public class DiscordUtil {
                         }
                         case "#fighting": {
                             String arg = filterArg.split("=", 2)[1];
-                            attIds = parseAlliances(guild, arg);
-                            defIds = parseAlliances(guild, arg);
+                            attIds = parseAllianceIds(guild, arg);
+                            defIds = parseAllianceIds(guild, arg);
                             break;
                         }
                         case "#attacking": {
                             String arg = filterArg.split("=", 2)[1];
-                            attIds = parseAlliances(guild, arg);
+                            attIds = parseAllianceIds(guild, arg);
                             break;
                         }
                         case "#defending": {
                             String arg = filterArg.split("=", 2)[1];
-                            defIds = parseAlliances(guild, arg);
+                            defIds = parseAllianceIds(guild, arg);
                             break;
                         }
                         case "#spyrange": {
@@ -1647,7 +1646,7 @@ public class DiscordUtil {
         return nations;
     }
 
-    public static Set<Integer> parseAlliances(Guild guild, String aa) {
+    public static Set<Integer> parseAllianceIds(Guild guild, String aa) {
         Set<Integer> aaIds = new HashSet<>();
         for (String aaName : aa.split(",")) {
             aaName = aaName.trim();

@@ -67,9 +67,9 @@ public class WarCostByResourceSheet extends Command {
         if (guild == null) return "not in guild";
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
 
-        Set<Integer> attAAId = DiscordUtil.parseAlliances(guild, args.get(0));
+        Set<Integer> attAAId = DiscordUtil.parseAllianceIds(guild, args.get(0));
         Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
-        Set<Integer> alliances = args.get(1).equals("*") ? null : DiscordUtil.parseAlliances(guild, args.get(1));
+        Set<Integer> alliances = args.get(1).equals("*") ? null : DiscordUtil.parseAllianceIds(guild, args.get(1));
         Function<Integer, Boolean> aaFilter = f -> true;
 
         if (nations.isEmpty()) return usage("No nations found for `" + args.get(0) + "`", channel);

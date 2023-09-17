@@ -11,7 +11,6 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.Collections;
 import java.util.List;
@@ -63,7 +62,7 @@ public class BankAlerts extends Command {
             ids = Collections.singleton(nationId);
         } else {
             isNation = BankDB.BankSubType.ALLIANCE;
-            ids = DiscordUtil.parseAlliances(guild, args.get(0));
+            ids = DiscordUtil.parseAllianceIds(guild, args.get(0));
         }
         if (ids == null || ids.isEmpty()) {
             return "Invalid alliance or nation: `" + args.get(0) + "`";

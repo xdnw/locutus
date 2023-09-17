@@ -96,7 +96,7 @@ public class TaxBracket implements NationOrAllianceOrGuildOrTaxid {
             if (alliance != null) return alliance.getNations(f -> f.getTax_id() == taxId);
             return Collections.emptySet();
         }
-        return Locutus.imp().getNationDB().getNationsMatching(f -> f.getTax_id() == taxId);
+        return Locutus.imp().getNationDB().getNationsByBracket(taxId);
     }
 
     public String getUrl() {

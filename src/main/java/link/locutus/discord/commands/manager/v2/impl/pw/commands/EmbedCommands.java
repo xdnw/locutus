@@ -648,7 +648,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         CM.war.find.enemy weak = CM.war.find.enemy.cmd.create(
                 "~enemies", null, null, "true", "true", null, null, "true", null, dmStr, "true");
         CM.war.find.damage infra = CM.war.find.damage.cmd.create(
-                "~enemies,#active_m>2880||~enemies,#score" + greaterOrLess + scoreMax +"||~enemies,#barracks=0,#off=0", "true", "true", null, null, null, null, null, dmStr, null, null);
+                "~enemies,#active_m>2880|~enemies,#score" + greaterOrLess + scoreMax +"|~enemies,#barracks=0,#off=0", "true", "true", null, null, null, null, null, dmStr, null, null);
 
         CommandBehavior behavior = CommandBehavior.UNPRESS;
         io.create().embed(title, body)

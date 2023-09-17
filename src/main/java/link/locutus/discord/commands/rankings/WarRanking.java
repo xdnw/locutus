@@ -15,7 +15,6 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -62,8 +61,8 @@ public class WarRanking extends Command {
         Function<Integer, Boolean> allowedAttackersF;
         Function<Integer, Boolean> allowedDefendersF;
 
-        Set<Integer> allowedAttackers = args.get(1).equals("*") ? null : checkNotNull(DiscordUtil.parseAlliances(guild, args.get(1)), "Invalid alliance for coalition 1");
-        Set<Integer> allowedDefenders = args.size() < 3 ? allowedAttackers : args.get(2).equals("*") ? null : checkNotNull(DiscordUtil.parseAlliances(guild, args.get(2)), "Invalid alliance for coalition 2");
+        Set<Integer> allowedAttackers = args.get(1).equals("*") ? null : checkNotNull(DiscordUtil.parseAllianceIds(guild, args.get(1)), "Invalid alliance for coalition 1");
+        Set<Integer> allowedDefenders = args.size() < 3 ? allowedAttackers : args.get(2).equals("*") ? null : checkNotNull(DiscordUtil.parseAllianceIds(guild, args.get(2)), "Invalid alliance for coalition 2");
 
         allowedAttackersF = allowedAttackers == null ? f -> true : allowedAttackers::contains;
         allowedDefendersF = allowedDefenders == null ? f -> true : allowedDefenders::contains;

@@ -4,7 +4,6 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -16,7 +15,6 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -52,7 +50,7 @@ public class FASheet extends Command {
         for (int i = 1; i < existing.size(); i++) {
             List<Object> row = existing.get(i);
             if (row.size() < 2) continue;
-            Set<Integer> alliances = DiscordUtil.parseAlliances(null, "" + row.get(1));
+            Set<Integer> alliances = DiscordUtil.parseAllianceIds(null, "" + row.get(1));
             if (alliances == null || alliances.size() != 1)continue;
 
             Integer aaId = alliances.iterator().next();

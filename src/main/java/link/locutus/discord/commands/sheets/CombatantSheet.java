@@ -4,7 +4,6 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarStatus;
@@ -20,7 +19,6 @@ import link.locutus.discord.util.task.war.WarCard;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -49,7 +47,7 @@ public class CombatantSheet extends Command {
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) return usage(args.size(), 1, channel);
-        Set<Integer> alliances = DiscordUtil.parseAlliances(guild, args.get(0));
+        Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, args.get(0));
         if (alliances == null) return usage("Unknown alliance: `" + args.get(0) + "`", channel);
 
         List<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(alliances, WarStatus.ACTIVE, WarStatus.DEFENDER_OFFERED_PEACE, WarStatus.ATTACKER_OFFERED_PEACE);

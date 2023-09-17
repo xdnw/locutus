@@ -4287,4 +4287,21 @@ public class NationDB extends DBMainV2 {
     public Set<Integer> getDirtyCities() {
         return dirtyCities;
     }
+
+    public Set<DBNation> getNationsByBracket(int taxId) {
+        if (taxId == 0) {
+            return getNationsMatching(n -> n.getTax_id() == 0);
+        }
+        synchronized (nationsByAlliance) {
+            for (Map.Entry<Integer, Map<Integer, DBNation>> entry : nationsByAlliance.entrySet()) {
+                Map<Integer, DBNation> byId = entry.getValue();
+                for (DBNation nation : byId.values()) {
+                    if (nation.getTax_id() == taxId) {
+                        return byId.values().stream().filter(n -> n.getTax_id() == taxId).collect(Collectors.toSet());
+                    }
+                }
+            }
+        }
+        return Collections.emptySet();
+    }
 }

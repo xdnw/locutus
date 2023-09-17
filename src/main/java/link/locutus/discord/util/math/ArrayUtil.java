@@ -5,8 +5,10 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.StringMan;
 import org.apache.commons.lang3.math.NumberUtils;
 
+import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -16,10 +18,14 @@ import java.nio.ByteBuffer;
 import java.util.AbstractMap;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.EnumMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -486,22 +492,40 @@ public class ArrayUtil {
         };
     }
 
-    public static class DoubleArray {
+    public interface MathToken<T extends MathToken<T>> {
+        T create(String input);
+        T add(T other);
+        T power(double value);
+        T power(T value);
+        T multiply(double value);
+        T divide(double value);
+        T subtract(T other);
+        T multiply(T other);
+        T divide(T other);
+    }
+
+    public static class DoubleArray implements MathToken<DoubleArray> {
         private double[] array;
 
         public DoubleArray(double[] array) {
             this.array = array;
         }
 
+        @Override
+        public DoubleArray create(String input) {
+            return parse(input);
+        }
+
         public static DoubleArray parse(String input) {
-            String[] values = input.replaceAll("\\{", "").replaceAll("\\}", "").split(",");
-            double[] array = new double[values.length];
-            for (int i = 0; i < values.length; i++) {
-                array[i] = Double.parseDouble(values[i].trim());
+            List<String> values = StringMan.split(input.replaceAll("\\{", "").replaceAll("\\}", ""), ',');
+            double[] array = new double[values.size()];
+            for (int i = 0; i < values.size(); i++) {
+                array[i] = PrimitiveBindings.Double(values.get(i).trim());
             }
             return new DoubleArray(array);
         }
 
+        @Override
         public DoubleArray add(DoubleArray other) {
             double[] result = new double[array.length];
             for (int i = 0; i < array.length; i++) {
@@ -510,6 +534,7 @@ public class ArrayUtil {
             return new DoubleArray(result);
         }
 
+        @Override
         public DoubleArray power(double value) {
             double[] result = new double[array.length];
             for (int i = 0; i < array.length; i++) {
@@ -518,6 +543,7 @@ public class ArrayUtil {
             return new DoubleArray(result);
         }
 
+        @Override
         public DoubleArray subtract(DoubleArray other) {
             double[] result = new double[array.length];
             for (int i = 0; i < array.length; i++) {
@@ -526,6 +552,7 @@ public class ArrayUtil {
             return new DoubleArray(result);
         }
 
+        @Override
         public DoubleArray multiply(double value) {
             double[] result = new double[array.length];
             for (int i = 0; i < array.length; i++) {
@@ -534,6 +561,7 @@ public class ArrayUtil {
             return new DoubleArray(result);
         }
 
+        @Override
         public DoubleArray multiply(DoubleArray value) {
             if (value.array.length == 1) {
                 return multiply(value.array[0]);
@@ -548,6 +576,7 @@ public class ArrayUtil {
             return new DoubleArray(result);
         }
 
+        @Override
         public DoubleArray divide(DoubleArray value) {
             if (value.array.length == 1) {
                 return divide(value.array[0]);
@@ -562,6 +591,7 @@ public class ArrayUtil {
             return new DoubleArray(result);
         }
 
+        @Override
         public DoubleArray power(DoubleArray value) {
             if (value.array.length == 1) {
                 return power(value.array[0]);
@@ -576,6 +606,7 @@ public class ArrayUtil {
             return new DoubleArray(result);
         }
 
+        @Override
         public DoubleArray divide(double value) {
             if (value == 0) {
                 throw new ArithmeticException("Division by zero");
@@ -609,10 +640,14 @@ public class ArrayUtil {
     private static final String LEFT_PAREN = "(";
     private static final String RIGHT_PAREN = ")";
 
-    public static DoubleArray calculate(String input, Function<String, DoubleArray> parseOrigin) {
+    public static DoubleArray calculateDouble(String input, @Nullable Function<String, DoubleArray> parseOrigin) {
         if (parseOrigin == null) {
             parseOrigin = DoubleArray::parse;
         }
+        return calculate(input, parseOrigin);
+    }
+
+    public static <T extends MathToken<T>> T calculate(String input, Function<String, T> parseOrigin) {
         Queue<String> outputQueue = new ArrayDeque<>();
         Deque<String> operatorStack = new ArrayDeque<>();
 
@@ -645,11 +680,11 @@ public class ArrayUtil {
             outputQueue.offer(operatorStack.pop());
         }
 
-        Deque<DoubleArray> stack = new ArrayDeque<>();
+        Deque<T> stack = new ArrayDeque<>();
         for (String token : outputQueue) {
             if (isOperator(token)) {
-                DoubleArray right = stack.pop();
-                DoubleArray left = stack.pop();
+                T right = stack.pop();
+                T left = stack.pop();
                 switch (token) {
                     case "+":
                         stack.push(left.add(right));
@@ -668,12 +703,7 @@ public class ArrayUtil {
                         break;
                 }
             } else {
-                DoubleArray arr;
-                if (token.contains("{")) {
-                    arr = parseOrigin.apply(token);
-                } else {
-                    arr = new DoubleArray(new double[]{PrimitiveBindings.Double(token)});
-                }
+                T arr = parseOrigin.apply(token);
                 stack.push(arr);
             }
         }
@@ -755,5 +785,244 @@ public class ArrayUtil {
             case "^" -> 3;
             default -> 0;
         };
+    }
+
+    public static class ParseResult<T> {
+        public final List<Predicate<T>> predicates;
+        public final Map<T, Predicate<T>> conditionalNumbers;
+        public final Set<T> resolvedNumbers;
+        public final AtomicBoolean hadNonFilter;
+
+        public ParseResult(List<Predicate<T>> predicates, AtomicBoolean hadNonFilter) {
+            this.predicates = predicates;
+            this.resolvedNumbers = new LinkedHashSet<>();
+            this.conditionalNumbers = new LinkedHashMap<>();
+            this.hadNonFilter = hadNonFilter;
+        }
+
+        public ParseResult<T> add(Collection<T> numbers) {
+            hadNonFilter.set(true);
+            this.resolvedNumbers.addAll(numbers);
+            return this;
+        }
+
+        public void addResult(ParseResult<T> other) {
+            this.resolvedNumbers.addAll(other.resolvedNumbers);
+            for (Map.Entry<T, Predicate<T>> entry : other.conditionalNumbers.entrySet()) {
+                T number = entry.getKey();
+                if (resolvedNumbers.contains(number)) {
+                    continue;
+                }
+                Predicate<T> predicate = entry.getValue();
+
+                Predicate<T> existing = this.conditionalNumbers.get(number);
+                if (existing != null) {
+                    predicate = or(predicate, existing);
+                }
+                this.conditionalNumbers.put(number, predicate);
+            }
+            this.predicates.addAll(other.predicates);
+        }
+
+        public void andPredicates() {
+            conditionalNumbers.keySet().removeAll(resolvedNumbers);
+            for (Map.Entry<T, Predicate<T>> entry : conditionalNumbers.entrySet()) {
+                T number = entry.getKey();
+                Predicate<T> predicate = entry.getValue();
+                if (predicate.test(number)) {
+                    resolvedNumbers.add(number);
+                }
+            }
+            conditionalNumbers.clear();
+            if (!predicates.isEmpty() && hadNonFilter.get()) {
+                Predicate<T> predicate = predicates.size() > 1 ? and(predicates) : predicates.get(0);
+                for (Map.Entry<T, Predicate<T>> entry : conditionalNumbers.entrySet()) {
+                    Predicate<T> existing = entry.getValue();
+                    existing = and(predicate, existing);
+                    entry.setValue(existing);
+                }
+                for (T number : resolvedNumbers) {
+                    if (predicate.test(number)) {
+                        conditionalNumbers.put(number, predicate);
+                    }
+                }
+                predicates.clear();
+            }
+        }
+
+        public Set<T> resolve() {
+            andPredicates();
+            // resolve conditional numbers
+            for (Map.Entry<T, Predicate<T>> entry : conditionalNumbers.entrySet()) {
+                T number = entry.getKey();
+                Predicate<T> predicate = entry.getValue();
+                if (predicate.test(number)) {
+                    resolvedNumbers.add(number);
+                }
+            }
+            conditionalNumbers.clear();
+            return resolvedNumbers;
+        }
+    }
+
+    public static <T> Predicate<T> and(Predicate<T> a, Predicate<T> b) {
+        return a.and(b);
+    }
+
+    public static <T> Predicate<T> xor(Predicate<T> a, Predicate<T> b) {
+        return number -> a.test(number) ^ b.test(number);
+    }
+
+    public static <T> Predicate<T> or(Predicate<T> a, Predicate<T> b) {
+        return a.or(b);
+    }
+
+    public static <T> Predicate<T> xor(List<Predicate<T>> predicates) {
+        if (predicates.size() == 1) {
+            return predicates.get(0);
+        }
+        if (predicates.size() == 2) {
+            return xor(predicates.get(0), predicates.get(1));
+        }
+        return number -> {
+            int count = 0;
+            for (Predicate<T> predicate : predicates) {
+                if (predicate.test(number)) {
+                    count++;
+                    if (count > 1) {
+                        return false;
+                    }
+                }
+            }
+            return count == 1;
+        };
+    }
+
+    public static <T> Predicate<T> and(List<Predicate<T>> predicates) {
+        if (predicates.size() == 2) {
+            return and(predicates.get(0), predicates.get(1));
+        }
+        return predicates.stream().reduce(Predicate::and).orElseThrow();
+    }
+
+    public static <T> Predicate<T> or(List<Predicate<T>> predicates) {
+        if (predicates.size() == 2) {
+            return or(predicates.get(0), predicates.get(1));
+        }
+        return predicates.stream().reduce(Predicate::or).orElseThrow();
+    }
+
+    private static <T> ParseResult<T> parseTokens(String input, Function<String, Set<T>> parseSet, Function<String, Predicate<T>> parsePredicate) {
+        List<String> splitAnd = StringMan.split(input, ',');
+
+        List<ParseResult<T>> andResults = new ArrayList<>();
+
+        for (String andGroup : splitAnd) {
+            List<String> splitXor = StringMan.split(andGroup, '^');
+            if (splitXor.isEmpty()) {
+                throw new IllegalArgumentException("Invalid group: `" + andGroup + "`: Empty group");
+            }
+
+            List<ParseResult<T>> xorResults = new ArrayList<>();
+
+            for (String xorGroup : splitXor) {
+                List<String> splitOr = StringMan.split(xorGroup, '|');
+                if (splitOr.isEmpty()) {
+                    throw new IllegalArgumentException("Invalid group: `" + xorGroup + "`: Empty group");
+                }
+
+                List<ParseResult<T>> orResults = new ArrayList<>();
+
+                for (String elem : splitOr) {
+                    if (elem.isEmpty()) {
+                        if (xorGroup.isEmpty()) {
+                            if (andGroup.isEmpty()) {
+                                throw new IllegalArgumentException("Invalid group: `" + input + "`: Empty group");
+                            }
+                            throw new IllegalArgumentException("Invalid group: `" + andGroup + "`: Empty group");
+                        }
+                        throw new IllegalArgumentException("Invalid group: `" + xorGroup + "`: Empty group");
+                    }
+                    char char0 = elem.charAt(0);
+
+                    if (char0 == '#') {
+                        Predicate<T> filter = parsePredicate.apply(elem);
+                        orResults.add(new ParseResult<>(List.of(filter), new AtomicBoolean()));
+                    } else if (char0 == '(') {
+                        if (!elem.endsWith(")")) {
+                            throw new IllegalArgumentException("Invalid group: `" + elem + "`: No end bracket found");
+                        }
+                        elem = elem.substring(1, elem.length() - 1);
+                        ParseResult<T> result = parseTokens(elem, parseSet, parsePredicate);
+                        orResults.add(result);
+                    } else {
+                        ParseResult<T> result = new ParseResult<>(List.of(), new AtomicBoolean());
+                        result.add(parseSet.apply(elem));
+                        orResults.add(result);
+                    }
+                }
+
+                if (orResults.size() == 1) {
+                    xorResults.add(orResults.get(0));
+                    continue;
+                }
+                int hasNonFilter = orResults.stream().mapToInt(result -> result.hadNonFilter.get() ? 1 : 0).sum();
+                if (hasNonFilter > 0) {
+                    if (hasNonFilter != orResults.size()) {
+                        throw new IllegalArgumentException("Invalid group: `" + xorGroup + "`: Cannot OR filters and entries");
+                    }
+                    ParseResult<T> or = new ParseResult<>(List.of(), new AtomicBoolean(true));
+                    for (ParseResult<T> addOr : orResults) {
+                        addOr.andPredicates();
+                        or.addResult(addOr);
+                    }
+                    xorResults.add(or);
+                    continue;
+                }
+                List<Predicate<T>> predicates = orResults.stream().map(result -> result.predicates.get(0)).toList();
+                xorResults.add(new ParseResult<T>(List.of(or(predicates)), new AtomicBoolean()));
+            }
+
+            if (xorResults.size() > 1) {
+                for (ParseResult<T> result : xorResults) {
+                    if (result.hadNonFilter.get()) {
+                        throw new IllegalArgumentException("Invalid group: `" + andGroup + "`: Cannot mix filters and entries");
+                    }
+                    if (result.predicates.size() != 1) {
+                        throw new IllegalArgumentException("Invalid group: `" + andGroup + "`: Must be resolved to 1 filter");
+                    }
+                }
+                List<Predicate<T>> predicates = xorResults.stream().map(result -> result.predicates.get(0)).toList();
+                andResults.add(new ParseResult<T>(List.of(xor(predicates)), new AtomicBoolean()));
+            } else {
+                andResults.addAll(xorResults);
+            }
+        }
+
+        if (andResults.size() == 1) {
+            return andResults.get(0);
+        }
+        boolean hadNonFilter = false;
+        for (ParseResult<T> result : andResults) {
+            if (result.hadNonFilter.get()) {
+                hadNonFilter = true;
+                break;
+            }
+        }
+        List<Predicate<T>> predicates = andResults.stream().flatMap(result -> result.predicates.stream()).toList();
+        if (hadNonFilter) {
+            ParseResult<T> result = new ParseResult<T>(new ArrayList<>(), new AtomicBoolean(true));
+            for (ParseResult<T> andResult : andResults) {
+                result.addResult(andResult);
+            }
+            result.andPredicates();
+            return result;
+        }
+        return new ParseResult<T>(List.of(and(predicates)), new AtomicBoolean());
+    }
+
+    public static <T> Set<T> parseQuery(String input, Function<String, Set<T>> parseSet, Function<String, Predicate<T>> parsePredicate) {
+        ParseResult<T> result = parseTokens(input, parseSet, parsePredicate);
+        return result.resolve();
     }
 }

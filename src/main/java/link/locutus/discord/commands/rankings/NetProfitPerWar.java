@@ -15,7 +15,6 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -55,7 +54,7 @@ public class NetProfitPerWar extends Command {
                 AAs = new HashSet<>();
             } else {
                 id = arg;
-                AAs = DiscordUtil.parseAlliances(guild, arg);
+                AAs = DiscordUtil.parseAllianceIds(guild, arg);
                 Set<Integer> finalAAs1 = AAs;
                 warFilter = warFilter.and(f -> (finalAAs1.contains(f.getAttacker_aa()) || finalAAs1.contains(f.getDefender_aa())));
             }

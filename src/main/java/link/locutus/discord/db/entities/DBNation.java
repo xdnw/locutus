@@ -5160,6 +5160,9 @@ public class DBNation implements NationOrAlliance {
                 }
             }
         }
+        if (Math.abs(date - minDate) > TimeUnit.DAYS.toMillis(10)) {
+            return Long.MAX_VALUE;
+        }
         return minDate;
     }
 

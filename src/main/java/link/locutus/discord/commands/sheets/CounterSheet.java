@@ -2,7 +2,6 @@ package link.locutus.discord.commands.sheets;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
@@ -22,7 +21,6 @@ import link.locutus.discord.apiv1.enums.TreatyType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 
 import java.util.ArrayList;
@@ -90,7 +88,7 @@ public class CounterSheet extends Command {
         }
 
         if (args.size() == 2) {
-            allies = DiscordUtil.parseAlliances(guild, args.get(1));
+            allies = DiscordUtil.parseAllianceIds(guild, args.get(1));
             Set<Integer> finalAllies = allies;
             protectorates.removeIf(f -> !finalAllies.contains(f));
         }

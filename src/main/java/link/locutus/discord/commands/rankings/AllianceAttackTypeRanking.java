@@ -15,7 +15,6 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.HashMap;
 import java.util.List;
@@ -73,7 +72,7 @@ public class AllianceAttackTypeRanking extends Command {
         }
 
         Set<DBAlliance> topAlliances = Locutus.imp().getNationDB().getAlliances(true, true, true, Integer.parseInt(args.get(3)));
-        Set<Integer> alliances = DiscordUtil.parseAlliances(guild, args.get(2));
+        Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, args.get(2));
         if (alliances == null) return "Invalid alliances: `" + args.get(2) + "`";
 
         SummedMapRankBuilder<DBAlliance, Double> builder = new SummedMapRankBuilder<>();

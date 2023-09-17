@@ -38,8 +38,8 @@ public class WarCostEnd extends Endpoint {
 
         Map<Integer, DBNation> nations = Locutus.imp().getNationDB().getNations();
 
-        Set<Integer> aaIdss1 = DiscordUtil.parseAlliances(null, args0);
-        Set<Integer> aaIdss2 = DiscordUtil.parseAlliances(null, args1);
+        Set<Integer> aaIdss1 = DiscordUtil.parseAllianceIds(null, args0);
+        Set<Integer> aaIdss2 = DiscordUtil.parseAllianceIds(null, args1);
         if (aaIdss1 != null && aaIdss2 != null && !aaIdss1.isEmpty() && !aaIdss2.isEmpty()) {
             HashSet<Integer> alliances = new HashSet<>();
             alliances.addAll(aaIdss1);
