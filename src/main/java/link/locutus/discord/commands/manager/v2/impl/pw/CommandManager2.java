@@ -33,6 +33,7 @@ import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.web.test.TestCommands;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
@@ -154,6 +155,8 @@ public class CommandManager2 {
 
     public CommandManager2 registerDefaults() {
         // nap command  - UtilityCommands
+
+        this.commands.registerMethod(new TestCommands(), List.of("test"), "test", "test");
 
         this.commands.registerCommandsWithMapping(CM.class, false, false);
 

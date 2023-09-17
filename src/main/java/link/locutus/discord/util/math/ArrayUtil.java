@@ -1,6 +1,8 @@
 package link.locutus.discord.util.math;
 
+import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.util.IOUtil;
@@ -792,8 +794,10 @@ public class ArrayUtil {
         public final Map<T, Predicate<T>> conditionalNumbers;
         public final Set<T> resolvedNumbers;
         public final AtomicBoolean hadNonFilter;
+        private final String input;
 
-        public ParseResult(List<Predicate<T>> predicates, AtomicBoolean hadNonFilter) {
+        public ParseResult(String input, List<Predicate<T>> predicates, AtomicBoolean hadNonFilter) {
+            this.input = input;
             this.predicates = predicates;
             this.resolvedNumbers = new LinkedHashSet<>();
             this.conditionalNumbers = new LinkedHashMap<>();
@@ -804,6 +808,11 @@ public class ArrayUtil {
             hadNonFilter.set(true);
             this.resolvedNumbers.addAll(numbers);
             return this;
+        }
+
+        @Override
+        public String toString() {
+            return "Input: `" + input + "` | predicates: " + predicates.size() + " | " + resolvedNumbers.size() + " resolved | " + conditionalNumbers.size() + " conditional | " + hadNonFilter.get();
         }
 
         public void addResult(ParseResult<T> other) {
@@ -824,34 +833,38 @@ public class ArrayUtil {
             this.predicates.addAll(other.predicates);
         }
 
-        public void andPredicates() {
+        public void combinePredicatesAndNumbers() {
+            // Removes all conditionals that are already resolved
             conditionalNumbers.keySet().removeAll(resolvedNumbers);
-            for (Map.Entry<T, Predicate<T>> entry : conditionalNumbers.entrySet()) {
-                T number = entry.getKey();
-                Predicate<T> predicate = entry.getValue();
-                if (predicate.test(number)) {
-                    resolvedNumbers.add(number);
-                }
-            }
-            conditionalNumbers.clear();
-            if (!predicates.isEmpty() && hadNonFilter.get()) {
-                Predicate<T> predicate = predicates.size() > 1 ? and(predicates) : predicates.get(0);
+            // If there are predicates:
+
+            if (!predicates.isEmpty()) {
+                //  - adds the predicate to each existing conditional
                 for (Map.Entry<T, Predicate<T>> entry : conditionalNumbers.entrySet()) {
-                    Predicate<T> existing = entry.getValue();
-                    existing = and(predicate, existing);
-                    entry.setValue(existing);
+                    T number = entry.getKey();
+                    Predicate<T> predicate = entry.getValue();
+
+                    List<Predicate<T>> newPredicates = new ArrayList<>(predicates.size() + 1);
+                    newPredicates.addAll(predicates);
+                    newPredicates.add(predicate);
+
+                    predicate = and(newPredicates);
+                    conditionalNumbers.put(number, predicate);
                 }
+
+                //  - turns all resolved numbers to conditionals
                 for (T number : resolvedNumbers) {
-                    if (predicate.test(number)) {
-                        conditionalNumbers.put(number, predicate);
-                    }
+                    conditionalNumbers.put(number, and(predicates));
                 }
+                // clear resolved
+                resolvedNumbers.clear();
+                // clear predicates
                 predicates.clear();
             }
         }
 
         public Set<T> resolve() {
-            andPredicates();
+            combinePredicatesAndNumbers();
             // resolve conditional numbers
             for (Map.Entry<T, Predicate<T>> entry : conditionalNumbers.entrySet()) {
                 T number = entry.getKey();
@@ -899,6 +912,9 @@ public class ArrayUtil {
     }
 
     public static <T> Predicate<T> and(List<Predicate<T>> predicates) {
+        if (predicates.size() == 1) {
+            return predicates.get(0);
+        }
         if (predicates.size() == 2) {
             return and(predicates.get(0), predicates.get(1));
         }
@@ -918,6 +934,7 @@ public class ArrayUtil {
         List<ParseResult<T>> andResults = new ArrayList<>();
 
         for (String andGroup : splitAnd) {
+            System.out.println("And group " + andGroup);
             List<String> splitXor = StringMan.split(andGroup, '^');
             if (splitXor.isEmpty()) {
                 throw new IllegalArgumentException("Invalid group: `" + andGroup + "`: Empty group");
@@ -946,8 +963,9 @@ public class ArrayUtil {
                     char char0 = elem.charAt(0);
 
                     if (char0 == '#') {
+                        elem = elem.substring(1);
                         Predicate<T> filter = parsePredicate.apply(elem);
-                        orResults.add(new ParseResult<>(List.of(filter), new AtomicBoolean()));
+                        orResults.add(new ParseResult<>(elem, List.of(filter), new AtomicBoolean()));
                     } else if (char0 == '(') {
                         if (!elem.endsWith(")")) {
                             throw new IllegalArgumentException("Invalid group: `" + elem + "`: No end bracket found");
@@ -956,7 +974,7 @@ public class ArrayUtil {
                         ParseResult<T> result = parseTokens(elem, parseSet, parsePredicate);
                         orResults.add(result);
                     } else {
-                        ParseResult<T> result = new ParseResult<>(List.of(), new AtomicBoolean());
+                        ParseResult<T> result = new ParseResult<>(elem, List.of(), new AtomicBoolean());
                         result.add(parseSet.apply(elem));
                         orResults.add(result);
                     }
@@ -971,16 +989,16 @@ public class ArrayUtil {
                     if (hasNonFilter != orResults.size()) {
                         throw new IllegalArgumentException("Invalid group: `" + xorGroup + "`: Cannot OR filters and entries");
                     }
-                    ParseResult<T> or = new ParseResult<>(List.of(), new AtomicBoolean(true));
+                    ParseResult<T> or = new ParseResult<>(xorGroup, List.of(), new AtomicBoolean(true));
                     for (ParseResult<T> addOr : orResults) {
-                        addOr.andPredicates();
+                        addOr.combinePredicatesAndNumbers();
                         or.addResult(addOr);
                     }
                     xorResults.add(or);
                     continue;
                 }
                 List<Predicate<T>> predicates = orResults.stream().map(result -> result.predicates.get(0)).toList();
-                xorResults.add(new ParseResult<T>(List.of(or(predicates)), new AtomicBoolean()));
+                xorResults.add(new ParseResult<T>(xorGroup, List.of(or(predicates)), new AtomicBoolean()));
             }
 
             if (xorResults.size() > 1) {
@@ -993,10 +1011,15 @@ public class ArrayUtil {
                     }
                 }
                 List<Predicate<T>> predicates = xorResults.stream().map(result -> result.predicates.get(0)).toList();
-                andResults.add(new ParseResult<T>(List.of(xor(predicates)), new AtomicBoolean()));
+                andResults.add(new ParseResult<T>(andGroup, List.of(xor(predicates)), new AtomicBoolean()));
             } else {
                 andResults.addAll(xorResults);
             }
+        }
+
+        System.out.println("And results " + andResults.size() + " | " + StringMan.getString(splitAnd));
+        for (ParseResult<T> result : andResults) {
+            System.out.println("And result: " + result);
         }
 
         if (andResults.size() == 1) {
@@ -1009,20 +1032,49 @@ public class ArrayUtil {
                 break;
             }
         }
+
         List<Predicate<T>> predicates = andResults.stream().flatMap(result -> result.predicates.stream()).toList();
         if (hadNonFilter) {
-            ParseResult<T> result = new ParseResult<T>(new ArrayList<>(), new AtomicBoolean(true));
+            ParseResult<T> result = new ParseResult<T>(input, new ArrayList<>(), new AtomicBoolean(true));
             for (ParseResult<T> andResult : andResults) {
                 result.addResult(andResult);
             }
-            result.andPredicates();
+            result.combinePredicatesAndNumbers();
             return result;
         }
-        return new ParseResult<T>(List.of(and(predicates)), new AtomicBoolean());
+        ParseResult<T> result = new ParseResult<T>(input, List.of(and(predicates)), new AtomicBoolean());
+        return result;
     }
 
     public static <T> Set<T> parseQuery(String input, Function<String, Set<T>> parseSet, Function<String, Predicate<T>> parsePredicate) {
-        ParseResult<T> result = parseTokens(input, parseSet, parsePredicate);
+        Map<String, Predicate<T>> parserCache = new Object2ObjectOpenHashMap<>();
+        ParseResult<T> result = parseTokens(input, parseSet, new Function<String, Predicate<T>>() {
+            Map<T, Boolean> cacheResult = new Object2BooleanOpenHashMap<>();
+
+            @Override
+            public Predicate<T> apply(String s) {
+                Predicate<T> cachedPredicate = parserCache.get(s);
+                if (cachedPredicate != null) {
+                    return cachedPredicate;
+                }
+                Predicate<T> uncached = parsePredicate.apply(s);
+                if (uncached == null) return null;
+
+                Predicate<T> cached = new Predicate<T>() {
+                    @Override
+                    public boolean test(T t) {
+
+                        return false;
+                    }
+                };
+
+                // what is 1 + 1?
+                // A: 
+
+                return cached;
+
+            };
+        });
         return result.resolve();
     }
 }

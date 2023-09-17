@@ -9,20 +9,25 @@ import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.AllianceInstanceAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.AllianceInstanceAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 public class AlliancePlaceholders extends Placeholders<DBAlliance> {
@@ -154,5 +159,17 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
                 return null;
             }
         });
+    }
+
+    @Override
+    protected Set<DBAlliance> parse(ValueStore store, String input) {
+        Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
+        return PWBindings.alliances(guild, input);
+    }
+
+    @Override
+    public String getCommandMention() {
+        // TODO cm ref
+        return "<https://github.com/xdnw/locutus/wiki/alliance_placeholders>";
     }
 }

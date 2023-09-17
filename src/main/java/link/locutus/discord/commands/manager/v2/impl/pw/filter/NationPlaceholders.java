@@ -11,6 +11,7 @@ import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
@@ -42,6 +43,11 @@ public class NationPlaceholders extends Placeholders<DBNation> {
 
     public NationPlaceholders(ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
         super(DBNation.class, new DBNation(), store, validators, permisser);
+    }
+
+    @Override
+    public String getCommandMention() {
+        return CM.help.find_nation_placeholder.cmd.toSlashMention();
     }
 
     public List<NationAttribute> getMetrics(ValueStore store) {

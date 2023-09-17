@@ -2,6 +2,7 @@ package link.locutus.discord.web.test;
 
 import cn.easyproject.easyocr.ImageType;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -10,6 +11,10 @@ import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.ImageUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -51,5 +56,20 @@ public class TestCommands {
     public String ocr(String discordImageUrl) {
         String text = ImageUtil.getText(discordImageUrl);
         return "```\n" +text + "\n```\n";
+    }
+
+    @Command
+    public String test(NationPlaceholders placeholders, ValueStore store, String input) {
+        Set<DBNation> nations = placeholders.parseSet(input, store);
+        
+        StringBuilder response = new StringBuilder();
+        response.append(nations.size() + " nations found\n");
+        if (nations.size() < 100) {
+            // print each
+            for (DBNation nation : nations) {
+                response.append(nation.getNationUrlMarkup(false) + " | " + nation.getAllianceUrlMarkup(false)).append("\n");
+            }
+        }
+        return response.toString();
     }
 }

@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.*;
+import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
@@ -104,6 +105,8 @@ public abstract class Placeholders<T> {
         return new ArrayList<>(result);
     }
 
+    public abstract String getCommandMention();
+
     public Predicate<T> getFilter(ValueStore store, String input) {
         int argEnd = input.lastIndexOf(')');
 
@@ -114,6 +117,14 @@ public abstract class Placeholders<T> {
                 String part2 = input.substring(index + op.code.length());
 
                 Map.Entry<Type, Function<T, Object>> placeholder = getPlaceholderFunction(store, part1);
+                if (placeholder == null) {
+                    Set<String> options = commands.getSubCommandIds();
+                    List<String> closest = StringMan.getClosest(part1, new ArrayList<>(options), false);
+                    if (closest.size() > 5) closest = closest.subList(0, 5);
+                    throw new IllegalArgumentException("Unknown placeholder: " + part1 + "\n" +
+                            "Did you mean:\n- " + StringMan.join(closest, "\n- ") +
+                            "\n\nSee also: " + getCommandMention());
+                }
                 Function<T, Object> func = placeholder.getValue();
                 Type type = placeholder.getKey();
                 Predicate adapter;
@@ -142,7 +153,7 @@ public abstract class Placeholders<T> {
                 s -> getFilter(store, s));
     }
 
-    public abstract Set<T> parse(ValueStore store, String input);
+    protected abstract Set<T> parse(ValueStore store, String input);
 
     public String getCmd(String input) {
         int argStart = input.indexOf('(');
@@ -223,7 +234,12 @@ public abstract class Placeholders<T> {
         }
 
         ParametricCallable cmdObj = (ParametricCallable) commands.get(cmd);
-        if (cmdObj == null) return null;
+        if (cmdObj == null) {
+            cmdObj = (ParametricCallable) commands.get("get" + cmd);
+            if (cmdObj == null) {
+                return null;
+            }
+        }
 
         LocalValueStore locals = new LocalValueStore<>(store);
         locals.addProvider(Key.of(instanceType, Me.class), nullInstance);
@@ -236,6 +252,7 @@ public abstract class Placeholders<T> {
         }
 
         Function<T, Object> func;
+        ParametricCallable finalCmdObj = cmdObj;
 
         if (replacement != -1) {
             int valIndex = replacement;
@@ -248,12 +265,12 @@ public abstract class Placeholders<T> {
                     if (useCopy) {
                         Object[] copy = arguments.clone();
                         copy[valIndex] = val;
-                        return cmdObj.call(val, store, copy);
+                        return finalCmdObj.call(val, store, copy);
                     } else {
                         try {
                             useCopy = true;
                             arguments[valIndex] = val;
-                            return cmdObj.call(val, store, arguments);
+                            return finalCmdObj.call(val, store, arguments);
                         } finally {
                             useCopy = false;
                         }
@@ -261,7 +278,7 @@ public abstract class Placeholders<T> {
                 }
             };
         } else {
-            func = obj -> cmdObj.call(obj, store, arguments);
+            func = obj -> finalCmdObj.call(obj, store, arguments);
         }
         return new AbstractMap.SimpleEntry<>(cmdObj.getReturnType(), func);
     }
