@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.binding.bindings;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -18,6 +19,7 @@ import java.lang.reflect.Type;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -107,7 +109,7 @@ public abstract class Placeholders<T> {
 
     public abstract String getCommandMention();
 
-    public Predicate<T> getFilter(ValueStore store, String input) {
+    public Predicate<T> getFilter(ValueStore store, String input, Map<String, Map<T, Object>> cache) {
         int argEnd = input.lastIndexOf(')');
 
         for (Operation op : Operation.values()) {
@@ -141,16 +143,25 @@ public abstract class Placeholders<T> {
                     throw new IllegalArgumentException("Only the following filter types are supported: String, Number, Boolean");
                 }
 
-                return nation -> adapter.test(func.apply(nation));
+                return nation -> {
+                    Object value;
+                    if (cache != null) {
+                        value = cache.computeIfAbsent(part1, k -> new Object2ObjectOpenHashMap<>()).computeIfAbsent(nation, k -> func.apply(nation));
+                    } else {
+                        value = func.apply(nation);
+                    }
+                    return adapter.test(value);
+                };
             }
         }
         return null;
     }
 
     public Set<T> parseSet(String input, ValueStore store) {
+        Map<String, Map<T, Object>> cache = new Object2ObjectOpenHashMap<>();
         return ArrayUtil.parseQuery(input,
                 f -> parse(store, f),
-                s -> getFilter(store, s));
+                s -> getFilter(store, s, cache));
     }
 
     protected abstract Set<T> parse(ValueStore store, String input);

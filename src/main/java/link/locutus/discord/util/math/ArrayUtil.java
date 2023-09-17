@@ -934,7 +934,6 @@ public class ArrayUtil {
         List<ParseResult<T>> andResults = new ArrayList<>();
 
         for (String andGroup : splitAnd) {
-            System.out.println("And group " + andGroup);
             List<String> splitXor = StringMan.split(andGroup, '^');
             if (splitXor.isEmpty()) {
                 throw new IllegalArgumentException("Invalid group: `" + andGroup + "`: Empty group");
@@ -1017,11 +1016,6 @@ public class ArrayUtil {
             }
         }
 
-        System.out.println("And results " + andResults.size() + " | " + StringMan.getString(splitAnd));
-        for (ParseResult<T> result : andResults) {
-            System.out.println("And result: " + result);
-        }
-
         if (andResults.size() == 1) {
             return andResults.get(0);
         }
@@ -1049,8 +1043,6 @@ public class ArrayUtil {
     public static <T> Set<T> parseQuery(String input, Function<String, Set<T>> parseSet, Function<String, Predicate<T>> parsePredicate) {
         Map<String, Predicate<T>> parserCache = new Object2ObjectOpenHashMap<>();
         ParseResult<T> result = parseTokens(input, parseSet, new Function<String, Predicate<T>>() {
-            Map<T, Boolean> cacheResult = new Object2BooleanOpenHashMap<>();
-
             @Override
             public Predicate<T> apply(String s) {
                 Predicate<T> cachedPredicate = parserCache.get(s);
@@ -1059,20 +1051,21 @@ public class ArrayUtil {
                 }
                 Predicate<T> uncached = parsePredicate.apply(s);
                 if (uncached == null) return null;
-
                 Predicate<T> cached = new Predicate<T>() {
+                    final Map<T, Boolean> cacheResult = new Object2BooleanOpenHashMap<>();
                     @Override
                     public boolean test(T t) {
-
-                        return false;
+                        Boolean cachedResult = cacheResult.get(t);
+                        if (cachedResult != null) {
+                            return cachedResult;
+                        }
+                        boolean result = uncached.test(t);
+                        cacheResult.put(t, result);
+                        return result;
                     }
                 };
-
-                // what is 1 + 1?
-                // A: 
-
+                parserCache.put(s, cached);
                 return cached;
-
             };
         });
         return result.resolve();
