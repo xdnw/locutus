@@ -17,6 +17,7 @@ import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.GameTimers;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -25,6 +26,7 @@ import link.locutus.discord.commands.manager.v2.command.StringMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
@@ -5133,6 +5135,17 @@ public class DBNation implements NationOrAlliance {
         }
 
         return netUnits;
+    }
+
+    @Command(desc = "If this nation is in a nation list")
+    public boolean isIn(Set<DBNation> nations) {
+        return nations.contains(this);
+    }
+
+    @Command(desc = "If this nation is in the enemies coalition")
+    public boolean isEnemy(@Me GuildDB db) {
+        if (alliance_id == 0) return false;
+        return db.getCoalition(Coalition.ENEMIES).contains(alliance_id);
     }
 
     public long getRerollDate() {

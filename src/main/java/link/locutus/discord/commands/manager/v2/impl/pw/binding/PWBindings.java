@@ -797,7 +797,6 @@ public class PWBindings extends BindingHelper {
         return result;
     }
 
-    @Binding(examples = "Cataclysm,790", value = "A comma separated list of alliances")
     public static Set<DBAlliance> alliances(@Default @Me Guild guild, String input) {
         Set<Integer> aaIds = DiscordUtil.parseAllianceIds(guild, input);
         if (aaIds == null) throw new IllegalArgumentException("Invalid alliances: " + input);
@@ -806,6 +805,11 @@ public class PWBindings extends BindingHelper {
             alliances.add(DBAlliance.getOrCreate(aaId));
         }
         return alliances;
+    }
+
+    @Binding(examples = "Cataclysm,790", value = "A comma separated list of alliances")
+    public Set<DBAlliance> alliances(AlliancePlaceholders placeholders, ValueStore store, String input) {
+        return placeholders.parseSet(store, input);
     }
 //
 //    @Binding(examples = "Cataclysm,790", value = "A comma separated list of alliances")

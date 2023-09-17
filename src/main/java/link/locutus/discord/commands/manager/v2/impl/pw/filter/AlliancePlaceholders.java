@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -163,8 +164,17 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
 
     @Override
     protected Set<DBAlliance> parse(ValueStore store, String input) {
+        if (input.equalsIgnoreCase("*")) {
+            return Locutus.imp().getNationDB().getAlliances();
+        }
         Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
-        return PWBindings.alliances(guild, input);
+        Set<Integer> aaIds = DiscordUtil.parseAllianceIds(guild, input);
+        if (aaIds == null) throw new IllegalArgumentException("Invalid alliances: " + input);
+        Set<DBAlliance> alliances = new HashSet<>();
+        for (Integer aaId : aaIds) {
+            alliances.add(DBAlliance.getOrCreate(aaId));
+        }
+        return alliances;
     }
 
     @Override

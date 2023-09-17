@@ -157,7 +157,7 @@ public abstract class Placeholders<T> {
         return null;
     }
 
-    public Set<T> parseSet(String input, ValueStore store) {
+    public Set<T> parseSet(ValueStore store, String input) {
         Map<String, Map<T, Object>> cache = new Object2ObjectOpenHashMap<>();
         return ArrayUtil.parseQuery(input,
                 f -> parse(store, f),

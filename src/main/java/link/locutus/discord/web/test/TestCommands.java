@@ -60,7 +60,7 @@ public class TestCommands {
 
     @Command
     public String test(NationPlaceholders placeholders, ValueStore store, String input) {
-        Set<DBNation> nations = placeholders.parseSet(input, store);
+        Set<DBNation> nations = placeholders.parseSet(store, input);
         
         StringBuilder response = new StringBuilder();
         response.append(nations.size() + " nations found\n");

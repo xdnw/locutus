@@ -3609,20 +3609,31 @@ public class NationDB extends DBMainV2 {
     }
 
     public Map<Integer, List<DBNation>> getNationsByAlliance(boolean removeUntaxable, boolean removeInactive, boolean removeApplicants, boolean sortByScore) {
+        long activeCutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(7200);
+        long turnNow = TimeUtil.getTurn();
+
+        Predicate<DBNation> filter = new Predicate<DBNation>() {
+            @Override
+            public boolean test(DBNation nation) {
+                if (removeApplicants && nation.getPositionEnum().id <= Rank.APPLICANT.id) return false;
+                if (removeUntaxable && (nation.isGray() || nation.isBeige())) return false;
+                if (removeInactive && (nation.lastActiveMs() < activeCutoff)) return false;
+                if ((removeUntaxable || removeInactive) && nation.getLeaving_vm() > turnNow) return false;
+                return true;
+            }
+        };
+        return getNationsByAlliance(filter, sortByScore);
+    }
+    public Map<Integer, List<DBNation>> getNationsByAlliance(Predicate<DBNation> filter, boolean sortByScore) {
         final Int2DoubleMap scoreMap = new Int2DoubleOpenHashMap();
         Int2ObjectOpenHashMap<List<DBNation>> nationsByAllianceFiltered = new Int2ObjectOpenHashMap<>();
         synchronized (nationsByAlliance) {
-            long activeCutoff = System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(7200);
-            long turnNow = TimeUtil.getTurn();
             for (Map.Entry<Integer, Map<Integer, DBNation>> entry : nationsByAlliance.entrySet()) {
                 int aaId = entry.getKey();
                 Map<Integer, DBNation> nationMap = entry.getValue();
                 double score = 0;
                 for (DBNation nation : nationMap.values()) {
-                    if (removeApplicants && nation.getPositionEnum().id <= Rank.APPLICANT.id) continue;
-                    if (removeUntaxable && (nation.isGray() || nation.isBeige())) continue;
-                    if (removeInactive && (nation.lastActiveMs() < activeCutoff)) continue;
-                    if ((removeUntaxable || removeInactive) && nation.getLeaving_vm() > turnNow) continue;
+                    if (filter != null && !filter.test(nation)) continue;
                     score += nation.getScore();
                     nationsByAllianceFiltered.computeIfAbsent(aaId, f -> new ObjectArrayList<>()).add(nation);
                 }
