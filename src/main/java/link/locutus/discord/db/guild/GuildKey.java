@@ -2330,7 +2330,7 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "The channel to send alerts when alliance ground units increase by 10% or more.\n" +
+            return "The channel to send alerts when alliance ground units increase by more than 2.5%\n" +
                     "See also setting `" + AA_GROUND_TOP_X.name() + "` and coalition: `" + Coalition.GROUND_ALERTS.name() + "` and role alias: `" + Roles.GROUND_MILITARIZE_ALERT.name() + "`";
         }
     }.setupRequirements(f -> f.requireActiveGuild());
