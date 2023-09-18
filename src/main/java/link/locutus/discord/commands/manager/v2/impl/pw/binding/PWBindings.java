@@ -649,8 +649,19 @@ public class PWBindings extends BindingHelper {
         Set<Project> result = new HashSet<>();
         for (String type : input.split(",")) {
             Project project = Projects.get(type);
-            if (project == null) throw new IllegalArgumentException("Invalid project: `" + project + "`");
+            if (project == null) throw new IllegalArgumentException("Invalid project: `" + type + "`");
             result.add(project);
+        }
+        return result;
+    }
+
+    @Binding(value = "A comma separated list of building types")
+    public Set<Building> buildings(String input) {
+        Set<Building> result = new HashSet<>();
+        for (String type : input.split(",")) {
+            Building building = Buildings.get(type);
+            if (building == null) throw new IllegalArgumentException("Invalid building: `" + type + "`");
+            result.add(building);
         }
         return result;
     }

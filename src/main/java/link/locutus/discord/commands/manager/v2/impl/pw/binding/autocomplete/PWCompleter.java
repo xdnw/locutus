@@ -8,6 +8,8 @@ import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -480,6 +482,28 @@ public class PWCompleter extends BindingHelper {
                     List<DBAlliance> options = new ArrayList<>(Locutus.imp().getNationDB().getAlliances());
                     String inputStr = input.toString();
                     return StringMan.autocompleteComma(inputStr, options, f -> DBAlliance.parse(f, false), DBAlliance::getName, f -> f.getId() + "", OptionData.MAX_CHOICES);
+                }));
+            });
+        }
+
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, Project.class).getType(), Autocomplete.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                    List<Project> options = Arrays.asList(Projects.values);
+                    String inputStr = input.toString();
+                    return StringMan.autocompleteComma(inputStr, options, Projects::get, Project::name, Project::name, OptionData.MAX_CHOICES);
+                }));
+            });
+        }
+
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, Building.class).getType(), Autocomplete.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                    List<Building> options = Arrays.asList(Buildings.values());
+                    String inputStr = input.toString();
+                    return StringMan.autocompleteComma(inputStr, options, Buildings::get, Building::name, Building::name, OptionData.MAX_CHOICES);
                 }));
             });
         }

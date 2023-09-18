@@ -1179,8 +1179,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="addButton")
             public static class command extends CommandRef {
                 public static final command cmd = new command();
-                public command create(String message, String label, String behavior, String command, String arguments, String channel) {
-                    return createArgs("message", message, "label", label, "behavior", behavior, "command", command, "arguments", arguments, "channel", channel);
+                public command create(String message, String label, String behavior, String command, String arguments, String channel, String force) {
+                    return createArgs("message", message, "label", label, "behavior", behavior, "command", command, "arguments", arguments, "channel", channel, "force", force);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="addModal")
@@ -1193,8 +1193,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="addButtonRaw")
             public static class raw extends CommandRef {
                 public static final raw cmd = new raw();
-                public raw create(String message, String label, String behavior, String command, String channel) {
-                    return createArgs("message", message, "label", label, "behavior", behavior, "command", command, "channel", channel);
+                public raw create(String message, String label, String behavior, String command, String channel, String force) {
+                    return createArgs("message", message, "label", label, "behavior", behavior, "command", command, "channel", channel, "force", force);
                 }
             }
         }

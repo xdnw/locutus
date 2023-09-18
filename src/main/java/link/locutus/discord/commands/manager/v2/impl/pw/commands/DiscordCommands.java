@@ -345,7 +345,7 @@ public class DiscordCommands {
             String label = entry.getKey();
 
             String behaviorStr = (behavior == null ? CommandBehavior.DELETE_MESSAGE : behavior).name();
-            String cmdStr = CM.embed.add.raw.cmd.create(url, label, behaviorStr, StringMan.join(current, "\n"), channelId == null ? null : channelId.toString()).toSlashCommand(false);
+            String cmdStr = CM.embed.add.raw.cmd.create(url, label, behaviorStr, StringMan.join(current, "\n"), channelId == null ? null : channelId.toString(), null).toSlashCommand(false);
             commands.add(cmdStr);
         }
 

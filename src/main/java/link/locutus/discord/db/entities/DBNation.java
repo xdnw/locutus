@@ -844,17 +844,17 @@ public class DBNation implements NationOrAlliance {
     }
 
 
-    @Command(desc = "")
-    public boolean isFightingOffEnemyOfScore(double minScore, double maxScore) {
+    @Command(desc = "If this nation has an offensive war against an enemy in the provided score range")
+    public boolean isAttackingEnemyOfScore(double minScore, double maxScore) {
         return getStrongestOffEnemyOfScore(minScore, maxScore) != -1;
     }
 
-    @Command // TODO CM REF
+    @Command(desc = "If this nation has a war with an enemy in the provided score range")
     public boolean isFightingEnemyOfScore(double minScore, double maxScore) {
         return getStrongestEnemyOfScore(minScore, maxScore) != -1;
     }
 
-    @Command // TODO CM REF
+    @Command(desc = "If this nation has an war with an enemy in the provided city range")
     public boolean isFightingEnemyOfCities(double minCities, double maxCities) {
         for (DBWar war : getWars()) {
             DBNation other = war.getNation(!war.isAttacker(this));
@@ -865,7 +865,7 @@ public class DBNation implements NationOrAlliance {
         return false;
     }
 
-    @Command // TODO CM REF
+    @Command(desc = "If this nation has a defensive war from an enemy in the provided city range")
     public boolean isDefendingEnemyOfCities(double minCities, double maxCities) {
         for (DBWar war : getWars()) {
             if (war.defender_id != nation_id) continue;
@@ -877,7 +877,7 @@ public class DBNation implements NationOrAlliance {
         return false;
     }
 
-    @Command // TODO CM REF
+    @Command(desc = "If this nation has an offensive war against an enemy in the provided city range")
     public boolean isAttackingEnemyOfCities(double minCities, double maxCities) {
         for (DBWar war : getWars()) {
             if (war.attacker_id != nation_id) continue;
