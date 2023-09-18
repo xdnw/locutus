@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.binding;
 import com.google.gson.internal.Primitives;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ReflectionUtil;
 
@@ -108,7 +109,7 @@ public class MethodParser<T> implements Parser<T> {
                 Key paramKey = params.get(i);
                 Object arg;
                 try {
-                    if (paramKey == null || paramKey.getType() == String.class && paramKey.getAnnotations().length == 0) {
+                    if (paramKey == null || (paramKey.getType() == String.class && paramKey.getAnnotations().length == 0)) {
                         arg = t;
                     } else if (paramKey.getAnnotations().length == 0 && paramKey.getType() == Method.class) {
                         arg = method;
@@ -173,7 +174,6 @@ public class MethodParser<T> implements Parser<T> {
                             arg = key.getAnnotation(paramKey.getType());
                         }
                     } else {
-                        System.out.println("Run parser " + key + " | " + paramKey);
                         arg = stack.consume(paramKey);
                     }
                 } catch (IllegalStateException e) {

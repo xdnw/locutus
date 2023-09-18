@@ -24,6 +24,7 @@ import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.StringMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.DenyPermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -146,7 +147,7 @@ public class DBNation implements NationOrAlliance {
     private transient  DBNationCache cache;
 
     @Command
-    @RolePermission(Roles.TEMP)
+    @DenyPermission
     public boolean test() {
         return true;
     }

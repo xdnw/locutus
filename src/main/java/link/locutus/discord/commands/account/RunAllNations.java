@@ -44,8 +44,7 @@ public class RunAllNations extends Command implements Noformat {
         StringBuilder result = new StringBuilder();
         String cmd = args.get(1);
         for (DBNation nation : nations) {
-            User nationUser = nation.getUser();
-            String formatted = Locutus.imp().getCommandManager().getV2().getNationPlaceholders().format(guild, nation, nationUser, cmd);
+            String formatted = Locutus.imp().getCommandManager().getV2().getNationPlaceholders().format(guild, me, author, cmd, nation);
             Locutus.imp().getCommandManager().run(guild, channel, author, formatted, false, true);
         }
         return "Done!";

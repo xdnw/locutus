@@ -2,6 +2,7 @@ package link.locutus.discord.web.test;
 
 import cn.easyproject.easyocr.ImageType;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -18,6 +19,7 @@ import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.ImageUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
+import net.dv8tion.jda.api.entities.User;
 
 import java.util.HashMap;
 import java.util.List;
@@ -59,7 +61,18 @@ public class TestCommands {
     }
 
     @Command
-    public String test(NationPlaceholders placeholders, ValueStore store, String input) {
+    public String test(NationPlaceholders placeholders, ValueStore store, String input, @Me DBNation me, @Me User user) {
+        if (me != null) {
+            System.out.println("Me " + me.getNationUrl());
+        } else {
+            System.out.println("Me is null");
+        }
+        DBNation t = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class));
+        if (t != null) {
+            System.out.println("Nation " + t.getMarkdownUrl());
+        }
+        System.out.println("Store " + store.toString());
+
         Set<DBNation> nations = placeholders.parseSet(store, input);
         
         StringBuilder response = new StringBuilder();
@@ -70,6 +83,6 @@ public class TestCommands {
                 response.append(nation.getNationUrlMarkup(false) + " | " + nation.getAllianceUrlMarkup(false)).append("\n");
             }
         }
-        return response.toString();
+        return response.toString() + " | " + me.getNationUrlMarkup(false) + " | " + user.getAsMention();
     }
 }

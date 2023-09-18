@@ -949,7 +949,7 @@ public class PWBindings extends BindingHelper {
 
     @Binding
     @Me
-    public DBNation nation(@Default @Me User user) {
+    public DBNation nationProvided(@Default @Me User user) {
         DBNation nation = DiscordUtil.getNation(user);
         if (nation == null) throw new IllegalArgumentException("Please use " + CM.register.cmd.toSlashMention() + "");
         return nation;

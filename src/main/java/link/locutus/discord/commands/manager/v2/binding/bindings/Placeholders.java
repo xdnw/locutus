@@ -8,11 +8,15 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.tuple.Triple;
 
@@ -195,11 +199,11 @@ public abstract class Placeholders<T> {
         };
     }
 
-    public Set<T> parseSet(ValueStore store, String input) {
+    public Set<T> parseSet(ValueStore store2, String input) {
         Map<String, Map<T, Object>> cache = new Object2ObjectOpenHashMap<>();
         return ArrayUtil.parseQuery(input,
-                f -> parse(store, f),
-                s -> getFilter(store, s, cache));
+                f -> parse(store2, f),
+                s -> getFilter(store2, s, cache));
     }
 
     protected abstract Set<T> parse(ValueStore store, String input);
@@ -209,7 +213,7 @@ public abstract class Placeholders<T> {
         return argStart != -1 ? input.substring(0, argStart) : input;
     }
 
-    public String format(String line, int recursion, Function<String, String> formatPlaceholder) {
+    protected String format(String line, int recursion, Function<String, String> formatPlaceholder) {
         try {
             int q = 0;
             List<Integer> indicies = null;
@@ -264,6 +268,38 @@ public abstract class Placeholders<T> {
         return typeFunction;
     }
 
+    public String format(Guild callerGuild, DBNation callerNation, User callerUser, String arg, T elem) {
+        if (callerNation == null && callerUser != null) {
+            callerNation = DBNation.getByUser(callerUser);
+        }
+        if (callerUser == null && callerNation != null) {
+            callerUser = callerNation.getUser();
+        }
+        LocalValueStore locals = new LocalValueStore<>(this.getStore());
+        if (callerNation != null) {
+            locals.addProvider(Key.of(DBNation.class, Me.class), callerNation);
+        }
+        if (callerUser != null) {
+            locals.addProvider(Key.of(User.class, Me.class), callerUser);
+        }
+        if (callerGuild != null) {
+            locals.addProvider(Key.of(Guild.class, Me.class), callerGuild);
+        }
+        return format(locals, arg, elem);
+    }
+
+    public String format(ValueStore<?> store, String arg, T me) {
+        return format(arg, 0, placeholder -> {
+            Map.Entry<Type, Function<T, Object>> typeFunction = getTypeFunction(store, placeholder, false);
+            if (typeFunction == null) return null;
+            Object obj = typeFunction.getValue().apply(me);
+            if (obj != null) {
+                return obj.toString();
+            }
+            return null;
+        });
+    }
+
     private static String[] prefixes = {"get", "is", "can"};
 
     public Map.Entry<Type, Function<T, Object>> getPlaceholderFunction(ValueStore store, String input) {
@@ -296,7 +332,7 @@ public abstract class Placeholders<T> {
         }
 
         LocalValueStore locals = new LocalValueStore<>(store);
-        locals.addProvider(Key.of(instanceType, Me.class), nullInstance);
+//        locals.addProvider(Key.of(instanceType, Me.class), nullInstance);
         ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
 
         Object[] arguments = cmdObj.parseArguments(stack);

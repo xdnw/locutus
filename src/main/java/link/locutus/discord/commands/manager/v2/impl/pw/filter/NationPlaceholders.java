@@ -123,56 +123,6 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         return result;
     }
 
-    public String format(Guild guild, DBNation nation, User user, String arg) {
-        if (nation == null && user != null) {
-            nation = DBNation.getByUser(user);
-        }
-        if (user == null && nation != null) {
-            user = nation.getUser();
-        }
-        LocalValueStore locals = new LocalValueStore<>(this.getStore());
-        if (nation != null) {
-            locals.addProvider(Key.of(DBNation.class, Me.class), nation);
-        }
-        if (user != null) {
-            locals.addProvider(Key.of(User.class, Me.class), user);
-        }
-        if (guild != null) {
-            locals.addProvider(Key.of(Guild.class, Me.class), guild);
-        }
-        return format(locals, arg);
-    }
-
-    public String format(ValueStore<?> store, String arg) {
-        DBNation me = store.getProvided(Key.of(DBNation.class, Me.class));
-        User author = null;
-        try {
-            author = store.getProvided(Key.of(User.class, Me.class));
-        } catch (Exception ignore) {
-        }
-
-        if (author != null && arg.contains("%user%")) {
-            arg = arg.replace("%user%", author.getAsMention());
-        }
-
-        return format(arg, 0, new Function<String, String>() {
-            @Override
-            public String apply(String placeholder) {
-                NationAttribute result = NationPlaceholders.this.getMetric(store, placeholder, false);
-                if (result == null && !placeholder.startsWith("get")) {
-                    result = NationPlaceholders.this.getMetric(store, "get" + placeholder, false);
-                }
-                if (result != null) {
-                    Object obj = result.apply(me);
-                    if (obj != null) {
-                        return obj.toString();
-                    }
-                }
-                return null;
-            }
-        });
-    }
-
     @Override
     public Set<DBNation> parse(ValueStore store, String name) {
         String nameLower = name.toLowerCase(Locale.ROOT);

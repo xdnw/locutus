@@ -510,12 +510,15 @@ public class CommandManager2 {
                     handleCall(io, () -> {
                         try {
                             if (parametric.getAnnotations().stream().noneMatch(a -> a instanceof NoFormat)) {
-                                for (Map.Entry<String, String> entry : finalArguments.entrySet()) {
-                                    String key = entry.getKey();
-                                    String value = entry.getValue();
-                                    if (value.contains("{") && value.contains("}")) {
-                                        value = getNationPlaceholders().format(finalLocals, value);
-                                        entry.setValue(value);
+                                DBNation me = finalLocals.getProvided(Key.of(DBNation.class, Me.class), false);
+                                if (me != null) {
+                                    for (Map.Entry<String, String> entry : finalArguments.entrySet()) {
+                                        String key = entry.getKey();
+                                        String value = entry.getValue();
+                                        if (value.contains("{") && value.contains("}")) {
+                                            value = getNationPlaceholders().format(finalLocals, value, me);
+                                            entry.setValue(value);
+                                        }
                                     }
                                 }
                             }

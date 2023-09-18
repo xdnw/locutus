@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.ClassPermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.CoalitionPermission;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.DenyPermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasKey;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
@@ -181,6 +182,12 @@ public class PermissionBinding extends BindingHelper {
             throw new IllegalCallerException("Your ingame alliance positions is below " + perm.value());
         }
         return true;
+    }
+
+    @Binding
+    @DenyPermission
+    public boolean deny(DenyPermission perm, @Me DBNation nation, @Me User user) {
+        throw new IllegalCallerException("Denied by permission: " + nation.getNationUrlMarkup(false) + " | " + user.getAsMention());
     }
 
     @Binding("Has the aliased roles on discord. \n" +
