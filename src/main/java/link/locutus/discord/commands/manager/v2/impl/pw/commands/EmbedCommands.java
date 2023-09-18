@@ -190,11 +190,11 @@ public class EmbedCommands {
     @Command(desc = "Add a button to a discord embed from this bot which runs a command")
     @NoFormat
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String addButton(@Me User user, @Me Guild guild, Message message, String label, CommandBehavior behavior, ICommand command,
+    public String addButton(@Me User user, @Me IMessageIO io, @Me JSONObject cmdJson, @Me Guild guild, Message message, String label, CommandBehavior behavior, ICommand command,
                             @Default @Arg("The arguments and values you want to submit to the command\n" +
                                     "Example: `myarg1:myvalue1 myarg2:myvalue2`\n" +
                                     "For placeholders: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
-                            String arguments, @Switch("c") MessageChannel channel) {
+                            String arguments, @Switch("c") MessageChannel channel, @Switch("f") boolean force) {
         checkMessagePerms(user, guild, message);
         Set<String> validArguments = command.getUserParameterMap().keySet();
 
@@ -210,7 +210,7 @@ public class EmbedCommands {
         }
 
         String commandStr =  command.toCommandArgs(parsed);
-        return addButtonRaw(user, guild, message, label, behavior, commandStr, channel);
+        return addButtonRaw(user, io, cmdJson, guild, message, label, behavior, commandStr, channel, false);
     }
 
     @Command(desc = "Add a modal button to a discord embed from this bot, which creates a prompt for a command")
