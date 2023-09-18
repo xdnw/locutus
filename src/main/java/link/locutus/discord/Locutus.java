@@ -281,7 +281,7 @@ public final class Locutus extends ListenerAdapter {
             }
             builder
                     .setChunkingFilter(ChunkingFilter.ALL)
-                    .setBulkDeleteSplittingEnabled(true)
+                    .setBulkDeleteSplittingEnabled(false)
                     .setCompression(Compression.ZLIB)
                     .setMemberCachePolicy(MemberCachePolicy.ALL);
             if (Settings.INSTANCE.DISCORD.INTENTS.GUILD_MEMBERS) {

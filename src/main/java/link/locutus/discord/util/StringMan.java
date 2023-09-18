@@ -469,13 +469,26 @@ public class StringMan {
     }
 
     public static List<String> split(String input, char delim) {
+        return split(input, Character.toString(delim));
+    }
+
+    public static List<String> split(String input, String delim) {
+        return split(input, delim, Integer.MAX_VALUE);
+    }
+
+    public static List<String> split(String input, String delim, int limit) {
+        if (delim.isEmpty()) {
+            throw new IllegalArgumentException("The delimiter cannot be the empty string.");
+        }
+        if (delim.length() > input.length() || limit <= 1) {
+            return Collections.singletonList(input);
+        }
         List<String> result = new ArrayList<>();
         int start = 0;
         int bracket = 0;
         List<Character> findBracket = new ArrayList<>();
         boolean inQuotes = false;
         char quoteChar = 0;
-        char lastChar = ' ';
         for (int current = 0; current < input.length(); current++) {
             char currentChar = input.charAt(current);
             if (currentChar == '\u201C') currentChar = '\u201D';
@@ -512,7 +525,7 @@ public class StringMan {
                 }
             }
 
-            if (currentChar == delim && !inQuotes) {
+            if (delim != null && input.startsWith(delim, current) && !inQuotes) {
                 String toAdd = input.substring(start, current);
                 if (!toAdd.isEmpty()) {
                     switch (toAdd.charAt(0)) {
@@ -526,7 +539,11 @@ public class StringMan {
                 } else if (inQuotes) {
                     result.add("");
                 }
-                start = current + 1;
+                start = current + delim.length();
+                if (--limit <= 1) {
+                    delim = null;
+                }
+
             }
         }
         return result;

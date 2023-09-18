@@ -14,6 +14,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
 import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.tuple.Triple;
 
 import java.lang.reflect.Type;
 import java.util.AbstractMap;
@@ -82,8 +83,15 @@ public abstract class Placeholders<T> {
         Type type = callable.getReturnType();
         if (type == String.class) {
             html.append("<input name=\"filter-value\" for=\"").append(parentId).append("\" required type=\"text\" class=\"form-control\"/>");
+        } else if (Enum.class.isAssignableFrom((Class<?>) type)) {
+            html.append("<select name=\"filter-value\" for=\"").append(parentId).append("\" required class=\"form-control\">");
+            for (Object o : ((Class<?>) type).getEnumConstants()) {
+                html.append("<option value=\"").append(StringEscapeUtils.escapeHtml4(o.toString())).append("\">").append(StringEscapeUtils.escapeHtml4(o.toString())).append("</option>");
+            }
+            html.append("</select>");
+            html.append(html);
         } else if (type == boolean.class || type == Boolean.class) {
-            html.append("<select name=\"filter-value\" for=\"").append(parentId).append("\" required class=\"form-control\" /><option>true</option><option>false</option></select>");
+            html.append("<select name=\"filter-value\" for=\"").append(parentId).append("\" required class=\"form-control\"><option>true</option><option>false</option></select>");
         } else if (type == int.class || type == Integer.class || type == double.class || type == Double.class || type == long.class || type == Long.class) {
             html.append("<input name=\"filter-value\" for=\"").append(parentId).append("\" required type=\"number\" class=\"form-control\"/>");
         } else {
@@ -102,59 +110,89 @@ public abstract class Placeholders<T> {
         List<ParametricCallable> result = getParametricCallables();
         result.removeIf(cmd -> {
             Type type = cmd.getReturnType();
-            return type != String.class && type != boolean.class && type != Boolean.class && type != int.class && type != Integer.class && type != double.class && type != Double.class && type != long.class && type != Long.class;
+            return type != String.class && type != boolean.class && type != Boolean.class && type != int.class && type != Integer.class && type != double.class && type != Double.class && type != long.class && type != Long.class && !Enum.class.isAssignableFrom((Class<?>) type);
         });
         return new ArrayList<>(result);
     }
 
     public abstract String getCommandMention();
 
-    public Predicate<T> getFilter(ValueStore store, String input, Map<String, Map<T, Object>> cache) {
-        int argEnd = input.lastIndexOf(')');
-
+    private static Triple<String, Operation, String> opSplit(String input) {
         for (Operation op : Operation.values()) {
-            int index = input.lastIndexOf(op.code);
-            if (index > argEnd) {
-                String part1 = input.substring(0, index);
-                String part2 = input.substring(index + op.code.length());
-
-                Map.Entry<Type, Function<T, Object>> placeholder = getPlaceholderFunction(store, part1);
-                if (placeholder == null) {
-                    Set<String> options = commands.getSubCommandIds();
-                    List<String> closest = StringMan.getClosest(part1, new ArrayList<>(options), false);
-                    if (closest.size() > 5) closest = closest.subList(0, 5);
-                    throw new IllegalArgumentException("Unknown placeholder: " + part1 + "\n" +
-                            "Did you mean:\n- " + StringMan.join(closest, "\n- ") +
-                            "\n\nSee also: " + getCommandMention());
-                }
-                Function<T, Object> func = placeholder.getValue();
-                Type type = placeholder.getKey();
-                Predicate adapter;
-
-                if (type == String.class) {
-                    adapter = op.getStringPredicate(part2);
-                } else if (type == boolean.class || type == Boolean.class) {
-                    boolean val2 = PrimitiveBindings.Boolean(part2);
-                    adapter = op.getBooleanPredicate(val2);
-                } else if (type == int.class || type == Integer.class || type == double.class || type == Double.class || type == long.class || type == Long.class) {
-                    double val2 = MathMan.parseDouble(part2);
-                    adapter = op.getNumberPredicate(val2);
-                } else {
-                    throw new IllegalArgumentException("Only the following filter types are supported: String, Number, Boolean");
-                }
-
-                return nation -> {
-                    Object value;
-                    if (cache != null) {
-                        value = cache.computeIfAbsent(part1, k -> new Object2ObjectOpenHashMap<>()).computeIfAbsent(nation, k -> func.apply(nation));
-                    } else {
-                        value = func.apply(nation);
-                    }
-                    return adapter.test(value);
-                };
+            List<String> split = StringMan.split(input, op.code, 2);
+            if (split.size() == 2) {
+                return Triple.of(split.get(0), op, split.get(1));
             }
         }
         return null;
+    }
+
+    public Predicate<T> getFilter(ValueStore store, String input, Map<String, Map<T, Object>> cache) {
+        Triple<String, Operation, String> pairs = opSplit(input);
+        boolean isDefault = false;
+        if (pairs == null) {
+            pairs = Triple.of(input, Operation.EQUAL, "1");
+            isDefault = true;
+        }
+        String part1 = pairs.getLeft();
+        Operation op = pairs.getMiddle();
+        String part2 = pairs.getRight();
+
+        Map.Entry<Type, Function<T, Object>> placeholder = getPlaceholderFunction(store, part1);
+        if (placeholder == null) {
+            Set<String> options = commands.getSubCommandIds();
+            List<String> closest = StringMan.getClosest(part1, new ArrayList<>(options), false);
+            if (closest.size() > 5) closest = closest.subList(0, 5);
+            throw new IllegalArgumentException("Unknown placeholder: " + part1 + "\n" +
+                    "Did you mean:\n- " + StringMan.join(closest, "\n- ") +
+                    "\n\nSee also: " + getCommandMention());
+        }
+        Function<T, Object> func = placeholder.getValue();
+        Type type = placeholder.getKey();
+        Predicate adapter;
+        boolean toString;
+
+        if (Enum.class.isAssignableFrom((Class<?>) type)) {
+            if (isDefault) {
+                throw new IllegalArgumentException("Please provide an operation for the filter: `" + part1 + "` e.g. " + StringMan.getString(Operation.values()));
+            }
+            adapter = op.getStringPredicate(part2);
+            toString = true;
+        } else {
+            toString = false;
+            if (type == String.class) {
+                if (isDefault) {
+                    part2 = "";
+                    op = Operation.NOT_EQUAL;
+                }
+                adapter = op.getStringPredicate(part2);
+            } else if (type == boolean.class || type == Boolean.class) {
+                boolean val2 = PrimitiveBindings.Boolean(part2);
+                adapter = op.getBooleanPredicate(val2);
+            } else if (type == int.class || type == Integer.class || type == double.class || type == Double.class || type == long.class || type == Long.class) {
+                if (isDefault) {
+                    part2 = "0";
+                    op = Operation.GREATER;
+                }
+                double val2 = MathMan.parseDouble(part2);
+                adapter = op.getNumberPredicate(val2);
+            } else {
+                throw new IllegalArgumentException("Only the following filter types are supported: String, Number, Boolean, not: `" + ((Class<?>) type).getSimpleName() + "`");
+            }
+        }
+
+        return nation -> {
+            Object value;
+            if (cache != null) {
+                value = cache.computeIfAbsent(part1, k -> new Object2ObjectOpenHashMap<>()).computeIfAbsent(nation, k -> func.apply(nation));
+            } else {
+                value = func.apply(nation);
+            }
+            if (toString && value != null) {
+                value = value.toString();
+            }
+            return adapter.test(value);
+        };
     }
 
     public Set<T> parseSet(ValueStore store, String input) {

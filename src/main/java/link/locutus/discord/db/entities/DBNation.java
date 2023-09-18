@@ -478,11 +478,27 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "If the nation has a project")
     public boolean hasProject(Project project) {
-        return hasProject(project, false);
+        return (this.projects & (1L << project.ordinal())) != 0;
     }
 
-    public boolean hasProject(Project project, boolean update) {
-        return (this.projects & (1L << project.ordinal())) != 0;
+    @Command(desc = "If the nation has all of the specified projects")
+    public boolean hasProjects(Set<Project> project) {
+        for (Project p : project) {
+            if (!hasProject(p)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Command(desc = "If the nation has any projects of the specified projects")
+    public boolean hasProjects(Project... projects) {
+        for (Project p : projects) {
+            if (hasProject(p)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Command(desc = "If the nation has the treasure")
