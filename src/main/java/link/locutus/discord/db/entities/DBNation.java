@@ -145,6 +145,12 @@ public class DBNation implements NationOrAlliance {
     private double gni;
     private transient  DBNationCache cache;
 
+    @Command
+    @RolePermission(Roles.TEMP)
+    public boolean test() {
+        return true;
+    }
+
     public static DBNation getByUser(User user) {
         return DiscordUtil.getNation(user);
     }
@@ -482,23 +488,21 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc = "If the nation has all of the specified projects")
-    public boolean hasProjects(Set<Project> project) {
-        for (Project p : project) {
+    public boolean hasProjects(Set<Project> projects, @Default boolean any) {
+        if (any) {
+            for (Project p : projects) {
+                if (hasProject(p)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        for (Project p : projects) {
             if (!hasProject(p)) {
                 return false;
             }
         }
         return true;
-    }
-
-    @Command(desc = "If the nation has any projects of the specified projects")
-    public boolean hasProjects(Project... projects) {
-        for (Project p : projects) {
-            if (hasProject(p)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     @Command(desc = "If the nation has the treasure")
