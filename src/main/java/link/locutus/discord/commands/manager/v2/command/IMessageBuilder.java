@@ -247,6 +247,9 @@ public interface IMessageBuilder {
     }
 
     @CheckReturnValue
+    IMessageBuilder removeButtonByLabel(String label);
+
+    @CheckReturnValue
     @Deprecated
     IMessageBuilder commandButton(String command, String message);
 

@@ -4,6 +4,7 @@ import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -46,6 +47,19 @@ public class DiscordMessageBuilder implements IMessageBuilder {
 
     public DiscordMessageBuilder(MessageChannel channel, Message message) {
         this(new DiscordChannelIO(channel, () -> message), message);
+    }
+
+    @Override
+    public IMessageBuilder removeButtonByLabel(String label) {
+        Set<Button> removed = buttons.stream().filter(b -> b.getLabel().equals(label)).collect(Collectors.toSet());
+        buttons.removeIf(b -> b.getLabel().equals(label));
+        for (Button button : removed) {
+            String id = button.getId();
+            if (MathMan.isInteger(id)) {
+                remapLongCommands.remove(id);
+            }
+        }
+        return this;
     }
 
     @Override

@@ -1373,75 +1373,75 @@ public class DiscordUtil {
                         nations.removeIf(n -> !filter.getValue().apply(n.isPowered() ? 1d : 0d));
                         continue;
                     }
-                    case "#fightingenemyofcities": {
-                        nations.removeIf(n -> !n.isFightingEnemyOfCities(filter.getValue()::apply));
-                        continue;
-                    }
-                    case "#defendingenemyofcities": {
-                        nations.removeIf(n -> !n.isDefendingEnemyOfCities(filter.getValue()::apply));
-                        continue;
-                    }
-                    case "#attackingenemyofcities": {
-                        nations.removeIf(n -> !n.isAttackingEnemyOfCities(filter.getValue()::apply));
-                        continue;
-                    }
-                    case "#fightingenemyofscore": {
-                        nations.removeIf(n -> !n.isFightingEnemyOfScore(filter.getValue()::apply));
-                        continue;
-                    }
-                    case "#attackingenemyofscore": {
-                        nations.removeIf(n -> !n.isFightingOffEnemyOfScore(filter.getValue()::apply));
-                        continue;
-                    }
-                    case "#attacking1/2strengthenemyofscore": {
-                        nations.removeIf(n -> {
-                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
-                            return value < n.getStrength() * 0.5;
-                        });
-                        continue;
-                    }
-                    case "#attacking2/3strengthenemyofscore": {
-                        nations.removeIf(n -> {
-                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
-                            return value < n.getStrength() * 2 / 3;
-                        });
-                        continue;
-                    }
-                    case "#attacking3/4strengthenemyofscore": {
-                        nations.removeIf(n -> {
-                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
-                            return value < n.getStrength() * 3 / 4;
-                        });
-                        continue;
-                    }
-                    case "#attacking4/5strengthenemyofscore": {
-                        nations.removeIf(n -> {
-                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
-                            return value < n.getStrength() * 4 / 5;
-                        });
-                        continue;
-                    }
-                    case "#fighting4/5strengthenemyofscore": {
-                        nations.removeIf(n -> {
-                            double value = n.getStrongestEnemyOfScore(filter.getValue()::apply);
-                            return value < n.getStrength() * 4 / 5;
-                        });
-                        continue;
-                    }
-                    case "#attackingstrongerenemyofscore": {
-                        nations.removeIf(n -> {
-                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
-                            return value < n.getStrength();
-                        });
-                        continue;
-                    }
-                    case "#fightingstrongerenemyofscore": {
-                        nations.removeIf(n -> {
-                            double value = n.getStrongestEnemyOfScore(filter.getValue()::apply);
-                            return value < n.getStrength();
-                        });
-                        continue;
-                    }
+//                    case "#fightingenemyofcities": {
+//                        nations.removeIf(n -> !n.isFightingEnemyOfCities(filter.getValue()::apply));
+//                        continue;
+//                    }
+//                    case "#defendingenemyofcities": {
+//                        nations.removeIf(n -> !n.isDefendingEnemyOfCities(filter.getValue()::apply));
+//                        continue;
+//                    }
+//                    case "#attackingenemyofcities": {
+//                        nations.removeIf(n -> !n.isAttackingEnemyOfCities(filter.getValue()::apply));
+//                        continue;
+//                    }
+//                    case "#fightingenemyofscore": {
+//                        nations.removeIf(n -> !n.isFightingEnemyOfScore(filter.getValue()::apply));
+//                        continue;
+//                    }
+//                    case "#attackingenemyofscore": {
+//                        nations.removeIf(n -> !n.isFightingOffEnemyOfScore(filter.getValue()::apply));
+//                        continue;
+//                    }
+//                    case "#attacking1/2strengthenemyofscore": {
+//                        nations.removeIf(n -> {
+//                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
+//                            return value < n.getStrength() * 0.5;
+//                        });
+//                        continue;
+//                    }
+//                    case "#attacking2/3strengthenemyofscore": {
+//                        nations.removeIf(n -> {
+//                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
+//                            return value < n.getStrength() * 2 / 3;
+//                        });
+//                        continue;
+//                    }
+//                    case "#attacking3/4strengthenemyofscore": {
+//                        nations.removeIf(n -> {
+//                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
+//                            return value < n.getStrength() * 3 / 4;
+//                        });
+//                        continue;
+//                    }
+//                    case "#attacking4/5strengthenemyofscore": {
+//                        nations.removeIf(n -> {
+//                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
+//                            return value < n.getStrength() * 4 / 5;
+//                        });
+//                        continue;
+//                    }
+//                    case "#fighting4/5strengthenemyofscore": {
+//                        nations.removeIf(n -> {
+//                            double value = n.getStrongestEnemyOfScore(filter.getValue()::apply);
+//                            return value < n.getStrength() * 4 / 5;
+//                        });
+//                        continue;
+//                    }
+//                    case "#attackingstrongerenemyofscore": {
+//                        nations.removeIf(n -> {
+//                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
+//                            return value < n.getStrength();
+//                        });
+//                        continue;
+//                    }
+//                    case "#fightingstrongerenemyofscore": {
+//                        nations.removeIf(n -> {
+//                            double value = n.getStrongestEnemyOfScore(filter.getValue()::apply);
+//                            return value < n.getStrength();
+//                        });
+//                        continue;
+//                    }
                     case "#spyrange":
                     case "#warrange": {
                         continue;

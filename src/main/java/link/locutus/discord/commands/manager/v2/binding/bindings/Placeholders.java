@@ -226,6 +226,8 @@ public abstract class Placeholders<T> {
         return typeFunction;
     }
 
+    private static String[] prefixes = {"get", "is", "can"};
+
     public Map.Entry<Type, Function<T, Object>> getPlaceholderFunction(ValueStore store, String input) {
         List<String> args;
         int argStart = input.indexOf('(');
@@ -246,7 +248,10 @@ public abstract class Placeholders<T> {
 
         ParametricCallable cmdObj = (ParametricCallable) commands.get(cmd);
         if (cmdObj == null) {
-            cmdObj = (ParametricCallable) commands.get("get" + cmd);
+            for (String prefix : prefixes) {
+                cmdObj = (ParametricCallable) commands.get(prefix + cmd);
+                if (cmdObj != null) break;
+            }
             if (cmdObj == null) {
                 return null;
             }

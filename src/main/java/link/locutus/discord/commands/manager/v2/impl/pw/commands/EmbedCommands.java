@@ -44,6 +44,7 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.ItemComponent;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -152,19 +153,25 @@ public class EmbedCommands {
             "Unlike `embed add button`, this does not parse and validate command input.")
     @NoFormat
     @RolePermission(Roles.INTERNAL_AFFAIRS)
-    public String addButtonRaw(@Me User user, @Me Guild guild, Message message, String label, CommandBehavior behavior, String command, @Switch("c") MessageChannel channel) {
+    public String addButtonRaw(@Me User user, @Me IMessageIO io, @Me JSONObject cmdJson,  @Me Guild guild, Message message, String label, CommandBehavior behavior, String command, @Switch("c") MessageChannel channel, @Switch("f") boolean force) {
         checkMessagePerms(user, guild, message);
         if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
             throw new IllegalArgumentException("The message you linked is not from the bot. Only bot messages can be modified.");
         }
-        if (!label.matches("[a-zA-Z0-9 ]+")) {
+        if (!label.matches("[a-zA-Z0-9_ ]+")) {
             throw new IllegalArgumentException("Label must be alphanumeric, not: `" + label + "`");
         }
 
         List<Button> buttons = message.getButtons();
-        for (Button button : buttons) {
-            if (button.getLabel().equalsIgnoreCase(label)) {
-                throw new IllegalArgumentException("The button label `" + label + "` already exists on the embed. Please remove it first: " + CM.embed.remove.button.cmd.toSlashMention());
+        if (!force) {
+            for (Button button : buttons) {
+                if (button.getLabel().equalsIgnoreCase(label)) {
+                    String title = "Button already exists";
+                    String body = "The button label `" + label + "` already exists on the embed.\n\n" +
+                            "Would you like to replace it?";
+                    io.create().confirmation(title, body, cmdJson).send();
+                    return null;
+                }
             }
         }
         if (buttons.size() >= 25) {
@@ -173,9 +180,11 @@ public class EmbedCommands {
 
         Long channelId = channel == null ? null : channel.getIdLong();
         new DiscordMessageBuilder(message.getChannel(), message)
+                .removeButtonByLabel(label)
                 .commandButton(behavior, channelId, command.replace("\\n", "\n"), label)
                 .send();
-        return "Done! Added button `" + label + "` to " + message.getJumpUrl();
+        return "Done! Added button `" + label + "` to " + message.getJumpUrl() + "\n" +
+                "Remove it using: " + CM.embed.remove.button.cmd.toSlashMention();
     }
 
     @Command(desc = "Add a button to a discord embed from this bot which runs a command")
@@ -217,7 +226,7 @@ public class EmbedCommands {
         if (message.getAuthor().getIdLong() != Settings.INSTANCE.APPLICATION_ID) {
             throw new IllegalArgumentException("The message you linked is not from the bot. Only bot messages can be modified.");
         }
-        if (!label.matches("[a-zA-Z0-9 ]+")) {
+        if (!label.matches("[a-zA-Z0-9_ ]+")) {
             throw new IllegalArgumentException("Label must be alphanumeric, not: `" + label + "`");
         }
         Set<String> validArguments = command.getUserParameterMap().keySet();
@@ -630,6 +639,10 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         }
 
         Operation opposite = greaterOrLess.opposite();
+        boolean greater = greaterOrLess == Operation.GREATER || greaterOrLess == Operation.GREATER_EQUAL;
+        double minScore = greater ? score : 0;
+        double maxScore = greater ? Integer.MAX_VALUE : score;
+        String rangeStr = "(" + String.format("%.2f", minScore) + "," + String.format("%.2f", maxScore) + ")=1";
 
         String dmStr = resultsInDm ? "true" : null;
         CM.war.find.enemy easy = CM.war.find.enemy.cmd.create(
@@ -642,9 +655,9 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         }
         int scoreInt = (int) score;
         CM.war.find.enemy high = CM.war.find.enemy.cmd.create(
-                "~enemies,#off>0,#score" + opposite + scoreMax + ",#attackingenemyofscore" + opposite + scoreInt + ",#attacking3/4strengthenemyofscore" + opposite + scoreInt, null, null, null, null, "true", null, null, null, dmStr, null);
+                "~enemies,#off>0,#score" + opposite + scoreMax + ",#attackingenemyofscore" + rangeStr + ",#attacking3/4strengthenemyofscore" + rangeStr, null, null, null, null, "true", null, null, null, dmStr, null);
         CM.war.find.enemy low = CM.war.find.enemy.cmd.create(
-                "~enemies,#off>0,#score" + opposite + scoreMax + ",#attackingenemyofscore" + opposite + scoreInt + ",#attacking3/4strengthenemyofscore" + opposite + scoreInt, null, null, null, null, "true", null, "true", null, dmStr, null);
+                "~enemies,#off>0,#score" + opposite + scoreMax + ",#attackingenemyofscore" + rangeStr + ",#attacking3/4strengthenemyofscore" + rangeStr, null, null, null, null, "true", null, "true", null, dmStr, null);
         CM.war.find.enemy weak = CM.war.find.enemy.cmd.create(
                 "~enemies", null, null, "true", "true", null, null, "true", null, dmStr, "true");
         CM.war.find.damage infra = CM.war.find.damage.cmd.create(

@@ -4575,22 +4575,57 @@ public class DBNation implements NationOrAlliance {
         ships = (int) (drydocks * cities * Buildings.DRYDOCK.max());
     }
 
-    @Command(desc = "Number of buildings total")
-    public int getBuildings() {
+    @Command(desc = "Alliance rank by score")
+    public int getAllianceRank(@Default NationFilter filter) {
+        if (alliance_id == 0) return Integer.MAX_VALUE;
+        return getAlliance().getRank(filter);
+    }
+
+    @Command(desc= "Get total free building slots in this nations cities")
+    public int getFreeBuildings() {
         int total = 0;
-        Collection<DBCity> cities = _getCitiesV3().values();
-        for (DBCity city : cities) {
-            total += city.getNumBuildings();
+        for (DBCity city : _getCitiesV3().values()) {
+            total += Math.max(0, ((int) city.infra - city.getNumBuildings() * 50) / 50);
         }
         return total;
     }
 
-    @Command(desc = "Number of buildings per city")
-    public double getAvgBuildings() {
+    @Command(desc = "Number of buildings total")
+    public int getBuildings(@Default Set<Building> buildings) {
         int total = 0;
         Collection<DBCity> cities = _getCitiesV3().values();
-        for (DBCity city : cities) {
-            total += city.getNumBuildings();
+        if (buildings != null) {
+            for (DBCity city : cities) {
+                for (Building building : buildings) {
+                    total += city.get(building);
+                }
+            }
+        } else {
+            for (DBCity city : cities) {
+                total += city.getNumBuildings();
+            }
+        }
+        return total;
+    }
+
+    public double getAvgBuildings() {
+        return getAvgBuildings(null);
+    }
+
+    @Command(desc = "Number of buildings per city")
+    public double getAvgBuildings(@Default Set<Building> buildings) {
+        int total = 0;
+        Collection<DBCity> cities = _getCitiesV3().values();
+        if (buildings != null) {
+            for (DBCity city : cities) {
+                for (Building building : buildings) {
+                    total += city.get(building);
+                }
+            }
+        } else {
+            for (DBCity city : cities) {
+                total += city.getNumBuildings();
+            }
         }
         return total / (double) cities.size();
     }
