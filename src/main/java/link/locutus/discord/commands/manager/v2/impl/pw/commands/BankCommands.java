@@ -2239,7 +2239,7 @@ public class BankCommands {
                                @Arg("Do NOT include grants") @Switch("g") boolean noGrants,
                                @Arg("Do NOT include deposits") @Switch("d") boolean noDeposits,
                                @Arg("Include past depositors") @Switch("p") Set<Integer> includePastDepositors,
-                               @Arg("Do NOT include escrow sheet") @Switch("d") boolean noEscrowSheet,
+                               @Arg("Do NOT include escrow sheet") @Switch("e") boolean noEscrowSheet,
                                @Switch("f") boolean force
 
     ) throws GeneralSecurityException, IOException {

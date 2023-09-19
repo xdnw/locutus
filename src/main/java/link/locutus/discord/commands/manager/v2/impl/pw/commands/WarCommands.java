@@ -1393,7 +1393,7 @@ public class WarCommands {
                          @Switch("s") Double warRange,
                          @Arg("Exclude targets with ships equal to this multiple relative to yours\n" +
                                  "i.e. `1.0` would be nations with ships equal or less than yours")
-                         @Switch("n") Double relativeNavalStrength) {
+                         @Switch("r") Double relativeNavalStrength) {
         nations.removeIf(f -> f.getDef() >= 3);
         nations.removeIf(f -> f.getVm_turns() != 0);
         if (!includeApps) nations.removeIf(f -> f.getPosition() <= 1);

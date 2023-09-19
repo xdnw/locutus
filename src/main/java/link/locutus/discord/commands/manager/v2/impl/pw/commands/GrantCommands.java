@@ -647,7 +647,7 @@ public class GrantCommands {
                                          NationFilter allowedRecipients,
                                          @Switch("a") Map<ResourceType, Double> allowancePerCity,
                                          @Switch("t") long trackDays,
-                                         @Switch("s") boolean subtractExpenditure,
+                                         @Switch("c") boolean subtractExpenditure,
                                          @Switch("o") long overdrawPercentCents,
                                          @Switch("e") Role econRole,
                                          @Switch("s") Role selfRole,

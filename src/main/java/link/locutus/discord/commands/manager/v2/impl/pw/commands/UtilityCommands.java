@@ -882,16 +882,16 @@ public class UtilityCommands {
     @Command(desc = "Calculate the score of various things. Each argument is option, and can go in any order")
     public String score(@Default DBNation nation,
                         @Switch("c") Integer cities,
-                        @Switch("s") Integer soldiers,
-                        @Switch("t") Integer tanks,
-                        @Switch("a") Integer aircraft,
-                        @Switch("b") Integer boats,
+                        @Switch("b") Integer soldiers,
+                        @Switch("f") Integer tanks,
+                        @Switch("h") Integer aircraft,
+                        @Switch("d") Integer ships,
                         @Switch("m") Integer missiles,
                         @Switch("n") Integer nukes,
                         @Switch("p") Integer projects,
-                        @Switch("i") Integer avg_infra,
-                        @Switch("I") Integer infraTotal,
-                        @Switch("b") MMRDouble builtMMR
+                        @Switch("a") Integer avg_infra,
+                        @Switch("i") Integer infraTotal,
+                        @Switch("mmr") MMRDouble builtMMR
     ) {
         if (nation == null) {
             nation = new DBNation();
@@ -910,7 +910,7 @@ public class UtilityCommands {
         if (tanks != null) nation.setTanks(tanks);
 
         if (aircraft != null) nation.setAircraft(aircraft);
-        if (boats != null) nation.setShips(boats);
+        if (ships != null) nation.setShips(ships);
         if (missiles != null) nation.setMissiles(missiles);
         if (nukes != null) nation.setNukes(nukes);
         if (projects != null) {

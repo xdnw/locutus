@@ -86,6 +86,8 @@ public class ParametricCallable implements ICommand {
 
         LocalValueStore locals = new LocalValueStore<>(store);
 
+        Set<String> flagList = new LinkedHashSet<>();
+
         // Go through each parameter
         for (int i = 0; i < types.length; i++) {
             Type type = types[i];
@@ -122,6 +124,13 @@ public class ParametricCallable implements ICommand {
             parameter.setBinding(binding);
 
             parameter.setName(names[i]);
+
+            if (parameter.getFlag() != null) {
+                if (flagList.contains(parameter.getFlag())) {
+                    throw new IllegalStateException("Duplicate flag " + parameter.getFlag() + " for command: " + method.getDeclaringClass().getSimpleName() + "#" + method.getName());
+                }
+                flagList.add(parameter.getFlag());
+            }
 
             // Track all value flags
             if (parameter.isConsumeFlag()) {
