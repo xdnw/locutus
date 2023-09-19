@@ -41,8 +41,8 @@ public class NationSheet extends Command implements Noformat {
 
     @Override
     public String desc() {
-        return "Create a nation sheet, with the following column placeholders\n- {" +
-                StringMan.join(DiscordUtil.getParser().getPlaceholders(), "}\n- {") + "}\n" +
+        return "Create a nation sheet, with the following column placeholders\n" +
+                "<https://github.com/xdnw/locutus/wiki/nation_placeholders>\n" +
                 "Add `-s` to force update spies";
     }
 
@@ -74,7 +74,7 @@ public class NationSheet extends Command implements Noformat {
             header.set(i, arg);
         }
 
-        Set<DBNation> nations = DiscordUtil.parseNations(guild, DiscordUtil.format(guild, channel, author, me, args.get(0)));
+        Set<DBNation> nations = DiscordUtil.parseNations(guild, DiscordUtil.format(guild, author, me, args.get(0), author, me));
         if (nations.isEmpty()) return "No nations found for `" + args.get(0) + "`";
 
         if (sheet == null) {
@@ -111,7 +111,7 @@ public class NationSheet extends Command implements Noformat {
         for (DBNation nation : nationsSorted) {
             for (int i = 1; i < args.size(); i++) {
                 String arg = args.get(i);
-                String formatted = DiscordUtil.format(guild, channel, author, nation, arg);
+                String formatted = DiscordUtil.format(guild, author, me, arg, null, nation);
 
                 header.set(i - 1, formatted);
             }

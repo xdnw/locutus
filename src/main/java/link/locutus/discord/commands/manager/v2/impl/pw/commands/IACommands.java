@@ -981,8 +981,8 @@ public class IACommands {
         List<String> full = new ArrayList<>();
         for (DBNation nation : nations) {
             try {
-                String subjectF = DiscordUtil.format(db.getGuild(), channel, nation.getUser(), nation, subject);
-                String messageF = DiscordUtil.format(db.getGuild(), channel, nation.getUser(), nation, message);
+                String subjectF = DiscordUtil.format(db.getGuild(), author, me, subject, null, nation);
+                String messageF = DiscordUtil.format(db.getGuild(), author, me, message, null, nation);
                 full.add(String.valueOf(nation.sendMail(key, subjectF, messageF, nations.size() == 1)));
             } catch (Throwable e) {
                 e.printStackTrace();
@@ -1340,8 +1340,8 @@ public class IACommands {
                 }
             }
             User nationUser = nation.getUser();
-            String subjectFormat = placeholders.format(store, subject);
-            String bodyFormat = placeholders.format(store, body);
+            String subjectFormat = placeholders.format(store, subject, nation);
+            String bodyFormat = placeholders.format(store, body, nation);
 
             Map.Entry<CommandResult, String> response = nation.runCommandInternally(guild, nationUser, command);
             CommandResult respType = response.getKey();

@@ -80,7 +80,7 @@ public class CopyPasta extends Command implements Noformat {
                 return "No message set for `" + args.get(0) + "`. Plase use `" + Settings.commandPrefix(true) + "copypasta <key> <message>`";
             IMessageBuilder existing = channel.getMessage();
             if (existing != null && existing.getId() > 0) channel.delete(existing.getId());
-            return DiscordUtil.format(guild, channel, author, me, value);
+            return DiscordUtil.format(guild, author, me, value, author, me);
         } else {
             if (!Roles.INTERNAL_AFFAIRS.has(author, guild)) return "No permission.";
 

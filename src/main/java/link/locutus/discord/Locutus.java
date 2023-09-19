@@ -1226,7 +1226,8 @@ public final class Locutus extends ListenerAdapter {
         }
         System.out.println("CMD1 " + cmd);
         if (!(cmdObject instanceof Noformat)) {
-            cmd = DiscordUtil.format(message.getGuild(), io, user, DiscordUtil.getNation(user), cmd);
+            DBNation nation = DiscordUtil.getNation(user);
+            cmd = DiscordUtil.format(message.getGuild(), user, nation, cmd, user, nation);
         }
         Guild guild = message.isFromGuild() ? message.getGuild() : null;
 

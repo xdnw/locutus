@@ -1187,7 +1187,9 @@ public class UnsortedCommands {
                             @Default @TextArea String message,
                             @Arg("Require roles to paste the message")
                             @Default Set<Role> requiredRolesAny,
+                            @Switch("n") DBNation formatNation,
                             NationPlaceholders placeholders, ValueStore store) throws Exception {
+        if (formatNation == null) formatNation = me;
         if (key == null) {
 
             Map<String, String> copyPastas = db.getCopyPastas(member);
@@ -1249,7 +1251,7 @@ public class UnsortedCommands {
             }
             if (value == null) return "No message set for `" + key + "`. Plase use " + CM.copyPasta.cmd.toSlashMention() + "";
 
-            value = placeholders.format(store, value);
+            value = placeholders.format(store, value, formatNation);
 
             return value;
         } else if (!Roles.INTERNAL_AFFAIRS.has(author, guild)) {

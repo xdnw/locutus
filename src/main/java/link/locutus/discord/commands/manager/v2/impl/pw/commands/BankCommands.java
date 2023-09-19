@@ -3258,7 +3258,7 @@ public class BankCommands {
     public static String deposits(@Me Guild guild, @Me GuildDB db, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildHandler handler,
                            @Arg("Account to check holdings for") NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild,
                            @Arg("The alliances to check transfers from\nOtherwise the guild configured ones will be used")
-                           @Switch("o") Set<DBAlliance> offshores,
+                           @Switch("a") Set<DBAlliance> offshores,
                            @Arg("Only include transfers after this time")
                            @Switch("c") @Timestamp Long timeCutoff,
                             @Arg("Include all taxes in account balance")

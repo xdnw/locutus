@@ -1221,7 +1221,7 @@ public class UtilityCommands {
             "See <https://github.com/xdnw/locutus/wiki/nation_placeholders> for a list of placeholders")
     @WhitelistPermission
     @NoFormat
-    public String AllianceSheet(NationPlaceholders placeholders, AlliancePlaceholders aaPlaceholders, ValueStore store, @Me Guild guild, @Me IMessageIO channel, @Me User author, @Me GuildDB db,
+    public String AllianceSheet(NationPlaceholders placeholders, AlliancePlaceholders aaPlaceholders, ValueStore store, @Me Guild guild, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildDB db,
                                 @Arg("The nations to include in each alliance")
                                 Set<DBNation> nations,
                                 @Arg("The columns to use in the sheet")
@@ -1265,7 +1265,7 @@ public class UtilityCommands {
                 }
 
                 String formatted = aaPlaceholders.format(guild, dbAlliance, author, arg);
-                formatted = placeholders.format(guild, nation, author, formatted);
+                formatted = placeholders.format(guild, me, author, formatted, nation);
 
                 header.set(i, formatted);
             }
@@ -1284,7 +1284,7 @@ public class UtilityCommands {
     @Command(desc = "A sheet of nations stats with customizable columns\n" +
             "See <https://github.com/xdnw/locutus/wiki/nation_placeholders> for a list of placeholders")
     @NoFormat
-    public static void NationSheet(ValueStore store, NationPlaceholders placeholders, @Me IMessageIO channel, @Me GuildDB db, Set<DBNation> nations,
+    public static void NationSheet(ValueStore store, NationPlaceholders placeholders, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildDB db, Set<DBNation> nations,
                                    @Arg("A space separated list of columns to use in the sheet\n" +
                                            "Can include NationAttribute as placeholders in columns\n" +
                                            "All NationAttribute placeholders must be surrounded by {} e.g. {nation}")
@@ -1302,16 +1302,13 @@ public class UtilityCommands {
 
         sheet.setHeader(header);
 
-        LocalValueStore locals = new LocalValueStore(store);
         for (DBNation nation : nations) {
             if (updateSpies) {
                 nation.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK);
             }
-            locals.addProvider(Key.of(DBNation.class, Me.class), nation);
-            locals.addProvider(Key.of(User.class, Me.class), nation.getUser());
             for (int i = 0; i < columns.size(); i++) {
                 String arg = columns.get(i);
-                String formatted = placeholders.format(locals, arg);
+                String formatted = placeholders.format(store, arg, nation);
 
                 header.set(i, formatted);
             }

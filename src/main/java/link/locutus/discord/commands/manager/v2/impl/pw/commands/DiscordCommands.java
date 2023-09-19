@@ -139,7 +139,7 @@ public class DiscordCommands {
 
         msg = msg + "\n\n- " + author.getAsMention();
 
-        msg = placeholders.format(store, msg);
+        msg = placeholders.format(store, msg, me);
         return msg;
     }
 
@@ -227,7 +227,7 @@ public class DiscordCommands {
                           @Switch("a") boolean pingAuthor
 
     ) throws ExecutionException, InterruptedException {
-        channelName = placeholders.format(store, channelName);
+        channelName = placeholders.format(store, channelName, nation);
 
         Member member = guild.getMember(author);
 

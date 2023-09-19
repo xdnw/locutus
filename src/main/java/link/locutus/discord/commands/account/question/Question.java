@@ -25,7 +25,7 @@ public interface Question {
 
     default String format(Guild guild, User author, DBNation me, IMessageIO channel, String message) {
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        message = DiscordUtil.format(guild, channel, author, me, message);
+        message = DiscordUtil.format(guild, author, me, message, author, me);
         for (Map.Entry<String, String> entry : db.getKeys().entrySet()) {
             if (!message.contains("{")) break;
             String key = entry.getKey().toLowerCase();

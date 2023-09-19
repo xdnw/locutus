@@ -300,7 +300,7 @@ public class CommandManager {
 
                 if (!(cmd instanceof Noformat) && nation != null) {
                     try {
-                        String formatted = DiscordUtil.format(guild, channel, msgUser, nation, content1);
+                        String formatted = DiscordUtil.format(guild, msgUser, nation, content1, msgUser, nation);
                         if (!content1.equals(formatted)) {
                             assert guild != null;
                         }

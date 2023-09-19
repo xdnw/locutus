@@ -656,10 +656,10 @@ public class GuildHandler {
         }
 
         if (message.contains("%") || message.contains("{")) {
-            message = DiscordUtil.format(guild, output, null, to, message);
+            message = DiscordUtil.format(guild, null, null, message, null, to);
         }
         if (subject.contains("%") || subject.contains("{")) {
-            subject = DiscordUtil.format(guild, output, null, to, subject);
+            subject = DiscordUtil.format(guild, null, null, subject, null, to);
         }
 
         return to.sendMail(keys, subject, message, false);

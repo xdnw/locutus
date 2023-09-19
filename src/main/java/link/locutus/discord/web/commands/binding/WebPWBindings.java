@@ -278,6 +278,7 @@ public class WebPWBindings extends WebBindingHelper {
     public String nations(ArgumentStack stack, ParameterData param) {
         return nations(stack.getStore(), param);
     }
+
     public String nations(ValueStore valueStore, ParameterData param) {
         Collection<DBNation> options;
         Filter filter = param.getAnnotation(Filter.class);
@@ -297,7 +298,7 @@ public class WebPWBindings extends WebBindingHelper {
                     filterStr = filterStr.replace("{guild_alliance_id}", "AA:" + StringMan.join(aaIds, ",AA:"));
                 }
             }
-            filterStr = DiscordUtil.format(guild, channel, user, me, filterStr);
+            filterStr = DiscordUtil.format(guild, user, me, filterStr, user, me);
             options = DiscordUtil.parseNations(guild, filterStr);
         } else {
             options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());

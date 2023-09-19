@@ -20,7 +20,6 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
-import link.locutus.discord.util.parser.ArgParser;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import com.google.common.base.Charsets;
 import link.locutus.discord.apiv1.enums.TreatyType;
@@ -445,30 +444,28 @@ public class DiscordUtil {
         new DiscordChannelIO(channel, null).create().embed(embed).addCommands(reactionArguments).send();
     }
 
-    private static final ArgParser parser = new ArgParser();
-
-    public static String format(Guild guild, IMessageIO channel, User user, DBNation nation, String message) {
+    public static String format(Guild guild, User callerUser, DBNation callerNation, String message, User user, DBNation nation) {
         if (user != null && message.contains("%user%")) {
             message = message.replace("%user%", user.getAsMention());
         }
-        return Locutus.imp().getCommandManager().getV2().getNationPlaceholders().format(guild, nation, user, message);
+        return Locutus.imp().getCommandManager().getV2().getNationPlaceholders().format(guild, callerNation, callerUser, message, nation);
     }
 
-    public static String format(Guild guild, MessageChannel channel, User user, DBNation nation, String message) {
-        if (user != null && message.contains("%user%")) {
-            message = message.replace("%user%", user.getAsMention());
-        }
-        String result = parser.parse(guild, channel, user, nation, message);
-        if (result.indexOf('{') != -1 && result.indexOf('}') != -1) {
-            for (NationMeta value : NationMeta.values) {
-                String arg = "{" + value.name().toLowerCase() + "}";
-                if (message.contains(arg)) {
-                    message = message.replace(arg, value.toString(nation.getMeta(value)));
-                }
-            }
-        }
-        return result;
-    }
+//    public static String format(Guild guild, MessageChannel channel, User callerUser, DBNation callerNation, String message) {
+//        if (user != null && message.contains("%user%")) {
+//            message = message.replace("%user%", user.getAsMention());
+//        }
+//        String result = parser.parse(guild, channel, user, nation, message);
+//        if (result.indexOf('{') != -1 && result.indexOf('}') != -1) {
+//            for (NationMeta value : NationMeta.values) {
+//                String arg = "{" + value.name().toLowerCase() + "}";
+//                if (message.contains(arg)) {
+//                    message = message.replace(arg, value.toString(nation.getMeta(value)));
+//                }
+//            }
+//        }
+//        return result;
+//    }
 
     public static class CommandInfo {
         public final Long channelId;
@@ -597,10 +594,6 @@ public class DiscordUtil {
             map.put(entry.getName(), entry.getValue());
         }
         return map;
-    }
-
-    public static ArgParser getParser() {
-        return parser;
     }
 
     public static Map.Entry<Integer, Integer> getCityRange(String name) {

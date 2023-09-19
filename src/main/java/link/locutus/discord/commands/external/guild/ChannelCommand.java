@@ -55,7 +55,7 @@ public class ChannelCommand extends Command {
         if (args.size() < 2) return usage(args.size(), 2, channel);
         DBNation nation = me;
 
-        String channelName = DiscordUtil.format(guild, channel, author, nation, args.get(0));
+        String channelName = DiscordUtil.format(guild, author, nation, args.get(0), author, nation);
         List<Category> categories = new ArrayList<>();
         List<TextChannel> channels = new ArrayList<>();
         Category freeCategory = null;

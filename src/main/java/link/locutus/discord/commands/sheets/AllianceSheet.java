@@ -42,8 +42,9 @@ public class AllianceSheet extends Command implements Noformat {
 
     @Override
     public String desc() {
-        return "Create a nation sheet, with the following column placeholders\n- {" +
-                StringMan.join(DiscordUtil.getParser().getPlaceholders(), "}\n- {") + "}";
+        return "Create a nation sheet, with the following column placeholders:\n" +
+                "<https://github.com/xdnw/locutus/wiki/alliance_placeholders>";
+
     }
 
     @Override
@@ -99,7 +100,7 @@ public class AllianceSheet extends Command implements Noformat {
                 if (formatted.contains("{") && formatted.contains("}")) {
                     formatted = aaPlaceholders.format(guild, dbAlliance, author, arg);
                     if (formatted.contains("{") && formatted.contains("}")) {
-                        formatted = DiscordUtil.format(guild, channel, author, nation, arg);
+                        formatted = DiscordUtil.format(guild, author, me, arg, null, nation);
                     }
                 }
 

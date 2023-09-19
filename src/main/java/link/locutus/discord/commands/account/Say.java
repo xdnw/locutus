@@ -42,6 +42,6 @@ public class Say extends Command {
             GPTUtil.checkThrowModeration(result, "<redacted>");
         }
 
-        return DiscordUtil.format(guild, channel, author, me, msg.substring(5) + "\n\n- " + author.getAsMention());
+        return DiscordUtil.format(guild, author, me, msg.substring(5) + "\n\n- " + author.getAsMention(), author, me);
     }
 }
