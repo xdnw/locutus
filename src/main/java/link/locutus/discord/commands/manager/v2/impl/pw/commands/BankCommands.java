@@ -731,7 +731,7 @@ public class BankCommands {
         List<TransferResult> results = new ArrayList<>();
         for (DBAlliance from : alliances) {
             if (from.getAlliance_id() == to.getAlliance_id()) continue;
-            Map<ResourceType, Double> resources = from.getStockpile();
+            Map<ResourceType, Double> resources = from.getStockpile(true);
             Iterator<Map.Entry<ResourceType, Double>> iterator = resources.entrySet().iterator();
             while (iterator.hasNext()) {
                 Map.Entry<ResourceType, Double> entry = iterator.next();
@@ -3266,7 +3266,7 @@ public class BankCommands {
                             @Arg("Do NOT include manual offsets in account balance")
                            @Switch("o") boolean ignoreInternalOffsets,
                             @Arg("Show separate sections for taxes and deposits")
-                           @Switch("t") Boolean showTaxesSeparately,
+                           @Switch("t") Boolean showCategories,
                            @Switch("d") boolean replyInDMs,
                            @Arg("Include expired transfers")
                            @Switch("e") boolean includeExpired,
@@ -3276,10 +3276,10 @@ public class BankCommands {
     ) throws IOException {
         boolean condensedFormat = GuildKey.DISPLAY_CONDENSED_DEPOSITS.getOrNull(db) == Boolean.TRUE;
         if (!nationOrAllianceOrGuild.isNation() && !nationOrAllianceOrGuild.isTaxid()) {
-            showTaxesSeparately = false;
+            showCategories = false;
         }
-        if (showTaxesSeparately == null) {
-            showTaxesSeparately = (db.getOrNull(GuildKey.DISPLAY_ITEMIZED_DEPOSITS) == Boolean.TRUE);
+        if (showCategories == null) {
+            showCategories = (db.getOrNull(GuildKey.DISPLAY_ITEMIZED_DEPOSITS) == Boolean.TRUE);
         }
         if (timeCutoff == null) timeCutoff = 0L;
         Set<Long> offshoreIds = offshores == null ? null : offshores.stream().map(f -> f.getIdLong()).collect(Collectors.toSet());
@@ -3352,16 +3352,16 @@ public class BankCommands {
             Map<DepositType, double[]> deposits = db.getTaxBracketDeposits(bracket.taxId, timeCutoff, includeExpired, includeIgnored);
             accountDeposits.putAll(deposits);
 
-            if (showTaxesSeparately) {
+            if (showCategories) {
                 footers.add("`#TAX` is for the portion of tax income that does NOT go into member holdings");
                 footers.add("`#DEPOSIT` is for the portion of tax income in member holdings");
             } else {
-                footers.add("Set `showTaxesSeparately` for breakdown of tax within member holdings");
+                footers.add("Set `showCategories` for breakdown of tax within member holdings");
             }
         }
 
         String title = "Deposits for: " + nationOrAllianceOrGuild.getQualifiedName();
-        Map.Entry<double[], String> balanceBody = PnwUtil.createDepositEmbed(db, nationOrAllianceOrGuild, accountDeposits, showTaxesSeparately, escrowed, escrowExpire, condensedFormat);
+        Map.Entry<double[], String> balanceBody = PnwUtil.createDepositEmbed(db, nationOrAllianceOrGuild, accountDeposits, showCategories, escrowed, escrowExpire, condensedFormat);
         double[] balance = balanceBody.getKey();
         String body = balanceBody.getValue();
         Map<String, Map.Entry<CommandRef, Boolean>> buttons = new LinkedHashMap<>();
@@ -3443,11 +3443,11 @@ public class BankCommands {
             }
         }
 
-        if (!showTaxesSeparately && (nationOrAllianceOrGuild.isNation() || nationOrAllianceOrGuild.isTaxid())) {
+        if (!showCategories && (nationOrAllianceOrGuild.isNation() || nationOrAllianceOrGuild.isTaxid())) {
             // add footer and button for showing separately
             String itemziedSetting = !econ ? "" : "or " + GuildKey.DISPLAY_ITEMIZED_DEPOSITS.getCommandMention() + " ";
             if (!condensedFormat) {
-                footers.add("Use `showTaxesSeparately: True` " + itemziedSetting + "for a breakdown");
+                footers.add("Use `showCategories: True` " + itemziedSetting + "for a breakdown");
             }
             buttons.put("breakdown",
                     Map.entry(
@@ -3991,7 +3991,7 @@ public class BankCommands {
                         }
                     }
 
-                    response.append("Registered " + offshoreAlliance.getQualifiedId() + " as an offshore. See: https://github.com/xdnw/locutus/wiki/bankingedit");
+                    response.append("Registered " + offshoreAlliance.getQualifiedId() + " as an offshore. See: https://github.com/xdnw/locutus/wiki/banking");
                     if (aaIds.isEmpty()) {
                         response.append("\n(Your guild id, and the id of your account with the offshore is `" + root.getIdLong() + "`)");
                     }

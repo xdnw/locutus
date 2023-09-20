@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
-import com.knuddels.jtokkit.api.ModelType;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -19,7 +18,6 @@ import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
-import link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.entities.DBCity;
@@ -45,7 +43,6 @@ import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.gpt.pwembed.PWGPTHandler;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
@@ -70,7 +67,6 @@ import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 
@@ -481,7 +477,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "{nation}", value = "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
-    public NationPlaceholder placeholder(ValueStore store, PermissionHandler permisser, String input) {
+    public static NationPlaceholder placeholder(ValueStore store, PermissionHandler permisser, String input) {
         CommandManager2 v2 = Locutus.imp().getCommandManager().getV2();
         NationPlaceholders placeholders = v2.getNationPlaceholders();
         ParametricCallable ph = placeholders.get(input);
@@ -661,7 +657,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "borg,AA:Cataclysm", value = "A comma separated list of nations and alliances")
-    public Set<NationOrAlliance> nationOrAlliance(ParameterData data, @Default @Me Guild guild, String input) {
+    public static Set<NationOrAlliance> nationOrAlliance(ParameterData data, @Default @Me Guild guild, String input) {
         Set<NationOrAlliance> result = new LinkedHashSet<>();
 
         for (String group : input.split("\\|+")) {

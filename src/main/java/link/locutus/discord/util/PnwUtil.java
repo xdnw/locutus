@@ -576,7 +576,7 @@ public class PnwUtil {
         return range * 0.01;
     }
 
-    public static Map.Entry<double[], String> createDepositEmbed(GuildDB db, NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild, Map<DepositType, double[]> categorized, Boolean showTaxesSeparately, double[] escrowed, long escrowExpire, boolean condenseFormat) {
+    public static Map.Entry<double[], String> createDepositEmbed(GuildDB db, NationOrAllianceOrGuildOrTaxid nationOrAllianceOrGuild, Map<DepositType, double[]> categorized, Boolean showCategories, double[] escrowed, long escrowExpire, boolean condenseFormat) {
         boolean withdrawIgnoresGrants = GuildKey.MEMBER_CAN_WITHDRAW_IGNORES_GRANTS.getOrNull(db) == Boolean.TRUE;
 
         boolean hasEscrowed = (escrowed != null && !ResourceType.isZero(escrowed) && PnwUtil.convertedTotal(escrowed) > 0);
@@ -608,24 +608,24 @@ public class PnwUtil {
             }
         }
 
-        if (showTaxesSeparately) {
+        if (showCategories) {
             if (categorized.containsKey(DepositType.DEPOSIT)) {
-                response.append("**`#DEPOSIT:`** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.DEPOSIT))));
-                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.DEPOSIT))).append("``` ");
+                response.append("**`#DEPOSIT`** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.DEPOSIT))));
+                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.DEPOSIT))).append("```\n");
             }
             if (categorized.containsKey(DepositType.TAX)) {
-                response.append("**`#TAX:**` worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.TAX))));
-                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.TAX))).append("``` ");
+                response.append("**`#TAX`** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.TAX))));
+                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.TAX))).append("```\n");
             } else if (nationOrAllianceOrGuild.isNation()) {
                 footers.add("No tax records are added to deposits");
             }
             if (categorized.containsKey(DepositType.LOAN)) {
-                response.append("**`#LOAN/#GRANT`:** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.LOAN))));
-                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.LOAN))).append("``` ");
+                response.append("**`#LOAN/#GRANT`** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.LOAN))));
+                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.LOAN))).append("```\n");
             }
             if (categorized.containsKey(DepositType.GRANT)) {
-                response.append("**`#EXPIRE:`** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.GRANT))));
-                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.GRANT))).append("``` ");
+                response.append("**`#EXPIRE`** worth $" + MathMan.format(PnwUtil.convertedTotal(categorized.get(DepositType.GRANT))));
+                response.append("\n```").append(PnwUtil.resourcesToString(categorized.get(DepositType.GRANT))).append("```\n");
             }
             if (hasEscrowed) {
                 response.append("**" + CM.escrow.withdraw.cmd.toSlashMention() + ":** worth: $" + MathMan.format(PnwUtil.convertedTotal(escrowed)));
@@ -918,17 +918,6 @@ public class PnwUtil {
         if (from < 0) return 0;
         if (to <= from) return (from - to) * -150;
         if (to > 10000) throw new IllegalArgumentException("Infra cannot exceed 10,000");
-
-//        double total = 0;
-//        for (double i = to; i >= from; i -= 100) {
-//            double amt = Math.min(100, i - from);
-//            int cost_cents = getInfraCostCents(i - amt);
-//
-//            System.out.println("Buy " + amt + " infra @ " + cost_cents + " cents starting at " + (i - amt));
-//            total += (cost_cents * amt) * 0.01;
-//        }
-//        return Math.round(total * 100) * 0.01;
-
         long total_cents = 0;
         int to_cents = (int) Math.round(to * 100);
         int from_cents = (int) Math.round(from * 100);

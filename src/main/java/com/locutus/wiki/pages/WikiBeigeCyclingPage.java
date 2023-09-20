@@ -1,6 +1,6 @@
 package com.locutus.wiki.pages;
 
-import com.locutus.wiki.WikiGen;
+import com.locutus.wiki.BotWikiGen;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.guild.GuildKey;
@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 
 import static link.locutus.discord.pnw.BeigeReason.*;
 
-public class WikiBeigeCyclingPage extends WikiGen {
+public class WikiBeigeCyclingPage extends BotWikiGen {
     public WikiBeigeCyclingPage(CommandManager2 manager) {
         super(manager, "beige cycling");
     }

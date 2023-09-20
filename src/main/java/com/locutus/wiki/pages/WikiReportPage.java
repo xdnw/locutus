@@ -1,6 +1,6 @@
 package com.locutus.wiki.pages;
 
-import com.locutus.wiki.WikiGen;
+import com.locutus.wiki.BotWikiGen;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.ReportManager;
@@ -8,7 +8,7 @@ import link.locutus.discord.db.ReportManager;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-public class WikiReportPage extends WikiGen {
+public class WikiReportPage extends BotWikiGen {
     public WikiReportPage(CommandManager2 manager) {
         super(manager, "reporting");
     }

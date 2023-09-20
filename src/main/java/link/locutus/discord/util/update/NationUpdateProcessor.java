@@ -9,6 +9,7 @@ import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
@@ -59,6 +60,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -734,11 +736,11 @@ public class NationUpdateProcessor {
         if (alliance == null || alliance.getRank() > 120) return;
 
         List<String> departureInfo = new ArrayList<>();
-        departureInfo.add(PnwUtil.getMarkdownUrl(current.getId(), false) + ", cities: " + current.getCities() + ", " + Rank.byId(previous.getPosition()));
         int memberRemoves = 0;
 
         double scoreDrop = 0;
-        Map<Integer, Map.Entry<Long, Rank>> removes = alliance.getRemoves();
+        Map<Integer, Map.Entry<Long, Rank>> removes = new LinkedHashMap<>(alliance.getRemoves());
+        removes.put(current.getNation_id(), new AbstractMap.SimpleEntry<>(System.currentTimeMillis(), Rank.byId(previous.getPosition())));
         long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
         for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {
             if (entry.getValue().getKey() < cutoff) continue;
@@ -786,7 +788,7 @@ public class NationUpdateProcessor {
                 public void accept(MessageChannel channel, GuildDB guildDB) {
                     Integer topX = GuildKey.ALLIANCE_EXODUS_TOP_X.getOrNull(guildDB);
                     if (topX != null && topX < aaRank) return;
-                    new DiscordChannelIO(channel).create().embed(title, finalBody).commandButton(cmd, "list departures").sendWhenFree();
+                    new DiscordChannelIO(channel).create().embed(title, finalBody).commandButton(CommandBehavior.EPHEMERAL, cmd, "list departures").sendWhenFree();
                 }
             });
         }

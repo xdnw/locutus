@@ -1,13 +1,10 @@
 package com.locutus.wiki.pages;
 
 import com.locutus.wiki.CommandWikiPages;
-import com.locutus.wiki.WikiGen;
-import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import com.locutus.wiki.BotWikiGen;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 
-import java.lang.reflect.InvocationTargetException;
-
-public class WikiCommandsPage extends WikiGen {
+public class WikiCommandsPage extends BotWikiGen {
     public WikiCommandsPage(CommandManager2 manager) {
         super(manager, "commands");
     }

@@ -9,7 +9,10 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import java.util.PriorityQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
@@ -115,7 +118,12 @@ public class PageRequestQueue {
         PageRequestTask firstBufferTask = null;
         PageRequestTask firstTask = null;
 
-        for (PageRequestTask task : queue) {
+        PageRequestTask[] elems = queue.toArray(new PageRequestTask[0]);
+        if (elems.length > 1) {
+            Arrays.sort(elems, Comparator.comparingLong(PageRequestTask::getPriority));
+        }
+
+        for (PageRequestTask task : elems) {
             if (!tracker.hasRateLimiting(task.getUrl())) {
                 return task;
             }
@@ -195,8 +203,10 @@ public class PageRequestQueue {
         return tracker;
     }
 
-    public PriorityQueue<PageRequestTask<?>> getQueue() {
-        return queue;
+    public List<PageRequestTask<?>> getQueue() {
+        synchronized (queue) {
+            return new ArrayList<>(queue);
+        }
     }
 
     public void run(PageRequestTask task) {

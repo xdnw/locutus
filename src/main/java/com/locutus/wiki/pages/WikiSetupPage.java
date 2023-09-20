@@ -1,18 +1,13 @@
 package com.locutus.wiki.pages;
 
-import com.locutus.wiki.WikiGen;
-import jdk.jfr.Registered;
-import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import com.locutus.wiki.BotWikiGen;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MarkupUtil;
-import net.dv8tion.jda.api.utils.MarkdownUtil;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -21,7 +16,7 @@ import java.util.stream.Collectors;
 
 import static link.locutus.discord.user.Roles.*;
 
-public class WikiSetupPage extends WikiGen {
+public class WikiSetupPage extends BotWikiGen {
     public WikiSetupPage(CommandManager2 manager) {
         super(manager, "initial setup");
     }

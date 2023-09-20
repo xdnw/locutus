@@ -5,19 +5,20 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.WikiCategory;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.EmbeddingSource;
-import link.locutus.discord.gpt.pwembed.GPTProvider;
-import link.locutus.discord.gpt.pwembed.PWGPTHandler;
-import link.locutus.discord.gpt.pwembed.ProviderType;
+import link.locutus.discord.gpt.pw.GPTProvider;
+import link.locutus.discord.gpt.pw.PWGPTHandler;
+import link.locutus.discord.gpt.imps.ProviderType;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.entities.Guild;
 
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import static link.locutus.discord.commands.manager.v2.binding.BindingHelper.emum;
 
 public class GPTBindings extends BindingHelper {
     @Binding(value = "A GPT model name")
@@ -37,6 +38,20 @@ public class GPTBindings extends BindingHelper {
         throw new IllegalArgumentException("No source found with name " + input + "\nOptions: " + names);
     }
 
+    @Binding(value = "A comma separated list of data sets")
+    public Set<EmbeddingSource> EmbeddingSources(PWGPTHandler handler, @Me Guild guild, String input) {
+        Set<String> sourcesStr = StringMan.split(input, ',').stream().map(String::toLowerCase).collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<EmbeddingSource> sources = new LinkedHashSet<>();
+        for (EmbeddingSource source : sources) {
+            if (sourcesStr.contains(source.source_name.toLowerCase())) {
+                sources.add(source);
+            } else {
+                throw new IllegalArgumentException("No source found with name " + source.source_name + "\nOptions: " + sourcesStr);
+            }
+        }
+        return sources;
+    }
+
     @Binding
     public PWGPTHandler PWGPTHandler() {
         return Locutus.imp().getCommandManager().getV2().getPwgptHandler();
@@ -49,12 +64,12 @@ public class GPTBindings extends BindingHelper {
 
     @Binding
     public GPTProvider provider(PWGPTHandler handler, @Me GuildDB db, String input) {
-        for (GPTProvider provider : handler.getProviders(db)) {
+        for (GPTProvider provider : handler.getProviderManager().getProviders(db)) {
             if (provider.getId().equalsIgnoreCase(input)) {
                 return provider;
             }
         }
-        String names = handler.getProviders(db).stream().map(f -> f.getId()).collect(Collectors.joining(", "));
+        String names = handler.getProviderManager().getProviders(db).stream().map(GPTProvider::getId).collect(Collectors.joining(", "));
         throw new IllegalArgumentException("No provider found with name " + input + "\nOptions: " + names);
     }
 
@@ -62,5 +77,18 @@ public class GPTBindings extends BindingHelper {
     public Map<String, String> map(String input) {
         Map<String, String> map = PnwUtil.parseMap(input);
         return map;
+    }
+
+    @WikiCategory
+    public String wikiCategory(String input) {
+        throw new IllegalArgumentException("Not implemented (wiki category)");
+    }
+
+    @WikiCategory
+    public Set<String> wikiCategories(String input) {
+        //  - PWBinding / No completer but add note in the binding to add a completer
+        // ^ for the above wiki category as well, need to add the completer, ty
+        // linked hash set
+        throw new IllegalArgumentException("Not implemented (wiki category list)");
     }
 }

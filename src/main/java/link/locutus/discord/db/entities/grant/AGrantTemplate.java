@@ -31,6 +31,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public abstract class AGrantTemplate<T> {
@@ -327,6 +328,17 @@ public abstract class AGrantTemplate<T> {
 
     public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, T parsed) {
         List<Grant.Requirement> list = new ArrayList<>();
+
+        NationFilter filter = getNationFilter();
+        if (filter != null && !"*".equals(filter.getFilter())) {
+            Predicate<DBNation> cached = filter.toCached(Long.MAX_VALUE);
+            list.add(new Grant.Requirement("Nation does not match: `" + filter.getFilter() + "`", false, new Function<DBNation, Boolean>() {
+                @Override
+                public Boolean apply(DBNation nation) {
+                    return cached.test(nation);
+                }
+            }));
+        }
 
         // check grant not disabled
         list.add(new Grant.Requirement("Grant is disabled. See: " + CM.grant_template.enable.cmd.toSlashMention(), false, new Function<DBNation, Boolean>() {

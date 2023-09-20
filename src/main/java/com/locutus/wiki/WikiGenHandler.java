@@ -36,10 +36,8 @@ import com.locutus.wiki.pages.WikiTaxBracketPage;
 import com.locutus.wiki.pages.WikiTradePage;
 import com.locutus.wiki.pages.WikiWarAlertsPage;
 import com.locutus.wiki.pages.WikiWarRoomPage;
-import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
-import link.locutus.discord.gpt.GptHandler;
-import link.locutus.discord.gpt.pwembed.PWGPTHandler;
+import link.locutus.discord.gpt.pw.PWGPTHandler;
 
 import java.io.File;
 import java.io.IOException;
@@ -60,7 +58,7 @@ public class WikiGenHandler {
     }
 
     public void writeDefaults() throws IOException {
-        List<WikiGen> pages = new ArrayList<>();
+        List<BotWikiGen> pages = new ArrayList<>();
 
         // register defaults
         pages.add(new WikiSetupPage(manager));
@@ -146,12 +144,12 @@ public class WikiGenHandler {
         WikiHelpPage help = new WikiHelpPage(manager, pages);
         pages.add(help);
 
-        for (WikiGen page : pages) {
+        for (BotWikiGen page : pages) {
             writePage(page);
         }
     }
 
-    private void writePage(WikiGen page) throws IOException {
+    private void writePage(BotWikiGen page) throws IOException {
         String markdown = page.generateMarkdown().trim();
         if (markdown.isEmpty()) {
             return;

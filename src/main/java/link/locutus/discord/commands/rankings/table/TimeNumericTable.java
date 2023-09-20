@@ -14,6 +14,7 @@ import de.erichseifert.gral.plots.lines.DefaultLineRenderer2D;
 import de.erichseifert.gral.plots.lines.LineRenderer;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Continent;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.Attribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
@@ -406,8 +407,16 @@ public abstract class TimeNumericTable<T> {
         writer.write(plot, baos, 1400, 600);
         return baos.toByteArray();
     }
+    public void write(IMessageIO channel, boolean date, boolean attachJson) throws IOException {
+        IMessageBuilder msg = writeMsg(channel.create(), date, attachJson);
+        msg.send();
+    }
 
-    public void write(IMessageIO channel, boolean date) throws IOException {
-        channel.create().file("img.png", write(date)).send();
+    public IMessageBuilder writeMsg(IMessageBuilder msg, boolean date, boolean attachJson) throws IOException {
+        msg  = msg.file("img.png", write(date));
+        if (attachJson) {
+            msg = msg.file("data.json", toHtmlJson().toString());
+        }
+        return msg;
     }
 }

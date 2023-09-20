@@ -9,6 +9,7 @@ import link.locutus.discord.RequestTracker;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
+import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -42,6 +43,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public class PoliticsAndWarV3 {
     static {
@@ -78,8 +80,24 @@ public class PoliticsAndWarV3 {
         this("https://api" + (Settings.INSTANCE.TEST ? "-test" : "") + ".politicsandwar.com/graphql", pool);
     }
 
+    public ApiKeyPool getPool() {
+        return pool;
+    }
+
     public String getUrl(String key) {
         return endpoint + "?api_key=" + key;
+    }
+
+    public void throwInvalid(AlliancePermission alliancePermission, String message) {
+        String validKeysStr;
+        List<ApiKeyPool.ApiKey> keys = pool.getKeys();
+        if (keys.isEmpty()) {
+            validKeysStr = "No valid keys";
+        } else {
+            validKeysStr = keys.stream().map(key -> PnwUtil.getMarkdownUrl(key.getNationId(), false)).collect(Collectors.joining(","));
+        }
+        message = "Error accessing `" + alliancePermission.name() + "`" + (message == null || message.isEmpty() ? "" : " " + message) + ". " + validKeysStr;
+        throw new IllegalArgumentException(message);
     }
 
     public enum ErrorResponse {
@@ -1193,6 +1211,7 @@ public class PoliticsAndWarV3 {
         if (result.me() == null) throw new GraphQLException("Error fetching api key");
         return result.me();
     }
+
     public Tradeprice getTradePrice() {
         List<Tradeprice> allResults = new ArrayList<>();
 
@@ -1356,7 +1375,7 @@ public class PoliticsAndWarV3 {
         projection.id();
         projection.date();
 
-        return request(PagePriority.API_BANK_SEND, false, mutation, projection, Bankrec.class);
+        return request(PagePriority.API_BANK_SEND, false, mutation, projection, BankWithdrawMutationResponse.class).bankWithdraw();
     }
 
 
@@ -1378,10 +1397,12 @@ public class PoliticsAndWarV3 {
         if (note != null) mutation.setNote(note);
 
         BankrecResponseProjection projection = new BankrecResponseProjection();
+        createBankRecProjection().accept(projection);
         projection.id();
         projection.date();
         projection.receiver_id();
         projection.receiver_type();
+
 
         return request(PagePriority.API_BANK_DEPOSIT, false, mutation, projection, BankDepositMutationResponse.class).bankDeposit();
     }
@@ -1399,7 +1420,7 @@ public class PoliticsAndWarV3 {
         projection.date();
 
         try {
-            request(PagePriority.API_BOT_KEY, false, mutation, projection, Bankrec.class);
+            BankDepositMutationResponse response = request(PagePriority.API_BOT_KEY, false, mutation, projection, BankDepositMutationResponse.class);
             return false;
         } catch (RuntimeException e) {
             if (e.getMessage().contains("The bot key you provided is not valid.")) {
@@ -1442,7 +1463,7 @@ public class PoliticsAndWarV3 {
         mutation.setId(nation_id);
         mutation.setPosition_id(position_id);
         AlliancePositionResponseProjection projection = new AlliancePositionResponseProjection().id();
-        return request(PagePriority.RANK_SET, false, mutation, projection, AlliancePosition.class);
+        return request(PagePriority.RANK_SET, false, mutation, projection, AssignAlliancePositionMutationResponse.class).assignAlliancePosition();
     }
 
     public AlliancePosition assignAlliancePosition(int nation_id, Rank rank) {
@@ -1451,7 +1472,7 @@ public class PoliticsAndWarV3 {
         mutation.setId(nation_id);
         mutation.setDefault_position(v3);
         AlliancePositionResponseProjection projection = new AlliancePositionResponseProjection().id();
-        return request(PagePriority.RANK_SET, false, mutation, projection, AlliancePosition.class);
+        return request(PagePriority.RANK_SET, false, mutation, projection, AssignAlliancePositionMutationResponse.class).assignAlliancePosition();
     }
 
     private TreatyResponseProjection treatyResponseProjection() {
@@ -1469,13 +1490,13 @@ public class PoliticsAndWarV3 {
     public Treaty approveTreaty(int id) {
         ApproveTreatyMutationRequest mutation = new ApproveTreatyMutationRequest();
         mutation.setId(id);
-        return request(PagePriority.API_TREATY_APPROVE, false, mutation, treatyResponseProjection(), Treaty.class);
+        return request(PagePriority.API_TREATY_APPROVE, false, mutation, treatyResponseProjection(), ApproveTreatyMutationResponse.class).approveTreaty();
     }
 
     public Treaty cancelTreaty(int id) {
         CancelTreatyMutationRequest mutation = new CancelTreatyMutationRequest();
         mutation.setId(id);
-        return request(PagePriority.API_TREATY_CANCEL, false, mutation, treatyResponseProjection(), Treaty.class);
+        return request(PagePriority.API_TREATY_CANCEL, false, mutation, treatyResponseProjection(), CancelTreatyMutationResponse.class).cancelTreaty();
     }
 
     public Treaty proposeTreaty(int alliance_id, int length, TreatyType type, String url) {
@@ -1484,7 +1505,7 @@ public class PoliticsAndWarV3 {
         mutation.setLength(length);
         mutation.setType(type.getId());
         mutation.setUrl(url);
-        return request(PagePriority.API_TREATY_SEND, false, mutation, treatyResponseProjection(), Treaty.class);
+        return request(PagePriority.API_TREATY_SEND, false, mutation, treatyResponseProjection(), ProposeTreatyMutationResponse.class).proposeTreaty();
     }
 
     private TaxBracketResponseProjection createTaxBracketProjection() {
@@ -1504,7 +1525,7 @@ public class PoliticsAndWarV3 {
         AssignTaxBracketMutationRequest mutation = new AssignTaxBracketMutationRequest();
         mutation.setId(taxId);
         mutation.setTarget_id(nationId);
-        return request(PagePriority.API_TAX_ASSIGN, false, mutation, createTaxBracketProjection(), TaxBracket.class);
+        return request(PagePriority.API_TAX_ASSIGN, false, mutation, createTaxBracketProjection(), AssignTaxBracketMutationResponse.class).assignTaxBracket();
     }
 
     public TaxBracket createTaxBracket(String name, Integer moneyRate, Integer rssRate) {
@@ -1513,13 +1534,13 @@ public class PoliticsAndWarV3 {
         mutation.setMoney_tax_rate(moneyRate);
         mutation.setResource_tax_rate(rssRate);
 
-        return request(PagePriority.API_TAX_CREATE, false, mutation, createTaxBracketProjection(), TaxBracket.class);
+        return request(PagePriority.API_TAX_CREATE, false, mutation, createTaxBracketProjection(), CreateTaxBracketMutationResponse.class).createTaxBracket();
     }
 
     public void deleteTaxBracket(int id) {
         DeleteTaxBracketMutationRequest request = new DeleteTaxBracketMutationRequest();
         request.setId(id);
-        request(PagePriority.API_TAX_DELETE, false, request, createTaxBracketProjection(), TaxBracket.class);
+        request(PagePriority.API_TAX_DELETE, false, request, createTaxBracketProjection(), DeleteTaxBracketMutationResponse.class).deleteTaxBracket();
     }
 
     public TaxBracket editTaxBracket(int id, String name, Integer moneyRate, Integer rssRate) {
@@ -1529,7 +1550,7 @@ public class PoliticsAndWarV3 {
         if (moneyRate != null) mutation.setMoney_tax_rate(moneyRate);
         if (rssRate != null) mutation.setResource_tax_rate(rssRate);
 
-        return request(PagePriority.API_TAX_EDIT, false, mutation, createTaxBracketProjection(), TaxBracket.class);
+        return request(PagePriority.API_TAX_EDIT, false, mutation, createTaxBracketProjection(), EditTaxBracketMutationResponse.class).editTaxBracket();
     }
 
     public Map<Integer, TaxBracket> fetchTaxBrackets(int allianceId, boolean priority) {

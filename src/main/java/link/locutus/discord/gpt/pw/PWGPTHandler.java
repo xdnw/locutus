@@ -1,205 +1,79 @@
-package link.locutus.discord.gpt.pwembed;
+package link.locutus.discord.gpt.pw;
 
 import ai.djl.MalformedModelException;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
-import com.knuddels.jtokkit.api.ModelType;
-import link.locutus.discord.Locutus;
+import com.locutus.wiki.game.PWWikiUtil;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
-import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.gpt.IEmbeddingDatabase;
 import link.locutus.discord.gpt.imps.EmbeddingInfo;
 import link.locutus.discord.gpt.imps.EmbeddingType;
 import link.locutus.discord.gpt.GptHandler;
-import link.locutus.discord.gpt.imps.GPTText2Text;
 import link.locutus.discord.gpt.imps.IEmbeddingAdapter;
-import link.locutus.discord.gpt.imps.IText2Text;
-import link.locutus.discord.util.RateLimitUtil;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.logging.log4j.core.config.builder.api.AppenderComponentBuilder;
-import org.apache.logging.log4j.core.config.builder.api.ComponentBuilder;
-import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilder;
-import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFactory;
-import org.apache.logging.log4j.core.config.builder.api.LoggerComponentBuilder;
-import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiPredicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class PWGPTHandler {
 
     private final GptHandler handler;
     private final BiMap<EmbeddingType, EmbeddingSource> sourceMap = HashBiMap.create();
-    private final Map<EmbeddingSource, IEmbeddingAdapter<?>> adapterMap2 = new HashMap<>();
+    private final Map<EmbeddingSource, IEmbeddingAdapter<?>> adapterMap2 = new ConcurrentHashMap<>();
+    private final Map<Integer, WikiPagePW> gameWikiPagesBySourceId = new ConcurrentHashMap<>();
     private final CommandManager2 cmdManager;
-    private final Logger logger;
-
-    private Map<ProviderType, GPTProvider> globalProviders = new ConcurrentHashMap<>();
-    private Map<Long, Map<ProviderType, GPTProvider>> guildProviders = new ConcurrentHashMap<>();
+    private final PlayerGPTConfig PlayerGPTConfig;
+    private final ProviderManager providerManager;
+    private final DocumentConverter converter;
 
     public PWGPTHandler(CommandManager2 manager) throws SQLException, ClassNotFoundException, ModelNotFoundException, MalformedModelException, IOException {
         this.cmdManager = manager;
         this.handler = new GptHandler();
-
-        ConfigurationBuilder<BuiltConfiguration> builder
-                = ConfigurationBuilderFactory.newConfigurationBuilder();
-
-        AppenderComponentBuilder rollingFile = builder.newAppender("rolling", "RollingFile");
-        rollingFile.addAttribute("fileName", "rolling.log");
-        rollingFile.addAttribute("filePattern", "rolling-%d{MM-dd-yy}.log.gz");
-
-        ComponentBuilder triggeringPolicies = builder.newComponent("Policies")
-                .addComponent(builder.newComponent("CronTriggeringPolicy")
-                        .addAttribute("schedule", "0 0 0 * * ?"))
-                .addComponent(builder.newComponent("SizeBasedTriggeringPolicy")
-                        .addAttribute("size", "100M"));
-
-        rollingFile.addComponent(triggeringPolicies);
-
-        LoggerComponentBuilder logger = builder.newLogger("gpt", Level.DEBUG);
-        logger.add(builder.newAppenderRef("log"));
-        logger.addAttribute("additivity", false);
-
-        Configurator.initialize(builder.build());
-
-        this.logger = LoggerFactory.getLogger("gpt");
+        this.providerManager = new ProviderManager(handler);
+        this.PlayerGPTConfig = new PlayerGPTConfig();
+        this.converter = new DocumentConverter(getEmbeddings(), providerManager, handler.getModerator());
     }
 
-    public Map<String, Map<String, String>> getConfiguration(DBNation nation) {
-        Gson gson = new Gson();
-        ByteBuffer gptOptBuf = nation.getMeta(NationMeta.GPT_OPTIONS);
-        Map<String, Map<String, String>> gptOptions = new HashMap<>();
-        if (gptOptBuf != null) {
-            String json = new String(gptOptBuf.array(), StandardCharsets.UTF_8);
-            gptOptions = gson.fromJson(json, new TypeToken<Map<String, Map<String, String>>>(){}.getType());
-        }
-        return gptOptions;
+    public DocumentConverter getConverter() {
+        return converter;
     }
 
-    public void setOptions(DBNation nation, Map<String, Map<String, String>> options) {
-        Gson gson = new Gson();
-        String json = gson.toJson(options);
-        byte[] data = json.getBytes(StandardCharsets.UTF_8);
-        nation.setMeta(NationMeta.GPT_OPTIONS, data);
+    public PlayerGPTConfig getPlayerGPTConfig() {
+        return PlayerGPTConfig;
     }
 
-    public Map<String, Map<String, String>> setAndValidateOptions(DBNation nation, GPTProvider provider, Map<String, String> options) {
-        Map<String, String> allowed = provider.getOptions();
-        // ensure all options are in allowed (as keys)
-        for (String key : options.keySet()) {
-            if (!allowed.containsKey(key)) {
-                throw new IllegalArgumentException("Option `" + key + "` is not allowed for provider `" + provider.getId() + "`. Example options:\n```json\n" + allowed + "\n```");
-            }
-        }
-        Map<String, Map<String, String>> config = getConfiguration(nation);
-        config.put(provider.getId(), options);
-        setOptions(nation, config);
-        return config;
-    }
-
-    public Map<String, String> getOptions(DBNation nation, GPTProvider provider) {
-        Map<String, Map<String, String>> allOptions = getConfiguration(nation);
-        return allOptions.getOrDefault(provider.getId(), new HashMap<>());
-    }
-
-    public Set<GPTProvider> getProviders(GuildDB db) {
-        Set<GPTProvider> providers = new LinkedHashSet<>();
-        // add guild
-        Map<ProviderType, GPTProvider> result = guildProviders.computeIfAbsent(db.getIdLong(), k -> new ConcurrentHashMap<>());
-        synchronized (result) {
-            String openAiKey = GuildKey.OPENAI_KEY.getOrNull(db);
-            ModelType expectedModel = GuildKey.OPENAI_MODEL.getOrNull(db);
-            if (expectedModel == null) expectedModel = ModelType.GPT_3_5_TURBO;
-
-            int[] limits = GuildKey.GPT_USAGE_LIMITS.getOrNull(db);
-
-            GPTProvider existing = result.get(ProviderType.OPENAI);
-            if (openAiKey == null || (existing != null && ((GPTText2Text) existing.getText2Text()).getModel() != expectedModel)) {
-                GPTProvider removed = result.remove(ProviderType.OPENAI);
-                if (removed != null) {
-                    try {
-                        removed.close();
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            } else {
-                ModelType finalExpectedModel = expectedModel;
-                GPTProvider provider = result.computeIfAbsent(ProviderType.OPENAI, k -> {
-                    IText2Text newProvider = handler.createOpenAiText2Text(openAiKey, finalExpectedModel);
-                    return new SimpleGPTProvider(ProviderType.OPENAI, newProvider, handler.getModerator(), true, logger);
-                });
-                if (limits != null) provider.setUsageLimits(limits[0], limits[1], limits[2], limits[3]);
-                providers.add(provider);
-            }
-
-            Boolean enableCopilot = GuildKey.ENABLE_GITHUB_COPILOT.getOrNull(db);
-            if (enableCopilot != Boolean.TRUE) {
-                GPTProvider removed = result.remove(ProviderType.COPILOT);
-                if (removed != null) {
-                    try {
-                        removed.close();
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            } else {
-                GPTProvider provider = result.computeIfAbsent(ProviderType.COPILOT, k -> {
-                    String path = "tokens" + File.separator + db.getIdLong();
-                    IText2Text newProvider = handler.createCopilotText2Text(path, authData -> {
-                        PrivateChannel channel = RateLimitUtil.complete(db.getGuild().getOwner().getUser().openPrivateChannel());
-                        String message = "To use copilot for chat completions, please authenticate the application via:\n" +
-                                authData.Url + "\n" +
-                                "and enter the code: " + authData.UserCode + "\n\n" +
-                                "This feature was enabled on a guild you own: " + db.getGuild() + "\n" +
-                                "To disable, see: " + CM.settings.delete.cmd.toSlashMention() + " with key: `" + GuildKey.ENABLE_GITHUB_COPILOT.name() + "`";
-                        RateLimitUtil.queue(channel.sendMessage(message));
-                    });
-                    return new SimpleGPTProvider(ProviderType.COPILOT, newProvider, handler.getModerator(), true, logger);
-                });
-                if (limits != null) provider.setUsageLimits(limits[0], limits[1], limits[2], limits[3]);
-                providers.add(provider);
-            }
-        }
-
-        // add global
-        providers.addAll(globalProviders.values());
-
-        return providers;
+    public ProviderManager getProviderManager() {
+        return providerManager;
     }
 
     public GptHandler getHandler() {
@@ -224,53 +98,96 @@ public class PWGPTHandler {
         registerSettingEmbeddings();
         registerNationMetricBindings();
         registerArgumentBindings();
+//        try {
+//            registerWikiPagesLegacy();
+//        } catch (IOException e) {
+//            throw new RuntimeException(e);
+//        }
 //        registerFormulaBindings("Formula");
 //        registerAcronymBindings("Acronym");
 //        registerPageSectionBindings("Wiki Page");
 //        registerTutorialBindings("Tutorial");
 
-        if (Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.ENABLED) {
-            SimpleGPTProvider provider = new SimpleGPTProvider(
-                    ProviderType.COPILOT,
-                    handler.createCopilotText2Text("tokens", authData -> {
-                        throw new IllegalArgumentException("(For bot owner): Open URL <" + authData.Url + "> to enter the device code: `" + authData.UserCode + "`");
-                    }),
-                    handler.getModerator(),
-                    true,
-                    logger);
-            provider.setTurnLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.USER_TURN_LIMIT);
-            provider.setDayLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.USER_DAY_LIMIT);
-            provider.setGuildTurnLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.GUILD_TURN_LIMIT);
-            provider.setGuildDayLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.COPILOT.GUILD_DAY_LIMIT);
+        providerManager.registerDefaults();
+    }
 
-            globalProviders.put(ProviderType.COPILOT, provider);
+    public static void main(String[] args) throws IOException {
+//
+    }
+
+    private void registerWikiPagesLegacy() throws IOException {
+//        Map<String, String> pageUrls = PWWikiUtil.getAllPages();
+//        PWWikiUtil.fetchDefaultPages();
+//        PWWikiUtil.saveDefaultPages();
+
+        Gson gsonPretty = new GsonBuilder().setPrettyPrinting().create();
+        Gson gson = new Gson();
+
+        Map<String, WikiPagePW> pages = new LinkedHashMap<>();
+
+        Set<String> allCategories = new LinkedHashSet<>();
+        for (Map.Entry<String, String> pageEntry : PWWikiUtil.getSitemapCached().entrySet()) {
+            String pageName = pageEntry.getKey();
+            Map<String, Object> map = PWWikiUtil.getPageJson(pageName);
+            if (map == null) {
+                System.out.println("No page found for " + pageName);
+                continue;
+            }
+            List<String> categories = (List<String>) map.get("categories");
+            System.out.println("Categories for " + pageName + ": " + categories);
+            for (String category : categories) {
+                allCategories.add(category);
+            }
+//            if (categories.removeIf(f -> f.matches("\\d+ more"))) {
+//                String json = gsonPretty.toJson(map);
+//                String slug = PWWikiUtil.slugify(pageName, false);
+//                String fileName = "wiki/json/" + slug + ".json";
+//                System.out.println("Writing to " + fileName);
+//                try (FileWriter writer = new FileWriter(fileName)) {
+//                    writer.write(json);
+//                }
+//            }
+            String json = gson.toJson(map);
+            long hash = getEmbeddings().getHash(json);
+
+            String sourceName = "wiki/" + pageName;
+
+            WikiPagePW wikiPage = new WikiPagePW(pageName, pageEntry.getValue(), hash, new LinkedHashSet<>(categories));
+            pages.put(sourceName, wikiPage);
         }
 
-        if (Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY != null) {
-            SimpleGPTProvider provider = new SimpleGPTProvider(
-                    ProviderType.OPENAI,
-                    handler.createOpenAiText2Text(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY, ModelType.GPT_3_5_TURBO),
-                    handler.getModerator(),
-                    true,
-                    logger);
-
-            provider.setTurnLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.USER_TURN_LIMIT);
-            provider.setDayLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.USER_DAY_LIMIT);
-            provider.setGuildTurnLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.GUILD_TURN_LIMIT);
-            provider.setGuildDayLimit(Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.GUILD_DAY_LIMIT);
-
-            globalProviders.put(ProviderType.OPENAI, provider);
+        Set<EmbeddingSource> wikiSources = getEmbeddings().getSources(f -> f == 0, f -> f.source_name.startsWith("wiki/"));
+        // Delete unused sources
+        for (EmbeddingSource source : wikiSources) {
+            String sourceName = source.source_name;
+            if (!pages.containsKey(sourceName)) {
+                getEmbeddings().deleteSource(source);
+            }
         }
 
-        if (handler.getProcessText2Text() != null) {
-            SimpleGPTProvider provider = new SimpleGPTProvider(
-                    ProviderType.PROCESS,
-                    handler.getProcessText2Text(),
-                    handler.getModerator(),
-                    false,
-                    logger);
-            globalProviders.put(ProviderType.PROCESS, provider);
+        // register current sources
+        for (Map.Entry<String, WikiPagePW> entry : pages.entrySet()) {
+            String sourceName = entry.getKey();
+            WikiPagePW page = entry.getValue();
+            EmbeddingSource source = getEmbeddings().getOrCreateSource(sourceName, 0);
+            gameWikiPagesBySourceId.put(source.source_id, entry.getValue());
+
+            List<String> summary = page.getSummaryData();
+            if (summary != null && !summary.isEmpty()) {
+                System.out.println("Found Summary for " + page.getName() + ": " + summary);
+
+                // entry source , null
+                Stream<Map.Entry<String, String>> stream = summary.stream().map(f -> new AbstractMap.SimpleEntry<>(f, null));
+                handler.registerEmbeddings(source, stream, false, true);
+            } else {
+                System.out.println("No summary for " + page.getSlug());
+            }
         }
+
+
+        System.out.println("All categories: ");
+        System.out.println(allCategories);
+
     }
 
 //    public String generateSolution(ValueStore store, GuildDB db, User user, String userInput) {
@@ -353,7 +270,7 @@ public class PWGPTHandler {
     }
 
     public Set<EmbeddingSource> getSources(Guild guild, boolean allowRoot) {
-        return handler.getEmbeddings().getSources(guildId -> (allowRoot && guildId == 0) || guildId == guild.getIdLong(), src -> true);
+        return handler.getEmbeddings().getSources(guildId -> (allowRoot && (guildId == 0 || guildId == Settings.INSTANCE.ROOT_SERVER || guildId == Settings.INSTANCE.ROOT_COALITION_SERVER || guildId == Settings.INSTANCE.FORUM_FEED_SERVER)) || guildId == guild.getIdLong(), src -> true);
     }
 
     private void registerSettingEmbeddings() {
@@ -488,52 +405,90 @@ public class PWGPTHandler {
         return result;
     }
 
-    public List<String> convertDocument(String markdown, String documentDescription) {
-        throw new UnsupportedOperationException("Not implemented");
+    public Set<EmbeddingSource> setSources(DBNation nation,
+                                           Guild guild,
+                                           Set<EmbeddingType> excludeTypes,
+                                           Set<String> includeWikiCategories,
+                                           Set<String> excludeWikiCategories,
+                                           Set<EmbeddingSource> excludeSources,
+                                           Set<EmbeddingSource> addSources) {
+        if (excludeSources != null && addSources != null) {
+            throw new IllegalArgumentException("Cannot exclude and add sources at the same time. Please use only one of the two arguments.");
+        }
+        Map<String, List<String>> configurationMap = new HashMap<>();
+        if (excludeTypes != null && !excludeTypes.isEmpty()) {
+            configurationMap.put("types", excludeTypes.stream().map(Enum::name).collect(Collectors.toList()));
+        }
+        if (includeWikiCategories != null && !includeWikiCategories.isEmpty()) {
+            configurationMap.put("allow_wiki", new ArrayList<>(includeWikiCategories));
+        }
+        if (excludeWikiCategories != null && !excludeWikiCategories.isEmpty()) {
+            configurationMap.put("deny_wiki", new ArrayList<>(excludeWikiCategories));
+        }
+        if (excludeSources != null && !excludeSources.isEmpty()) {
+            configurationMap.put("deny_sources", excludeSources.stream().map(f -> f.source_id + "").collect(Collectors.toList()));
+        }
+        if (addSources != null && !addSources.isEmpty()) {
+            configurationMap.put("allow_sources", addSources.stream().map(f -> f.source_id + "").collect(Collectors.toList()));
+        }
+
+        // to json
+        String json = new Gson().toJson(configurationMap);
+        nation.setMeta(NationMeta.GPT_SOURCES, json);
+
+        Set<Integer> excludeSourceIds = excludeSources == null ? null : excludeSources.stream().map(f -> f.source_id).collect(Collectors.toSet());
+        Set<Integer> addSourceIds = addSources == null ? null : addSources.stream().map(f -> f.source_id).collect(Collectors.toSet());
+        return getSources(guild, true, excludeTypes, includeWikiCategories, excludeWikiCategories, excludeSourceIds, addSourceIds);
     }
 
-    public Set<ProviderType> getProviderTypes(DBNation nation) {
-        ByteBuffer existingBuf = nation.getMeta(NationMeta.GPT_PROVIDER);
-        Set<ProviderType> existing = new HashSet<>();
-        long mask = existingBuf == null ? 0 : existingBuf.getLong();
-        if (mask == 0) mask = -1;
-        for (ProviderType type : ProviderType.values()) {
-            if ((mask & (1L << type.ordinal())) != 0) {
-                existing.add(type);
+    public EmbeddingType getSourceType(EmbeddingSource source) {
+        if (gameWikiPagesBySourceId.containsKey(source.source_id)) {
+            return EmbeddingType.Game_Wiki_Page;
+        }
+        EmbeddingType singleType = sourceMap.inverse().get(source);
+        return singleType;
+    }
+
+    public Set<EmbeddingSource> getSelectedSources(Guild guild, DBNation nation, boolean allowRoot) {
+        ByteBuffer jsonBuffer = nation.getMeta(NationMeta.GPT_SOURCES);
+        if (jsonBuffer == null) {
+            return getSources(guild, allowRoot);
+        }
+        Map<String, List<String>> configuration = new Gson().fromJson(new String(jsonBuffer.array()), new TypeToken<Map<String, List<String>>>(){}.getType());
+        Set<EmbeddingType> excludeTypes = configuration.containsKey("types") ? configuration.get("types").stream().map(EmbeddingType::valueOf).collect(Collectors.toSet()) : null;
+        Set<String> includeWikiCategories = configuration.containsKey("allow_wiki") ? new HashSet<>(configuration.get("allow_wiki")) : null;
+        Set<String> excludeWikiCategories = configuration.containsKey("deny_wiki") ? new HashSet<>(configuration.get("deny_wiki")) : null;
+        Set<Integer> excludeSources = configuration.containsKey("deny_sources") ? configuration.get("deny_sources").stream().map(Integer::parseInt).collect(Collectors.toSet()) : null;
+        Set<Integer> addSources = configuration.containsKey("allow_sources") ? configuration.get("allow_sources").stream().map(Integer::parseInt).collect(Collectors.toSet()) : null;
+
+        return getSources(guild, allowRoot, excludeTypes, includeWikiCategories, excludeWikiCategories, excludeSources, addSources);
+    }
+
+    public Set<EmbeddingSource> getSources(Guild guild, boolean allowRoot,
+                                           Set<EmbeddingType> excludeTypes,
+                                           Set<String> includeWikiCategories,
+                                           Set<String> excludeWikiCategories,
+                                           Set<Integer> excludeSources,
+                                           Set<Integer> addSources) {
+        Set<EmbeddingSource> sources = new HashSet<>();
+        for (EmbeddingSource source : getSources(guild, allowRoot)) {
+            EmbeddingType type = getSourceType(source);
+            if (excludeTypes != null && excludeTypes.contains(type)) {
+                continue;
             }
-        }
-        return existing;
-    }
-
-    public void setProviderTypes(DBNation nation, Set<ProviderType> types) {
-        long mask = 0;
-        for (ProviderType type : types) {
-            mask |= (1L << type.ordinal());
-        }
-        ByteBuffer buf = ByteBuffer.allocate(Long.BYTES);
-        nation.setMeta(NationMeta.GPT_PROVIDER, mask);
-    }
-
-    public GPTProvider getDefaultProvider(GuildDB db, User user, DBNation nation) {
-        Set<ProviderType> types = getProviderTypes(nation);
-        Set<GPTProvider> providers = getProviders(db);
-        // remove if not type
-        if (!types.isEmpty()) {
-            providers.removeIf(provider -> !types.contains(provider.getType()));
-        }
-        if (providers.isEmpty()) {
-            throw new IllegalArgumentException("No providers available. See: " + CM.chat.providers.list.cmd.toSlashMention() + " and " + CM.chat.providers.set.cmd.toSlashMention());
-        }
-        List<String> noPermsMessages = new ArrayList<>();
-        for (GPTProvider provider : providers) {
-            try {
-                if (provider.hasPermission(db, user, true)) {
-                    return provider;
-                }
-            } catch (IllegalArgumentException ignore) {
-                noPermsMessages.add(provider.getId() + ": " + ignore.getMessage());
+            if (excludeSources != null && excludeSources.contains(source)) {
+                continue;
             }
+            if (addSources != null && !addSources.contains(source)) {
+                continue;
+            }
+            sources.add(source);
         }
-        throw new IllegalArgumentException("No providers available. Errors:\n- " + String.join("\n- ", noPermsMessages) + "\n\nSee " +  CM.chat.providers.list.cmd.toSlashMention() + " and " + CM.chat.providers.set.cmd.toSlashMention());
+
+        return sources;
+    }
+
+    private IEmbeddingDatabase getEmbeddings() {
+        return getHandler().getEmbeddings();
     }
 }

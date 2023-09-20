@@ -1434,7 +1434,7 @@ public class UtilityCommands {
                 CM.nation.list.bans bans = CM.nation.list.bans.cmd.create(nation.getId() + "");
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, bans, "Bans");
                 //Reports
-                CM.report.search reports = CM.report.search.cmd.create(nation.getNationUrl(), null, null, null);
+                CM.report.search reports = CM.report.search.cmd.create(nation.getNation_id() + "", null, null, null);
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, reports, "Reports");
                 //Projects
                 CM.project.slots projects = CM.project.slots.cmd.create(nation.getNationUrl());
@@ -1459,7 +1459,7 @@ public class UtilityCommands {
                 msg = msg.modal(CommandBehavior.EPHEMERAL, score, "Score");
                 //Revenue
                 CM.nation.revenue revenue = CM.nation.revenue.cmd.create(nation.getNationUrl(), null, null);
-                msg = msg.modal(CommandBehavior.EPHEMERAL, revenue, "Revenue");
+                msg = msg.commandButton(CommandBehavior.EPHEMERAL, revenue, "Revenue");
                 //WarInfo
                 CM.war.info warInfo = CM.war.info.cmd.create(nation.getNationUrl());
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, warInfo, "War Info");
@@ -1490,15 +1490,15 @@ public class UtilityCommands {
 
                 // Militarization graph
                 CM.alliance.stats.metricsByTurn militarization =
-                        CM.alliance.stats.metricsByTurn.cmd.create(AllianceMetric.GROUND_PCT.name(), alliance.getQualifiedId(), "7d");
+                        CM.alliance.stats.metricsByTurn.cmd.create(AllianceMetric.GROUND_PCT.name(), alliance.getQualifiedId(), "7d", null);
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, militarization, "Military Graph");
                 // Tiering graph
                 CM.stats_tier.cityTierGraph tiering =
-                        CM.stats_tier.cityTierGraph.cmd.create(alliance.getQualifiedId(), "", null, null);
+                        CM.stats_tier.cityTierGraph.cmd.create(alliance.getQualifiedId(), "", null, null, null);
                 msg = msg.modal(CommandBehavior.EPHEMERAL, tiering, "City Tier Graph");
                 // strength graph
                 CM.stats_tier.strengthTierGraph strength =
-                        CM.stats_tier.strengthTierGraph.cmd.create(alliance.getQualifiedId(), "", null, null, null, null, null, null);
+                        CM.stats_tier.strengthTierGraph.cmd.create(alliance.getQualifiedId(), "", null, null, null, null, null, null, null);
                 msg = msg.modal(CommandBehavior.EPHEMERAL, strength, "Strength Tier Graph");
                 // mmr tier
                 CM.stats_tier.mmrTierGraph mmr =
@@ -1506,7 +1506,7 @@ public class UtilityCommands {
                 msg = msg.modal(CommandBehavior.EPHEMERAL, mmr, "MMR Tier Graph");
                 // spy tier
                 CM.stats_tier.spyTierGraph spy =
-                        CM.stats_tier.spyTierGraph.cmd.create(alliance.getQualifiedId(), "", null, null, null);
+                        CM.stats_tier.spyTierGraph.cmd.create(alliance.getQualifiedId(), "", null, null, null, null);
                 msg = msg.modal(CommandBehavior.EPHEMERAL, spy, "Spy Tier Graph");
 
                 //- /coalition create - add

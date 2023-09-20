@@ -169,6 +169,7 @@ dependencies {
     implementation 'net.sourceforge.tess4j:tess4j:4.5.1'
     implementation 'org.bytedeco:javacv:1.5.6'
     implementation 'cn.easyproject:easyocr:3.0.4-RELEASE'
+    implementation 'com.vdurmont:emoji-java:5.1.1'
 }
 
 configurations {

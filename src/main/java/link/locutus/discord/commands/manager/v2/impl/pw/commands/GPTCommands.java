@@ -2,6 +2,8 @@ package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.locutus.wiki.game.PWWikiUtil;
+import com.vdurmont.emoji.EmojiParser;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -9,6 +11,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.WikiCategory;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -18,44 +21,109 @@ import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.config.Messages;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.EmbeddingSource;
+import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
+import link.locutus.discord.gpt.imps.ConvertingDocument;
+import link.locutus.discord.gpt.imps.DocumentChunk;
 import link.locutus.discord.gpt.imps.EmbeddingType;
-import link.locutus.discord.gpt.pwembed.ArgumentEmbeddingAdapter;
-import link.locutus.discord.gpt.pwembed.GPTProvider;
-import link.locutus.discord.gpt.pwembed.GPTSearchUtil;
-import link.locutus.discord.gpt.pwembed.PWGPTHandler;
-import link.locutus.discord.gpt.pwembed.ProviderType;
+import link.locutus.discord.gpt.pw.ArgumentEmbeddingAdapter;
+import link.locutus.discord.gpt.pw.GPTProvider;
+import link.locutus.discord.gpt.pw.GPTSearchUtil;
+import link.locutus.discord.gpt.pw.PWGPTHandler;
+import link.locutus.discord.gpt.imps.ProviderType;
 import link.locutus.discord.gpt.test.ExtractText;
 import link.locutus.discord.user.Roles;
 import com.locutus.wiki.CommandWikiPages;
+import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.scheduler.TriConsumer;
 import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.ChannelType;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.json.JSONObject;
+import org.w3c.dom.Text;
+import org.yaml.snakeyaml.error.Mark;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class GPTCommands {
+
+    @Command
+    @RolePermission(value = Roles.INTERNAL_AFFAIRS, root = true)
+    public String showConverting(PWGPTHandler gpt, @Me User user, @Me IMessageIO io, @Me GuildDB db, @Switch("r") boolean showRoot, @Switch("a") boolean showOtherGuilds) {
+        if (showOtherGuilds && !Roles.ADMIN.hasOnRoot(user)) {
+            return "You must be a bot admin to use the `showAll`";
+        }
+        List<ConvertingDocument> documents2 = gpt.getHandler().getEmbeddings().getUnconvertedDocuments();
+        Map<ConvertingDocument, EmbeddingSource> sourceMap = documents2.stream()
+                .collect(Collectors.toMap(Function.identity(), f -> gpt.getHandler().getEmbeddings().getEmbeddingSource(f.source_id)));
+        if (!showRoot) {
+            sourceMap.entrySet().removeIf(f -> f.getValue().guild_id == 0);
+        }
+        if (!showOtherGuilds) {
+            sourceMap.entrySet().removeIf(f -> f.getValue().guild_id != 0 && f.getValue().guild_id != db.getIdLong());
+        }
+        if (sourceMap.isEmpty()) {
+            return "No documents are currently being converted. See TODO CM REF to view documents";
+        }
+        StringBuilder builder = new StringBuilder(sourceMap.size() + " documents in queue:");
+        for (Map.Entry<ConvertingDocument, EmbeddingSource> entry : sourceMap.entrySet()) {
+            EmbeddingSource source = entry.getValue();
+            ConvertingDocument document = entry.getKey();
+            List<DocumentChunk> chunks = gpt.getHandler().getEmbeddings().getChunks(document.source_id);
+            int converted = (int) chunks.stream().filter(f -> f.converted).count();
+
+            builder.append("`#" + document.source_id + "` - " + source.source_name);
+            if (source.guild_id > 0) {
+                builder.append(" - " + DiscordUtil.getGuildName(source.guild_id));
+            }
+            builder.append("\n- **Added by** " + MarkupUtil.markdownUrl(DiscordUtil.getUserName(document.user), "<" + DiscordUtil.userUrl(document.user, false)) + ">");
+            builder.append(" " + DiscordUtil.timestamp(document.date, null));
+            if (document.error != null) {
+                builder.append("- **Error: **" + document.error);
+            } else if (document.converted) {
+                builder.append("- **Converted: **COMPLETED");
+            } else {
+                builder.append("- **Converted: **" + converted + "/" + chunks.size());
+            }
+        }
+        return builder.toString();
+    }
 
     @Command(desc = "This command allows you to convert a public Google document (of document type) into a Google spreadsheet of facts.\n" +
             "The output format will have a single column with a header row labeled \"facts.\" Each fact will be standalone and not order dependent.\n" +
@@ -63,8 +131,11 @@ public class GPTCommands {
             "When the command is run, the document is added to the queue, and the user will be alerted when the conversion finishes.\n" +
             "Users have the option to check the progress of the conversion using a command.")
     @RolePermission(value = Roles.INTERNAL_AFFAIRS, root = true)
-    public synchronized String generate_factsheet(PWGPTHandler gpt, @Me GuildDB db, @Me IMessageIO io, @Me JSONObject command, String googleDocumentUrl, String document_description, @Switch("s") SpreadSheet sheet, @Switch("f") boolean confirm) throws GeneralSecurityException, IOException {
-        // to markdown
+    public synchronized String generate_factsheet(PWGPTHandler gpt, @Me GuildDB db, @Me IMessageIO io, @Me User user, @Me JSONObject command, String googleDocumentUrl, String document_name, @Switch("f") boolean confirm) throws GeneralSecurityException, IOException {
+        // if document name is not alphanumerical space under dash
+        if (!document_name.matches("[a-zA-Z0-9\\s_-]+")) {
+            throw new IllegalArgumentException("The `document_name` must be alphanumerical, not `" + document_name + "`");
+        }
         String baseUrl = "https://docs.google.com/document/d/";
         if (!googleDocumentUrl.startsWith(baseUrl)) {
             return "Invalid Google Document URL. Expecting `https://docs.google.com/document/d/...`, received: `" + googleDocumentUrl + "`";
@@ -93,7 +164,7 @@ public class GPTCommands {
             String title = "Generate factsheet?";
             StringBuilder body = new StringBuilder();
             body.append("This will generate a factsheet with the following parameters:\n");
-            body.append("Document description: `").append(document_description).append("`\n");
+            body.append("Document name: `").append(document_name).append("`\n");
             body.append("Input lines: `").append(lines.length).append("`\n");
 
             IMessageBuilder msg = io.create();
@@ -102,25 +173,21 @@ public class GPTCommands {
             return null;
         }
 
-        List<String> converted = gpt.convertDocument(markdown, document_description);
-
-        if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKeys.ANSWER_SHEET);
+        // Check no document conversion already occuring
+        List<ConvertingDocument> documents = gpt.getConverter().getDocumentConversions(db.getGuild());
+        if (!documents.isEmpty()) {
+            return "You must wait for the current document conversion to finish before starting another one: TODO CM REF";
         }
 
-        // set values in sheet
-        List<String> header = new ArrayList<>(Arrays.asList("description"));
-        sheet.addRow(header);
-        for (String line : converted) {
-            header.set(0, line);
-            sheet.addRow(header);
-        }
+        // User user, Guild guild, ProviderType provider, String documentName, String markdown, String prompt
+        ConvertingDocument document = gpt.getConverter().createDocumentAndChunks(user,
+                db,
+                document_name,
+                markdown,
+                null,
+                ProviderType.PROCESS);
 
-        sheet.clear("A:Z");
-        sheet.set(0, 0);
-
-        sheet.attach(io.create(), "facts", null, false, 0).send();
-        return null;
+        return "Added document " + document.toString() + " to the queue. Use TODO CM REF to view the progress of the conversion.";
     }
 
     @Command(desc = "This command provides a list of accessible embedding datasets used for prompting GPT.\n" +
@@ -133,7 +200,7 @@ public class GPTCommands {
         if (sources.isEmpty()) {
             if (!listRoot) {
                 io.create().embed("No sources found", "Try `listRoot` to see the default sources")
-                        .commandButton(CommandBehavior.DELETE_MESSAGE, CM.chat.embedding.list.cmd.create(Boolean.TRUE + ""), "List Root")
+                        .commandButton(CommandBehavior.DELETE_MESSAGE, CM.chat.dataset.list.cmd.create(Boolean.TRUE + ""), "List Root")
                         .send();
                 return null;
             }
@@ -148,7 +215,7 @@ public class GPTCommands {
             String dateStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - source.date_added);
             result.append(" (added " + dateStr + " ago)\n");
         }
-        result.append("\nSee also: " + CM.chat.embedding.view.cmd.toSlashMention());
+        result.append("\nSee also: " + CM.chat.dataset.view.cmd.toSlashMention());
 
         return result.toString();
     }
@@ -158,10 +225,9 @@ public class GPTCommands {
     @RolePermission(value = Roles.ADMIN)
     public String delete_document(PWGPTHandler gpt, @Me GuildDB db, @Me IMessageIO io, @Me JSONObject command, EmbeddingSource source, @Switch("f") boolean force) {
         if (source.guild_id != db.getIdLong()) {
-            throw new IllegalArgumentException("Document `" + source.source_name + "` is not owned by this guild");
+            throw new IllegalArgumentException("Document `" + source.source_name + "` is owned another guild: `" + DiscordUtil.getGuildName(source.guild_id) + "`");
         }
 
-        // confirm overwrite
         if (!force) {
             String title = "Delete document?";
             StringBuilder body = new StringBuilder();
@@ -181,6 +247,9 @@ public class GPTCommands {
             "Search finds nearest fact, or searches questions and returns corresponding answers if two columns.")
     @RolePermission(value = Roles.ADMIN)
     public String view_document(PWGPTHandler handler, @Me IMessageIO io, @Me GuildDB db, EmbeddingSource source, final @Switch("a") boolean getAnswers, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
+        if (source == handler.getSource(EmbeddingType.User_Input)) {
+            return "Cannot view " + EmbeddingType.User_Input.name() + " source";
+        }
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKeys.ANSWER_SHEET);
         }
@@ -226,14 +295,22 @@ public class GPTCommands {
             "Requires two columns labeled \"fact\" or \"question\" and \"answer\" for vectors.\n" +
             "Search finds nearest fact, or searches questions and returns corresponding answers if two columns.")
     @RolePermission(value = Roles.ADMIN)
-    public String save_embeddings(PWGPTHandler gpt, @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, SpreadSheet sheet, String document_description, @Switch("f") boolean force) {
-        document_description = document_description.replaceAll("[^a-z0-9_ ]", "").toLowerCase(Locale.ROOT).trim();
-        if (document_description.isEmpty()) {
+    public String save_embeddings(PWGPTHandler gpt, @Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, SpreadSheet sheet, String document_name, @Switch("f") boolean force) {
+        String originalName = document_name;
+        document_name = document_name.replaceAll("[^a-z0-9_ ]", "").toLowerCase(Locale.ROOT).trim();
+        if (!document_name.equalsIgnoreCase(originalName) || document_name.length() < 1) {
             throw new IllegalArgumentException("Name must be at least 1 character long and alphanumerical");
         }
 
-        EmbeddingSource source = gpt.getHandler().getEmbeddings().getSource(document_description, db.getIdLong());
+        EmbeddingSource source = gpt.getHandler().getEmbeddings().getSource(document_name, db.getIdLong());
+        if (source == null) {
+            source = gpt.getHandler().getEmbeddings().getSource(document_name, 0);
+            throw new IllegalArgumentException("Document `" + document_name + "` already exists and is a default source. It cannot be overwritten.");
+        }
         if (source != null) {
+            if (source.guild_id != db.getIdLong()) {
+                throw new IllegalArgumentException("Document `" + source.source_name + "` already exists and is owned by another guild: " + DiscordUtil.getGuildName(source.guild_id) + " (this guild: " + db.getGuild() + ")");
+            }
             // confirm overwrite
             if (!force) {
                 String title = "Overwrite existing document?";
@@ -275,19 +352,19 @@ public class GPTCommands {
         }
 
         if (source == null) {
-            source = gpt.getHandler().getEmbeddings().getOrCreateSource(document_description, db.getIdLong());
+            source = gpt.getHandler().getEmbeddings().getOrCreateSource(document_name, db.getIdLong());
         }
 
         List<Long> embeddings = gpt.getHandler().registerEmbeddings(source, descriptions, fullTexts, true, true);
 
-        return "Registered " + embeddings.size() + " embeddings for `" + document_description + "` See: " + CM.chat.embedding.view.cmd.toSlashMention() + " and " + CM.chat.embedding.list.cmd.toSlashMention();
+        return "Registered " + embeddings.size() + " embeddings for `" + document_name + "` See: " + CM.chat.dataset.view.cmd.toSlashMention() + " and " + CM.chat.dataset.list.cmd.toSlashMention();
     }
 
     @Command(desc = "List available chat providers, and their information.\n" +
             "This includes status, rate limits, execution time, model, permissions, options.")
     @RolePermission(Roles.AI_COMMAND_ACCESS)
     public String listChatProviders(PWGPTHandler pwGpt, @Me GuildDB db, @Me User user) {
-        Set<GPTProvider> providers = pwGpt.getProviders(db);
+        Set<GPTProvider> providers = pwGpt.getProviderManager().getProviders(db);
 
         if (providers.isEmpty()) {
             return "No providers found";
@@ -308,7 +385,7 @@ public class GPTCommands {
             "Use provider list command to view types.")
     @RolePermission(Roles.AI_COMMAND_ACCESS)
     public String setChatProviders(PWGPTHandler pwGpt, @Me GuildDB db, @Me User user, @Me DBNation nation, Set<ProviderType> providerTypes) {
-        Set<ProviderType> existing = pwGpt.getProviderTypes(nation);
+        Set<ProviderType> existing = pwGpt.getProviderManager().getProviderTypes(nation);
         // if equal, return
         if (existing.equals(providerTypes)) {
             return "You are already using these providers";
@@ -326,7 +403,7 @@ public class GPTCommands {
                 }
             }
         }
-        pwGpt.setProviderTypes(nation, providerTypes);
+        pwGpt.getProviderManager().setProviderTypes(nation, providerTypes);
 
         return response.toString();
     }
@@ -337,7 +414,7 @@ public class GPTCommands {
             "Refer to API docs for details: <https://platform.openai.com/docs/api-reference/chat/create>")
     @RolePermission(Roles.AI_COMMAND_ACCESS)
     public String chatProviderConfigure(PWGPTHandler pwGpt, @Me GuildDB db, @Me User user, @Me DBNation nation, GPTProvider provider, Map<String, String> options) {
-        Map<String, Map<String, String>> config = pwGpt.setAndValidateOptions(nation, provider, options);
+        Map<String, Map<String, String>> config = pwGpt.getPlayerGPTConfig().setAndValidateOptions(nation, provider, options);
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         String json = gson.toJson(config);
         return "Set options for " + provider.getId() + ".\nCurrent configuration:\n```json\n" + json + "\n```";
@@ -502,6 +579,320 @@ public class GPTCommands {
         );
     }
 
+    @Command(desc = "Remove a nation from the /chat commands deny list\n" +
+            "i.e. If they were automatically added for submitting inappropriate content")
+    @RolePermission(value = Roles.ADMIN, root = true)
+    public String unban(@Me IMessageIO io, @Me JSONObject command, DBNation nation, @Switch("f") boolean force) {
+        ByteBuffer modReasonBuf = nation.getMeta(NationMeta.GPT_MODERATED);
+        if (modReasonBuf == null) {
+            return "Nation is not banned from chat tools";
+        }
+        if (!force) {
+            String modReason = new String(modReasonBuf.array(), StandardCharsets.ISO_8859_1);
+            String title = "Confirm unban: " + nation.getName();
+            StringBuilder body = new StringBuilder();
+            User user = nation.getUser();
+            if (user != null) {
+                // add mention
+                body.append(user.getAsMention() + " | ");
+            }
+            body.append(nation.getNationUrlMarkup(true) + " | " + nation.getAllianceUrlMarkup(true)).append("\n");
+            body.append("Reason: ").append(modReason).append("\n");
+            io.create().confirmation(title, body.toString(), command).send();
+            return null;
+        }
+        nation.deleteMeta(NationMeta.GPT_MODERATED);
+        return "Unbanned " + nation.getName() + " from chat tools";
+    }
 
+    @Command(desc = "Set the data sources you want to use to generate natural language responses for chat queries")
+    public String embeddingSelect(@Me IMessageIO io, @Me DBNation nation, @Me Guild guild, @Me GuildDB db, @Me User author,
+                                  PWGPTHandler pwGpt,
+                                  Set<EmbeddingType> excludeTypes,
+                                  @Switch("w") @WikiCategory Set<String> includeWikiCategories,
+                                  @Switch("n") @WikiCategory Set<String> excludeWikiCategories,
+                                  @Switch("e") Set<EmbeddingSource> excludeSources,
+                                  @Switch("a") Set<EmbeddingSource> addSources) {
+
+        Set<EmbeddingSource> selected = pwGpt.setSources(nation, guild, excludeTypes, includeWikiCategories, excludeWikiCategories, excludeSources, addSources);
+
+        StringBuilder body = new StringBuilder();
+        body.append("Selected `" + selected.size() + "` sources:\n");
+        for (EmbeddingSource source : selected) {
+            body.append("- " + source.getQualifiedName() + ": (id=" + source.source_id + ")\n");
+        }
+
+        body.append("\nFor a list of all sources: " + CM.chat.dataset.list.cmd.toSlashMention());
+
+        return body.toString();
+    }
+
+    @Command(desc = "Bulk rename channels using a google sheet or AI generated emojis\n" +
+            "The sheet expects columns `id`, `name` and optionally `description`\n" +
+            "If you do not provide a sheet, emojis and descriptions will be generated from the channel names")
+    @RolePermission(Roles.ADMIN)
+    public void emojifyChannels(@Me JSONObject command, @Me GuildDB db, @Me Guild guild, @Me IMessageIO io, @Me User user, @Me DBNation me, @Default SpreadSheet sheet, @Switch("e") Set<Category> excludeCategories, @Switch("c") Set<Category> includeCategories, @Switch("f") boolean force) throws GeneralSecurityException, IOException {
+        if (sheet != null && (excludeCategories != null || includeCategories != null)) {
+            throw new IllegalArgumentException("Cannot specify both a sheet and categories");
+        }
+        if (excludeCategories != null && includeCategories != null) {
+            throw new IllegalArgumentException("Cannot specify both exclude and include categories (pick one)");
+        }
+
+        List<String> errors = new ArrayList<>();
+
+        if (sheet == null) {
+            List<TextChannel> channels = new ArrayList<>();
+            if (excludeCategories != null) {
+                for (Category category : guild.getCategories()) {
+                    if (excludeCategories.contains(category)) continue;
+                    channels.addAll(category.getTextChannels());
+                }
+            } else if (includeCategories != null) {
+                for (Category category : guild.getCategories()) {
+                    if (!includeCategories.contains(category)) continue;
+                    channels.addAll(category.getTextChannels());
+                }
+            } else {
+                channels.addAll(guild.getTextChannels());
+            }
+            // skip vc
+            channels.removeIf(channel -> channel.getType() == ChannelType.VOICE);
+            // skip warcat (channel category lower contains)
+            channels.removeIf(channel -> {
+                Category cat = channel.getParentCategory();
+                if (cat == null) return false;
+                String name = cat.getName().toLowerCase(Locale.ROOT);
+                return name.contains("warcat") || name.contains("interview") || name.contains("archive");
+            });
+            // skip ones with emojis
+            channels.removeIf(channel -> !EmojiParser.extractEmojis(channel.getName()).isEmpty());
+
+            if (channels.isEmpty()) {
+                throw new IllegalArgumentException("""
+                        No channels to emojify. The following are excluded:
+                        - Channels in `excludeCategories` (if specified)
+                        - Channels not in `includeCategories` (if specified)
+                        - Voice channels
+                        - Channels in the `warcat`, `interview` or `archive` categories
+                        - Channels that already have emojis""");
+            }
+            if (channels.size() > 100) {
+                throw new IllegalArgumentException("Too many channels to emojify (" + channels.size() + " > 100). Please specify fewer categories with `includeCategories` or `excludeCategories`");
+            }
+
+            PWGPTHandler gpt = Locutus.imp().getCommandManager().getV2().getPwgptHandler();
+            if (gpt == null) {
+                throw new IllegalStateException("No GPT instance found. Please have the bot owner enable it in the `config.yaml` or specify a `sheet` instead");
+            }
+
+            GPTProvider provider = gpt.getProviderManager().getDefaultProvider(db, user, me);
+
+            StringBuilder channelsBuilder = new StringBuilder();
+            Category lastCategory = null;
+            for (TextChannel channel : channels) {
+                Category category = channel.getParentCategory();
+                if (category != lastCategory) {
+                    channelsBuilder.append(category.getName() + "\n");
+                    lastCategory = category;
+                }
+                channelsBuilder.append("- " + channel.getName()).append("\n");
+            }
+
+            String prompt = Messages.PROMPT_EMOJIFY;
+            prompt = prompt.replace("{channels}", channelsBuilder.toString());
+
+            Map<String, String> options = gpt.getPlayerGPTConfig().getOptions(me, provider);
+            String result = FileUtil.get(provider.submit(db, user, me, options, prompt));
+
+            Map<String, Set<TextChannel>> channelsBySlug = new LinkedHashMap<>();
+            for (TextChannel channel : channels) {
+                channelsBySlug.computeIfAbsent(PWWikiUtil.slugify(channel.getName(), false), f -> new LinkedHashSet<>()).add(channel);
+            }
+            Map<TextChannel, Map.Entry<String, String>> emojis = new LinkedHashMap<>();
+
+            System.out.println("Result: ```\n" + result + "\n```\n");
+
+            for (String line : result.split("\n")) {
+                line = line.trim();
+                if (line.startsWith("-")) line = line.substring(1).trim();
+                if (line.isEmpty()) continue;
+                if (!line.contains(":") || !line.contains("|")) {
+                    errors.add("Invalid line: `" + line + "`");
+                    continue;
+                }
+                System.out.println("Line " + line);
+                String channelName = line.substring(0, line.indexOf(":")).trim();
+                String emoji = line.substring(line.indexOf(":") + 1, line.indexOf("|")).trim();
+                String desc = line.substring(line.indexOf("|") + 1).trim();
+
+                String slug = PWWikiUtil.slugify(channelName, false);
+                if (slug.isEmpty()) {
+                    errors.add("Non ascii channel names are not supported: `" + channelName + "`");
+                    continue;
+                }
+                Set<TextChannel> toRename = channelsBySlug.get(slug);
+                if (toRename == null) {
+                    errors.add("No channel found for `" + slug + "`");
+                    continue;
+                }
+
+                for (TextChannel channel : toRename) {
+                    emojis.put(channel, new AbstractMap.SimpleEntry<>(emoji, desc));
+                }
+            }
+
+            for (TextChannel channel : channels) {
+                if (!emojis.containsKey(channel)) {
+                    errors.add("Skipped generating emoji for `" + channel.getName() + "`. Please update the current channels and run again.");
+                }
+            }
+
+            if (emojis.isEmpty()) {
+                io.create().append("No emojis generated. See the attached `errors.txt`")
+                        .file("errors.txt", String.join("\n", errors))
+                        .send();
+            }
+
+            sheet = SpreadSheet.create(db, SheetKeys.RENAME_CHANNELS);
+            List<String> header = new ArrayList<>(Arrays.asList(
+                    "id",
+                    "name",
+                    "description"
+            ));
+            sheet.setHeader(header);
+            for (Map.Entry<TextChannel, Map.Entry<String, String>> entry : emojis.entrySet()) {
+                TextChannel channel = entry.getKey();
+                String emoji = entry.getValue().getKey();
+                String desc = channel.getTopic() != null && !channel.getTopic().isEmpty() ? channel.getTopic() : entry.getValue().getValue();
+
+                String newName = emoji + "|" + channel.getName();
+
+                List<String> row = new ArrayList<>(Arrays.asList(
+                        channel.getId(),
+                        newName,
+                        desc
+                ));
+                sheet.addRow(row);
+            }
+            sheet.clearAll();
+            sheet.set(0, 0);
+
+        }
+
+        Map<Long, String> rename = new LinkedHashMap<>();
+        Map<Long, String> setDesc = new LinkedHashMap<>();
+
+        // read the sheet
+        List<List<Object>> rows = sheet.getAll();
+        if (rows.isEmpty()) {
+            throw new IllegalArgumentException("No rows found in sheet");
+        }
+        List<Object> header = rows.get(0);
+        Integer channelIdIndex = null;
+        Integer nameIndex = null;
+        Integer descIndex = null;
+        for (int i = 0; i < header.size(); i++) {
+            String cell = String.valueOf(header.get(i));
+            if (cell.equalsIgnoreCase("id")) {
+                channelIdIndex = i;
+            } else if (cell.equalsIgnoreCase("name")) {
+                nameIndex = i;
+            } else if (cell.equalsIgnoreCase("description")) {
+                descIndex = i;
+            }
+        }
+        if (channelIdIndex == null) {
+            throw new IllegalArgumentException("No `id` column found in sheet");
+        }
+        if (nameIndex == null) {
+            throw new IllegalArgumentException("No `name` column found in sheet");
+        }
+
+        for (int i = 1; i < rows.size(); i++) {
+            List<Object> row = rows.get(i);
+            String channelId = String.valueOf(row.get(channelIdIndex));
+            String name = String.valueOf(row.get(nameIndex)).replace("|", "\u2502");
+            String desc = descIndex == null || row.size() <= descIndex || row.get(descIndex) == null ? null : String.valueOf(row.get(descIndex));
+            if (desc == null || desc.isEmpty()) desc = null;
+
+            TextChannel channel = guild.getTextChannelById(channelId);
+            if (channel == null) {
+                errors.add("No channel found for `" + channelId + "`");
+                continue;
+            }
+
+            rename.put(Long.parseLong(channelId), name);
+            if (desc != null) {
+                setDesc.put(Long.parseLong(channelId), desc);
+            }
+        }
+
+        if (rename.isEmpty()) {
+            IMessageBuilder msg = io.create().append("No channels to rename. See the attached `errors.txt`");
+            if (!errors.isEmpty()) {
+                msg = msg.file("errors.txt", String.join("\n", errors));
+            }
+            msg.send();
+        }
+
+        if (!force) {
+            String title = "Rename " + rename.size() + " channels?";
+            StringBuilder body = new StringBuilder();
+            for (Map.Entry<Long, String> entry : rename.entrySet()) {
+                // <#id>: name
+                body.append("<#").append(entry.getKey()).append(">: ").append(entry.getValue()).append("\n");
+            }
+
+            body.append("\n\nReview and edit: " + MarkupUtil.markdownUrl("sheet:RENAME_CHANNELS", sheet.getURL()));
+
+            IMessageBuilder msg = io.create().confirmation(title, body.toString(), CM.channel.rename.bulk.cmd.create("sheet:" + sheet.getSpreadsheetId(), null, null, "true"));
+            if (!errors.isEmpty()) {
+                msg = msg.file("errors.txt", String.join("\n", errors));
+            }
+            msg.send();
+            return;
+        }
+
+        List<String> changes = new ArrayList<>();
+        for (Map.Entry<Long, String> entry : rename.entrySet()) {
+            TextChannel channel = guild.getTextChannelById(entry.getKey());
+            if (channel == null) {
+                errors.add("No channel found for `" + entry.getKey() + "`");
+                continue;
+            }
+            String newName = entry.getValue();
+            if (newName.length() > 100) {
+                errors.add("Channel name is too long: `" + newName + "`");
+                continue;
+            }
+            if (newName.isEmpty()) {
+                errors.add("Channel name is empty");
+                continue;
+            }
+            if (newName.equals(channel.getName())) {
+                errors.add("Channel name is the same: `" + newName + "`");
+                continue;
+            }
+            changes.add(channel.getName() + " -> " + newName);
+            RateLimitUtil.queue(channel.getManager().setName(newName));
+
+            String desc = setDesc.get(entry.getKey());
+            if (desc != null) {
+                RateLimitUtil.queue(channel.getManager().setTopic(desc));
+            }
+        }
+
+        IMessageBuilder msg = io.create();
+        if (!changes.isEmpty()) {
+            msg.append("Submitted " + changes.size() + " channel renames (updates pending):\n");
+            msg.append(String.join("\n", changes));
+        }
+        if (!errors.isEmpty()) {
+            // attach errors.txt
+            msg.file("errors.txt", String.join("\n", errors));
+        }
+        msg.send();
+    }
 
 }

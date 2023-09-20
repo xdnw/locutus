@@ -6,8 +6,10 @@ import com.knuddels.jtokkit.api.EncodingRegistry;
 import com.knuddels.jtokkit.api.ModelType;
 import com.theokanning.openai.moderation.Moderation;
 import com.theokanning.openai.moderation.ModerationRequest;
+import link.locutus.discord.util.StringMan;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -35,7 +37,7 @@ public class GPTUtil {
     public static void checkThrowModeration(List<ModerationResult> moderations, String text) {
         for (ModerationResult result : moderations) {
             if (result.isFlagged()) {
-                String message = "Your submission has been flagged as inappropriate:\n" +
+                String message = "Your submission was flagged as inappropriate:\n" +
                         "```json\n" + result.toString() + "\n```\n" +
                         "The content submitted:\n" +
                         "```json\n" + text.replaceAll("```", "\\`\\`\\`") + "\n```";

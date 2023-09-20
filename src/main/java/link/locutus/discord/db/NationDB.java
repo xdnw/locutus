@@ -350,6 +350,7 @@ public class NationDB extends DBMainV2 {
                 if (getAlliance(id) == null) newIds.add(id);
             }
         }
+        System.out.println("Update new alliances");
         return updateAlliancesById(new ArrayList<>(newIds), eventConsumer);
     }
 
@@ -366,6 +367,7 @@ public class NationDB extends DBMainV2 {
         Set<Integer> updated = processUpdatedAlliances(alliances, eventConsumer);
 
         if (!toDelete.isEmpty()) {
+            System.out.println("Update deleted alliances");
             updateAlliancesById(new ArrayList<>(toDelete), eventConsumer);
 //            deleteAlliances(toDelete, eventConsumer);
         }
@@ -670,6 +672,7 @@ public class NationDB extends DBMainV2 {
             ids.addAll(getActiveAlliancesToUpdate(pad, Rank.MEMBER, AlliancePermission.EDIT_ALLIANCE_INFO, AlliancePermission.CHANGE_PERMISSIONS));
         }
 
+        System.out.println("Update outdated alliances");
         // Add new alliances as padding
         return updateNewAlliances(ids, eventConsumer);
     }
@@ -3721,76 +3724,76 @@ public class NationDB extends DBMainV2 {
         }
     }
 
-    public void setSpies(int nation, int spies) {
-        long day = TimeUtil.getDay();
-        update("INSERT OR REPLACE INTO `SPIES_BUILDUP` (`nation`, `spies`, `day`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, nation);
-            stmt.setInt(2, spies);
-            stmt.setLong(3, day);
-        });
-    }
-
-    public Map.Entry<Integer, Long> getLatestSpyCount(int nationId, long beforeDay) {
-        String queryStr = "SELECT * from SPIES_BUILDUP where nation = ? AND day < ? order by day DESC limit 1";
-
-        try (PreparedStatement stmt = prepareQuery(queryStr)) {
-            stmt.setInt(1, nationId);
-            stmt.setLong(2, beforeDay);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    int spies = rs.getInt("spies");
-                    long day = rs.getLong("day");
-                    return new AbstractMap.SimpleEntry<>(spies, day);
-                }
-            }
-            return null;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
-    }
-
-    public Map<Integer, Integer> getLastSpiesByNation(Set<Integer> nationIds, long lastDay) {
-        String query = "SELECT nation, spies, max(day) as day from SPIES_BUILDUP where nation in " + StringMan.getString(nationIds) + " AND day < ? GROUP BY nation";
-        try (PreparedStatement stmt = prepareQuery(query)) {
-            stmt.setLong(1, lastDay);
-
-            Map<Integer, Integer> map = new LinkedHashMap<>();
-
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    int nationId = rs.getInt("nation");
-                    int spies = rs.getInt("spies");
-                    long day = rs.getLong("day");
-                    map.put(nationId, spies);
-                }
-            }
-            return map;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
-    }
-
-    public Map<Long, Integer> getSpiesByDay(int nationId) {
-        try (PreparedStatement stmt = prepareQuery("select * FROM SPIES_BUILDUP WHERE nation = ? ORDER BY day DESC")) {
-            stmt.setInt(1, nationId);
-
-            Map<Long, Integer> map = new LinkedHashMap<>();
-
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    int spies = rs.getInt("spies");
-                    long day = rs.getLong("day");
-                    map.put(day, spies);
-                }
-            }
-            return map;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
-    }
+//    public void setSpies(int nation, int spies) {
+//        long day = TimeUtil.getDay();
+//        update("INSERT OR REPLACE INTO `SPIES_BUILDUP` (`nation`, `spies`, `day`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+//            stmt.setInt(1, nation);
+//            stmt.setInt(2, spies);
+//            stmt.setLong(3, day);
+//        });
+//    }
+//
+//    public Map.Entry<Integer, Long> getLatestSpyCount(int nationId, long beforeDay) {
+//        String queryStr = "SELECT * from SPIES_BUILDUP where nation = ? AND day < ? order by day DESC limit 1";
+//
+//        try (PreparedStatement stmt = prepareQuery(queryStr)) {
+//            stmt.setInt(1, nationId);
+//            stmt.setLong(2, beforeDay);
+//            try (ResultSet rs = stmt.executeQuery()) {
+//                while (rs.next()) {
+//                    int spies = rs.getInt("spies");
+//                    long day = rs.getLong("day");
+//                    return new AbstractMap.SimpleEntry<>(spies, day);
+//                }
+//            }
+//            return null;
+//        } catch (SQLException e) {
+//            e.printStackTrace();
+//            throw new RuntimeException(e);
+//        }
+//    }
+//
+//    public Map<Integer, Integer> getLastSpiesByNation(Set<Integer> nationIds, long lastDay) {
+//        String query = "SELECT nation, spies, max(day) as day from SPIES_BUILDUP where nation in " + StringMan.getString(nationIds) + " AND day < ? GROUP BY nation";
+//        try (PreparedStatement stmt = prepareQuery(query)) {
+//            stmt.setLong(1, lastDay);
+//
+//            Map<Integer, Integer> map = new LinkedHashMap<>();
+//
+//            try (ResultSet rs = stmt.executeQuery()) {
+//                while (rs.next()) {
+//                    int nationId = rs.getInt("nation");
+//                    int spies = rs.getInt("spies");
+//                    long day = rs.getLong("day");
+//                    map.put(nationId, spies);
+//                }
+//            }
+//            return map;
+//        } catch (SQLException e) {
+//            e.printStackTrace();
+//            throw new RuntimeException(e);
+//        }
+//    }
+//
+//    public Map<Long, Integer> getSpiesByDay(int nationId) {
+//        try (PreparedStatement stmt = prepareQuery("select * FROM SPIES_BUILDUP WHERE nation = ? ORDER BY day DESC")) {
+//            stmt.setInt(1, nationId);
+//
+//            Map<Long, Integer> map = new LinkedHashMap<>();
+//
+//            try (ResultSet rs = stmt.executeQuery()) {
+//                while (rs.next()) {
+//                    int spies = rs.getInt("spies");
+//                    long day = rs.getLong("day");
+//                    map.put(day, spies);
+//                }
+//            }
+//            return map;
+//        } catch (SQLException e) {
+//            e.printStackTrace();
+//            throw new RuntimeException(e);
+//        }
+//    }
 
 //    public void setProjects(int nationId, Set<Project> projects) {
 //        Set<Integer> projectIds = new HashSet<>();

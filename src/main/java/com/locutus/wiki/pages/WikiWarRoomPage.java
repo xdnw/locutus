@@ -1,12 +1,12 @@
 package com.locutus.wiki.pages;
 
-import com.locutus.wiki.WikiGen;
+import com.locutus.wiki.BotWikiGen;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.util.MarkupUtil;
 
-public class WikiWarRoomPage extends WikiGen {
+public class WikiWarRoomPage extends BotWikiGen {
     public WikiWarRoomPage(CommandManager2 manager) {
         super(manager, "war rooms");
     }

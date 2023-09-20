@@ -27,6 +27,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class CopilotText2Text implements IText2Text {
     private final CopilotApi copilotApi;
     private final String tokensPath;
+    private final CopilotOptions defaultOptions = new CopilotOptions();
 
     public CopilotText2Text(String tokensPath, Consumer<CopilotDeviceAuthenticationData> authCallback) {
         this.tokensPath = tokensPath;
@@ -62,50 +63,53 @@ public class CopilotText2Text implements IText2Text {
         );
     }
 
-    private float temperature = 0.7F;
-    private String[] stopChars = new String[]{"\n\n"};
-    private float top_p = 1F;
-    private Integer maxTokens = 2000;
+    private static class CopilotOptions {
+        public float temperature = 0.7F;
+        public String[] stopChars = new String[]{"\n\n"};
+        public float top_p = 1F;
+        public Integer maxTokens = 2000;
 
-    public void setOptions(Map<String, String> options) {
-        // reset options
-        temperature = 0.7F;
-        stopChars = new String[]{"\n\n"};
-        top_p = 1F;
-        maxTokens = 2000;
+        public CopilotOptions setOptions(CopilotText2Text parent, Map<String, String> options) {
+            // reset options
+            temperature = 0.7F;
+            stopChars = new String[]{"\n\n"};
+            top_p = 1F;
+            maxTokens = 2000;
 
-        if (options != null) {
-            for (Map.Entry<String, String> entry : options.entrySet()) {
-                switch (entry.getKey().toLowerCase()) {
-                    case "temperature":
-                        temperature = Float.parseFloat(entry.getValue());
-                        checkArgument(temperature >= 0 && temperature <= 2, "Temperature must be between 0 and 2");
-                        break;
-                    case "stop_sequences":
-                        stopChars = entry.getValue().replace("\\n", "\n").split(",");
-                        break;
-                    case "top_p":
-                        top_p = Float.parseFloat(entry.getValue());
-                        break;
-                    case "max_tokens":
-                        maxTokens = Integer.parseInt(entry.getValue());
-                        break;
-                    default:
-                        throw new IllegalArgumentException("Unknown option: " + entry.getKey() + ". Valid options are: " + StringMan.getString(getOptions()));
+            if (options != null) {
+                for (Map.Entry<String, String> entry : options.entrySet()) {
+                    switch (entry.getKey().toLowerCase()) {
+                        case "temperature":
+                            temperature = Float.parseFloat(entry.getValue());
+                            checkArgument(temperature >= 0 && temperature <= 2, "Temperature must be between 0 and 2");
+                            break;
+                        case "stop_sequences":
+                            stopChars = entry.getValue().replace("\\n", "\n").split(",");
+                            break;
+                        case "top_p":
+                            top_p = Float.parseFloat(entry.getValue());
+                            break;
+                        case "max_tokens":
+                            maxTokens = Integer.parseInt(entry.getValue());
+                            break;
+                        default:
+                            throw new IllegalArgumentException("Unknown option: " + entry.getKey() + ". Valid options are: " + StringMan.getString(parent.getOptions()));
+                    }
                 }
             }
+            return this;
         }
     }
 
     @Override
     public String generate(Map<String, String> options, String text) {
-        setOptions(options);
+        CopilotOptions optObj = options == null || options.isEmpty() ? defaultOptions : new CopilotOptions().setOptions(this, options);
         CopilotParameters parameters = new CopilotParameters();
 
-        parameters.MaxTokens = maxTokens;
-        parameters.Temperature = temperature;
-        parameters.Stop = stopChars;
-        parameters.TopP = top_p;
+        parameters.MaxTokens = optObj.maxTokens;
+        parameters.Temperature = optObj.temperature;
+        parameters.Stop = optObj.stopChars;
+        parameters.TopP = optObj.top_p;
 
         List<CopilotResult> completions2 = null;
         try {

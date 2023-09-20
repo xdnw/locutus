@@ -83,7 +83,7 @@ public class WarsByTier extends Command {
             table.add(cities, (Void) null);
         }
 
-        table.write(channel, false);
+        table.write(channel, false, false);
         return null;
     }
 }

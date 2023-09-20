@@ -318,7 +318,7 @@ public class WarCostByDay extends Command {
         }
 
         for (TimeDualNumericTable<AttackCost> table : tables) {
-            table.write(channel, true);
+            table.write(channel, true, false);
         }
 
         return null;

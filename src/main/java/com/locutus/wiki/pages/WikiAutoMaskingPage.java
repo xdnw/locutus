@@ -1,7 +1,6 @@
 package com.locutus.wiki.pages;
 
-import com.locutus.wiki.CommandWikiPages;
-import com.locutus.wiki.WikiGen;
+import com.locutus.wiki.BotWikiGen;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
@@ -10,7 +9,7 @@ import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 
-public class WikiAutoMaskingPage extends WikiGen {
+public class WikiAutoMaskingPage extends BotWikiGen {
     public WikiAutoMaskingPage(CommandManager2 manager) {
         super(manager, "auto masking");
     }

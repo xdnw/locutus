@@ -1519,8 +1519,14 @@ public class WarDB extends DBMainV2 {
     public void fetchWarsById(Collection<Integer> ids, Consumer<Event> eventConsumer) {
         List<Integer> idsSorted = new ArrayList<>(ids);
         Collections.sort(idsSorted);
-
         int chunkSize = PoliticsAndWarV3.WARS_PER_PAGE;
+        if (idsSorted.size() % chunkSize != 0) {
+            int toAdd = chunkSize - (idsSorted.size() % chunkSize);
+            int maxId = idsSorted.get(idsSorted.size() - 1);
+            for (int i = 0; i < toAdd; i++) {
+                idsSorted.add(maxId + i + 1);
+            }
+        }
         for (int i = 0; i < idsSorted.size(); i += chunkSize) {
             int end = Math.min(i + chunkSize, idsSorted.size());
             List<Integer> subList = idsSorted.subList(i, end);
@@ -1538,7 +1544,10 @@ public class WarDB extends DBMainV2 {
 
     public void fetchNewWars(Consumer<Event> eventConsumer) {
         int maxId = activeWars.getActiveWars().keySet().stream().mapToInt(i -> i).max().orElse(0);
-        if (maxId == 0) return;
+        if (maxId == 0) {
+            System.out.println("No active wars");
+            return;
+        }
         PoliticsAndWarV3 api = Locutus.imp().getV3();
         System.out.println("Fetch new wars " + maxId);
         List<War> warsQl = api.fetchWarsWithInfo(r -> {

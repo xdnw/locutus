@@ -1,6 +1,6 @@
 package com.locutus.wiki.pages;
 
-import com.locutus.wiki.WikiGen;
+import com.locutus.wiki.BotWikiGen;
 import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.entities.Coalition;
@@ -8,7 +8,7 @@ import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 
-public class WikiBankPage extends WikiGen {
+public class WikiBankPage extends BotWikiGen {
     public WikiBankPage(CommandManager2 manager) {
         super(manager, "banking");
     }
@@ -91,7 +91,7 @@ public class WikiBankPage extends WikiGen {
                     "- Run the command in the discord server you wish to deposit into (i.e. your alliance or corporate server)",
                     CM.trade.accept.cmd.create("Borg", "{food=1,coal=3,money=4}", null, null).toString(),
                 """
-                Note: If the banker only has provided api details, but not their login, you will need to send the trades to the receiver.
+                Note: If the banker has not provided their login, or the sender has not provided their api, then trades must be sent to the receiver.
                 - Create a __private__ trade of either a `$0` ppu sell offer, or a food buy offer __over__ `$100,000` ppu.
                 - You will run the commands in the discord server you wish to deposit into (i.e. your alliance or corporate server)
                 - Use the command `/trade accept` without specifying an amount, only the receiver who you sent the trades to""",
