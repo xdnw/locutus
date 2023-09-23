@@ -1,43 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import io.javalin.plugin.openapi.annotations.NULL_CLASS;
-import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
-import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.apiv1.enums.SuccessType;
-import link.locutus.discord.apiv1.enums.WarType;
-import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.enums.city.building.MilitaryBuilding;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Range;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
-import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.CustomBounty;
-import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.NationFilterString;
-import link.locutus.discord.db.entities.WarStatus;
-import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.pnw.NationOrAlliance;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.offshore.OffshoreInstance;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.User;
-
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-
 public class BountyCommands {
 //
 //    @Command

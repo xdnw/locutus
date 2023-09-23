@@ -1,15 +1,18 @@
 package link.locutus.discord.commands.manager.v2.binding.bindings;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
+import link.locutus.discord.commands.manager.v2.binding.Parser;
+import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.*;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
-import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWMath2Type;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWType2Math;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
@@ -18,30 +21,37 @@ import link.locutus.discord.util.math.ArrayUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.tuple.Triple;
 
 import java.lang.reflect.Type;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public abstract class Placeholders<T> {
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
     private final CommandGroup commands;
-
-    private final T nullInstance;
-    private final Type instanceType;
+    private final Class<T> instanceType;
     private final ValueStore store;
 
-    public Placeholders(Type type, T nullInstance, ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
-        this.nullInstance = nullInstance;
+    private final ValueStore math2Type;
+    private final ValueStore type2Math;
+
+    public Placeholders(Class<T> type, ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
         this.instanceType = type;
 
         this.validators = validators;
@@ -49,8 +59,33 @@ public abstract class Placeholders<T> {
 
         this.commands = CommandGroup.createRoot(store, validators);
         this.store = store;
-        this.commands.registerCommands(nullInstance);
+        this.commands.registerCommandsClass(type);
         this.commands.registerCommands(this);
+
+        this.math2Type = new SimpleValueStore();
+        this.type2Math = new SimpleValueStore();
+
+        new PWMath2Type().register(math2Type);
+        new PWType2Math().register(type2Math);
+    }
+
+    public static <T> Placeholders<T> create(Class<T> type, ValueStore store, ValidatorStore validators, PermissionHandler permisser, String help, BiFunction<ValueStore, String, Set<T>> parse) {
+        return new Placeholders<T>(type, store, validators, permisser) {
+            @Override
+            public String getCommandMention() {
+                return help;
+            }
+
+            @Override
+            protected Set<T> parse(ValueStore store, String input) {
+                return parse.apply(store, input);
+            }
+        };
+    }
+
+    public Placeholders<T> register(Object obj) {
+        this.commands.registerCommands(obj);
+        return this;
     }
 
     public ValueStore getStore() {
@@ -72,7 +107,16 @@ public abstract class Placeholders<T> {
     }
 
     public ParametricCallable get(String cmd) {
-        return (ParametricCallable) commands.get(cmd);
+        CommandCallable result = commands.get(cmd);
+        if (result == null) {
+            for (String prefix : prefixes) {
+                result = commands.get(prefix + cmd);
+                if (result != null) {
+                    break;
+                }
+            }
+        }
+        return (ParametricCallable) result;
     }
 
     public String getHtml(ValueStore store, String cmd, String parentId) {
@@ -131,7 +175,7 @@ public abstract class Placeholders<T> {
         return null;
     }
 
-    public Predicate<T> getFilter(ValueStore store, String input, Map<String, Map<T, Object>> cache) {
+    private Predicate<T> getFilter(ValueStore store, String input, Map<String, Map<T, Object>> cache) {
         Triple<String, Operation, String> pairs = opSplit(input);
         boolean isDefault = false;
         if (pairs == null) {
@@ -144,12 +188,7 @@ public abstract class Placeholders<T> {
 
         Map.Entry<Type, Function<T, Object>> placeholder = getPlaceholderFunction(store, part1);
         if (placeholder == null) {
-            Set<String> options = commands.getSubCommandIds();
-            List<String> closest = StringMan.getClosest(part1, new ArrayList<>(options), false);
-            if (closest.size() > 5) closest = closest.subList(0, 5);
-            throw new IllegalArgumentException("Unknown placeholder: " + part1 + "\n" +
-                    "Did you mean:\n- " + StringMan.join(closest, "\n- ") +
-                    "\n\nSee also: " + getCommandMention());
+            throw throwUnknownCommand(part1);
         }
         Function<T, Object> func = placeholder.getValue();
         Type type = placeholder.getKey();
@@ -201,7 +240,7 @@ public abstract class Placeholders<T> {
 
     public Set<T> parseSet(ValueStore store2, String input) {
         Map<String, Map<T, Object>> cache = new Object2ObjectOpenHashMap<>();
-        return ArrayUtil.parseQuery(input,
+        return ArrayUtil.resolveQuery(input,
                 f -> parse(store2, f),
                 s -> getFilter(store2, s, cache));
     }
@@ -213,91 +252,362 @@ public abstract class Placeholders<T> {
         return argStart != -1 ? input.substring(0, argStart) : input;
     }
 
-    protected String format(String line, int recursion, Function<String, String> formatPlaceholder) {
-        try {
-            int q = 0;
-            List<Integer> indicies = null;
-            for (int i = 0; i < line.length(); i++) {
-                char current = line.charAt(i);
-                if (current == '{') {
-                    if (indicies == null) indicies = new ArrayList<>();
-                    indicies.add(i);
-                    q++;
-                } else if (current == '}' && indicies != null) {
-                    if (q > 0) {
-                        if (recursion < 513) {
-                            q--;
-                            int lastindx = indicies.size() - 1;
-                            int start = indicies.get(lastindx);
-                            String arg = line.substring(start, i + 1);
+    private Function<T, Object> formatRecursively(ValueStore store, String input, ParameterData param, int depth) {
+        input = input.trim();
+        int currentIndex = 0;
 
-                            Object result;
-                            try {
-                                System.out.println("Format `" + arg + "`");
-                                result = formatPlaceholder.apply(arg.substring(1, arg.length() - 1));
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                                result = null;
-                            }
-                            if (result != null) {
-                                line = new StringBuffer(line).replace(start, i + 1, result + "").toString();
-                            }
-                            indicies.remove(lastindx);
-                            i = start;
+        List<String> sections = new ArrayList<>();
+        Map<String, Function<T, Object>> functions = new LinkedHashMap<>();
+
+        boolean hasMath = false;
+        boolean hasPlaceholder = false;
+
+        while (currentIndex < input.length()) {
+            char currentChar = input.charAt(currentIndex);
+
+            if (currentChar != '{') {
+                sections.add("" +currentChar);
+                currentIndex++;
+                hasMath |= switch (currentChar) {
+                    case '+', '-', '*', '/', '^', '%' -> true;
+                    default -> false;
+                };
+            } else {
+                // Find the matching closing curly brace
+                int closingBraceIndex = StringMan.findMatchingBracket(input, currentIndex);
+
+                if (closingBraceIndex != -1) {
+                    String functionContent = input.substring(currentIndex + 1, closingBraceIndex);
+                    sections.add(functionContent);
+                    if (!functions.containsKey(functionContent)) {
+                        Function<T, Object> functionResult = evaluateFunction(store, validators, permisser, functionContent, depth);
+                        if (functionResult != null) {
+                            functions.put(functionContent, functionResult);
+                            hasPlaceholder = true;
                         }
+                    }
+                    currentIndex = closingBraceIndex + 1;
+                } else {
+                    // Handle the case where there is no matching closing brace
+                    throw new IllegalArgumentException("Invalid input: Missing closing curly brace: `" + input + "`");
+                }
+            }
+        }
+
+        if (hasMath) {
+            if (hasPlaceholder || (input.contains("{") && input.contains("}"))) {
+                Function<String, Function<T, ArrayUtil.DoubleArray>> stringToParser = s -> {
+                    if (s.startsWith("{") && s.endsWith("}")) {
+                        Function<T, Object> function = functions.get(s);
+                        if (function != null) {
+                            return function.andThen(o -> parseDoubleArray(o, param));
+                        }
+                    }
+                    return new ArrayUtil.ResolvedFunction<>(parseDoubleArray(s, param));
+                };
+
+                ArrayUtil.LazyMathArray<T> lazy = ArrayUtil.calculate(input, new Function<String, ArrayUtil.LazyMathArray<T>>() {
+                    @Override
+                    public ArrayUtil.LazyMathArray<T> apply(String s) {
+                        return new ArrayUtil.LazyMathArray<>(s, stringToParser);
+                    }
+                });
+
+                ArrayUtil.DoubleArray array = lazy.getOrNull();
+                if (array != null) {
+                    return new ArrayUtil.ResolvedFunction<>(toObject(array, param));
+                }
+                return f -> toObject(lazy.resolve(f), param);
+            } else {
+                double val = PrimitiveBindings.Double(input);
+                return new ArrayUtil.ResolvedFunction<>(val);
+            }
+        }
+        if (param != null) {
+            // if hasPlaceholder is false, then parse in entirety
+            if (!hasPlaceholder) {
+                Object val = param.getBinding().apply(store, input);
+                return new ArrayUtil.ResolvedFunction<>(val);
+            }
+        }
+
+        // else return function
+        if (sections.size() == 1) {
+            String section = sections.get(0);
+            // get function
+            Function<T, Object> function = functions.get(section);
+            if (function != null) {
+                return function;
+            }
+            return new ArrayUtil.ResolvedFunction<>(section);
+        }
+        boolean isResolved = functions.isEmpty() || functions.values().stream().allMatch(ArrayUtil.ResolvedFunction.class::isInstance);
+        Function<T, Object> result = f -> {
+            StringBuilder resultStr = new StringBuilder();
+            for (String section : sections) {
+                Function<T, Object> function = functions.get(section);
+                if (function == null) {
+                    resultStr.append(section);
+                } else {
+                    resultStr.append(function.apply(f));
+                }
+            }
+            return resultStr.toString();
+        };
+        if (isResolved) {
+            return new ArrayUtil.ResolvedFunction<>(result.apply(null));
+        }
+        return result;
+    }
+
+    private Object toObject(ArrayUtil.DoubleArray expr, ParameterData param) {
+        double[] arr = expr.toArray();
+        if (arr.length == 1) {
+            return arr[0];
+        }
+        if (param != null) {
+            Parser typeFunc = math2Type.get(param.getBinding().getKey());
+            if (typeFunc == null) {
+                throw new IllegalArgumentException("Unknown type function (1): `" + param.getBinding().getKey() + "`");
+            }
+            Object parsed = typeFunc.apply(store, expr);
+            if (parsed == null) {
+                throw new IllegalArgumentException("Null parsed " + typeFunc.getKey() + " for Math Expression->Type");
+            }
+            return parsed;
+        }
+        throw new IllegalArgumentException("Cannot parse math expression to object: len:" + arr.length + " | " + StringMan.getString(arr));
+    }
+
+    private ArrayUtil.DoubleArray parseDoubleArray(Object s, ParameterData param) {
+        if (s instanceof Number n) {
+            return new ArrayUtil.DoubleArray(n.doubleValue());
+        }
+        if (s instanceof String str) {
+            if (NumberUtils.isParsable(str)) {
+                return new ArrayUtil.DoubleArray(NumberUtils.createDouble(str));
+            }
+            if (str.startsWith("{") && str.endsWith("}")) {
+                if (param != null) {
+                    Parser mathFunc = type2Math.get(param.getBinding().getKey());
+                    if (mathFunc == null) {
+                        throw new IllegalArgumentException("Unknown function (2): `" + str + "`");
+                    }
+                    Object parsed = mathFunc.apply(store, validators, permisser, str);
+                    if (parsed == null) {
+                        throw new IllegalArgumentException("Null parsed " + mathFunc.getKey() + " for Type->Math Expression");
+                    }
+                    if (parsed instanceof ArrayUtil.DoubleArray da) {
+                        return da;
+                    }
+                    throw new IllegalArgumentException("Cannot parse `" + mathFunc.getKey() + "` invalid type: " + parsed.getClass() + " (expected DoubleArray)");
+                }
+            }
+            throw new IllegalArgumentException("Unknown numeric `" + str + "` cannot parse to DoubleArray for " + param);
+        }
+        throw new IllegalArgumentException("Unknown numeric `" + s.toString() + "` of type " + s.getClass() + " cannot parse to DoubleArray for " + param);
+    }
+
+    private Map<String, String> explodeArguments(ValueStore store, ParametricCallable command, String argumentString, Set<String> arguments) {
+        try {
+            return CommandManager2.parseArguments(arguments, argumentString, false);
+        } catch (IllegalArgumentException e) {
+            List<String> input = StringMan.split(argumentString, ",");
+            return command.formatArgumentsToMap(store, input);
+        }
+    }
+
+    private IllegalArgumentException throwUnknownCommand(String command) {
+        Set<String> options = commands.getSubCommandIds();
+        List<String> closest = StringMan.getClosest(command, new ArrayList<>(options), false);
+        if (closest.size() > 5) closest = closest.subList(0, 5);
+        return new IllegalArgumentException("Unknown command: " + command + "\n" +
+                "Did you mean:\n- " + StringMan.join(closest, "\n- ") +
+                "\n\nSee also: " + getCommandMention());
+    }
+
+    // Helper method to evaluate a function and its arguments
+    private Function<T, Object> evaluateFunction(ValueStore store, ValidatorStore validators, PermissionHandler permisser, String functionContent, int depth) {
+        Map<String, Function<T, Object>> actualArguments = new HashMap<>();
+
+        // Split the functionContent into function name and arguments
+        int indexPar = functionContent.indexOf('(');
+        int indexSpace = functionContent.indexOf(' ');
+        String functionName;
+        String argumentString;
+        if (indexPar != -1 && (indexSpace == -1 || indexPar < indexSpace)) {
+            if (!functionContent.endsWith(")")) {
+                throw new IllegalArgumentException("Invalid input: Missing closing parenthesis for `" + functionContent + "`");
+            }
+            functionName = functionContent.substring(0, indexPar);
+            argumentString = functionContent.substring(indexPar + 1, functionContent.length() - 1).trim();
+        } else if (indexSpace != -1 && (indexPar == -1 || indexSpace < indexPar)) {
+            functionName = functionContent.substring(0, indexSpace).trim();
+            argumentString = functionContent.substring(indexSpace + 1).trim();
+        } else {
+            functionName = functionContent.trim();
+            argumentString = "";
+        }
+        ParametricCallable command = this.get(functionName);
+        if (command == null) {
+            if (depth == 0) {
+                throw throwUnknownCommand(functionName);
+            }
+            return new ArrayUtil.ResolvedFunction<>(functionContent);
+        }
+        if (!argumentString.isEmpty()) {
+            Set<String> argumentNames = command.getUserParameterMap().keySet();
+            // Use explodeArguments to parse the argument string
+            Map<String, String> explodedArguments = explodeArguments(store, command, argumentString, argumentNames);
+
+            for (Map.Entry<String, ParameterData> entry : command.getUserParameterMap().entrySet()) {
+                ParameterData param = entry.getValue();
+                String argumentName = entry.getKey();
+                if (explodedArguments.containsKey(argumentName)) {
+                    Function<T, Object> argumentValue = formatRecursively(store, explodedArguments.get(argumentName), param, depth + 1);
+                    actualArguments.put(argumentName, argumentValue);
+                }
+            }
+        }
+
+        return format(store, command, actualArguments);
+    }
+
+    private Function<T, Object> format(ValueStore store, ParametricCallable command, Map<String, Function<T, Object>> arguments) {
+        Map<String, Object> resolvedArgs = new LinkedHashMap<>();
+        boolean isResolved = true;
+        for (Map.Entry<String, Function<T, Object>> entry : arguments.entrySet()) {
+            Function<T, Object> func = entry.getValue();
+            if (func instanceof ArrayUtil.ResolvedFunction<T, Object> f) {
+                resolvedArgs.put(entry.getKey(), f.get());
+                continue;
+            }
+            isResolved = false;
+        }
+
+        boolean finalIsResolved = isResolved;
+        Function<T, Object[]> resolved = f -> {
+            if (!finalIsResolved) {
+                for (Map.Entry<String, Function<T, Object>> entry : arguments.entrySet()) {
+                    String argName = entry.getKey();
+                    if (!resolvedArgs.containsKey(argName)) {
+                        resolvedArgs.put(argName, entry.getValue().apply(f));
                     }
                 }
             }
-            return line;
-        } catch (Exception e2) {
-            e2.printStackTrace();
-            return "";
+            return command.parseArgumentMap2(resolvedArgs, store, validators, permisser, true);
+        };
+        BiFunction<T, Object[], Object> format = (object, paramVals) -> command.call(object, store, paramVals);
+        if (isResolved) {
+            Object[] argArr = resolved.apply(null);
+            return f -> format.apply(f, argArr);
+        }
+        return f -> format.apply(f, resolved.apply(f));
+    }
+
+//    public Map.Entry<Type, Function<T, Object>> getTypeFunction(ValueStore<?> store, String id, boolean ignorePerms) {
+//        Map.Entry<Type, Function<T, Object>> typeFunction;
+//        try {
+//            typeFunction = getPlaceholderFunction(store, id);
+//        } catch (CommandUsageException ignore) {
+//            return null;
+//        } catch (Exception ignore2) {
+//            if (!ignorePerms) throw ignore2;
+//            return null;
+//        }
+//        return typeFunction;
+//    }
+
+    public static class PlaceholderCache<T> {
+        private final Set<T> set;
+        private final Map<T, Map<String, Object>> cache = new Object2ObjectOpenHashMap<>();
+
+        public PlaceholderCache(Collection<T> set) {
+            this.set = new ObjectOpenHashSet<>(set);
+        }
+
+        public Set<T> getSet() {
+            return set;
+        }
+
+        public Object get(T object, String id) {
+            Map<String, Object> map = cache.computeIfAbsent(object, o -> new Object2ObjectOpenHashMap<>());
+            return map.get(id);
+        }
+
+        public boolean has(T object, String id) {
+            Map<String, Object> map = cache.computeIfAbsent(object, o -> new Object2ObjectOpenHashMap<>());
+            return map.containsKey(id);
+        }
+
+        public void put(T object, String id, Object value) {
+            Map<String, Object> map = cache.computeIfAbsent(object, o -> new Object2ObjectOpenHashMap<>());
+            map.put(id, value);
         }
     }
 
-    public Map.Entry<Type, Function<T, Object>> getTypeFunction(ValueStore<?> store, String id, boolean ignorePerms) {
-        Map.Entry<Type, Function<T, Object>> typeFunction;
-        try {
-            typeFunction = getPlaceholderFunction(store, id);
-        } catch (CommandUsageException ignore) {
-            return null;
-        } catch (Exception ignore2) {
-            if (!ignorePerms) throw ignore2;
-            return null;
+    private LocalValueStore createLocals(Guild guild, User user, DBNation nation) {
+        if (nation == null && user != null) {
+            nation = DBNation.getByUser(user);
         }
-        return typeFunction;
-    }
-
-    public String format(Guild callerGuild, DBNation callerNation, User callerUser, String arg, T elem) {
-        if (callerNation == null && callerUser != null) {
-            callerNation = DBNation.getByUser(callerUser);
-        }
-        if (callerUser == null && callerNation != null) {
-            callerUser = callerNation.getUser();
+        if (user == null && nation != null) {
+            user = nation.getUser();
         }
         LocalValueStore locals = new LocalValueStore<>(this.getStore());
-        if (callerNation != null) {
-            locals.addProvider(Key.of(DBNation.class, Me.class), callerNation);
+        if (nation != null) {
+            locals.addProvider(Key.of(DBNation.class, Me.class), nation);
         }
-        if (callerUser != null) {
-            locals.addProvider(Key.of(User.class, Me.class), callerUser);
+        if (user != null) {
+            locals.addProvider(Key.of(User.class, Me.class), user);
         }
-        if (callerGuild != null) {
-            locals.addProvider(Key.of(Guild.class, Me.class), callerGuild);
+        if (guild != null) {
+            locals.addProvider(Key.of(Guild.class, Me.class), guild);
         }
-        return format(locals, arg, elem);
+        return locals;
     }
 
-    public String format(ValueStore<?> store, String arg, T me) {
-        return format(arg, 0, placeholder -> {
-            Map.Entry<Type, Function<T, Object>> typeFunction = getTypeFunction(store, placeholder, false);
-            if (typeFunction == null) return null;
-            Object obj = typeFunction.getValue().apply(me);
-            if (obj != null) {
-                return obj.toString();
-            }
-            return null;
-        });
+    public String format2(Guild callerGuild, DBNation callerNation, User callerUser, String arg, T elem) {
+        LocalValueStore locals = createLocals(callerGuild, callerUser, callerNation);
+        return getFormatFunction(locals, arg).apply(elem);
+    }
+
+    public String format2(ValueStore store, String arg, T elem) {
+        return getFormatFunction(store, arg).apply(elem);
+    }
+
+
+    public  Map<T, String> format(Guild callerGuild, DBNation callerNation, User callerUser, String arg, Set<T> elems) {
+        LocalValueStore locals = createLocals(callerGuild, callerUser, callerNation);
+        return format(locals, arg, elems);
+    }
+
+    public Map<T, String> format(ValueStore store, String arg, Set<T> entities) {
+        PlaceholderCache<T> cache = new PlaceholderCache<>(entities);
+        Function<T, String> func = getFormatFunction(store, arg, cache);
+        Map<T, String> formatted = new Object2ObjectOpenHashMap<>();
+        for (T entity : entities) {
+            formatted.put(entity, func.apply(entity));
+        }
+        return formatted;
+    }
+
+    public Function<T, String> getFormatFunction(Guild callerGuild, DBNation callerNation, User callerUser, String arg, Set<T> elems) {
+        PlaceholderCache<T> cache = new PlaceholderCache<>(elems);
+        return getFormatFunction(callerGuild, callerNation, callerUser, arg, cache);
+    }
+    public Function<T, String> getFormatFunction(Guild callerGuild, DBNation callerNation, User callerUser, String arg, PlaceholderCache cache) {
+        LocalValueStore locals = createLocals(callerGuild, callerUser, callerNation);
+        locals.addProvider(cache);
+        return getFormatFunction(locals, arg);
+    }
+
+    public Function<T, String> getFormatFunction(ValueStore store, String arg) {
+        return getFormatFunction(store, arg, null);
+    }
+
+    public Function<T, String> getFormatFunction(ValueStore store, String arg, PlaceholderCache cache) {
+        if (cache != null) store.addProvider(cache);
+        return this.formatRecursively(store, arg, null, 0).andThen(f -> f + "");
     }
 
     private static String[] prefixes = {"get", "is", "can"};
@@ -320,15 +630,9 @@ public abstract class Placeholders<T> {
             cmd = input;
         }
 
-        ParametricCallable cmdObj = (ParametricCallable) commands.get(cmd);
+        ParametricCallable cmdObj = get(cmd);
         if (cmdObj == null) {
-            for (String prefix : prefixes) {
-                cmdObj = (ParametricCallable) commands.get(prefix + cmd);
-                if (cmdObj != null) break;
-            }
-            if (cmdObj == null) {
-                return null;
-            }
+            return null;
         }
 
         LocalValueStore locals = new LocalValueStore<>(store);
@@ -336,40 +640,10 @@ public abstract class Placeholders<T> {
         ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
 
         Object[] arguments = cmdObj.parseArguments(stack);
-        int replacement = -1;
-        for (int i = 0; i < arguments.length; i++) {
-            if (arguments[i] == nullInstance) replacement = i;
-        }
 
         Function<T, Object> func;
         ParametricCallable finalCmdObj = cmdObj;
-
-        if (replacement != -1) {
-            int valIndex = replacement;
-            func = new Function<>() {
-                private volatile boolean useCopy = false;
-
-                @Override
-                public Object apply(T val) {
-                    // create copy if used by multiple threads
-                    if (useCopy) {
-                        Object[] copy = arguments.clone();
-                        copy[valIndex] = val;
-                        return finalCmdObj.call(val, store, copy);
-                    } else {
-                        try {
-                            useCopy = true;
-                            arguments[valIndex] = val;
-                            return finalCmdObj.call(val, store, arguments);
-                        } finally {
-                            useCopy = false;
-                        }
-                    }
-                }
-            };
-        } else {
-            func = obj -> finalCmdObj.call(obj, store, arguments);
-        }
+        func = obj -> finalCmdObj.call(obj, store, arguments);
         return new AbstractMap.SimpleEntry<>(cmdObj.getReturnType(), func);
     }
 

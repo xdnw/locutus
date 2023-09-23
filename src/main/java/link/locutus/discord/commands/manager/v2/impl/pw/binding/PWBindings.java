@@ -15,9 +15,10 @@ import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ICommandGroup;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.commands.manager.v2.command.StringMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
@@ -63,6 +64,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
+import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.apiv1.enums.city.project.Project;
@@ -613,8 +615,11 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "A comma separated list of continents, or `*`")
-    public Set<Continent> continentTypes(String input) {
+    public static Set<Continent> continentTypes(String input) {
         if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Continent.values()));
+        if (SpreadSheet.isSheet(input)) {
+            return SpreadSheet.parseSheet(input, List.of("continent"), true, (type, str) -> continent(str));
+        }
         return emumSet(Continent.class, input);
     }
 
@@ -645,7 +650,11 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "A comma separated list of alliance projects")
-    public Set<Project> projects(String input) {
+    public static Set<Project> projects(String input) {
+        if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Projects.values));
+        if (SpreadSheet.isSheet(input)) {
+            return SpreadSheet.parseSheet(input, List.of("project"), true, (type, str) -> project(str));
+        }
         Set<Project> result = new HashSet<>();
         for (String type : input.split(",")) {
             Project project = Projects.get(type);
@@ -839,11 +848,6 @@ public class PWBindings extends BindingHelper {
 //            }
 //        }
 //    }
-
-    public static void main(String[] args) {
-        //
-        // (*,#cities(5,4)>{cities}*3)||test
-    }
 
     @Binding(examples = "ACTIVE,EXPIRED", value = "A comma separated list of war statuses")
     public Set<WarStatus> WarStatuses(String input) {
@@ -1075,7 +1079,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "647252780817448972", value = "A discord guild id. See: <https://en.wikipedia.org/wiki/Template:Discord_server#Getting_Guild_ID>")
-    public GuildDB guild(long guildId) {
+    public static GuildDB guild(long guildId) {
         GuildDB guild = Locutus.imp().getGuildDB(guildId);
         if (guild == null) throw new IllegalArgumentException("No guild found for: " + guildId);
         return guild;
@@ -1197,7 +1201,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "Continent name")
-    public Continent Continent(String input) {
+    public static Continent continent(String input) {
         return emum(Continent.class, input);
     }
 
@@ -1274,7 +1278,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "A project name. Replace spaces with `_`. See: <https://politicsandwar.com/nation/projects/>", examples = "ACTIVITY_CENTER")
-    public Project project(String input) {
+    public static Project project(String input) {
         Project project = Projects.get(input);
         if (project == null) throw new IllegalArgumentException("Invalid project: `"  + input + "`. Options: " + StringMan.getString(Projects.values));
         return project;
@@ -1390,4 +1394,8 @@ public class PWBindings extends BindingHelper {
 //        return WarParser.of(coalition1, coalition1, timediff);
 //        return nation.get();
 //    }
+
+    // public DoubleArray parse(Map<ResourceType, Double> input)
+    // public Map<ResourceType, Double> parse(DoubleArray input)
+
 }

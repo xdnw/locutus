@@ -37,6 +37,12 @@ import java.util.stream.IntStream;
 
 public class StringMan {
 
+    public static String stripApiKey(String msg) {
+        return msg
+                .replaceAll("(?i)[\\[\\]\"\\n^:\\s,\\.](?=.*[A-Za-z])(?=.*\\d)[0-9A-Fa-f]{14,}(?=[\\[\\]\"\\n$:\\s,\\.]|$)", "XXX")
+                .replaceAll("(key=)(?i)([0-9A-Fa-f]{14,})", "$1XXX");
+    }
+
     public static class ConsoleColors {
         // Reset
         public static final String RESET = "\033[0m"; // Text Reset // Regular Colors

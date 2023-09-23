@@ -5,17 +5,16 @@ import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.enums.NationLootType;
-import link.locutus.discord.commands.manager.v2.binding.Key;
-import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -1221,7 +1220,7 @@ public class UtilityCommands {
             "See <https://github.com/xdnw/locutus/wiki/nation_placeholders> for a list of placeholders")
     @WhitelistPermission
     @NoFormat
-    public String AllianceSheet(NationPlaceholders placeholders, AlliancePlaceholders aaPlaceholders, ValueStore store, @Me Guild guild, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildDB db,
+    public static String AllianceSheet(NationPlaceholders placeholders, AlliancePlaceholders aaPlaceholders, @Me Guild guild, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildDB db,
                                 @Arg("The nations to include in each alliance")
                                 Set<DBNation> nations,
                                 @Arg("The columns to use in the sheet")
@@ -1239,34 +1238,30 @@ public class UtilityCommands {
 
         Map<Integer, List<DBNation>> nationMap = new RankBuilder<>(nations).group(n -> n.getAlliance_id()).get();
 
-        Map<Integer, DBNation> totals = new HashMap<>();
+        Map<DBAlliance, DBNation> totals = new HashMap<>();
         for (Map.Entry<Integer, List<DBNation>> entry : nationMap.entrySet()) {
             Integer id = entry.getKey();
+            DBAlliance alliance = DBAlliance.get(id);
+            if (alliance == null) continue;
             DBNation total = DBNation.createFromList(PnwUtil.getName(id, true), entry.getValue(), false);
-            totals.put(id, total);
+            totals.put(alliance, total);
         }
 
         sheet.setHeader(header);
 
-        for (Map.Entry<Integer, DBNation> entry : totals.entrySet()) {
-            DBAlliance dbAlliance = DBAlliance.get(entry.getKey());
-            if (dbAlliance == null) continue;
+        Placeholders.PlaceholderCache<DBAlliance> aaCache = new Placeholders.PlaceholderCache<>(totals.keySet());
+        List<Function<DBAlliance, String>> formatByColumn = new ArrayList<>();
+        for (String column : columns) {
+            formatByColumn.add(aaPlaceholders.getFormatFunction(guild, me, author, column, aaCache));
+        }
+//        Placeholders.PlaceholderCache<DBNation> natCache = new Placeholders.PlaceholderCache<>(totals.values());
 
+        for (Map.Entry<DBAlliance, DBNation> entry : totals.entrySet()) {
+            DBAlliance dbAlliance = entry.getKey();
             DBNation nation = entry.getValue();
             for (int i = 0; i < columns.size(); i++) {
-                String arg = columns.get(i);
-
-                for (Field field : DBAlliance.class.getDeclaredFields()) {
-                    String placeholder = "{" + field.getName() + "}";
-                    if (arg.contains(placeholder)) {
-                        field.setAccessible(true);
-                        arg = arg.replace(placeholder, field.get(dbAlliance) + "");
-                    }
-                }
-
-                String formatted = aaPlaceholders.format(guild, dbAlliance, author, arg);
-                formatted = placeholders.format(guild, me, author, formatted, nation);
-
+                Function<DBAlliance, String> formatter = formatByColumn.get(i);
+                String formatted = formatter.apply(dbAlliance);
                 header.set(i, formatted);
             }
 
@@ -1284,7 +1279,7 @@ public class UtilityCommands {
     @Command(desc = "A sheet of nations stats with customizable columns\n" +
             "See <https://github.com/xdnw/locutus/wiki/nation_placeholders> for a list of placeholders")
     @NoFormat
-    public static void NationSheet(ValueStore store, NationPlaceholders placeholders, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildDB db, Set<DBNation> nations,
+    public static void NationSheet(NationPlaceholders placeholders, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me GuildDB db, Set<DBNation> nations,
                                    @Arg("A space separated list of columns to use in the sheet\n" +
                                            "Can include NationAttribute as placeholders in columns\n" +
                                            "All NationAttribute placeholders must be surrounded by {} e.g. {nation}")
@@ -1302,13 +1297,18 @@ public class UtilityCommands {
 
         sheet.setHeader(header);
 
+        Placeholders.PlaceholderCache<DBNation> cache = new Placeholders.PlaceholderCache<>(nations);
+        List<Function<DBNation, String>> formatFunction = new ArrayList<>();
+        for (String arg : columns) {
+            formatFunction.add(placeholders.getFormatFunction(db.getGuild(), me, author, arg, cache));
+        }
         for (DBNation nation : nations) {
             if (updateSpies) {
                 nation.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK);
             }
             for (int i = 0; i < columns.size(); i++) {
-                String arg = columns.get(i);
-                String formatted = placeholders.format(store, arg, nation);
+                Function<DBNation, String> formatter = formatFunction.get(i);
+                String formatted = formatter.apply(nation);
 
                 header.set(i, formatted);
             }

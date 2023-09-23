@@ -3,7 +3,7 @@ package link.locutus.discord.commands.manager.v2.command;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.yaml.file.YamlConfiguration;
 import link.locutus.discord.util.StringMan;
@@ -106,8 +106,15 @@ public class CommandGroup implements ICommandGroup {
         }
     }
 
+    public void registerCommandsClass(Class clazz) {
+        List<ParametricCallable> cmds = ParametricCallable.generateFromClass(this, clazz, null, store);
+        for (ParametricCallable cmd : cmds) {
+            register(cmd, cmd.aliases());
+        }
+    }
+
     public void registerCommands(Object object) {
-        List<ParametricCallable> cmds = ParametricCallable.generateFromClass(this, object, store);
+        List<ParametricCallable> cmds = ParametricCallable.generateFromObj(this, object, store);
         for (ParametricCallable cmd : cmds) {
             register(cmd, cmd.aliases());
         }

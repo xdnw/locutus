@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -499,17 +500,19 @@ public class ArrayUtil {
         T add(T other);
         T power(double value);
         T power(T value);
+        T modulo(T value);
+        T modulo(double value);
+        T multiply(T other);
         T multiply(double value);
+        T divide(T other);
         T divide(double value);
         T subtract(T other);
-        T multiply(T other);
-        T divide(T other);
     }
 
     public static class DoubleArray implements MathToken<DoubleArray> {
         private double[] array;
 
-        public DoubleArray(double[] array) {
+        public DoubleArray(double... array) {
             this.array = array;
         }
 
@@ -633,6 +636,33 @@ public class ArrayUtil {
             return sb.toString();
         }
 
+        @Override
+        public DoubleArray modulo(DoubleArray value) {
+            if (value.array.length == 1) {
+                return modulo(value.array[0]);
+            }
+            if (this.array.length == 1) {
+                return value.modulo(this.array[0]);
+            }
+            double[] result = new double[array.length];
+            for (int i = 0; i < array.length; i++) {
+                result[i] = array[i] % value.array[i];
+            }
+            return new DoubleArray(result);
+        }
+
+        @Override
+        public DoubleArray modulo(double value) {
+            if (value == 0) {
+                throw new ArithmeticException("Division by zero");
+            }
+            double[] result = new double[array.length];
+            for (int i = 0; i < array.length; i++) {
+                result[i] = array[i] % value;
+            }
+            return new DoubleArray(result);
+        }
+
         public double[] toArray() {
             return array;
         }
@@ -647,6 +677,160 @@ public class ArrayUtil {
             parseOrigin = DoubleArray::parse;
         }
         return calculate(input, parseOrigin);
+    }
+
+    public static void main(String[] args) {
+        String input = "{test{blah}}*{test{blah}}";
+
+        DoubleArray value = calculate(input, new Function<String, DoubleArray>() {
+            @Override
+            public DoubleArray apply(String s) {
+                System.out.println("Parse " + s);
+                return new DoubleArray(new double[]{5});
+            }
+        });
+        System.out.println(value.toString());
+    }
+
+    public static class ResolvedFunction<T, V> implements Function<T, V> {
+        private final V object;
+        public ResolvedFunction(V object) {
+            this.object = object;
+        }
+
+        @Override
+        public final V apply(T t) {
+            return object;
+        }
+
+        public V get() {
+            return object;
+        }
+    }
+
+    public static class LazyMathArray<T> implements MathToken<LazyMathArray<T>> {
+        private final DoubleArray resolved;
+        private final Function<T, DoubleArray> resolver;
+        private final Function<String, Function<T, DoubleArray>> parser;
+
+        public LazyMathArray(DoubleArray resolved, Function<String, Function<T, DoubleArray>> parser) {
+            this.resolved = resolved;
+            this.resolver = null;
+            this.parser = parser;
+        }
+
+        public LazyMathArray(String input, Function<String, Function<T, DoubleArray>> parser) {
+            this(parser.apply(input), parser);
+        }
+
+        public LazyMathArray(Function<T, DoubleArray> resolver, Function<String, Function<T, DoubleArray>> parser) {
+            if (resolver instanceof ResolvedFunction<T, DoubleArray> f) {
+                this.resolved = f.object;
+                this.resolver = null;
+            } else {
+                this.resolved = null;
+                this.resolver = resolver;
+            }
+            this.parser = parser;
+        }
+
+        @Override
+        public LazyMathArray<T> create(String input) {
+            Function<T, DoubleArray> newResolver = parser.apply(input);
+            if (newResolver instanceof ResolvedFunction<T, DoubleArray> f) {
+                return new LazyMathArray<>(f.object, parser);
+            }
+            return new LazyMathArray<T>(newResolver, parser);
+        }
+
+        public DoubleArray resolve(T input) {
+            if (resolved != null) return resolved;
+            return resolver.apply(input);
+        }
+
+        public DoubleArray getOrNull() {
+            return resolved;
+        }
+
+        @Override
+        public LazyMathArray<T> add(LazyMathArray<T> other) {
+            if (this.resolved != null && other.resolved != null) {
+                return new LazyMathArray<>(this.resolved.add(other.resolved), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).add(other.resolve(t)), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> power(double value) {
+            if (this.resolved != null) {
+                return new LazyMathArray<>(this.resolved.power(value), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).power(value), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> power(LazyMathArray<T> other) {
+            if (this.resolved != null && other.resolved != null) {
+                return new LazyMathArray<>(this.resolved.power(other.resolved), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).power(other.resolve(t)), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> multiply(double value) {
+            if (this.resolved != null) {
+                return new LazyMathArray<>(this.resolved.multiply(value), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).multiply(value), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> divide(double value) {
+            if (this.resolved != null) {
+                return new LazyMathArray<>(this.resolved.divide(value), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).divide(value), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> subtract(LazyMathArray<T> other) {
+            if (this.resolved != null && other.resolved != null) {
+                return new LazyMathArray<>(this.resolved.subtract(other.resolved), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).subtract(other.resolve(t)), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> multiply(LazyMathArray<T> other) {
+            if (this.resolved != null && other.resolved != null) {
+                return new LazyMathArray<>(this.resolved.multiply(other.resolved), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).multiply(other.resolve(t)), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> divide(LazyMathArray<T> other) {
+            if (this.resolved != null && other.resolved != null) {
+                return new LazyMathArray<>(this.resolved.divide(other.resolved), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).divide(other.resolve(t)), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> modulo(double value) {
+            if (this.resolved != null) {
+                return new LazyMathArray<>(this.resolved.modulo(value), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).modulo(value), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> modulo(LazyMathArray<T> value) {
+            if (this.resolved != null && value.resolved != null) {
+                return new LazyMathArray<>(this.resolved.modulo(value.resolved), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).modulo(value.resolve(t)), parser);
+        }
     }
 
     public static <T extends MathToken<T>> T calculate(String input, Function<String, T> parseOrigin) {
@@ -703,6 +887,9 @@ public class ArrayUtil {
                     case "^":
                         stack.push(left.power(right));
                         break;
+                    case "%":
+                        stack.push(left.modulo(right));
+                        break;
                 }
             } else {
                 T arr = parseOrigin.apply(token);
@@ -729,20 +916,22 @@ public class ArrayUtil {
         Queue<String> tokens = new ArrayDeque<>();
 
         StringBuilder currentToken = new StringBuilder();
-        boolean insideCurlyBraces = false;
+        int curlBracketLevel = 0;
 
         for (int i = 0; i < input.length(); i++) {
             char c = input.charAt(i);
 
             if (c == '{') {
-                insideCurlyBraces = true;
+                curlBracketLevel++;
                 currentToken.append(c);
             } else if (c == '}') {
-                insideCurlyBraces = false;
+                curlBracketLevel--;
                 currentToken.append(c);
-                tokens.add(currentToken.toString());
-                currentToken = new StringBuilder();
-            } else if (insideCurlyBraces) {
+                if (curlBracketLevel == 0) {
+                    tokens.add(currentToken.toString());
+                    currentToken = new StringBuilder();
+                }
+            } else if (curlBracketLevel > 0) {
                 currentToken.append(c);
             } else if (c == '(' || isNonNegOperator(c)) {
                 if (currentToken.length() > 0) {
@@ -1040,7 +1229,12 @@ public class ArrayUtil {
         return result;
     }
 
-    public static <T> Set<T> parseQuery(String input, Function<String, Set<T>> parseSet, Function<String, Predicate<T>> parsePredicate) {
+    public static <T> Set<T> resolveQuery(String input, Function<String, Set<T>> parseSet, Function<String, Predicate<T>> parsePredicate) {
+        ParseResult<T> result = parseQuery(input, parseSet, parsePredicate);
+        return result.resolve();
+    }
+
+    public static <T> ParseResult<T> parseQuery(String input, Function<String, Set<T>> parseSet, Function<String, Predicate<T>> parsePredicate) {
         Map<String, Predicate<T>> parserCache = new Object2ObjectOpenHashMap<>();
         ParseResult<T> result = parseTokens(input, parseSet, new Function<String, Predicate<T>>() {
             @Override
@@ -1068,6 +1262,6 @@ public class ArrayUtil {
                 return cached;
             };
         });
-        return result.resolve();
+        return result;
     }
 }

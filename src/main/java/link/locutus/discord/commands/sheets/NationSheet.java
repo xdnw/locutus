@@ -4,8 +4,11 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
@@ -74,56 +77,15 @@ public class NationSheet extends Command implements Noformat {
             header.set(i, arg);
         }
 
-        Set<DBNation> nations = DiscordUtil.parseNations(guild, DiscordUtil.format(guild, author, me, args.get(0), author, me));
+        NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
+        Set<DBNation> nations = DiscordUtil.parseNations(guild, placeholders.format2(guild, me, author, args.get(0), me));
         if (nations.isEmpty()) return "No nations found for `" + args.get(0) + "`";
 
         if (sheet == null) {
             sheet = SpreadSheet.create(Locutus.imp().getGuildDB(guild), SheetKeys.NATION_SHEET);
         }
 
-        sheet.setHeader(header);
-        if (flags.contains('s')) {
-            Set<DBNation> toUpdate = new HashSet<>(nations);
-            Set<Integer> alliances = new HashSet<>();
-            for (DBNation nation : toUpdate) {
-                if (nation.getPosition() > Rank.APPLICANT.id) {
-                    alliances.add(nation.getAlliance_id());
-                }
-            }
-            for (Integer allianceId : alliances) {
-                Set<Integer> updated = DBAlliance.getOrCreate(allianceId).updateSpies(false);
-                toUpdate.removeIf(f -> updated.contains(f.getNation_id()));
-            }
-            for (DBNation nation : toUpdate) {
-                nation.updateSpies(PagePriority.ESPIONAGE_ODDS_BULK);
-            }
-        }
-
-        List<DBNation> nationsSorted = new ArrayList<>(nations);
-        Collections.sort(nationsSorted, new Comparator<DBNation>() {
-            @Override
-            public int compare(DBNation o1, DBNation o2) {
-                if (o1.getAlliance_id() != o2.getAlliance_id()) return Integer.compare(o1.getAlliance_id(), o2.getAlliance_id());
-                if (o1.getCities() != o2.getCities()) return Integer.compare(o2.getCities(), o1.getCities());
-                return Double.compare(o2.getScore(), o1.getScore());
-            }
-        });
-        for (DBNation nation : nationsSorted) {
-            for (int i = 1; i < args.size(); i++) {
-                String arg = args.get(i);
-                String formatted = DiscordUtil.format(guild, author, me, arg, null, nation);
-
-                header.set(i - 1, formatted);
-            }
-
-            sheet.addRow(new ArrayList<>(header));
-        }
-
-        sheet.clear("A:ZZ");
-        sheet.set(0, 0);
-
-        sheet.attach(channel.create(), "nations").send();
+        UtilityCommands.NationSheet(placeholders, channel, me, author, db, nations, args, flags.contains('s'), sheet);
         return null;
-//        I need, Nation name, nation link, score, war range, offensive/defensive slots open, military count (planes/tanks/ships/soldiers)
     }
 }

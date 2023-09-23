@@ -13,12 +13,14 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class MethodParser<T> implements Parser<T> {
     private final String desc;
     private final Key<T> key;
     private final Method method;
     private final List<Key> params;
+    private final List<Class> primaryClass;
     private final Object object;
 
     private boolean isConsumerInit;
@@ -70,18 +72,10 @@ public class MethodParser<T> implements Parser<T> {
             }
         }
 
+        this.primaryClass = params.stream().map(f -> ReflectionUtil.getClassType(f.getType())).collect(Collectors.toList());
+
         this.isConsumerInit = isConsumer;
         this.desc = desc == null && binding != null ? binding.value() : desc;
-    }
-
-    public MethodParser(Key<T> key, Object object, Method method, List<Key> params, String desc, boolean isConsumer) {
-        this.key = key;
-        this.object = object;
-        this.method = method;
-        this.params = params;
-        this.isConsumerInit = isConsumer;
-        this.isConsumer = isConsumer;
-        this.desc = desc;
     }
 
     @Override
@@ -107,9 +101,12 @@ public class MethodParser<T> implements Parser<T> {
             Object[] args = new Object[params.size()];
             for (int i = 0; i < params.size(); i++) {
                 Key paramKey = params.get(i);
+                Class expectedType = primaryClass.get(i);
                 Object arg;
                 try {
-                    if (paramKey == null || (paramKey.getType() == String.class && paramKey.getAnnotations().length == 0)) {
+                    if (t != null && paramKey.getType() != String.class && expectedType != null && (expectedType == t.getClass() || expectedType.isAssignableFrom(t.getClass()))) {
+                        arg = t;
+                    } else if (paramKey == null || (paramKey.getType() == String.class && paramKey.getAnnotations().length == 0)) {
                         arg = t;
                     } else if (paramKey.getAnnotations().length == 0 && paramKey.getType() == Method.class) {
                         arg = method;

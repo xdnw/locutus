@@ -2,11 +2,17 @@ package link.locutus.discord.commands.manager.v2.command;
 
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.StringMan;
 
+import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.nio.file.Files;
+import java.nio.file.OpenOption;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -128,6 +134,34 @@ public interface CommandCallable {
 
     default Set<ParametricCallable> getParametricCallables(Predicate<ParametricCallable> returnIf) {
         return Collections.emptySet();
+    }
+
+    default void savePojo(File root, Class clazz, String renameTo) throws IOException {
+        if (root == null) {
+            root = new File("src/main/java");
+        }
+        if (renameTo == null) {
+            renameTo = clazz.getSimpleName();
+        }
+        // get the path for the class
+        File javaFilePath = new File(root, clazz.getPackageName().replace('.', '/'));
+        File javaFile = new File(javaFilePath, renameTo + ".java");
+
+        String header = """
+                package {package};
+                import link.locutus.discord.commands.manager.v2.command.AutoRegister;
+                import link.locutus.discord.commands.manager.v2.command.CommandRef;
+                public class""";
+        header = header.replace("{package}", clazz.getPackageName()) + " " + renameTo + " {\n";
+
+        StringBuilder output = new StringBuilder(header);
+        generatePojo("", output, 4);
+        output.append("\n}\n");
+
+
+        // save to javaFile
+        // create if not exist using open option java
+        Files.write(javaFile.toPath(), output.toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     }
 
     default void generatePojo(String parentPath, StringBuilder output, int indent) {

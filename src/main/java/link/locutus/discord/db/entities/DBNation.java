@@ -24,10 +24,9 @@ import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.StringMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.DenyPermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
@@ -86,9 +85,6 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -147,9 +143,19 @@ public class DBNation implements NationOrAlliance {
     private transient  DBNationCache cache;
 
     @Command
-    @DenyPermission
-    public boolean test() {
-        return true;
+//    @DenyPermission
+    public Map<ResourceType, Double> test() {
+        // ResourceType.FOOD = 10
+        // and some other example values
+        Map<ResourceType, Double> map = new HashMap<>();
+        map.put(ResourceType.FOOD, 10.0);
+        map.put(ResourceType.COAL, 20.0);
+        map.put(ResourceType.OIL, 30.0);
+        map.put(ResourceType.URANIUM, 40.0);
+        map.put(ResourceType.LEAD, 50.0);
+        map.put(ResourceType.IRON, 60.0);
+        map.put(ResourceType.BAUXITE, 70.0);
+        return map;
     }
 
     public static DBNation getByUser(User user) {

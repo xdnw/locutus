@@ -1,6 +1,8 @@
 package link.locutus.discord.pnw;
 
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.entities.DBNation;
 
 import java.util.Collection;
@@ -14,6 +16,21 @@ public class SimpleNationList implements NationList {
 
     public SimpleNationList(Collection<DBNation> nations) {
         this.nations = nations;
+    }
+
+    public NationFilter toFilter() {
+        Set<DBNation> nations2 = new ObjectOpenHashSet<>(this.nations);
+        return new NationFilter() {
+            @Override
+            public String getFilter() {
+                return filter;
+            }
+
+            @Override
+            public boolean test(DBNation nation) {
+                return nations2.contains(nation);
+            }
+        };
     }
 
     public static SimpleNationList from(Collection<NationOrAlliance> nationOrAlliances) {

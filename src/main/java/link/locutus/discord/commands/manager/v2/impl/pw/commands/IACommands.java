@@ -11,12 +11,13 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
@@ -29,7 +30,6 @@ import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.PNWUser;
-import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -80,7 +80,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class IACommands {
@@ -979,11 +979,16 @@ public class IACommands {
             msg = channel.send("Sending to " + nations.size() + " (please wait)");
         }
         List<String> full = new ArrayList<>();
+        Placeholders.PlaceholderCache<DBNation> cache = new Placeholders.PlaceholderCache<>(nations);
+        NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
+
+        Function<DBNation, String> subjectF = placeholders.getFormatFunction(db.getGuild(), me, author, subject, nations);
+        Function<DBNation, String> messageF = placeholders.getFormatFunction(db.getGuild(), me, author, message, nations);
         for (DBNation nation : nations) {
             try {
-                String subjectF = DiscordUtil.format(db.getGuild(), author, me, subject, null, nation);
-                String messageF = DiscordUtil.format(db.getGuild(), author, me, message, null, nation);
-                full.add(String.valueOf(nation.sendMail(key, subjectF, messageF, nations.size() == 1)));
+                String subjectN = subjectF.apply(nation);
+                String messageN = messageF.apply(nation);
+                full.add(String.valueOf(nation.sendMail(key, subjectN, messageN, nations.size() == 1)));
             } catch (Throwable e) {
                 e.printStackTrace();
                 full.add("Error sending mail to " + nation.getName() + " (" + nation.getId() + "): " + e.getMessage());
@@ -1330,6 +1335,10 @@ public class IACommands {
         Future<IMessageBuilder> msgFuture = channel.send("Please wait...");
         long start = System.currentTimeMillis();
 
+        Placeholders.PlaceholderCache<DBNation> cache = new Placeholders.PlaceholderCache<>(nations);
+        Function<DBNation, String> subjectF = placeholders.getFormatFunction(store, subject, cache);
+        Function<DBNation, String> bodyF = placeholders.getFormatFunction(store, body, cache);
+
         int success = 0;
         for (DBNation nation : nations) {
             if (-start + (start = System.currentTimeMillis()) > 5000) {
@@ -1340,8 +1349,8 @@ public class IACommands {
                 }
             }
             User nationUser = nation.getUser();
-            String subjectFormat = placeholders.format(store, subject, nation);
-            String bodyFormat = placeholders.format(store, body, nation);
+            String subjectFormat = subjectF.apply(nation);
+            String bodyFormat = bodyF.apply(nation);
 
             Map.Entry<CommandResult, String> response = nation.runCommandInternally(guild, nationUser, command);
             CommandResult respType = response.getKey();

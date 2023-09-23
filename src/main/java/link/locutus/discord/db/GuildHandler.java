@@ -7,8 +7,9 @@ import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
@@ -655,11 +656,12 @@ public class GuildHandler {
             throw new IllegalArgumentException("No valid `API_KEY` was found. Please ensure a valid one is set with " + CM.settings.info.cmd.toSlashMention());
         }
 
+        NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
         if (message.contains("%") || message.contains("{")) {
-            message = DiscordUtil.format(guild, null, null, message, null, to);
+            message = formatter.format2(guild, null, null, message, to);
         }
         if (subject.contains("%") || subject.contains("{")) {
-            subject = DiscordUtil.format(guild, null, null, subject, null, to);
+            subject = formatter.format2(guild, null, null, subject, to);
         }
 
         return to.sendMail(keys, subject, message, false);

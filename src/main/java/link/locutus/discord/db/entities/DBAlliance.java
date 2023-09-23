@@ -15,7 +15,7 @@ import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
@@ -42,7 +42,6 @@ import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.task.deprecated.GetTaxesTask;
 import link.locutus.discord.util.task.EditAllianceTask;
 import org.springframework.web.client.HttpClientErrorException;
-import rocker.guild.ia.message;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -539,13 +538,13 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     @Command(desc = "Sum of nation attribute for specific nations in alliance")
-    public double sumNationAttribute(NationAttributeDouble attribute, @Default NationFilter filter) {
+    public double getTotal(NationAttributeDouble attribute, @Default NationFilter filter) {
         Set<DBNation> nations = filter == null ? getNations() : getNations(filter.toCached(Long.MAX_VALUE));
         return nations.stream().mapToDouble(attribute::apply).sum();
     }
 
     @Command(desc = "Average of nation attribute for specific nations in alliance")
-    public double averageNationAttribute(NationAttributeDouble attribute, @Default NationFilter filter) {
+    public double getAverage(NationAttributeDouble attribute, @Default NationFilter filter) {
         Set<DBNation> nations = filter == null ? getNations() : getNations(filter.toCached(Long.MAX_VALUE));
         return nations.stream().mapToDouble(attribute::apply).average().orElse(0);
     }

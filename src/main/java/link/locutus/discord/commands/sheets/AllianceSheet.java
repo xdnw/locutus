@@ -4,9 +4,14 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -25,8 +30,10 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -67,54 +74,10 @@ public class AllianceSheet extends Command implements Noformat {
         Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
         if (nations.isEmpty()) return "No nations found for `" + args.get(0) + "`";
 
-        Map<Integer, List<DBNation>> nationMap = new RankBuilder<>(nations).group(n -> n.getAlliance_id()).get();
-
-        Map<Integer, DBNation> totals = new HashMap<>();
-        for (Map.Entry<Integer, List<DBNation>> entry : nationMap.entrySet()) {
-            Integer id = entry.getKey();
-            DBNation total = DBNation.createFromList(PnwUtil.getName(id, true), entry.getValue(), false);
-            totals.put(id, total);
-        }
-
-        SpreadSheet sheet = SpreadSheet.create(Locutus.imp().getGuildDB(guild), SheetKeys.ALLIANCES_SHEET);
-
         AlliancePlaceholders aaPlaceholders = Locutus.imp().getCommandManager().getV2().getAlliancePlaceholders();
-        sheet.setHeader(header);
-
-        for (Map.Entry<Integer, DBNation> entry : totals.entrySet()) {
-            DBAlliance dbAlliance = DBAlliance.get(entry.getKey());
-            if (dbAlliance == null) continue;
-
-            DBNation nation = entry.getValue();
-            for (int i = 1; i < args.size(); i++) {
-                String arg = args.get(i);
-
-                for (Field field : DBAlliance.class.getDeclaredFields()) {
-                    String placeholder = "{" + field.getName() + "}";
-                    if (arg.contains(placeholder)) {
-                        field.setAccessible(true);
-                        arg = arg.replace(placeholder, field.get(dbAlliance) + "");
-                    }
-                }
-                String formatted = arg;
-                if (formatted.contains("{") && formatted.contains("}")) {
-                    formatted = aaPlaceholders.format(guild, dbAlliance, author, arg);
-                    if (formatted.contains("{") && formatted.contains("}")) {
-                        formatted = DiscordUtil.format(guild, author, me, arg, null, nation);
-                    }
-                }
-
-
-                header.set(i - 1, formatted);
-            }
-
-            sheet.addRow(new ArrayList<>(header));
-        }
-
-        sheet.clearAll();
-        sheet.set(0, 0);
-
-        sheet.attach(channel.create(), "alliance").send();
-        return null;
+        NationPlaceholders nationPlaceholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
+        SpreadSheet sheet = SpreadSheet.create(Locutus.imp().getGuildDB(guild), SheetKeys.ALLIANCES_SHEET);
+        GuildDB db = Locutus.imp().getGuildDB(guild);
+        return UtilityCommands.AllianceSheet(nationPlaceholders, aaPlaceholders, guild, channel, me, author, db, nations, args, sheet);
     }
 }

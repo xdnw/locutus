@@ -85,6 +85,10 @@ public class ArgumentStack {
     }
 
     public Map<String, String> consumeFlags(Set<String> booleanFlags, Set<String> valueFlags) {
+        return consumeFlags(args, booleanFlags, valueFlags);
+    }
+
+    public static Map<String, String> consumeFlags(List<String> args, Set<String> booleanFlags, Set<String> valueFlags) {
         Map<String, String> map = new LinkedHashMap<>();
         for (int i = args.size() - 1; i >= 0; i--) {
             String arg = args.get(i);

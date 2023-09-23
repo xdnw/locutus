@@ -26,7 +26,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffsh
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RankPermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.rankings.builder.NumericGroupRankBuilder;
@@ -1251,7 +1251,7 @@ public class UnsortedCommands {
             }
             if (value == null) return "No message set for `" + key + "`. Plase use " + CM.copyPasta.cmd.toSlashMention() + "";
 
-            value = placeholders.format(store, value, formatNation);
+            value = placeholders.format2(store, value, formatNation);
 
             return value;
         } else if (!Roles.INTERNAL_AFFAIRS.has(author, guild)) {

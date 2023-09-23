@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw;
 import ai.djl.MalformedModelException;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
@@ -10,6 +11,7 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
+import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveValidators;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
@@ -23,14 +25,19 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.SheetBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.config.yaml.file.YamlConfiguration;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.test.TestCommands;
@@ -44,6 +51,8 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -55,8 +64,7 @@ public class CommandManager2 {
     private final ValueStore<Object> store;
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
-    private final NationPlaceholders nationPlaceholders;
-    private final AlliancePlaceholders alliancePlaceholders;
+    private final PlaceholdersMap placeholders;
     private PWGPTHandler pwgptHandler;
 
     public CommandManager2() {
@@ -74,8 +82,7 @@ public class CommandManager2 {
         this.permisser = new PermissionHandler();
         new PermissionBinding().register(permisser);
 
-        this.nationPlaceholders = new NationPlaceholders(store, validators, permisser);
-        this.alliancePlaceholders = new AlliancePlaceholders(store, validators, permisser);
+        this.placeholders = new PlaceholdersMap(store, validators, permisser);
 
         this.commands = CommandGroup.createRoot(store, validators);
 
@@ -276,8 +283,6 @@ public class CommandManager2 {
 
 
         StringBuilder output = new StringBuilder();
-        this.commands.generatePojo("", output, 0);
-        System.out.println(output);
 
         return this;
     }
@@ -302,11 +307,15 @@ public class CommandManager2 {
     }
 
     public NationPlaceholders getNationPlaceholders() {
-        return nationPlaceholders;
+        return (NationPlaceholders) this.placeholders.get(DBNation.class);
     }
 
     public AlliancePlaceholders getAlliancePlaceholders() {
-        return alliancePlaceholders;
+        return (AlliancePlaceholders) this.placeholders.get(DBAlliance.class);
+    }
+
+    public PlaceholdersMap getPlaceholders() {
+        return placeholders;
     }
 
     public CommandGroup getCommands() {
@@ -516,7 +525,7 @@ public class CommandManager2 {
                                         String key = entry.getKey();
                                         String value = entry.getValue();
                                         if (value.contains("{") && value.contains("}")) {
-                                            value = getNationPlaceholders().format(finalLocals, value, me);
+                                            value = getNationPlaceholders().format2(finalLocals, value, me);
                                             entry.setValue(value);
                                         }
                                     }

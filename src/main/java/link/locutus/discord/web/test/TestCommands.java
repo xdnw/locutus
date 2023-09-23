@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
@@ -61,28 +62,30 @@ public class TestCommands {
     }
 
     @Command
+    @NoFormat
     public String test(NationPlaceholders placeholders, ValueStore store, String input, @Me DBNation me, @Me User user) {
-        if (me != null) {
-            System.out.println("Me " + me.getNationUrl());
-        } else {
-            System.out.println("Me is null");
-        }
-        DBNation t = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class));
-        if (t != null) {
-            System.out.println("Nation " + t.getMarkdownUrl());
-        }
-        System.out.println("Store " + store.toString());
-
-        Set<DBNation> nations = placeholders.parseSet(store, input);
-        
-        StringBuilder response = new StringBuilder();
-        response.append(nations.size() + " nations found\n");
-        if (nations.size() < 100) {
-            // print each
-            for (DBNation nation : nations) {
-                response.append(nation.getNationUrlMarkup(false) + " | " + nation.getAllianceUrlMarkup(false)).append("\n");
-            }
-        }
-        return response.toString() + " | " + me.getNationUrlMarkup(false) + " | " + user.getAsMention();
+        return placeholders.format2(store, input, me);
+//        if (me != null) {
+//            System.out.println("Me " + me.getNationUrl());
+//        } else {
+//            System.out.println("Me is null");
+//        }
+//        DBNation t = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class));
+//        if (t != null) {
+//            System.out.println("Nation " + t.getMarkdownUrl());
+//        }
+//        System.out.println("Store " + store.toString());
+//
+//        Set<DBNation> nations = placeholders.parseSet(store, input);
+//
+//        StringBuilder response = new StringBuilder();
+//        response.append(nations.size() + " nations found\n");
+//        if (nations.size() < 100) {
+//            // print each
+//            for (DBNation nation : nations) {
+//                response.append(nation.getNationUrlMarkup(false) + " | " + nation.getAllianceUrlMarkup(false)).append("\n");
+//            }
+//        }
+//        return response.toString() + " | " + me.getNationUrlMarkup(false) + " | " + user.getAsMention();
     }
 }

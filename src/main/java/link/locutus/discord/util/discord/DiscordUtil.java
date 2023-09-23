@@ -444,12 +444,12 @@ public class DiscordUtil {
         new DiscordChannelIO(channel, null).create().embed(embed).addCommands(reactionArguments).send();
     }
 
-    public static String format(Guild guild, User callerUser, DBNation callerNation, String message, User user, DBNation nation) {
-        if (user != null && message.contains("%user%")) {
-            message = message.replace("%user%", user.getAsMention());
-        }
-        return Locutus.imp().getCommandManager().getV2().getNationPlaceholders().format(guild, callerNation, callerUser, message, nation);
-    }
+//    public static String format2(Guild guild, User callerUser, DBNation callerNation, String message, User user, DBNation nation) {
+//        if (user != null && message.contains("%user%")) {
+//            message = message.replace("%user%", user.getAsMention());
+//        }
+//        return Locutus.imp().getCommandManager().getV2().getNationPlaceholders().format(guild, callerNation, callerUser, message, nation);
+//    }
 
 //    public static String format(Guild guild, MessageChannel channel, User callerUser, DBNation callerNation, String message) {
 //        if (user != null && message.contains("%user%")) {

@@ -5,6 +5,7 @@ import com.politicsandwar.graphql.model.WarAttack;
 import de.siegmar.fastcsv.reader.CloseableIterator;
 import de.siegmar.fastcsv.reader.CsvReader;
 import de.siegmar.fastcsv.reader.CsvRow;
+import de.siegmar.fastcsv.writer.CsvWriter;
 import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
@@ -26,6 +27,7 @@ import link.locutus.discord.event.bank.TransactionEvent;
 import link.locutus.discord.event.baseball.BaseballGameEvent;
 import link.locutus.discord.event.trade.TradeCreateEvent;
 import link.locutus.discord.util.FileUtil;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -42,9 +44,13 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.file.Path;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.text.ParseException;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
@@ -78,7 +84,7 @@ public class DataDumpParser {
 
         {
             instance.load();
-            instance.exportToTracker();
+            instance.getAverageFarms();
             System.out.println("Done!");
             System.exit(0);
         }
@@ -247,6 +253,155 @@ public class DataDumpParser {
                 stmt.setDouble(4, value.value);
             });
         }
+    }
+
+    public void getAverageFarms() throws IOException, ParseException {
+        load();
+        // Average farms per player
+        // Average MI
+        // Average land
+        // Average infra
+        // Average population
+
+        List<String> outHeader = new ArrayList<>(Arrays.asList(
+            "date",
+            "farm_per_nation",
+            "avg_mi",
+            "land_per_nation",
+            "infra_per_nation",
+            "avg_cities",
+            "pop_per_nation",
+                "farm_per_city",
+                "land_per_city",
+                "infra_per_city"
+        ));
+
+        Map<Long, Set<Integer>> activeNationsByDay = new LinkedHashMap<>();
+        Map<Long, Map<Integer, Double>> valuesByDay = new LinkedHashMap<>();
+
+        for (Map.Entry<Long, File> entry : nationFilesByDay.entrySet()) {
+            File cityFile = cityFilesByDay.get(entry.getKey());
+            if (cityFile == null) continue;
+
+            System.out.println("Reading nation file " + entry.getValue());
+
+            readAll(entry.getValue(), (headerList, rows) -> {
+                NationHeader header = loadHeader(new NationHeader(), headerList);
+                Set<Integer> active = new HashSet<>();
+                long totalPop = 0;
+                long totalCities = 0;
+                long numMI = 0;
+
+                Map<Integer, Double> data = valuesByDay.computeIfAbsent(entry.getKey(), k -> new HashMap<>());
+
+                while (rows.hasNext()) {
+                    CsvRow row = rows.next();
+
+                    // is vm
+                    int vmTurns = Integer.parseInt(row.getField(header.vm_turns));
+                    if (vmTurns > 0) continue;
+                    NationColor color = NationColor.valueOf(row.getField(header.color).toUpperCase(Locale.ROOT));
+                    // gray or beige
+                    if (color == NationColor.GRAY || color == NationColor.BEIGE) continue;
+                    int nationId = Integer.parseInt(row.getField(header.nation_id));
+
+                    boolean hasMassIrrigation = Integer.parseInt(row.getField(header.mass_irrigation_np)) > 0;
+                    int numCities = Integer.parseInt(row.getField(header.cities));
+                    int pop = Integer.parseInt(row.getField(header.population));
+                    active.add(nationId);
+                    totalPop += pop;
+                    totalCities += numCities;
+                    if (hasMassIrrigation) numMI++;
+                }
+
+                int numNations = active.size();
+                // avg mi
+                data.put(2, numMI / (double) numNations);
+                // avg cities
+                data.put(5, totalCities / (double) numNations);
+                // avg population
+                data.put(6, totalPop / (double) numNations);
+
+                activeNationsByDay.put(entry.getKey(), active);
+            });
+        }
+
+        List<List<String>> outRows = new ArrayList<>();
+        outRows.add(outHeader);
+
+        for (Map.Entry<Long, File> entry : cityFilesByDay.entrySet()) {
+            System.out.println("Reading city file " + entry.getValue());
+            readAll(entry.getValue(), (headerList, rows) -> {
+                CityHeader header = loadHeader(new CityHeader(), headerList);
+
+                Set<Integer> nations = activeNationsByDay.get(entry.getKey());
+                if (nations == null) return;
+
+
+
+                Map<Integer, Double> data = valuesByDay.computeIfAbsent(entry.getKey(), k -> new HashMap<>());
+
+                long numFarms = 0;
+                long totalLand = 0;
+                long totalInfra = 0;
+                long totalCities = 0;
+
+                while (rows.hasNext()) {
+                    CsvRow row = rows.next();
+
+                    int nationId = Integer.parseInt(row.getField(header.nation_id));
+                    if (!nations.contains(nationId)) continue;
+                    int farms = Integer.parseInt(row.getField(header.farms));
+                    double land = Double.parseDouble(row.getField(header.land));
+                    double infra = Double.parseDouble(row.getField(header.infrastructure));
+                    numFarms += farms;
+                    totalLand += land;
+                    totalInfra += infra;
+                    totalCities++;
+
+                }
+
+                int numNations = nations.size();
+                long timeStamp = TimeUtil.getTimeFromDay(entry.getKey());
+                // date string from unix
+                ZonedDateTime time = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timeStamp), ZoneOffset.UTC);;
+                String timeStr = TimeUtil.YYYY_MM_DD.format(time);
+                // avg farms
+                data.put(1, numFarms / (double) numNations);
+                // avg land
+                data.put(3, totalLand / (double) numNations);
+                // avg infra
+                data.put(4, totalInfra / (double) numNations);
+
+                data.put(7, numFarms / (double) totalCities);
+                data.put(8, totalLand / (double) totalCities);
+                data.put(9, totalInfra / (double) totalCities);
+
+
+                List<String> outRow = new ArrayList<>();
+                outRow.add(timeStr);
+                outRow.add(MathMan.format(data.get(1)));
+                outRow.add(MathMan.format(data.get(2)));
+                outRow.add(MathMan.format(data.get(3)));
+                outRow.add(MathMan.format(data.get(4)));
+                outRow.add(MathMan.format(data.get(5)));
+                outRow.add(MathMan.format(data.get(6)));
+                outRow.add(MathMan.format(data.get(7)));
+                outRow.add(MathMan.format(data.get(8)));
+                outRow.add(MathMan.format(data.get(9)));
+                
+                outRows.add(outRow);
+            });
+        }
+
+        System.out.println("Writing farms.csv");
+        // write csv to farms.csv
+        CsvWriter writer = CsvWriter.builder().build(Path.of("farms.csv"));
+        for (List<String> outRow : outRows) {
+            writer.writeRow(outRow);
+        }
+        System.out.println("Wrote farms.csv");
+        writer.close();
     }
 
     public void backCalculateNukesAndMissiles() throws IOException, ParseException {
@@ -829,6 +984,7 @@ public class DataDumpParser {
         for (int i = 0; i < headerStr.size(); i++) {
             String columnName = headerStr.get(i);
             if (i == 0) columnName = columnName.replaceAll("[^a-z_]", "");
+            if (columnName.isEmpty()) continue;
             Field field = instance.getClass().getDeclaredField(columnName);
             field.set(instance, i);
         }
@@ -1051,6 +1207,10 @@ public class DataDumpParser {
         public int metropolitan_planning_np;
         public int military_salvage_np;
         public int fallout_shelter_np;
+        public int advanced_pirate_economy_np;
+        public int bureau_of_domestic_affairs_np;
+        public int mars_landing_np;
+        public int surveillance_network_np;
     }
 
 
@@ -1092,5 +1252,6 @@ public class DataDumpParser {
         public int hangars;
         public int drydocks;
         public int last_nuke_date;
+        public int powered;
     }
 }

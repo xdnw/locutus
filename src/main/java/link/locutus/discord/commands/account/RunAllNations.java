@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.Noformat;
+import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -16,6 +17,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 
 public class RunAllNations extends Command implements Noformat {
 
@@ -43,8 +45,9 @@ public class RunAllNations extends Command implements Noformat {
 
         StringBuilder result = new StringBuilder();
         String cmd = args.get(1);
+        Function<DBNation, String> formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders().getFormatFunction(guild, me, author, cmd, nations);
         for (DBNation nation : nations) {
-            String formatted = Locutus.imp().getCommandManager().getV2().getNationPlaceholders().format(guild, me, author, cmd, nation);
+            String formatted = formatter.apply(nation);
             Locutus.imp().getCommandManager().run(guild, channel, author, formatted, false, true);
         }
         return "Done!";

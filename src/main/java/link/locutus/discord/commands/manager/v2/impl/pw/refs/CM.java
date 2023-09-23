@@ -1,4 +1,4 @@
-package link.locutus.discord.commands.manager.v2.impl.pw;
+package link.locutus.discord.commands.manager.v2.impl.pw.refs;
 
 import link.locutus.discord.commands.manager.v2.command.AutoRegister;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;

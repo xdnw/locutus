@@ -7,7 +7,7 @@ public interface ResourceBuilding extends Building {
     ResourceType resource();
 
     default boolean canBuild(Continent continent) {
-        for (ResourceType type : continent.resources) {
+        for (ResourceType type : continent.getResourceArray()) {
             if (type == resource()) {
                 return true;
             }

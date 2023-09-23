@@ -1,17 +1,13 @@
 package link.locutus.discord.web.commands.binding;
 
-import io.javalin.http.Context;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.WebUtil;

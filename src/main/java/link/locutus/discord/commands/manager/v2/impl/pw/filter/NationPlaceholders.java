@@ -3,7 +3,6 @@ package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
-import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
@@ -11,7 +10,8 @@ import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.DefaultPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
@@ -23,7 +23,6 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -36,13 +35,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public class NationPlaceholders extends Placeholders<DBNation> {
     private final Map<String, NationAttribute> customMetrics = new HashMap<>();
 
     public NationPlaceholders(ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
-        super(DBNation.class, new DBNation(), store, validators, permisser);
+        super(DBNation.class, store, validators, permisser);
+        this.getCommands().registerCommands(new DefaultPlaceholders());
     }
 
     @Override
@@ -132,58 +133,20 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         } else if (name.contains("tax_id=")) {
             int taxId = PnwUtil.parseTaxId(name);
             return Locutus.imp().getNationDB().getNationsByBracket(taxId);
-        } else if (name.startsWith("https://docs.google.com/spreadsheets/") || name.startsWith("sheet:")) {
-            String key = SpreadSheet.parseId(name);
-            SpreadSheet sheet = null;
-            try {
-                sheet = SpreadSheet.create(key);
-            } catch (GeneralSecurityException | IOException e) {
-                throw new RuntimeException(e);
-            }
-
-            List<List<Object>> rows = sheet.getAll();
-            if (rows == null || rows.isEmpty()) return Collections.emptySet();
-
-            Set<DBNation> toAdd = new LinkedHashSet<>();
-            Integer nationI = 0;
-            boolean isLeader = false;
-            List<Object> header = rows.get(0);
-            for (int i = 0; i < header.size(); i++) {
-                if (header.get(i) == null) continue;
-                if (header.get(i).toString().equalsIgnoreCase("nation")) {
-                    nationI = i;
-                    break;
-                }
-                if (header.get(i).toString().toLowerCase(Locale.ROOT).contains("leader")) {
-                    nationI = i;
-                    isLeader = true;
-                    break;
-                }
-
-            }
-            for (int i = 1; i < rows.size(); i++) {
-                List<Object> row = rows.get(i);
-                if (row.size() <= nationI) continue;
-
-                Object cell = row.get(nationI);
-                if (cell == null) continue;
-                String nationName = (cell + "").trim();
-                if (nationName.isEmpty()) continue;
-
-                DBNation nation = null;
-                if (isLeader) {
-                    nation = Locutus.imp().getNationDB().getNationByLeader(nationName);
-                }
-                if (nation == null) {
-                    nation = DiscordUtil.parseNation(nationName);
-                }
-                if (nation != null) {
-                    toAdd.add(nation);
-                } else {
-                    throw new IllegalArgumentException("Unknown nation: " + nationName + " in " + name);
-                }
-            }
-            return toAdd;
+        } else if (SpreadSheet.isSheet(nameLower)) {
+            Set<DBNation> nations = SpreadSheet.parseSheet(name, List.of("nation", "leader"), true,
+            s -> switch (s.toLowerCase(Locale.ROOT)) {
+                case "nation" -> 0;
+                case "leader" -> 1;
+                default -> null;
+            }, (type, input) -> {
+                return switch (type) {
+                    case 0 -> Locutus.imp().getNationDB().getNation(input);
+                    case 1 -> Locutus.imp().getNationDB().getNationByLeader(input);
+                    default -> null;
+                };
+            });
+            return nations;
         }  else if (nameLower.startsWith("aa:")) {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name.split(":", 2)[1].trim());
             if (alliances == null) throw new IllegalArgumentException("Invalid alliance: `" + name + "`");

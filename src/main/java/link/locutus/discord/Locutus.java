@@ -14,6 +14,7 @@ import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.stock.StockDB;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.config.yaml.Config;
@@ -1227,7 +1228,8 @@ public final class Locutus extends ListenerAdapter {
         System.out.println("CMD1 " + cmd);
         if (!(cmdObject instanceof Noformat)) {
             DBNation nation = DiscordUtil.getNation(user);
-            cmd = DiscordUtil.format(message.getGuild(), user, nation, cmd, user, nation);
+            NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
+            cmd = formatter.format2(message.getGuild(), nation, user, cmd, nation);
         }
         Guild guild = message.isFromGuild() ? message.getGuild() : null;
 

@@ -4,7 +4,7 @@ import com.google.gson.Gson;
 import de.vandermeer.asciitable.AT_Context;
 import de.vandermeer.asciitable.AsciiTable;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.RateLimitUtil;
@@ -13,8 +13,6 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
-import org.springframework.messaging.MessageChannel;
-import rocker.guild.ia.message;
 
 import javax.annotation.CheckReturnValue;
 import java.nio.charset.StandardCharsets;
@@ -26,7 +24,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 public interface IMessageBuilder {

@@ -1,7 +1,6 @@
 package link.locutus.discord.db.entities;
 
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
-import link.locutus.discord.config.Settings;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.user.Roles;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
