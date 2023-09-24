@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
@@ -56,10 +57,10 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         for (CommandCallable cmd : getFilterCallables()) {
             String id = cmd.aliases().get(0);
             try {
-                Map.Entry<Type, Function<DBNation, Object>> typeFunction = getPlaceholderFunction(store, id);
+                TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, id, null, 0);
                 if (typeFunction == null) continue;
 
-                NationAttribute metric = new NationAttribute(cmd.getPrimaryCommandId(), cmd.simpleDesc(), typeFunction.getKey(), typeFunction.getValue());
+                NationAttribute metric = new NationAttribute(cmd.getPrimaryCommandId(), cmd.simpleDesc(), typeFunction.getType(), typeFunction);
                 result.add(metric);
             } catch (IllegalStateException | CommandUsageException ignore) {
                 continue;
@@ -73,20 +74,18 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     }
 
     public NationAttribute getMetric(ValueStore<?> store, String id, boolean ignorePerms) {
-        Map.Entry<Type, Function<DBNation, Object>> typeFunction = getTypeFunction(store, id, ignorePerms);
+        TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, id, null, 0);
         if (typeFunction == null) return null;
-        return new NationAttribute<>(id, "", typeFunction.getKey(), typeFunction.getValue());
+        return new NationAttribute<>(id, "", typeFunction.getType(), typeFunction);
     }
 
     public NationAttributeDouble getMetricDouble(ValueStore store, String id, boolean ignorePerms) {
-        ParametricCallable cmd = get(getCmd(id));
-        if (cmd == null) return null;
-        Map.Entry<Type, Function<DBNation, Object>> typeFunction = getTypeFunction(store, id, ignorePerms);
+        TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, id, null, 0);
         if (typeFunction == null) return null;
 
-        Function<DBNation, Object> genericFunc = typeFunction.getValue();
+        TypedFunction<DBNation, ?> genericFunc = typeFunction;
         Function<DBNation, Double> func;
-        Type type = typeFunction.getKey();
+        Type type = typeFunction.getType();
         if (type == int.class || type == Integer.class) {
             func = nation -> ((Integer) genericFunc.apply(nation)).doubleValue();
         } else if (type == double.class || type == Double.class) {
@@ -102,7 +101,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         } else {
             return null;
         }
-        return new NationAttributeDouble(cmd.getPrimaryCommandId(), cmd.simpleDesc(), func);
+        return new NationAttributeDouble(id, "", func);
     }
 
     public List<NationAttributeDouble> getMetricsDouble(ValueStore store) {

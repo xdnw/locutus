@@ -10,6 +10,7 @@ import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ICommandGroup;
@@ -519,8 +520,8 @@ public class PWBindings extends BindingHelper {
         NationPlaceholders placeholders = v2.getNationPlaceholders();
         ParametricCallable ph = placeholders.get(input);
         ph.validatePermissions(store, permisser);
-        Map.Entry<Type, Function<DBNation, Object>> entry = placeholders.getPlaceholderFunction(store, input);
-        return new SimpleNationPlaceholder(ph.getPrimaryCommandId(), entry.getKey(), entry.getValue());
+        TypedFunction<DBNation, ?> entry = placeholders.formatRecursively(store, input, null, 0);
+        return new SimpleNationPlaceholder(ph.getPrimaryCommandId(), entry.getType(), entry);
     }
 
     @Binding(examples = {"25/25"}, value = "A tax rate in the form of `money/rss`")

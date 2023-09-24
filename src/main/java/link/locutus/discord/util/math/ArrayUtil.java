@@ -5,6 +5,8 @@ import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.binding.bindings.ResolvedFunction;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -16,6 +18,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
 import java.util.AbstractMap;
 import java.util.ArrayDeque;
@@ -692,21 +695,9 @@ public class ArrayUtil {
         System.out.println(value.toString());
     }
 
-    public static class ResolvedFunction<T, V> implements Function<T, V> {
-        private final V object;
-        public ResolvedFunction(V object) {
-            this.object = object;
-        }
 
-        @Override
-        public final V apply(T t) {
-            return object;
-        }
 
-        public V get() {
-            return object;
-        }
-    }
+
 
     public static class LazyMathArray<T> implements MathToken<LazyMathArray<T>> {
         private final DoubleArray resolved;
@@ -725,7 +716,7 @@ public class ArrayUtil {
 
         public LazyMathArray(Function<T, DoubleArray> resolver, Function<String, Function<T, DoubleArray>> parser) {
             if (resolver instanceof ResolvedFunction<T, DoubleArray> f) {
-                this.resolved = f.object;
+                this.resolved = f.get();
                 this.resolver = null;
             } else {
                 this.resolved = null;
@@ -738,7 +729,7 @@ public class ArrayUtil {
         public LazyMathArray<T> create(String input) {
             Function<T, DoubleArray> newResolver = parser.apply(input);
             if (newResolver instanceof ResolvedFunction<T, DoubleArray> f) {
-                return new LazyMathArray<>(f.object, parser);
+                return new LazyMathArray<>(f.get(), parser);
             }
             return new LazyMathArray<T>(newResolver, parser);
         }

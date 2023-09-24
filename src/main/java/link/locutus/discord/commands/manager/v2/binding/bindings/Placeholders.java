@@ -150,10 +150,6 @@ public abstract class Placeholders<T> {
         return html.toString();
     }
 
-    public List<CommandCallable> getPlaceholderCallables() {
-        return new ArrayList<>(getParametricCallables());
-    }
-
     public List<CommandCallable> getFilterCallables() {
         List<ParametricCallable> result = getParametricCallables();
         result.removeIf(cmd -> {
@@ -186,12 +182,12 @@ public abstract class Placeholders<T> {
         Operation op = pairs.getMiddle();
         String part2 = pairs.getRight();
 
-        Map.Entry<Type, Function<T, Object>> placeholder = getPlaceholderFunction(store, part1);
+        TypedFunction<T, ?> placeholder = evaluateFunction(store, part1, 0);
         if (placeholder == null) {
             throw throwUnknownCommand(part1);
         }
-        Function<T, Object> func = placeholder.getValue();
-        Type type = placeholder.getKey();
+        Function<T, ?> func = placeholder;
+        Type type = placeholder.getType();
         Predicate adapter;
         boolean toString;
 
@@ -247,17 +243,13 @@ public abstract class Placeholders<T> {
 
     protected abstract Set<T> parse(ValueStore store, String input);
 
-    public String getCmd(String input) {
-        int argStart = input.indexOf('(');
-        return argStart != -1 ? input.substring(0, argStart) : input;
-    }
 
-    private Function<T, Object> formatRecursively(ValueStore store, String input, ParameterData param, int depth) {
+    public TypedFunction<T, ?> formatRecursively(ValueStore store, String input, ParameterData param, int depth) {
         input = input.trim();
         int currentIndex = 0;
 
         List<String> sections = new ArrayList<>();
-        Map<String, Function<T, Object>> functions = new LinkedHashMap<>();
+        Map<String, TypedFunction<T, ?>> functions = new LinkedHashMap<>();
 
         boolean hasMath = false;
         boolean hasPlaceholder = false;
@@ -280,7 +272,7 @@ public abstract class Placeholders<T> {
                     String functionContent = input.substring(currentIndex + 1, closingBraceIndex);
                     sections.add(functionContent);
                     if (!functions.containsKey(functionContent)) {
-                        Function<T, Object> functionResult = evaluateFunction(store, validators, permisser, functionContent, depth);
+                        TypedFunction<T, ?> functionResult = evaluateFunction(store, functionContent, depth);
                         if (functionResult != null) {
                             functions.put(functionContent, functionResult);
                             hasPlaceholder = true;
@@ -298,12 +290,12 @@ public abstract class Placeholders<T> {
             if (hasPlaceholder || (input.contains("{") && input.contains("}"))) {
                 Function<String, Function<T, ArrayUtil.DoubleArray>> stringToParser = s -> {
                     if (s.startsWith("{") && s.endsWith("}")) {
-                        Function<T, Object> function = functions.get(s);
+                        TypedFunction<T, ?> function = functions.get(s);
                         if (function != null) {
                             return function.andThen(o -> parseDoubleArray(o, param));
                         }
                     }
-                    return new ArrayUtil.ResolvedFunction<>(parseDoubleArray(s, param));
+                    return ResolvedFunction.create(ArrayUtil.DoubleArray.class, parseDoubleArray(s, param));
                 };
 
                 ArrayUtil.LazyMathArray<T> lazy = ArrayUtil.calculate(input, new Function<String, ArrayUtil.LazyMathArray<T>>() {
@@ -314,20 +306,22 @@ public abstract class Placeholders<T> {
                 });
 
                 ArrayUtil.DoubleArray array = lazy.getOrNull();
+                Type type = param == null ? Double.class : param.getType();
                 if (array != null) {
-                    return new ArrayUtil.ResolvedFunction<>(toObject(array, param));
+                    return TypedFunction.create(type, toObject(array, param));
                 }
-                return f -> toObject(lazy.resolve(f), param);
+                return TypedFunction.create(type, f -> toObject(lazy.resolve(f), param));
             } else {
                 double val = PrimitiveBindings.Double(input);
-                return new ArrayUtil.ResolvedFunction<>(val);
+                return new ResolvedFunction<>(Double.class, val);
             }
         }
         if (param != null) {
             // if hasPlaceholder is false, then parse in entirety
             if (!hasPlaceholder) {
-                Object val = param.getBinding().apply(store, input);
-                return new ArrayUtil.ResolvedFunction<>(val);
+                Parser<?> binding = param.getBinding();
+                Object val = binding.apply(store, input);
+                return new ResolvedFunction<>(param.getType(), val);
             }
         }
 
@@ -335,17 +329,17 @@ public abstract class Placeholders<T> {
         if (sections.size() == 1) {
             String section = sections.get(0);
             // get function
-            Function<T, Object> function = functions.get(section);
+            TypedFunction<T, ?> function = functions.get(section);
             if (function != null) {
                 return function;
             }
-            return new ArrayUtil.ResolvedFunction<>(section);
+            return new ResolvedFunction<>(String.class, section);
         }
-        boolean isResolved = functions.isEmpty() || functions.values().stream().allMatch(ArrayUtil.ResolvedFunction.class::isInstance);
+        boolean isResolved = functions.isEmpty() || functions.values().stream().allMatch(ResolvedFunction.class::isInstance);
         Function<T, Object> result = f -> {
             StringBuilder resultStr = new StringBuilder();
             for (String section : sections) {
-                Function<T, Object> function = functions.get(section);
+                TypedFunction<T, ?> function = functions.get(section);
                 if (function == null) {
                     resultStr.append(section);
                 } else {
@@ -355,9 +349,9 @@ public abstract class Placeholders<T> {
             return resultStr.toString();
         };
         if (isResolved) {
-            return new ArrayUtil.ResolvedFunction<>(result.apply(null));
+            return new ResolvedFunction<>(String.class, result.apply(null));
         }
-        return result;
+        return TypedFunction.create(String.class, result);
     }
 
     private Object toObject(ArrayUtil.DoubleArray expr, ParameterData param) {
@@ -427,8 +421,8 @@ public abstract class Placeholders<T> {
     }
 
     // Helper method to evaluate a function and its arguments
-    private Function<T, Object> evaluateFunction(ValueStore store, ValidatorStore validators, PermissionHandler permisser, String functionContent, int depth) {
-        Map<String, Function<T, Object>> actualArguments = new HashMap<>();
+    private TypedFunction<T, ?> evaluateFunction(ValueStore store, String functionContent, int depth) {
+        Map<String, TypedFunction<T, ?>> actualArguments = new HashMap<>();
 
         // Split the functionContent into function name and arguments
         int indexPar = functionContent.indexOf('(');
@@ -453,7 +447,7 @@ public abstract class Placeholders<T> {
             if (depth == 0) {
                 throw throwUnknownCommand(functionName);
             }
-            return new ArrayUtil.ResolvedFunction<>(functionContent);
+            return new ResolvedFunction<>(String.class, functionContent);
         }
         if (!argumentString.isEmpty()) {
             Set<String> argumentNames = command.getUserParameterMap().keySet();
@@ -464,7 +458,7 @@ public abstract class Placeholders<T> {
                 ParameterData param = entry.getValue();
                 String argumentName = entry.getKey();
                 if (explodedArguments.containsKey(argumentName)) {
-                    Function<T, Object> argumentValue = formatRecursively(store, explodedArguments.get(argumentName), param, depth + 1);
+                    TypedFunction<T, ?> argumentValue = formatRecursively(store, explodedArguments.get(argumentName), param, depth + 1);
                     actualArguments.put(argumentName, argumentValue);
                 }
             }
@@ -473,12 +467,12 @@ public abstract class Placeholders<T> {
         return format(store, command, actualArguments);
     }
 
-    private Function<T, Object> format(ValueStore store, ParametricCallable command, Map<String, Function<T, Object>> arguments) {
+    private TypedFunction<T, ?> format(ValueStore store, ParametricCallable command, Map<String, TypedFunction<T, ?>> arguments) {
         Map<String, Object> resolvedArgs = new LinkedHashMap<>();
         boolean isResolved = true;
-        for (Map.Entry<String, Function<T, Object>> entry : arguments.entrySet()) {
-            Function<T, Object> func = entry.getValue();
-            if (func instanceof ArrayUtil.ResolvedFunction<T, Object> f) {
+        for (Map.Entry<String, TypedFunction<T, ?>> entry : arguments.entrySet()) {
+            TypedFunction<T, ?> func = entry.getValue();
+            if (func instanceof ResolvedFunction f) {
                 resolvedArgs.put(entry.getKey(), f.get());
                 continue;
             }
@@ -488,7 +482,7 @@ public abstract class Placeholders<T> {
         boolean finalIsResolved = isResolved;
         Function<T, Object[]> resolved = f -> {
             if (!finalIsResolved) {
-                for (Map.Entry<String, Function<T, Object>> entry : arguments.entrySet()) {
+                for (Map.Entry<String, TypedFunction<T, ?>> entry : arguments.entrySet()) {
                     String argName = entry.getKey();
                     if (!resolvedArgs.containsKey(argName)) {
                         resolvedArgs.put(argName, entry.getValue().apply(f));
@@ -500,23 +494,10 @@ public abstract class Placeholders<T> {
         BiFunction<T, Object[], Object> format = (object, paramVals) -> command.call(object, store, paramVals);
         if (isResolved) {
             Object[] argArr = resolved.apply(null);
-            return f -> format.apply(f, argArr);
+            return TypedFunction.create(command.getReturnType(), f -> format.apply(f, argArr));
         }
-        return f -> format.apply(f, resolved.apply(f));
+        return TypedFunction.create(command.getReturnType(), f -> format.apply(f, resolved.apply(f)));
     }
-
-//    public Map.Entry<Type, Function<T, Object>> getTypeFunction(ValueStore<?> store, String id, boolean ignorePerms) {
-//        Map.Entry<Type, Function<T, Object>> typeFunction;
-//        try {
-//            typeFunction = getPlaceholderFunction(store, id);
-//        } catch (CommandUsageException ignore) {
-//            return null;
-//        } catch (Exception ignore2) {
-//            if (!ignorePerms) throw ignore2;
-//            return null;
-//        }
-//        return typeFunction;
-//    }
 
     public static class PlaceholderCache<T> {
         private final Set<T> set;
@@ -612,40 +593,57 @@ public abstract class Placeholders<T> {
 
     private static String[] prefixes = {"get", "is", "can"};
 
-    public Map.Entry<Type, Function<T, Object>> getPlaceholderFunction(ValueStore store, String input) {
-        List<String> args;
-        int argStart = input.indexOf('(');
-        int argEnd = input.lastIndexOf(')');
-        String cmd;
-        if (argStart != -1 && argEnd != -1) {
-            cmd = input.substring(0, argStart);
-            String argsStr = input.substring(argStart + 1, argEnd);
-            args = StringMan.split(argsStr, ',');
-        } else if (input.indexOf(' ') != -1) {
-            args = StringMan.split(input, ' ');
-            cmd = args.get(0);
-            args.remove(0);
-        } else {
-            args = Collections.emptyList();
-            cmd = input;
-        }
-
-        ParametricCallable cmdObj = get(cmd);
-        if (cmdObj == null) {
-            return null;
-        }
-
-        LocalValueStore locals = new LocalValueStore<>(store);
-//        locals.addProvider(Key.of(instanceType, Me.class), nullInstance);
-        ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
-
-        Object[] arguments = cmdObj.parseArguments(stack);
-
-        Function<T, Object> func;
-        ParametricCallable finalCmdObj = cmdObj;
-        func = obj -> finalCmdObj.call(obj, store, arguments);
-        return new AbstractMap.SimpleEntry<>(cmdObj.getReturnType(), func);
-    }
+//    public Map.Entry<Type, Function<T, Object>> getTypeFunction(ValueStore<?> store, String id, boolean ignorePerms) {
+//        Map.Entry<Type, Function<T, Object>> typeFunction;
+//        try {
+//            typeFunction = getPlaceholderFunction(store, id);
+//        } catch (CommandUsageException ignore) {
+//            return null;
+//        } catch (Exception ignore2) {
+//            if (!ignorePerms) throw ignore2;
+//            return null;
+//        }
+//        return typeFunction;
+//    }
+//    public String getCmd(String input) {
+//        int argStart = input.indexOf('(');
+//        return argStart != -1 ? input.substring(0, argStart) : input;
+//    }
+//
+//    public Map.Entry<Type, Function<T, Object>> getPlaceholderFunction(ValueStore store, String input) {
+//        List<String> args;
+//        int argStart = input.indexOf('(');
+//        int argEnd = input.lastIndexOf(')');
+//        String cmd;
+//        if (argStart != -1 && argEnd != -1) {
+//            cmd = input.substring(0, argStart);
+//            String argsStr = input.substring(argStart + 1, argEnd);
+//            args = StringMan.split(argsStr, ',');
+//        } else if (input.indexOf(' ') != -1) {
+//            args = StringMan.split(input, ' ');
+//            cmd = args.get(0);
+//            args.remove(0);
+//        } else {
+//            args = Collections.emptyList();
+//            cmd = input;
+//        }
+//
+//        ParametricCallable cmdObj = get(cmd);
+//        if (cmdObj == null) {
+//            return null;
+//        }
+//
+//        LocalValueStore locals = new LocalValueStore<>(store);
+////        locals.addProvider(Key.of(instanceType, Me.class), nullInstance);
+//        ArgumentStack stack = new ArgumentStack(args, locals, validators, permisser);
+//
+//        Object[] arguments = cmdObj.parseArguments(stack);
+//
+//        Function<T, Object> func;
+//        ParametricCallable finalCmdObj = cmdObj;
+//        func = obj -> finalCmdObj.call(obj, store, arguments);
+//        return new AbstractMap.SimpleEntry<>(cmdObj.getReturnType(), func);
+//    }
 
     public CommandGroup getCommands() {
         return commands;

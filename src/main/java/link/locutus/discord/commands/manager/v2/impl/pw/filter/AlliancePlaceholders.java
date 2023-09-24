@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
@@ -42,10 +43,10 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
         List<AllianceInstanceAttribute> result = new ArrayList<>();
         for (CommandCallable cmd : getFilterCallables()) {
             String id = cmd.aliases().get(0);
-            Map.Entry<Type, Function<DBAlliance, Object>> typeFunction = getPlaceholderFunction(store, id);
+            TypedFunction<DBAlliance, ?> typeFunction = formatRecursively(store, id, null, 0);
             if (typeFunction == null) continue;
 
-            AllianceInstanceAttribute metric = new AllianceInstanceAttribute(cmd.getPrimaryCommandId(), cmd.simpleDesc(), typeFunction.getKey(), typeFunction.getValue());
+            AllianceInstanceAttribute metric = new AllianceInstanceAttribute(cmd.getPrimaryCommandId(), cmd.simpleDesc(), typeFunction.getType(), typeFunction);
             result.add(metric);
         }
         return result;
@@ -59,9 +60,9 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
     public AllianceInstanceAttributeDouble getMetricDouble(ValueStore store, String id, boolean ignorePerms) {
         ParametricCallable cmd = get(id);
         if (cmd == null) return null;
-        Map.Entry<Type, Function<DBAlliance, Object>> typeFunction;
+        TypedFunction<DBAlliance, ?> typeFunction;
         try {
-            typeFunction = getPlaceholderFunction(store, id);
+            typeFunction = formatRecursively(store, id, null, 0);
         } catch (CommandUsageException ignore) {
             return null;
         } catch (Throwable ignore2) {
@@ -72,9 +73,9 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
             return null;
         }
 
-        Function<DBAlliance, Object> genericFunc = typeFunction.getValue();
+        Function<DBAlliance, ?> genericFunc = typeFunction;
         Function<DBAlliance, Double> func;
-        Type type = typeFunction.getKey();
+        Type type = typeFunction.getType();
         if (type == int.class || type == Integer.class) {
             func = aa -> ((Integer) genericFunc.apply(aa)).doubleValue();
         } else if (type == double.class || type == Double.class) {
@@ -113,9 +114,9 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
     }
 
     public AllianceInstanceAttribute getMetric(ValueStore<?> store, String id, boolean ignorePerms) {
-        Map.Entry<Type, Function<DBAlliance, Object>> typeFunction = getTypeFunction(store, id, ignorePerms);
+        TypedFunction<DBAlliance, ?> typeFunction = formatRecursively(store, id, null, 0);
         if (typeFunction == null) return null;
-        return new AllianceInstanceAttribute<>(id, "", typeFunction.getKey(), typeFunction.getValue());
+        return new AllianceInstanceAttribute<>(id, "", typeFunction.getType(), typeFunction);
     }
 
     @Override
