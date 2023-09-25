@@ -100,7 +100,7 @@ public enum TemplateTypes {
                 db,
                 rs.getBoolean("enabled"),
                 rs.getString("name"),
-                new NationFilterString(rs.getString("nation_filter"), db.getGuild()),
+                new NationFilterString(rs.getString("nation_filter"), db.getGuild(), null, null),
                 rs.getLong("econ_role"),
                 rs.getLong("self_role"),
                 rs.getInt("from_bracket"),

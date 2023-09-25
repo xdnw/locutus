@@ -1,5 +1,7 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
+import io.javalin.http.RedirectResponse;
+
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -43,7 +45,14 @@ public interface ValueStore<T> {
             }
             return null;
         }
-        return (V) get((Key) key).apply(this, null);
+        try {
+            return (V) get((Key) key).apply(this, null);
+        } catch (RedirectResponse response) {
+            if (throwError) {
+                throw response;
+            }
+            return null;
+        }
     }
 
     Map<Key, Parser> getParsers();

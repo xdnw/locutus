@@ -72,7 +72,7 @@ public class MethodParser<T> implements Parser<T> {
             }
         }
 
-        this.primaryClass = params.stream().map(f -> ReflectionUtil.getClassType(f.getType())).collect(Collectors.toList());
+        this.primaryClass = params.stream().map(f -> f == null ? null : ReflectionUtil.getClassType(f.getType())).collect(Collectors.toList());
 
         this.isConsumerInit = isConsumer;
         this.desc = desc == null && binding != null ? binding.value() : desc;
@@ -104,7 +104,7 @@ public class MethodParser<T> implements Parser<T> {
                 Class expectedType = primaryClass.get(i);
                 Object arg;
                 try {
-                    if (t != null && paramKey.getType() != String.class && expectedType != null && (expectedType == t.getClass() || expectedType.isAssignableFrom(t.getClass()))) {
+                    if (t != null && paramKey != null && paramKey.getType() != String.class && expectedType != null && (expectedType == t.getClass() || expectedType.isAssignableFrom(t.getClass()))) {
                         arg = t;
                     } else if (paramKey == null || (paramKey.getType() == String.class && paramKey.getAnnotations().length == 0)) {
                         arg = t;

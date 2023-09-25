@@ -409,7 +409,6 @@ public class ParametricCallable implements ICommand {
 
             String unparsed = null;
             Object value;
-            // flags
             try {
                 if (parameter.isFlag()) {
                     unparsed = flags.get(parameter.getFlag());
@@ -427,14 +426,18 @@ public class ParametricCallable implements ICommand {
                     }
                 } else {
                     if (!stack.hasNext() && parameter.isOptional()) {
-                        if (parameter.getDefaultValue() == null) {
-                            continue;
+                        if (!parameter.getBinding().isConsumer(stack.getStore())) {
+                            value = store.getProvided(parameter.getBinding().getKey(), false);
                         } else {
-                            unparsed = parameter.getDefaultValueString();
-                            stack.add(parameter.getDefaultValue());
+                            if (parameter.getDefaultValue() == null) {
+                                continue;
+                            } else {
+                                unparsed = parameter.getDefaultValueString();
+                                stack.add(parameter.getDefaultValue());
+                            }
+                            continue;
                         }
-                    }
-                    if (stack.hasNext() || !parameter.isOptional() || (parameter.getDefaultValue() != null && parameter.getDefaultValue().length != 0)) {
+                    } else if (stack.hasNext() || !parameter.isOptional() || (parameter.getDefaultValue() != null && parameter.getDefaultValue().length != 0)) {
                         if (parameter.getBinding().isConsumer(stack.getStore()) && !stack.hasNext()) {
                             String name = parameter.getBinding().getKey().toSimpleString();
                             throw new CommandUsageException(this, "Expected argument: <" + parameter.getName() + "> of type: " + name);
@@ -706,11 +709,15 @@ public class ParametricCallable implements ICommand {
                 @Override
                 public Object apply(ParameterData param, Object o) {
                     if (o == null) {
+                        if (!param.getBinding().isConsumer(store)) {
+                            return locals.getProvided(param.getBinding().getKey(), false);
+                        }
+                        String def = param.getDefaultValueString();
+                        if (def != null) {
+                            return locals.get(param.getBinding().getKey()).apply(store, def);
+                        }
                         if (param.isOptional()) {
                             return null;
-                        }
-                        if (!param.getBinding().isConsumer(store)) {
-                            return locals.get(param.getBinding().getKey()).apply(store, null);
                         }
                         throw new IllegalArgumentException("Missing required parameter: " + param.getName() + " for " + getFullPath());
                     }
@@ -727,9 +734,15 @@ public class ParametricCallable implements ICommand {
                 @Override
                 public Object apply(ParameterData param, Object o) {
                     if (o == null) {
-                        if (param.isOptional()) return null;
                         if (!param.getBinding().isConsumer(store)) {
-                            return locals.get(param.getBinding().getKey()).apply(store, null);
+                            return locals.getProvided(param.getBinding().getKey(), false);
+                        }
+                        String def = param.getDefaultValueString();
+                        if (def != null) {
+                            return locals.get(param.getBinding().getKey()).apply(store, def);
+                        }
+                        if (param.isOptional()) {
+                            return null;
                         }
                         throw new IllegalArgumentException("Missing required parameter: " + param.getName() + " for " + getFullPath());
                     }

@@ -1,6 +1,7 @@
 package link.locutus.discord.web.commands.page;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -53,12 +54,23 @@ public class IndexPages extends PageHelper {
     public Object argTypes() {
         CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
         ValueStore<Object> store = manager.getStore();
-        return "Index page";
+        return "Arg types stub";
     }
 
     @Command
-    public Object index() {
-        return "Index page";
+    public Object index(Context context) throws IOException {
+        AuthBindings.Auth auth = AuthBindings.getAuth(context, false, false, false);
+        if (auth == null) {
+            return "Not logged in";
+        }
+        StringBuilder response = new StringBuilder();
+        response.append("Index page:\n");
+        response.append("User: ").append(auth.userId()).append("\n");
+        response.append("nation: ").append(auth.nationId()).append("\n");
+        response.append("Valid: ").append(auth.isValid()).append("\n");
+        Guild guild = AuthBindings.guild(context, auth.getNation(), auth.getUser(), false);
+        response.append("Guild: ").append(guild).append("\n");
+        return response.toString();
     }
 
     @Command
@@ -256,7 +268,6 @@ public class IndexPages extends PageHelper {
         Map<String, List<String>> queries = context.queryParamMap();
         boolean requireNation = queries.containsKey("nation");
         boolean requireUser = queries.containsKey("discord");
-        System.out.println("AUTH BINDING 1");
         AuthBindings.Auth auth = AuthBindings.getAuth(context, true, requireNation, requireUser);
         if (auth != null) {
             // return and redirect
@@ -271,19 +282,25 @@ public class IndexPages extends PageHelper {
     }
 
     @Command()
-    public Object guildSet(Context context, Guild guild) {
+    public Object setguild(Context context, Guild guild) {
         AuthBindings.setGuild(context, guild);
         return PageHelper.redirect(context, AuthBindings.getRedirect(context));
     }
 
     @Command()
-    public Object guildSelect(Context context, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) {
+    public Object guildselect(Context context, ValueStore store, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) {
         if (user == null && nation == null) {
+            new Exception().printStackTrace();
             // need to login
             // return WM login page
             // throw error
-            return "You are already logged in (3)";
+            User user2 = (User) store.getProvided(Key.of(User.class, Me.class), false);
+            DBNation nation2 = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
+            String user2Str = user2 == null ? "null" : user2.getName();
+            String nation2Str = nation2 == null ? "null" : nation2.getName();
+            return "You are not logged in | " + user2Str + " | " + nation2Str;
         }
+        System.out.println("Current " + (current == null ? null : current.getName()));
         JDA jda = Locutus.imp().getDiscordApi().getApis().iterator().next();
         String registerLink = (user == null || nation == null) ? CM.register.cmd.toCommandUrl() : null;
         String locutusInvite = null;

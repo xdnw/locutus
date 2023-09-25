@@ -24,6 +24,7 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -38,6 +39,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class NationPlaceholders extends Placeholders<DBNation> {
     private final Map<String, NationAttribute> customMetrics = new HashMap<>();
@@ -124,7 +127,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     }
 
     @Override
-    public Set<DBNation> parse(ValueStore store, String name) {
+    public Set<DBNation> parseSingleElem(ValueStore store, String name) {
         String nameLower = name.toLowerCase(Locale.ROOT);
         Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
         if (name.equals("*")) {
@@ -189,5 +192,72 @@ public class NationPlaceholders extends Placeholders<DBNation> {
             nations.add(nation);
         }
         return nations;
+    }
+
+    @Override
+    protected Predicate<DBNation> parseSingleFilter(ValueStore store, String name) {
+        String nameLower = name.toLowerCase(Locale.ROOT);
+        Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
+        if (name.equals("*")) {
+            return f -> true;
+        } else if (name.contains("tax_id=")) {
+            int taxId = PnwUtil.parseTaxId(name);
+            return f -> f.getTax_id() == taxId;
+        } else if (SpreadSheet.isSheet(nameLower)) {
+            Set<DBNation> nations = SpreadSheet.parseSheet(name, List.of("nation", "leader"), true,
+                    s -> switch (s.toLowerCase(Locale.ROOT)) {
+                        case "nation" -> 0;
+                        case "leader" -> 1;
+                        default -> null;
+                    }, (type, input) -> {
+                        return switch (type) {
+                            case 0 -> Locutus.imp().getNationDB().getNation(input);
+                            case 1 -> Locutus.imp().getNationDB().getNationByLeader(input);
+                            default -> null;
+                        };
+                    });
+            Set<Integer> ids = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
+            return f -> ids.contains(f.getId());
+        }  else if (nameLower.startsWith("aa:")) {
+            Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name.split(":", 2)[1].trim());
+            if (alliances == null) throw new IllegalArgumentException("Invalid alliance: `" + name + "`");
+            return f -> alliances.contains(f.getAlliance_id());
+        }
+
+        boolean containsAA = nameLower.contains("/alliance/");
+        DBNation nation = containsAA ? null : DiscordUtil.parseNation(name, true);
+        if (nation == null || containsAA) {
+            Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name);
+            if (alliances == null) {
+                Role role = guild != null ? DiscordUtil.getRole(guild, name) : null;
+                if (role != null) {
+                    return f -> {
+                        User user = f.getUser();
+                        if (user == null) return false;
+                        Member member = role.getGuild().getMember(user);
+                        if (member == null) return false;
+                        return member.getRoles().contains(role);
+                    };
+                } else if (name.contains("#")) {
+                    String[] split = name.split("#");
+                    PNWUser user = Locutus.imp().getDiscordDB().getUser(null, split[0], name);
+                    if (user != null) {
+                        nation = Locutus.imp().getNationDB().getNation(user.getNationId());
+                    }
+                    if (nation == null) {
+                        throw new IllegalArgumentException("Invalid nation/aa: `" + name + "`");
+                    }
+                    int id = nation.getId();
+                    return f -> f.getId() == id;
+                } else {
+                    throw new IllegalArgumentException("Invalid nation/aa: `" + name + "`");
+                }
+            } else {
+                return f -> alliances.contains(f.getAlliance_id());
+            }
+        } else {
+            int id = nation.getId();
+            return f -> f.getId() == id;
+        }
     }
 }

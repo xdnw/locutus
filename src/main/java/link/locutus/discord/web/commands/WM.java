@@ -287,10 +287,10 @@ public class WM {
             return createArgs();
         }
     }
-    @AutoRegister(clazz= IndexPages.class,method="guildSelect")
-    public static class guildSelect extends CommandRef {
-        public static final guildSelect cmd = new guildSelect();
-        public guildSelect create() {
+    @AutoRegister(clazz= IndexPages.class,method="guildselect")
+    public static class guildselect extends CommandRef {
+        public static final guildselect cmd = new guildselect();
+        public guildselect create() {
             return createArgs();
         }
     }

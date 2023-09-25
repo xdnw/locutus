@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -24,6 +25,7 @@ import net.dv8tion.jda.api.entities.User;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -35,6 +37,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Predicate;
+
+import static link.locutus.discord.commands.manager.v2.binding.BindingHelper.emumSet;
 
 public class PlaceholdersMap {
     private final Map<Class<?>, Placeholders<?>> placeholders = new ConcurrentHashMap<>();
@@ -91,48 +96,77 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<Continent> createContinents() {
-        return Placeholders.create(Continent.class, store, validators, permisser,
+        return Placeholders.createStatic(Continent.class, store, validators, permisser,
                 "TODO CM REF",
-                (store, input) -> PWBindings.continentTypes(input));
+                (store, input) -> {
+                    if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Continent.values()));
+                    if (SpreadSheet.isSheet(input)) {
+                        return SpreadSheet.parseSheet(input, List.of("continent"), true, (type, str) -> PWBindings.continent(str));
+                    }
+                    return emumSet(Continent.class, input);
+                });
     }
 
     private Placeholders<GuildDB> createGuildDB() {
         return Placeholders.create(GuildDB.class, store, validators, permisser,
                 "TODO CM Ref",
-            (store, input) -> {
-                User user = (User) store.getProvided(Key.of(User.class, Me.class), true);
-                boolean admin = Roles.ADMIN.hasOnRoot(user);
-                if (input.equalsIgnoreCase("*")) {
-                    if (admin) {
-                        return new HashSet<>(Locutus.imp().getGuildDatabases().values());
-                    }
-                    List<Guild> guilds = user.getMutualGuilds();
-                    Set<GuildDB> dbs = new HashSet<>();
-                    for (Guild guild : guilds) {
-                        GuildDB db = Locutus.imp().getGuildDB(guild);
-                        if (db != null) {
-                            dbs.add(db);
+                (store, input) -> {
+                    User user = (User) store.getProvided(Key.of(User.class, Me.class), true);
+                    boolean admin = Roles.ADMIN.hasOnRoot(user);
+                    if (input.equalsIgnoreCase("*")) {
+                        if (admin) {
+                            return new HashSet<>(Locutus.imp().getGuildDatabases().values());
                         }
+                        List<Guild> guilds = user.getMutualGuilds();
+                        Set<GuildDB> dbs = new HashSet<>();
+                        for (Guild guild : guilds) {
+                            GuildDB db = Locutus.imp().getGuildDB(guild);
+                            if (db != null) {
+                                dbs.add(db);
+                            }
+                        }
+                        return dbs;
                     }
-                    return dbs;
-                }
-                if (SpreadSheet.isSheet(input)) {
-                    return SpreadSheet.parseSheet(input, List.of("guild"), true,
-                            (type, str) -> PWBindings.guild(PrimitiveBindings.Long(str)));
-                }
-                long id = PrimitiveBindings.Long(input);
-                GuildDB guild = PWBindings.guild(id);
-                if (!admin && guild.getGuild().getMember(user) == null) {
-                    throw new IllegalArgumentException("You (" + user + ") are not in the guild with id: `" + id + "`");
-                }
-                return Collections.singleton(guild);
-            });
+                    if (SpreadSheet.isSheet(input)) {
+                        return SpreadSheet.parseSheet(input, List.of("guild"), true,
+                                (type, str) -> PWBindings.guild(PrimitiveBindings.Long(str)));
+                    }
+                    long id = PrimitiveBindings.Long(input);
+                    GuildDB guild = PWBindings.guild(id);
+                    if (!admin && guild.getGuild().getMember(user) == null) {
+                        throw new IllegalArgumentException("You (" + user + ") are not in the guild with id: `" + id + "`");
+                    }
+                    return Collections.singleton(guild);
+                }, (store, input) -> {
+                    if (input.equalsIgnoreCase("*")) {
+                        return f -> true;
+                    }
+                    if (SpreadSheet.isSheet(input)) {
+                        Set<Long> sheet = SpreadSheet.parseSheet(input, List.of("guild"), true,
+                                (type, str) -> PrimitiveBindings.Long(str));
+                        return f -> sheet.contains(f.getIdLong());
+                    }
+                    long id = PrimitiveBindings.Long(input);
+                    return f -> f.getIdLong() == id;
+                });
     }
 
     private Placeholders<Project> createProjects() {
-        return Placeholders.create(Project.class, store, validators, permisser,
+        return Placeholders.createStatic(Project.class, store, validators, permisser,
                 "TODO CM REF",
-                (store, input) -> PWBindings.projects(input));
+                (store, input) -> {
+                    if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Projects.values));
+                    if (SpreadSheet.isSheet(input)) {
+                        return SpreadSheet.parseSheet(input, List.of("project"), true, (type, str) -> PWBindings.project(str));
+                    }
+                    Set<Project> result = new HashSet<>();
+                    for (String type : input.split(",")) {
+                        Project project = Projects.get(type);
+                        if (project == null) throw new IllegalArgumentException("Invalid project: `" + type + "`");
+                        result.add(project);
+                    }
+                    return result;
+                });
     }
 
 }

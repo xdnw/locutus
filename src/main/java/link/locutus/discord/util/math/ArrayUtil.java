@@ -1108,7 +1108,10 @@ public class ArrayUtil {
         return predicates.stream().reduce(Predicate::or).orElseThrow();
     }
 
-    private static <T> ParseResult<T> parseTokens(String input, Function<String, Set<T>> parseSet, Function<String, Predicate<T>> parsePredicate) {
+    private static <T> ParseResult<T> parseTokens(String input, Function<String, Set<T>> parseSet2, Function<String, Predicate<T>> parseElemPredicate, Function<String, Predicate<T>> parseFilter) {
+        if ((parseSet2 != null) == (parseElemPredicate != null)) {
+            throw new IllegalArgumentException("Only one of parseSet2 and parseElemPredicate can be null");
+        }
         List<String> splitAnd = StringMan.split(input, ',');
 
         List<ParseResult<T>> andResults = new ArrayList<>();
@@ -1143,18 +1146,22 @@ public class ArrayUtil {
 
                     if (char0 == '#') {
                         elem = elem.substring(1);
-                        Predicate<T> filter = parsePredicate.apply(elem);
+                        Predicate<T> filter = parseFilter.apply(elem);
                         orResults.add(new ParseResult<>(elem, List.of(filter), new AtomicBoolean()));
                     } else if (char0 == '(') {
                         if (!elem.endsWith(")")) {
                             throw new IllegalArgumentException("Invalid group: `" + elem + "`: No end bracket found");
                         }
                         elem = elem.substring(1, elem.length() - 1);
-                        ParseResult<T> result = parseTokens(elem, parseSet, parsePredicate);
+                        ParseResult<T> result = parseTokens(elem, parseSet2, parseElemPredicate, parseFilter);
                         orResults.add(result);
                     } else {
                         ParseResult<T> result = new ParseResult<>(elem, List.of(), new AtomicBoolean());
-                        result.add(parseSet.apply(elem));
+                        if (parseSet2 != null) {
+                            result.add(parseSet2.apply(elem));
+                        } else {
+                            result.predicates.add(parseElemPredicate.apply(elem));
+                        }
                         orResults.add(result);
                     }
                 }
@@ -1221,37 +1228,72 @@ public class ArrayUtil {
     }
 
     public static <T> Set<T> resolveQuery(String input, Function<String, Set<T>> parseSet, Function<String, Predicate<T>> parsePredicate) {
-        ParseResult<T> result = parseQuery(input, parseSet, parsePredicate);
+        ParseResult<T> result = parseQuery(input, parseSet, null, parsePredicate);
         return result.resolve();
     }
 
-    public static <T> ParseResult<T> parseQuery(String input, Function<String, Set<T>> parseSet, Function<String, Predicate<T>> parsePredicate) {
+    public static <T> Predicate<T> parseFilter(String input, Function<String, Predicate<T>> parseElemPredicate, Function<String, Predicate<T>> parseFilter) {
+        ParseResult<T> result = parseQuery(input, null, parseElemPredicate, parseFilter);
+        if (result.hadNonFilter.get()) {
+            // resolve
+            Set<T> allowed = result.resolve();
+            return allowed::contains;
+        }
+        return and(result.predicates);
+    }
+
+    private static <T> ParseResult<T> parseQuery(String input, Function<String, Set<T>> parseSet, Function<String, Predicate<T>> parseElemPredicate, Function<String, Predicate<T>> parseFilter) {
         Map<String, Predicate<T>> parserCache = new Object2ObjectOpenHashMap<>();
-        ParseResult<T> result = parseTokens(input, parseSet, new Function<String, Predicate<T>>() {
+        Map<String, Set<T>> setCache = new Object2ObjectOpenHashMap<>();
+        ParseResult<T> result = parseTokens(input, parseSet == null ? null : new Function<String, Set<T>>() {
+            @Override
+            public Set<T> apply(String s) {
+                Set<T> cachedSet = setCache.get(s);
+                if (cachedSet != null) {
+                    return cachedSet;
+                }
+                Set<T> uncached = parseSet.apply(s);
+                if (uncached != null) {
+                    setCache.put(s, uncached);
+                }
+                return uncached;
+            }
+        }, parseElemPredicate == null ? null : new Function<String, Predicate<T>>() {
             @Override
             public Predicate<T> apply(String s) {
+                // use parserCache
                 Predicate<T> cachedPredicate = parserCache.get(s);
                 if (cachedPredicate != null) {
                     return cachedPredicate;
                 }
-                Predicate<T> uncached = parsePredicate.apply(s);
-                if (uncached == null) return null;
-                Predicate<T> cached = new Predicate<T>() {
-                    final Map<T, Boolean> cacheResult = new Object2BooleanOpenHashMap<>();
-                    @Override
-                    public boolean test(T t) {
-                        Boolean cachedResult = cacheResult.get(t);
-                        if (cachedResult != null) {
-                            return cachedResult;
-                        }
-                        boolean result = uncached.test(t);
-                        cacheResult.put(t, result);
-                        return result;
+                Predicate<T> uncached = parseElemPredicate.apply(s);
+                if (uncached != null) {
+                    parserCache.put(s, uncached);
+                }
+                return uncached;
+            }
+        }, s -> {
+            Predicate<T> cachedPredicate = parserCache.get(s);
+            if (cachedPredicate != null) {
+                return cachedPredicate;
+            }
+            Predicate<T> uncached = parseFilter.apply(s);
+            if (uncached == null) return null;
+            Predicate<T> cached = new Predicate<T>() {
+                final Map<T, Boolean> cacheResult = new Object2BooleanOpenHashMap<>();
+                @Override
+                public boolean test(T t) {
+                    Boolean cachedResult = cacheResult.get(t);
+                    if (cachedResult != null) {
+                        return cachedResult;
                     }
-                };
-                parserCache.put(s, cached);
-                return cached;
+                    boolean result1 = uncached.test(t);
+                    cacheResult.put(t, result1);
+                    return result1;
+                }
             };
+            parserCache.put(s, cached);
+            return cached;
         });
         return result;
     }

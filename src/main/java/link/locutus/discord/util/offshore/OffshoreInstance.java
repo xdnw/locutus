@@ -674,7 +674,7 @@ public class OffshoreInstance {
 //                    return Map.entry(TransferStatus.AUTHORIZATION, "Transfers are temporarily disabled for this account due to an error. Have a server admin use " + CM.bank.unlockTransfers.cmd.toSlashMention() + " to re-enable");
                     return new TransferResult(TransferStatus.AUTHORIZATION, receiver, amount, depositType.toString()).addMessage("Transfers are temporarily disabled for this account due to an error.", "Have a server admin use " + CM.bank.unlockTransfers.cmd.toSlashMention() + " to re-enable");
                 }
-                if (depositType.getType() != DepositType.DEPOSIT || depositType.isIgnored()) {
+                if (!depositType.isDeposits() || depositType.isIgnored()) {
                     allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
                     if (allowedIds.isEmpty()) {
 //                        return Map.entry(TransferStatus.AUTHORIZATION, "You are only authorized for the note `" + DepositType.DEPOSIT + "` but attempted to do `" + depositType + "`");

@@ -527,7 +527,7 @@ public class DiscordUtil {
         } else if (id.startsWith("{")){
             return List.of(new CommandInfo(channelId, behavior, id));
         } else if (!id.isEmpty()) {
-            throw new IllegalArgumentException("Unknown command: `" + id + "`");
+            throw new IllegalArgumentException("Unknown command (5): `" + id + "`");
         } else {
             return List.of(new CommandInfo(channelId, behavior, id));
         }

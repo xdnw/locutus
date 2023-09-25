@@ -8,6 +8,7 @@ public enum DepositType {
     LOAN("For funds members are expected to repay at some date in the future"),
     GRANT("Can be excluded from withdrawal limit, considered a loan if no time is specified e.g. `#expire=60d`"),
     IGNORE("Excluded from deposits"),
+    TRADE("Sub type of deposits, earmarked as trading funds"),
 
     CITY(GRANT, "Go to <https://politicsandwar.com/city/create/> and purchase a new city"),
     PROJECT(GRANT, "Go to <https://politicsandwar.com/nation/projects/> and purchase the desired project"),
@@ -132,6 +133,10 @@ public enum DepositType {
                 note += " #ignore";
             }
             return note.trim();
+        }
+
+        public boolean isDeposits() {
+            return (type == DEPOSIT || type == TRADE) && !isIgnored();
         }
 
         public boolean isIgnored() {

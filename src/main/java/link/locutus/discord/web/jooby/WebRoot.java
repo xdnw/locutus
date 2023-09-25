@@ -31,6 +31,7 @@ import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
+import org.bytedeco.librealsense.context;
 import org.eclipse.jetty.server.Server;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
@@ -107,6 +108,13 @@ public class WebRoot {
 
         this.pageHandler = new PageHandler(this);
 
+        this.app.get("/test", new Handler() {
+            @Override
+            public void handle(@NotNull Context context) throws Exception {
+                pageHandler.handle(context);
+            }
+        });
+
         this.app.get("/bankrequests", new Handler() {
             @Override
             public void handle(@NotNull Context context) throws Exception {
@@ -147,30 +155,6 @@ public class WebRoot {
                 pageHandler.sse(sse);
             }
         }));
-
-//        this.app.get("/sse_reaction**", new SseHandler2(new Consumer<SseClient2>() {
-//            @Override
-//            public void accept(SseClient2 sse) {
-//                pageHandler.sseReaction(sse);
-//            }
-//        }));
-//        this.app.get("/sse_cmd_str**", new SseHandler2(new Consumer<SseClient2>() {
-//            @Override
-//            public void accept(SseClient2 sse) {
-//                pageHandler.sseCmdStr(sse);
-//            }
-//        }));
-
-//        this.app.get("command/**", new SseHandler2(new Consumer<SseClient2>() {
-//            @Override
-//            public void accept(SseClient2 sse) {
-//                try {
-//                    pageHandler.sseCmdPage(sse);
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                }
-//            }
-//        }));
 
         this.app.get("/discordids", new Handler() {
             @Override

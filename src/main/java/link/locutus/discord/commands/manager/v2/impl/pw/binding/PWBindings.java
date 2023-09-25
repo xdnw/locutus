@@ -200,7 +200,7 @@ public class PWBindings extends BindingHelper {
             examples = """
             #cities<10:505X
             #cities>=10:0250""")
-    public Map<NationFilter, MMRMatcher> mmrMathcerMap(@Me GuildDB db, String input) {
+    public Map<NationFilter, MMRMatcher> mmrMathcerMap(@Me User author, @Me DBNation nation, @Me GuildDB db, String input) {
         Map<NationFilter, MMRMatcher> filterToMMR = new LinkedHashMap<>();
         for (String line : input.split("\n")) {
             String[] split = line.split("[:]");
@@ -216,7 +216,7 @@ public class PWBindings extends BindingHelper {
             }
             if (!containsNation) filterStr += ",*";
             DiscordUtil.parseNations(db.getGuild(), filterStr); // validate
-            NationFilterString filter = new NationFilterString(filterStr, db.getGuild());
+            NationFilterString filter = new NationFilterString(filterStr, db.getGuild(), author, nation);
             MMRMatcher mmr = new MMRMatcher(split[1]);
             filterToMMR.put(filter, mmr);
         }
@@ -234,7 +234,7 @@ public class PWBindings extends BindingHelper {
             "```\n" +
             "Use `*` as the filter to match all nations.\n" +
             "Only alliance members can be given role")
-    public Map<NationFilter, Role> conditionalRole(@Me GuildDB db, String input) {
+    public Map<NationFilter, Role> conditionalRole(@Me User author, @Me DBNation nation, @Me GuildDB db, String input) {
         Map<NationFilter, Role> filterToRole = new LinkedHashMap<>();
         for (String line : input.split("\n")) {
             String[] split = line.split("[:]");
@@ -250,7 +250,7 @@ public class PWBindings extends BindingHelper {
             }
             if (!containsNation) filterStr += ",*";
             DiscordUtil.parseNations(db.getGuild(), filterStr); // validate
-            NationFilterString filter = new NationFilterString(filterStr, db.getGuild());
+            NationFilterString filter = new NationFilterString(filterStr, db.getGuild(), author, nation);
             Role role = DiscordBindings.role(db.getGuild(), split[1]);
             filterToRole.put(filter, role);
         }
@@ -264,7 +264,7 @@ public class PWBindings extends BindingHelper {
             examples = """
             #cities<10:100/100
             #cities>=10:25/25""")
-    public Map<NationFilter, TaxRate> taxRateMap(@Me GuildDB db, String input) {
+    public Map<NationFilter, TaxRate> taxRateMap(@Me User author, @Me DBNation nation, @Me GuildDB db, String input) {
         Map<NationFilter, TaxRate> filterToTaxRate = new LinkedHashMap<>();
         for (String line : input.split("\n")) {
             String[] split = line.split("[:]");
@@ -279,7 +279,7 @@ public class PWBindings extends BindingHelper {
                 if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) containsNation = true;
             }
             if (!containsNation) filterStr += ",*";
-            NationFilterString filter = new NationFilterString(filterStr, db.getGuild());
+            NationFilterString filter = new NationFilterString(filterStr, db.getGuild(), author, nation);
             TaxRate rate = new TaxRate(split[1]);
             filterToTaxRate.put(filter, rate);
         }
@@ -295,22 +295,14 @@ public class PWBindings extends BindingHelper {
     examples = """
             #cities<10:1
             #cities>=10:2""")
-    public Map<NationFilter, Integer> taxIdMap(@Me GuildDB db, String input) {
+    public Map<NationFilter, Integer> taxIdMap(@Me User author, @Me DBNation nation, @Me GuildDB db, String input) {
         Map<NationFilter, Integer> filterToBracket = new LinkedHashMap<>();
         for (String line : input.split("[\n|;]")) {
             String[] split = line.split("[:]");
             if (split.length != 2) continue;
 
             String filterStr = split[0].trim();
-
-            boolean containsNation = false;
-            for (String arg : filterStr.split(",")) {
-                if (!arg.startsWith("#")) containsNation = true;
-                if (arg.contains("tax_id=")) containsNation = true;
-                if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) containsNation = true;
-            }
-            if (!containsNation) filterStr += ",*";
-            NationFilterString filter = new NationFilterString(filterStr, db.getGuild());
+            NationFilterString filter = new NationFilterString(filterStr, db.getGuild(), author, nation);
             int bracket = Integer.parseInt(split[1]);
             filterToBracket.put(filter, bracket);
         }
@@ -617,11 +609,11 @@ public class PWBindings extends BindingHelper {
 
     @Binding(value = "A comma separated list of continents, or `*`")
     public static Set<Continent> continentTypes(String input) {
-        if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Continent.values()));
-        if (SpreadSheet.isSheet(input)) {
-            return SpreadSheet.parseSheet(input, List.of("continent"), true, (type, str) -> continent(str));
-        }
-        return emumSet(Continent.class, input);
+            if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Continent.values()));
+            if (SpreadSheet.isSheet(input)) {
+                return SpreadSheet.parseSheet(input, List.of("continent"), true, (type, str) -> continent(str));
+            }
+            return emumSet(Continent.class, input);
     }
 
     @Binding(value = "A comma separated list of spy operation types")
@@ -689,9 +681,8 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "#position>1,#cities<=5", value = "A comma separated list of filters (can include nations and alliances)")
-    public NationFilter nationFilter(@Default @Me Guild guild, String input) {
-        nations(null, guild, input + "|*");
-        return new NationFilterString(input, guild);
+    public NationFilter nationFilter(@Me User author, @Me DBNation nation, @Default @Me Guild guild, String input) {
+        return new NationFilterString(input, guild, author, nation);
     }
 
     @Binding(examples = "score,soldiers", value = "A comma separated list of numeric nation attributes")
@@ -1189,6 +1180,11 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "Types of users to clear roles of")
     public UnsortedCommands.ClearRolesEnum clearRolesEnum(String input) {
         return emum(UnsortedCommands.ClearRolesEnum.class, input);
+    }
+
+    @Binding(value = "Bank transaction flow type (internal, withdrawal, depost)")
+    public FlowType FlowType(String input) {
+        return emum(FlowType.class, input);
     }
 
     @Binding(examples = {"@role", "672238503119028224", "roleName"}, value = "A discord role name, mention or id")

@@ -163,7 +163,8 @@ public class CommandManager2 {
     public CommandManager2 registerDefaults() {
         // nap command  - UtilityCommands
 
-        this.commands.registerMethod(new TestCommands(), List.of("test"), "test", "test");
+        this.commands.registerMethod(new TestCommands(), List.of("deposit"), "viewFlow", "flows");
+        this.commands.registerMethod(new TestCommands(), List.of("deposit"), "shiftFlow", "shiftFlow");
 
         this.commands.registerCommandsWithMapping(CM.class, false, false);
 

@@ -706,6 +706,12 @@ public class WebPWBindings extends WebBindingHelper {
     }
 
     @HtmlInput
+    @Binding(types= FlowType.class)
+    public String FlowType(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(FlowType.values()), rank -> new AbstractMap.SimpleEntry<>(rank.name(), rank.name()));
+    }
+
+    @HtmlInput
     @Binding(types= GuildSetting.class)
     public String GuildSetting(@Me GuildDB db, @Me Guild guild, @Me User author, ParameterData param) {
         ArrayList<GuildSetting> options = new ArrayList<>(Arrays.asList(GuildKey.values()));

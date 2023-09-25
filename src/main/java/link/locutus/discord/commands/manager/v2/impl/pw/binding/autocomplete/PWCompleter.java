@@ -5,6 +5,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.FlowType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarType;
@@ -450,6 +451,12 @@ public class PWCompleter extends BindingHelper {
     @Binding(types={UnsortedCommands.ClearRolesEnum.class})
     public List<String> ClearRolesEnum(String input) {
         return StringMan.completeEnum(input, UnsortedCommands.ClearRolesEnum.class);
+    }
+
+    @Autocomplete
+    @Binding(types={FlowType.class})
+    public List<String> FlowType(String input) {
+        return StringMan.completeEnum(input, FlowType.class);
     }
 
     @Autocomplete

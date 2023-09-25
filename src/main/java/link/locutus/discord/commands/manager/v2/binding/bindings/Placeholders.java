@@ -25,21 +25,16 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.tuple.Triple;
 
 import java.lang.reflect.Type;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 public abstract class Placeholders<T> {
     private final ValidatorStore validators;
@@ -69,7 +64,17 @@ public abstract class Placeholders<T> {
         new PWType2Math().register(type2Math);
     }
 
-    public static <T> Placeholders<T> create(Class<T> type, ValueStore store, ValidatorStore validators, PermissionHandler permisser, String help, BiFunction<ValueStore, String, Set<T>> parse) {
+    public static <T> Placeholders<T> createStatic(Class<T> type, ValueStore store, ValidatorStore validators, PermissionHandler permisser, String help, BiFunction<ValueStore, String, Set<T>> parse) {
+        return create(type, store, validators, permisser, help, parse, new BiFunction<ValueStore, String, Predicate<T>>() {
+            @Override
+            public Predicate<T> apply(ValueStore valueStore, String s) {
+                Set<T> parsed = parse.apply(valueStore, s);
+                return parsed::contains;
+            }
+        });
+    }
+
+    public static <T> Placeholders<T> create(Class<T> type, ValueStore store, ValidatorStore validators, PermissionHandler permisser, String help, BiFunction<ValueStore, String, Set<T>> parse, BiFunction<ValueStore, String, Predicate<T>> parsePredicate) {
         return new Placeholders<T>(type, store, validators, permisser) {
             @Override
             public String getCommandMention() {
@@ -77,8 +82,13 @@ public abstract class Placeholders<T> {
             }
 
             @Override
-            protected Set<T> parse(ValueStore store, String input) {
+            protected Set<T> parseSingleElem(ValueStore store, String input) {
                 return parse.apply(store, input);
+            }
+
+            @Override
+            protected Predicate<T> parseSingleFilter(ValueStore store, String input) {
+                return parsePredicate.apply(store, input);
             }
         };
     }
@@ -160,6 +170,8 @@ public abstract class Placeholders<T> {
     }
 
     public abstract String getCommandMention();
+    protected abstract Set<T> parseSingleElem(ValueStore store, String input);
+    protected abstract Predicate<T> parseSingleFilter(ValueStore store, String input);
 
     private static Triple<String, Operation, String> opSplit(String input) {
         for (Operation op : Operation.values()) {
@@ -171,7 +183,7 @@ public abstract class Placeholders<T> {
         return null;
     }
 
-    private Predicate<T> getFilter(ValueStore store, String input, Map<String, Map<T, Object>> cache) {
+    private Predicate<T> getSingleFilter(ValueStore store, String input, Map<String, Map<T, Object>> cache) {
         Triple<String, Operation, String> pairs = opSplit(input);
         boolean isDefault = false;
         if (pairs == null) {
@@ -234,15 +246,19 @@ public abstract class Placeholders<T> {
         };
     }
 
+    public Predicate<T> parseFilter(ValueStore store2, String input) {
+        Map<String, Map<T, Object>> cache = new Object2ObjectOpenHashMap<>();
+        return ArrayUtil.parseFilter(input,
+                f -> parseSingleFilter(store2, f),
+                s -> getSingleFilter(store2, s, cache));
+    }
+
     public Set<T> parseSet(ValueStore store2, String input) {
         Map<String, Map<T, Object>> cache = new Object2ObjectOpenHashMap<>();
         return ArrayUtil.resolveQuery(input,
-                f -> parse(store2, f),
-                s -> getFilter(store2, s, cache));
+                f -> parseSingleElem(store2, f),
+                s -> getSingleFilter(store2, s, cache));
     }
-
-    protected abstract Set<T> parse(ValueStore store, String input);
-
 
     public TypedFunction<T, ?> formatRecursively(ValueStore store, String input, ParameterData param, int depth) {
         input = input.trim();
@@ -252,22 +268,36 @@ public abstract class Placeholders<T> {
         Map<String, TypedFunction<T, ?>> functions = new LinkedHashMap<>();
 
         boolean hasMath = false;
+        boolean hasNonMath = false;
         boolean hasPlaceholder = false;
 
         while (currentIndex < input.length()) {
             char currentChar = input.charAt(currentIndex);
-
             if (currentChar != '{') {
                 sections.add("" +currentChar);
                 currentIndex++;
-                hasMath |= switch (currentChar) {
-                    case '+', '-', '*', '/', '^', '%' -> true;
-                    default -> false;
+                switch (currentChar) {
+                    case '+', '-', '*', '/', '^', '%' -> {
+                        hasMath = true;
+                    }
+                    // allow brackets and spaces
+                    case '(', ')', ' ' -> {
+
+                    }
+//                    // other math chars
+//                    case '<', '>', '=', '!', '&', '|', '~' -> {
+//                        hasNonMath = true;
+//                    }
+                    default -> {
+                        hasNonMath = true;
+                    }
                 };
+                if (hasMath) {
+                    System.out.println("hasMath = " + hasMath + " | " + currentChar + " | " + input);
+                }
             } else {
                 // Find the matching closing curly brace
                 int closingBraceIndex = StringMan.findMatchingBracket(input, currentIndex);
-
                 if (closingBraceIndex != -1) {
                     String functionContent = input.substring(currentIndex + 1, closingBraceIndex);
                     sections.add(functionContent);
@@ -286,16 +316,16 @@ public abstract class Placeholders<T> {
             }
         }
 
-        if (hasMath) {
+        if (hasMath && !hasNonMath) {
             if (hasPlaceholder || (input.contains("{") && input.contains("}"))) {
                 Function<String, Function<T, ArrayUtil.DoubleArray>> stringToParser = s -> {
                     if (s.startsWith("{") && s.endsWith("}")) {
                         TypedFunction<T, ?> function = functions.get(s);
                         if (function != null) {
-                            return function.andThen(o -> parseDoubleArray(o, param));
+                            return function.andThen(o -> parseDoubleArray(o, param, true));
                         }
                     }
-                    return ResolvedFunction.create(ArrayUtil.DoubleArray.class, parseDoubleArray(s, param));
+                    return ResolvedFunction.create(ArrayUtil.DoubleArray.class, parseDoubleArray(s, param, true));
                 };
 
                 ArrayUtil.LazyMathArray<T> lazy = ArrayUtil.calculate(input, new Function<String, ArrayUtil.LazyMathArray<T>>() {
@@ -373,7 +403,7 @@ public abstract class Placeholders<T> {
         throw new IllegalArgumentException("Cannot parse math expression to object: len:" + arr.length + " | " + StringMan.getString(arr));
     }
 
-    private ArrayUtil.DoubleArray parseDoubleArray(Object s, ParameterData param) {
+    private ArrayUtil.DoubleArray parseDoubleArray(Object s, ParameterData param, boolean throwForUnknown) {
         if (s instanceof Number n) {
             return new ArrayUtil.DoubleArray(n.doubleValue());
         }
@@ -397,7 +427,9 @@ public abstract class Placeholders<T> {
                     throw new IllegalArgumentException("Cannot parse `" + mathFunc.getKey() + "` invalid type: " + parsed.getClass() + " (expected DoubleArray)");
                 }
             }
-            throw new IllegalArgumentException("Unknown numeric `" + str + "` cannot parse to DoubleArray for " + param);
+            if (throwForUnknown) {
+                throw new IllegalArgumentException("Unknown numeric `" + str + "` cannot parse to DoubleArray for " + param);
+            }
         }
         throw new IllegalArgumentException("Unknown numeric `" + s.toString() + "` of type " + s.getClass() + " cannot parse to DoubleArray for " + param);
     }
@@ -415,7 +447,7 @@ public abstract class Placeholders<T> {
         Set<String> options = commands.getSubCommandIds();
         List<String> closest = StringMan.getClosest(command, new ArrayList<>(options), false);
         if (closest.size() > 5) closest = closest.subList(0, 5);
-        return new IllegalArgumentException("Unknown command: " + command + "\n" +
+        return new IllegalArgumentException("Unknown command (4): " + command + "\n" +
                 "Did you mean:\n- " + StringMan.join(closest, "\n- ") +
                 "\n\nSee also: " + getCommandMention());
     }
@@ -444,9 +476,9 @@ public abstract class Placeholders<T> {
         }
         ParametricCallable command = this.get(functionName);
         if (command == null) {
-            if (depth == 0) {
-                throw throwUnknownCommand(functionName);
-            }
+//            if (depth == 0) {
+//                throw throwUnknownCommand(functionName);
+//            }
             return new ResolvedFunction<>(String.class, functionContent);
         }
         if (!argumentString.isEmpty()) {
@@ -527,7 +559,7 @@ public abstract class Placeholders<T> {
         }
     }
 
-    private LocalValueStore createLocals(Guild guild, User user, DBNation nation) {
+    public LocalValueStore createLocals(Guild guild, User user, DBNation nation) {
         if (nation == null && user != null) {
             nation = DBNation.getByUser(user);
         }

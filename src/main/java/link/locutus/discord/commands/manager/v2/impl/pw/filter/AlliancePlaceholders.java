@@ -23,6 +23,7 @@ import net.dv8tion.jda.api.entities.Guild;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -30,6 +31,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class AlliancePlaceholders extends Placeholders<DBAlliance> {
     private final Map<String, AllianceInstanceAttribute> customMetrics = new HashMap<>();
@@ -120,7 +123,7 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
     }
 
     @Override
-    protected Set<DBAlliance> parse(ValueStore store, String input) {
+    protected Set<DBAlliance> parseSingleElem(ValueStore store, String input) {
         if (input.equalsIgnoreCase("*")) {
             return Locutus.imp().getNationDB().getAlliances();
         }
@@ -131,6 +134,27 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
                     (type, str) -> PWBindings.alliance(str));
         }
         return parseIds(guild, input, true);
+    }
+
+    @Override
+    protected Predicate<DBAlliance> parseSingleFilter(ValueStore store, String input) {
+        if (input.equalsIgnoreCase("*")) {
+            return f -> true;
+        }
+        Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
+        if (SpreadSheet.isSheet(input)) {
+            Set<Set<Integer>> setSet = SpreadSheet.parseSheet(input, List.of("alliance"), true,
+                    s -> s.equalsIgnoreCase("alliance") ? 0 : null,
+                    (type, str) -> DiscordUtil.parseAllianceIds(guild, str));
+
+            Set<Integer> ids = setSet.stream().flatMap(Collection::stream).collect(Collectors.toSet());
+            return f -> ids.contains(f.getId());
+        }
+        Set<Integer> aaIds = DiscordUtil.parseAllianceIds(guild, input);
+        if (aaIds == null) {
+            throw new IllegalArgumentException("Invalid alliances: " + input);
+        }
+        return f -> aaIds.contains(f.getId());
     }
 
     private Set<DBAlliance> parseIds(Guild guild, String input, boolean throwError) {
