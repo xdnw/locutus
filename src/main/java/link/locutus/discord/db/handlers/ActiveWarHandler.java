@@ -203,11 +203,14 @@ public class ActiveWarHandler {
     public void removeAllBlockades(int blockaderId, long date, Consumer<Event> eventConsumer) {
         List<Event> events = null;
         synchronized (blockadeLock) {
-            Map<Integer, Long> defenders = blockaderToDefender.remove(blockaderId);
-            if (defenders != null && !defenders.isEmpty()) {
-                for (Map.Entry<Integer, Long> entry : defenders.entrySet()) {
+            Map<Integer, Long> defenders2 = blockaderToDefender.get(blockaderId);
+            if (defenders2 != null && !defenders2.isEmpty()) {
+                Iterator<Map.Entry<Integer, Long>> iter = defenders2.entrySet().iterator();
+                while (iter.hasNext()) {
+                    Map.Entry<Integer, Long> entry = iter.next();
                     int defenderId = entry.getKey();
                     if (entry.getValue() <= date) {
+                        iter.remove();
                         Map<Integer, Long> existing = defenderToBlockader.get(defenderId);
                         if (existing != null) {
                             existing.remove(blockaderId);
@@ -219,6 +222,10 @@ public class ActiveWarHandler {
                                 }
                             }
                         }
+                    }
+                    if (defenders2.isEmpty()) {
+                        blockaderToDefender.remove(blockaderId);
+                        break;
                     }
                 }
             }
@@ -246,7 +253,7 @@ public class ActiveWarHandler {
         if (events != null) events.forEach(eventConsumer);
     }
 
-    public void removeBlockade(int attacker, int defender, long date, Consumer<Event> eventConsumer) {
+    public void removeBlockade(int defender, int attacker, long date, Consumer<Event> eventConsumer) {
         Event event = null;
         synchronized (blockadeLock) {
             // remove from both maps, only if the date >= existing date

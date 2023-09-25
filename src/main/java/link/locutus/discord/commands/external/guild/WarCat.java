@@ -49,7 +49,7 @@ public class WarCat extends Command {
         if (args.size() != 1) return usage(args.size(), 1, channel);
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        WarCategory warChannels = db.getWarChannel();
+        WarCategory warChannels = db.getWarChannel(true);
         if (warChannels == null) return "War channels are not enabled.";
 
         MessageChannel textChannel = channel instanceof DiscordChannelIO ? ((DiscordChannelIO) channel).getChannel() : null;

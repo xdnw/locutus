@@ -2174,24 +2174,24 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
 
             if (hasAlliance() || isWarServer) {
-                if (warChannel == null && !warChannelInit) {
-                    warChannelInit = true;
-                    boolean allowed = Boolean.TRUE.equals(enabled) || isWhitelisted() || isAllyOfRoot() || getPermission(WarCategory.class) > 0;
-                    if (allowed) {
-                        guild.getMembers();
-                        warChannel = new WarCategory(guild, "warcat");
+                if (warChannel == null) {
+                    if (warChannelInit && throwException && warCatError != null) {
+                        String message = "Locutus previous failed to create war channels: ";
+                        message += warCatError.getMessage() + "\n```" + StringMan.stacktraceToString(warCatError) + "```";
+                        message += "\nTry setting " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(this, true) + " and attempting this command again once the issue has been resolved.";
+                        warCatError = null;
+                        throw new IllegalArgumentException(message);
+                    }
+                    if (!warChannelInit || throwException) {
+                        warChannelInit = true;
+                        boolean allowed = Boolean.TRUE.equals(enabled) || isWhitelisted() || isAllyOfRoot() || getPermission(WarCategory.class) > 0;
+                        if (allowed) {
+                            guild.getMembers();
+                            warChannel = new WarCategory(guild, "warcat");
+                            warCatError = null;
 //                        warChannel.sync();
-                    } else if (warChannel == null) {
-                        if (throwException)  {
-                            if (warChannelInit) {
-                                String message = "Locutus previous failed to create war channels: ";
-                                if (warCatError != null) {
-                                    message += warCatError.getMessage() + "\n```" + StringMan.stacktraceToString(warCatError) + "```";
-                                }
-                                message += "\nTry setting " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(this, true) + " and attempting this command again once the issue has been resolved.";
-                                throw new IllegalArgumentException(message);
-                            }
-                            throw new IllegalArgumentException("This guild does not have permission to use war channels");
+                        } else {
+                            if (throwException) throw new IllegalArgumentException("War rooms are not enabled, see: " + CM.settings_war_room.ENABLE_WAR_ROOMS.cmd.toSlashMention());
                         }
                     }
                 }

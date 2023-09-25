@@ -240,7 +240,7 @@ public class PWBindings extends BindingHelper {
             String filterStr = split[0].trim();
 
             boolean containsNation = false;
-            for (String arg : filterStr.split(",")) {
+            for (String arg : StringMan.split(filterStr, ',')) {
                 if (!arg.startsWith("#")) containsNation = true;
                 if (arg.contains("tax_id=")) containsNation = true;
                 if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) containsNation = true;

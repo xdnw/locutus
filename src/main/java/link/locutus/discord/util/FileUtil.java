@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -300,15 +301,16 @@ public final class FileUtil {
                         check409Error(http);
                         try (InputStream is = http.getErrorStream()) {
                             if (is != null) {
-                                throw new IOException(e.getMessage() + ":\n" + IOUtils.toString(is, StandardCharsets.UTF_8));
+                                throw new IOException(StringMan.stripApiKey(e.getMessage()) + ":\n" + IOUtils.toString(is, StandardCharsets.UTF_8));
                             }
                         }
                         System.out.println("URL " + urlStr);
                         e.printStackTrace();
-                        throw new RuntimeException(e);
+                        throw new RuntimeException(StringMan.stripApiKey(e.getMessage()));
                     }
                 } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    e.printStackTrace();
+                    throw new RuntimeException(StringMan.stripApiKey(e.getMessage()));
                 }
             }
         };
@@ -334,6 +336,10 @@ public final class FileUtil {
                                 throw new RuntimeException(ex);
                             }
                             continue;
+                        }
+                        String stripped = StringMan.stripApiKey(e.getMessage());
+                        if (!Objects.equals(e.getMessage(), stripped)) {
+                            throw new RuntimeException(stripped);
                         }
                         throw e;
                     }

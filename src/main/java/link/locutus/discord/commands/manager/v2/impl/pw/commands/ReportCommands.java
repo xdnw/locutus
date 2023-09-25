@@ -791,7 +791,7 @@ public class ReportCommands {
                          ReportManager reportManager,
                          ReportManager.ReportType type,
                          @Arg("Description of report") @TextArea String message,
-                         @Default @Arg("Nation to report") DBNation nation,
+                         @Default @Arg("Nation to report") DBNation nation2,
                          @Default @Arg("Discord user to report") Long discord_user_id,
                          @Arg("Image evidence of report") @Switch("i") String imageEvidenceUrl,
                          @Arg("Link to relevant forum post") @Switch("p") String forum_post,
@@ -802,7 +802,48 @@ public class ReportCommands {
         if (ban != null) {
             return "You were banned from reporting on " + DiscordUtil.timestamp(ban.getValue(), null) + " for `" + ban.getKey() + "`";
         }
-        if (nation == null && discord_user_id == null) {
+
+        Integer nationId = nation2 == null ? null : nation2.getId();
+        int reporterNationId = me.getId();
+        long reporterUserId = author.getIdLong();
+        long reporterGuildId = db.getIdLong();
+        int reporterAlliance = me.getAlliance_id();
+
+        ReportManager.Report existing = null;
+        if (updateReport != null) {
+            existing = updateReport;
+            if (!existing.hasPermission(me, author, db)) {
+                return "You do not have permission to edit this report: `#" + updateReport.reportId +
+                        "` (owned by nation:" + PnwUtil.getName(existing.reporterNationId, false) + ")\n" +
+                        "To add a comment: " + CM.report.comment.add.cmd.toSlashMention();
+            }
+            // set the missing fields to the values from this report
+            if (nationId == null) {
+                nationId = existing.reporterNationId;
+            }
+            if (discord_user_id == null) {
+                discord_user_id = existing.reporterDiscordId;
+            }
+            if (type == null) {
+                type = existing.type;
+            }
+            if (message == null) {
+                message = existing.message;
+            }
+            if (forum_post == null) {
+                forum_post = existing.forumUrl;
+            }
+            if (news_post == null) {
+                news_post = existing.newsUrl;
+            }
+            // Keep reporter info if updating
+            reporterNationId = existing.reporterNationId;
+            reporterUserId = existing.reporterDiscordId;
+            reporterGuildId = existing.reporterGuildId;
+            reporterAlliance = existing.reporterAllianceId;
+        }
+
+        if (nationId == null && discord_user_id == null) {
             // say must provide one of either
             // post link for how to get discord id <url>
             return """
@@ -834,6 +875,7 @@ public class ReportCommands {
         if (news_post != null) {
             // https://discord.com/channels/SERVER_ID/992205932006228041/1073856622545346641
             // remove the https://discord.com/channels/ part
+            news_post = news_post.replace("ptb.", "");
             String[] idsStr = news_post.substring("https://discord.com/channels/".length()).split("/");
             if (idsStr.length != 3) {
                 return "News post must be discord message link in the format `https://discord.com/channels/SERVER_ID/CHANNEL_ID/MESSAGE_ID`\n" + Messages.FORUM_NEWS_ERROR;
@@ -848,68 +890,28 @@ public class ReportCommands {
             }
     }
 
-        if (discord_user_id != null && nation != null) {
-            PNWUser nationUser = Locutus.imp().getDiscordDB().getUserFromNationId(nation.getId());
+        if (discord_user_id != null && nationId != null) {
+            PNWUser nationUser = Locutus.imp().getDiscordDB().getUserFromNationId(nationId);
             DBNation userNation = DiscordUtil.getNation(discord_user_id);
             if (nationUser != null && nationUser.getDiscordId() != discord_user_id) {
                 throw new IllegalArgumentException("The nation you provided is already linked to a different discord user `" + DiscordUtil.getUserName(nationUser.getDiscordId()) + "`.\n" +
                         "Please create a separate report for this discord user.");
             }
-            if (userNation != null && userNation.getId() != nation.getId()) {
+            if (userNation != null && userNation.getId() != nationId) {
                 throw new IllegalArgumentException("The discord user you provided is already linked to a different nation `" + userNation.getName() + "`.\n" +
                         "Please create a separate report for this nation.");
             }
         }
 
         if (discord_user_id == null) {
-            PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(nation.getId());
+            PNWUser user = Locutus.imp().getDiscordDB().getUserFromNationId(nationId);
             if (user != null) {
                 discord_user_id = user.getDiscordId();
             }
         }
-        if (nation == null) {
-            nation = DiscordUtil.getNation(discord_user_id);
-        }
-
-        Integer nationId = nation == null ? null : nation.getId();
-
-        int reporterNationId = me.getId();
-        long reporterUserId = author.getIdLong();
-        long reporterGuildId = db.getIdLong();
-        int reporterAlliance = me.getAlliance_id();
-
-        ReportManager.Report existing = null;
-        if (updateReport != null) {
-            existing = updateReport;
-            if (existing.hasPermission(me, author, db)) {
-                return "You do not have permission to edit this report: `#" + updateReport.reportId +
-                        "` (owned by nation:" + PnwUtil.getName(existing.reporterNationId, false) + ")\n" +
-                        "To add a comment: " + CM.report.comment.add.cmd.toSlashMention();
-            }
-            // set the missing fields to the values from this report
-            if (nationId == null) {
-                nationId = existing.reporterNationId;
-            }
-            if (discord_user_id == null) {
-                discord_user_id = existing.reporterDiscordId;
-            }
-            if (type == null) {
-                type = existing.type;
-            }
-            if (message == null) {
-                message = existing.message;
-            }
-            if (forum_post == null) {
-                forum_post = existing.forumUrl;
-            }
-            if (news_post == null) {
-                news_post = existing.newsUrl;
-            }
-            // Keep reporter info if updating
-            reporterNationId = existing.reporterNationId;
-            reporterUserId = existing.reporterDiscordId;
-            reporterGuildId = existing.reporterGuildId;
-            reporterAlliance = existing.reporterAllianceId;
+        if (nationId == null) {
+            DBNation nation = DiscordUtil.getNation(discord_user_id);
+            nationId = nation != null ? nation.getId() : null;
         }
 
         if (!force) {

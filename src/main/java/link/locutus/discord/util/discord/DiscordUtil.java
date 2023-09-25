@@ -897,11 +897,10 @@ public class DiscordUtil {
 
     public static CompletableFuture<Message> sendMessage(InteractionHook hook, String message) {
         if (message.length() > 20000) {
-            if (message.length() < 200000) {
+            if (message.length() < 2000000) {
                 return RateLimitUtil.queue(hook.sendFiles(FileUpload.fromData(message.getBytes(StandardCharsets.ISO_8859_1), "message.txt")));
             }
             new Exception().printStackTrace();
-            System.out.println(message);
             throw new IllegalArgumentException("Cannot send message of this length: " + message.length());
         }
         if (message.contains("@everyone")) {
@@ -1005,7 +1004,7 @@ public class DiscordUtil {
         if (aa.equalsIgnoreCase("*")) return new HashSet<>(Locutus.imp().getNationDB().getNations().values());
         Set<DBNation> orNations = null;
 
-        for (String andGroup : aa.split("\\|\\|")) {
+        for (String andGroup : aa.split("\\|{1,2}")) {
             Set<DBNation> nations = new LinkedHashSet<>();
             List<String> filters = new ArrayList<>();
             for (String name : andGroup.split(",")) {

@@ -55,15 +55,20 @@ public class RegisterCommand extends Command {
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
         if (args.size() >= 2) {
             User mention = DiscordUtil.getMention(args.get(0));
+            int index = 1;
             if (mention == null) {
-                return "To manually register, use " + Settings.commandPrefix(true) + "register @mention <nation-link>.";
+                mention = author;
+                index = 0;
+//                return "To manually register, use " + Settings.commandPrefix(true) + "register @mention <nation-link>.";
             }
-            Integer nationId = DiscordUtil.parseNationId(args.get(1));
+            // join args 1 -> end
+            String nationLink = String.join(" ", args.subList(index, args.size()));
+            Integer nationId = DiscordUtil.parseNationId(nationLink);
             if (nationId == null) {
-                return "Invalid nation: ``" + args.get(1) + "`" + "`";
+                return "Invalid nation: ``" + nationLink + "`" + "`";
             }
 
-            if (!Roles.ADMIN.hasOnRoot(user)) {
+            if (!Roles.ADMIN.hasOnRoot(user) && mention.getIdLong() != author.getIdLong()) {
                 if (!Settings.INSTANCE.DISCORD.REGISTER_ANYONE.contains(author.getIdLong())) {
 
                     if (!Settings.INSTANCE.DISCORD.REGISTER_APPLICANTS.contains(author.getIdLong())) {

@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.MathMan;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.io.PageRequestQueue;
 import link.locutus.discord.util.math.ArrayUtil;
 import org.springframework.http.HttpHeaders;
@@ -19,6 +20,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -63,6 +65,16 @@ public class RequestTracker {
         runWithRetryAfter(task, 0);
     }
 
+    private Throwable strip(Throwable e) {
+        if (e.getMessage() != null) {
+            String stripped = StringMan.stripApiKey(e.getMessage());
+            if (!Objects.equals(e.getMessage(), stripped)) {
+                return new RuntimeException(stripped);
+            }
+        }
+        return e;
+    }
+
     private void runWithRetryAfter(final PageRequestQueue.PageRequestTask task, int depth) {
         long now = System.currentTimeMillis();
         long retryMs = getRetryAfter(task.getUrl());
@@ -91,14 +103,14 @@ public class RequestTracker {
             return;
         } catch (FileUtil.TooManyRequests e) {
             if (depth > 3) {
-                task.completeExceptionally(e);
+                task.completeExceptionally(strip(e));
                 return;
             }
             isRateLimited = true;
             retryAfter = e.getRetryAfter();
         } catch (HttpClientErrorException.TooManyRequests e) {
             if (depth > 3) {
-                task.completeExceptionally(e);
+                task.completeExceptionally(strip(e));
                 return;
             }
             isRateLimited = true;
@@ -111,7 +123,7 @@ public class RequestTracker {
             }
         } catch (Throwable e) {
             System.out.println("Error " + e.getMessage() + " on " + task.getUrl());
-            task.completeExceptionally(e);
+            task.completeExceptionally(strip(e));
             throw e;
         }
         if (isRateLimited) {
@@ -156,7 +168,7 @@ public class RequestTracker {
                     runWithRetryAfter(task, depth + 1);
                 }
             } catch (Throwable e) {
-                task.completeExceptionally(e);
+                task.completeExceptionally(strip(e));
                 throw e;
             }
         }

@@ -488,6 +488,8 @@ public class WarUpdateProcessor {
     }
 
     public static Map.Entry<AttackTypeSubCategory, String> checkViolation(AbstractCursor root, GuildDB db) {
+        if (root.getWar() == null) return null;
+
         Set<Integer> enemies = db != null ? db.getCoalition("enemies") : new HashSet<>();
 
         DBNation attacker = Locutus.imp().getNationDB().getNation(root.getAttacker_id());

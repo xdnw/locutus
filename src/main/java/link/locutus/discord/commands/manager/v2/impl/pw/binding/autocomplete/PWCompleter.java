@@ -162,7 +162,7 @@ public class PWCompleter extends BindingHelper {
             options.removeIf(f -> !f.hasPermission(me, author, db));
         }
 
-        options = StringMan.getClosest(input, options, f -> "#" + f.reportId + " " + f.getTitle(), OptionData.MAX_CHOICES, true, true);
+        options = StringMan.getClosest(input, options, f -> "#" + f.reportId + " " + f.getTitle(), OptionData.MAX_CHOICES, true, false);
 
         return options.stream().map(f -> Map.entry("#" + f.reportId + " " + f.getTitle(), f.reportId + "")).collect(Collectors.toList());
     }
@@ -172,7 +172,7 @@ public class PWCompleter extends BindingHelper {
     @Binding(types={DBLoan.class})
     public List<Map.Entry<String, String>> loan(LoanManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input) {
         List<DBLoan> options = manager.getLoansByGuildDB(db);
-        options = StringMan.getClosest(input, options, f -> f.getLineString(true, false), OptionData.MAX_CHOICES, true, true);
+        options = StringMan.getClosest(input, options, f -> f.getLineString(true, false), OptionData.MAX_CHOICES, true, false);
         return options.stream().map(f -> Map.entry(f.getLineString(true, false), f.loanId + "")).collect(Collectors.toList());
     }
 

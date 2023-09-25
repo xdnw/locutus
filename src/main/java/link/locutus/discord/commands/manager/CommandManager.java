@@ -392,7 +392,7 @@ public class CommandManager {
             } else {
                 assert member != null;
                 if (!member.getRoles().contains(registeredRole)) {
-                    channel.sendMessage("Please use " + CM.register.cmd.toSlashMention() + " to get masked with the role: " + registeredRole.getName());
+                    channel.sendMessage("Please use " + CM.register.cmd.toSlashMention() + " to get masked with the role: `" + registeredRole.getName() + "`");
                     return true;
                 }
             }

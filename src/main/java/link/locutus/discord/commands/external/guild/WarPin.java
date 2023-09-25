@@ -39,7 +39,7 @@ public class WarPin extends Command {
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        WarCategory warChannels = db.getWarChannel();
+        WarCategory warChannels = db.getWarChannel(true);
         if (warChannels == null) return "War channels are not enabled.";
 
         MessageChannel textChannel = channel instanceof DiscordChannelIO ? ((DiscordChannelIO) channel).getChannel() : null;
