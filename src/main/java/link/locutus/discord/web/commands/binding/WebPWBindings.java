@@ -36,9 +36,13 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.ReportManager;
 import link.locutus.discord.db.entities.*;
+import link.locutus.discord.db.entities.grant.AGrantTemplate;
+import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.gpt.imps.ProviderType;
+import link.locutus.discord.gpt.pw.GPTProvider;
+import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
@@ -92,6 +96,37 @@ public class WebPWBindings extends WebBindingHelper {
     public String loan(ParameterData param, LoanManager manager, @Me DBNation me, @Me User author, @Me GuildDB db) {
         List<DBLoan> options = manager.getLoansByGuildDB(db);
         return multipleSelect(param, options, f -> Map.entry(f.getLineString(true, false), f.loanId + ""));
+    }
+
+    @HtmlInput
+    @Binding(types = AGrantTemplate.class)
+    public String AGrantTemplate(ParameterData param, GrantTemplateManager manager, @Me DBNation me, @Me User author, @Me GuildDB db) {
+        Set<AGrantTemplate> options = manager.getTemplates();
+        return multipleSelect(param, options, f -> Map.entry(f.getType() + "/" + f.getName(), f.getName()));
+    }
+
+    @HtmlInput
+    @Binding(types = GPTProvider.class)
+    public String GPTProvider(ParameterData param, PWGPTHandler handler, @Me DBNation me, @Me User author, @Me GuildDB db) {
+        Set<GPTProvider> options = handler.getProviderManager().getProviders(db);
+        return multipleSelect(param, options, f -> Map.entry(f.getId(), f.getId()));
+    }
+
+    @HtmlInput
+    @Binding(types = EmbeddingSource.class)
+    public String EmbeddingSource(ParameterData param, PWGPTHandler handler, @Me Guild guild) {
+        return EmbeddingSources(param, handler, guild, false);
+    }
+
+    @HtmlInput
+    @Binding(types = {Set.class, EmbeddingSource.class}, multiple = true)
+    public String EmbeddingSources(ParameterData param, PWGPTHandler handler, @Me Guild guild) {
+        return EmbeddingSources(param, handler, guild, true);
+    }
+
+    public String EmbeddingSources(ParameterData param, PWGPTHandler handler, @Me Guild guild, boolean multiple) {
+        Set<EmbeddingSource> sources = handler.getSources(guild, true);
+        return multipleSelect(param, sources, f -> Map.entry(f.getQualifiedName(), f.source_id + ""), multiple);
     }
 
     @HtmlInput

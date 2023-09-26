@@ -7,10 +7,14 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NationAttributeCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
+import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
@@ -28,16 +32,37 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public class DiscordWebBindings extends WebBindingHelper {
+
+    @HtmlInput
+    @Binding(types = ICommand.class)
+    public String iCommand(@Me User user, @Default ParameterData param) {
+        return command(user, param);
+    }
+
+    @HtmlInput
+    @NationAttributeCallable
+    @Binding(types={ParametricCallable.class})
+    public String NationPlaceholderCommand(NationPlaceholders placeholders, @Default ParameterData param) {
+        List<CommandCallable> options = placeholders.getParametricCallables()
+                .stream().collect(Collectors.toList());
+        return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
+            names.add(obj.getFullPath());
+            subtext.add(obj.simpleDesc().split("\n")[0]);
+        });
+    }
+
 
     @HtmlInput
     @Binding(types = CommandCallable.class)

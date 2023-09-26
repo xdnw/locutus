@@ -11,6 +11,7 @@ import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.gpt.pw.GPTProvider;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.gpt.imps.ProviderType;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.entities.Guild;
@@ -28,9 +29,10 @@ public class GPTBindings extends BindingHelper {
 
     @Binding(value = "The name of an data set")
     public EmbeddingSource EmbeddingSource(PWGPTHandler handler, @Me Guild guild, String input) {
+        Long id = MathMan.isInteger(input) ? Long.parseLong(input) : null;
         Set<EmbeddingSource> sources = handler.getSources(guild, true);
         for (EmbeddingSource source : sources) {
-            if (source.source_name.equalsIgnoreCase(input)) {
+            if (source.source_name.equalsIgnoreCase(input) || (id != null && source.source_id == id)) {
                 return source;
             }
         }
@@ -41,9 +43,10 @@ public class GPTBindings extends BindingHelper {
     @Binding(value = "A comma separated list of data sets")
     public Set<EmbeddingSource> EmbeddingSources(PWGPTHandler handler, @Me Guild guild, String input) {
         Set<String> sourcesStr = StringMan.split(input, ',').stream().map(String::toLowerCase).collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<Long> sourceIds = sourcesStr.stream().filter(f -> MathMan.isInteger(f)).map(Long::parseLong).collect(Collectors.toCollection(LinkedHashSet::new));
         Set<EmbeddingSource> sources = new LinkedHashSet<>();
         for (EmbeddingSource source : sources) {
-            if (sourcesStr.contains(source.source_name.toLowerCase())) {
+            if (sourceIds.contains((long) source.source_id) || sourcesStr.contains(source.source_name.toLowerCase())) {
                 sources.add(source);
             } else {
                 throw new IllegalArgumentException("No source found with name " + source.source_name + "\nOptions: " + sourcesStr);
