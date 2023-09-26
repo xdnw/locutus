@@ -1,8 +1,11 @@
 package link.locutus.discord.web.commands.binding;
 
 import com.google.gson.reflect.TypeToken;
+import com.knuddels.jtokkit.api.ModelType;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.*;
+import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.FunctionProviderParser;
@@ -11,6 +14,7 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.AllianceDepositLimit;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
+import link.locutus.discord.commands.manager.v2.binding.annotation.ReportPerms;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.NationDepositLimit;
@@ -23,6 +27,8 @@ import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete.PWCompleter;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.ReportCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -32,7 +38,9 @@ import link.locutus.discord.db.ReportManager;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.gpt.imps.ProviderType;
 import link.locutus.discord.pnw.AllianceList;
+import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -79,7 +87,56 @@ public class WebPWBindings extends WebBindingHelper {
     --------------------------------------------------------------------
      */
 
+    @HtmlInput
+    @Binding(types = DBLoan.class)
+    public String loan(ParameterData param, LoanManager manager, @Me DBNation me, @Me User author, @Me GuildDB db) {
+        List<DBLoan> options = manager.getLoansByGuildDB(db);
+        return multipleSelect(param, options, f -> Map.entry(f.getLineString(true, false), f.loanId + ""));
+    }
 
+    @HtmlInput
+    @Binding(types = Building.class)
+    public String Building(ParameterData param, @Me DBNation me, @Me User author, @Me GuildDB db) {
+        return Buildings(param, me, author, db, false);
+    }
+
+    @HtmlInput
+    @Binding(types = {Set.class, Building.class}, multiple = true)
+    public String Buildings(ParameterData param, @Me DBNation me, @Me User author, @Me GuildDB db) {
+        return Buildings(param, me, author, db, true);
+    }
+
+    public String Buildings(ParameterData param, @Me DBNation me, @Me User author, @Me GuildDB db, boolean multiple) {
+        List<Building> options = Arrays.asList(Buildings.values());
+        return multipleSelect(param, options, f -> Map.entry(f.name(), f.name()), multiple);
+    }
+
+    @HtmlInput
+    @Binding(types = EnemyAlertChannelMode.class)
+    public String EnemyAlertChannelMode(ParameterData param, @Me DBNation me, @Me User author, @Me GuildDB db) {
+        return multipleSelect(param, Arrays.asList(EnemyAlertChannelMode.values()), f -> Map.entry(f.name(), f.name()));
+    }
+
+    @HtmlInput
+    @ReportPerms
+    @Binding(types = ReportManager.Report.class)
+    public String reportsPerm(ParameterData param, ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db) {
+        return reportsImp(param, manager, me, author, db, true);
+    }
+
+    @HtmlInput
+    @Binding(types = ReportManager.Report.class)
+    public String reports(ParameterData param, ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db) {
+        return reportsImp(param, manager, me, author, db, false);
+    }
+
+    public String reportsImp(ParameterData param, ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, boolean checkPerms) {
+        List<ReportManager.Report> options = manager.loadReports(null);
+        if (checkPerms) {
+            options.removeIf(f -> !f.hasPermission(me, author, db));
+        }
+        return multipleSelect(param, options, f -> Map.entry("#" + f.reportId + " " + f.getTitle(), f.reportId + ""));
+    }
 
     @HtmlInput
     @Binding(types = NationAttributeDouble.class)
@@ -660,6 +717,69 @@ public class WebPWBindings extends WebBindingHelper {
     }
 
     @HtmlInput
+    @Binding(types= EscrowMode.class)
+    public String EscrowMode(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(EscrowMode.values()), type -> new AbstractMap.SimpleEntry<>(type.name(), type.name()));
+    }
+
+    @HtmlInput
+    @Binding(types= WarPolicy.class)
+    public String WarPolicy(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(WarPolicy.values()), type -> new AbstractMap.SimpleEntry<>(type.name(), type.name()));
+    }
+
+    @HtmlInput
+    @Binding(types= BeigeReason.class)
+    public String BeigeReason(ParameterData param) {
+        return BeigeReasons(param, false);
+    }
+
+    @HtmlInput
+    @Binding(types= {Set.class, BeigeReason.class}, multiple = true)
+    public String BeigeReasons(ParameterData param) {
+        return BeigeReasons(param, true);
+    }
+    public String BeigeReasons(ParameterData param, boolean multiple) {
+        return multipleSelect(param, Arrays.asList(BeigeReason.values()), type -> new AbstractMap.SimpleEntry<>(type.name() + " - " + type.getDescription(), type.name()), multiple);
+    }
+
+    @HtmlInput
+    @Binding(types= GuildDB.AutoRoleOption.class)
+    public String AutoRoleOption(ParameterData param) {
+        return AutoRoleOptions(param, false);
+    }
+
+    @HtmlInput
+    @Binding(types= {Set.class, GuildDB.AutoRoleOption.class}, multiple = true)
+    public String AutoRoleOptions(ParameterData param) {
+        return AutoRoleOptions(param, true);
+    }
+    public String AutoRoleOptions(ParameterData param, boolean multiple) {
+        return multipleSelect(param, Arrays.asList(GuildDB.AutoRoleOption.values()), type -> new AbstractMap.SimpleEntry<>(type.name() + " - " + type.getDescription(), type.name()), multiple);
+    }
+
+    @HtmlInput
+    @Binding(types= DBLoan.Status.class)
+    public String LoanStatus(ParameterData param) {
+        return LoanStatuses(param, false);
+    }
+
+    @HtmlInput
+    @Binding(types= {Set.class, DBLoan.Status.class}, multiple = true)
+    public String LoanStatuses(ParameterData param) {
+        return LoanStatuses(param, true);
+    }
+    public String LoanStatuses(ParameterData param, boolean multiple) {
+        return multipleSelect(param, Arrays.asList(DBLoan.Status.values()), type -> new AbstractMap.SimpleEntry<>(type.name(), type.name()), multiple);
+    }
+
+    @HtmlInput
+    @Binding(types= IACheckup.AuditType.class)
+    public String AuditType(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(IACheckup.AuditType.values()), type -> new AbstractMap.SimpleEntry<>(type.name() + " | " + type.emoji + " | " + type.severity.name(), type.name()));
+    }
+
+    @HtmlInput
     @Binding(types= AttackType.class)
     public String AttackType(ParameterData param) {
         return multipleSelect(param, Arrays.asList(AttackType.values()), type -> new AbstractMap.SimpleEntry<>(type.name(), type.name()));
@@ -680,8 +800,35 @@ public class WebPWBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types=AlliancePermission.class)
     public String AlliancePermission(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(AlliancePermission.values()), f -> new AbstractMap.SimpleEntry<>(f.name(), f.name()));
+        return AlliancePermissions(param, false);
     }
+
+    @HtmlInput
+    @Binding(types={Set.class, AlliancePermission.class}, multiple = true)
+    public String AlliancePermissions(ParameterData param) {
+        return AlliancePermissions(param, true);
+    }
+
+    public String AlliancePermissions(ParameterData param, boolean multiple) {
+        return multipleSelect(param, Arrays.asList(AlliancePermission.values()), f -> new AbstractMap.SimpleEntry<>(f.name(), f.name()), multiple);
+    }
+
+    @HtmlInput
+    @Binding(types= ProviderType.class)
+    public String ProviderType(ParameterData param) {
+        return ProviderTypes(param, false);
+    }
+
+    @HtmlInput
+    @Binding(types={Set.class, ProviderType.class}, multiple = true)
+    public String ProviderTypes(ParameterData param) {
+        return ProviderTypes(param, true);
+    }
+
+    public String ProviderTypes(ParameterData param, boolean multiple) {
+        return multipleSelect(param, Arrays.asList(ProviderType.values()), f -> new AbstractMap.SimpleEntry<>(f.name(), f.name()), multiple);
+    }
+
 
     @HtmlInput
     @Binding(types=DBAlliancePosition.class)
@@ -698,6 +845,13 @@ public class WebPWBindings extends WebBindingHelper {
     public String permission(ParameterData param) {
         return multipleSelect(param, Arrays.asList(Permission.values()), f -> new AbstractMap.SimpleEntry<>(f.name(), f.name()));
     }
+
+    @HtmlInput
+    @Binding(types= ModelType.class)
+    public String ModelType(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(ModelType.values()), f -> new AbstractMap.SimpleEntry<>(f.name(), f.name()));
+    }
+
 
     @HtmlInput
     @Binding(types= UnsortedCommands.ClearRolesEnum.class)
@@ -750,13 +904,28 @@ public class WebPWBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types= MilitaryUnit.class)
     public String unit(ParameterData param) {
-        return multipleSelect(param, Arrays.asList(MilitaryUnit.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()));
+        return units(param, false);
+    }
+
+    @HtmlInput
+    @Binding(types= {Set.class, MilitaryUnit.class}, multiple = true)
+    public String units(ParameterData param) {
+        return units(param, true);
+    }
+    public String units(ParameterData param, boolean multiple) {
+        return multipleSelect(param, Arrays.asList(MilitaryUnit.values()), arg -> new AbstractMap.SimpleEntry<>(arg.name(), arg.name()), multiple);
     }
 
     @HtmlInput
     @Binding(types= Operation.class)
     public String operation(ParameterData param) {
         return multipleSelect(param, Arrays.asList(Operation.values()), op -> new AbstractMap.SimpleEntry<>(op.name(), op.name()));
+    }
+
+    @HtmlInput
+    @Binding(types= GuildDB.AutoNickOption.class)
+    public String AutoNickOption(ParameterData param) {
+        return multipleSelect(param, Arrays.asList(GuildDB.AutoNickOption.values()), op -> new AbstractMap.SimpleEntry<>(op.name(), op.name()));
     }
 
     @HtmlInput
@@ -807,6 +976,16 @@ public class WebPWBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types= Roles.class)
     public String role(@Me GuildDB db, @Me Guild guild, ParameterData param) {
+        return roles(db, guild, param, false);
+    }
+
+    @HtmlInput
+    @Binding(types= {Set.class, Roles.class}, multiple = true)
+    public String roles(@Me GuildDB db, @Me Guild guild, ParameterData param) {
+        return roles(db, guild, param, true);
+    }
+
+    public String roles(@Me GuildDB db, @Me Guild guild, ParameterData param, boolean multiple) {
         List<Roles> options = Arrays.asList(Roles.values);
         if (param.getAnnotation(RegisteredRole.class) != null) {
             options = new ArrayList<>(options);
@@ -828,7 +1007,7 @@ public class WebPWBindings extends WebBindingHelper {
                 sub += "@" + discordRole.getName();
             }
             subtext.add(sub);
-        });
+        }, multiple);
     }
 
     @HtmlInput

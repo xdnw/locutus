@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -52,6 +53,7 @@ public class DepositsSheet extends Command {
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         GuildDB db = Locutus.imp().getGuildDB(guild);
+        String noteFlow = DiscordUtil.parseArg(args, "flow");
 
         Set<Long> tracked = null;
 
@@ -82,6 +84,7 @@ public class DepositsSheet extends Command {
                 flags.contains('d'),
                 flags.contains('p') ? db.getAllianceIds() : null,
                 flags.contains('e'),
+                noteFlow == null ? null : PWBindings.DepositType(noteFlow),
                 flags.contains('f')
         );
 //

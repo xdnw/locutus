@@ -1182,7 +1182,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "Bank transaction flow type (internal, withdrawal, depost)")
-    public FlowType FlowType(String input) {
+    public static FlowType FlowType(String input) {
         return emum(FlowType.class, input);
     }
 

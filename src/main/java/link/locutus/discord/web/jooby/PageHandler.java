@@ -6,6 +6,7 @@ import io.javalin.http.RedirectResponse;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
+import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -125,6 +126,32 @@ public class PageHandler implements Handler {
         this.commands.registerCommands(new TestPages());
 
         this.commands.registerCommands(this);
+
+        Map<Key, Parser> parsers = Locutus.imp().getCommandManager().getV2().getStore().getParsers();
+
+        List<Key> missingKeys = new ArrayList<>();
+
+        for (Map.Entry<Key, Parser> entry : parsers.entrySet()) {
+            Parser parser = entry.getValue();
+            if (!parser.isConsumer(Locutus.cmd().getV2().getStore())) continue;
+
+            Key htmlKey = parser.getKey().append(HtmlInput.class);
+            try {
+                Parser htmlParser = store.get(htmlKey);
+                if (htmlParser == null) {
+                    missingKeys.add(htmlKey);
+                }
+            } catch (Exception e) {
+                missingKeys.add(htmlKey);
+            }
+        }
+        // print missing
+        if (!missingKeys.isEmpty()) {
+            for (Key missingKey : missingKeys) {
+                System.out.println("Missing: " + missingKey);
+            }
+        }
+
     }
 
     public CommandGroup getCommands() {

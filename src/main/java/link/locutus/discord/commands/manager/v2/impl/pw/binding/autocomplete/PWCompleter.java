@@ -149,23 +149,23 @@ public class PWCompleter extends BindingHelper {
     @ReportPerms
     @Binding(types={ReportManager.Report.class})
     public List<Map.Entry<String, String>> reports(ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input) {
-        return reports(manager, me, author, db, input, true);
+        return reports(manager, me, author, db, input, true, OptionData.MAX_CHOICES);
     }
 
 
     @Autocomplete
     @Binding(types={ReportManager.Report.class})
     public List<Map.Entry<String, String>> reportsAll(ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input) {
-        return reports(manager, me, author, db, input, false);
+        return reports(manager, me, author, db, input, false, OptionData.MAX_CHOICES);
     }
 
-    public List<Map.Entry<String, String>> reports(ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input, boolean checkPerms) {
+    public static List<Map.Entry<String, String>> reports(ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input, boolean checkPerms, int maxChoices) {
         List<ReportManager.Report> options = manager.loadReports(null);
         if (checkPerms) {
             options.removeIf(f -> !f.hasPermission(me, author, db));
         }
 
-        options = StringMan.getClosest(input, options, f -> "#" + f.reportId + " " + f.getTitle(), OptionData.MAX_CHOICES, true, true);
+        options = StringMan.getClosest(input, options, f -> "#" + f.reportId + " " + f.getTitle(), maxChoices, true, true);
 
         return options.stream().map(f -> Map.entry("#" + f.reportId + " " + f.getTitle(), f.reportId + "")).collect(Collectors.toList());
     }

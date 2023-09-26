@@ -2464,6 +2464,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         public String toString() {
             return name() + ": `" + description + "`";
         }
+
+        public String getDescription() {
+            return description;
+        }
     }
 
     public Function<DBNation, Boolean> getCanRaid() {

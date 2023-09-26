@@ -231,36 +231,12 @@ public class IndexPages extends PageHelper {
     }
 
     @Command()
-    public Object register(Context context, @Default @Me AuthBindings.Auth auth, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) throws IOException {
-        // if user is null, redirect to discord login
-        // if nation is null, redirect to login page
-        if (auth != null) {
-            User authUser = auth.getUser();
-            DBNation authNation = auth.getNation();
-            if (authUser != null && authNation != null) {
-
-            }
-        }
-
+    public Object register(Context context, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) throws IOException {
         if (user == null) {
             return PageHelper.redirect(context, AuthBindings.getDiscordAuthUrl());
         }
-        if (nation == null) {
-            // todo fix this
-            return PageHelper.redirect(context, WebRoot.REDIRECT + "/page/login");
-        }
+        AuthBindings.Auth auth = AuthBindings.getAuth(context, true, true, true);
         return "You are already registered";
-//        PNWUser existingUser = Locutus.imp().getDiscordDB().getUser(user);
-//        PNWUser existingNation = Locutus.imp().getDiscordDB().getUserFromNationId(nation.getNation_id());
-//
-//
-//
-//        AuthBindings.setRedirect(context);
-//
-//        String discordAuthUrl = AuthBindings.getDiscordAuthUrl();
-//        String mailAuthUrl = WebRoot.REDIRECT + "/page/login";
-//
-//        return rocker.auth.picker.template(discordAuthUrl, mailAuthUrl).render().toString();
     }
 
     @Command()
@@ -271,9 +247,7 @@ public class IndexPages extends PageHelper {
         AuthBindings.Auth auth = AuthBindings.getAuth(context, true, requireNation, requireUser);
         if (auth != null) {
             // return and redirect
-            System.out.println("AUTH BINDING 2");
             String url = AuthBindings.getRedirect(context);
-            System.out.println(":||Remove login URL " + url);
             return PageHelper.redirect(context, url);
         } else {
             // You are already logged in as
