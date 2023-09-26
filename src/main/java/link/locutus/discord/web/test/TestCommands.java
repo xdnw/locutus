@@ -127,20 +127,20 @@ public class TestCommands {
 
         switch (flowType) {
             case INTERNAL -> {
-                tasks.add(() -> db.addBalance(date, nation, me.getId(), fromStr, amtNeg));
-                tasks.add(() -> db.addBalance(date, nation, me.getId(), toStr, amtPos));
+                tasks.add(() -> db.addBalance(date, nation, me.getId(), fromStr, amtPos));
+                tasks.add(() -> db.addBalance(date, nation, me.getId(), toStr, amtNeg));
                 messages.add(flowType + " transfer " + ResourceType.toString(amtNeg) + " note: `" + fromStr + "`");
                 messages.add(flowType + " transfer " + ResourceType.toString(amtPos) + " note: `" + toStr + "`");
             }
             case WITHDRAWAL -> {
-                tasks.add(() -> db.addTransfer(date, fromId, fromType, nation, me.getId(), fromStr, amtNeg));
-                tasks.add(() -> db.addTransfer(date, fromId, fromType, nation, me.getId(), toStr, amtPos));
+                tasks.add(() -> db.addTransfer(date, fromId, fromType, nation, me.getId(), fromStr, amtPos));
+                tasks.add(() -> db.addTransfer(date, fromId, fromType, nation, me.getId(), toStr, amtNeg));
                 messages.add(flowType + " transfer " + ResourceType.toString(amtNeg) + " note: `" + fromStr + "` sender: " + fromUrl);
                 messages.add(flowType + " transfer " + ResourceType.toString(amtPos) + " note: `" + toStr + "` sender: " + fromUrl);
             }
             case DEPOSIT -> {
-                tasks.add(() -> db.addTransfer(date, nation, fromId, fromType, me.getId(), fromStr, amtNeg));
-                tasks.add(() -> db.addTransfer(date, nation, fromId, fromType, me.getId(), toStr, amtPos));
+                tasks.add(() -> db.addTransfer(date, nation, fromId, fromType, me.getId(), fromStr, amtPos));
+                tasks.add(() -> db.addTransfer(date, nation, fromId, fromType, me.getId(), toStr, amtNeg));
                 messages.add(flowType + " transfer " + ResourceType.toString(amtNeg) + " note: `" + fromStr + "` receiver: " + fromUrl);
                 messages.add(flowType + " transfer " + ResourceType.toString(amtPos) + " note: `" + toStr + "` receiver: " + fromUrl);
             }
@@ -166,40 +166,16 @@ public class TestCommands {
 
     @Command(desc = "Check the flow for a specific transaction note, showing the net by internal addbalance, withdrawals, and deposits")
     @RolePermission(value = Roles.ECON_STAFF)
-    public String viewFlow(@Me GuildDB db, DBNation nation, DepositType type) {
-        String note = "#" + type.name().toLowerCase(Locale.ROOT);
+    public String viewFlow(@Me GuildDB db, DBNation nation, DepositType note) {
+        String noteStr = "#" + note.name().toLowerCase(Locale.ROOT);
         // public List<Map.Entry<Integer, Transaction2>> getTransactions(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean priority) {
         List<Map.Entry<Integer, Transaction2>> transfers = nation.getTransactions(db, null, false, true, 0, 0, true);
-        transfers.removeIf(f -> !PnwUtil.parseTransferHashNotes(f.getValue().note).containsKey(note));
-        double[] manual = ResourceType.builder().forEach(transfers, new BiConsumer<ResourceType.ResourcesBuilder, Map.Entry<Integer, Transaction2>>() {
-            @Override
-            public void accept(ResourceType.ResourcesBuilder r, Map.Entry<Integer, Transaction2> signTx) {
-                Transaction2 tx = signTx.getValue();
-                if (tx.sender_id == 0 || tx.receiver_id == 0) {
-                    r.add(PnwUtil.multiply(tx.resources, signTx.getKey()));
-                }
-            }
-        }).build();
+        transfers.removeIf(f -> !PnwUtil.parseTransferHashNotes(f.getValue().note).containsKey(noteStr));
+        double[] manual = FlowType.INTERNAL.getTotal(transfers, nation.getNation_id());
 //      - Amount withdrawn via a # note
-        double[] withdrawn = ResourceType.builder().forEach(transfers, new BiConsumer<ResourceType.ResourcesBuilder, Map.Entry<Integer, Transaction2>>() {
-            @Override
-            public void accept(ResourceType.ResourcesBuilder r, Map.Entry<Integer, Transaction2> signTx) {
-                Transaction2 tx = signTx.getValue();
-                if (tx.receiver_id == nation.getNation_id() && tx.isReceiverNation() && tx.sender_id != 0) {
-                    r.add(PnwUtil.multiply(tx.resources, signTx.getKey()));
-                }
-            }
-        }).build();
+        double[] withdrawn = FlowType.WITHDRAWAL.getTotal(transfers, nation.getNation_id());
 //      - Amount deposit via a # note
-        double[] deposited = ResourceType.builder().forEach(transfers, new BiConsumer<ResourceType.ResourcesBuilder, Map.Entry<Integer, Transaction2>>() {
-            @Override
-            public void accept(ResourceType.ResourcesBuilder r, Map.Entry<Integer, Transaction2> signTx) {
-                Transaction2 tx = signTx.getValue();
-                if (tx.sender_id == nation.getNation_id() && tx.isSenderNation() && tx.receiver_id != 0) {
-                    r.add(PnwUtil.multiply(tx.resources, signTx.getKey()));
-                }
-            }
-        }).build();
+        double[] deposited = FlowType.DEPOSIT.getTotal(transfers, nation.getNation_id());
 
         StringBuilder response = new StringBuilder();
         response.append("**" + FlowType.INTERNAL + "**: worth `$" + MathMan.format(PnwUtil.convertedTotal(manual)) + "`\n");

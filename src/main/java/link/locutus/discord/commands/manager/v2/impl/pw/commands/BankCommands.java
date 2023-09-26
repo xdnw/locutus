@@ -5,6 +5,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.AccessType;
 import link.locutus.discord.apiv1.enums.EscrowMode;
+import link.locutus.discord.apiv1.enums.FlowType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -2236,6 +2237,7 @@ public class BankCommands {
                                @Arg("Do NOT include deposits") @Switch("d") boolean noDeposits,
                                @Arg("Include past depositors") @Switch("p") Set<Integer> includePastDepositors,
                                @Arg("Do NOT include escrow sheet") @Switch("e") boolean noEscrowSheet,
+                               @Switch("n") DepositType useFlowNote,
                                @Switch("f") boolean force
 
     ) throws GeneralSecurityException, IOException {
@@ -2252,8 +2254,14 @@ public class BankCommands {
                 "loan",
                 "grant",
                 "total",
-                "last_deposit_day"
+                "last_deposit_day",
+                "flow_internal",
+                "flow_withdrawal",
+                "flow_deposit"
         ));
+//            header.add("flow_internal");
+//            header.add("flow_withdrawal");
+//            header.add("flow_deposit");
 
         for (ResourceType type : ResourceType.values()) {
             if (type == ResourceType.CREDITS) continue;
@@ -2313,6 +2321,8 @@ public class BankCommands {
             Locutus.imp().getBankDB().updateBankRecs(false, Event::post);
         }
 
+        String noteFlowStr = "#" + useFlowNote.name().toLowerCase(Locale.ROOT);
+
         long last = System.currentTimeMillis();
         for (DBNation nation : nations) {
             if (System.currentTimeMillis() - last > 5000) {
@@ -2320,7 +2330,14 @@ public class BankCommands {
                 if (tmp != null) msgFuture = tmp.clear().append("calculating for: " + nation.getNation()).send();
                 last = System.currentTimeMillis();
             }
-            Map<DepositType, double[]> deposits = nation.getDeposits(db, tracked, useTaxBase, useOffset, (updateBulk && !force) ? -1 : 0L, 0L, false);
+
+            List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, tracked, useTaxBase, useOffset, (updateBulk && !force) ? -1 : 0L, 0L, false);
+            List<Map.Entry<Integer, Transaction2>> flowTransfers = useFlowNote == null ? transactions : transactions.stream().filter(f -> PnwUtil.parseTransferHashNotes(f.getValue().note).containsKey(noteFlowStr)).collect(Collectors.toList());
+            double[] internal = FlowType.INTERNAL.getTotal(transactions, nation.getId());
+            double[] withdrawal = FlowType.WITHDRAWAL.getTotal(transactions, nation.getId());
+            double[] deposit = FlowType.DEPOSIT.getTotal(transactions, nation.getId());
+
+            Map<DepositType, double[]> deposits = PnwUtil.sumNationTransactions(db, tracked, transactions, false, false, f -> true);
             double[] buffer = ResourceType.getBuffer();
 
             header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
@@ -2350,9 +2367,9 @@ public class BankCommands {
                 total = ArrayUtil.apply(ArrayUtil.DOUBLE_ADD, total, value);
             }
             header.set(7, String.format("%.2f", PnwUtil.convertedTotal(total)));
-            List<Transaction2> transactions = nation.getTransactions(Long.MAX_VALUE, false);
             long lastDeposit = 0;
-            for (Transaction2 transaction : transactions) {
+            for (Map.Entry<Integer, Transaction2> entry : transactions) {
+                Transaction2 transaction = entry.getValue();
                 if (transaction.sender_id == nation.getNation_id()) {
                     lastDeposit = Math.max(transaction.tx_datetime, lastDeposit);
                 }
@@ -2363,7 +2380,11 @@ public class BankCommands {
                 long days = TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - lastDeposit);
                 header.set(8, days);
             }
-            int i = 9;
+            header.set(9, PnwUtil.resourcesToString(internal));
+            header.set(10, PnwUtil.resourcesToString(withdrawal));
+            header.set(11, PnwUtil.resourcesToString(deposit));
+
+            int i = 12;
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.CREDITS) continue;
                 header.set((i++), total[type.ordinal()]);

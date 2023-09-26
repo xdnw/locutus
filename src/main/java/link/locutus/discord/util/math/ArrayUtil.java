@@ -978,7 +978,7 @@ public class ArrayUtil {
 
         public ParseResult(String input, List<Predicate<T>> predicates, AtomicBoolean hadNonFilter) {
             this.input = input;
-            this.predicates = predicates;
+            this.predicates = new ArrayList<>(predicates);
             this.resolvedNumbers = new LinkedHashSet<>();
             this.conditionalNumbers = new LinkedHashMap<>();
             this.hadNonFilter = hadNonFilter;

@@ -234,24 +234,20 @@ public class PWBindings extends BindingHelper {
             "```\n" +
             "Use `*` as the filter to match all nations.\n" +
             "Only alliance members can be given role")
-    public Map<NationFilter, Role> conditionalRole(@Me User author, @Me DBNation nation, @Me GuildDB db, String input) {
+    public Map<NationFilter, Role> conditionalRole(@Me GuildDB db, String input, @Default @Me User author, @Default @Me DBNation nation) {
+        System.out.println("Parse conditional roles " + input);
         Map<NationFilter, Role> filterToRole = new LinkedHashMap<>();
         for (String line : input.split("\n")) {
-            String[] split = line.split("[:]");
-            if (split.length != 2) continue;
-
-            String filterStr = split[0].trim();
-
-            boolean containsNation = false;
-            for (String arg : filterStr.split(",")) {
-                if (!arg.startsWith("#")) containsNation = true;
-                if (arg.contains("tax_id=")) containsNation = true;
-                if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) containsNation = true;
+            int index = line.lastIndexOf(":");
+            if (index == -1) {
+                continue;
             }
-            if (!containsNation) filterStr += ",*";
-            DiscordUtil.parseNations(db.getGuild(), filterStr); // validate
+            String part1 = line.substring(0, index);
+            String part2 = line.substring(index + 1);
+            String filterStr = part1.trim();
+            boolean containsNation = false;
             NationFilterString filter = new NationFilterString(filterStr, db.getGuild(), author, nation);
-            Role role = DiscordBindings.role(db.getGuild(), split[1]);
+            Role role = DiscordBindings.role(db.getGuild(), part2);
             filterToRole.put(filter, role);
         }
         return filterToRole;
@@ -946,6 +942,9 @@ public class PWBindings extends BindingHelper {
     @Binding
     @Me
     public DBNation nationProvided(@Default @Me User user) {
+        if (user == null) {
+            throw new IllegalStateException("No user provided in command locals");
+        }
         DBNation nation = DiscordUtil.getNation(user);
         if (nation == null) throw new IllegalArgumentException("Please use " + CM.register.cmd.toSlashMention() + "");
         return nation;
