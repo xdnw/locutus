@@ -1,5 +1,6 @@
 package link.locutus.discord.web.commands.page;
 
+import com.google.gson.Gson;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -247,11 +248,25 @@ public class IndexPages extends PageHelper {
         AuthBindings.Auth auth = AuthBindings.getAuth(context, true, requireNation, requireUser);
         if (auth != null) {
             // return and redirect
-            String url = AuthBindings.getRedirect(context);
-            return PageHelper.redirect(context, url);
+            String url = AuthBindings.getRedirect(context, false);
+            if (url != null) {
+                return PageHelper.redirect(context, url);
+            }
+            Map<String, Object> result = new HashMap<>();
+            if (nation != null) {
+                result.put("nation", nation.getId());
+            }
+            if (user != null) {
+                result.put("discord", user.getId());
+            }
+            if (current != null) {
+                result.put("guild", current.getId());
+            }
+            return new Gson().toJson(result);
         } else {
-            // You are already logged in as
-            return "You are already logged in (2)";
+            Map<String, String> result = new HashMap<>();
+            result.put("error", "You are not logged in, add `nation` or `discord` to the query string to require login");
+            return new Gson().toJson(result);
         }
     }
 

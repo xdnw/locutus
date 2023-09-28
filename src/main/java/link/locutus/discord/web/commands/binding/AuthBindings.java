@@ -513,12 +513,18 @@ public class AuthBindings extends WebBindingHelper {
     }
 
     public static String getRedirect(Context context) {
+        return getRedirect(context, false);
+    }
+    public static String getRedirect(Context context, boolean indexDefault) {
         String redirect = context.queryParam("redirect");
         if (redirect == null || redirect.isEmpty()) {
             String fingerprint = (context.ip() + context.userAgent());
             String hash = Hashing.sha256().hashString(fingerprint, StandardCharsets.UTF_8).toString();
             redirect = ORIGINAL_PAGE.remove(hash);
-            if (redirect == null || redirect.contains("login") || redirect.contains("logout")) {
+            if (redirect != null && (redirect.contains("login") || redirect.contains("logout"))) {
+                redirect = null;
+            }
+            if (indexDefault && redirect == null) {
                 redirect = WebRoot.REDIRECT;
             }
         }

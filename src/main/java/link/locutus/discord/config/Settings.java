@@ -73,6 +73,7 @@ public class Settings extends Config {
     @Comment("The nation id of the admin. (generated from login or api key)")
     public int NATION_ID = 0; // generated
 
+
     ////////////////////////////////////////////////////////////////////////////
 
     @Create
@@ -95,6 +96,8 @@ public class Settings extends Config {
     public ARTIFICIAL_INTELLIGENCE ARTIFICIAL_INTELLIGENCE;
     @Create
     public DATABASE DATABASE;
+    @Create
+    public BACKUP BACKUP;
 
     public static String commandPrefix(boolean legacy) {
         return legacy ? Settings.INSTANCE.DISCORD.COMMAND.LEGACY_COMMAND_PREFIX : Settings.INSTANCE.DISCORD.COMMAND.COMMAND_PREFIX;
@@ -569,6 +572,14 @@ public class Settings extends Config {
 //            public String USER = "root";
 //            public String PASSWORD = "password";
 //        }
+    }
+
+    public static class BACKUP {
+        @Comment("The directory to store backups in")
+        public String SCRIPT = "";
+        @Comment({"Intervals in turns between backups",
+        "Set to 0 to always make a new backup on startup"})
+        public int TURNS = 1;
     }
 
     private File defaultFile = new File("config" + File.separator + "config.yaml");

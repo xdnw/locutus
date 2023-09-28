@@ -512,7 +512,6 @@ public class PageHandler implements Handler {
 
     private Object wrap(Object call, Context ctx) {
         String contentType = ctx.header("Content-Type");
-        logger.info("HEADERS " + StringMan.getString(ctx.headerMap()));
         if (contentType == null || contentType.contains("text/html")) {
             if (call instanceof String) {
                 String str = (String) call;

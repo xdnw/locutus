@@ -83,6 +83,7 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.*;
@@ -271,6 +272,7 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public Locutus start() throws InterruptedException, LoginException, SQLException, ClassNotFoundException {
+        backup();
         if (Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT) {
             JDABuilder builder = JDABuilder.createLight(discordToken, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.GUILD_MESSAGE_REACTIONS, GatewayIntent.DIRECT_MESSAGES);
             if (Settings.INSTANCE.ENABLED_COMPONENTS.SLASH_COMMANDS) {
@@ -424,6 +426,16 @@ public final class Locutus extends ListenerAdapter {
         }
 
         return this;
+    }
+
+    private void backup() {
+            int turnsCheck = Settings.INSTANCE.BACKUP.TURNS;
+            String script = Settings.INSTANCE.BACKUP.SCRIPT;
+        try {
+            Backup.backup(script, turnsCheck);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public GuildDB getRootCoalitionServer() {
