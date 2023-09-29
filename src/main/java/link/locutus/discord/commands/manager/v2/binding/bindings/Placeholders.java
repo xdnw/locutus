@@ -297,12 +297,13 @@ public abstract class Placeholders<T> {
                 // Find the matching closing curly brace
                 int closingBraceIndex = StringMan.findMatchingBracket(input, currentIndex);
                 if (closingBraceIndex != -1) {
+                    String fullContent = input.substring(currentIndex, closingBraceIndex + 1);
                     String functionContent = input.substring(currentIndex + 1, closingBraceIndex);
-                    sections.add(functionContent);
-                    if (!functions.containsKey(functionContent)) {
-                        TypedFunction<T, ?> functionResult = evaluateFunction(store, functionContent, depth, throwError);
+                    sections.add(fullContent);
+                    if (!functions.containsKey(fullContent)) {
+                        TypedFunction<T, ?> functionResult = evaluateFunction(store, fullContent, depth, throwError);
                         if (functionResult != null) {
-                            functions.put(functionContent, functionResult);
+                            functions.put(fullContent, functionResult);
                             hasPlaceholder = true;
                         } else {
                             hasNonPlaceholder = true;
