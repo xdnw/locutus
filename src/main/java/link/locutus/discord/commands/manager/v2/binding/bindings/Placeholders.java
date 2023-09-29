@@ -289,9 +289,6 @@ public abstract class Placeholders<T> {
                         hasNonMath = true;
                     }
                 };
-                if (hasMath) {
-                    System.out.println("hasMath = " + hasMath + " | " + currentChar + " | " + input);
-                }
             } else {
                 hasCurlyBracket = true;
                 // Find the matching closing curly brace
