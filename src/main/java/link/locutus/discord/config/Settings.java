@@ -578,8 +578,9 @@ public class Settings extends Config {
         @Comment({
                 "The file location of the backup script to run",
                 "Set to empty string to disable backups",
-                "Windows Example (restic): <https://gist.github.com/xdnw/a966c4bfe4bf2e1b9fa99ab189d1c41f>",
-                "Linux Example (restic): <https://gist.github.com/xdnw/2b3939395961fb4108ab13fe07c43711>",
+                "e.g. Restic: <https://restic.net/>",
+                "Windows Example: <https://gist.github.com/xdnw/a966c4bfe4bf2e1b9fa99ab189d1c41f>",
+                "Linux Example: <https://gist.github.com/xdnw/2b3939395961fb4108ab13fe07c43711>",
         })
         public String SCRIPT = "";
         @Comment({"Intervals in turns between backups",

@@ -23,7 +23,9 @@ public class Backup {
             System.out.println("""
                     No backup script is mentioned in the config.yaml
                     It is recommended to set a backup script to prevent data loss
-                    e.g. <https://restic.net/>""");
+                    e.g. <https://restic.net/>
+                    "- Windows Example: <https://gist.github.com/xdnw/a966c4bfe4bf2e1b9fa99ab189d1c41f>
+                    "- Linux Example: <https://gist.github.com/xdnw/2b3939395961fb4108ab13fe07c43711>""");
             return;
         }
         try {
