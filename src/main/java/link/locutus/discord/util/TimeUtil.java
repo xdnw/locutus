@@ -199,6 +199,21 @@ public class TimeUtil {
         return time;
     }
 
+    public static void deleteOldTimeLocks() {
+        File folder = new File((Settings.INSTANCE.TEST ? "test" + File.separator : "") + "database" + File.separator + "timelocks");
+        if (!folder.exists()) return;
+        long turn = TimeUtil.getTurn();
+        // delete any previous turns
+        // iterate files
+        for (File file : folder.listFiles()) {
+            String[] split = file.getName().split("\\.");
+            if (MathMan.isInteger(split[0]) && Long.parseLong(split[0]) < turn) {
+                file.delete();
+            }
+        }
+
+    }
+
     public static <T> T runTimeTask(String id, Supplier<Long> getTime, Function<Long, T> task) {
         File folder = new File((Settings.INSTANCE.TEST ? "test" + File.separator : "") + "database" + File.separator + "timelocks");
         if (!folder.exists()) folder.mkdirs();

@@ -144,6 +144,7 @@ public class PoliticsAndWarV3 {
                     long sleepMs = rateLimitGlobal.resetMs - now;
                     if (sleepMs > 0) {
                         try {
+                            sleepMs = Math.min(sleepMs, 60 * 1000);
                             System.out.println("Hit rate limit ( " + rateLimitGlobal.limit + " | " + sleepMs + " )");
                             Thread.sleep(sleepMs + 1000);
                         } catch (InterruptedException e) {

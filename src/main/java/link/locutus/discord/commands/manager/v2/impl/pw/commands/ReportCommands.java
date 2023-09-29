@@ -791,7 +791,7 @@ public class ReportCommands {
                          ReportManager reportManager,
                          ReportManager.ReportType type,
                          @Arg("Description of report") @TextArea String message,
-                         @Default @Arg("Nation to report") DBNation nation2,
+                         @Default @Arg("Nation to report") DBNation nation,
                          @Default @Arg("Discord user to report") Long discord_user_id,
                          @Arg("Image evidence of report") @Switch("i") String imageEvidenceUrl,
                          @Arg("Link to relevant forum post") @Switch("p") String forum_post,
@@ -803,7 +803,7 @@ public class ReportCommands {
             return "You were banned from reporting on " + DiscordUtil.timestamp(ban.getValue(), null) + " for `" + ban.getKey() + "`";
         }
 
-        Integer nationId = nation2 == null ? null : nation2.getId();
+        Integer nationId = nation == null ? null : nation.getId();
         int reporterNationId = me.getId();
         long reporterUserId = author.getIdLong();
         long reporterGuildId = db.getIdLong();
@@ -830,10 +830,10 @@ public class ReportCommands {
             if (message == null) {
                 message = existing.message;
             }
-            if (forum_post == null) {
+            if (forum_post == null && existing.forumUrl != null && !existing.forumUrl.isEmpty()) {
                 forum_post = existing.forumUrl;
             }
-            if (news_post == null) {
+            if (news_post == null && existing.newsUrl != null && !existing.newsUrl.isEmpty()) {
                 news_post = existing.newsUrl;
             }
             // Keep reporter info if updating
@@ -910,8 +910,8 @@ public class ReportCommands {
             }
         }
         if (nationId == null) {
-            DBNation nation = DiscordUtil.getNation(discord_user_id);
-            nationId = nation != null ? nation.getId() : null;
+            DBNation nation2 = DiscordUtil.getNation(discord_user_id);
+            nationId = nation2 != null ? nation2.getId() : null;
         }
 
         if (!force) {

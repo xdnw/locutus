@@ -487,6 +487,7 @@ public final class Locutus extends ListenerAdapter {
     private Map<Long, GuildDB> initGuildDB() {
         synchronized (guildDatabases) {
             if (guildDatabases.isEmpty()) {
+                TimeUtil.deleteOldTimeLocks();
                 for (Guild guild : manager.getGuilds()) {
                     GuildDB db = getGuildDB(guild.getIdLong(), false);
 //                    String key = db.getOrNull(GuildKey.API_KEY);

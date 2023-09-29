@@ -180,7 +180,6 @@ public abstract class Placeholders<T> {
 
                             Object result;
                             try {
-                                System.out.println("Format `" + arg + "`");
                                 result = formatPlaceholder.apply(arg.substring(1, arg.length() - 1));
                             } catch (Exception e) {
                                 e.printStackTrace();
