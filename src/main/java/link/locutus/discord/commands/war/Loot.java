@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
@@ -66,7 +67,7 @@ public class Loot extends Command {
             return usage(args.size(), 1, channel);
         }
         if (me == null) {
-            return "Please use " + Settings.commandPrefix(true) + "validate";
+            return "Please use " + CM.register.cmd.toSlashMention();
         }
 
         NationOrAlliance nationOrAlliance = PWBindings.nationOrAlliance(args.get(0));

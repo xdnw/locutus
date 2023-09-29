@@ -307,6 +307,7 @@ public class CommandManager {
                             assert guild != null;
                         }
                         content1 = formatted;
+                        System.out.println("FOrmatted to: " + content1);
                     } catch (IllegalArgumentException ignore) {}
                 }
 

@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationMeta;
@@ -56,7 +57,7 @@ public class Deposits extends Command {
 
         DBNation banker = me;
         if (banker == null) {
-            return "Please use " + Settings.commandPrefix(true) + "validate.";
+            return "Please use " + CM.register.cmd.toSlashMention();
         }
 //        String requiredNote = DiscordUtil.parseArg(args, "note");
         boolean includeIgnored = flags.contains('i');

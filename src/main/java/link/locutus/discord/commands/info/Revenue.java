@@ -10,6 +10,7 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.json.CityBuild;
@@ -53,7 +54,7 @@ public class Revenue extends Command {
             return usage(args.size(), 1, channel);
         }
         if (me == null) {
-            return "Please use " + Settings.commandPrefix(true) + "validate";
+            return "Please use " + CM.register.cmd.toSlashMention();
         }
 
         boolean force = flags.contains('f');
