@@ -185,18 +185,12 @@ public class WebRoot {
         }
 
         for (String cmd : pageHandler.getCommands().getSubCommandIds()) {
-            List<String> patterns = Arrays.asList(
-                    "/page/" + cmd + "/**",
-                    "/page/" + cmd
-            );
-            for (String pattern : patterns) {
-                this.app.get(pattern, ctx -> {
-                    pageHandler.handle(ctx);
-                });
-                this.app.post(pattern, ctx -> {
-                    pageHandler.handle(ctx);
-                });
-            }
+            this.app.get("/page/**", ctx -> {
+                pageHandler.handle(ctx);
+            });
+            this.app.post("/page/**", ctx -> {
+                pageHandler.handle(ctx);
+            });
         }
 
         this.fileRoot = new File("files");

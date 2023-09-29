@@ -112,16 +112,16 @@ public class PageHandler implements Handler {
 
         this.commands = CommandGroup.createRoot(store, validators);
 
-        this.commands.registerCommands(new IndexPages());
-        this.commands.registerCommands(new IAPages());
-        this.commands.registerCommands(new EconPages());
-        this.commands.registerCommands(new StatPages());
-        this.commands.registerCommands(new WarPages());
-        this.commands.registerCommands(new GrantPages());
-        this.commands.registerCommands(new BankPages());
-        this.commands.registerCommands(new TradePages());
-        this.commands.registerCommands(new AlliancePages());
-        this.commands.registerCommands(new NationListPages());
+        this.commands.registerSubCommands(new IndexPages(), "page");
+        this.commands.registerSubCommands(new IAPages(), "page");
+        this.commands.registerSubCommands(new EconPages(), "page");
+        this.commands.registerSubCommands(new StatPages(), "page");
+        this.commands.registerSubCommands(new WarPages(), "page");
+        this.commands.registerSubCommands(new GrantPages(), "page");
+        this.commands.registerSubCommands(new BankPages(), "page");
+        this.commands.registerSubCommands(new TradePages(), "page");
+        this.commands.registerSubCommands(new AlliancePages(), "page");
+        this.commands.registerSubCommands(new NationListPages(), "page");
 
         this.commands.registerCommands(new TestPages());
 
@@ -419,51 +419,10 @@ public class PageHandler implements Handler {
         try {
             ArgumentStack stack = createStack(ctx);
             ctx.header("Content-Type", "text/html;charset=UTF-8");
-            String path = stack.consumeNext();
+            String path = stack.getCurrent();
             switch (path.toLowerCase(Locale.ROOT)) {
-                case "test" -> {
-                    StringBuilder response = new StringBuilder();
-                    response.append("Hello World!").append("\n");
-
-                    List<String> args = stack.getArgs();
-                    response.append("Args: " + args).append("\n");
-                    ValueStore locals = stack.getStore();
-                    User user = (User) locals.getProvided(Key.of(User.class, Me.class), false);
-                    DBNation nation = (DBNation) locals.getProvided(Key.of(DBNation.class, Me.class), false);
-                    Guild guild = (Guild) locals.getProvided(Key.of(Guild.class, Me.class), true);
-
-                    if (user != null) {
-                        response.append("User: " + user.getName()).append("\n");
-                    } else {
-                        response.append("User: null").append("\n");
-                    }
-
-                    if (nation != null) {
-                        response.append("Nation: " + nation.getName()).append("\n");
-                    } else {
-                        response.append("Nation: null").append("\n");
-                    }
-
-                    if (guild != null) {
-                        response.append("Guild: " + guild.getName()).append("\n");
-                    } else {
-                        response.append("Guild: null").append("\n");
-                    }
-
-                    ctx.result(response.toString());
-                    return;
-                }
-                case "page" -> {
-                    Object result = wrap(commands.call(stack), ctx);
-                    if (result != null && (!(result instanceof String) || !result.toString().isEmpty())) {
-                        ctx.result(result.toString());
-                    } else if (result != null) {
-                        throw new IllegalArgumentException("Illegal result: " + result + " for " + path);
-                    } else {
-                        throw new IllegalArgumentException("Null result for : " + path);
-                    }
-                }
                 case "command" -> {
+                    stack.consumeNext();
                     List<String> args = new ArrayList<>(stack.getRemainingArgs());
                     CommandCallable cmd = commands.getCallable(args);
                     if (cmd == null) {
@@ -474,9 +433,19 @@ public class PageHandler implements Handler {
                     String endpoint = Settings.INSTANCE.WEB.REDIRECT + "/command";
                     ctx.result(cmd.toHtml(stack.getStore(), stack.getPermissionHandler(), endpoint));
                 }
+                // case "page" ->
+                default -> {
+                    Object result = wrap(commands.call(stack), ctx);
+                    if (result != null && (!(result instanceof String) || !result.toString().isEmpty())) {
+                        ctx.result(result.toString());
+                    } else if (result != null) {
+                        throw new IllegalArgumentException("Illegal result: " + result + " for " + path);
+                    } else {
+                        throw new IllegalArgumentException("Null result for : " + path);
+                    }
+                }
             }
         } catch (Throwable e) {
-            System.out.println("Handle errors " + e.getMessage());
             handleErrors(e, ctx);
         }
     }
