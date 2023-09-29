@@ -50,6 +50,12 @@ public class StringMessageBuilder implements IMessageBuilder {
     }
 
     @Override
+    public IMessageBuilder removeButtonByLabel(String label) {
+        buttons.entrySet().removeIf(entry -> entry.getValue().equals(label));
+        return this;
+    }
+
+    @Override
     public void sendWhenFree() {
         this.toString();
     }

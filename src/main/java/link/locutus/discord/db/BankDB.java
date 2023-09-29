@@ -119,43 +119,7 @@ public class BankDB extends DBMainV3 {
 
     public BankDB(String name) throws SQLException, ClassNotFoundException {
         super(Settings.INSTANCE.DATABASE, name, false);
-//        if (name.equalsIgnoreCase("bank") && new File("database/import_bank.db").exists()) {
-//            System.out.println("Importing external bank recs");
-//            importFromExternal("import_bank");
-//            System.out.println("Exporting external bank recs");
-//            byte[] maxIdData = ByteBuffer.allocate(4).putInt(87004798).array();
-//            Locutus.imp().getDiscordDB().setInfo(DiscordMeta.BANK_RECS_SEQUENTIAL, 0, maxIdData);
-//        }
     }
-
-//    public void updateBankRecs(int nationId) {
-//        PoliticsAndWarV3 v3 = Locutus.imp().getV3();
-//        List<Bankrec> recs = v3.fetchBankRecsWithInfo(new Consumer<BankrecsQueryRequest>() {
-//            @Override
-//            public void accept(BankrecsQueryRequest r) {
-//                r.setOr_id(List.of(nationId));
-//                r.setOr_type(List.of(1)); //1 == nation
-//            }
-//        });
-//
-//
-////        v3.fetchBankRecsWithInfo(new Consumer<BankrecsQueryRequest>() {
-////            @Override
-////            public void accept(BankrecsQueryRequest r) {
-////                r.setMin_id();
-////                r.setOr_type();
-////            }
-////        });
-////
-////        selectTransactions(s -> {
-////            s.order("tx_id", QueryOrder.OrderDirection.DESC);
-////            s.limit(1);
-////        });
-//
-////        addTransaction()
-////
-////        updated = addTransactions(transactions);
-//    }
 
     public List<Transaction2> getTransactions(Condition condition) {
         return getTransactions(condition, null, null);

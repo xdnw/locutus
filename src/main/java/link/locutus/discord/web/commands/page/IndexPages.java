@@ -1,6 +1,8 @@
 package link.locutus.discord.web.commands.page;
 
+import com.google.gson.Gson;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
@@ -9,7 +11,7 @@ import link.locutus.discord.commands.manager.v2.command.CommandGroup;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Announcement;
@@ -53,12 +55,23 @@ public class IndexPages extends PageHelper {
     public Object argTypes() {
         CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
         ValueStore<Object> store = manager.getStore();
-        return "Index page";
+        return "Arg types stub";
     }
 
     @Command
-    public Object index() {
-        return "Index page";
+    public Object index(Context context) throws IOException {
+        AuthBindings.Auth auth = AuthBindings.getAuth(context, false, false, false);
+        if (auth == null) {
+            return "Not logged in";
+        }
+        StringBuilder response = new StringBuilder();
+        response.append("Index page:\n");
+        response.append("User: ").append(auth.userId()).append("\n");
+        response.append("nation: ").append(auth.nationId()).append("\n");
+        response.append("Valid: ").append(auth.isValid()).append("\n");
+        Guild guild = AuthBindings.guild(context, auth.getNation(), auth.getUser(), false);
+        response.append("Guild: ").append(guild).append("\n");
+        return response.toString();
     }
 
     @Command
@@ -219,36 +232,12 @@ public class IndexPages extends PageHelper {
     }
 
     @Command()
-    public Object register(Context context, @Default @Me AuthBindings.Auth auth, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) throws IOException {
-        // if user is null, redirect to discord login
-        // if nation is null, redirect to login page
-        if (auth != null) {
-            User authUser = auth.getUser();
-            DBNation authNation = auth.getNation();
-            if (authUser != null && authNation != null) {
-
-            }
-        }
-
+    public Object register(Context context, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) throws IOException {
         if (user == null) {
             return PageHelper.redirect(context, AuthBindings.getDiscordAuthUrl());
         }
-        if (nation == null) {
-            // todo fix this
-            return PageHelper.redirect(context, WebRoot.REDIRECT + "/page/login");
-        }
+        AuthBindings.Auth auth = AuthBindings.getAuth(context, true, true, true);
         return "You are already registered";
-//        PNWUser existingUser = Locutus.imp().getDiscordDB().getUser(user);
-//        PNWUser existingNation = Locutus.imp().getDiscordDB().getUserFromNationId(nation.getNation_id());
-//
-//
-//
-//        AuthBindings.setRedirect(context);
-//
-//        String discordAuthUrl = AuthBindings.getDiscordAuthUrl();
-//        String mailAuthUrl = WebRoot.REDIRECT + "/page/login";
-//
-//        return rocker.auth.picker.template(discordAuthUrl, mailAuthUrl).render().toString();
     }
 
     @Command()
@@ -256,34 +245,51 @@ public class IndexPages extends PageHelper {
         Map<String, List<String>> queries = context.queryParamMap();
         boolean requireNation = queries.containsKey("nation");
         boolean requireUser = queries.containsKey("discord");
-        System.out.println("AUTH BINDING 1");
         AuthBindings.Auth auth = AuthBindings.getAuth(context, true, requireNation, requireUser);
         if (auth != null) {
             // return and redirect
-            System.out.println("AUTH BINDING 2");
-            String url = AuthBindings.getRedirect(context);
-            System.out.println(":||Remove login URL " + url);
-            return PageHelper.redirect(context, url);
+            String url = AuthBindings.getRedirect(context, false);
+            if (url != null) {
+                return PageHelper.redirect(context, url);
+            }
+            Map<String, Object> result = new HashMap<>();
+            if (nation != null) {
+                result.put("nation", nation.getId());
+            }
+            if (user != null) {
+                result.put("discord", user.getId());
+            }
+            if (current != null) {
+                result.put("guild", current.getId());
+            }
+            return new Gson().toJson(result);
         } else {
-            // You are already logged in as
-            return "You are already logged in (2)";
+            Map<String, String> result = new HashMap<>();
+            result.put("error", "You are not logged in, add `nation` or `discord` to the query string to require login");
+            return new Gson().toJson(result);
         }
     }
 
     @Command()
-    public Object guildSet(Context context, Guild guild) {
+    public Object setguild(Context context, Guild guild) {
         AuthBindings.setGuild(context, guild);
         return PageHelper.redirect(context, AuthBindings.getRedirect(context));
     }
 
     @Command()
-    public Object guildSelect(Context context, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) {
+    public Object guildselect(Context context, ValueStore store, @Default @Me GuildDB current, @Default @Me User user, @Default @Me DBNation nation) {
         if (user == null && nation == null) {
+            new Exception().printStackTrace();
             // need to login
             // return WM login page
             // throw error
-            return "You are already logged in (3)";
+            User user2 = (User) store.getProvided(Key.of(User.class, Me.class), false);
+            DBNation nation2 = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
+            String user2Str = user2 == null ? "null" : user2.getName();
+            String nation2Str = nation2 == null ? "null" : nation2.getName();
+            return "You are not logged in | " + user2Str + " | " + nation2Str;
         }
+        System.out.println("Current " + (current == null ? null : current.getName()));
         JDA jda = Locutus.imp().getDiscordApi().getApis().iterator().next();
         String registerLink = (user == null || nation == null) ? CM.register.cmd.toCommandUrl() : null;
         String locutusInvite = null;

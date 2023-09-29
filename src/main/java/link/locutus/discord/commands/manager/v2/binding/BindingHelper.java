@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
+import com.google.gson.reflect.TypeToken;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.util.StringMan;
 
@@ -60,13 +61,23 @@ public class BindingHelper {
         String desc = binding.value();
         if (desc == null) desc = method.getName();
 
-        Set<Type> types = new LinkedHashSet<>(Arrays.asList(binding.types()));
-        types.add(method.getGenericReturnType());
-
-        for (Type ret : types) {
-            MethodParser parser = new MethodParser(this, method, desc, binding, ret);
+        if (binding.multiple()) {
+            Class<?>[] types = binding.types();
+            Type primary = types[0];
+            Type[] rest = Arrays.copyOfRange(types, 1, types.length);
+            Type type = TypeToken.getParameterized(primary, rest).getType();
+            MethodParser parser = new MethodParser(this, method, desc, binding, type);
             Key key = parser.getKey();
             store.addParser(key, parser);
+        } else {
+            Set<Type> types = new LinkedHashSet<>(Arrays.asList(binding.types()));
+            types.add(method.getGenericReturnType());
+
+            for (Type ret : types) {
+                MethodParser parser = new MethodParser(this, method, desc, binding, ret);
+                Key key = parser.getKey();
+                store.addParser(key, parser);
+            }
         }
         return true;
     }

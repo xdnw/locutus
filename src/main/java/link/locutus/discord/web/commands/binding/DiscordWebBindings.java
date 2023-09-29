@@ -1,17 +1,22 @@
 package link.locutus.discord.web.commands.binding;
 
-import io.javalin.http.Context;
+import cn.easyproject.easyocr.ImageType;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Rank;
-import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NationAttributeCallable;
+import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
+import link.locutus.discord.commands.manager.v2.command.CommandCallable;
+import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.web.WebUtil;
@@ -27,21 +32,47 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public class DiscordWebBindings extends WebBindingHelper {
 
-//    @Me
-//    @Binding
-//    public User user(Context context) {
-//        // Login is required
-//    }
+    @HtmlInput
+    @Binding(types = ICommand.class)
+    public String iCommand(@Me User user, @Default ParameterData param) {
+        return command(user, param);
+    }
 
+    @HtmlInput
+    @NationAttributeCallable
+    @Binding(types={ParametricCallable.class})
+    public String NationPlaceholderCommand(NationPlaceholders placeholders, @Default ParameterData param) {
+        List<CommandCallable> options = placeholders.getParametricCallables()
+                .stream().collect(Collectors.toList());
+        return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
+            names.add(obj.getFullPath());
+            subtext.add(obj.simpleDesc().split("\n")[0]);
+        });
+    }
+
+
+    @HtmlInput
+    @Binding(types = CommandCallable.class)
+    public String command(@Me User user, @Default ParameterData param) {
+        List<CommandCallable> options = new ArrayList<>(Locutus.imp().getCommandManager().getV2().getCommands().getParametricCallables(f -> true));
+        return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
+            names.add(obj.getFullPath());
+            subtext.add(obj.simpleDesc().split("\n")[0]);
+        });
+    }
 
 
     public static String formatGuildName(Guild guild) {
@@ -83,6 +114,16 @@ public class DiscordWebBindings extends WebBindingHelper {
     @HtmlInput
     @Binding(types= Category.class)
     public String category(@Me Guild guild, @Default ParameterData param) {
+        return categories(guild, param, false);
+    }
+
+    @HtmlInput
+    @Binding(types= {Set.class, Category.class}, multiple = true)
+    public String categories(@Me Guild guild, @Default ParameterData param) {
+        return categories(guild, param, true);
+    }
+
+    public String categories(@Me Guild guild, @Default ParameterData param, boolean multiple) {
         List<Category> options = guild.getCategories();
         Filter filter = param.getAnnotation(Filter.class);
         options = new ArrayList<>(options);
@@ -90,7 +131,7 @@ public class DiscordWebBindings extends WebBindingHelper {
         return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
             names.add(obj.getName());
             values.add(obj.getIdLong());
-        });
+        }, multiple);
     }
 
     @HtmlInput
@@ -109,11 +150,29 @@ public class DiscordWebBindings extends WebBindingHelper {
     }
 
     @HtmlInput
+    @Binding(types= GuildDB.class)
+    public String guildDB(@Me User user, @Default ParameterData param) {
+        return guild(user, param);
+    }
+
+    @HtmlInput
     @Binding(types= TextChannel.class)
     public String textChannel(@Me Guild guild, @Me User user, @Default ParameterData param) {
         List<MessageChannel> options = getGuildChannels(guild, user);
         options.removeIf(f -> !(f instanceof TextChannel));
         return channel(guild, user, options, param);
+    }
+
+    @HtmlInput
+    @Binding(types = CommandBehavior.class)
+    public String cmdBehavior(@Default ParameterData param) {
+        return multipleSelect(param, Arrays.asList(CommandBehavior.values()), rank -> new AbstractMap.SimpleEntry<>(rank.name(), rank.name()));
+    }
+
+    @HtmlInput
+    @Binding(types = ImageType.class)
+    public String ImageType(@Default ParameterData param) {
+        return multipleSelect(param, Arrays.asList(ImageType.values()), rank -> new AbstractMap.SimpleEntry<>(rank.name(), rank.name()));
     }
 
     @HtmlInput

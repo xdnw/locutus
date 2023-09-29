@@ -12,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.math.ReflectionUtil;
 import link.locutus.discord.web.commands.HtmlInput;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.json.JSONObject;
@@ -20,14 +21,15 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
 import java.util.*;
+import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public class ParametricCallable implements ICommand {
 
@@ -43,11 +45,13 @@ public class ParametricCallable implements ICommand {
     private final CommandCallable parent;
     private final Annotation[] annotations;
     private final Type returnType;
+    private final boolean isStatic;
     private Supplier<String> descMethod;
 
     public ParametricCallable(CommandCallable parent, ParametricCallable clone, List<String> aliases) {
         this.object = clone.object;
         this.method = clone.method;
+        this.isStatic = clone.isStatic;
         this.parameters = clone.parameters;
         this.valueFlags = clone.valueFlags;
         this.provideFlags = clone.provideFlags;
@@ -65,6 +69,7 @@ public class ParametricCallable implements ICommand {
         this.parent = parent;
         this.object = object;
         this.method = method;
+        this.isStatic = Modifier.isStatic(method.getModifiers());
         this.returnType = method.getGenericReturnType();
         this.annotations =  method.getAnnotations();
         method.setAccessible(true);
@@ -85,6 +90,8 @@ public class ParametricCallable implements ICommand {
         int numOptional = 0;
 
         LocalValueStore locals = new LocalValueStore<>(store);
+
+        Set<String> flagList = new LinkedHashSet<>();
 
         // Go through each parameter
         for (int i = 0; i < types.length; i++) {
@@ -122,6 +129,13 @@ public class ParametricCallable implements ICommand {
             parameter.setBinding(binding);
 
             parameter.setName(names[i]);
+
+            if (parameter.getFlag() != null) {
+                if (flagList.contains(parameter.getFlag())) {
+                    throw new IllegalStateException("Duplicate flag " + parameter.getFlag() + " for command: " + method.getDeclaringClass().getSimpleName() + "#" + method.getName());
+                }
+                flagList.add(parameter.getFlag());
+            }
 
             // Track all value flags
             if (parameter.isConsumeFlag()) {
@@ -185,13 +199,17 @@ public class ParametricCallable implements ICommand {
         return SlashCommandManager.getSlashCommand(this, arguments, true);
     }
 
-    public static List<ParametricCallable> generateFromClass(CommandCallable parent, Object object, ValueStore store) {
+    public static List<ParametricCallable> generateFromClass(CommandCallable parent, Class clazz, Object object, ValueStore store) {
         List<ParametricCallable> cmds = new ArrayList<>();
-        for (Method method : object.getClass().getDeclaredMethods()) {
+        for (Method method : clazz.getDeclaredMethods()) {
             ParametricCallable parametric = generateFromMethod(parent, object, method, store);
             if (parametric != null) cmds.add(parametric);
         }
         return cmds;
+    }
+
+    public static List<ParametricCallable> generateFromObj(CommandCallable parent, Object object, ValueStore store) {
+        return generateFromClass(parent, object.getClass(), object, store);
     }
 
     public static ParametricCallable generateFromMethod(CommandCallable parent, Object object, Method method, ValueStore store) {
@@ -337,6 +355,39 @@ public class ParametricCallable implements ICommand {
         return paramVals;
     }
 
+    public Map<String, String> formatArgumentsToMap(ValueStore store, List<String> input) {
+        List<String> args = new ArrayList<>(input);
+        Map<String, String> flags = ArgumentStack.consumeFlags(args, provideFlags, valueFlags);
+
+        Map<String, String> argumentMap = new LinkedHashMap<>();
+
+        int i = 0;
+        for (Map.Entry<String, ParameterData> entry : getUserParameterMap().entrySet()) {
+            String name = entry.getKey();
+            ParameterData parameter = entry.getValue();
+            if (parameter.isFlag()) {
+                String value = flags.get(parameter.getFlag());
+                if (value != null) {
+                    argumentMap.put(name, value);
+                }
+                continue;
+            }
+            if (i < args.size()) {
+                argumentMap.put(name, args.get(i++));
+                continue;
+            }
+            String value = parameter.getDefaultValueString();
+            if (value != null) {
+                argumentMap.put(name, value);
+                continue;
+            }
+            if (!parameter.isOptional() || !parameter.getBinding().isConsumer(store)) {
+                throw new IllegalArgumentException("Missing required argument: " + parameter.getName() + " for command: " + getFullPath());
+            }
+        }
+        return argumentMap;
+    }
+
     public Map<ParameterData, Map.Entry<String, Object>> parseArgumentsToMap(ArgumentStack stack) {
         ValueStore<?> store = stack.getStore();
         validatePermissions(store, stack.getPermissionHandler());
@@ -358,7 +409,6 @@ public class ParametricCallable implements ICommand {
 
             String unparsed = null;
             Object value;
-            // flags
             try {
                 if (parameter.isFlag()) {
                     unparsed = flags.get(parameter.getFlag());
@@ -376,14 +426,18 @@ public class ParametricCallable implements ICommand {
                     }
                 } else {
                     if (!stack.hasNext() && parameter.isOptional()) {
-                        if (parameter.getDefaultValue() == null) {
-                            continue;
+                        if (!parameter.getBinding().isConsumer(stack.getStore())) {
+                            value = store.getProvided(parameter.getBinding().getKey(), false);
                         } else {
-                            unparsed = parameter.getDefaultValueString();
-                            stack.add(parameter.getDefaultValue());
+                            if (parameter.getDefaultValue() == null) {
+                                continue;
+                            } else {
+                                unparsed = parameter.getDefaultValueString();
+                                stack.add(parameter.getDefaultValue());
+                            }
+                            continue;
                         }
-                    }
-                    if (stack.hasNext() || !parameter.isOptional() || (parameter.getDefaultValue() != null && parameter.getDefaultValue().length != 0)) {
+                    } else if (stack.hasNext() || !parameter.isOptional() || (parameter.getDefaultValue() != null && parameter.getDefaultValue().length != 0)) {
                         if (parameter.getBinding().isConsumer(stack.getStore()) && !stack.hasNext()) {
                             String name = parameter.getBinding().getKey().toSimpleString();
                             throw new CommandUsageException(this, "Expected argument: <" + parameter.getName() + "> of type: " + name);
@@ -435,7 +489,8 @@ public class ParametricCallable implements ICommand {
 
     public Object call(Object instance, ValueStore store, Object[] paramVals) {
         try {
-            return method.invoke(instance == null ? this.object : instance, paramVals);
+            Object callOn = isStatic ? null : (instance == null || !method.getDeclaringClass().isInstance(instance) ? this.object : instance);
+            return method.invoke(callOn, paramVals);
         } catch (IllegalArgumentException e) {
             e.printStackTrace();
             System.out.println(e.getMessage());
@@ -632,8 +687,10 @@ public class ParametricCallable implements ICommand {
     public Object[] parseArgumentMap(Map<String, String> combined, ArgumentStack stack2) {
         return parseArgumentMap(combined, stack2.getStore(), stack2.getValidators(), stack2.getPermissionHandler());
     }
-
     public Object[] parseArgumentMap(Map<String, String> combined, ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
+        return parseArgumentMap2((Map) combined, store, validators, permisser, false);
+    }
+    public Object[] parseArgumentMap2(Map<String, Object> combined, ValueStore store, ValidatorStore validators, PermissionHandler permisser, boolean partialParse) {
         validatePermissions(store, permisser);
 
         ValueStore locals = store;
@@ -646,11 +703,59 @@ public class ParametricCallable implements ICommand {
             paramsByNameLower.put(parameter.getName().toLowerCase(Locale.ROOT), parameter);
         }
 
-        Map<String, String> flags = new HashMap<>();
-        for (Map.Entry<String, String> entry : combined.entrySet()) {
+        BiFunction<ParameterData, Object, Object> parse;
+        if (partialParse) {
+            parse = new BiFunction<ParameterData, Object, Object>() {
+                @Override
+                public Object apply(ParameterData param, Object o) {
+                    if (o == null) {
+                        if (!param.getBinding().isConsumer(store)) {
+                            return locals.getProvided(param.getBinding().getKey(), false);
+                        }
+                        String def = param.getDefaultValueString();
+                        if (def != null) {
+                            return locals.get(param.getBinding().getKey()).apply(store, def);
+                        }
+                        if (param.isOptional()) {
+                            return null;
+                        }
+                        throw new IllegalArgumentException("Missing required parameter: " + param.getName() + " for " + getFullPath());
+                    }
+                    Class typeClass = ReflectionUtil.getClassType(param.getType());
+                    if (typeClass.isAssignableFrom(o.getClass())) return o;
+                    if (o.getClass() != String.class) {
+                        throw new IllegalArgumentException("Cannot parse " + o.getClass() + " to " + typeClass + " for " + getFullPath() + " parameter " + param.getName());
+                    }
+                    return locals.get(param.getBinding().getKey()).apply(store, o.toString());
+                }
+            };
+        } else {
+            parse = new BiFunction<ParameterData, Object, Object>() {
+                @Override
+                public Object apply(ParameterData param, Object o) {
+                    if (o == null) {
+                        if (!param.getBinding().isConsumer(store)) {
+                            return locals.getProvided(param.getBinding().getKey(), false);
+                        }
+                        String def = param.getDefaultValueString();
+                        if (def != null) {
+                            return locals.get(param.getBinding().getKey()).apply(store, def);
+                        }
+                        if (param.isOptional()) {
+                            return null;
+                        }
+                        throw new IllegalArgumentException("Missing required parameter: " + param.getName() + " for " + getFullPath());
+                    }
+                    return locals.get(param.getBinding().getKey()).apply(store, o.toString());
+                }
+            };
+        }
+
+        Map<String, Object> flags = new HashMap<>();
+        for (Map.Entry<String, Object> entry : combined.entrySet()) {
             ParameterData param = paramsByName.get(entry.getKey());
             if (param == null) param = paramsByNameLower.get(entry.getKey().toLowerCase(Locale.ROOT));
-            if (param == null) throw new IllegalArgumentException("Could not find param: `" + entry.getKey() + "`");
+            if (param == null) throw new IllegalArgumentException("Could not find param: `" + entry.getKey() + "` for command " + getFullPath());
             if (param.isFlag()) {
                 flags.put(param.getFlag(), entry.getValue());
             }
@@ -661,13 +766,13 @@ public class ParametricCallable implements ICommand {
             ParameterData parameter = parameters[i];
             locals.addProvider(ParameterData.class, parameter);
 
-            String arg = combined.get(parameter.getName());
+            Object arg = combined.get(parameter.getName());
             if (arg == null) arg = combined.get(parameter.getName().toLowerCase(Locale.ROOT));
 
             Object value;
             // flags
             if (parameter.isFlag()) {
-                String toParse = flags.get(parameter.getFlag());
+                Object toParse = flags.get(parameter.getFlag());
                 if (toParse == null) {
                     if (parameter.getDefaultValue() != null && parameter.getDefaultValue().length != 0) {
                         value = locals.get(parameter.getBinding().getKey()).apply(store, parameter.getDefaultValueString());
@@ -677,32 +782,37 @@ public class ParametricCallable implements ICommand {
                         value = null;
                     }
                 } else {
-                    value = locals.get(parameter.getBinding().getKey()).apply(store, toParse);
+                    value = parse.apply(parameter, toParse);
                 }
             } else {
-                List<String> args;
+                Object arg2 = null;
+//                List<String> args;
                 if (arg == null && parameter.isOptional()) {
                     if (parameter.getDefaultValue() == null) {
                         paramVals[i] = null;
                         continue;
                     }
-                    args = new ArrayList<>(Arrays.asList(parameter.getDefaultValue()));
+//                    args = new ArrayList<>(Arrays.asList(parameter.getDefaultValue()));
+                    arg2 = parameter.getDefaultValueString();
                 } else if (arg != null) {
-                    args = new ArrayList<>(Collections.singletonList(arg));
+                    arg2 = arg;
+//                    args = new ArrayList<>(Collections.singletonList(arg));
                 } else {
-                    args = new ArrayList<>();
+//                    args = new ArrayList<>();
                     if (parameter.getDefaultValue() != null && parameter.getDefaultValue().length > 0)
-                        args.addAll(Arrays.asList(parameter.getDefaultValue()));
+                        arg2 = parameter.getDefaultValueString();
+//                        args.addAll(Arrays.asList(parameter.getDefaultValue()));
                 }
-                if (!parameter.isOptional() || !args.isEmpty() || (parameter.getDefaultValue() != null && parameter.getDefaultValue().length != 0)) {
-                    if (parameter.getBinding().isConsumer(store) && args.isEmpty()) {
+                if (!parameter.isOptional() || arg2 != null || (parameter.getDefaultValue() != null && parameter.getDefaultValue().length != 0)) {
+                    if (parameter.getBinding().isConsumer(store) && arg2 == null) {
                         String name = parameter.getType().getTypeName();
                         String[] split = name.split("\\.");
                         name = split[split.length - 1];
-                        throw new CommandUsageException(this, "Expected argument: <" + parameter.getName() + "> of type: " + name);
+                        throw new CommandUsageException(this, "Expected argument: <" + parameter.getName() + "> of type: " + name + " for command " + getFullPath());
                     }
-                    ArgumentStack stack = new ArgumentStack(args, store, validators, permisser);
-                    value = locals.get(parameter.getBinding().getKey()).apply(stack);
+                    value = parse.apply(parameter, arg2);
+//                    ArgumentStack stack = new ArgumentStack(args, store, validators, permisser);
+//                    value = locals.get(parameter.getBinding().getKey()).apply(stack);
                 } else {
                     value = null;
                 }

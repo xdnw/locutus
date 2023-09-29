@@ -26,7 +26,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffsh
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RankPermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.rankings.builder.NumericGroupRankBuilder;
@@ -1187,7 +1187,9 @@ public class UnsortedCommands {
                             @Default @TextArea String message,
                             @Arg("Require roles to paste the message")
                             @Default Set<Role> requiredRolesAny,
+                            @Switch("n") DBNation formatNation,
                             NationPlaceholders placeholders, ValueStore store) throws Exception {
+        if (formatNation == null) formatNation = me;
         if (key == null) {
 
             Map<String, String> copyPastas = db.getCopyPastas(member);
@@ -1249,7 +1251,7 @@ public class UnsortedCommands {
             }
             if (value == null) return "No message set for `" + key + "`. Plase use " + CM.copyPasta.cmd.toSlashMention() + "";
 
-            value = placeholders.format(store, value);
+            value = placeholders.format2(store, value, formatNation, false);
 
             return value;
         } else if (!Roles.INTERNAL_AFFAIRS.has(author, guild)) {

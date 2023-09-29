@@ -2,6 +2,9 @@ package link.locutus.discord.util.update;
 
 import com.google.common.eventbus.Subscribe;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
+import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
@@ -36,7 +39,9 @@ public class BankUpdateProcessor {
     @Subscribe
     public void process(TransactionEvent event) {
         Transaction2 transfer = event.getTransaction();
-        if (transfer.tx_datetime < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1));
+        if (transfer.tx_datetime < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1)) {
+            return;
+        }
 
         if (transfer.note != null && transfer.note.contains("of the alliance bank inventory.")) return;
         if (!transfer.isReceiverNation() && !transfer.isSenderNation()) return;
@@ -44,7 +49,8 @@ public class BankUpdateProcessor {
         int nationId = (int) (transfer.isSenderNation() ? transfer.getSender() : transfer.getReceiver());
         int aaId = (int) (transfer.isSenderAA() ? transfer.getSender() : transfer.getReceiver());
 
-        Set<Integer> trackedAlliances = new HashSet<>(aaId);
+        Set<Integer> trackedAlliances = new HashSet<>();
+        trackedAlliances.add(aaId);
         if (transfer.note != null) {
             for (Map.Entry<String, String> entry : PnwUtil.parseTransferHashNotes(transfer.note).entrySet()) {
                 if (MathMan.isInteger(entry.getValue())) {
@@ -58,23 +64,32 @@ public class BankUpdateProcessor {
         for (int allianceId : trackedAlliances) {
             GuildDB guildDb = Locutus.imp().getGuildDBByAA(allianceId);
             if (guildDb != null) {
-                GuildSetting<MessageChannel> key = transfer.isReceiverAA() ? DEPOSIT_ALERT_CHANNEL : WITHDRAW_ALERT_CHANNEL;
-                Roles locrole = transfer.isReceiverAA() ? Roles.ECON_DEPOSIT_ALERTS : Roles.ECON_WITHDRAW_ALERTS;
+                boolean isDeposit = transfer.isReceiverAA();
+                GuildSetting<MessageChannel> key = isDeposit ? DEPOSIT_ALERT_CHANNEL : WITHDRAW_ALERT_CHANNEL;
+                Roles locrole = isDeposit ? Roles.ECON_DEPOSIT_ALERTS : Roles.ECON_WITHDRAW_ALERTS;
                 MessageChannel channel = guildDb.getOrNull(key);
 
                 if (channel != null) {
                     Guild guild = guildDb.getGuild();
                     if (guild != null) {
                         Map.Entry<String, String> card = createCard(transfer, nationId);
-                        if (card != null) {
-                            try {
-                                DiscordUtil.createEmbedCommand(channel, card.getKey(), card.getValue());
-                                Role role = locrole.toRole(guild);
-                                if (role != null) {
-                                    AlertUtil.bufferPing(channel, role.getAsMention());
-                                }
-                            } catch (InsufficientPermissionException ignore) {
+                        try {
+                            IMessageBuilder msg = new DiscordChannelIO(channel).create().embed(card.getKey(), card.getValue());
+                            DiscordUtil.createEmbedCommand(channel, card.getKey(), card.getValue());
+                            Map.Entry<GuildDB, Integer> offshore = guildDb.getOffshoreDB();
+                            if (isDeposit && offshore != null) {
+                                msg = msg.commandButton(CM.offshore.send.cmd, "offshore");
                             }
+                            Role role = locrole.toRole(guild);
+                            if (role != null) {
+                                msg.append(role.getAsMention());
+                            }
+                            if (isDeposit) {
+                                msg.send();
+                            } else {
+                                msg.sendWhenFree();
+                            }
+                        } catch (InsufficientPermissionException ignore) {
                         }
                     }
                 }

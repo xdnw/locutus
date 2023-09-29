@@ -1,50 +1,55 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
-import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.AllianceInstanceAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.AllianceInstanceAttributeDouble;
-import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.DefaultPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.User;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class AlliancePlaceholders extends Placeholders<DBAlliance> {
     private final Map<String, AllianceInstanceAttribute> customMetrics = new HashMap<>();
 
     public AlliancePlaceholders(ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
-        super(DBAlliance.class, DBAlliance.getOrCreate(0), store, validators, permisser);
+        super(DBAlliance.class, store, validators, permisser);
+        this.getCommands().registerCommands(new DefaultPlaceholders());
     }
 
     public List<AllianceInstanceAttribute> getMetrics(ValueStore store) {
         List<AllianceInstanceAttribute> result = new ArrayList<>();
         for (CommandCallable cmd : getFilterCallables()) {
             String id = cmd.aliases().get(0);
-            Map.Entry<Type, Function<DBAlliance, Object>> typeFunction = getPlaceholderFunction(store, id);
+            TypedFunction<DBAlliance, ?> typeFunction = formatRecursively(store, id, null, 0, false);
             if (typeFunction == null) continue;
 
-            AllianceInstanceAttribute metric = new AllianceInstanceAttribute(cmd.getPrimaryCommandId(), cmd.simpleDesc(), typeFunction.getKey(), typeFunction.getValue());
+            AllianceInstanceAttribute metric = new AllianceInstanceAttribute(cmd.getPrimaryCommandId(), cmd.simpleDesc(), typeFunction.getType(), typeFunction);
             result.add(metric);
         }
         return result;
@@ -58,9 +63,9 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
     public AllianceInstanceAttributeDouble getMetricDouble(ValueStore store, String id, boolean ignorePerms) {
         ParametricCallable cmd = get(id);
         if (cmd == null) return null;
-        Map.Entry<Type, Function<DBAlliance, Object>> typeFunction;
+        TypedFunction<DBAlliance, ?> typeFunction;
         try {
-            typeFunction = getPlaceholderFunction(store, id);
+            typeFunction = formatRecursively(store, id, null, 0, true);
         } catch (CommandUsageException ignore) {
             return null;
         } catch (Throwable ignore2) {
@@ -71,9 +76,9 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
             return null;
         }
 
-        Function<DBAlliance, Object> genericFunc = typeFunction.getValue();
+        Function<DBAlliance, ?> genericFunc = typeFunction;
         Function<DBAlliance, Double> func;
-        Type type = typeFunction.getKey();
+        Type type = typeFunction.getType();
         if (type == int.class || type == Integer.class) {
             func = aa -> ((Integer) genericFunc.apply(aa)).doubleValue();
         } else if (type == double.class || type == Double.class) {
@@ -112,59 +117,57 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
     }
 
     public AllianceInstanceAttribute getMetric(ValueStore<?> store, String id, boolean ignorePerms) {
-        Map.Entry<Type, Function<DBAlliance, Object>> typeFunction = getTypeFunction(store, id, ignorePerms);
+        TypedFunction<DBAlliance, ?> typeFunction = formatRecursively(store, id, null, 0, true);
         if (typeFunction == null) return null;
-        return new AllianceInstanceAttribute<>(id, "", typeFunction.getKey(), typeFunction.getValue());
-    }
-
-    public String format(Guild guild, DBAlliance alliance, User user, String arg) {
-        LocalValueStore locals = new LocalValueStore<>(this.getStore());
-        if (alliance != null) {
-            locals.addProvider(Key.of(DBAlliance.class, Me.class), alliance);
-        }
-        if (user != null) {
-            locals.addProvider(Key.of(User.class, Me.class), user);
-        }
-        if (guild != null) {
-            locals.addProvider(Key.of(Guild.class, Me.class), guild);
-        }
-        return format(locals, arg);
-    }
-
-    public String format(ValueStore<?> store, String arg) {
-        DBAlliance me = store.getProvided(Key.of(DBAlliance.class, Me.class));
-        User author = null;
-        try {
-            author = store.getProvided(Key.of(User.class, Me.class));
-        } catch (Exception ignore) {
-        }
-
-        if (author != null && arg.contains("%user%")) {
-            arg = arg.replace("%user%", author.getAsMention());
-        }
-
-        return format(arg, 0, new Function<String, String>() {
-            @Override
-            public String apply(String placeholder) {
-                AllianceInstanceAttribute result = AlliancePlaceholders.this.getMetric(store, placeholder, false);
-                if (result == null && !placeholder.startsWith("get")) {
-                    result = AlliancePlaceholders.this.getMetric(store, "get" + placeholder, false);
-                }
-                if (result != null) {
-                    Object obj = result.apply(me);
-                    if (obj != null) {
-                        return obj.toString();
-                    }
-                }
-                return null;
-            }
-        });
+        return new AllianceInstanceAttribute<>(id, "", typeFunction.getType(), typeFunction);
     }
 
     @Override
-    protected Set<DBAlliance> parse(ValueStore store, String input) {
+    protected Set<DBAlliance> parseSingleElem(ValueStore store, String input) {
+        if (input.equalsIgnoreCase("*")) {
+            return Locutus.imp().getNationDB().getAlliances();
+        }
         Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
-        return PWBindings.alliances(guild, input);
+        if (SpreadSheet.isSheet(input)) {
+            return SpreadSheet.parseSheet(input, List.of("alliance"), true,
+                    s -> s.equalsIgnoreCase("alliance") ? 0 : null,
+                    (type, str) -> PWBindings.alliance(str));
+        }
+        return parseIds(guild, input, true);
+    }
+
+    @Override
+    protected Predicate<DBAlliance> parseSingleFilter(ValueStore store, String input) {
+        if (input.equalsIgnoreCase("*")) {
+            return f -> true;
+        }
+        Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
+        if (SpreadSheet.isSheet(input)) {
+            Set<Set<Integer>> setSet = SpreadSheet.parseSheet(input, List.of("alliance"), true,
+                    s -> s.equalsIgnoreCase("alliance") ? 0 : null,
+                    (type, str) -> DiscordUtil.parseAllianceIds(guild, str));
+
+            Set<Integer> ids = setSet.stream().flatMap(Collection::stream).collect(Collectors.toSet());
+            return f -> ids.contains(f.getId());
+        }
+        Set<Integer> aaIds = DiscordUtil.parseAllianceIds(guild, input);
+        if (aaIds == null) {
+            throw new IllegalArgumentException("Invalid alliances: " + input);
+        }
+        return f -> aaIds.contains(f.getId());
+    }
+
+    private Set<DBAlliance> parseIds(Guild guild, String input, boolean throwError) {
+        Set<Integer> aaIds = DiscordUtil.parseAllianceIds(guild, input);
+        if (aaIds == null) {
+            if (!throwError) return null;
+            throw new IllegalArgumentException("Invalid alliances: " + input);
+        }
+        Set<DBAlliance> alliances = new HashSet<>();
+        for (Integer aaId : aaIds) {
+            alliances.add(DBAlliance.getOrCreate(aaId));
+        }
+        return alliances;
     }
 
     @Override

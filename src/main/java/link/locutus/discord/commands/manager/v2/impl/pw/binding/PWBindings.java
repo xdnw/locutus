@@ -10,14 +10,16 @@ import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ICommandGroup;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.commands.manager.v2.command.StringMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
@@ -63,6 +65,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
+import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.apiv1.enums.city.project.Project;
@@ -197,7 +200,7 @@ public class PWBindings extends BindingHelper {
             examples = """
             #cities<10:505X
             #cities>=10:0250""")
-    public Map<NationFilter, MMRMatcher> mmrMathcerMap(@Me GuildDB db, String input) {
+    public Map<NationFilter, MMRMatcher> mmrMathcerMap(@Me User author, @Me DBNation nation, @Me GuildDB db, String input) {
         Map<NationFilter, MMRMatcher> filterToMMR = new LinkedHashMap<>();
         for (String line : input.split("\n")) {
             String[] split = line.split("[:]");
@@ -213,7 +216,7 @@ public class PWBindings extends BindingHelper {
             }
             if (!containsNation) filterStr += ",*";
             DiscordUtil.parseNations(db.getGuild(), filterStr); // validate
-            NationFilterString filter = new NationFilterString(filterStr, db.getGuild());
+            NationFilterString filter = new NationFilterString(filterStr, db.getGuild(), author, nation);
             MMRMatcher mmr = new MMRMatcher(split[1]);
             filterToMMR.put(filter, mmr);
         }
@@ -231,24 +234,20 @@ public class PWBindings extends BindingHelper {
             "```\n" +
             "Use `*` as the filter to match all nations.\n" +
             "Only alliance members can be given role")
-    public Map<NationFilter, Role> conditionalRole(@Me GuildDB db, String input) {
+    public Map<NationFilter, Role> conditionalRole(@Me GuildDB db, String input, @Default @Me User author, @Default @Me DBNation nation) {
+        System.out.println("Parse conditional roles " + input);
         Map<NationFilter, Role> filterToRole = new LinkedHashMap<>();
         for (String line : input.split("\n")) {
-            String[] split = line.split("[:]");
-            if (split.length != 2) continue;
-
-            String filterStr = split[0].trim();
-
-            boolean containsNation = false;
-            for (String arg : StringMan.split(filterStr, ',')) {
-                if (!arg.startsWith("#")) containsNation = true;
-                if (arg.contains("tax_id=")) containsNation = true;
-                if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) containsNation = true;
+            int index = line.lastIndexOf(":");
+            if (index == -1) {
+                continue;
             }
-            if (!containsNation) filterStr += ",*";
-            DiscordUtil.parseNations(db.getGuild(), filterStr); // validate
-            NationFilterString filter = new NationFilterString(filterStr, db.getGuild());
-            Role role = DiscordBindings.role(db.getGuild(), split[1]);
+            String part1 = line.substring(0, index);
+            String part2 = line.substring(index + 1);
+            String filterStr = part1.trim();
+            boolean containsNation = false;
+            NationFilterString filter = new NationFilterString(filterStr, db.getGuild(), author, nation);
+            Role role = DiscordBindings.role(db.getGuild(), part2);
             filterToRole.put(filter, role);
         }
         return filterToRole;
@@ -261,7 +260,7 @@ public class PWBindings extends BindingHelper {
             examples = """
             #cities<10:100/100
             #cities>=10:25/25""")
-    public Map<NationFilter, TaxRate> taxRateMap(@Me GuildDB db, String input) {
+    public Map<NationFilter, TaxRate> taxRateMap(@Me User author, @Me DBNation nation, @Me GuildDB db, String input) {
         Map<NationFilter, TaxRate> filterToTaxRate = new LinkedHashMap<>();
         for (String line : input.split("\n")) {
             String[] split = line.split("[:]");
@@ -276,7 +275,7 @@ public class PWBindings extends BindingHelper {
                 if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) containsNation = true;
             }
             if (!containsNation) filterStr += ",*";
-            NationFilterString filter = new NationFilterString(filterStr, db.getGuild());
+            NationFilterString filter = new NationFilterString(filterStr, db.getGuild(), author, nation);
             TaxRate rate = new TaxRate(split[1]);
             filterToTaxRate.put(filter, rate);
         }
@@ -292,22 +291,14 @@ public class PWBindings extends BindingHelper {
     examples = """
             #cities<10:1
             #cities>=10:2""")
-    public Map<NationFilter, Integer> taxIdMap(@Me GuildDB db, String input) {
+    public Map<NationFilter, Integer> taxIdMap(@Me User author, @Me DBNation nation, @Me GuildDB db, String input) {
         Map<NationFilter, Integer> filterToBracket = new LinkedHashMap<>();
         for (String line : input.split("[\n|;]")) {
             String[] split = line.split("[:]");
             if (split.length != 2) continue;
 
             String filterStr = split[0].trim();
-
-            boolean containsNation = false;
-            for (String arg : filterStr.split(",")) {
-                if (!arg.startsWith("#")) containsNation = true;
-                if (arg.contains("tax_id=")) containsNation = true;
-                if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) containsNation = true;
-            }
-            if (!containsNation) filterStr += ",*";
-            NationFilterString filter = new NationFilterString(filterStr, db.getGuild());
+            NationFilterString filter = new NationFilterString(filterStr, db.getGuild(), author, nation);
             int bracket = Integer.parseInt(split[1]);
             filterToBracket.put(filter, bracket);
         }
@@ -517,8 +508,8 @@ public class PWBindings extends BindingHelper {
         NationPlaceholders placeholders = v2.getNationPlaceholders();
         ParametricCallable ph = placeholders.get(input);
         ph.validatePermissions(store, permisser);
-        Map.Entry<Type, Function<DBNation, Object>> entry = placeholders.getPlaceholderFunction(store, input);
-        return new SimpleNationPlaceholder(ph.getPrimaryCommandId(), entry.getKey(), entry.getValue());
+        TypedFunction<DBNation, ?> entry = placeholders.formatRecursively(store, input, null, 0, true);
+        return new SimpleNationPlaceholder(ph.getPrimaryCommandId(), entry.getType(), entry);
     }
 
     @Binding(examples = {"25/25"}, value = "A tax rate in the form of `money/rss`")
@@ -613,9 +604,12 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "A comma separated list of continents, or `*`")
-    public Set<Continent> continentTypes(String input) {
-        if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Continent.values()));
-        return emumSet(Continent.class, input);
+    public static Set<Continent> continentTypes(String input) {
+            if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Continent.values()));
+            if (SpreadSheet.isSheet(input)) {
+                return SpreadSheet.parseSheet(input, List.of("continent"), true, (type, str) -> continent(str));
+            }
+            return emumSet(Continent.class, input);
     }
 
     @Binding(value = "A comma separated list of spy operation types")
@@ -645,12 +639,27 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "A comma separated list of alliance projects")
-    public Set<Project> projects(String input) {
+    public static Set<Project> projects(String input) {
+        if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Projects.values));
+        if (SpreadSheet.isSheet(input)) {
+            return SpreadSheet.parseSheet(input, List.of("project"), true, (type, str) -> project(str));
+        }
         Set<Project> result = new HashSet<>();
         for (String type : input.split(",")) {
             Project project = Projects.get(type);
-            if (project == null) throw new IllegalArgumentException("Invalid project: `" + project + "`");
+            if (project == null) throw new IllegalArgumentException("Invalid project: `" + type + "`");
             result.add(project);
+        }
+        return result;
+    }
+
+    @Binding(value = "A comma separated list of building types")
+    public Set<Building> buildings(String input) {
+        Set<Building> result = new HashSet<>();
+        for (String type : input.split(",")) {
+            Building building = Buildings.get(type);
+            if (building == null) throw new IllegalArgumentException("Invalid building: `" + type + "`");
+            result.add(building);
         }
         return result;
     }
@@ -668,9 +677,8 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "#position>1,#cities<=5", value = "A comma separated list of filters (can include nations and alliances)")
-    public NationFilter nationFilter(@Default @Me Guild guild, String input) {
-        nations(null, guild, input + "|*");
-        return new NationFilterString(input, guild);
+    public NationFilter nationFilter(@Me User author, @Me DBNation nation, @Default @Me Guild guild, String input) {
+        return new NationFilterString(input, guild, author, nation);
     }
 
     @Binding(examples = "score,soldiers", value = "A comma separated list of numeric nation attributes")
@@ -797,7 +805,6 @@ public class PWBindings extends BindingHelper {
         return result;
     }
 
-    @Binding(examples = "Cataclysm,790", value = "A comma separated list of alliances")
     public static Set<DBAlliance> alliances(@Default @Me Guild guild, String input) {
         Set<Integer> aaIds = DiscordUtil.parseAllianceIds(guild, input);
         if (aaIds == null) throw new IllegalArgumentException("Invalid alliances: " + input);
@@ -806,6 +813,11 @@ public class PWBindings extends BindingHelper {
             alliances.add(DBAlliance.getOrCreate(aaId));
         }
         return alliances;
+    }
+
+    @Binding(examples = "Cataclysm,790", value = "A comma separated list of alliances")
+    public Set<DBAlliance> alliances(AlliancePlaceholders placeholders, ValueStore store, String input) {
+        return placeholders.parseSet(store, input);
     }
 //
 //    @Binding(examples = "Cataclysm,790", value = "A comma separated list of alliances")
@@ -824,11 +836,6 @@ public class PWBindings extends BindingHelper {
 //            }
 //        }
 //    }
-
-    public static void main(String[] args) {
-        //
-        // (*,#cities(5,4)>{cities}*3)||test
-    }
 
     @Binding(examples = "ACTIVE,EXPIRED", value = "A comma separated list of war statuses")
     public Set<WarStatus> WarStatuses(String input) {
@@ -934,7 +941,10 @@ public class PWBindings extends BindingHelper {
 
     @Binding
     @Me
-    public DBNation nation(@Default @Me User user) {
+    public DBNation nationProvided(@Default @Me User user) {
+        if (user == null) {
+            throw new IllegalStateException("No user provided in command locals");
+        }
         DBNation nation = DiscordUtil.getNation(user);
         if (nation == null) throw new IllegalArgumentException("Please use " + CM.register.cmd.toSlashMention() + "");
         return nation;
@@ -1060,7 +1070,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "647252780817448972", value = "A discord guild id. See: <https://en.wikipedia.org/wiki/Template:Discord_server#Getting_Guild_ID>")
-    public GuildDB guild(long guildId) {
+    public static GuildDB guild(long guildId) {
         GuildDB guild = Locutus.imp().getGuildDB(guildId);
         if (guild == null) throw new IllegalArgumentException("No guild found for: " + guildId);
         return guild;
@@ -1171,6 +1181,11 @@ public class PWBindings extends BindingHelper {
         return emum(UnsortedCommands.ClearRolesEnum.class, input);
     }
 
+    @Binding(value = "Bank transaction flow type (internal, withdrawal, depost)")
+    public static FlowType FlowType(String input) {
+        return emum(FlowType.class, input);
+    }
+
     @Binding(examples = {"@role", "672238503119028224", "roleName"}, value = "A discord role name, mention or id")
     public Roles role(String role) {
         return emum(Roles.class, role);
@@ -1182,7 +1197,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "Continent name")
-    public Continent Continent(String input) {
+    public static Continent continent(String input) {
         return emum(Continent.class, input);
     }
 
@@ -1259,7 +1274,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "A project name. Replace spaces with `_`. See: <https://politicsandwar.com/nation/projects/>", examples = "ACTIVITY_CENTER")
-    public Project project(String input) {
+    public static Project project(String input) {
         Project project = Projects.get(input);
         if (project == null) throw new IllegalArgumentException("Invalid project: `"  + input + "`. Options: " + StringMan.getString(Projects.values));
         return project;
@@ -1375,4 +1390,8 @@ public class PWBindings extends BindingHelper {
 //        return WarParser.of(coalition1, coalition1, timediff);
 //        return nation.get();
 //    }
+
+    // public DoubleArray parse(Map<ResourceType, Double> input)
+    // public Map<ResourceType, Double> parse(DoubleArray input)
+
 }

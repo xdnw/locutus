@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
+import link.locutus.discord.db.entities.DBNation;
 
 public class ProviderParser<T> implements Parser<T> {
     private final Key<T> key;

@@ -6,6 +6,7 @@ import io.javalin.http.RedirectResponse;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
+import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -125,6 +126,32 @@ public class PageHandler implements Handler {
         this.commands.registerCommands(new TestPages());
 
         this.commands.registerCommands(this);
+
+        Map<Key, Parser> parsers = Locutus.imp().getCommandManager().getV2().getStore().getParsers();
+
+        List<Key> missingKeys = new ArrayList<>();
+
+        for (Map.Entry<Key, Parser> entry : parsers.entrySet()) {
+            Parser parser = entry.getValue();
+            if (!parser.isConsumer(Locutus.cmd().getV2().getStore())) continue;
+
+            Key htmlKey = parser.getKey().append(HtmlInput.class);
+            try {
+                Parser htmlParser = store.get(htmlKey);
+                if (htmlParser == null) {
+                    missingKeys.add(htmlKey);
+                }
+            } catch (Exception e) {
+                missingKeys.add(htmlKey);
+            }
+        }
+        // print missing
+        if (!missingKeys.isEmpty()) {
+            for (Key missingKey : missingKeys) {
+                System.out.println("Missing: " + missingKey);
+            }
+        }
+
     }
 
     public CommandGroup getCommands() {
@@ -394,6 +421,38 @@ public class PageHandler implements Handler {
             ctx.header("Content-Type", "text/html;charset=UTF-8");
             String path = stack.consumeNext();
             switch (path.toLowerCase(Locale.ROOT)) {
+                case "test" -> {
+                    StringBuilder response = new StringBuilder();
+                    response.append("Hello World!").append("\n");
+
+                    List<String> args = stack.getArgs();
+                    response.append("Args: " + args).append("\n");
+                    ValueStore locals = stack.getStore();
+                    User user = (User) locals.getProvided(Key.of(User.class, Me.class), false);
+                    DBNation nation = (DBNation) locals.getProvided(Key.of(DBNation.class, Me.class), false);
+                    Guild guild = (Guild) locals.getProvided(Key.of(Guild.class, Me.class), true);
+
+                    if (user != null) {
+                        response.append("User: " + user.getName()).append("\n");
+                    } else {
+                        response.append("User: null").append("\n");
+                    }
+
+                    if (nation != null) {
+                        response.append("Nation: " + nation.getName()).append("\n");
+                    } else {
+                        response.append("Nation: null").append("\n");
+                    }
+
+                    if (guild != null) {
+                        response.append("Guild: " + guild.getName()).append("\n");
+                    } else {
+                        response.append("Guild: null").append("\n");
+                    }
+
+                    ctx.result(response.toString());
+                    return;
+                }
                 case "page" -> {
                     Object result = wrap(commands.call(stack), ctx);
                     if (result != null && (!(result instanceof String) || !result.toString().isEmpty())) {
@@ -407,18 +466,17 @@ public class PageHandler implements Handler {
                 case "command" -> {
                     List<String> args = new ArrayList<>(stack.getRemainingArgs());
                     CommandCallable cmd = commands.getCallable(args);
-
-                    cmd.validatePermissions(stack.getStore(), permisser);
-
-                    if (cmd != null) {
-                        String endpoint = Settings.INSTANCE.WEB.REDIRECT + "/command";
-                        ctx.result(cmd.toHtml(stack.getStore(), stack.getPermissionHandler(), endpoint));
-                    } else {
+                    if (cmd == null) {
                         throw new IllegalArgumentException("No command found for `/" + StringMan.join(args, " ") + "`");
                     }
+
+                    cmd.validatePermissions(stack.getStore(), permisser);
+                    String endpoint = Settings.INSTANCE.WEB.REDIRECT + "/command";
+                    ctx.result(cmd.toHtml(stack.getStore(), stack.getPermissionHandler(), endpoint));
                 }
             }
         } catch (Throwable e) {
+            System.out.println("Handle errors " + e.getMessage());
             handleErrors(e, ctx);
         }
     }
@@ -454,7 +512,6 @@ public class PageHandler implements Handler {
 
     private Object wrap(Object call, Context ctx) {
         String contentType = ctx.header("Content-Type");
-        logger.info("HEADERS " + StringMan.getString(ctx.headerMap()));
         if (contentType == null || contentType.contains("text/html")) {
             if (call instanceof String) {
                 String str = (String) call;

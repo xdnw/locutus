@@ -33,7 +33,8 @@ import link.locutus.discord.commands.account.RunAllNations;
 import link.locutus.discord.commands.account.Runall;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.sync.SyncTreaties;
 import link.locutus.discord.commands.info.CounterStats;
 import link.locutus.discord.commands.external.guild.KickLocutus;
@@ -300,7 +301,8 @@ public class CommandManager {
 
                 if (!(cmd instanceof Noformat) && nation != null) {
                     try {
-                        String formatted = DiscordUtil.format(guild, channel, msgUser, nation, content1);
+                        NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
+                        String formatted = formatter.format2(guild, nation, msgUser, content1, nation, false);
                         if (!content1.equals(formatted)) {
                             assert guild != null;
                         }

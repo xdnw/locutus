@@ -17,6 +17,8 @@ import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.GameTimers;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
@@ -24,7 +26,8 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.StringMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
@@ -82,9 +85,6 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -141,6 +141,22 @@ public class DBNation implements NationOrAlliance {
 //    private double gdp;
     private double gni;
     private transient  DBNationCache cache;
+
+    @Command
+//    @DenyPermission
+    public Map<ResourceType, Double> test() {
+        // ResourceType.FOOD = 10
+        // and some other example values
+        Map<ResourceType, Double> map = new HashMap<>();
+        map.put(ResourceType.FOOD, 10.0);
+        map.put(ResourceType.COAL, 20.0);
+        map.put(ResourceType.OIL, 30.0);
+        map.put(ResourceType.URANIUM, 40.0);
+        map.put(ResourceType.LEAD, 50.0);
+        map.put(ResourceType.IRON, 60.0);
+        map.put(ResourceType.BAUXITE, 70.0);
+        return map;
+    }
 
     public static DBNation getByUser(User user) {
         return DiscordUtil.getNation(user);
@@ -475,11 +491,25 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "If the nation has a project")
     public boolean hasProject(Project project) {
-        return hasProject(project, false);
+        return (this.projects & (1L << project.ordinal())) != 0;
     }
 
-    public boolean hasProject(Project project, boolean update) {
-        return (this.projects & (1L << project.ordinal())) != 0;
+    @Command(desc = "If the nation has all of the specified projects")
+    public boolean hasProjects(Set<Project> projects, @Default boolean any) {
+        if (any) {
+            for (Project p : projects) {
+                if (hasProject(p)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        for (Project p : projects) {
+            if (!hasProject(p)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Command(desc = "If the nation has the treasure")
@@ -798,13 +828,15 @@ public class DBNation implements NationOrAlliance {
         return getAuth(true);
     }
 
-    public double getStrongestOffEnemyOfScore(Predicate<Double> filter) {
+    @Command(desc = "Effective strength of the strongest nation this nation is attacking (offensive war)")
+    public double getStrongestOffEnemyOfScore(double minScore, double maxScore) {
         List<DBWar> wars = getActiveOffensiveWars();
         double strongest = -1;
         for (DBWar war : wars) {
             DBNation other = war.getNation(!war.isAttacker(this));
             if (other == null || other.active_m() > 2440 || other.getVm_turns() > 0) continue;
-            if (filter.test(other.getScore())) {
+//            if (filter.test(other.getScore())) {
+            if (other.getScore() >= minScore && other.getScore() <= maxScore) {
                 strongest = Math.max(strongest, other.getStrength());
             }
         }
@@ -813,7 +845,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Effective strength of the strongest nation this nation is fighting")
     public double getStrongestEnemy() {
-        double val = getStrongestEnemyOfScore((score) -> true);
+        double val = getStrongestEnemyOfScore(0, Double.MAX_VALUE);
         return val == -1 ? 0 : val;
     }
 
@@ -824,53 +856,60 @@ public class DBNation implements NationOrAlliance {
         return myStrength == 0 ? 0 : enemyStr / myStrength;
     }
 
-    public double getStrongestEnemyOfScore(Predicate<Double> filter) {
+    @Command(desc = "Get the effective military strength of the strongegst nation within the provided score range")
+    public double getStrongestEnemyOfScore(double minScore, double maxScore) {
         List<DBWar> wars = getActiveWars();
         double strongest = -1;
         for (DBWar war : wars) {
             DBNation other = war.getNation(!war.isAttacker(this));
             if (other == null || other.active_m() > 2440 || other.getVm_turns() > 0) continue;
-            if (filter.test(other.getScore())) {
+            if (other.getScore() >= minScore && other.getScore() <= maxScore) {
                 strongest = Math.max(strongest, other.getStrength());
             }
         }
         return strongest;
     }
 
-    public boolean isFightingOffEnemyOfScore(Predicate<Double> filter) {
-        return getStrongestOffEnemyOfScore(filter) != -1;
+
+    @Command(desc = "If this nation has an offensive war against an enemy in the provided score range")
+    public boolean isAttackingEnemyOfScore(double minScore, double maxScore) {
+        return getStrongestOffEnemyOfScore(minScore, maxScore) != -1;
     }
 
-    public boolean isFightingEnemyOfScore(Predicate<Double> filter) {
-        return getStrongestEnemyOfScore(filter) != -1;
+    @Command(desc = "If this nation has a war with an enemy in the provided score range")
+    public boolean isFightingEnemyOfScore(double minScore, double maxScore) {
+        return getStrongestEnemyOfScore(minScore, maxScore) != -1;
     }
 
-    public boolean isFightingEnemyOfCities(Predicate<Double> filter) {
+    @Command(desc = "If this nation has an war with an enemy in the provided city range")
+    public boolean isFightingEnemyOfCities(double minCities, double maxCities) {
         for (DBWar war : getWars()) {
             DBNation other = war.getNation(!war.isAttacker(this));
-            if (other != null && filter.test((double) other.getCities())) {
+            if (other != null && other.getCities() >= minCities && other.getCities() <= maxCities) {
                 return true;
             }
         }
         return false;
     }
 
-    public boolean isDefendingEnemyOfCities(Predicate<Double> filter) {
+    @Command(desc = "If this nation has a defensive war from an enemy in the provided city range")
+    public boolean isDefendingEnemyOfCities(double minCities, double maxCities) {
         for (DBWar war : getWars()) {
             if (war.defender_id != nation_id) continue;
             DBNation other = war.getNation(!war.isAttacker(this));
-            if (other != null && filter.test((double) other.getCities())) {
+            if (other != null && other.getCities() >= minCities && other.getCities() <= maxCities) {
                 return true;
             }
         }
         return false;
     }
 
-    public boolean isAttackingEnemyOfCities(Predicate<Double> filter) {
+    @Command(desc = "If this nation has an offensive war against an enemy in the provided city range")
+    public boolean isAttackingEnemyOfCities(double minCities, double maxCities) {
         for (DBWar war : getWars()) {
             if (war.attacker_id != nation_id) continue;
             DBNation other = war.getNation(!war.isAttacker(this));
-            if (other != null && filter.test((double) other.getCities())) {
+            if (other != null && other.getCities() >= minCities && other.getCities() <= maxCities) {
                 return true;
             }
         }
@@ -2324,7 +2363,6 @@ public class DBNation implements NationOrAlliance {
         return getDeposits(db, tracked, useTaxBase, offset, updateThreshold, cutOff, false, false, f -> true, priority);
     }
     public Map<DepositType, double[]> getDeposits(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter, boolean priority) {
-        long start = System.currentTimeMillis();
         List<Map.Entry<Integer, Transaction2>> transactions = getTransactions(db, tracked, useTaxBase, offset, updateThreshold, cutOff, priority);
         Map<DepositType, double[]> sum = PnwUtil.sumNationTransactions(db, tracked, transactions, forceIncludeExpired, forceIncludeIgnored, filter);
         return sum;
@@ -4563,22 +4601,57 @@ public class DBNation implements NationOrAlliance {
         ships = (int) (drydocks * cities * Buildings.DRYDOCK.max());
     }
 
-    @Command(desc = "Number of buildings total")
-    public int getBuildings() {
+    @Command(desc = "Alliance rank by score")
+    public int getAllianceRank(@Default NationFilter filter) {
+        if (alliance_id == 0) return Integer.MAX_VALUE;
+        return getAlliance().getRank(filter);
+    }
+
+    @Command(desc= "Get total free building slots in this nations cities")
+    public int getFreeBuildings() {
         int total = 0;
-        Collection<DBCity> cities = _getCitiesV3().values();
-        for (DBCity city : cities) {
-            total += city.getNumBuildings();
+        for (DBCity city : _getCitiesV3().values()) {
+            total += Math.max(0, ((int) city.infra - city.getNumBuildings() * 50) / 50);
         }
         return total;
     }
 
-    @Command(desc = "Number of buildings per city")
-    public double getAvgBuildings() {
+    @Command(desc = "Number of buildings total")
+    public int getBuildings(@Default Set<Building> buildings) {
         int total = 0;
         Collection<DBCity> cities = _getCitiesV3().values();
-        for (DBCity city : cities) {
-            total += city.getNumBuildings();
+        if (buildings != null) {
+            for (DBCity city : cities) {
+                for (Building building : buildings) {
+                    total += city.get(building);
+                }
+            }
+        } else {
+            for (DBCity city : cities) {
+                total += city.getNumBuildings();
+            }
+        }
+        return total;
+    }
+
+    public double getAvgBuildings() {
+        return getAvgBuildings(null);
+    }
+
+    @Command(desc = "Number of buildings per city")
+    public double getAvgBuildings(@Default Set<Building> buildings) {
+        int total = 0;
+        Collection<DBCity> cities = _getCitiesV3().values();
+        if (buildings != null) {
+            for (DBCity city : cities) {
+                for (Building building : buildings) {
+                    total += city.get(building);
+                }
+            }
+        } else {
+            for (DBCity city : cities) {
+                total += city.getNumBuildings();
+            }
         }
         return total / (double) cities.size();
     }
@@ -5133,6 +5206,84 @@ public class DBNation implements NationOrAlliance {
         }
 
         return netUnits;
+    }
+
+    @Command(desc = "Get the number of active wars with a list of nations")
+    public int getFighting(Set<DBNation> nations) {
+        if (nations == null) return getNumWars();
+        int count = 0;
+        for (DBWar war : getActiveWars()) {
+            DBNation other = war.getNation(!war.isAttacker(this));
+            if (nations.contains(other)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    @Command(desc = "Get the number of active offensive wars with a list of nations")
+    public int getAttacking(Set<DBNation> nations) {
+        if (nations == null) return getNumWars();
+        int count = 0;
+        for (DBWar war : getActiveOffensiveWars()) {
+            DBNation other = war.getNation(false);
+            if (nations.contains(other)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    @Command(desc = "Get the number of active defensive wars with a list of nations")
+        public int getDefending(Set<DBNation> nations) {
+        if (nations == null) return getNumWars();
+        int count = 0;
+        for (DBWar war : getActiveDefensiveWars()) {
+            DBNation other = war.getNation(true);
+            if (nations.contains(other)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    @Command(desc = "Can perform a spy attack against a nation of score")
+    public boolean canSpyOnScore(double score) {
+        double min = PnwUtil.getAttackRange(true, false, true, score);
+        double max = PnwUtil.getAttackRange(true, false, false, score);
+        return score >= min && score <= max;
+    }
+
+    @Command(desc = "Can be spied by a nation of score")
+    public boolean canBeSpiedByScore(double score) {
+        double min = PnwUtil.getAttackRange(false, false, true, score);
+        double max = PnwUtil.getAttackRange(false, false, false, score);
+        return score >= min && score <= max;
+    }
+
+    @Command(desc = "Can declare war on a nation of score")
+        public boolean canDeclareOnScore(double score) {
+        double min = PnwUtil.getAttackRange(true, true, true, score);
+        double max = PnwUtil.getAttackRange(true, true, false, score);
+        return score >= min && score <= max;
+    }
+
+    @Command(desc = "Can be declared on by a nation of score")
+    public boolean canBeDeclaredOnByScore(double score) {
+        double min = PnwUtil.getAttackRange(false, true, true, score);
+        double max = PnwUtil.getAttackRange(false, true, false, score);
+        return score >= min && score <= max;
+    }
+
+    @Command(desc = "If this nation is in a nation list")
+    public boolean isIn(Set<DBNation> nations) {
+        return nations.contains(this);
+    }
+
+    @Command(desc = "If this nation is in the enemies coalition")
+    public boolean isEnemy(@Me GuildDB db) {
+        if (alliance_id == 0) return false;
+        return db.getCoalition(Coalition.ENEMIES).contains(alliance_id);
     }
 
     public long getRerollDate() {

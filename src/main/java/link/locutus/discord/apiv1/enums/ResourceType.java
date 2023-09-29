@@ -18,8 +18,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -157,6 +159,14 @@ public enum ResourceType {
         return true;
     }
 
+    public static String toString(double[] resources, boolean fancy) {
+        return fancy ? PnwUtil.resourcesToFancyString(resources) : toString(resources);
+    }
+
+    public static String toString(double[] resources) {
+        return PnwUtil.resourcesToString(resources);
+    }
+
     public double[] toArray(double amt) {
         double[] result = getBuffer();
         result[ordinal()] = amt;
@@ -202,6 +212,14 @@ public enum ResourceType {
         return new ResourcesBuilder();
     }
 
+    public static ResourcesBuilder builder(double[] amount) {
+        return builder().add(amount);
+    }
+
+    public static ResourcesBuilder builder(Map<ResourceType, Double> amount) {
+        return builder().add(amount);
+    }
+
     public ResourcesBuilder builder(double amt) {
         return builder().add(this, amt);
     }
@@ -214,6 +232,13 @@ public enum ResourceType {
             return resources;
         }
 
+
+        public <T> ResourcesBuilder forEach(Iterable<T> iterable, BiConsumer<ResourcesBuilder, T> consumer) {
+            for (T t : iterable) {
+                consumer.accept(this, t);
+            }
+            return this;
+        }
         public ResourcesBuilder add(ResourceType type, double amt) {
             if (amt != 0) {
                 getResources()[type.ordinal()] += amt;
@@ -282,6 +307,13 @@ public enum ResourceType {
         public ResourcesBuilder min(double[] amounts) {
             for (int i = 0; i < amounts.length; i++) {
                 this.resources[i] = Math.min(this.resources[i], amounts[i]);
+            }
+            return this;
+        }
+
+        public ResourcesBuilder negative() {
+            for (int i = 0; i < resources.length; i++) {
+                this.resources[i] = -this.resources[i];
             }
             return this;
         }

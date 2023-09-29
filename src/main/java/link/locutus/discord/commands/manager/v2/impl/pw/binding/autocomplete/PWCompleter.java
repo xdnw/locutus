@@ -5,9 +5,12 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.DepositType;
+import link.locutus.discord.apiv1.enums.FlowType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarType;
+import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -146,23 +149,23 @@ public class PWCompleter extends BindingHelper {
     @ReportPerms
     @Binding(types={ReportManager.Report.class})
     public List<Map.Entry<String, String>> reports(ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input) {
-        return reports(manager, me, author, db, input, true);
+        return reports(manager, me, author, db, input, true, OptionData.MAX_CHOICES);
     }
 
 
     @Autocomplete
     @Binding(types={ReportManager.Report.class})
     public List<Map.Entry<String, String>> reportsAll(ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input) {
-        return reports(manager, me, author, db, input, false);
+        return reports(manager, me, author, db, input, false, OptionData.MAX_CHOICES);
     }
 
-    public List<Map.Entry<String, String>> reports(ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input, boolean checkPerms) {
+    public static List<Map.Entry<String, String>> reports(ReportManager manager, @Me DBNation me, @Me User author, @Me GuildDB db, String input, boolean checkPerms, int maxChoices) {
         List<ReportManager.Report> options = manager.loadReports(null);
         if (checkPerms) {
             options.removeIf(f -> !f.hasPermission(me, author, db));
         }
 
-        options = StringMan.getClosest(input, options, f -> "#" + f.reportId + " " + f.getTitle(), OptionData.MAX_CHOICES, true, false);
+        options = StringMan.getClosest(input, options, f -> "#" + f.reportId + " " + f.getTitle(), maxChoices, true, false);
 
         return options.stream().map(f -> Map.entry("#" + f.reportId + " " + f.getTitle(), f.reportId + "")).collect(Collectors.toList());
     }
@@ -451,6 +454,12 @@ public class PWCompleter extends BindingHelper {
     }
 
     @Autocomplete
+    @Binding(types={FlowType.class})
+    public List<String> FlowType(String input) {
+        return StringMan.completeEnum(input, FlowType.class);
+    }
+
+    @Autocomplete
     @Binding(types={DBLoan.Status.class})
     public List<String> LoanStatus(String input) {
         return StringMan.completeEnum(input, DBLoan.Status.class);
@@ -480,6 +489,28 @@ public class PWCompleter extends BindingHelper {
                     List<DBAlliance> options = new ArrayList<>(Locutus.imp().getNationDB().getAlliances());
                     String inputStr = input.toString();
                     return StringMan.autocompleteComma(inputStr, options, f -> DBAlliance.parse(f, false), DBAlliance::getName, f -> f.getId() + "", OptionData.MAX_CHOICES);
+                }));
+            });
+        }
+
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, Project.class).getType(), Autocomplete.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                    List<Project> options = Arrays.asList(Projects.values);
+                    String inputStr = input.toString();
+                    return StringMan.autocompleteComma(inputStr, options, Projects::get, Project::name, Project::name, OptionData.MAX_CHOICES);
+                }));
+            });
+        }
+
+        {
+            Key key = Key.of(TypeToken.getParameterized(Set.class, Building.class).getType(), Autocomplete.class);
+            addBinding(store -> {
+                store.addParser(key, new FunctionConsumerParser(key, (BiFunction<ValueStore, Object, Object>) (valueStore, input) -> {
+                    List<Building> options = Arrays.asList(Buildings.values());
+                    String inputStr = input.toString();
+                    return StringMan.autocompleteComma(inputStr, options, Buildings::get, Building::name, Building::name, OptionData.MAX_CHOICES);
                 }));
             });
         }

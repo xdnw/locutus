@@ -35,7 +35,7 @@ public class CheckPermission extends Command {
         User user = DiscordUtil.getUser(args.get(1));
         if (user == null) return "Unknown user: `" + args.get(1) + "`";
         Command cmd = Locutus.imp().getCommandManager().getCommandMap().get(args.get(0));
-        if (cmd == null) return "Unknown command: `" + args.get(0) + "`";
+        if (cmd == null) return "Unknown command (3): `" + args.get(0) + "`";
         boolean result = cmd.checkPermission(guild, user);
         return "" + result;
     }

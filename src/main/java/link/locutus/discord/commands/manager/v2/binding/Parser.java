@@ -8,6 +8,7 @@ import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public interface Parser<T> {
     T apply(ArgumentStack arg);
@@ -21,7 +22,13 @@ public interface Parser<T> {
     String getDescription();
 
     default T apply(ValueStore store, ValidatorStore validators, PermissionHandler permisser, String... args) {
-        ArgumentStack stack = new ArgumentStack(new ArrayList<>(Arrays.asList(args)), store, validators, permisser);
+        List<String> argsList;
+        if (args == null) {
+            argsList = new ArrayList<>();
+        } else {
+            argsList = new ArrayList<>(Arrays.asList(args));
+        }
+        ArgumentStack stack = new ArgumentStack(argsList, store, validators, permisser);
         return apply(stack);
     }
 

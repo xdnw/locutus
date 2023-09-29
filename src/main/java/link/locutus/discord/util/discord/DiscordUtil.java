@@ -20,7 +20,6 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
-import link.locutus.discord.util.parser.ArgParser;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import com.google.common.base.Charsets;
 import link.locutus.discord.apiv1.enums.TreatyType;
@@ -445,30 +444,28 @@ public class DiscordUtil {
         new DiscordChannelIO(channel, null).create().embed(embed).addCommands(reactionArguments).send();
     }
 
-    private static final ArgParser parser = new ArgParser();
+//    public static String format2(Guild guild, User callerUser, DBNation callerNation, String message, User user, DBNation nation) {
+//        if (user != null && message.contains("%user%")) {
+//            message = message.replace("%user%", user.getAsMention());
+//        }
+//        return Locutus.imp().getCommandManager().getV2().getNationPlaceholders().format(guild, callerNation, callerUser, message, nation);
+//    }
 
-    public static String format(Guild guild, IMessageIO channel, User user, DBNation nation, String message) {
-        if (user != null && message.contains("%user%")) {
-            message = message.replace("%user%", user.getAsMention());
-        }
-        return Locutus.imp().getCommandManager().getV2().getNationPlaceholders().format(guild, nation, user, message);
-    }
-
-    public static String format(Guild guild, MessageChannel channel, User user, DBNation nation, String message) {
-        if (user != null && message.contains("%user%")) {
-            message = message.replace("%user%", user.getAsMention());
-        }
-        String result = parser.parse(guild, channel, user, nation, message);
-        if (result.indexOf('{') != -1 && result.indexOf('}') != -1) {
-            for (NationMeta value : NationMeta.values) {
-                String arg = "{" + value.name().toLowerCase() + "}";
-                if (message.contains(arg)) {
-                    message = message.replace(arg, value.toString(nation.getMeta(value)));
-                }
-            }
-        }
-        return result;
-    }
+//    public static String format(Guild guild, MessageChannel channel, User callerUser, DBNation callerNation, String message) {
+//        if (user != null && message.contains("%user%")) {
+//            message = message.replace("%user%", user.getAsMention());
+//        }
+//        String result = parser.parse(guild, channel, user, nation, message);
+//        if (result.indexOf('{') != -1 && result.indexOf('}') != -1) {
+//            for (NationMeta value : NationMeta.values) {
+//                String arg = "{" + value.name().toLowerCase() + "}";
+//                if (message.contains(arg)) {
+//                    message = message.replace(arg, value.toString(nation.getMeta(value)));
+//                }
+//            }
+//        }
+//        return result;
+//    }
 
     public static class CommandInfo {
         public final Long channelId;
@@ -530,7 +527,7 @@ public class DiscordUtil {
         } else if (id.startsWith("{")){
             return List.of(new CommandInfo(channelId, behavior, id));
         } else if (!id.isEmpty()) {
-            throw new IllegalArgumentException("Unknown command: `" + id + "`");
+            throw new IllegalArgumentException("Unknown command (5): `" + id + "`");
         } else {
             return List.of(new CommandInfo(channelId, behavior, id));
         }
@@ -597,10 +594,6 @@ public class DiscordUtil {
             map.put(entry.getName(), entry.getValue());
         }
         return map;
-    }
-
-    public static ArgParser getParser() {
-        return parser;
     }
 
     public static Map.Entry<Integer, Integer> getCityRange(String name) {
@@ -1372,75 +1365,75 @@ public class DiscordUtil {
                         nations.removeIf(n -> !filter.getValue().apply(n.isPowered() ? 1d : 0d));
                         continue;
                     }
-                    case "#fightingenemyofcities": {
-                        nations.removeIf(n -> !n.isFightingEnemyOfCities(filter.getValue()::apply));
-                        continue;
-                    }
-                    case "#defendingenemyofcities": {
-                        nations.removeIf(n -> !n.isDefendingEnemyOfCities(filter.getValue()::apply));
-                        continue;
-                    }
-                    case "#attackingenemyofcities": {
-                        nations.removeIf(n -> !n.isAttackingEnemyOfCities(filter.getValue()::apply));
-                        continue;
-                    }
-                    case "#fightingenemyofscore": {
-                        nations.removeIf(n -> !n.isFightingEnemyOfScore(filter.getValue()::apply));
-                        continue;
-                    }
-                    case "#attackingenemyofscore": {
-                        nations.removeIf(n -> !n.isFightingOffEnemyOfScore(filter.getValue()::apply));
-                        continue;
-                    }
-                    case "#attacking1/2strengthenemyofscore": {
-                        nations.removeIf(n -> {
-                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
-                            return value < n.getStrength() * 0.5;
-                        });
-                        continue;
-                    }
-                    case "#attacking2/3strengthenemyofscore": {
-                        nations.removeIf(n -> {
-                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
-                            return value < n.getStrength() * 2 / 3;
-                        });
-                        continue;
-                    }
-                    case "#attacking3/4strengthenemyofscore": {
-                        nations.removeIf(n -> {
-                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
-                            return value < n.getStrength() * 3 / 4;
-                        });
-                        continue;
-                    }
-                    case "#attacking4/5strengthenemyofscore": {
-                        nations.removeIf(n -> {
-                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
-                            return value < n.getStrength() * 4 / 5;
-                        });
-                        continue;
-                    }
-                    case "#fighting4/5strengthenemyofscore": {
-                        nations.removeIf(n -> {
-                            double value = n.getStrongestEnemyOfScore(filter.getValue()::apply);
-                            return value < n.getStrength() * 4 / 5;
-                        });
-                        continue;
-                    }
-                    case "#attackingstrongerenemyofscore": {
-                        nations.removeIf(n -> {
-                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
-                            return value < n.getStrength();
-                        });
-                        continue;
-                    }
-                    case "#fightingstrongerenemyofscore": {
-                        nations.removeIf(n -> {
-                            double value = n.getStrongestEnemyOfScore(filter.getValue()::apply);
-                            return value < n.getStrength();
-                        });
-                        continue;
-                    }
+//                    case "#fightingenemyofcities": {
+//                        nations.removeIf(n -> !n.isFightingEnemyOfCities(filter.getValue()::apply));
+//                        continue;
+//                    }
+//                    case "#defendingenemyofcities": {
+//                        nations.removeIf(n -> !n.isDefendingEnemyOfCities(filter.getValue()::apply));
+//                        continue;
+//                    }
+//                    case "#attackingenemyofcities": {
+//                        nations.removeIf(n -> !n.isAttackingEnemyOfCities(filter.getValue()::apply));
+//                        continue;
+//                    }
+//                    case "#fightingenemyofscore": {
+//                        nations.removeIf(n -> !n.isFightingEnemyOfScore(filter.getValue()::apply));
+//                        continue;
+//                    }
+//                    case "#attackingenemyofscore": {
+//                        nations.removeIf(n -> !n.isFightingOffEnemyOfScore(filter.getValue()::apply));
+//                        continue;
+//                    }
+//                    case "#attacking1/2strengthenemyofscore": {
+//                        nations.removeIf(n -> {
+//                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
+//                            return value < n.getStrength() * 0.5;
+//                        });
+//                        continue;
+//                    }
+//                    case "#attacking2/3strengthenemyofscore": {
+//                        nations.removeIf(n -> {
+//                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
+//                            return value < n.getStrength() * 2 / 3;
+//                        });
+//                        continue;
+//                    }
+//                    case "#attacking3/4strengthenemyofscore": {
+//                        nations.removeIf(n -> {
+//                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
+//                            return value < n.getStrength() * 3 / 4;
+//                        });
+//                        continue;
+//                    }
+//                    case "#attacking4/5strengthenemyofscore": {
+//                        nations.removeIf(n -> {
+//                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
+//                            return value < n.getStrength() * 4 / 5;
+//                        });
+//                        continue;
+//                    }
+//                    case "#fighting4/5strengthenemyofscore": {
+//                        nations.removeIf(n -> {
+//                            double value = n.getStrongestEnemyOfScore(filter.getValue()::apply);
+//                            return value < n.getStrength() * 4 / 5;
+//                        });
+//                        continue;
+//                    }
+//                    case "#attackingstrongerenemyofscore": {
+//                        nations.removeIf(n -> {
+//                            double value = n.getStrongestOffEnemyOfScore(filter.getValue()::apply);
+//                            return value < n.getStrength();
+//                        });
+//                        continue;
+//                    }
+//                    case "#fightingstrongerenemyofscore": {
+//                        nations.removeIf(n -> {
+//                            double value = n.getStrongestEnemyOfScore(filter.getValue()::apply);
+//                            return value < n.getStrength();
+//                        });
+//                        continue;
+//                    }
                     case "#spyrange":
                     case "#warrange": {
                         continue;

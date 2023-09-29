@@ -13,4 +13,6 @@ public @interface Binding {
     String[] examples() default {};
 
     Class<?>[] types() default {};
+
+    boolean multiple() default false;
 }

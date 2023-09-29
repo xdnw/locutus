@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.gpt.GPTUtil;
 import link.locutus.discord.gpt.GptHandler;
@@ -41,7 +42,7 @@ public class Say extends Command {
             List<ModerationResult> result = handler.getModerator().moderate(msg);
             GPTUtil.checkThrowModeration(result, "<redacted>");
         }
-
-        return DiscordUtil.format(guild, channel, author, me, msg.substring(5) + "\n\n- " + author.getAsMention());
+        NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
+        return formatter.format2(guild, me, author, msg.substring(5) + "\n\n- " + author.getAsMention(), me, false);
     }
 }

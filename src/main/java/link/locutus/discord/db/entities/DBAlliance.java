@@ -14,8 +14,11 @@ import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.BankDB;
@@ -534,6 +537,55 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return body.toString();
     }
 
+    @Command(desc = "Sum of nation attribute for specific nations in alliance")
+    public double getTotal(NationAttributeDouble attribute, @Default NationFilter filter) {
+        Set<DBNation> nations = filter == null ? getNations() : getNations(filter.toCached(Long.MAX_VALUE));
+        return nations.stream().mapToDouble(attribute::apply).sum();
+    }
+
+    @Command(desc = "Average of nation attribute for specific nations in alliance")
+    public double getAverage(NationAttributeDouble attribute, @Default NationFilter filter) {
+        Set<DBNation> nations = filter == null ? getNations() : getNations(filter.toCached(Long.MAX_VALUE));
+        return nations.stream().mapToDouble(attribute::apply).average().orElse(0);
+    }
+
+    @Command(desc = "Count of nations in alliance matching a filter")
+    public int countNations(@Default NationFilter filter) {
+        if (filter == null) return getNations().size();
+        return getNations(filter.toCached(Long.MAX_VALUE)).size();
+    }
+
+    @Command(desc = "Is allied with another alliance")
+    public boolean hasDefensiveTreaty(Set<DBAlliance> alliances) {
+        for (DBAlliance alliance : alliances) {
+            Treaty treaty = getDefenseTreaties().get(alliance.getId());
+            if (treaty != null) return true;
+        }
+        return false;
+    }
+
+    @Command(desc = "Get the treaty type with another alliance")
+    public TreatyType getTreatyType(DBAlliance alliance) {
+        Treaty treaty = getTreaties().get(alliance.getId());
+        return treaty == null ? null : treaty.getType();
+    }
+
+    @Command(desc = "Get the treaty level number with another alliance\n" +
+            "0 = No Treaty" +
+            "1 = PIAT" +
+            "2 = NAP" +
+            "3 = NPT" +
+            "4 = ODP" +
+            "5 = ODOAP" +
+            "6 = PROTECTORATE" +
+            "7 = MDP" +
+            "8 = MDOAP"
+    )
+    public int getTreatyOrdinal(DBAlliance alliance) {
+        Treaty treaty = getTreaties().get(alliance.getId());
+        return treaty == null ? 0 : treaty.getType().getStrength();
+    }
+
     @Command(desc = "Revenue of taxable alliance members")
     public Map<ResourceType, Double> getRevenue() {
         return getRevenue(getNations(f -> f.isTaxable()));
@@ -731,8 +783,15 @@ public class DBAlliance implements NationList, NationOrAlliance {
     double scoreCached = -1;
 
     @Override
-    @Command
     public double getScore() {
+        return getScore(null);
+    }
+
+    @Command
+    public double getScore(@Default NationFilter filter) {
+        if (filter != null) {
+            return new SimpleNationList(getNations(filter.toCached(Long.MAX_VALUE))).getScore();
+        }
         if (scoreCached == -1) {
             scoreCached = new SimpleNationList(getNations(true, 0, true)).getScore();
         }
@@ -741,8 +800,21 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
     private Integer rank;
 
-    @Command(desc = "Rank by score")
     public int getRank() {
+        return getRank(null);
+    }
+
+    @Command(desc = "Rank by score")
+    public int getRank(@Default NationFilter filter) {
+        if (filter != null) {
+            Map<Integer, List<DBNation>> byScore = Locutus.imp().getNationDB().getNationsByAlliance(filter.toCached(Long.MAX_VALUE), true);
+            int rankTmp = 0;
+            for (Map.Entry<Integer, List<DBNation>> entry : byScore.entrySet()) {
+                rankTmp++;
+                if (entry.getKey() == allianceId) return rankTmp;
+            }
+            return Integer.MAX_VALUE;
+        }
         if (rank == null) {
             Map<Integer, List<DBNation>> byScore = Locutus.imp().getNationDB().getNationsByAlliance(false, false, true, true);
             rank = 0;
@@ -754,6 +826,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
         }
         return rank;
     }
+
 
     @Command
     public int getAlliance_id() {

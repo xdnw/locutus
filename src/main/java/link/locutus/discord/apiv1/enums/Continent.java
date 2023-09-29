@@ -1,12 +1,15 @@
 package link.locutus.discord.apiv1.enums;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import org.apache.commons.lang3.text.WordUtils;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Locale;
 
 import static link.locutus.discord.apiv1.enums.ResourceType.*;
@@ -24,14 +27,33 @@ public enum Continent {
 
     public static Continent[] values = values();
 
-    public final Boolean north;
-    public final String name;
-    public final ResourceType[] resources;
+    private final Boolean north;
+    private final String name;
+    private final ResourceType[] resources;
 
     Continent(Boolean north, ResourceType... resources) {
         this.north = north;
         this.resources = resources;
         this.name = WordUtils.capitalize(name().replace("_", " "));
+    }
+
+    @Command(desc = "Returns the name of the continent")
+    public String getName() {
+        return name();
+    }
+
+    @Command(desc = "If this continent is in the northern hemisphere")
+    public boolean isNorth() {
+        return north;
+    }
+
+    @Command(desc = "The resources that are available on this continent")
+    public List<ResourceType> getResources() {
+        return List.of(resources);
+    }
+
+    public ResourceType[] getResourceArray() {
+        return resources;
     }
 
     public static Continent parseV3(String toUpperCase) {
@@ -48,20 +70,14 @@ public enum Continent {
         }
     }
 
-    public double foodModifier(ZonedDateTime time) {
-        if (north == Boolean.TRUE) {
-            return 1;
-        } else if (north == Boolean.FALSE){
-            return 1;
-        }
-        return 0.5;
-    }
 
+    @Command(desc = "Returns the season modifier for this continent")
     public double getSeasonModifier() {
         return getSeasonModifier(Locutus.imp().getTradeManager().getGameDate());
     }
 
-    public double getSeasonModifier(long date) {
+    @Command(desc = "Returns the season modifier for this continent at the given date")
+    public double getSeasonModifier(@Timestamp long date) {
         return getSeasonModifier(Instant.ofEpochMilli(date));
     }
 
@@ -107,6 +123,7 @@ public enum Continent {
         return season;
     }
 
+    @Command(desc = "Returns the radiation index for this continent")
     public double getRadIndex() {
         return Locutus.imp().getTradeManager().getGlobalRadiation(this);
     }

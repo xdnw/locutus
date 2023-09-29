@@ -1,22 +1,65 @@
 package link.locutus.discord.web.commands.binding;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
+import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.Parser;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.ArgChoice;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timediff;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
+import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.web.WebUtil;
 import link.locutus.discord.web.commands.HtmlInput;
+import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
 import java.awt.Color;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 
 import static link.locutus.discord.web.WebUtil.createInput;
 
-public class PrimitiveWebBindings extends BindingHelper {
+public class PrimitiveWebBindings extends WebBindingHelper {
+
+    @Binding(types = {Set.class, Integer.class}, multiple = true)
+    @HtmlInput
+    public String Set(ValueStore store, ParameterData param) {
+        return createInput(WebUtil.InputType.text, param, "pattern=\"[0-9]+(,[0-9]+)*\"");
+    }
+
+    @Binding(types = {List.class, String.class}, multiple = true)
+    @TextArea
+    @HtmlInput
+    public String List(ParameterData param) {
+        return TextArea(param);
+    }
+
+    @Binding(types = {String.class})
+    @TextArea
+    @HtmlInput
+    public static String TextArea(ParameterData param) {
+        return WebUtil.createInputWithClass("textarea", WebUtil.InputType.text, param, null, true);
+    }
+
+    @Binding(types = Parser.class)
+    @HtmlInput
+    public String Parser(ValueStore store, ParameterData param) {
+        Map<Key, Parser> parsers = store.getParsers();
+        List<Parser> options = parsers.values().stream().filter(parser -> parser.isConsumer(store)).toList();
+        return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
+            names.add(obj.getKey().toSimpleString());
+        });
+    }
+
     @HtmlInput
     @Binding(examples = "hello", types={String.class})
     public static String String(ParameterData param) {
@@ -30,7 +73,7 @@ public class PrimitiveWebBindings extends BindingHelper {
         if (param.getAnnotation(TextArea.class) == null) {
             return WebUtil.createInput(WebUtil.InputType.text, param);
         }
-        return WebUtil.createInputWithClass("textarea", WebUtil.InputType.text, param, null, true);
+        return TextArea(param);
     }
 
     @HtmlInput
@@ -40,7 +83,7 @@ public class PrimitiveWebBindings extends BindingHelper {
     }
 
     @HtmlInput
-    @Binding(types={double.class, Double.class}, examples = {"3.0"})
+    @Binding(types={double.class, Double.class, Number.class}, examples = {"3.0"})
     public static String Double(ParameterData param) {
         return WebUtil.createInput(WebUtil.InputType.number, param);
     }

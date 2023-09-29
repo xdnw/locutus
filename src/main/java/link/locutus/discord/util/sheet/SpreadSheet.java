@@ -58,7 +58,9 @@ import java.security.GeneralSecurityException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -74,6 +76,87 @@ public class SpreadSheet {
 4. Click Application type > Desktop app (or web application).
 5. Download the credentials and save it to `config/credentials-sheets.json`""";
     private static final PassiveExpiringMap<String, SpreadSheet> CACHE = new PassiveExpiringMap<String, SpreadSheet>(5, TimeUnit.MINUTES);
+
+    public static boolean isSheet(String arg) {
+        return arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:");
+    }
+
+    public static <T> Set<T> parseSheet(String sheetId, List<String> expectedColumns, boolean defaultZero, BiFunction<Integer, String, T> parseCell) {
+        Function<String, Integer> parseColumnType = f -> {
+            int index = expectedColumns.indexOf(f.toLowerCase(Locale.ROOT));
+            return index == -1 ? null : index;
+        };
+        return parseSheet(sheetId, expectedColumns, defaultZero, parseColumnType, parseCell);
+    }
+
+    public static <T> Set<T> parseSheet(String sheetId, List<String> expectedColumns, boolean defaultZero, Function<String, Integer> parseColumnType, BiFunction<Integer, String, T> parseCell) {
+        String key = SpreadSheet.parseId(sheetId);
+        SpreadSheet sheet = null;
+        try {
+            sheet = SpreadSheet.create(key);
+        } catch (GeneralSecurityException | IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        List<List<Object>> rows = sheet.getAll();
+        if (rows == null || rows.isEmpty()) return Collections.emptySet();
+
+        Set<T> toAdd = new LinkedHashSet<>();
+        Map<Integer, String> columnIndexToName = new LinkedHashMap<>();
+        Map<Integer, Integer> columnIndexToColumnType = new LinkedHashMap<>();
+        List<Object> header = rows.get(0);
+        for (int i = 0; i < header.size(); i++) {
+            if (header.get(i) == null) continue;
+            String name = header.get(i).toString().trim();
+            if (name.isEmpty()) continue;
+            Integer columnType = parseColumnType.apply(name);
+            if (columnType != null) {
+                columnIndexToColumnType.put(i, columnType);
+                columnIndexToName.put(i, name);
+            }
+        }
+        if (defaultZero && !header.isEmpty() && header.get(0) != null) {
+            columnIndexToColumnType.put(0, 0);
+            columnIndexToName.put(0, header.get(0).toString());
+        }
+        if (columnIndexToColumnType.isEmpty()) {
+            throw new IllegalArgumentException("Could not parse sheet: `" + sheetId + "`\n" +
+                    "expected one of: `" + expectedColumns + "`\n" +
+                    "found invalid header: `" + StringMan.getString(header) + "`\n");
+        }
+
+        Map<String, String> invalid = new LinkedHashMap<>();
+
+        for (int i = 1; i < rows.size(); i++) {
+            List<Object> row = rows.get(i);
+            if (row == null || row.isEmpty()) continue;
+
+            for (Map.Entry<Integer, Integer> entry : columnIndexToColumnType.entrySet()) {
+                int index = entry.getKey();
+                if (index >= row.size()) continue;
+                Object cell = row.get(index);
+                if (cell == null) continue;
+                String cellStr = cell.toString().trim();
+                if (cellStr.isEmpty()) continue;
+
+                String columnName = columnIndexToName.get(index);
+                try {
+                    T value = parseCell.apply(entry.getValue(), cellStr);
+                    if (value != null) {
+                        toAdd.add(value);
+                    } else {
+                        invalid.put(cellStr, "Invalid (null): `" + cellStr + "` in column `" + columnName + "`");
+                    }
+                } catch (IllegalArgumentException e) {
+                    invalid.put(cellStr, e.getMessage() + " in column `" + columnName + "`");
+                }
+            }
+        }
+        if (!invalid.isEmpty()) {
+            throw new IllegalArgumentException("Could not parse sheet: `" + sheetId + "`. Errors:\n- " + StringMan.join(invalid.values(), "\n- "));
+        }
+        return toAdd;
+    }
 
     public CompletableFuture<IMessageBuilder> addTransactionsList(IMessageIO channel, List<Transaction2> transactions, boolean includeHeader) throws IOException {
         List<Object> header = new ArrayList<>(Arrays.asList(

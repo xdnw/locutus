@@ -1,7 +1,7 @@
 package link.locutus.discord.gpt.pw;
 
 import com.knuddels.jtokkit.api.ModelType;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;

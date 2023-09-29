@@ -2,7 +2,7 @@ package com.locutus.wiki.pages;
 
 import com.locutus.wiki.BotWikiGen;
 import link.locutus.discord.apiv1.enums.EscrowMode;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;

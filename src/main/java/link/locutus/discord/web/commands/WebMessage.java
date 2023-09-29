@@ -53,6 +53,12 @@ public class WebMessage implements IMessageBuilder {
     }
 
     @Override
+    public IMessageBuilder removeButtonByLabel(String label) {
+        buttons.entrySet().removeIf(entry -> entry.getValue().equals(label));
+        return this;
+    }
+
+    @Override
     public long getId() {
         return id;
     }

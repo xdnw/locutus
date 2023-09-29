@@ -5,6 +5,8 @@ import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.binding.bindings.ResolvedFunction;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -16,6 +18,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
 import java.util.AbstractMap;
 import java.util.ArrayDeque;
@@ -25,6 +28,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -499,17 +503,19 @@ public class ArrayUtil {
         T add(T other);
         T power(double value);
         T power(T value);
+        T modulo(T value);
+        T modulo(double value);
+        T multiply(T other);
         T multiply(double value);
+        T divide(T other);
         T divide(double value);
         T subtract(T other);
-        T multiply(T other);
-        T divide(T other);
     }
 
     public static class DoubleArray implements MathToken<DoubleArray> {
         private double[] array;
 
-        public DoubleArray(double[] array) {
+        public DoubleArray(double... array) {
             this.array = array;
         }
 
@@ -633,6 +639,33 @@ public class ArrayUtil {
             return sb.toString();
         }
 
+        @Override
+        public DoubleArray modulo(DoubleArray value) {
+            if (value.array.length == 1) {
+                return modulo(value.array[0]);
+            }
+            if (this.array.length == 1) {
+                return value.modulo(this.array[0]);
+            }
+            double[] result = new double[array.length];
+            for (int i = 0; i < array.length; i++) {
+                result[i] = array[i] % value.array[i];
+            }
+            return new DoubleArray(result);
+        }
+
+        @Override
+        public DoubleArray modulo(double value) {
+            if (value == 0) {
+                throw new ArithmeticException("Division by zero");
+            }
+            double[] result = new double[array.length];
+            for (int i = 0; i < array.length; i++) {
+                result[i] = array[i] % value;
+            }
+            return new DoubleArray(result);
+        }
+
         public double[] toArray() {
             return array;
         }
@@ -647,6 +680,148 @@ public class ArrayUtil {
             parseOrigin = DoubleArray::parse;
         }
         return calculate(input, parseOrigin);
+    }
+
+    public static void main(String[] args) {
+        String input = "{test{blah}}*{test{blah}}";
+
+        DoubleArray value = calculate(input, new Function<String, DoubleArray>() {
+            @Override
+            public DoubleArray apply(String s) {
+                System.out.println("Parse " + s);
+                return new DoubleArray(new double[]{5});
+            }
+        });
+        System.out.println(value.toString());
+    }
+
+
+
+
+
+    public static class LazyMathArray<T> implements MathToken<LazyMathArray<T>> {
+        private final DoubleArray resolved;
+        private final Function<T, DoubleArray> resolver;
+        private final Function<String, Function<T, DoubleArray>> parser;
+
+        public LazyMathArray(DoubleArray resolved, Function<String, Function<T, DoubleArray>> parser) {
+            this.resolved = resolved;
+            this.resolver = null;
+            this.parser = parser;
+        }
+
+        public LazyMathArray(String input, Function<String, Function<T, DoubleArray>> parser) {
+            this(parser.apply(input), parser);
+        }
+
+        public LazyMathArray(Function<T, DoubleArray> resolver, Function<String, Function<T, DoubleArray>> parser) {
+            if (resolver instanceof ResolvedFunction<T, DoubleArray> f) {
+                this.resolved = f.get();
+                this.resolver = null;
+            } else {
+                this.resolved = null;
+                this.resolver = resolver;
+            }
+            this.parser = parser;
+        }
+
+        @Override
+        public LazyMathArray<T> create(String input) {
+            Function<T, DoubleArray> newResolver = parser.apply(input);
+            if (newResolver instanceof ResolvedFunction<T, DoubleArray> f) {
+                return new LazyMathArray<>(f.get(), parser);
+            }
+            return new LazyMathArray<T>(newResolver, parser);
+        }
+
+        public DoubleArray resolve(T input) {
+            if (resolved != null) return resolved;
+            return resolver.apply(input);
+        }
+
+        public DoubleArray getOrNull() {
+            return resolved;
+        }
+
+        @Override
+        public LazyMathArray<T> add(LazyMathArray<T> other) {
+            if (this.resolved != null && other.resolved != null) {
+                return new LazyMathArray<>(this.resolved.add(other.resolved), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).add(other.resolve(t)), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> power(double value) {
+            if (this.resolved != null) {
+                return new LazyMathArray<>(this.resolved.power(value), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).power(value), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> power(LazyMathArray<T> other) {
+            if (this.resolved != null && other.resolved != null) {
+                return new LazyMathArray<>(this.resolved.power(other.resolved), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).power(other.resolve(t)), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> multiply(double value) {
+            if (this.resolved != null) {
+                return new LazyMathArray<>(this.resolved.multiply(value), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).multiply(value), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> divide(double value) {
+            if (this.resolved != null) {
+                return new LazyMathArray<>(this.resolved.divide(value), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).divide(value), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> subtract(LazyMathArray<T> other) {
+            if (this.resolved != null && other.resolved != null) {
+                return new LazyMathArray<>(this.resolved.subtract(other.resolved), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).subtract(other.resolve(t)), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> multiply(LazyMathArray<T> other) {
+            if (this.resolved != null && other.resolved != null) {
+                return new LazyMathArray<>(this.resolved.multiply(other.resolved), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).multiply(other.resolve(t)), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> divide(LazyMathArray<T> other) {
+            if (this.resolved != null && other.resolved != null) {
+                return new LazyMathArray<>(this.resolved.divide(other.resolved), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).divide(other.resolve(t)), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> modulo(double value) {
+            if (this.resolved != null) {
+                return new LazyMathArray<>(this.resolved.modulo(value), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).modulo(value), parser);
+        }
+
+        @Override
+        public LazyMathArray<T> modulo(LazyMathArray<T> value) {
+            if (this.resolved != null && value.resolved != null) {
+                return new LazyMathArray<>(this.resolved.modulo(value.resolved), parser);
+            }
+            return new LazyMathArray<>(t -> this.resolve(t).modulo(value.resolve(t)), parser);
+        }
     }
 
     public static <T extends MathToken<T>> T calculate(String input, Function<String, T> parseOrigin) {
@@ -703,6 +878,9 @@ public class ArrayUtil {
                     case "^":
                         stack.push(left.power(right));
                         break;
+                    case "%":
+                        stack.push(left.modulo(right));
+                        break;
                 }
             } else {
                 T arr = parseOrigin.apply(token);
@@ -729,20 +907,22 @@ public class ArrayUtil {
         Queue<String> tokens = new ArrayDeque<>();
 
         StringBuilder currentToken = new StringBuilder();
-        boolean insideCurlyBraces = false;
+        int curlBracketLevel = 0;
 
         for (int i = 0; i < input.length(); i++) {
             char c = input.charAt(i);
 
             if (c == '{') {
-                insideCurlyBraces = true;
+                curlBracketLevel++;
                 currentToken.append(c);
             } else if (c == '}') {
-                insideCurlyBraces = false;
+                curlBracketLevel--;
                 currentToken.append(c);
-                tokens.add(currentToken.toString());
-                currentToken = new StringBuilder();
-            } else if (insideCurlyBraces) {
+                if (curlBracketLevel == 0) {
+                    tokens.add(currentToken.toString());
+                    currentToken = new StringBuilder();
+                }
+            } else if (curlBracketLevel > 0) {
                 currentToken.append(c);
             } else if (c == '(' || isNonNegOperator(c)) {
                 if (currentToken.length() > 0) {
@@ -798,7 +978,7 @@ public class ArrayUtil {
 
         public ParseResult(String input, List<Predicate<T>> predicates, AtomicBoolean hadNonFilter) {
             this.input = input;
-            this.predicates = predicates;
+            this.predicates = new ArrayList<>(predicates);
             this.resolvedNumbers = new LinkedHashSet<>();
             this.conditionalNumbers = new LinkedHashMap<>();
             this.hadNonFilter = hadNonFilter;
@@ -928,13 +1108,15 @@ public class ArrayUtil {
         return predicates.stream().reduce(Predicate::or).orElseThrow();
     }
 
-    private static <T> ParseResult<T> parseTokens(String input, Function<String, Set<T>> parseSet, Function<String, Predicate<T>> parsePredicate) {
+    private static <T> ParseResult<T> parseTokens(String input, Function<String, Set<T>> parseSet2, Function<String, Predicate<T>> parseElemPredicate, Function<String, Predicate<T>> parseFilter) {
+        if ((parseSet2 != null) == (parseElemPredicate != null)) {
+            throw new IllegalArgumentException("Only one of parseSet2 and parseElemPredicate can be null");
+        }
         List<String> splitAnd = StringMan.split(input, ',');
 
         List<ParseResult<T>> andResults = new ArrayList<>();
 
         for (String andGroup : splitAnd) {
-            System.out.println("And group " + andGroup);
             List<String> splitXor = StringMan.split(andGroup, '^');
             if (splitXor.isEmpty()) {
                 throw new IllegalArgumentException("Invalid group: `" + andGroup + "`: Empty group");
@@ -964,18 +1146,22 @@ public class ArrayUtil {
 
                     if (char0 == '#') {
                         elem = elem.substring(1);
-                        Predicate<T> filter = parsePredicate.apply(elem);
+                        Predicate<T> filter = parseFilter.apply(elem);
                         orResults.add(new ParseResult<>(elem, List.of(filter), new AtomicBoolean()));
                     } else if (char0 == '(') {
                         if (!elem.endsWith(")")) {
                             throw new IllegalArgumentException("Invalid group: `" + elem + "`: No end bracket found");
                         }
                         elem = elem.substring(1, elem.length() - 1);
-                        ParseResult<T> result = parseTokens(elem, parseSet, parsePredicate);
+                        ParseResult<T> result = parseTokens(elem, parseSet2, parseElemPredicate, parseFilter);
                         orResults.add(result);
                     } else {
                         ParseResult<T> result = new ParseResult<>(elem, List.of(), new AtomicBoolean());
-                        result.add(parseSet.apply(elem));
+                        if (parseSet2 != null) {
+                            result.add(parseSet2.apply(elem));
+                        } else {
+                            result.predicates.add(parseElemPredicate.apply(elem));
+                        }
                         orResults.add(result);
                     }
                 }
@@ -1017,11 +1203,6 @@ public class ArrayUtil {
             }
         }
 
-        System.out.println("And results " + andResults.size() + " | " + StringMan.getString(splitAnd));
-        for (ParseResult<T> result : andResults) {
-            System.out.println("And result: " + result);
-        }
-
         if (andResults.size() == 1) {
             return andResults.get(0);
         }
@@ -1046,35 +1227,74 @@ public class ArrayUtil {
         return result;
     }
 
-    public static <T> Set<T> parseQuery(String input, Function<String, Set<T>> parseSet, Function<String, Predicate<T>> parsePredicate) {
-        Map<String, Predicate<T>> parserCache = new Object2ObjectOpenHashMap<>();
-        ParseResult<T> result = parseTokens(input, parseSet, new Function<String, Predicate<T>>() {
-            Map<T, Boolean> cacheResult = new Object2BooleanOpenHashMap<>();
+    public static <T> Set<T> resolveQuery(String input, Function<String, Set<T>> parseSet, Function<String, Predicate<T>> parsePredicate) {
+        ParseResult<T> result = parseQuery(input, parseSet, null, parsePredicate);
+        return result.resolve();
+    }
 
+    public static <T> Predicate<T> parseFilter(String input, Function<String, Predicate<T>> parseElemPredicate, Function<String, Predicate<T>> parseFilter) {
+        ParseResult<T> result = parseQuery(input, null, parseElemPredicate, parseFilter);
+        if (result.hadNonFilter.get()) {
+            // resolve
+            Set<T> allowed = result.resolve();
+            return allowed::contains;
+        }
+        return and(result.predicates);
+    }
+
+    private static <T> ParseResult<T> parseQuery(String input, Function<String, Set<T>> parseSet, Function<String, Predicate<T>> parseElemPredicate, Function<String, Predicate<T>> parseFilter) {
+        Map<String, Predicate<T>> parserCache = new Object2ObjectOpenHashMap<>();
+        Map<String, Set<T>> setCache = new Object2ObjectOpenHashMap<>();
+        ParseResult<T> result = parseTokens(input, parseSet == null ? null : new Function<String, Set<T>>() {
+            @Override
+            public Set<T> apply(String s) {
+                Set<T> cachedSet = setCache.get(s);
+                if (cachedSet != null) {
+                    return cachedSet;
+                }
+                Set<T> uncached = parseSet.apply(s);
+                if (uncached != null) {
+                    setCache.put(s, uncached);
+                }
+                return uncached;
+            }
+        }, parseElemPredicate == null ? null : new Function<String, Predicate<T>>() {
             @Override
             public Predicate<T> apply(String s) {
+                // use parserCache
                 Predicate<T> cachedPredicate = parserCache.get(s);
                 if (cachedPredicate != null) {
                     return cachedPredicate;
                 }
-                Predicate<T> uncached = parsePredicate.apply(s);
-                if (uncached == null) return null;
-
-                Predicate<T> cached = new Predicate<T>() {
-                    @Override
-                    public boolean test(T t) {
-
-                        return false;
+                Predicate<T> uncached = parseElemPredicate.apply(s);
+                if (uncached != null) {
+                    parserCache.put(s, uncached);
+                }
+                return uncached;
+            }
+        }, s -> {
+            Predicate<T> cachedPredicate = parserCache.get(s);
+            if (cachedPredicate != null) {
+                return cachedPredicate;
+            }
+            Predicate<T> uncached = parseFilter.apply(s);
+            if (uncached == null) return null;
+            Predicate<T> cached = new Predicate<T>() {
+                final Map<T, Boolean> cacheResult = new Object2BooleanOpenHashMap<>();
+                @Override
+                public boolean test(T t) {
+                    Boolean cachedResult = cacheResult.get(t);
+                    if (cachedResult != null) {
+                        return cachedResult;
                     }
-                };
-
-                // what is 1 + 1?
-                // A: 
-
-                return cached;
-
+                    boolean result1 = uncached.test(t);
+                    cacheResult.put(t, result1);
+                    return result1;
+                }
             };
+            parserCache.put(s, cached);
+            return cached;
         });
-        return result.resolve();
+        return result;
     }
 }

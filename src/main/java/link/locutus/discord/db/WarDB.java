@@ -1084,7 +1084,7 @@ public class WarDB extends DBMainV2 {
                 bounty.resources = ArrayUtil.toDoubleArray(rs.getBytes("amount"));
                 bounty.nations = ArrayUtil.readIntSet(rs.getBytes("nations"));
                 bounty.alliances = ArrayUtil.readIntSet(rs.getBytes("alliances"));
-                bounty.filter2 = new NationFilterString(rs.getString("filter"), null);
+                bounty.filter2 = new NationFilterString(rs.getString("filter"), null, null, null);
                 bounty.totalDamage = rs.getLong("total_damage");
                 bounty.infraDamage = rs.getLong("infra_damage");
                 bounty.unitDamage = rs.getLong("unit_damage");

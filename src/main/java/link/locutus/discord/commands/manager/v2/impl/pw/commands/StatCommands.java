@@ -21,6 +21,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
@@ -1260,7 +1261,7 @@ public class StatCommands {
             "Prefix a column with `avg:` to force an average\n" +
             "Prefix a column with `total:` to force a total")
     @NoFormat
-    public String allianceNationsSheet(NationPlaceholders placeholders, AlliancePlaceholders aaPlaceholders, ValueStore store, @Me IMessageIO channel, @Me User author, @Me Guild guild, @Me GuildDB db,
+    public String allianceNationsSheet(NationPlaceholders placeholders, AlliancePlaceholders aaPlaceholders, ValueStore store, @Me IMessageIO channel, @Me DBNation me, @Me User author, @Me Guild guild, @Me GuildDB db,
                                        Set<DBNation> nations,
                                        @Arg("The columns to have. See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>") @TextArea List<String> columns,
                                        @Switch("s") SpreadSheet sheet,
@@ -1301,37 +1302,19 @@ public class StatCommands {
                         total = true;
                     }
                     if (arg.contains("{") && arg.contains("}")) {
-                        // todo replace with alliance placeholders format
-
-                        for (Method method : DBAlliance.class.getDeclaredMethods()) {
-                            if (method.getParameters().length != 0) continue;
-                            Class type = method.getReturnType();
-                            if (type == String.class || ClassUtils.isPrimitiveOrWrapper(type)) {
-                                String placeholder = "{" + method.getName().toLowerCase() + "}";
-                                if (arg.contains(placeholder)) {
-                                    method.setAccessible(true);
-                                    arg = arg.replace(placeholder, method.invoke(alliance) + "");
-                                }
-                            }
-                        }
-                    }
-                    if (arg.contains("{") && arg.contains("}")) {
-                        arg = aaPlaceholders.format(guild, alliance, author, arg);
+                        arg = aaPlaceholders.format2(guild, me, author, arg, alliance, true);
                         if (arg.contains("{") && arg.contains("}")) {
                             NationAttributeDouble metric = placeholders.getMetricDouble(store, arg.substring(1, arg.length() - 1));
                             if (metric == null) {
                                 throw new IllegalAccessException("Unknown metric: `" + arg + "`");
                             }
-                            double totalValue = 0;
-                            int count = 0;
-                            for (DBNation nation : list.getNations()) {
-                                totalValue += metric.apply(nation);
-                                count++;
+                            double value;
+                            if (total) {
+                                value = alliance.getTotal(metric, list);
+                            } else {
+                                value = alliance.getAverage(metric, list);
                             }
-                            if (!total) {
-                                totalValue /= count;
-                            }
-                            arg = totalValue + "";
+                            arg = value + "";
                         }
 
                     }

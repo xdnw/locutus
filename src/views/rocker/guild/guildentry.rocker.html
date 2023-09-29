@@ -21,7 +21,7 @@
         </div>
         <div class="row">
             <div class="col">
-            <a href="/@guild.getIdLong()/guildindex" class="m-1 btn btn-primary btn-lg border-2 border-light shadow">View Server</a>
+            <a href="/page/setguild/@guild.getIdLong()" class="m-1 btn btn-primary btn-lg border-2 border-light shadow">Set Guild</a>
             @if (db.isValidAlliance()) {
                 @for (DBAlliance alliance : db.getAllianceList().getAlliances()) {
                     <a href="https://politicsandwar.com/alliance/id=@alliance.getAlliance_id()" class="m-1 btn btn-primary btn-lg border-2 border-light shadow">View @alliance.getQualifiedName() 🡕</a>

@@ -3,15 +3,16 @@ package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
-import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.DefaultPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
@@ -36,13 +37,17 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class NationPlaceholders extends Placeholders<DBNation> {
     private final Map<String, NationAttribute> customMetrics = new HashMap<>();
 
     public NationPlaceholders(ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
-        super(DBNation.class, new DBNation(), store, validators, permisser);
+        super(DBNation.class, store, validators, permisser);
+        this.getCommands().registerCommands(new DefaultPlaceholders());
     }
 
     @Override
@@ -55,10 +60,10 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         for (CommandCallable cmd : getFilterCallables()) {
             String id = cmd.aliases().get(0);
             try {
-                Map.Entry<Type, Function<DBNation, Object>> typeFunction = getPlaceholderFunction(store, id);
+                TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, id, null, 0, false);
                 if (typeFunction == null) continue;
 
-                NationAttribute metric = new NationAttribute(cmd.getPrimaryCommandId(), cmd.simpleDesc(), typeFunction.getKey(), typeFunction.getValue());
+                NationAttribute metric = new NationAttribute(cmd.getPrimaryCommandId(), cmd.simpleDesc(), typeFunction.getType(), typeFunction);
                 result.add(metric);
             } catch (IllegalStateException | CommandUsageException ignore) {
                 continue;
@@ -72,20 +77,18 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     }
 
     public NationAttribute getMetric(ValueStore<?> store, String id, boolean ignorePerms) {
-        Map.Entry<Type, Function<DBNation, Object>> typeFunction = getTypeFunction(store, id, ignorePerms);
+        TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, id, null, 0, true);
         if (typeFunction == null) return null;
-        return new NationAttribute<>(id, "", typeFunction.getKey(), typeFunction.getValue());
+        return new NationAttribute<>(id, "", typeFunction.getType(), typeFunction);
     }
 
     public NationAttributeDouble getMetricDouble(ValueStore store, String id, boolean ignorePerms) {
-        ParametricCallable cmd = get(getCmd(id));
-        if (cmd == null) return null;
-        Map.Entry<Type, Function<DBNation, Object>> typeFunction = getTypeFunction(store, id, ignorePerms);
+        TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, id, null, 0, true);
         if (typeFunction == null) return null;
 
-        Function<DBNation, Object> genericFunc = typeFunction.getValue();
+        TypedFunction<DBNation, ?> genericFunc = typeFunction;
         Function<DBNation, Double> func;
-        Type type = typeFunction.getKey();
+        Type type = typeFunction.getType();
         if (type == int.class || type == Integer.class) {
             func = nation -> ((Integer) genericFunc.apply(nation)).doubleValue();
         } else if (type == double.class || type == Double.class) {
@@ -101,7 +104,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         } else {
             return null;
         }
-        return new NationAttributeDouble(cmd.getPrimaryCommandId(), cmd.simpleDesc(), func);
+        return new NationAttributeDouble(id, "", func);
     }
 
     public List<NationAttributeDouble> getMetricsDouble(ValueStore store) {
@@ -123,58 +126,8 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         return result;
     }
 
-    public String format(Guild guild, DBNation nation, User user, String arg) {
-        if (nation == null && user != null) {
-            nation = DBNation.getByUser(user);
-        }
-        if (user == null && nation != null) {
-            user = nation.getUser();
-        }
-        LocalValueStore locals = new LocalValueStore<>(this.getStore());
-        if (nation != null) {
-            locals.addProvider(Key.of(DBNation.class, Me.class), nation);
-        }
-        if (user != null) {
-            locals.addProvider(Key.of(User.class, Me.class), user);
-        }
-        if (guild != null) {
-            locals.addProvider(Key.of(Guild.class, Me.class), guild);
-        }
-        return format(locals, arg);
-    }
-
-    public String format(ValueStore<?> store, String arg) {
-        DBNation me = store.getProvided(Key.of(DBNation.class, Me.class));
-        User author = null;
-        try {
-            author = store.getProvided(Key.of(User.class, Me.class));
-        } catch (Exception ignore) {
-        }
-
-        if (author != null && arg.contains("%user%")) {
-            arg = arg.replace("%user%", author.getAsMention());
-        }
-
-        return format(arg, 0, new Function<String, String>() {
-            @Override
-            public String apply(String placeholder) {
-                NationAttribute result = NationPlaceholders.this.getMetric(store, placeholder, false);
-                if (result == null && !placeholder.startsWith("get")) {
-                    result = NationPlaceholders.this.getMetric(store, "get" + placeholder, false);
-                }
-                if (result != null) {
-                    Object obj = result.apply(me);
-                    if (obj != null) {
-                        return obj.toString();
-                    }
-                }
-                return null;
-            }
-        });
-    }
-
     @Override
-    public Set<DBNation> parse(ValueStore store, String name) {
+    public Set<DBNation> parseSingleElem(ValueStore store, String name) {
         String nameLower = name.toLowerCase(Locale.ROOT);
         Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
         if (name.equals("*")) {
@@ -182,58 +135,20 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         } else if (name.contains("tax_id=")) {
             int taxId = PnwUtil.parseTaxId(name);
             return Locutus.imp().getNationDB().getNationsByBracket(taxId);
-        } else if (name.startsWith("https://docs.google.com/spreadsheets/") || name.startsWith("sheet:")) {
-            String key = SpreadSheet.parseId(name);
-            SpreadSheet sheet = null;
-            try {
-                sheet = SpreadSheet.create(key);
-            } catch (GeneralSecurityException | IOException e) {
-                throw new RuntimeException(e);
-            }
-
-            List<List<Object>> rows = sheet.getAll();
-            if (rows == null || rows.isEmpty()) return Collections.emptySet();
-
-            Set<DBNation> toAdd = new LinkedHashSet<>();
-            Integer nationI = 0;
-            boolean isLeader = false;
-            List<Object> header = rows.get(0);
-            for (int i = 0; i < header.size(); i++) {
-                if (header.get(i) == null) continue;
-                if (header.get(i).toString().equalsIgnoreCase("nation")) {
-                    nationI = i;
-                    break;
-                }
-                if (header.get(i).toString().toLowerCase(Locale.ROOT).contains("leader")) {
-                    nationI = i;
-                    isLeader = true;
-                    break;
-                }
-
-            }
-            for (int i = 1; i < rows.size(); i++) {
-                List<Object> row = rows.get(i);
-                if (row.size() <= nationI) continue;
-
-                Object cell = row.get(nationI);
-                if (cell == null) continue;
-                String nationName = (cell + "").trim();
-                if (nationName.isEmpty()) continue;
-
-                DBNation nation = null;
-                if (isLeader) {
-                    nation = Locutus.imp().getNationDB().getNationByLeader(nationName);
-                }
-                if (nation == null) {
-                    nation = DiscordUtil.parseNation(nationName);
-                }
-                if (nation != null) {
-                    toAdd.add(nation);
-                } else {
-                    throw new IllegalArgumentException("Unknown nation: " + nationName + " in " + name);
-                }
-            }
-            return toAdd;
+        } else if (SpreadSheet.isSheet(nameLower)) {
+            Set<DBNation> nations = SpreadSheet.parseSheet(name, List.of("nation", "leader"), true,
+            s -> switch (s.toLowerCase(Locale.ROOT)) {
+                case "nation" -> 0;
+                case "leader" -> 1;
+                default -> null;
+            }, (type, input) -> {
+                return switch (type) {
+                    case 0 -> Locutus.imp().getNationDB().getNation(input);
+                    case 1 -> Locutus.imp().getNationDB().getNationByLeader(input);
+                    default -> null;
+                };
+            });
+            return nations;
         }  else if (nameLower.startsWith("aa:")) {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name.split(":", 2)[1].trim());
             if (alliances == null) throw new IllegalArgumentException("Invalid alliance: `" + name + "`");
@@ -277,5 +192,72 @@ public class NationPlaceholders extends Placeholders<DBNation> {
             nations.add(nation);
         }
         return nations;
+    }
+
+    @Override
+    protected Predicate<DBNation> parseSingleFilter(ValueStore store, String name) {
+        String nameLower = name.toLowerCase(Locale.ROOT);
+        Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
+        if (name.equals("*")) {
+            return f -> true;
+        } else if (name.contains("tax_id=")) {
+            int taxId = PnwUtil.parseTaxId(name);
+            return f -> f.getTax_id() == taxId;
+        } else if (SpreadSheet.isSheet(nameLower)) {
+            Set<DBNation> nations = SpreadSheet.parseSheet(name, List.of("nation", "leader"), true,
+                    s -> switch (s.toLowerCase(Locale.ROOT)) {
+                        case "nation" -> 0;
+                        case "leader" -> 1;
+                        default -> null;
+                    }, (type, input) -> {
+                        return switch (type) {
+                            case 0 -> Locutus.imp().getNationDB().getNation(input);
+                            case 1 -> Locutus.imp().getNationDB().getNationByLeader(input);
+                            default -> null;
+                        };
+                    });
+            Set<Integer> ids = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
+            return f -> ids.contains(f.getId());
+        }  else if (nameLower.startsWith("aa:")) {
+            Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name.split(":", 2)[1].trim());
+            if (alliances == null) throw new IllegalArgumentException("Invalid alliance: `" + name + "`");
+            return f -> alliances.contains(f.getAlliance_id());
+        }
+
+        boolean containsAA = nameLower.contains("/alliance/");
+        DBNation nation = containsAA ? null : DiscordUtil.parseNation(name, true);
+        if (nation == null || containsAA) {
+            Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name);
+            if (alliances == null) {
+                Role role = guild != null ? DiscordUtil.getRole(guild, name) : null;
+                if (role != null) {
+                    return f -> {
+                        User user = f.getUser();
+                        if (user == null) return false;
+                        Member member = role.getGuild().getMember(user);
+                        if (member == null) return false;
+                        return member.getRoles().contains(role);
+                    };
+                } else if (name.contains("#")) {
+                    String[] split = name.split("#");
+                    PNWUser user = Locutus.imp().getDiscordDB().getUser(null, split[0], name);
+                    if (user != null) {
+                        nation = Locutus.imp().getNationDB().getNation(user.getNationId());
+                    }
+                    if (nation == null) {
+                        throw new IllegalArgumentException("Invalid nation/aa: `" + name + "`");
+                    }
+                    int id = nation.getId();
+                    return f -> f.getId() == id;
+                } else {
+                    throw new IllegalArgumentException("Invalid nation/aa: `" + name + "`");
+                }
+            } else {
+                return f -> alliances.contains(f.getAlliance_id());
+            }
+        } else {
+            int id = nation.getId();
+            return f -> f.getId() == id;
+        }
     }
 }

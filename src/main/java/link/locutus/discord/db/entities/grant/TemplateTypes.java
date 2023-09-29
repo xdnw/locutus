@@ -2,7 +2,7 @@ package link.locutus.discord.db.entities.grant;
 
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationFilterString;
@@ -11,7 +11,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Map;
 
 public enum TemplateTypes {
     CITY(DepositType.CITY, CityTemplate.class) {
@@ -101,7 +100,7 @@ public enum TemplateTypes {
                 db,
                 rs.getBoolean("enabled"),
                 rs.getString("name"),
-                new NationFilterString(rs.getString("nation_filter"), db.getGuild()),
+                new NationFilterString(rs.getString("nation_filter"), db.getGuild(), null, null),
                 rs.getLong("econ_role"),
                 rs.getLong("self_role"),
                 rs.getInt("from_bracket"),

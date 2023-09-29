@@ -14,6 +14,7 @@ import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
 import link.locutus.discord.commands.manager.v2.impl.SlashCommandManager;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.stock.StockDB;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.config.yaml.Config;
@@ -82,6 +83,7 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.*;
@@ -270,6 +272,7 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public Locutus start() throws InterruptedException, LoginException, SQLException, ClassNotFoundException {
+        backup();
         if (Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT) {
             JDABuilder builder = JDABuilder.createLight(discordToken, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.GUILD_MESSAGE_REACTIONS, GatewayIntent.DIRECT_MESSAGES);
             if (Settings.INSTANCE.ENABLED_COMPONENTS.SLASH_COMMANDS) {
@@ -281,7 +284,7 @@ public final class Locutus extends ListenerAdapter {
             }
             builder
                     .setChunkingFilter(ChunkingFilter.ALL)
-                    .setBulkDeleteSplittingEnabled(true)
+                    .setBulkDeleteSplittingEnabled(false)
                     .setCompression(Compression.ZLIB)
                     .setMemberCachePolicy(MemberCachePolicy.ALL);
             if (Settings.INSTANCE.DISCORD.INTENTS.GUILD_MEMBERS) {
@@ -423,6 +426,16 @@ public final class Locutus extends ListenerAdapter {
         }
 
         return this;
+    }
+
+    private void backup() {
+            int turnsCheck = Settings.INSTANCE.BACKUP.TURNS;
+            String script = Settings.INSTANCE.BACKUP.SCRIPT;
+        try {
+            Backup.backup(script, turnsCheck);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public GuildDB getRootCoalitionServer() {
@@ -1090,7 +1103,7 @@ public final class Locutus extends ListenerAdapter {
                     } else if (id.startsWith("{")) {
                         getCommandManager().getV2().run(guild, channel, user, message, ioToUse, id, true, true);
                     } else if (!id.isEmpty()) {
-                        RateLimitUtil.queue(event.reply("Unknown command: `" + id + "`"));
+                        RateLimitUtil.queue(event.reply("Unknown command (2): `" + id + "`"));
                         return;
                     }
                 }
@@ -1227,7 +1240,9 @@ public final class Locutus extends ListenerAdapter {
         }
         System.out.println("CMD1 " + cmd);
         if (!(cmdObject instanceof Noformat)) {
-            cmd = DiscordUtil.format(message.getGuild(), io, user, DiscordUtil.getNation(user), cmd);
+            DBNation nation = DiscordUtil.getNation(user);
+            NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
+            cmd = formatter.format2(message.getGuild(), nation, user, cmd, nation, false);
         }
         Guild guild = message.isFromGuild() ? message.getGuild() : null;
 

@@ -229,12 +229,6 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
 
     private void createSourcesTable() {
         ctx().execute("CREATE TABLE IF NOT EXISTS sources (source_id INTEGER PRIMARY KEY AUTOINCREMENT, source_name VARCHAR NOT NULL, date_added BIGINT NOT NULL, hash BIGINT NOT NULL, guild_id BIGINT NOT NULL)");
-        // add hash column if not exist, catch errors
-        try {
-            ctx().execute("ALTER TABLE sources ADD COLUMN hash BIGINT NOT NULL DEFAULT 0");
-        } catch (DataAccessException e) {
-            e.printStackTrace();
-        }
     }
 
     private void createDocumentQueueTable() {
@@ -249,13 +243,6 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
                 "date BIGINT NOT NULL, " +
                 "hash BIGINT NOT NULL, " +
                 "PRIMARY KEY (source_id))");
-
-        // alert table add hash inside try catch DataAccessException
-        try {
-            ctx().execute("ALTER TABLE document_queue ADD COLUMN hash BIGINT NOT NULL DEFAULT 0");
-        } catch (DataAccessException e) {
-            e.printStackTrace();
-        }
     }
 
     private void createChunksTable() {
@@ -265,12 +252,6 @@ public abstract class AEmbeddingDatabase implements IEmbeddingDatabase, Closeabl
                 "converted BOOLEAN NOT NULL, " +
                 "text VARCHAR NOT NULL," +
                 "output VARCHAR, PRIMARY KEY (source_id, chunk_index))");
-        // add output column if not exist, catch errors
-        try {
-            ctx().execute("ALTER TABLE document_chunks ADD COLUMN output VARCHAR");
-        } catch (DataAccessException e) {
-            e.printStackTrace();
-        }
     }
 
     public void loadUnconvertedDocuments() {

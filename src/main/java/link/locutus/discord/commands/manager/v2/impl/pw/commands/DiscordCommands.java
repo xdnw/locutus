@@ -9,7 +9,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.CM;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -139,7 +139,7 @@ public class DiscordCommands {
 
         msg = msg + "\n\n- " + author.getAsMention();
 
-        msg = placeholders.format(store, msg);
+        msg = placeholders.format2(store, msg, me, false);
         return msg;
     }
 
@@ -227,7 +227,7 @@ public class DiscordCommands {
                           @Switch("a") boolean pingAuthor
 
     ) throws ExecutionException, InterruptedException {
-        channelName = placeholders.format(store, channelName);
+        channelName = placeholders.format2(store, channelName, nation, true);
 
         Member member = guild.getMember(author);
 
@@ -345,7 +345,7 @@ public class DiscordCommands {
             String label = entry.getKey();
 
             String behaviorStr = (behavior == null ? CommandBehavior.DELETE_MESSAGE : behavior).name();
-            String cmdStr = CM.embed.add.raw.cmd.create(url, label, behaviorStr, StringMan.join(current, "\n"), channelId == null ? null : channelId.toString()).toSlashCommand(false);
+            String cmdStr = CM.embed.add.raw.cmd.create(url, label, behaviorStr, StringMan.join(current, "\n"), channelId == null ? null : channelId.toString(), null).toSlashCommand(false);
             commands.add(cmdStr);
         }
 

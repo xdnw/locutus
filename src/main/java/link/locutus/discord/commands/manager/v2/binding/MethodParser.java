@@ -3,6 +3,7 @@ package link.locutus.discord.commands.manager.v2.binding;
 import com.google.gson.internal.Primitives;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ReflectionUtil;
 
@@ -12,12 +13,14 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class MethodParser<T> implements Parser<T> {
     private final String desc;
     private final Key<T> key;
     private final Method method;
     private final List<Key> params;
+    private final List<Class> primaryClass;
     private final Object object;
 
     private boolean isConsumerInit;
@@ -69,18 +72,10 @@ public class MethodParser<T> implements Parser<T> {
             }
         }
 
+        this.primaryClass = params.stream().map(f -> f == null ? null : ReflectionUtil.getClassType(f.getType())).collect(Collectors.toList());
+
         this.isConsumerInit = isConsumer;
         this.desc = desc == null && binding != null ? binding.value() : desc;
-    }
-
-    public MethodParser(Key<T> key, Object object, Method method, List<Key> params, String desc, boolean isConsumer) {
-        this.key = key;
-        this.object = object;
-        this.method = method;
-        this.params = params;
-        this.isConsumerInit = isConsumer;
-        this.isConsumer = isConsumer;
-        this.desc = desc;
     }
 
     @Override
@@ -106,9 +101,12 @@ public class MethodParser<T> implements Parser<T> {
             Object[] args = new Object[params.size()];
             for (int i = 0; i < params.size(); i++) {
                 Key paramKey = params.get(i);
+                Class expectedType = primaryClass.get(i);
                 Object arg;
                 try {
-                    if (paramKey == null || paramKey.getType() == String.class && paramKey.getAnnotations().length == 0) {
+                    if (t != null && paramKey != null && paramKey.getType() != String.class && expectedType != null && (expectedType == t.getClass() || expectedType.isAssignableFrom(t.getClass()))) {
+                        arg = t;
+                    } else if (paramKey == null || (paramKey.getType() == String.class && paramKey.getAnnotations().length == 0)) {
                         arg = t;
                     } else if (paramKey.getAnnotations().length == 0 && paramKey.getType() == Method.class) {
                         arg = method;
@@ -173,7 +171,6 @@ public class MethodParser<T> implements Parser<T> {
                             arg = key.getAnnotation(paramKey.getType());
                         }
                     } else {
-                        System.out.println("Run parser " + key + " | " + paramKey);
                         arg = stack.consume(paramKey);
                     }
                 } catch (IllegalStateException e) {
