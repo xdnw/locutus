@@ -508,7 +508,7 @@ public class PWBindings extends BindingHelper {
         NationPlaceholders placeholders = v2.getNationPlaceholders();
         ParametricCallable ph = placeholders.get(input);
         ph.validatePermissions(store, permisser);
-        TypedFunction<DBNation, ?> entry = placeholders.formatRecursively(store, input, null, 0);
+        TypedFunction<DBNation, ?> entry = placeholders.formatRecursively(store, input, null, 0, true);
         return new SimpleNationPlaceholder(ph.getPrimaryCommandId(), entry.getType(), entry);
     }
 

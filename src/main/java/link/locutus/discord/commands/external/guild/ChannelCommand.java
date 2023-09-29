@@ -57,7 +57,7 @@ public class ChannelCommand extends Command {
         DBNation nation = me;
 
         NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-        String channelName = formatter.format2(guild, nation, author, args.get(0), nation);
+        String channelName = formatter.format2(guild, nation, author, args.get(0), nation, true);
         List<Category> categories = new ArrayList<>();
         List<TextChannel> channels = new ArrayList<>();
         Category freeCategory = null;

@@ -1251,7 +1251,7 @@ public class UnsortedCommands {
             }
             if (value == null) return "No message set for `" + key + "`. Plase use " + CM.copyPasta.cmd.toSlashMention() + "";
 
-            value = placeholders.format2(store, value, formatNation);
+            value = placeholders.format2(store, value, formatNation, false);
 
             return value;
         } else if (!Roles.INTERNAL_AFFAIRS.has(author, guild)) {

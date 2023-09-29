@@ -658,10 +658,10 @@ public class GuildHandler {
 
         NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
         if (message.contains("%") || message.contains("{")) {
-            message = formatter.format2(guild, null, null, message, to);
+            message = formatter.format2(guild, null, null, message, to, false);
         }
         if (subject.contains("%") || subject.contains("{")) {
-            subject = formatter.format2(guild, null, null, subject, to);
+            subject = formatter.format2(guild, null, null, subject, to, false);
         }
 
         return to.sendMail(keys, subject, message, false);

@@ -524,7 +524,7 @@ public class CommandManager2 {
                                         String key = entry.getKey();
                                         String value = entry.getValue();
                                         if (value.contains("{") && value.contains("}")) {
-                                            value = getNationPlaceholders().format2(finalLocals, value, me);
+                                            value = getNationPlaceholders().format2(finalLocals, value, me, false);
                                             entry.setValue(value);
                                         }
                                     }

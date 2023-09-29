@@ -194,7 +194,7 @@ public abstract class Placeholders<T> {
         Operation op = pairs.getMiddle();
         String part2 = pairs.getRight();
 
-        TypedFunction<T, ?> placeholder = evaluateFunction(store, part1, 0);
+        TypedFunction<T, ?> placeholder = evaluateFunction(store, part1, 0, true);
         if (placeholder == null) {
             throw throwUnknownCommand(part1);
         }
@@ -260,7 +260,7 @@ public abstract class Placeholders<T> {
                 s -> getSingleFilter(store2, s, cache));
     }
 
-    public TypedFunction<T, ?> formatRecursively(ValueStore store, String input, ParameterData param, int depth) {
+    public TypedFunction<T, ?> formatRecursively(ValueStore store, String input, ParameterData param, int depth, boolean throwError) {
         input = input.trim();
         int currentIndex = 0;
 
@@ -269,7 +269,9 @@ public abstract class Placeholders<T> {
 
         boolean hasMath = false;
         boolean hasNonMath = false;
+        boolean hasCurlyBracket = false;
         boolean hasPlaceholder = false;
+        boolean hasNonPlaceholder = false;
 
         while (currentIndex < input.length()) {
             char currentChar = input.charAt(currentIndex);
@@ -280,14 +282,9 @@ public abstract class Placeholders<T> {
                     case '+', '-', '*', '/', '^', '%' -> {
                         hasMath = true;
                     }
-                    // allow brackets and spaces
                     case '(', ')', ' ' -> {
 
                     }
-//                    // other math chars
-//                    case '<', '>', '=', '!', '&', '|', '~' -> {
-//                        hasNonMath = true;
-//                    }
                     default -> {
                         hasNonMath = true;
                     }
@@ -296,28 +293,33 @@ public abstract class Placeholders<T> {
                     System.out.println("hasMath = " + hasMath + " | " + currentChar + " | " + input);
                 }
             } else {
+                hasCurlyBracket = true;
                 // Find the matching closing curly brace
                 int closingBraceIndex = StringMan.findMatchingBracket(input, currentIndex);
                 if (closingBraceIndex != -1) {
                     String functionContent = input.substring(currentIndex + 1, closingBraceIndex);
                     sections.add(functionContent);
                     if (!functions.containsKey(functionContent)) {
-                        TypedFunction<T, ?> functionResult = evaluateFunction(store, functionContent, depth);
+                        TypedFunction<T, ?> functionResult = evaluateFunction(store, functionContent, depth, throwError);
                         if (functionResult != null) {
                             functions.put(functionContent, functionResult);
                             hasPlaceholder = true;
+                        } else {
+                            hasNonPlaceholder = true;
                         }
                     }
                     currentIndex = closingBraceIndex + 1;
                 } else {
-                    // Handle the case where there is no matching closing brace
-                    throw new IllegalArgumentException("Invalid input: Missing closing curly brace: `" + input + "`");
+                    if (throwError) {
+                        throw new IllegalArgumentException("Invalid input: Missing closing curly brace: `" + input + "`");
+                    }
+//                    return ResolvedFunction.create(String.class, input);
                 }
             }
         }
 
         if (hasMath && !hasNonMath) {
-            if (hasPlaceholder || (input.contains("{") && input.contains("}"))) {
+            if ((hasPlaceholder || (hasCurlyBracket && param != null)) && !hasNonPlaceholder) {
                 Function<String, Function<T, ArrayUtil.DoubleArray>> stringToParser = s -> {
                     if (s.startsWith("{") && s.endsWith("}")) {
                         TypedFunction<T, ?> function = functions.get(s);
@@ -341,6 +343,12 @@ public abstract class Placeholders<T> {
                     return TypedFunction.create(type, toObject(array, param));
                 }
                 return TypedFunction.create(type, f -> toObject(lazy.resolve(f), param));
+            } else if (hasCurlyBracket) {
+                if (throwError) {
+                    throw new IllegalArgumentException("Invalid input: No functions found: `" + input + "`");
+                } else {
+//                    return null;
+                }
             } else {
                 double val = PrimitiveBindings.Double(input);
                 return new ResolvedFunction<>(Double.class, val);
@@ -453,7 +461,7 @@ public abstract class Placeholders<T> {
     }
 
     // Helper method to evaluate a function and its arguments
-    private TypedFunction<T, ?> evaluateFunction(ValueStore store, String functionContent, int depth) {
+    private TypedFunction<T, ?> evaluateFunction(ValueStore store, String functionContent, int depth, boolean throwError) {
         Map<String, TypedFunction<T, ?>> actualArguments = new HashMap<>();
 
         // Split the functionContent into function name and arguments
@@ -463,7 +471,10 @@ public abstract class Placeholders<T> {
         String argumentString;
         if (indexPar != -1 && (indexSpace == -1 || indexPar < indexSpace)) {
             if (!functionContent.endsWith(")")) {
-                throw new IllegalArgumentException("Invalid input: Missing closing parenthesis for `" + functionContent + "`");
+                if (throwError) {
+                    throw new IllegalArgumentException("Invalid input: Missing closing parenthesis for `" + functionContent + "`");
+                }
+                return null;
             }
             functionName = functionContent.substring(0, indexPar);
             argumentString = functionContent.substring(indexPar + 1, functionContent.length() - 1).trim();
@@ -476,10 +487,10 @@ public abstract class Placeholders<T> {
         }
         ParametricCallable command = this.get(functionName);
         if (command == null) {
-//            if (depth == 0) {
-//                throw throwUnknownCommand(functionName);
-//            }
-            return new ResolvedFunction<>(String.class, functionContent);
+            if (throwError) {
+                throw throwUnknownCommand(functionName);
+            }
+            return null;
         }
         if (!argumentString.isEmpty()) {
             Set<String> argumentNames = command.getUserParameterMap().keySet();
@@ -490,7 +501,7 @@ public abstract class Placeholders<T> {
                 ParameterData param = entry.getValue();
                 String argumentName = entry.getKey();
                 if (explodedArguments.containsKey(argumentName)) {
-                    TypedFunction<T, ?> argumentValue = formatRecursively(store, explodedArguments.get(argumentName), param, depth + 1);
+                    TypedFunction<T, ?> argumentValue = formatRecursively(store, explodedArguments.get(argumentName), param, depth + 1, throwError);
                     actualArguments.put(argumentName, argumentValue);
                 }
             }
@@ -579,13 +590,13 @@ public abstract class Placeholders<T> {
         return locals;
     }
 
-    public String format2(Guild callerGuild, DBNation callerNation, User callerUser, String arg, T elem) {
+    public String format2(Guild callerGuild, DBNation callerNation, User callerUser, String arg, T elem, boolean throwError) {
         LocalValueStore locals = createLocals(callerGuild, callerUser, callerNation);
-        return getFormatFunction(locals, arg).apply(elem);
+        return getFormatFunction(locals, arg, throwError).apply(elem);
     }
 
-    public String format2(ValueStore store, String arg, T elem) {
-        return getFormatFunction(store, arg).apply(elem);
+    public String format2(ValueStore store, String arg, T elem, boolean throwError) {
+        return getFormatFunction(store, arg, throwError).apply(elem);
     }
 
 
@@ -596,7 +607,7 @@ public abstract class Placeholders<T> {
 
     public Map<T, String> format(ValueStore store, String arg, Set<T> entities) {
         PlaceholderCache<T> cache = new PlaceholderCache<>(entities);
-        Function<T, String> func = getFormatFunction(store, arg, cache);
+        Function<T, String> func = getFormatFunction(store, arg, cache, true);
         Map<T, String> formatted = new Object2ObjectOpenHashMap<>();
         for (T entity : entities) {
             formatted.put(entity, func.apply(entity));
@@ -606,21 +617,21 @@ public abstract class Placeholders<T> {
 
     public Function<T, String> getFormatFunction(Guild callerGuild, DBNation callerNation, User callerUser, String arg, Set<T> elems) {
         PlaceholderCache<T> cache = new PlaceholderCache<>(elems);
-        return getFormatFunction(callerGuild, callerNation, callerUser, arg, cache);
+        return getFormatFunction(callerGuild, callerNation, callerUser, arg, cache, true);
     }
-    public Function<T, String> getFormatFunction(Guild callerGuild, DBNation callerNation, User callerUser, String arg, PlaceholderCache cache) {
+    public Function<T, String> getFormatFunction(Guild callerGuild, DBNation callerNation, User callerUser, String arg, PlaceholderCache cache, boolean throwError) {
         LocalValueStore locals = createLocals(callerGuild, callerUser, callerNation);
         locals.addProvider(cache);
-        return getFormatFunction(locals, arg);
+        return getFormatFunction(locals, arg, throwError);
     }
 
-    public Function<T, String> getFormatFunction(ValueStore store, String arg) {
-        return getFormatFunction(store, arg, null);
+    public Function<T, String> getFormatFunction(ValueStore store, String arg, boolean throwError) {
+        return getFormatFunction(store, arg, null, throwError);
     }
 
-    public Function<T, String> getFormatFunction(ValueStore store, String arg, PlaceholderCache cache) {
+    public Function<T, String> getFormatFunction(ValueStore store, String arg, PlaceholderCache cache, boolean throwError) {
         if (cache != null) store.addProvider(cache);
-        return this.formatRecursively(store, arg, null, 0).andThen(f -> f + "");
+        return this.formatRecursively(store, arg, null, 0, throwError).andThen(f -> f + "");
     }
 
     private static String[] prefixes = {"get", "is", "can"};

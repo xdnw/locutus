@@ -1241,7 +1241,7 @@ public final class Locutus extends ListenerAdapter {
         if (!(cmdObject instanceof Noformat)) {
             DBNation nation = DiscordUtil.getNation(user);
             NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-            cmd = formatter.format2(message.getGuild(), nation, user, cmd, nation);
+            cmd = formatter.format2(message.getGuild(), nation, user, cmd, nation, false);
         }
         Guild guild = message.isFromGuild() ? message.getGuild() : null;
 

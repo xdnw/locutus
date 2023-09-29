@@ -19,7 +19,13 @@ public class Backup {
     public static void backup() {
         int turnsCheck = Settings.INSTANCE.BACKUP.TURNS;
         String script = Settings.INSTANCE.BACKUP.SCRIPT;
-        if (script.isEmpty()) return;
+        if (script.isEmpty()) {
+            System.out.println("""
+                    No backup script is mentioned in the config.yaml
+                    It is recommended to set a backup script to prevent data loss
+                    e.g. <https://restic.net/>""");
+            return;
+        }
         try {
             backup(script, turnsCheck);
         } catch (IOException e) {

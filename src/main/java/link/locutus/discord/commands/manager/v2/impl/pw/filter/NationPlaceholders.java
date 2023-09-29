@@ -60,7 +60,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         for (CommandCallable cmd : getFilterCallables()) {
             String id = cmd.aliases().get(0);
             try {
-                TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, id, null, 0);
+                TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, id, null, 0, false);
                 if (typeFunction == null) continue;
 
                 NationAttribute metric = new NationAttribute(cmd.getPrimaryCommandId(), cmd.simpleDesc(), typeFunction.getType(), typeFunction);
@@ -77,13 +77,13 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     }
 
     public NationAttribute getMetric(ValueStore<?> store, String id, boolean ignorePerms) {
-        TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, id, null, 0);
+        TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, id, null, 0, true);
         if (typeFunction == null) return null;
         return new NationAttribute<>(id, "", typeFunction.getType(), typeFunction);
     }
 
     public NationAttributeDouble getMetricDouble(ValueStore store, String id, boolean ignorePerms) {
-        TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, id, null, 0);
+        TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, id, null, 0, true);
         if (typeFunction == null) return null;
 
         TypedFunction<DBNation, ?> genericFunc = typeFunction;

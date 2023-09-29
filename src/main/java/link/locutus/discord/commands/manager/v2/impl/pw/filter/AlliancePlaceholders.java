@@ -46,7 +46,7 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
         List<AllianceInstanceAttribute> result = new ArrayList<>();
         for (CommandCallable cmd : getFilterCallables()) {
             String id = cmd.aliases().get(0);
-            TypedFunction<DBAlliance, ?> typeFunction = formatRecursively(store, id, null, 0);
+            TypedFunction<DBAlliance, ?> typeFunction = formatRecursively(store, id, null, 0, false);
             if (typeFunction == null) continue;
 
             AllianceInstanceAttribute metric = new AllianceInstanceAttribute(cmd.getPrimaryCommandId(), cmd.simpleDesc(), typeFunction.getType(), typeFunction);
@@ -65,7 +65,7 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
         if (cmd == null) return null;
         TypedFunction<DBAlliance, ?> typeFunction;
         try {
-            typeFunction = formatRecursively(store, id, null, 0);
+            typeFunction = formatRecursively(store, id, null, 0, true);
         } catch (CommandUsageException ignore) {
             return null;
         } catch (Throwable ignore2) {
@@ -117,7 +117,7 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
     }
 
     public AllianceInstanceAttribute getMetric(ValueStore<?> store, String id, boolean ignorePerms) {
-        TypedFunction<DBAlliance, ?> typeFunction = formatRecursively(store, id, null, 0);
+        TypedFunction<DBAlliance, ?> typeFunction = formatRecursively(store, id, null, 0, true);
         if (typeFunction == null) return null;
         return new AllianceInstanceAttribute<>(id, "", typeFunction.getType(), typeFunction);
     }

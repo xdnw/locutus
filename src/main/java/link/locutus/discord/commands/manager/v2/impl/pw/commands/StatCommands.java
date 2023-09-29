@@ -1302,7 +1302,7 @@ public class StatCommands {
                         total = true;
                     }
                     if (arg.contains("{") && arg.contains("}")) {
-                        arg = aaPlaceholders.format2(guild, me, author, arg, alliance);
+                        arg = aaPlaceholders.format2(guild, me, author, arg, alliance, true);
                         if (arg.contains("{") && arg.contains("}")) {
                             NationAttributeDouble metric = placeholders.getMetricDouble(store, arg.substring(1, arg.length() - 1));
                             if (metric == null) {

@@ -302,7 +302,7 @@ public class CommandManager {
                 if (!(cmd instanceof Noformat) && nation != null) {
                     try {
                         NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-                        String formatted = formatter.format2(guild, nation, msgUser, content1, nation);
+                        String formatted = formatter.format2(guild, nation, msgUser, content1, nation, false);
                         if (!content1.equals(formatted)) {
                             assert guild != null;
                         }

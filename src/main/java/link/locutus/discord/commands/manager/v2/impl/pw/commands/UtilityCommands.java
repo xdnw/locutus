@@ -1252,7 +1252,7 @@ public class UtilityCommands {
         Placeholders.PlaceholderCache<DBAlliance> aaCache = new Placeholders.PlaceholderCache<>(totals.keySet());
         List<Function<DBAlliance, String>> formatByColumn = new ArrayList<>();
         for (String column : columns) {
-            formatByColumn.add(aaPlaceholders.getFormatFunction(guild, me, author, column, aaCache));
+            formatByColumn.add(aaPlaceholders.getFormatFunction(guild, me, author, column, aaCache, true));
         }
 //        Placeholders.PlaceholderCache<DBNation> natCache = new Placeholders.PlaceholderCache<>(totals.values());
 
@@ -1300,7 +1300,7 @@ public class UtilityCommands {
         Placeholders.PlaceholderCache<DBNation> cache = new Placeholders.PlaceholderCache<>(nations);
         List<Function<DBNation, String>> formatFunction = new ArrayList<>();
         for (String arg : columns) {
-            formatFunction.add(placeholders.getFormatFunction(db.getGuild(), me, author, arg, cache));
+            formatFunction.add(placeholders.getFormatFunction(db.getGuild(), me, author, arg, cache, true));
         }
         for (DBNation nation : nations) {
             if (updateSpies) {

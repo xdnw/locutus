@@ -78,7 +78,7 @@ public class NationSheet extends Command implements Noformat {
         }
 
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-        Set<DBNation> nations = DiscordUtil.parseNations(guild, placeholders.format2(guild, me, author, args.get(0), me));
+        Set<DBNation> nations = DiscordUtil.parseNations(guild, placeholders.format2(guild, me, author, args.get(0), me, true));
         if (nations.isEmpty()) return "No nations found for `" + args.get(0) + "`";
 
         if (sheet == null) {

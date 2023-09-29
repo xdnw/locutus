@@ -43,6 +43,6 @@ public class Say extends Command {
             GPTUtil.checkThrowModeration(result, "<redacted>");
         }
         NationPlaceholders formatter = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
-        return formatter.format2(guild, me, author, msg.substring(5) + "\n\n- " + author.getAsMention(), me);
+        return formatter.format2(guild, me, author, msg.substring(5) + "\n\n- " + author.getAsMention(), me, false);
     }
 }

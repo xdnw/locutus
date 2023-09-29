@@ -575,7 +575,12 @@ public class Settings extends Config {
     }
 
     public static class BACKUP {
-        @Comment("The directory to store backups in")
+        @Comment({
+                "The file location of the backup script to run",
+                "Set to empty string to disable backups",
+                "Windows Example (restic): <https://gist.github.com/xdnw/a966c4bfe4bf2e1b9fa99ab189d1c41f>",
+                "Linux Example (restic): <https://gist.github.com/xdnw/2b3939395961fb4108ab13fe07c43711>",
+        })
         public String SCRIPT = "";
         @Comment({"Intervals in turns between backups",
         "Set to 0 to always make a new backup on startup"})

@@ -1336,8 +1336,8 @@ public class IACommands {
         long start = System.currentTimeMillis();
 
         Placeholders.PlaceholderCache<DBNation> cache = new Placeholders.PlaceholderCache<>(nations);
-        Function<DBNation, String> subjectF = placeholders.getFormatFunction(store, subject, cache);
-        Function<DBNation, String> bodyF = placeholders.getFormatFunction(store, body, cache);
+        Function<DBNation, String> subjectF = placeholders.getFormatFunction(store, subject, cache, true);
+        Function<DBNation, String> bodyF = placeholders.getFormatFunction(store, body, cache, true);
 
         int success = 0;
         for (DBNation nation : nations) {
