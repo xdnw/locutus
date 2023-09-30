@@ -414,8 +414,4 @@ public class IndexPages extends PageHelper {
 
         return rocker.alliance.allianceindex.template(db, guild, alliance, user).render().toString();
     }
-
-    public Object nationsEndpoint(String filters) {
-        return "TODO";
-    }
 }

@@ -58,7 +58,8 @@ public class WebUtil {
 
         String valueStr = def != null ? " value=\"" + def + "\"" : "";
         UUID uuid = UUID.randomUUID();
-        return wrapLabel(null, desc, uuid, "<select id=\"" + uuid + "\" name=\"" + name + "\" class=\"select-inline-data form-control form-control-sm\" " + valueStr + " data-json='" + dataJson.toString() + "' " + (required ? "required" : "") + (multiple ? " multiple" : "") + " ></select>", InlineMode.NONE);
+        String jsonStr = dataJson.toString().replace("'", "&#39;").replace("&", "&amp;");
+        return wrapLabel(null, desc, uuid, "<select id=\"" + uuid + "\" name=\"" + name + "\" class=\"select-inline-data form-control form-control-sm\" " + valueStr + " data-json='" + jsonStr + "' " + (required ? "required" : "") + (multiple ? " multiple" : "") + " ></select>", InlineMode.NONE);
     }
 
     public static String getColorHex(Color color) {
