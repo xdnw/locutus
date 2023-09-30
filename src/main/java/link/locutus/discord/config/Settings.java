@@ -252,9 +252,6 @@ public class Settings extends Config {
         public TURN_TASKS TURN_TASKS;
 
         @Create
-        public SUBSCRIPTIONS SUBSCRIPTIONS;
-
-        @Create
         public ConfigBlock<MAIL> MAIL;
 
         @Comment({"Fetch ingame mail of an authenticated nation and post it to a channel",
@@ -266,9 +263,6 @@ public class Settings extends Config {
             public int NATION_ID = 189573;
             public int FETCH_INTERVAL_SECONDS = 62;
             public long CHANNEL_ID = 674505503400919040L;
-        }
-
-        public static class SUBSCRIPTIONS {
         }
 
         public static class TURN_TASKS {

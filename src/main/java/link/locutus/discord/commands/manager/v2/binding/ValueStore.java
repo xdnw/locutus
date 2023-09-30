@@ -47,7 +47,7 @@ public interface ValueStore<T> {
         }
         try {
             return (V) get((Key) key).apply(this, null);
-        } catch (RedirectResponse response) {
+        } catch (RedirectResponse | IllegalArgumentException | IllegalStateException response) {
             if (throwError) {
                 throw response;
             }

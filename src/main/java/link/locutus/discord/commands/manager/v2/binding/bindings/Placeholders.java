@@ -18,6 +18,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.math.ReflectionUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.StringEscapeUtils;
@@ -164,7 +165,7 @@ public abstract class Placeholders<T> {
         List<ParametricCallable> result = getParametricCallables();
         result.removeIf(cmd -> {
             Type type = cmd.getReturnType();
-            return type != String.class && type != boolean.class && type != Boolean.class && type != int.class && type != Integer.class && type != double.class && type != Double.class && type != long.class && type != Long.class && !Enum.class.isAssignableFrom((Class<?>) type);
+            return type != String.class && type != boolean.class && type != Boolean.class && type != int.class && type != Integer.class && type != double.class && type != Double.class && type != long.class && type != Long.class && !Enum.class.isAssignableFrom(ReflectionUtil.getClassType(type));
         });
         return new ArrayList<>(result);
     }
@@ -298,7 +299,7 @@ public abstract class Placeholders<T> {
                     String functionContent = input.substring(currentIndex + 1, closingBraceIndex);
                     sections.add(fullContent);
                     if (!functions.containsKey(fullContent)) {
-                        TypedFunction<T, ?> functionResult = evaluateFunction(store, fullContent, depth, throwError);
+                        TypedFunction<T, ?> functionResult = evaluateFunction(store, functionContent, depth, throwError);
                         if (functionResult != null) {
                             functions.put(fullContent, functionResult);
                             hasPlaceholder = true;

@@ -50,7 +50,7 @@ public class Bank extends Command {
         User user = author;
         DBNation banker = me;
         if (banker == null) {
-            return "Please use " + Settings.commandPrefix(true) + "validate";
+            return "Please use " + CM.register.cmd.toSlashMention();
         }
         Map<ResourceType, Double> totals;
 

@@ -16,7 +16,7 @@ public enum FlowType {
                 public void accept(ResourceType.ResourcesBuilder r, Map.Entry<Integer, Transaction2> signTx) {
                     Transaction2 tx = signTx.getValue();
                     if (tx.sender_id == 0 || tx.receiver_id == 0) {
-                        r.add(PnwUtil.multiply(tx.resources, signTx.getKey()));
+                        r.add(PnwUtil.multiply(tx.resources.clone(), signTx.getKey()));
                     }
                 }
             }).build();
@@ -30,7 +30,7 @@ public enum FlowType {
                 public void accept(ResourceType.ResourcesBuilder r, Map.Entry<Integer, Transaction2> signTx) {
                     Transaction2 tx = signTx.getValue();
                     if (tx.receiver_id == nationId && tx.isReceiverNation() && tx.sender_id != 0) {
-                        r.add(PnwUtil.multiply(tx.resources, -signTx.getKey()));
+                        r.add(PnwUtil.multiply(tx.resources.clone(), -signTx.getKey()));
                     }
                 }
             }).build();
@@ -44,7 +44,7 @@ public enum FlowType {
                 public void accept(ResourceType.ResourcesBuilder r, Map.Entry<Integer, Transaction2> signTx) {
                     Transaction2 tx = signTx.getValue();
                     if (tx.sender_id == nationId && tx.isSenderNation() && tx.receiver_id != 0) {
-                        r.add(PnwUtil.multiply(tx.resources, signTx.getKey()));
+                        r.add(PnwUtil.multiply(tx.resources.clone(), signTx.getKey()));
                     }
                 }
             }).build();

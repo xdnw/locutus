@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.commands.external.guild.WarRoom;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -233,7 +234,7 @@ public class WarCategory {
     }
 
     public boolean isActive(DBNation nation) {
-        if (nation != null && nation.getVm_turns() <= 0 && nation.getActive_m() < 2880 && (nation.getPosition() <= Rank.APPLICANT.id || nation.getActive_m() < 1440 || nation.getOff() > 0)) {
+        if (nation != null && nation.getVm_turns() <= 0 && nation.getActive_m() < 2880 && (nation.getPosition() >= Rank.APPLICANT.id || nation.getActive_m() < 1440 || nation.getOff() > 0)) {
             NationFilter filter = GuildKey.WAR_ROOM_FILTER.getOrNull(db);
             if (filter != null) {
                 return filter.test(nation);

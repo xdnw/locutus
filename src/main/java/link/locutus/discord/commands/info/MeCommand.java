@@ -3,6 +3,7 @@ package link.locutus.discord.commands.info;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.war.SpyCommand;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.DiscordDB;
@@ -43,7 +44,7 @@ public class MeCommand extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         
         if (me == null) {
-            return "Please use " + Settings.commandPrefix(true) + "validate";
+            return "Please use " + CM.register.cmd.toSlashMention();
         }
         return who.onCommand(guild, channel, author, me, fullCommandRaw, Collections.singletonList(me.getNation_id() + ""));
     }

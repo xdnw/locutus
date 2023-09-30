@@ -79,6 +79,7 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.exceptions.HierarchyException;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -400,30 +401,34 @@ public class DBNation implements NationOrAlliance {
                 <https://discord.gg/cUuskPDrB7>""")
                 .append("\n\nRunning auto role task...");
         if (db != null) {
-            Role role = Roles.REGISTERED.toRole(db);
-            if (role != null) {
-                try {
-                    Member member = db.getGuild().getMember(user);
-                    if (member == null) {
-                        member = db.getGuild().retrieveMember(user).complete();
+            try {
+                Role role = Roles.REGISTERED.toRole(db);
+                if (role != null) {
+                    try {
+                        Member member = db.getGuild().getMember(user);
+                        if (member == null) {
+                            member = db.getGuild().retrieveMember(user).complete();
+                        }
+                        if (member != null) {
+                            RateLimitUtil.complete(db.getGuild().addRoleToMember(user, role));
+                            output.append("You have been assigned the role: " + role.getName());
+                            AutoRoleInfo task = db.getAutoRoleTask().autoRole(member, this);
+                            task.execute();
+                            output.append("\n" + task.getChangesAndErrorMessage());
+                        } else {
+                            output.append("Member " + DiscordUtil.getFullUsername(user) + " not found in guild: " + db.getGuild());
+                        }
+                    } catch (InsufficientPermissionException e) {
+                        output.append(e.getMessage() + "\n");
                     }
-                    if (member != null) {
-                        RateLimitUtil.complete(db.getGuild().addRoleToMember(user, role));
-                        output.append("You have been assigned the role: " + role.getName());
-                        AutoRoleInfo task = db.getAutoRoleTask().autoRole(member, this);
-                        task.execute();
-                        output.append("\n" + task.getChangesAndErrorMessage());
-                    } else {
-                        output.append("Member " + DiscordUtil.getFullUsername(user) + " not found in guild: " + db.getGuild());
+                } else {
+                    if (Roles.ADMIN.has(user, db.getGuild())) {
+                        output.append("No REGISTERED role mapping found.");
+                        output.append("\nCreate a role mapping with " + CM.role.setAlias.cmd.toSlashMention() + "");
                     }
-                } catch (InsufficientPermissionException e) {
-                    output.append(e.getMessage() + "\n");
                 }
-            } else {
-                if (Roles.ADMIN.has(user, db.getGuild())) {
-                    output.append("No REGISTERED role mapping found.");
-                    output.append("\nCreate a role mapping with " + CM.role.setAlias.cmd.toSlashMention() + "");
-                }
+            } catch (HierarchyException e) {
+                output.append("\nCannot add role (Make sure Locutus' role is high enough and has add role perms)\n- " + e.getMessage());
             }
         }
         return output.toString();

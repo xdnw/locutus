@@ -75,7 +75,6 @@ public class BankUpdateProcessor {
                         Map.Entry<String, String> card = createCard(transfer, nationId);
                         try {
                             IMessageBuilder msg = new DiscordChannelIO(channel).create().embed(card.getKey(), card.getValue());
-                            DiscordUtil.createEmbedCommand(channel, card.getKey(), card.getValue());
                             Map.Entry<GuildDB, Integer> offshore = guildDb.getOffshoreDB();
                             if (isDeposit && offshore != null) {
                                 msg = msg.commandButton(CM.offshore.send.cmd, "offshore");
