@@ -357,7 +357,9 @@ public abstract class Placeholders<T> {
             // if hasPlaceholder is false, then parse in entirety
             if (!hasPlaceholder) {
                 Parser<?> binding = param.getBinding();
-                Object val = binding.apply(store, input);
+                LocalValueStore locals = new LocalValueStore<>(store);
+                locals.addProvider(param);
+                Object val = binding.apply(locals, input);
                 return new ResolvedFunction<>(param.getType(), val);
             }
         }
@@ -397,11 +399,13 @@ public abstract class Placeholders<T> {
             return arr[0];
         }
         if (param != null) {
+            LocalValueStore locals = new LocalValueStore<>(store);
+            locals.addProvider(param);
             Parser typeFunc = math2Type.get(param.getBinding().getKey());
             if (typeFunc == null) {
                 throw new IllegalArgumentException("Unknown type function (1): `" + param.getBinding().getKey() + "`");
             }
-            Object parsed = typeFunc.apply(store, expr);
+            Object parsed = typeFunc.apply(locals, expr);
             if (parsed == null) {
                 throw new IllegalArgumentException("Null parsed " + typeFunc.getKey() + " for Math Expression->Type");
             }
@@ -420,11 +424,13 @@ public abstract class Placeholders<T> {
             }
             if (str.startsWith("{") && str.endsWith("}")) {
                 if (param != null) {
+                    LocalValueStore locals = new LocalValueStore<>(store);
+                    locals.addProvider(param);
                     Parser mathFunc = type2Math.get(param.getBinding().getKey());
                     if (mathFunc == null) {
                         throw new IllegalArgumentException("Unknown function (2): `" + str + "`");
                     }
-                    Object parsed = mathFunc.apply(store, validators, permisser, str);
+                    Object parsed = mathFunc.apply(locals, validators, permisser, str);
                     if (parsed == null) {
                         throw new IllegalArgumentException("Null parsed " + mathFunc.getKey() + " for Type->Math Expression");
                     }

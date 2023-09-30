@@ -2466,7 +2466,8 @@ public class GuildKey {
         }
         @Override
         public String help() {
-            return "A nation filter to limit which combattants are allowed for a war room";
+            return "A an additional filter to limit which nations are allowed for a war room.\n" +
+                    "War rooms are only created and maintained when attacker and defender match this filter\n";
         }
     }.setupRequirements(f -> f.requires(ENABLE_WAR_ROOMS));
 
