@@ -87,6 +87,7 @@ public class WebRoot {
         staticFileMap.put("/img", "/");
 
         this.app = Javalin.create(config -> {
+//            config.enableCorsForOrigin();
             config.server(() -> {
                 Server server = new Server(); // configure this however you want
                 LocutusSSLHandler.configureServer(server, portMain, portHTTPS);

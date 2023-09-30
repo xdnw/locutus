@@ -85,9 +85,7 @@ dependencies {
     implementation group: 'club.minnced', name: 'discord-webhooks', version: '0.7.2'
     implementation 'com.nixxcode.jvmbrotli:jvmbrotli:0.2.0'
 
-    implementation 'io.javalin:javalin:4.0.0.RC3'
-    implementation 'io.javalin:javalin-parent:4.0.0.RC3'
-    implementation 'io.javalin:javalin-bundle:4.0.0.RC3'
+    implementation 'io.javalin:javalin:5.6.2'
 
     implementation 'com.ptsmods:mysqlw:1.7'
     implementation 'org.openjdk.nashorn:nashorn-core:15.4'
