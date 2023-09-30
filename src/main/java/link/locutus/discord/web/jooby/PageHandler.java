@@ -57,6 +57,7 @@ import io.javalin.http.Context;
 import io.javalin.http.Handler;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
+import org.bytedeco.librealsense.context;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 
@@ -221,7 +222,7 @@ public class PageHandler implements Handler {
 
                 if (cmd instanceof ParametricCallable) {
                     ValueStore locals = stack.getStore();
-                    Map<String, String> fullCmdStr = parseQueryMap(locals, sse, ctx.queryParamMap());
+                    Map<String, String> fullCmdStr = parseQueryMap(ctx.queryParamMap());
                     locals.addProvider(Key.of(JSONObject.class, Me.class), new JSONObject(fullCmdStr));
                     locals.addProvider(Key.of(IMessageIO.class, Me.class), io);
 
@@ -344,7 +345,7 @@ public class PageHandler implements Handler {
 //        }
 //    }
 
-    public Map<String, String> parseQueryMap(ValueStore locals, @Nullable SseClient2 client, Map<String, List<String>> queryMap) {
+    public static Map<String, String> parseQueryMap( Map<String, List<String>> queryMap) {
         Map<String, List<String>> post = new HashMap<>(queryMap);
         post.entrySet().removeIf(f -> f.getValue().isEmpty() || (f.getValue().size() == 1 && f.getValue().get(0).isEmpty()));
 
@@ -436,12 +437,34 @@ public class PageHandler implements Handler {
 
                     cmd.validatePermissions(stack.getStore(), permisser);
                     String endpoint = Settings.INSTANCE.WEB.REDIRECT + "/command";
-                    ctx.result(cmd.toHtml(stack.getStore(), stack.getPermissionHandler(), endpoint));
+                    ctx.result(cmd.toHtml(stack.getStore(), stack.getPermissionHandler(), endpoint, true));
                     break;
                 }
                 // case "page" ->
                 default -> {
-                    Object result = wrap(commands.call(stack), ctx);
+                    List<String> args = new ArrayList<>(stack.getRemainingArgs());
+                    CommandCallable cmd = commands.getCallable(args, true);
+                    if (cmd == null) {
+                        throw new IllegalArgumentException("No page found for `/" + StringMan.join(args, " ") + "`");
+                    }
+
+                    boolean run = !ctx.queryParamMap().isEmpty() || !args.isEmpty() || (cmd instanceof ParametricCallable param && param.getUserParameters().isEmpty());
+
+                    Object result;
+                    if (cmd instanceof ParametricCallable parametric && run) {
+                        Map<String, String> queryMap;
+                        if (!args.isEmpty()) {
+                            queryMap = parametric.formatArgumentsToMap(stack.getStore(), args);
+                        } else {
+                            queryMap = parseQueryMap(ctx.queryParamMap());
+                        }
+                        Object[] parsed = parametric.parseArgumentMap(queryMap, stack.getStore(), validators, permisser);
+                        Object cmdResult = parametric.call(parametric.getObject(), stack.getStore(), parsed);
+                        result = wrap(cmdResult, ctx);
+                    } else {
+                        result = cmd.toHtml(stack.getStore(), stack.getPermissionHandler(), false);
+                    }
+
                     if (result != null && (!(result instanceof String) || !result.toString().isEmpty())) {
                         ctx.result(result.toString());
                     } else if (result != null) {
@@ -576,7 +599,7 @@ public class PageHandler implements Handler {
 
             String redirectBase = Settings.INSTANCE.WEB.REDIRECT + "/command/" + cmd.getFullPath("/").toLowerCase() + "/";
 
-            Map<String, String> combined = parseQueryMap(locals, sse, ctx.queryParamMap());
+            Map<String, String> combined = parseQueryMap(ctx.queryParamMap());
             ParametricCallable parametric = (ParametricCallable) cmd;
             List<String> orderedArgs = parametric.orderArgumentMap(combined, false);
 

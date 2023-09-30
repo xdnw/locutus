@@ -197,7 +197,7 @@ public class CommandGroup implements ICommandGroup {
     }
 
     @Override
-    public String toHtml(ValueStore store, PermissionHandler permHandler, String endpoint) {
+    public String toHtml(ValueStore store, PermissionHandler permHandler, String endpoint, boolean sse) {
         Map<String, CommandCallable> allowed = getAllowedCommands(store, permHandler);
         if (endpoint == null) endpoint = "";
         return rocker.command.commandgroup.template(store, this, allowed, endpoint).render().toString();

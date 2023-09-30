@@ -22,6 +22,12 @@ public class ArgumentStack {
         this.permisser = permisser;
     }
 
+    public void setArgs(List<String> args) {
+        this.args.clear();
+        this.args.addAll(args);
+        this.index = 0;
+    }
+
     public List<String> getRemainingArgs() {
         return args.subList(index, args.size());
     }

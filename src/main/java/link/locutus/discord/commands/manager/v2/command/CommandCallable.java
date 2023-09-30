@@ -47,11 +47,11 @@ public interface CommandCallable {
         }
     }
 
-    default String toHtml(ValueStore store, PermissionHandler permisser) {
-        return toHtml(store, permisser, null);
+    default String toHtml(ValueStore store, PermissionHandler permisser, boolean sse) {
+        return toHtml(store, permisser, null, sse);
     }
 
-    String toHtml(ValueStore store, PermissionHandler permisser, String endpoint);
+    String toHtml(ValueStore store, PermissionHandler permisser, String endpoint, boolean sse);
 
     default CommandCallable getCallable(List<String> args) {
         return getCallable(new ArrayList<>(args), false);

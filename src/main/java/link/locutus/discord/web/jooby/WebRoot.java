@@ -190,6 +190,12 @@ public class WebRoot {
         this.app.post("/page/**", ctx -> {
             pageHandler.handle(ctx);
         });
+        this.app.get("/rest/**", ctx -> {
+            pageHandler.handle(ctx);
+        });
+        this.app.post("/rest/**", ctx -> {
+            pageHandler.handle(ctx);
+        });
 
         this.fileRoot = new File("files");
 
