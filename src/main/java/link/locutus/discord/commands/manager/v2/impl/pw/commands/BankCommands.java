@@ -2321,7 +2321,7 @@ public class BankCommands {
             Locutus.imp().getBankDB().updateBankRecs(false, Event::post);
         }
 
-        String noteFlowStr = "#" + useFlowNote.name().toLowerCase(Locale.ROOT);
+        String noteFlowStr = useFlowNote == null ? null : "#" + useFlowNote.name().toLowerCase(Locale.ROOT);
 
         long last = System.currentTimeMillis();
         for (DBNation nation : nations) {
@@ -2333,9 +2333,9 @@ public class BankCommands {
 
             List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, tracked, useTaxBase, useOffset, (updateBulk && !force) ? -1 : 0L, 0L, false);
             List<Map.Entry<Integer, Transaction2>> flowTransfers = useFlowNote == null ? transactions : transactions.stream().filter(f -> PnwUtil.parseTransferHashNotes(f.getValue().note).containsKey(noteFlowStr)).collect(Collectors.toList());
-            double[] internal = FlowType.INTERNAL.getTotal(transactions, nation.getId());
-            double[] withdrawal = FlowType.WITHDRAWAL.getTotal(transactions, nation.getId());
-            double[] deposit = FlowType.DEPOSIT.getTotal(transactions, nation.getId());
+            double[] internal = FlowType.INTERNAL.getTotal(flowTransfers, nation.getId());
+            double[] withdrawal = FlowType.WITHDRAWAL.getTotal(flowTransfers, nation.getId());
+            double[] deposit = FlowType.DEPOSIT.getTotal(flowTransfers, nation.getId());
 
             Map<DepositType, double[]> deposits = PnwUtil.sumNationTransactions(db, tracked, transactions, false, false, f -> true);
             double[] buffer = ResourceType.getBuffer();
