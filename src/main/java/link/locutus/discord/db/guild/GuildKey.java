@@ -940,6 +940,7 @@ public class GuildKey {
             return "A nation filter to apply to limit what wars milcom gets pinged for. ";
         }
     }.setupRequirements(f -> f.requires(DEFENSE_WAR_CHANNEL));
+
     public static GuildSetting<Boolean> WAR_ALERT_FOR_OFFSHORES = new GuildBooleanSetting(GuildSettingCategory.WAR_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -2455,6 +2456,19 @@ public class GuildKey {
         }
 
     }.setupRequirements(f -> f.requireValidAlliance().requires(RECRUIT_MESSAGE_OUTPUT).requires(ALLIANCE_ID));
+
+    public static GuildSetting<NationFilter> WAR_ROOM_FILTER = new GuildNationFilterSetting(GuildSettingCategory.WAR_ALERTS) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String WAR_ROOM_FILTER(@Me GuildDB db, @Me User user, NationFilter value) {
+            return WAR_ROOM_FILTER.setAndValidate(db, user, value);
+        }
+        @Override
+        public String help() {
+            return "A nation filter to limit which combattants are allowed for a war room";
+        }
+    }.setupRequirements(f -> f.requires(ENABLE_WAR_ROOMS));
 
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 

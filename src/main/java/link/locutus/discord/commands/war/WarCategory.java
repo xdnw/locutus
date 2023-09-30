@@ -7,6 +7,7 @@ import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
@@ -219,7 +220,7 @@ public class WarCategory {
         return catPrefix;
     }
 
-    public static boolean isActive(Collection<DBWar> wars, DBNation nation) {
+    public boolean isActive(Collection<DBWar> wars, DBNation nation) {
         if (!isActive(nation)) return false;
         for (DBWar war : wars) {
             int attackerId = war.attacker_id == nation.getNation_id() ? war.defender_id : war.attacker_id;
@@ -231,8 +232,14 @@ public class WarCategory {
         return false;
     }
 
-    public static boolean isActive(DBNation nation) {
-        if (nation != null && nation.getVm_turns() <= 0 && nation.getActive_m() < 2880 && (nation.getPosition() <= Rank.APPLICANT.id || nation.getActive_m() < 1440 || nation.getOff() > 0)) return true;
+    public boolean isActive(DBNation nation) {
+        if (nation != null && nation.getVm_turns() <= 0 && nation.getActive_m() < 2880 && (nation.getPosition() <= Rank.APPLICANT.id || nation.getActive_m() < 1440 || nation.getOff() > 0)) {
+            NationFilter filter = GuildKey.WAR_ROOM_FILTER.getOrNull(db);
+            if (filter != null) {
+                return filter.test(nation);
+            }
+            return true;
+        }
         return false;
     }
 

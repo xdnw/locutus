@@ -100,11 +100,12 @@ public interface CommandCallable {
             if (root instanceof CommandGroup) {
                 CommandCallable tmp = ((CommandGroup) root).get(arg);
                 if (tmp == null) {
-                    throw new IllegalArgumentException("Command: " + root.getPrimaryCommandId() + " of type " + root.getClass().getSimpleName() + " has no subcommand matching: " + arg);
+                    throw new IllegalArgumentException("Command: " + root.getPrimaryCommandId() + " of type " + root.getClass().getSimpleName() + " has no subcommand matching: " + arg + "\n" +
+                            "Available subcommands: " + ((CommandGroup) root).getSubcommands().keySet());
                 }
                 root = tmp;
             } else {
-                throw new IllegalArgumentException("Command: " + root.getPrimaryCommandId() + " of type " + root.getClass().getSimpleName() + " has no subcommand: " + arg);
+                throw new IllegalArgumentException("Command: " + root.getPrimaryCommandId() + " of type " + root.getClass().getSimpleName() + " has no subcommands. Arg: " + arg);
             }
         }
         return root;

@@ -184,14 +184,12 @@ public class WebRoot {
             }
         }
 
-        for (String cmd : pageHandler.getCommands().getSubCommandIds()) {
-            this.app.get("/page/**", ctx -> {
-                pageHandler.handle(ctx);
-            });
-            this.app.post("/page/**", ctx -> {
-                pageHandler.handle(ctx);
-            });
-        }
+        this.app.get("/page/**", ctx -> {
+            pageHandler.handle(ctx);
+        });
+        this.app.post("/page/**", ctx -> {
+            pageHandler.handle(ctx);
+        });
 
         this.fileRoot = new File("files");
 

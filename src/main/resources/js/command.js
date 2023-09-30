@@ -239,15 +239,6 @@ function processInputs(form, args) {
 }
 
 function executeCommandFromArgMapWithDomain(domain, form, outDiv) {
-//    for ( elem of form.querySelectorAll("input[type=\"checkbox\"]")) {
-//                   if (elem.checked) {
-//                       elem.value = "true";
-//                   } else {
-//                       elem.value = "false";
-//                   }
-//               }
-
-
     var serialized = $(form).serializeArray();
     var args = {};
 

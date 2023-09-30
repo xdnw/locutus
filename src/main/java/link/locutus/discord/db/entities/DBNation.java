@@ -870,7 +870,6 @@ public class DBNation implements NationOrAlliance {
         return strongest;
     }
 
-
     @Command(desc = "If this nation has an offensive war against an enemy in the provided score range")
     public boolean isAttackingEnemyOfScore(double minScore, double maxScore) {
         return getStrongestOffEnemyOfScore(minScore, maxScore) != -1;

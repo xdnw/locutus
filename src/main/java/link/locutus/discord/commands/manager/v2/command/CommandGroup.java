@@ -7,6 +7,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.yaml.file.YamlConfiguration;
 import link.locutus.discord.util.StringMan;
+import org.apache.commons.lang3.ArrayUtils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -139,9 +140,18 @@ public class CommandGroup implements ICommandGroup {
     }
 
     public void registerSubCommands(Object object, String... aliases) {
-        CommandGroup subCmd = new CommandGroup(this, aliases, store, validators);
-        subCmd.registerCommands(object);
-        register(subCmd, aliases);
+        for (String alias : aliases) {
+            CommandCallable cmd = get(alias);
+            if (cmd == null) {
+                cmd = new CommandGroup(this, ArrayUtils.toArray(alias), store, validators);
+                register(cmd, alias);
+            }
+            if (cmd instanceof CommandGroup group) {
+                group.registerCommands(object);
+            } else {
+                throw new IllegalArgumentException("Cannot register " + StringMan.getString(aliases) + " at " + getFullPath() + " because primary command " + cmd.getPrimaryCommandId() + " already exists there");
+            }
+        }
     }
 
     public CommandGroup createSubGroup(String... aliases) {
@@ -151,14 +161,14 @@ public class CommandGroup implements ICommandGroup {
 
     @Override
     public Object call(ArgumentStack stack) {
-        ValueStore<?> store = stack.getStore();
         if (!stack.hasNext()) {
             throw new CommandUsageException(this, "No subcommand specified");
         }
         String arg = stack.consumeNext();
         CommandCallable subcommand = subcommands.get(arg.toLowerCase());
         if (subcommand == null) {
-            throw new CommandUsageException(this, "Invalid subcommand: `" + arg + "`");
+            throw new CommandUsageException(this, "Invalid subcommand: `" + arg + "`\n" +
+                    "Valid subcommands: " + StringMan.join(primarySubCommandIds(), ", "));
         }
         return subcommand.call(stack);
     }

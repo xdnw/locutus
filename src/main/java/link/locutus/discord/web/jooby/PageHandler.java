@@ -38,6 +38,7 @@ import link.locutus.discord.web.commands.alliance.AlliancePages;
 import link.locutus.discord.web.commands.binding.AuthBindings;
 import link.locutus.discord.web.commands.page.BankPages;
 import link.locutus.discord.web.commands.page.EconPages;
+import link.locutus.discord.web.commands.page.EndpointPages;
 import link.locutus.discord.web.commands.page.GrantPages;
 import link.locutus.discord.web.commands.page.IAPages;
 import link.locutus.discord.web.commands.page.IndexPages;
@@ -123,8 +124,9 @@ public class PageHandler implements Handler {
         this.commands.registerSubCommands(new AlliancePages(), "page");
         this.commands.registerSubCommands(new NationListPages(), "page");
 
-        this.commands.registerCommands(new TestPages());
+        this.commands.registerSubCommands(new EndpointPages(), "rest");
 
+        this.commands.registerCommands(new TestPages());
         this.commands.registerCommands(this);
 
         Map<Key, Parser> parsers = Locutus.imp().getCommandManager().getV2().getStore().getParsers();
@@ -373,14 +375,14 @@ public class PageHandler implements Handler {
         return combined;
     }
 
-    @Command()
-    public Object command(@Me GuildDB db, ArgumentStack stack, Context ctx) {
-        List<String> args = stack.getRemainingArgs();
-        CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
-        CommandCallable cmd = manager.getCallable(args);
-
-        return cmd.toHtml(stack.getStore(), stack.getPermissionHandler());
-    }
+//    @Command()
+//    public Object command(@Me GuildDB db, ArgumentStack stack, Context ctx) {
+//        List<String> args = stack.getRemainingArgs();
+//        CommandManager2 manager = Locutus.imp().getCommandManager().getV2();
+//        CommandCallable cmd = manager.getCallable(args);
+//
+//        return cmd.toHtml(stack.getStore(), stack.getPermissionHandler());
+//    }
 
     @NotNull
     @Override
@@ -420,11 +422,14 @@ public class PageHandler implements Handler {
             ArgumentStack stack = createStack(ctx);
             ctx.header("Content-Type", "text/html;charset=UTF-8");
             String path = stack.getCurrent();
+            System.out.println("Current " + path);
             switch (path.toLowerCase(Locale.ROOT)) {
                 case "command" -> {
                     stack.consumeNext();
                     List<String> args = new ArrayList<>(stack.getRemainingArgs());
-                    CommandCallable cmd = commands.getCallable(args);
+                    CommandManager2 manager = Locutus.cmd().getV2();
+
+                    CommandCallable cmd = manager.getCommands().getCallable(args);
                     if (cmd == null) {
                         throw new IllegalArgumentException("No command found for `/" + StringMan.join(args, " ") + "`");
                     }
@@ -432,6 +437,7 @@ public class PageHandler implements Handler {
                     cmd.validatePermissions(stack.getStore(), permisser);
                     String endpoint = Settings.INSTANCE.WEB.REDIRECT + "/command";
                     ctx.result(cmd.toHtml(stack.getStore(), stack.getPermissionHandler(), endpoint));
+                    break;
                 }
                 // case "page" ->
                 default -> {
