@@ -5,6 +5,7 @@ import io.javalin.http.Context;
 import io.javalin.http.RedirectResponse;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoForm;
 import link.locutus.discord.web.commands.binding.AuthBindings;
 import link.locutus.discord.web.jooby.PageHandler;
 import net.dv8tion.jda.api.entities.Guild;
@@ -17,6 +18,7 @@ public class EndpointPages extends PageHelper {
     private static final Gson gson = new Gson();
 
     @Command
+    @NoForm
     public String login(Context context, @Default Integer nation, @Default Long user) throws IOException {
         Map<String, String> queryMap = PageHandler.parseQueryMap(context.queryParamMap());
         boolean requireNation = queryMap.containsKey("nation");
@@ -40,7 +42,9 @@ public class EndpointPages extends PageHelper {
     }
 
     @Command
-    public String logout(Context context, @Default AuthBindings.Auth auth) {
+    @NoForm
+    public String logout(Context context) throws IOException {
+        AuthBindings.Auth auth = AuthBindings.getAuth(context, false, false, false);
         Guild guild = auth == null ? null : AuthBindings.guild(context, auth.getNation(), auth.getUser(), false);
         AuthBindings.logout(context, false);
         if (auth != null) {

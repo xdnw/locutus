@@ -11,6 +11,7 @@ import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoForm;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveValidators;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
@@ -447,9 +448,7 @@ public class PageHandler implements Handler {
                     if (cmd == null) {
                         throw new IllegalArgumentException("No page found for `/" + StringMan.join(args, " ") + "`");
                     }
-
-                    boolean run = !ctx.queryParamMap().isEmpty() || !args.isEmpty() || (cmd instanceof ParametricCallable param && param.getUserParameters().isEmpty());
-
+                    boolean run = !ctx.queryParamMap().isEmpty() || !args.isEmpty() || (cmd instanceof ParametricCallable param && (param.getUserParameters().isEmpty() || param.getAnnotation(NoForm.class) != null));
                     Object result;
                     if (cmd instanceof ParametricCallable parametric && run) {
                         Map<String, String> queryMap;

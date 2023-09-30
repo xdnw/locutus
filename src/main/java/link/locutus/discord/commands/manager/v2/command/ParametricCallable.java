@@ -841,4 +841,8 @@ public class ParametricCallable implements ICommand {
     public Object getObject() {
         return object;
     }
+
+    public <T extends Annotation> T getAnnotation(Class<T> annClazz) {
+        return method.getAnnotation(annClazz);
+    }
 }
