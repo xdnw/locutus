@@ -190,6 +190,12 @@ public class WebRoot {
         this.app.post("/page/**", ctx -> {
             pageHandler.handle(ctx);
         });
+        this.app.get("/rest/**", ctx -> {
+            pageHandler.handle(ctx);
+        });
+        this.app.post("/rest/**", ctx -> {
+            pageHandler.handle(ctx);
+        });
 
         this.fileRoot = new File("files");
 
@@ -228,9 +234,6 @@ public class WebRoot {
 
     public static void main(String[] args) throws ClassNotFoundException, SQLException, InterruptedException, LoginException {
         Settings.INSTANCE.reload(Settings.INSTANCE.getDefaultFile());
-        Settings.INSTANCE.WEB.PORT_HTTPS = 0;
-        Settings.INSTANCE.WEB.PORT_HTTP = 8000;
-        Settings.INSTANCE.WEB.REDIRECT = "https://locutus.link:8000";
         Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
         Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();
 

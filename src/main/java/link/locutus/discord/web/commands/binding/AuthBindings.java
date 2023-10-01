@@ -1,6 +1,7 @@
 package link.locutus.discord.web.commands.binding;
 
 import com.google.common.hash.Hashing;
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -152,6 +153,20 @@ public class AuthBindings extends WebBindingHelper {
         public boolean isExpired() {
             return System.currentTimeMillis() - timestamp > TimeUnit.MINUTES.toMillis(30);
         }
+
+        public Map<String, Object> toMap() {
+            Map<String, Object> data = new HashMap<>();
+            if (userId != null) {
+                data.put("user", userId);
+                data.put("user_valid", (getUser() != null));
+            }
+            if (nationId != null) {
+                data.put("nation", nationId);
+                data.put("nation_valid", (isValid()));
+            }
+            data.put("expires", (timestamp));
+            return data;
+        }
     }
 
     private static final Map<Long, Map.Entry<String, JsonObject>> tokenToUserMap = new ConcurrentHashMap<>();
@@ -180,11 +195,18 @@ public class AuthBindings extends WebBindingHelper {
     public static final String AUTHORIZE_URL = "https://discord.com/api/oauth2/authorize";
     public static final String TOKEN_URL = "https://discord.com/api/oauth2/token";
     public static final String API_URL = "https://discord.com/api/users/@me";
+
     public static void logout(Context context) {
+        logout(context, true);
+    }
+
+    public static void logout(Context context, boolean redirect) {
         for (PageHandler.CookieType type : PageHandler.CookieType.values()) {
             context.removeCookie(type.getCookieId());
         }
-        context.redirect(WebRoot.REDIRECT);
+        if (redirect) {
+            context.redirect(WebRoot.REDIRECT);
+        }
     }
 
     public static String getDiscordAuthUrl() {
@@ -385,7 +407,10 @@ public class AuthBindings extends WebBindingHelper {
                                 webCommandAuth.put(verifiedUid, auth);
                                 webDb.addTempToken(verifiedUid, auth);
                                 String redirect = getRedirect(context);
-                                throw new RedirectResponse(0, redirect);
+                                if (redirect != null) {
+                                    throw new RedirectResponse(0, redirect);
+                                }
+                                return null;
                             } else {
                                 message = "This authorization page has expired. Please try again.";
                             }

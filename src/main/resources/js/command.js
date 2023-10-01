@@ -105,12 +105,17 @@ function onMessageReact(emoji, id, json, outDiv, button) {
     createEventSource(domain, outDiv, button, LOADING_CIRCLE_SM);
 }
 
-function executeCommandFromArgMap(form) {
-    var outDiv = document.getElementById("output");
-    return executeCommandFromArgMapWithOutput(form, outDiv);
+function executeCommandFromArgMap(form, sse) {
+    var outDiv;
+    if (sse) {
+        outDiv = document.getElementById("output");
+    } else {
+        outDiv = null;
+    }
+    return executeCommandFromArgMapWithOutput(form, outDiv, sse);
 }
 
-function executeCommandFromArgMapWithOutput(form, outDiv, args) {
+function executeCommandFromArgMapWithOutput(form, outDiv, args, sse) {
 //    var domain = window.location.href.replace("/command", "").replace("web", "sse");
     var domain;
     if (form.hasAttribute("endpoint")) {
@@ -118,7 +123,7 @@ function executeCommandFromArgMapWithOutput(form, outDiv, args) {
     } else {
         var domain = window.location.href.replace("command", "sse");
     }
-    return executeCommandFromArgMapWithDomain(domain, form, outDiv);
+    return executeCommandFromArgMapWithDomain(domain, form, outDiv, sse);
 }
 
 function createEventSource(domain, outDiv) {
@@ -238,7 +243,7 @@ function processInputs(form, args) {
     });
 }
 
-function executeCommandFromArgMapWithDomain(domain, form, outDiv) {
+function executeCommandFromArgMapWithDomain(domain, form, outDiv, sse) {
     var serialized = $(form).serializeArray();
     var args = {};
 
@@ -252,12 +257,17 @@ function executeCommandFromArgMapWithDomain(domain, form, outDiv) {
 
     domain = domain + "?" + serialize(args);
 
-    var submitButtons = form.querySelectorAll("button[type=submit]");
-    if (submitButtons.length == 1) {
-        createEventSourceWithLoading(domain, outDiv, submitButtons[0], LOADING_CIRCLE);
+    if (sse) {
+        var submitButtons = form.querySelectorAll("button[type=submit]");
+        if (submitButtons.length == 1) {
+            createEventSourceWithLoading(domain, outDiv, submitButtons[0], LOADING_CIRCLE);
+        } else {
+            console.log(submitButtons.length + " <> buttons")
+            createEventSource(domain, outDiv);
+        }
     } else {
-        console.log(submitButtons.length + " <> buttons")
-        createEventSource(domain, outDiv);
+        // redirect
+        location.href = domain;
     }
     return false;
 }

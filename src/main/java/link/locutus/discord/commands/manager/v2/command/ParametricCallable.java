@@ -643,10 +643,10 @@ public class ParametricCallable implements ICommand {
     }
 
     @Override
-    public String toHtml(ValueStore store, PermissionHandler permHandler, String endpoint) {
+    public String toHtml(ValueStore store, PermissionHandler permHandler, String endpoint, boolean sse) {
         validatePermissions(store, permHandler);
 
-        String response = "<form id='command-form' " + (endpoint != null ? "endpoint=\"" + endpoint + "\" " : "") + "onsubmit=\"return executeCommandFromArgMap(this)\" method=\"post\">" +
+        String response = "<form id='command-form' " + (endpoint != null ? "endpoint=\"" + endpoint + "\" " : "") + "onsubmit=\"return executeCommandFromArgMap(this, " + sse + ")\" method=\"post\">" +
                 "<div class=\"\">" +
                 toBasicHtml(store) +
                 "</div>" +
@@ -840,5 +840,9 @@ public class ParametricCallable implements ICommand {
 
     public Object getObject() {
         return object;
+    }
+
+    public <T extends Annotation> T getAnnotation(Class<T> annClazz) {
+        return method.getAnnotation(annClazz);
     }
 }

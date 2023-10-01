@@ -222,10 +222,10 @@ public class IndexPages extends PageHelper {
         String pageEndpoint = Settings.INSTANCE.WEB.REDIRECT + "/" + db.getIdLong() + "/";
 
         result.append(
-                commands.toHtml(stack.getStore(), stack.getPermissionHandler(), cmdEndpoint)
+                commands.toHtml(stack.getStore(), stack.getPermissionHandler(), cmdEndpoint, false)
         );
         result.append(
-                pages.toHtml(stack.getStore(), stack.getPermissionHandler(), pageEndpoint)
+                pages.toHtml(stack.getStore(), stack.getPermissionHandler(), pageEndpoint, false)
         );
 
         return rocker.command.guildindex.template(stack.getStore(), stack.getPermissionHandler(), cmdEndpoint, commands, pageEndpoint, pages).render().toString();
@@ -273,7 +273,7 @@ public class IndexPages extends PageHelper {
     @Command()
     public Object setguild(Context context, Guild guild) {
         AuthBindings.setGuild(context, guild);
-        return PageHelper.redirect(context, AuthBindings.getRedirect(context));
+        return PageHelper.redirect(context, AuthBindings.getRedirect(context, true));
     }
 
     @Command()
@@ -413,9 +413,5 @@ public class IndexPages extends PageHelper {
         // 2 view members
 
         return rocker.alliance.allianceindex.template(db, guild, alliance, user).render().toString();
-    }
-
-    public Object nationsEndpoint(String filters) {
-        return "TODO";
     }
 }

@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
 import com.google.gson.internal.Primitives;
+import io.javalin.http.RedirectResponse;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.command.ArgumentStack;
 import link.locutus.discord.db.entities.DBNation;
@@ -96,6 +97,7 @@ public class MethodParser<T> implements Parser<T> {
     }
 
     public T apply(ValueStore store, Object t) {
+        System.out.println("Apply " + getMethod().getDeclaringClass().getSimpleName() + "#" + getMethod().getName());
         try {
 
             Object[] args = new Object[params.size()];
@@ -134,7 +136,7 @@ public class MethodParser<T> implements Parser<T> {
                             arg = parser.apply(store, t);
                         }
                     }
-                } catch (IllegalStateException e) {
+                } catch (IllegalStateException | RedirectResponse e) {
                     if (!paramKey.isDefault()) {
                         throw e;
                     }
