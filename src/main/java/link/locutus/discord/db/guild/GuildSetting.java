@@ -194,7 +194,13 @@ public abstract class GuildSetting<T> {
         if (parser == null) {
             throw new IllegalArgumentException("No parser found for " + type);
         }
-        return (T) parser.apply(locals, input);
+        try {
+            return (T) parser.apply(locals, input);
+        } catch (Throwable e) {
+            System.out.println("Failed to parse " + input + " for " + name() + " with " + parser);
+            e.printStackTrace();
+            return null;
+        }
     }
 
     public String toString() {
