@@ -200,7 +200,7 @@ public class PWBindings extends BindingHelper {
             examples = """
             #cities<10:505X
             #cities>=10:0250""")
-    public Map<NationFilter, MMRMatcher> mmrMathcerMap(@Me User author, @Me DBNation nation, @Me GuildDB db, String input) {
+    public Map<NationFilter, MMRMatcher> mmrMatcherMap(@Me GuildDB db, String input, @Default @Me User author, @Default @Me DBNation nation) {
         Map<NationFilter, MMRMatcher> filterToMMR = new LinkedHashMap<>();
         for (String line : input.split("\n")) {
             String[] split = line.split("[:]");
@@ -677,7 +677,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "#position>1,#cities<=5", value = "A comma separated list of filters (can include nations and alliances)")
-    public NationFilter nationFilter(@Me User author, @Me DBNation nation, @Default @Me Guild guild, String input) {
+    public NationFilter nationFilter(@Default @Me User author, @Default @Me DBNation nation, @Default @Me Guild guild, String input) {
         return new NationFilterString(input, guild, author, nation);
     }
 

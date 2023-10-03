@@ -2130,6 +2130,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     private Throwable warCatError = null;
+    private String warCatErrorMsg = null;
 
     public WarCategory getWarChannel(boolean throwException) {
         return getWarChannel(throwException, false);
@@ -2141,7 +2142,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             if (throwException) {
                 String msg = "War rooms are not enabled " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(this, true) + " in guild " + getGuild();
                 if (warCatError != null) {
-                    msg += msg + "\nPreviously disabled due to error: " + warCatError.getMessage();
+                        msg += msg + "\nPreviously disabled due to error: " + warCatError.getMessage();
                 }
                 throw new IllegalArgumentException(msg);
             }
@@ -2157,56 +2158,48 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
             return null;
         }
-        try {
-            Guild warServer = getOrNull(GuildKey.WAR_SERVER, false);
-            if (warServer != null && warServer.getIdLong() != guild.getIdLong()) {
-                GuildDB db = Locutus.imp().getGuildDB(warServer);
-                // circular reference
-                if (db == null) {
-                    if (throwException) throw new IllegalArgumentException("There is a null war server set (or delegated to) " + GuildKey.WAR_SERVER.getCommandMention() + " in guild " + getGuild());
-                    return null;
-                }
-                if (db.getOrNull(GuildKey.WAR_SERVER, false) != null) {
-                    if (throwException) throw new IllegalArgumentException("There is a null war server set " + GuildKey.WAR_SERVER.getCommandMention() + " in guild " + getGuild());
-                    return null;
-                }
-                return db.getWarChannel(throwException, true);
+        Guild warServer = getOrNull(GuildKey.WAR_SERVER, false);
+        if (warServer != null && warServer.getIdLong() != guild.getIdLong()) {
+            GuildDB db = Locutus.imp().getGuildDB(warServer);
+            if (db == null) {
+                if (throwException) throw new IllegalArgumentException("There is a null war server set (or delegated to) " + GuildKey.WAR_SERVER.getCommandMention() + " in guild " + getGuild());
+                return null;
             }
+            if (db.getOrNull(GuildKey.WAR_SERVER, false) != null) {
+                if (throwException) throw new IllegalArgumentException("There is a null war server set " + GuildKey.WAR_SERVER.getCommandMention() + " in guild " + getGuild());
+                return null;
+            }
+            return db.getWarChannel(throwException, true);
+        }
 
-            if (hasAlliance() || isWarServer) {
-                if (warChannel == null) {
-                    if (warChannelInit && throwException && warCatError != null) {
-                        String message = "Locutus previous failed to create war channels: ";
-                        message += warCatError.getMessage() + "\n```" + StringMan.stacktraceToString(warCatError) + "```";
-                        message += "\nTry setting " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(this, true) + " and attempting this command again once the issue has been resolved.";
-                        warCatError = null;
-                        throw new IllegalArgumentException(message);
-                    }
-                    if (!warChannelInit || throwException) {
-                        warChannelInit = true;
-                        boolean allowed = Boolean.TRUE.equals(enabled) || isWhitelisted() || isAllyOfRoot() || getPermission(WarCategory.class) > 0;
-                        if (allowed) {
-                            guild.getMembers();
+        if (hasAlliance() || isWarServer) {
+            if (warChannel == null) {
+                if (!warChannelInit || throwException) {
+                    warChannelInit = true;
+                    boolean allowed = Boolean.TRUE.equals(enabled) || isWhitelisted() || isAllyOfRoot() || getPermission(WarCategory.class) > 0;
+                    if (allowed) {
+                        try {
                             warChannel = new WarCategory(guild, "warcat");
                             warCatError = null;
-//                        warChannel.sync();
-                        } else {
-                            if (throwException) throw new IllegalArgumentException("War rooms are not enabled, see: " + CM.settings_war_room.ENABLE_WAR_ROOMS.cmd.toSlashMention());
+                            warCatErrorMsg = null;
+                        } catch (Throwable e) {
+                            warCatError = e;
+                            warCatErrorMsg = e.getMessage();
+                            if (throwException) throw new IllegalArgumentException("There was an error creating war channels: " + e.getMessage() + "\n```" + StringMan.stacktraceToString(e) + "```\n" +
+                                    "\nTry setting " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(this, true) + " and attempting this command again once the issue has been resolved.");
+                            return null;
                         }
+                    } else {
+                        if (throwException) throw new IllegalArgumentException("War rooms are not enabled, see: " + CM.settings_war_room.ENABLE_WAR_ROOMS.cmd.toSlashMention());
                     }
                 }
+            }
 //            } else if (isWhitelisted()) {
 //                warChannel = new DebugWarChannel(guild, "warcat", "");
-            } else if (warChannel == null) {
-                if (throwException) throw new IllegalArgumentException("Please set " + CM.settings_default.registerAlliance.cmd.toSlashMention() + " in " + guild);
-            }
-            return warChannel;
-        } catch (Throwable e) {
-            warCatError = e;
-            if (throwException) throw new IllegalArgumentException("There was an error creating war channels: " + e.getMessage() + "\n```" + StringMan.stacktraceToString(e) + "```\n" +
-                    "\nTry setting " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(this, true) + " and attempting this command again once the issue has been resolved.");
-            return null;
+        } else if (warChannel == null) {
+            if (throwException) throw new IllegalArgumentException("Please set " + CM.settings_default.registerAlliance.cmd.toSlashMention() + " in " + guild);
         }
+        return warChannel;
     }
 
     public boolean isWhitelisted() {

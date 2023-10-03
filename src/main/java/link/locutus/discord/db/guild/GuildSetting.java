@@ -197,7 +197,7 @@ public abstract class GuildSetting<T> {
         try {
             return (T) parser.apply(locals, input);
         } catch (Throwable e) {
-            System.out.println("Failed to parse " + input + " for " + name() + " with " + parser);
+            System.out.println("Failed to parse " + input + " for " + name() + " with " + parser + " | " + e.getMessage());
             e.printStackTrace();
             return null;
         }
