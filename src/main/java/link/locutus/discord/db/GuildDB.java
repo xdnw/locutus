@@ -2185,7 +2185,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                         } catch (Throwable e) {
                             warCatError = e;
                             warCatErrorMsg = e.getMessage();
-                            if (throwException) throw new IllegalArgumentException("There was an error creating war channels: " + e.getMessage() + "\n```" + StringMan.stacktraceToString(e) + "```\n" +
+                            if (e instanceof  InsufficientPermissionException pe) {
+                                warCatErrorMsg += " in <#" + pe.getChannelId() + ">";
+                            }
+                            if (throwException) throw new IllegalArgumentException("There was an error creating war channels: " + warCatErrorMsg + "\n```" + StringMan.stacktraceToString(e) + "```\n" +
                                     "\nTry setting " + GuildKey.ENABLE_WAR_ROOMS.getCommandObj(this, true) + " and attempting this command again once the issue has been resolved.");
                             return null;
                         }
