@@ -19,12 +19,10 @@ public class WikiDepositsPage extends BotWikiGen {
     @Override
     public String generateMarkdown() {
         return build(
-                """
-                        Member balances are determined by what they deposit into the bank, as well as funds they receive from the alliance.
-                        
-                        Offshores/Training alliances etc. 
-                        """,
-
+        """
+                Member balances are determined by what they deposit into the bank, as well as funds they receive from the alliance.
+                Offshores/Training alliances etc. 
+                """,
                 "# Viewing balances",
                 """
                 The deposits check command can be used to view the account balance of nations, tax brackets as well as the alliance or guild offshore account
@@ -38,6 +36,7 @@ public class WikiDepositsPage extends BotWikiGen {
                 commandMarkdownSpoiler(CM.deposits.check.cmd),
                 // /deposits sheet
                 commandMarkdownSpoiler(CM.deposits.sheet.cmd),
+                "See also:" + linkPage("bank_flows"),
                 // ## Changing display mode
                 "## Changing how balances are displayed",
                 "Use the argument in the deposits command, or set the following",

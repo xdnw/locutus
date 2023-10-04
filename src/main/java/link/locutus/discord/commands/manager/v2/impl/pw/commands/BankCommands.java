@@ -743,7 +743,7 @@ public class BankCommands {
                 note = "#alliance=" + from.getAlliance_id();
             }
             note += " #tx_id=" + UUID.randomUUID().toString();
-            TransferResult response = bank.transferUnsafe(null, to, resources, note);
+            TransferResult response = bank.transferUnsafe2(null, to, resources, note, null);
             results.add(response);
         }
         if (results.size() == 1) {
@@ -1312,9 +1312,9 @@ public class BankCommands {
                     }
                     if (nation.isGray()) status = OffshoreInstance.TransferStatus.GRAY;
                     if (nation.isBeige() && nation.getCities() <= 4) status = OffshoreInstance.TransferStatus.BEIGE;
-                    if (status != OffshoreInstance.TransferStatus.SUCCESS) debug += " (use the `force` parameter to override)";
+                    if (!status.isSuccess()) debug += " (use the `force` parameter to override)";
                 }
-                if (status != OffshoreInstance.TransferStatus.SUCCESS) {
+                if (!status.isSuccess()) {
                     iter.remove();
                     allStatuses.add(nation.getName() + "\t" + status.name() + "\t" + status.getMessage() + debug);
                 }
@@ -2237,7 +2237,10 @@ public class BankCommands {
                                @Arg("Do NOT include deposits") @Switch("d") boolean noDeposits,
                                @Arg("Include past depositors") @Switch("p") Set<Integer> includePastDepositors,
                                @Arg("Do NOT include escrow sheet") @Switch("e") boolean noEscrowSheet,
-                               @Switch("n") DepositType useFlowNote,
+                               @Arg("Only show the flow for this note\n" +
+                                       "i.e. To only see funds marked as #TRADE\n" +
+                                       "This is for transfer flow breakdown internal, withdrawal, and deposit")
+                                  @Switch("n") DepositType useFlowNote,
                                @Switch("f") boolean force
 
     ) throws GeneralSecurityException, IOException {
@@ -2860,7 +2863,7 @@ public class BankCommands {
 
             output.append(receiver.getUrl() + "\t" + receiver.isAlliance() + "\t" + StringMan.getString(amount) + "\t" + result.getStatus() + "\t" + "\"" + result.getMessageJoined(false).replace("\n", " ") + "\"");
             output.append("\n");
-            if (result.getStatus() == OffshoreInstance.TransferStatus.SUCCESS || result.getStatus() == OffshoreInstance.TransferStatus.SENT_TO_ALLIANCE_BANK) {
+            if (result.getStatus().isSuccess()) {
                 totalSent = PnwUtil.add(totalSent, PnwUtil.resourcesToMap(amount));
                 io.create().embed(result.toTitleString(), result.toEmbedString()).send();
             }

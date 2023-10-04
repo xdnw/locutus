@@ -10,6 +10,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Activity;
+import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
@@ -110,7 +111,7 @@ public class WarCommand extends Command {
             case 0:
                 Collection<DBNation> nations;
                 if (aa == null) {
-                    Set<Integer> enemies = db.getCoalitions().get("enemies");
+                    Set<Integer> enemies = db.getCoalition(Coalition.ENEMIES);
                     if (enemies == null || enemies.isEmpty()) {
                         return "No enemies set. Please use `" + Settings.commandPrefix(true) + "setcoalition <alliance> enemies` or specify an enemy alliance/coalition as your second parameter";
                     }
@@ -165,7 +166,7 @@ public class WarCommand extends Command {
                 CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Please wait... ");
 
                 Set<Integer> allies = db.getAllies();
-                Set<Integer> enemies = db.getCoalitions().get("enemies");
+                Set<Integer> enemies = db.getCoalition(Coalition.ENEMIES);
 
                 BiFunction<Double, Double, Double> allyGraph = (a, b) -> 1d;
                 BiFunction<Double, Double, Double> enemyGraph = (a, b) -> 1d;

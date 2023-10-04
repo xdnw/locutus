@@ -38,6 +38,7 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.ThrowingFunction;
 import link.locutus.discord.util.update.NationUpdateProcessor;
 import link.locutus.discord.util.update.WarUpdateProcessor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
@@ -55,8 +56,10 @@ import java.sql.Types;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.IntPredicate;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -67,7 +70,7 @@ public class WarDB extends DBMainV2 {
     private Map<Integer, DBWar> warsById;
     private Map<Integer, Map<Integer, DBWar>> warsByAllianceId;
     private Map<Integer, Map<Integer, DBWar>> warsByNationId;
-    private final Int2ObjectOpenHashMap<List<byte[]>> attacksByWarId = new Int2ObjectOpenHashMap<>();
+    private final Int2ObjectOpenHashMap<List<byte[]>> attacksByWarId2 = new Int2ObjectOpenHashMap<>();
     public WarDB() throws SQLException {
         this("war");
     }
@@ -410,49 +413,6 @@ public class WarDB extends DBMainV2 {
         }
     }
 
-    public void testLoadAttacks2() {
-        String whereClause;
-        if (Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS == 0) {
-            return ;
-        } else if (Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS >= 0) {
-            long date = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS);
-            whereClause = " WHERE date > " + date;
-        } else {
-            whereClause = "";
-        }
-
-        AttackCursorFactory cursorManager = new AttackCursorFactory();
-
-        Map<AttackType, Integer> countByType = new EnumMap<>(AttackType.class);
-        int num_attacks = 0;
-        int numErrors = 0;
-        try (PreparedStatement stmt= getConnection().prepareStatement("select * FROM `attacks2`" + whereClause + " ORDER BY `war_attack_id` ASC", ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY)) {
-            stmt.setFetchSize(2 << 16);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    DBAttack legacy = createAttack(rs);
-                    AbstractCursor cursor = cursorManager.load(legacy, true);
-
-                    countByType.compute(legacy.getAttack_type(), (k, v) -> v == null ? 1 : v + 1);
-                    validateAttack(null, legacy, cursor);
-
-
-                    num_attacks++;
-
-                    // check values match
-
-                    // serialize then deserialize to check matches
-
-                    // test api v3 war attack matches
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        System.out.println("Loaded " + num_attacks + " attacks | " + numErrors + " errors");
-    }
-
     private void setWar(DBWar war) {
         synchronized (warsByAllianceId) {
             if (war.attacker_aa != 0)
@@ -474,15 +434,13 @@ public class WarDB extends DBMainV2 {
         int loadWarsDays = Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS < 0 ? -1 : Math.max(Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS, 6);
         loadWars(loadWarsDays);
         System.out.println("Loaded wars");
-        int loadAttackDays = Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS < 0 ? -1 : Math.min(Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS, Math.max(0, loadWarsDays));
-        if (loadAttackDays != 0) {
+        if (Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS) {
             System.out.println("Loading attacks");
             importLegacyAttacks();
             System.out.println("Loaded legacy attacks");
             long start = System.currentTimeMillis();
-            loadAttacks(loadAttackDays);
+            loadAttacks(Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS, Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS);
             System.out.println("Loaded attacks in " + (System.currentTimeMillis() - start) + "ms");
-            System.out.println("Loaded attacks " + attacksByWarId.size());
 
             System.out.println("Updating attacks");
 
@@ -569,22 +527,62 @@ public class WarDB extends DBMainV2 {
                 result.add(cursor);
             }
         };
-        synchronized (attacksByWarId) {
-            for (Map.Entry<Integer, DBWar> entry : wars.entrySet()) {
-                int warId = entry.getKey();
-                List<byte[]> attacks = attacksByWarId.get(warId);
-                if (attacks == null || attacks.isEmpty()) continue;
+        iterateAttacks(wars.values(), loader, attackAdder);
+        return result;
+    }
 
-                DBWar war = entry.getValue();
+    private void iterateAttacks(Iterable<DBWar> wars, BiFunction<DBWar, byte[], AbstractCursor> loader, Consumer<AbstractCursor> forEachAttack) {
+        List<Integer> warIdsFetch = null;
+
+        boolean fetchFromDB = !Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS;
+
+        synchronized (attacksByWarId2) {
+            for (DBWar war : wars) {
+                int warId = war.getWarId();
+                List<byte[]> attacks = attacksByWarId2.get(warId);
+
+                if (attacks == null) {
+                    if (fetchFromDB && !war.isActive()) {
+                        if (warIdsFetch == null) warIdsFetch = new ObjectArrayList<>();
+                        warIdsFetch.add(warId);
+                    }
+                    continue;
+                }
+                if (attacks.isEmpty()) continue;
 
                 for (byte[] data : attacks) {
                     AbstractCursor cursor = loader.apply(war, data);
-                    if (cursor == null) continue;
-                    attackAdder.accept(cursor);
+                    if (cursor != null) {
+                        forEachAttack.accept(cursor);
+                    }
                 }
             }
         }
-        return result;
+        if (warIdsFetch != null) {
+            String whereClause;
+            if (warIdsFetch.size() == 1) {
+                whereClause = " WHERE `war_id` = " + warIdsFetch.get(0);
+            } else {
+                whereClause = " WHERE `war_id` IN " + StringMan.getString(warIdsFetch);
+            }
+            String query = "SELECT * FROM `attacks3` " + whereClause + " ORDER BY `id` ASC";
+            try (PreparedStatement stmt = prepareQuery(query)) {
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        int warId = rs.getInt("war_id");
+                        DBWar war = getWar(warId);
+                        if (war == null) continue;
+                        byte[] data = rs.getBytes("data");
+                        AbstractCursor cursor = loader.apply(war, data);
+                        if (cursor != null) {
+                            forEachAttack.accept(cursor);
+                        }
+                    }
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public Map<DBWar, List<AbstractCursor>> getAttacksByWar(Map<Integer, DBWar> wars, Predicate<AttackType> attackTypeFilter,  Predicate<AbstractCursor> preliminaryFilter, Predicate<AbstractCursor> attackFilter) {
@@ -610,31 +608,31 @@ public class WarDB extends DBMainV2 {
                 list.add(cursor);
             }
         };
-        synchronized (attacksByWarId) {
-            for (Map.Entry<Integer, DBWar> entry : wars.entrySet()) {
-                int warId = entry.getKey();
-                List<byte[]> attacks = attacksByWarId.get(warId);
-                if (attacks == null || attacks.isEmpty()) continue;
-
-                DBWar war = entry.getValue();
-
-                for (byte[] data : attacks) {
-                    AbstractCursor cursor = loader.apply(war, data);
-                    attackAdder.accept(cursor);
-                }
-            }
-        }
+        iterateAttacks(wars.values(), loader, attackAdder);
         return result;
     }
 
-    public List<AbstractCursor> getAttacksByWarId(DBWar war) {
-        return getAttacksByWarId(war, attackCursorFactory);
+    public List<AbstractCursor> getAttacksByWarId2(DBWar war) {
+        return getAttacksByWarId2(war, attackCursorFactory);
     }
 
-    public List<AbstractCursor> getAttacksByWarId(DBWar war, AttackCursorFactory factory) {
+    public List<AbstractCursor> getAttacksByWarId2(DBWar war, AttackCursorFactory factory) {
         List<byte[]> attacks;
-        synchronized (attacksByWarId) {
-            attacks = attacksByWarId.get(war.warId);
+        synchronized (attacksByWarId2) {
+            attacks = attacksByWarId2.get(war.warId);
+            if (attacks == null && !Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS && !war.isActive()) {
+                String query = "SELECT * FROM `attacks3` WHERE `war_id` = " + war.warId;
+                try (PreparedStatement stmt = prepareQuery(query)) {
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        attacks = new ObjectArrayList<>();
+                        while (rs.next()) {
+                            attacks.add(rs.getBytes("data"));
+                        }
+                    }
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
         }
         if (attacks == null || attacks.isEmpty()) return Collections.emptyList();
         // use guava transform
@@ -1328,6 +1326,21 @@ public class WarDB extends DBMainV2 {
         return stat;
     }
 
+    public DBBounty getBountyById(int id) {
+        String query = "SELECT * FROM `BOUNTIES_V3` WHERE id = ?";
+        try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
+            stmt.setInt(1, id);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new DBBounty(rs);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public Set<DBBounty> getBounties(int nationId) {
         LinkedHashSet<DBBounty> result = new LinkedHashSet<>();
 
@@ -2004,7 +2017,7 @@ public class WarDB extends DBMainV2 {
 //    }
 
     private final AttackCursorFactory attackCursorFactory = new AttackCursorFactory();
-
+    private long lastUnloadAttacks = 0;
     public void saveAttacks(Collection<AbstractCursor> values) {
         if (values.isEmpty()) return;
 
@@ -2046,12 +2059,13 @@ public class WarDB extends DBMainV2 {
         }
         List<AttackEntry> toSave = new ArrayList<>();
         Map<Integer, Set<Integer>> attackIdsByWarId = new Int2ObjectOpenHashMap<>();
+
         // add to attacks map
-        synchronized (attacksByWarId) {
+        synchronized (attacksByWarId2) {
             for (AbstractCursor attack : values) {
                 // AttackEntry(int id, int war_id, int attacker_id, int defender_id, long date, byte[] data) {
                 toSave.add(new AttackEntry(attack.getWar_attack_id(), attack.getWar_id(), attack.getAttacker_id(), attack.getDefender_id(), attack.getDate(), attackCursorFactory.toBytes(attack)));
-                List<byte[]> attacks = attacksByWarId.get(attack.getWar_id());
+                List<byte[]> attacks = attacksByWarId2.get(attack.getWar_id());
 
                 Set<Integer> attackIds = attackIdsByWarId.get(attack.getWar_id());
                 if (attackIds == null && attacks != null && !attacks.isEmpty()) {
@@ -2065,11 +2079,30 @@ public class WarDB extends DBMainV2 {
                 if (attackIds != null && attackIds.contains(attack.getWar_attack_id())) continue;
                 if (attacks == null) {
                     attacks = new ObjectArrayList<>();
-                    attacksByWarId.put(attack.getWar_id(), attacks);
+                    attacksByWarId2.put(attack.getWar_id(), attacks);
                 }
 
                 byte[] data = attackCursorFactory.toBytes(attack);
                 attacks.add(data);
+            }
+            if (values.size() > 1 && !Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS) {
+                long turn = TimeUtil.getTurn();
+                if (turn > lastUnloadAttacks) {
+                    lastUnloadAttacks = turn;
+                    Set<Integer> toRemove = null;
+                    for (int warId : attacksByWarId2.keySet()) {
+                        DBWar war = getWar(warId);
+                        if (war != null && !war.isActive()) {
+                            if (toRemove == null) toRemove = new IntOpenHashSet();
+                            toRemove.add(warId);
+                        }
+                    }
+                    if (toRemove != null) {
+                        for (int warId : toRemove) {
+                            attacksByWarId2.remove(warId);
+                        }
+                    }
+                }
             }
         }
 
@@ -2179,9 +2212,9 @@ public class WarDB extends DBMainV2 {
             {
                 Set<Integer> warIds = newAttacks.stream().map(AbstractCursor::getWar_id).collect(Collectors.toSet());
                 Set<Integer> existingAttackIds = new IntOpenHashSet();
-                synchronized (attacksByWarId) {
+                synchronized (attacksByWarId2) {
                     for (int warId : warIds) {
-                        List<byte[]> attackData = attacksByWarId.get(warId);
+                        List<byte[]> attackData = attacksByWarId2.get(warId);
                         if (attackData == null || attackData.isEmpty()) continue;
                         for (byte[] data : attackData) {
                             existingAttackIds.add(factory.getId(data));
@@ -2283,19 +2316,18 @@ public class WarDB extends DBMainV2 {
         return true;
     }
 
-    public void loadAttacks(int days) {
+    public void loadAttacks(boolean loadInactive, boolean loadActive) {
+        if (!loadActive) return;
+
         String whereClause;
-        if (days == 0) {
-            return;
-        } else if (days >= 0) {
-            long date = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
-            whereClause = " WHERE date > " + date;
+        if (!loadInactive) {
+            List<Integer> warIds = new ArrayList<>(activeWars.getActiveWarsById().keySet());
+            Collections.sort(warIds);
+            whereClause = " WHERE war_id in " + StringMan.getString(warIds);
         } else {
             whereClause = "";
         }
         String query = "SELECT * FROM `attacks3` " + whereClause + " ORDER BY `id` ASC";
-        // `war_id`, `attacker_nation_id`, `defender_nation_id`, `date`, `data`
-        // Int2ObjectOpenHashMap<List<byte[]>> attacksByWarId (is a field for this class)
         AttackCursorFactory factory = new AttackCursorFactory();
         try (PreparedStatement stmt = prepareQuery(query)) {
             try (ResultSet rs = stmt.executeQuery()) {
@@ -2305,11 +2337,11 @@ public class WarDB extends DBMainV2 {
                     if (war == null) {
                         continue;
                     }
-                    List<byte[]> list = attacksByWarId.get(warId);
+                    List<byte[]> list = attacksByWarId2.get(warId);
                     if (list == null) {
                         // use fastUtil
                         list = new ObjectArrayList<>();
-                        attacksByWarId.put(warId, list);
+                        attacksByWarId2.put(warId, list);
                     }
                     byte[] bytes = rs.getBytes("data");
                     list.add(bytes);

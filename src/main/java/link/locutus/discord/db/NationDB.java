@@ -8,7 +8,6 @@ import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
@@ -53,7 +52,6 @@ import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import org.slf4j.LoggerFactory;;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.sql.PreparedStatement;
@@ -2347,6 +2345,20 @@ public class NationDB extends DBMainV2 {
         return results;
     }
 
+    public DBBan getBanById(int id) {
+        String select = "SELECT * FROM banned_nations WHERE nation_id = ?";
+        try (PreparedStatement stmt = getConnection().prepareStatement(select)) {
+            stmt.setInt(1, id);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return new DBBan(rs);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public Map<Integer, DBBan> getBansByNation() {
         Map<Integer, DBBan> results = new Object2ObjectOpenHashMap<>();
         String select = "SELECT * FROM banned_nations";
@@ -3198,6 +3210,30 @@ public class NationDB extends DBMainV2 {
             }
         });
         return result;
+    }
+
+    public Set<Treaty> getTreatiesMatching(Predicate<Treaty> filter) {
+        Set<Treaty> treaties = new ObjectOpenHashSet<>();
+        synchronized (treatiesByAlliance) {
+            for (Map<Integer, Treaty> allianceTreaties : treatiesByAlliance.values()) {
+                for (Treaty treaty : allianceTreaties.values()) {
+                    if (filter.test(treaty)) {
+                        treaties.add(treaty);
+                    }
+                }
+            }
+        }
+        return treaties;
+    }
+
+    public Set<Treaty> getTreaties() {
+        Set<Treaty> treaties = new ObjectOpenHashSet<>();
+        synchronized (treatiesByAlliance) {
+            for (Map<Integer, Treaty> allianceTreaties : treatiesByAlliance.values()) {
+                treaties.addAll(allianceTreaties.values());
+            }
+        }
+        return treaties;
     }
     public Map<Integer, Treaty> getTreaties(int allianceId, TreatyType... types) {
         Map<Integer, Treaty> treaties = getTreaties(allianceId);

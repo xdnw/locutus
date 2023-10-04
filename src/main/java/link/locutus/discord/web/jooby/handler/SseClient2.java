@@ -1,9 +1,9 @@
 package link.locutus.discord.web.jooby.handler;
 
 import io.javalin.http.Context;
+import jakarta.servlet.AsyncContext;
+import jakarta.servlet.ServletOutputStream;
 
-import javax.servlet.AsyncContext;
-import javax.servlet.ServletOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -38,7 +38,7 @@ public class SseClient2 implements IMessageOutput {
     }
 
     public void sendEvent(Object id, Object retry, String event, String message) {
-        AsyncContext async = ctx.req.getAsyncContext();
+        AsyncContext async = ctx.req().getAsyncContext();
         try {
             ServletOutputStream output = async.getResponse().getOutputStream();
             byte[] bytes = toBytes(id, retry, event, message);

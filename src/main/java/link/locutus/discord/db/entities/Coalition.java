@@ -5,6 +5,8 @@ import link.locutus.discord.user.Roles;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
+import java.util.Locale;
+
 public enum Coalition {
     DNR("Alliances to inclide members and applicants in the Do Not Raid list"){
         @Override
@@ -123,6 +125,7 @@ public enum Coalition {
     ;
 
     private final String desc;
+    private final String nameLower;
 
     Coalition() {
         this("");
@@ -130,6 +133,11 @@ public enum Coalition {
 
     Coalition(String desc) {
         this.desc = desc;
+        this.nameLower = name().toLowerCase(Locale.ROOT);
+    }
+
+    public String getNameLower() {
+        return nameLower;
     }
 
     public String getDescription() {
@@ -147,7 +155,7 @@ public enum Coalition {
 
     public static Coalition getOrNull(String input) {
         try {
-            return Coalition.valueOf(input.toUpperCase());
+            return Coalition.valueOf(input.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ignored) {
             return null;
         }

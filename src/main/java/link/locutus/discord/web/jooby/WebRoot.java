@@ -1,16 +1,15 @@
 package link.locutus.discord.web.jooby;
 
 
-import io.javalin.core.compression.Brotli;
-import io.javalin.core.compression.CompressionStrategy;
-import io.javalin.core.compression.Gzip;
+import io.javalin.community.ssl.SSLPlugin;
+import io.javalin.compression.CompressionStrategy;
 import io.javalin.http.Handler;
+import io.javalin.http.staticfiles.StaticFileConfig;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.web.jooby.handler.LocutusSSLHandler;
 import link.locutus.discord.web.jooby.handler.SseClient2;
 import link.locutus.discord.web.jooby.handler.SseHandler2;
 import link.locutus.discord.web.test.WebDB;
@@ -48,6 +47,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -86,23 +86,33 @@ public class WebRoot {
         staticFileMap.put("/js", "/js");
         staticFileMap.put("/img", "/");
 
+        SSLPlugin plugin = new SSLPlugin(conf -> {
+            if (Settings.INSTANCE.WEB.PRIVKEY_PASSWORD.isEmpty()) {
+                conf.pemFromPath(Settings.INSTANCE.WEB.CERT_PATH, Settings.INSTANCE.WEB.PRIVKEY_PATH);
+            } else {
+                conf.pemFromPath(Settings.INSTANCE.WEB.CERT_PATH, Settings.INSTANCE.WEB.PRIVKEY_PATH, Settings.INSTANCE.WEB.PRIVKEY_PASSWORD);
+            }
+        });
+
+
         this.app = Javalin.create(config -> {
+            config.plugins.register(plugin);
 //            config.enableCorsForOrigin();
-            config.server(() -> {
-                Server server = new Server(); // configure this however you want
-                LocutusSSLHandler.configureServer(server, portMain, portHTTPS);
-                return server;
-            });
-            config.compressionStrategy(CompressionStrategy.GZIP);
+            config.compression.brotliAndGzip(3, 3);
+//            config.server(() -> {
+//                Server server = new Server(); // configure this however you want
+//                LocutusSSLHandler.configureServer(server, portMain, portHTTPS);
+//                return server;
+//            });
             for (Map.Entry<String, String> entry : staticFileMap.entrySet()) {
-                config.addStaticFiles(staticFiles -> {
-                    staticFiles.hostedPath = entry.getValue();                   // change to host files on a subpath, like '/assets'
-                    staticFiles.directory = entry.getKey();              // the directory where your files are located
-                    staticFiles.location = Location.CLASSPATH;      // Location.CLASSPATH (jar) or Location.EXTERNAL (file system)
-                    staticFiles.precompress = true;                // if the files should be pre-compressed and cached in memory (optimization)
-//                staticFiles.aliasCheck = null;                  // you can configure this to enable symlinks (= ContextHandler.ApproveAliases())
-//                staticFiles.headers = Map.of(...);              // headers that will be set for the files
-//                staticFiles.skipFileFunction = req -> false;    // you can use this to skip certain files in the dir, based on the HttpServletRequest
+                config.staticFiles.add(new Consumer<StaticFileConfig>() {
+                    @Override
+                    public void accept(StaticFileConfig staticFiles) {
+                        staticFiles.hostedPath = entry.getValue();                   // change to host files on a subpath, like '/assets'
+                        staticFiles.directory = entry.getKey();              // the directory where your files are located
+                        staticFiles.location = Location.CLASSPATH;      // Location.CLASSPATH (jar) or Location.EXTERNAL (file system)
+                        staticFiles.precompress = true;                // if the files should be pre-compressed and cached in memory (optimization)
+                    }
                 });
             }
         }).start();

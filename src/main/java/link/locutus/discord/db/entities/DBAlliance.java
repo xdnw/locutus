@@ -549,6 +549,18 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return nations.stream().mapToDouble(attribute::apply).average().orElse(0);
     }
 
+    @Command(desc = "Returns the average value of the given attribute per another attribute (such as cities)")
+    public double getAveragePer(NationAttributeDouble attribute, NationAttributeDouble per, @Default NationFilter filter) {
+        double total = 0;
+        double perTotal = 0;
+        for (DBNation nation : getNations(filter.toCached(Long.MAX_VALUE))) {
+            total += attribute.apply(nation);
+            perTotal += per.apply(nation);
+        }
+        return total / perTotal;
+    }
+
+
     @Command(desc = "Count of nations in alliance matching a filter")
     public int countNations(@Default NationFilter filter) {
         if (filter == null) return getNations().size();
@@ -1214,14 +1226,11 @@ public class DBAlliance implements NationList, NationOrAlliance {
         }
 
         for (DBWar war : Locutus.imp().getWarDb().getWarsByAlliance(getAlliance_id())) {
-
-            List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByWarId(war);
-            attacks.removeIf(f -> f.getAttack_type() != AttackType.A_LOOT);
-            if (attacks.size() != 1) continue;
-
-            AbstractCursor attack = attacks.get(0);
-            int attAA = war.isAttacker(attack.getAttacker_id()) ? war.attacker_aa : war.defender_aa;
-            if (attAA == getAlliance_id()) continue;
+            int lostAA = war.status == WarStatus.ATTACKER_VICTORY ? war.defender_aa : war.status == WarStatus.DEFENDER_VICTORY ? war.attacker_aa : 0;
+            boolean isLooted = lostAA != 0 && lostAA == getAlliance_id();
+            if (!isLooted) continue;
+            int otherAA = war.status == WarStatus.ATTACKER_VICTORY ? war.attacker_aa : war.status == WarStatus.DEFENDER_VICTORY ? war.defender_aa : 0;
+            if (otherAA == getAlliance_id()) continue;
             boolean lowMil = false;
             for (DBNation member : members) {
                 if (member.getVm_turns() != 0) continue;

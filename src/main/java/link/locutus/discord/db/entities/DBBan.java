@@ -42,6 +42,10 @@ public class DBBan {
         this.days_left = banQl.getDays_left() == null ? Integer.MAX_VALUE : banQl.getDays_left();
     }
 
+    public int getNation_id() {
+        return nation_id;
+    }
+
     public long getTimeRemaining() {
         if (days_left == -1) return Integer.MAX_VALUE;
 

@@ -91,7 +91,7 @@ public class Borgomas extends Command {
         }
 
         String note = "Merry Borgmas!";
-        TransferResult result = Locutus.imp().getRootBank().transfer(me, resources, note);
+        TransferResult result = Locutus.imp().getRootBank().transfer(me, resources, note, null);
         return message;
     }
 }

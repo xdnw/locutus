@@ -15,6 +15,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.AllianceInstance
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.DefaultPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -142,6 +143,7 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
             return f -> true;
         }
         Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
+        GuildDB db = guild == null ? null : Locutus.imp().getGuildDB(guild);
         if (SpreadSheet.isSheet(input)) {
             Set<Set<Integer>> setSet = SpreadSheet.parseSheet(input, List.of("alliance"), true,
                     s -> s.equalsIgnoreCase("alliance") ? 0 : null,
@@ -150,15 +152,25 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
             Set<Integer> ids = setSet.stream().flatMap(Collection::stream).collect(Collectors.toSet());
             return f -> ids.contains(f.getId());
         }
-        Set<Integer> aaIds = DiscordUtil.parseAllianceIds(guild, input);
+        Set<Integer> aaIds = DiscordUtil.parseAllianceIds(guild, input, false);
         if (aaIds == null) {
+            if (db != null) {
+                if (input.startsWith("~")) {
+                    input = input.substring(1);
+                }
+                long coalitionId = db.getCoalitionId(input, true);
+                return f -> {
+                    Set<Long> coalition = db.getCoalitionById(coalitionId);
+                    return coalition.contains(f.getIdLong());
+                };
+            }
             throw new IllegalArgumentException("Invalid alliances: " + input);
         }
         return f -> aaIds.contains(f.getId());
     }
 
     private Set<DBAlliance> parseIds(Guild guild, String input, boolean throwError) {
-        Set<Integer> aaIds = DiscordUtil.parseAllianceIds(guild, input);
+        Set<Integer> aaIds = DiscordUtil.parseAllianceIds(guild, input, true);
         if (aaIds == null) {
             if (!throwError) return null;
             throw new IllegalArgumentException("Invalid alliances: " + input);

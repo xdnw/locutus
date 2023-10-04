@@ -422,15 +422,15 @@ public class OffshoreInstance {
         return resources;
     }
 
-    public TransferResult transfer(DBNation nation, Map<ResourceType, Double> transfer) {
-        return transfer(nation, transfer, null);
+    public TransferResult transfer(DBNation nation, Map<ResourceType, Double> transfer, Map<DBAlliance, Map<ResourceType, Double>> transferRoute) {
+        return transfer(nation, transfer, null, transferRoute);
     }
 
-    public TransferResult transferSafe(NationOrAlliance nation, Map<ResourceType, Double> transfer, String note) {
+    public TransferResult transferSafe(NationOrAlliance nation, Map<ResourceType, Double> transfer, String note, Map<DBAlliance, Map<ResourceType, Double>> transferRoute) {
         if (DISABLE_TRANSFERS) throw new IllegalArgumentException("Error: Maintenance");
         synchronized (BANK_LOCK) {
-            if (nation.isNation()) return transferSafe(nation.asNation(), transfer, note);
-            return transfer(nation.asAlliance(), transfer, note);
+            if (nation.isNation()) return transferSafe(nation.asNation(), transfer, note, transferRoute);
+            return transfer(nation.asAlliance(), transfer, note, transferRoute);
         }
     }
 
@@ -1134,6 +1134,14 @@ public class OffshoreInstance {
 
             long tx_datetime = System.currentTimeMillis();
 
+            boolean route = GuildKey.ROUTE_ALLIANCE_BANK.getOrNull(senderDB) == Boolean.TRUE && senderDB != getGuildDB();
+            if (route) {
+                boolean hasNonAlliance = depositsByAA.keySet().stream().anyMatch(n -> !n.isAlliance());
+                if (hasNonAlliance || depositsByAA.isEmpty()) {
+                    throw new IllegalArgumentException("`" + GuildKey.ROUTE_ALLIANCE_BANK.name() + "` is enabled, but this server is not registered to an alliance. Disable with " + CM.settings.delete.cmd.create(GuildKey.ROUTE_ALLIANCE_BANK.name()));
+                }
+            }
+
             Map<NationOrAllianceOrGuild, double[]> addBalanceResult = null;
             String offshoreNote = "#deposit #receiver_id=" + receiver.getId() + " #receiver_type=" + receiver.getReceiverType();
             try {
@@ -1168,7 +1176,18 @@ public class OffshoreInstance {
                 throw e;
             }
 
-            TransferResult result = transferSafe(receiver, transfer, note);
+            Map<DBAlliance, Map<ResourceType, Double>> transferRoute = null;
+            if (route) {
+                transferRoute = new LinkedHashMap<>();
+                for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : addBalanceResult.entrySet()) {
+                    if (entry.getKey().isAlliance()) {
+                        DBAlliance alliance = (DBAlliance) entry.getKey();
+                        transferRoute.put(alliance, PnwUtil.resourcesToMap(entry.getValue()));
+                    }
+                }
+            }
+
+            TransferResult result = transferSafe(receiver, transfer, note, transferRoute);
 
             switch (result.getStatus()) {
                 case ALLIANCE_ACCESS:
@@ -1195,7 +1214,7 @@ public class OffshoreInstance {
                     }
 
                     boolean valid = senderDB == offshoreDB;
-                    if (!valid && ((result.getStatus() == OffshoreInstance.TransferStatus.SUCCESS || result.getStatus() == OffshoreInstance.TransferStatus.SENT_TO_ALLIANCE_BANK))) {
+                    if (!valid && ((result.getStatus().isSuccess()))) {
                         double[] newDeposits = getDeposits(senderDB, false);
                         for (ResourceType type : ResourceType.values) {
                             double amt = deposits[type.ordinal()];
@@ -1290,9 +1309,9 @@ public class OffshoreInstance {
         return Map.entry(depositsByAA, deposits);
     }
 
-    public TransferResult transferSafe(DBNation nation, Map<ResourceType, Double> transfer, String note) {
+    public TransferResult transferSafe(DBNation nation, Map<ResourceType, Double> transfer, String note, Map<DBAlliance, Map<ResourceType, Double>> transferRoute) {
         synchronized (BANK_LOCK) {
-            TransferResult result = transfer(nation, transfer, note);
+            TransferResult result = transfer(nation, transfer, note, transferRoute);
 //            if (result.getKey() == TransferStatus.MULTI && nation.getPosition() > 1) {
 //                DBAlliance alliance = nation.getAlliance(false);
 //                GuildDB db = alliance == null ? null : alliance.getGuildDB();
@@ -1336,13 +1355,13 @@ public class OffshoreInstance {
         }
     }
 
-    public TransferResult transfer(DBNation nation, Map<ResourceType, Double> transfer, String note) {
+    public TransferResult transfer(DBNation nation, Map<ResourceType, Double> transfer, String note, Map<DBAlliance, Map<ResourceType, Double>> transferRoute) {
         synchronized (BANK_LOCK) {
-            return transfer(null, nation, transfer, note);
+            return transfer(null, nation, transfer, note, transferRoute);
         }
     }
 
-    public TransferResult transfer(Auth auth, DBNation nation, Map<ResourceType, Double> transfer, String note) {
+    public TransferResult transfer(Auth auth, DBNation nation, Map<ResourceType, Double> transfer, String note, Map<DBAlliance, Map<ResourceType, Double>> transferRoute) {
         if (!TimeUtil.checkTurnChange()) {
 //            return Map.entry(TransferStatus.TURN_CHANGE, "You cannot transfer close to turn change");
             return new TransferResult(TransferStatus.TURN_CHANGE, nation, transfer, note).addMessage("You cannot transfer close to turn change");
@@ -1360,7 +1379,7 @@ public class OffshoreInstance {
 //                    return note;
 //                }
 //            });
-            TransferResult result = transferUnsafe(auth, nation, transfer, note);//categorize(task);
+            TransferResult result = transferUnsafe2(auth, nation, transfer, note, transferRoute);//categorize(task);
             String msg = "`" + PnwUtil.resourcesToString(transfer) + "` -> " + nation.getUrl() + "\n**" + result.getStatus() + "**: " + result.getMessageJoined(true);
 
             MessageChannel logChannel = getGuildDB().getResourceChannel(0);
@@ -1371,11 +1390,86 @@ public class OffshoreInstance {
         }
     }
 
-    public TransferResult transfer(DBAlliance alliance, Map<ResourceType, Double> transfer) {
-        return transfer(alliance, transfer, "#deposit");
+    public TransferResult transfer(DBAlliance alliance, Map<ResourceType, Double> transfer, Map<DBAlliance, Map<ResourceType, Double>> transferRoute) {
+        return transfer(alliance, transfer, "#deposit", transferRoute);
     }
 
-    public TransferResult transferUnsafe(Auth auth, NationOrAlliance receiver, Map<ResourceType, Double> transfer, String note) {
+    public TransferResult transferUnsafe2(Auth auth, NationOrAlliance receiver, Map<ResourceType, Double> transfer, String note, Map<DBAlliance, Map<ResourceType, Double>> transferRoute) {
+        TransferResult resultFinal;
+        if (transferRoute != null) {
+            if (transferRoute.isEmpty()) {
+                return new TransferResult(TransferStatus.NOTHING_WITHDRAWN, receiver, transfer, note).addMessage("No transfer route specified");
+            }
+            String routeNote = "#" + DepositType.IGNORE.name().toLowerCase(Locale.ROOT);
+
+            List<TransferResult> results = new ArrayList<>();
+            Map<DBAlliance, PoliticsAndWarV3> apis = new LinkedHashMap<>();
+            boolean isError = false;
+
+            for (Map.Entry<DBAlliance, Map<ResourceType, Double>> entry : transferRoute.entrySet()) {
+                DBAlliance alliance = entry.getKey();
+                Map<ResourceType, Double> amt = entry.getValue();
+
+                PoliticsAndWarV3 api = alliance.getApi(AlliancePermission.WITHDRAW_BANK);
+                if (api == null) {
+                    isError = true;
+                    String msg = "No api key found with `" + AlliancePermission.WITHDRAW_BANK.name() + "` for " + alliance.getMarkdownUrl() + ". Set one with " + CM.settings_default.registerApiKey.cmd.toSlashMention();
+                    results.add(new TransferResult(TransferStatus.INVALID_API_KEY, alliance, amt, note).addMessage(msg));
+                    continue;
+                }
+                apis.put(alliance, api);
+            }
+
+            for (Map.Entry<DBAlliance, PoliticsAndWarV3> entry : apis.entrySet()) {
+                DBAlliance alliance = entry.getKey();
+                Map<ResourceType, Double> amt = transferRoute.get(alliance);
+                PoliticsAndWarV3 api = entry.getValue();
+
+                if (isError) {
+                    results.add(new TransferResult(TransferStatus.NOTHING_WITHDRAWN, alliance, amt, note).addMessage("Skipped due to previous error"));
+                    continue;
+                }
+
+                TransferResult result = transferUnsafe2(auth, alliance, amt, routeNote);
+                results.add(result);
+                if (!result.getStatus().isSuccess()) {
+                    isError = true;
+                } else {
+                    result = createTransfer(api, receiver, amt, note);
+                    results.add(result);
+                    if (!result.getStatus().isSuccess()) {
+                        isError = true;
+                    }
+                }
+            }
+
+            boolean hasOther = results.stream().anyMatch(r -> r.getStatus() == TransferStatus.OTHER);
+            boolean hasSuccess = results.stream().anyMatch(r -> r.getStatus().isSuccess());
+            String msgCombined = results.stream().map(f -> f.getMessageJoined(true)).collect(Collectors.joining("\n"));
+            if (hasOther) {
+                resultFinal = new TransferResult(TransferStatus.OTHER, receiver, transfer, note).addMessage(msgCombined);
+            } else if (hasSuccess) {
+                resultFinal = new TransferResult(TransferStatus.SENT_TO_ALLIANCE_BANK, receiver, transfer, note).addMessage(msgCombined);
+            } else {
+                resultFinal = new TransferResult(TransferStatus.NOTHING_WITHDRAWN, receiver, transfer, note).addMessage(msgCombined);
+            }
+        } else {
+            resultFinal = transferUnsafe2(auth, receiver, transfer, note);
+        }
+        if (resultFinal.getStatus().isSuccess()) {
+            setLastSuccessfulTransfer(receiver, PnwUtil.resourcesToArray(transfer));
+        }
+        return resultFinal;
+    }
+
+    private TransferResult createTransfer(PoliticsAndWarV3 api, NationOrAlliance receiver, Map<ResourceType, Double> transfer, String note) {
+        Bankrec result = api.transferFromBank(PnwUtil.resourcesToArray(transfer), receiver, note);
+        double[] amt = ResourceType.fromApiV3(result, ResourceType.getBuffer());
+        String amtStr = PnwUtil.resourcesToString(amt);
+        return new TransferResult(TransferStatus.SUCCESS, receiver, amt, note).addMessage("Success: " + amtStr);
+    }
+
+    private TransferResult transferUnsafe2(Auth auth, NationOrAlliance receiver, Map<ResourceType, Double> transfer, String note) {
         if (!TimeUtil.checkTurnChange()) {
 //            return Map.entry(TransferStatus.TURN_CHANGE, TransferStatus.TURN_CHANGE.msg);
             return new TransferResult(TransferStatus.TURN_CHANGE, receiver, transfer, note).addMessage(TransferStatus.TURN_CHANGE.msg);
@@ -1428,12 +1522,7 @@ public class OffshoreInstance {
             // get api
             try {
                 PoliticsAndWarV3 api = getAlliance().getApiOrThrow(AlliancePermission.WITHDRAW_BANK);
-                Bankrec result = api.transferFromBank(PnwUtil.resourcesToArray(transfer), receiver, note);
-                double[] amt = ResourceType.fromApiV3(result, ResourceType.getBuffer());
-                setLastSuccessfulTransfer(receiver, PnwUtil.resourcesToArray(transfer));
-//                return Map.entry(TransferStatus.SUCCESS, msg);
-                String amtStr = PnwUtil.resourcesToString(amt);
-                return new TransferResult(TransferStatus.SUCCESS, receiver, amt, note).addMessage("Success: " + amtStr);
+                return createTransfer(api, receiver, transfer, note);
             } catch (HttpClientErrorException.Unauthorized e) {
 //                return Map.entry(TransferStatus.INVALID_API_KEY, "Invalid API key");
                 return new TransferResult(TransferStatus.INVALID_API_KEY, receiver, transfer, note).addMessage("Invalid API key");
@@ -1443,6 +1532,7 @@ public class OffshoreInstance {
                 return categorize(receiver, transfer, note, msg);
             }
         }
+
 //
 //
 //        DBNation receiverNation = null;
@@ -1469,7 +1559,7 @@ public class OffshoreInstance {
 //        return categorize(task);
     }
 
-    public TransferResult transfer(DBAlliance alliance, Map<ResourceType, Double> transfer, String note) {
+    public TransferResult transfer(DBAlliance alliance, Map<ResourceType, Double> transfer, String note, Map<DBAlliance, Map<ResourceType, Double>> transferRoute) {
         if (alliance.getAlliance_id() == allianceId) return new TransferResult(TransferStatus.INVALID_DESTINATION, alliance, transfer, note).addMessage("You can't send funds to yourself");
         if (!TimeUtil.checkTurnChange()) {
             return new TransferResult(TransferStatus.TURN_CHANGE, alliance, transfer, note).addMessage("You cannot transfer close to turn change");
@@ -1484,7 +1574,7 @@ public class OffshoreInstance {
             return new TransferResult(TransferStatus.INVALID_DESTINATION, alliance, transfer, note).addMessage("The alliance has no members");
         }
         synchronized (BANK_LOCK) {
-            TransferResult result = transferUnsafe(null, alliance, transfer, note);
+            TransferResult result = transferUnsafe2(null, alliance, transfer, note, transferRoute);
             String msg = "`" + PnwUtil.resourcesToString(transfer) + "` -> " + alliance.getUrl() + "\n**" + result.getStatus() + "**: " + result.getMessageJoined(true);
 
             MessageChannel logChannel = getGuildDB().getResourceChannel(0);

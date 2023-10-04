@@ -22,13 +22,13 @@ public class EndpointPages extends PageHelper {
     @NoForm
     public String login(Context context, @Default Integer nation, @Default Long user) throws IOException {
         System.out.println("method " + context.method());
-        System.out.println("headers " + context.res.getHeaderNames());
-        Iterator<String> iter = context.req.getHeaderNames().asIterator();
+        System.out.println("headers " + context.res().getHeaderNames());
+        Iterator<String> iter = context.req().getHeaderNames().asIterator();
         while (iter.hasNext()) {
             String header = iter.next();
-            System.out.println("- " + header + " " + context.req.getHeader(header));
+            System.out.println("- " + header + " " + context.req().getHeader(header));
         }
-        System.out.println("login " + context.req.getRemoteUser());
+        System.out.println("login " + context.req().getRemoteUser());
         System.out.println("attr " + context.attributeMap());
         System.out.println("host " + context.host());
         System.out.println("ip " + context.ip());

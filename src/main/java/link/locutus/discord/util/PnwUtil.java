@@ -112,11 +112,12 @@ public class PnwUtil {
     public static String getSphereName(int sphereId) {
         GuildDB db = Locutus.imp().getRootCoalitionServer();
         if (db != null) {
-            for (Map.Entry<String, Set<Integer>> entry : db.getCoalitions().entrySet()) {
-                Coalition namedCoal = Coalition.getOrNull(entry.getKey());
+            for (String coalition : db.getCoalitionNames()) {
+                Coalition namedCoal = Coalition.getOrNull(coalition);
                 if (namedCoal != null) continue;
-                if (entry.getValue().contains(sphereId)) {
-                    return entry.getKey();
+                Set<Long> ids = db.getCoalitionRaw(coalition);
+                if (ids.contains((long) sphereId)) {
+                    return coalition;
                 }
             }
         }

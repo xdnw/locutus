@@ -38,11 +38,10 @@ public class CoalitionSheet extends Command {
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         Map<Integer, List<String>> coalitionsInverse = new LinkedHashMap<>();
-        Map<String, Set<Integer>> coalitions = db.getCoalitions();
 
-        for (Map.Entry<String, Set<Integer>> entry : coalitions.entrySet()) {
-            for (Integer aaId : entry.getValue()) {
-                coalitionsInverse.computeIfAbsent(aaId, f -> new ArrayList<>()).add(entry.getKey());
+        for (String coalition : db.getCoalitionNames()) {
+            for (Integer aaId : db.getCoalition(coalition)) {
+                coalitionsInverse.computeIfAbsent(aaId, f -> new ArrayList<>()).add(coalition);
             }
         }
 

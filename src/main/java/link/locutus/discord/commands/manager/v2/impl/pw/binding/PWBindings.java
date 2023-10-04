@@ -84,6 +84,29 @@ import java.util.stream.Collectors;
 
 public class PWBindings extends BindingHelper {
 
+    @Binding(value = "A treaty between two alliances\n" +
+            "Link two alliances, separated by a colon")
+    public static Treaty treaty(String input) {
+        String[] split = input.split("[:><]");
+        if (split.length != 2) throw new IllegalArgumentException("Invalid input: `" + input + "` - must be two alliances separated by a comma");
+        DBAlliance aa1 = alliance(split[0].trim());
+        DBAlliance aa2 = alliance(split[1].trim());
+        Treaty treaty = aa1.getTreaties().get(aa2.getId());
+        if (treaty == null) {
+            throw new IllegalArgumentException("No treaty found between " + aa1.getName() + " and " + aa2.getName());
+        }
+        return treaty;
+    }
+
+    public static DBBounty bounty(String input) {
+        int id = PrimitiveBindings.Integer(input);
+        DBBounty bounty = Locutus.imp().getWarDb().getBountyById(id);
+        if (bounty == null) {
+            throw new IllegalArgumentException("No bounty found with id: `" + id + "`");
+        }
+        return bounty;
+    }
+
     @Binding(value = "The name of a nation attribute\n" +
             "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>", examples = {"color", "war_policy", "continent"})
     @NationAttributeCallable
@@ -146,6 +169,23 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding
+    public static DBBan ban(String input) {
+        if (MathMan.isInteger(input)) {
+            DBBan ban = Locutus.imp().getNationDB().getBanById(Integer.parseInt(input));
+            if (ban == null) {
+                throw new IllegalArgumentException("No ban found for id `" + input + "`");
+            }
+            return ban;
+        }
+        DBNation nation = nation(null, input);
+        List<DBBan> bans = Locutus.imp().getNationDB().getBansForNation(nation.getId());
+        if (bans.isEmpty()) {
+            throw new IllegalArgumentException("No bans found for nation `" + nation.getName() + "`");
+        }
+        return bans.get(0);
+    }
+
+    @Binding
     @GuildLoan
     public DBLoan loan(LoanManager manager, String input) {
         int id = PrimitiveBindings.Integer(input);
@@ -179,8 +219,8 @@ public class PWBindings extends BindingHelper {
         return emum(EnemyAlertChannelMode.class, input);
     }
 
-    @Binding
-    public Building getBuilding(String input) {
+    @Binding(value = "A city building type")
+    public static Building getBuilding(String input) {
         Building building = Buildings.get(input);
         if (building == null) throw new IllegalArgumentException("No building found for `" + input + "`");
         return building;
@@ -598,6 +638,16 @@ public class PWBindings extends BindingHelper {
         return emumSet(IACheckup.AuditType.class, input);
     }
 
+    @Binding(value = "An audit type")
+    public static IACheckup.AuditType auditType(String input) {
+        return emum(IACheckup.AuditType.class, input);
+    }
+
+    @Binding(value = "An in-game  color bloc")
+    public static NationColor NationColor(String input) {
+        return emum(NationColor.class, input);
+    }
+
     @Binding(value = "A comma separated list of auto audit types")
     public Set<AutoAuditType> autoAuditType(String input) {
         return emumSet(AutoAuditType.class, input);
@@ -852,9 +902,10 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "GROUND,VICTORY", value = "A comma separated list of attack types")
-    public Set<AttackType> AttackType(String input) {
+    public static Set<AttackType> AttackTypes(String input) {
         return emumSet(AttackType.class, input);
     }
+
 
     @Binding(examples = "SOLDIER,TANK,AIRCRAFT,SHIP,MISSILE,NUKE", value = "A comma separated list of military units")
     public Set<MilitaryUnit> MilitaryUnits(String input) {
@@ -919,7 +970,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = {"money", "aluminum"}, value = "The name of a resource")
-    public ResourceType resource(String resource) {
+    public static ResourceType resource(String resource) {
         return ResourceType.parse(resource);
     }
 
@@ -994,7 +1045,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "An attack type")
-    public AttackType attackType(String input) {
+    public static AttackType attackType(String input) {
         return emum(AttackType.class, input);
     }
 
@@ -1192,7 +1243,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "Military unit name")
-    public MilitaryUnit unit(String unit) {
+    public static MilitaryUnit unit(String unit) {
         return emum(MilitaryUnit.class, unit);
     }
 
@@ -1220,7 +1271,7 @@ public class PWBindings extends BindingHelper {
     @GuildCoalition
     public String guildCoalition(@Me GuildDB db, String input) {
         input = input.toLowerCase();
-        Set<String> coalitions = new HashSet<>(db.getCoalitions().keySet());
+        Set<String> coalitions = db.getCoalitionNames();
         for (Coalition value : Coalition.values()) coalitions.add(value.name().toLowerCase());
         if (!coalitions.contains(input)) throw new IllegalArgumentException(
                 "No coalition found matching: `" + input +
@@ -1322,7 +1373,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "An in-game treaty type")
-    public TreatyType TreatyType(String input) {
+    public static TreatyType TreatyType(String input) {
         return TreatyType.parse(input);
     }
 

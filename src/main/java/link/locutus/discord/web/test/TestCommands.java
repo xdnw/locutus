@@ -167,10 +167,14 @@ public class TestCommands {
     @Command(desc = "Check the flow for a specific transaction note, showing the net by internal addbalance, withdrawals, and deposits")
     @RolePermission(value = Roles.ECON_STAFF)
     public String viewFlow(@Me GuildDB db, DBNation nation, DepositType note) {
-        String noteStr = "#" + note.name().toLowerCase(Locale.ROOT);
+
         // public List<Map.Entry<Integer, Transaction2>> getTransactions(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean priority) {
         List<Map.Entry<Integer, Transaction2>> transfers = nation.getTransactions(db, null, false, true, 0, 0, true);
-        transfers.removeIf(f -> !PnwUtil.parseTransferHashNotes(f.getValue().note).containsKey(noteStr));
+
+        if (note != null) {
+            String noteStr = "#" + note.name().toLowerCase(Locale.ROOT);
+            transfers.removeIf(f -> !PnwUtil.parseTransferHashNotes(f.getValue().note).containsKey(noteStr));
+        }
         double[] manual = FlowType.INTERNAL.getTotal(transfers, nation.getNation_id());
 //      - Amount withdrawn via a # note
         double[] withdrawn = FlowType.WITHDRAWAL.getTotal(transfers, nation.getNation_id());
