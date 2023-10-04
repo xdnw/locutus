@@ -210,7 +210,7 @@ public class EmbedCommands {
         }
 
         String commandStr =  command.toCommandArgs(parsed);
-        return addButtonRaw(user, io, cmdJson, guild, message, label, behavior, commandStr, channel, false);
+        return addButtonRaw(user, io, cmdJson, guild, message, label, behavior, commandStr, channel, force);
     }
 
     @Command(desc = "Add a modal button to a discord embed from this bot, which creates a prompt for a command")

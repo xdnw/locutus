@@ -1375,7 +1375,7 @@ public class BankCommands {
                     String.valueOf(convertToMoney),
                     escrow_mode == null ? null : escrow_mode.name(),
                     String.valueOf(bypassChecks),
-                    null
+                    String.valueOf(force)
             ).toJson();
 
             return transfer(io, command, author, me, db, nation, transfer, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, false, expire, null, convertToMoney, escrow_mode, bypassChecks, force);
@@ -1395,8 +1395,8 @@ public class BankCommands {
                     expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
                     Boolean.FALSE.toString(),
                     escrow_mode == null ? null : escrow_mode.name(),
+                    String.valueOf(bypassChecks),
                     String.valueOf(force),
-                    null,
                     key.toString()
             ).toJson();
 

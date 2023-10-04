@@ -97,7 +97,6 @@ public class MethodParser<T> implements Parser<T> {
     }
 
     public T apply(ValueStore store, Object t) {
-        System.out.println("Apply " + getMethod().getDeclaringClass().getSimpleName() + "#" + getMethod().getName());
         try {
 
             Object[] args = new Object[params.size()];
@@ -138,6 +137,7 @@ public class MethodParser<T> implements Parser<T> {
                     }
                 } catch (IllegalStateException | RedirectResponse e) {
                     if (!paramKey.isDefault()) {
+                        System.out.println("Failed to apply " + paramKey + " to " + method.getDeclaringClass().getSimpleName() + "#" + method.getName());
                         throw e;
                     }
                     arg = null;
@@ -149,6 +149,7 @@ public class MethodParser<T> implements Parser<T> {
             if (e.getCause() != null && e.getCause() instanceof RuntimeException) {
                 throw (RuntimeException) e.getCause();
             }
+            System.out.println("Failed to apply 2 " + method.getDeclaringClass().getSimpleName() + "#" + method.getName());
             throw new RuntimeException(e);
         }
     }

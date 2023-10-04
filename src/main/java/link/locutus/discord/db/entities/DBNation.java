@@ -3592,6 +3592,24 @@ public class DBNation implements NationOrAlliance {
         return dbUser.getDiscordId();
     }
 
+    @Command(desc = "The registered discord user mention (or null)")
+    public String getUserMention() {
+        PNWUser dbUser = getDBUser();
+        if (dbUser == null) return null;
+        return "<@" + dbUser.getDiscordId() + ">";
+    }
+
+    @Command(desc = "Age of discord account in milliseconds")
+    public long getUserAgeMs() {
+        User user = getUser();
+        return user == null ? 0 : (System.currentTimeMillis() - user.getTimeCreated().toEpochSecond() * 1000L);
+    }
+
+    @Command(desc = "Age of discord account in days")
+    public double getUserAgeDays() {
+        return getUserAgeMs() / (double) TimeUnit.DAYS.toMillis(1);
+    }
+
     public User getUser() {
         PNWUser dbUser = getDBUser();
         return dbUser != null ? dbUser.getUser() : null;
@@ -3790,7 +3808,7 @@ public class DBNation implements NationOrAlliance {
                 for (MilitaryUnit other : units) {
                     if (other == unit) {
                         Map<MilitaryUnit, Integer> losses = attack.getUnitLosses(attack.getAttacker_id() == nation_id);
-                        lostInAttacks += losses.get(unit);
+                        lostInAttacks += losses.getOrDefault(unit, 0);
                         continue outer;
                     }
                 }
