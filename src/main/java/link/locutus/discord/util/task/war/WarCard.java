@@ -229,7 +229,7 @@ public class WarCard {
 
     public void update(DBWar war, boolean checkCounters, boolean onlyCheckBlockade) {
         this.war = war;
-        List<AbstractCursor> attacks = war.getAttacks();
+        List<AbstractCursor> attacks = war.getAttacks2();
         update(attacks, onlyCheckBlockade);
         if (checkCounters) updateCounterStats();
     }

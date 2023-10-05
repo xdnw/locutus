@@ -8,6 +8,9 @@ import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -20,6 +23,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -695,11 +699,44 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Command(desc="Minimum resistance of self in current active wars")
-    public int minWarResistance() {
+    public int minWarResistance() { // Placeholders.PlaceholderCache<DBNation> cache
         if (getNumWars() == 0) return 100;
+//        if (Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS) cache = null;
+//        return Placeholders.PlaceholderCache.get(cache, this, () -> "minWarResistance", nations -> {
+//            Map<Integer, Map<Integer, Integer>> resistance = new Int2ObjectOpenHashMap<>();
+//            List<DBWar> wars = nations.stream().map(DBNation::getActiveWars).flatMap(List::stream).distinct().collect(Collectors.toList());
+//            Locutus.imp().getWarDb().iterateAttacks(wars, type -> type.getResistanceIT() > 0, cursor -> {
+//                int resLost = cursor.getResistance();
+//                if (resLost > 0) {
+//                    int warId = cursor.getWar_id();
+//                    resistance.computeIfAbsent(cursor.getDefender_id(), f -> new Int2IntOpenHashMap())
+//                            .merge(warId, 100 - resLost, (old, val) -> old - (100 - val));
+//                }
+//                return false;
+//            }, abstractCursor -> {});
+//            List<Integer> minByNation = new IntArrayList(nations.size());
+//            for (Map.Entry<Integer, Map<Integer, Integer>> entry : resistance.entrySet()) {
+//                int min = 100;
+//                for (int res : entry.getValue().values()) {
+//                    if (res < min) min = res;
+//                }
+//                minByNation.add(min);
+//            }
+//            return minByNation;
+//        }, nation -> {
+//            int min = 100;
+//            for (DBWar war : getActiveWars()) {
+//                List<AbstractCursor> attacks = war.getAttacks2(false);
+//
+//                Map.Entry<Integer, Integer> warRes = war.getResistance(attacks);
+//                int myRes = war.isAttacker(nation) ? warRes.getKey() : warRes.getValue();
+//                if (myRes < min) min = myRes;
+//            }
+//            return min;
+//        });
         int min = 100;
         for (DBWar war : getActiveWars()) {
-            List<AbstractCursor> attacks = war.getAttacks();
+            List<AbstractCursor> attacks = war.getAttacks2(false);
 
             Map.Entry<Integer, Integer> warRes = war.getResistance(attacks);
             int myRes = war.isAttacker(this) ? warRes.getKey() : warRes.getValue();
@@ -713,7 +750,7 @@ public class DBNation implements NationOrAlliance {
         if (getNumWars() == 0) return 100;
         int min = 100;
         for (DBWar war : getActiveWars()) {
-            List<AbstractCursor> attacks = war.getAttacks();
+            List<AbstractCursor> attacks = war.getAttacks2(false);
 
             boolean isAttacker = war.isAttacker(this);
 

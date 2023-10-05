@@ -108,5 +108,39 @@ public interface IAttack2 {
         return getLosses(attacker, true, true, true, true, true);
     }
 
+    default int getResistance() {
+        if (getSuccess() == SuccessType.UTTER_FAILURE) return 0;
+        int damage;
+        switch (getAttack_type()) {
+            default: {
+                return 0;
+            }
+            case FORTIFY:
+                return 0;
+            case GROUND:
+                damage = 10;
+                break;
+            case AIRSTRIKE_INFRA:
+            case AIRSTRIKE_SOLDIER:
+            case AIRSTRIKE_TANK:
+            case AIRSTRIKE_MONEY:
+            case AIRSTRIKE_SHIP:
+            case AIRSTRIKE_AIRCRAFT:
+                damage = 12;
+                break;
+            case NAVAL:
+                damage = 14;
+                break;
+            case MISSILE:
+                damage = 24;
+                break;
+            case NUKE:
+                damage = 31;
+                break;
+        }
+        damage -= (9 - getSuccess().ordinal() * 3);
+        return damage;
+    }
+
     Map<ResourceType, Double> getLosses(boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings);
 }

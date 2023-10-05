@@ -6,6 +6,7 @@ import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
@@ -510,18 +511,7 @@ public class WarDB extends DBMainV2 {
 
     public List<AbstractCursor> getAttacks(Map<Integer, DBWar> wars, Predicate<AttackType> attackTypeFilter,  Predicate<AbstractCursor> preliminaryFilter, Predicate<AbstractCursor> attackFilter) {
         List<AbstractCursor> result = new ObjectArrayList<>();
-        final BiFunction<DBWar, byte[], AbstractCursor> loader;
-        if (attackTypeFilter != null) {
-            if (preliminaryFilter != null) {
-                loader = (war, data) -> attackCursorFactory.loadWithTypePretest(war, data, true, attackTypeFilter, preliminaryFilter);
-            } else {
-                loader = (war, data) -> attackCursorFactory.loadWithType(war, data, true, attackTypeFilter);
-            }
-        } else if (preliminaryFilter != null) {
-            loader = (war, data) -> attackCursorFactory.loadWithPretest(war, data, true, preliminaryFilter);
-        } else {
-            loader = (war, data) -> attackCursorFactory.load(war, data, true);
-        }
+        final BiFunction<DBWar, byte[], AbstractCursor> loader = createLoader(attackTypeFilter, preliminaryFilter);
         final Consumer<AbstractCursor> attackAdder = attackFilter == null ? result::add : cursor -> {
             if (attackFilter.test(cursor)) {
                 result.add(cursor);
@@ -531,7 +521,26 @@ public class WarDB extends DBMainV2 {
         return result;
     }
 
-    private void iterateAttacks(Iterable<DBWar> wars, BiFunction<DBWar, byte[], AbstractCursor> loader, Consumer<AbstractCursor> forEachAttack) {
+    public BiFunction<DBWar, byte[], AbstractCursor> createLoader(Predicate<AttackType> attackTypeFilter,  Predicate<AbstractCursor> preliminaryFilter) {
+        if (attackTypeFilter != null) {
+            if (preliminaryFilter != null) {
+                return (war, data) -> attackCursorFactory.loadWithTypePretest(war, data, true, attackTypeFilter, preliminaryFilter);
+            } else {
+                return (war, data) -> attackCursorFactory.loadWithType(war, data, true, attackTypeFilter);
+            }
+        } else if (preliminaryFilter != null) {
+            return (war, data) -> attackCursorFactory.loadWithPretest(war, data, true, preliminaryFilter);
+        } else {
+            return (war, data) -> attackCursorFactory.load(war, data, true);
+        }
+    }
+
+    public void iterateAttacks(Iterable<DBWar> wars, Predicate<AttackType> attackTypeFilter,  Predicate<AbstractCursor> preliminaryFilter, Consumer<AbstractCursor> forEachAttack) {
+        BiFunction<DBWar, byte[], AbstractCursor> loader = createLoader(attackTypeFilter, preliminaryFilter);
+        iterateAttacks(wars, loader, forEachAttack);
+    }
+
+    public void iterateAttacks(Iterable<DBWar> wars, BiFunction<DBWar, byte[], AbstractCursor> loader, Consumer<AbstractCursor> forEachAttack) {
         List<Integer> warIdsFetch = null;
 
         boolean fetchFromDB = !Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS;
@@ -612,15 +621,15 @@ public class WarDB extends DBMainV2 {
         return result;
     }
 
-    public List<AbstractCursor> getAttacksByWarId2(DBWar war) {
-        return getAttacksByWarId2(war, attackCursorFactory);
+    public List<AbstractCursor> getAttacksByWarId2(DBWar war, boolean loadInactive) {
+        return getAttacksByWarId2(war, attackCursorFactory, loadInactive);
     }
 
-    public List<AbstractCursor> getAttacksByWarId2(DBWar war, AttackCursorFactory factory) {
+    public List<AbstractCursor> getAttacksByWarId2(DBWar war, AttackCursorFactory factory, boolean loadInactive) {
         List<byte[]> attacks;
         synchronized (attacksByWarId2) {
             attacks = attacksByWarId2.get(war.warId);
-            if (attacks == null && !Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS && !war.isActive()) {
+            if (loadInactive && attacks == null && !Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS && !war.isActive()) {
                 String query = "SELECT * FROM `attacks3` WHERE `war_id` = " + war.warId;
                 try (PreparedStatement stmt = prepareQuery(query)) {
                     try (ResultSet rs = stmt.executeQuery()) {
@@ -1227,7 +1236,7 @@ public class WarDB extends DBMainV2 {
             return stat;
         }
         int warId = war.warId;
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByWarId(war);
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByWarId2(war);
 
         long startDate = war.date;
         long startTurn = TimeUtil.getTurn(startDate);
@@ -2085,14 +2094,14 @@ public class WarDB extends DBMainV2 {
                 byte[] data = attackCursorFactory.toBytes(attack);
                 attacks.add(data);
             }
-            if (values.size() > 1 && !Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS) {
+            if (!Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS && values.size() > 1) {
                 long turn = TimeUtil.getTurn();
                 if (turn > lastUnloadAttacks) {
                     lastUnloadAttacks = turn;
                     Set<Integer> toRemove = null;
                     for (int warId : attacksByWarId2.keySet()) {
                         DBWar war = getWar(warId);
-                        if (war != null && !war.isActive()) {
+                        if (war != null && !war.isActive() && !attackIdsByWarId.containsKey(warId)) {
                             if (toRemove == null) toRemove = new IntOpenHashSet();
                             toRemove.add(warId);
                         }
@@ -2352,45 +2361,37 @@ public class WarDB extends DBMainV2 {
         }
     }
 
-    public Map<Integer, List<AbstractCursor>> getAttacksByNationGroupWar(int nationId, long startDate) {
-        Map<Integer, List<AbstractCursor>> result = new Int2ObjectOpenHashMap<>();
-        // attacks start within 5 days after a war
-        long cutoff = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(startDate) + 60);
-        synchronized (warsByNationId) {
-            Map<Integer, DBWar> warMap = warsByNationId.get(nationId);
-            if (warMap != null) {
-                for (DBWar war : warMap.values()) {
-                    if (war.date > cutoff) {
-                        continue;
-                    }
-                    List<AbstractCursor> list = getAttacksByWarId(war, new AttackCursorFactory());
-                    if (list != null && !list.isEmpty()) {
-                        result.put(war.warId, list);
-                    }
-                }
-            }
-        }
-        return result;
-    }
+//    public Map<Integer, List<AbstractCursor>> getAttacksByNationGroupWar2(int nationId, long startDate) {
+//        Map<Integer, List<AbstractCursor>> result = new Int2ObjectOpenHashMap<>();
+//        // attacks start within 5 days after a war
+//        long cutoff = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(startDate) + 60);
+//        synchronized (warsByNationId) {
+//            Map<Integer, DBWar> warMap = warsByNationId.get(nationId);
+//            if (warMap != null) {
+//                for (DBWar war : warMap.values()) {
+//                    if (war.date > cutoff) {
+//                        continue;
+//                    }
+//                    List<AbstractCursor> list = getAttacksByWarId(war, new AttackCursorFactory());
+//                    if (list != null && !list.isEmpty()) {
+//                        result.put(war.warId, list);
+//                    }
+//                }
+//            }
+//        }
+//        return result;
+//    }
 
     public void iterateAttacks(long start, long end, Predicate<DBWar> ifWar, Consumer<AbstractCursor> consumer) {
         if (start > end) return;
         AttackCursorFactory factory = new AttackCursorFactory();
-
+        Predicate<AbstractCursor> pretest = attack -> attack.getDate() >= start && attack.getDate() <= end;
         synchronized (warsById) {
-            for (Map.Entry<Integer, DBWar> entry : warsById.entrySet()) {
-                DBWar war = entry.getValue();
-                if (war.date > end) continue;
-                if (war.possibleEndDate() < start) continue;
-                if (!ifWar.test(war)) continue;
-
-                for (AbstractCursor attack : getAttacksByWarId(war, factory)) {
-                    if (attack.getDate() > end) break;
-                    if (attack.getDate() < start) continue;
-                    consumer.accept(attack);
-                }
-            }
+            iterateAttacks(ArrayUtil.select(warsById.values(),
+                            war -> war.date <= end && war.possibleEndDate() >= start && ifWar.test(war)),
+                    (war, data) -> factory.loadWithPretest(war, data, true, pretest), consumer);
         }
+
     }
 
     public List<AbstractCursor> getAttacks(long start, long end, Predicate<DBWar> ifWar, Predicate<AbstractCursor> filter) {
@@ -2398,19 +2399,15 @@ public class WarDB extends DBMainV2 {
         List<AbstractCursor> list = new ObjectArrayList<>();
         AttackCursorFactory factory = new AttackCursorFactory();
 
+        Predicate<AbstractCursor> pretest = attack -> attack.getDate() >= start && attack.getDate() <= end;
+        if (filter != null) {
+            pretest = pretest.and(filter);
+        }
         synchronized (warsById) {
-            for (Map.Entry<Integer, DBWar> entry : warsById.entrySet()) {
-                DBWar war = entry.getValue();
-                if (war.date > end) continue;
-                if (war.possibleEndDate() < start) continue;
-                if (!ifWar.test(war)) continue;
-
-                for (AbstractCursor attack : getAttacksByWarId(war, factory)) {
-                    if (attack.getDate() > end) break;
-                    if (attack.getDate() < start) continue;
-                    if (filter.test(attack)) list.add(attack);
-                }
-            }
+            Predicate<AbstractCursor> finalPretest = pretest;
+            iterateAttacks(ArrayUtil.select(warsById.values(),
+                            war -> war.date <= end && war.possibleEndDate() >= start && ifWar.test(war)),
+                    (war, data) -> factory.loadWithPretest(war, data, true, finalPretest), list::add);
         }
         return list;
     }

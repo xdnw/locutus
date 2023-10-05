@@ -132,8 +132,12 @@ public class DBWar {
         return body.toString();
     }
 
-    public List<AbstractCursor> getAttacks() {
-        return Locutus.imp().getWarDb().getAttacksByWarId(this);
+    public List<AbstractCursor> getAttacks2() {
+        return getAttacks2(true);
+    }
+
+    public List<AbstractCursor> getAttacks2(boolean loadInactive) {
+        return Locutus.imp().getWarDb().getAttacksByWarId2(this, loadInactive);
     }
 
     public List<AbstractCursor> getAttacks(Collection<AbstractCursor> attacks) {
@@ -152,36 +156,8 @@ public class DBWar {
     public Map.Entry<Integer, Integer> getResistance(List<AbstractCursor> attacks) {
         int[] result = {100, 100};
         for (AbstractCursor attack : attacks) {
-            if (attack.getSuccess() == SuccessType.UTTER_FAILURE) continue;
             int resI = attack.getAttacker_id() == attacker_id ? 1 : 0;
-            int damage;
-            switch (attack.getAttack_type()) {
-                default:continue;
-                case FORTIFY:
-//                    result[(resI + 1) % 2] = Math.min(result[(resI + 1) % 2] + 10, 100);
-                    continue;
-                case GROUND:
-                    damage = 10;
-                    break;
-                case AIRSTRIKE_INFRA:
-                case AIRSTRIKE_SOLDIER:
-                case AIRSTRIKE_TANK:
-                case AIRSTRIKE_MONEY:
-                case AIRSTRIKE_SHIP:
-                case AIRSTRIKE_AIRCRAFT:
-                    damage = 12;
-                    break;
-                case NAVAL:
-                    damage = 14;
-                    break;
-                case MISSILE:
-                    damage = 24;
-                    break;
-                case NUKE:
-                    damage = 31;
-                    break;
-            }
-            damage -= (9 - attack.getSuccess().ordinal() * 3);
+            int damage = attack.getResistance();
             result[resI] = Math.max(0, result[resI] - damage);
         }
         return new AbstractMap.SimpleEntry<>(result[0], result[1]);

@@ -89,7 +89,7 @@ public class WarCostByDay extends Command {
                 DBWar war = Locutus.imp().getWarDb().getWar(warId);
                 if (war == null) return "War not found (out of sync?)";
 
-                attacks = Locutus.imp().getWarDb().getAttacksByWarId(war);
+                attacks = Locutus.imp().getWarDb().getAttacksByWarId2(war);
 
                 nameA = PnwUtil.getName(war.attacker_id, false);
                 nameB = PnwUtil.getName(war.defender_id, false);

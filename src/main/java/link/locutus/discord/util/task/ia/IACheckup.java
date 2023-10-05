@@ -785,7 +785,7 @@ public class IACheckup {
             if (war.status != WarStatus.ACTIVE) continue;
             DBNation defender = DBNation.getById(war.getDefender_id());
             if (defender == null || defender.getActive_m() < 2880) continue;
-            Map.Entry<Integer, Integer> map = war.getMap(war.getAttacks());
+            Map.Entry<Integer, Integer> map = war.getMap(war.getAttacks2(false));
             if (map.getKey() >= 12) {
                 maxMapWars.add(war);
             }

@@ -30,11 +30,13 @@ import java.util.Deque;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -63,6 +65,38 @@ public class ArrayUtil {
             normB += Math.pow(vectorB[i], 2);
         }
         return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
+
+    public static <T> Iterable<T> select(Iterable<T> it, Predicate<T> pred) {
+        return () -> new Iterator<T>() {
+            Iterator<T> sourceIterator = it.iterator();
+            T current;
+            boolean hasCurrent;
+
+            @Override
+            public boolean hasNext() {
+                while(!hasCurrent) {
+                    if(!sourceIterator.hasNext()) {
+                        return false;
+                    }
+                    T next = sourceIterator.next();
+                    if(pred.test(next)) {
+                        current = next;
+                        hasCurrent = true;
+                    }
+                }
+                return true;
+            }
+
+            @Override
+            public T next() {
+                if(!hasNext()) throw new NoSuchElementException();
+                T next = current;
+                current = null;
+                hasCurrent = false;
+                return next;
+            }
+        };
     }
 
     public static double cosineSimilarity(float[] vectorA, float[] vectorB) {

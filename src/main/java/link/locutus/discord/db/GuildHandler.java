@@ -2135,7 +2135,7 @@ public class GuildHandler {
         body.append("\nEnemy: " + MarkupUtil.markdownUrl(defender.getNation(), defender.getNationUrl()) + " | " + MarkupUtil.markdownUrl(defender.getAllianceName(), defender.getAllianceUrl()));
         body.append("\n- Cities: " + defender.getCities());
 
-        Map.Entry<Integer, Integer> res = war.getResistance(war.getAttacks());
+        Map.Entry<Integer, Integer> res = war.getResistance(war.getAttacks2());
         int otherRes = war.isAttacker(attacker) ? res.getKey() : res.getValue();
         body.append("\nMy Resistance: " + otherRes);
 
