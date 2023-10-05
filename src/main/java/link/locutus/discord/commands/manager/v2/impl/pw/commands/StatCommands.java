@@ -9,6 +9,8 @@ import de.erichseifert.gral.io.plots.DrawableWriter;
 import de.erichseifert.gral.io.plots.DrawableWriterFactory;
 import de.erichseifert.gral.plots.BarPlot;
 import de.erichseifert.gral.plots.colors.ColorMapper;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -39,6 +41,7 @@ import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.*;
 import link.locutus.discord.util.io.PagePriority;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.trade.TradeManager;
 import net.dv8tion.jda.api.entities.Guild;
@@ -57,6 +60,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -1408,6 +1412,22 @@ public class StatCommands {
         sheet.clear("A:Z");
 
         sheet.setHeader(header);
+
+        Set<Integer> hasAttacked = new IntOpenHashSet();
+        Map<Integer, AttackCost> costByNation = new Int2ObjectOpenHashMap<>();
+        Map<Integer, AttackCost> costByWar = new Int2ObjectOpenHashMap<>();
+
+        Locutus.imp().getWarDb().iterateAttacks(ArrayUtil.select(allWars.values(), f -> f.date >= time),
+                AttackType::canDamage,
+                f -> f.getDate() >= time,
+                new Consumer<AbstractCursor>() {
+            @Override
+            public void accept(AbstractCursor attack) {
+
+                cost = costByNation.computeIfAbsent(attack.getAttacker_id(), f -> );
+                cost.add(attack);
+            }
+        });
 
         for (Map.Entry<DBNation, List<DBWar>> nationEntry : warsByNation.entrySet()) {
             DBNation nation = nationEntry.getKey();

@@ -432,7 +432,7 @@ public class WarCard {
         String pendingEmoji = "Claim";
         String pending = "_" + Settings.commandPrefix(true) + "UpdateEmbed role:milcom 'description:{description}\n" +
                 "\n" +
-                "Assigned to %user% in {timediff}'";
+                "Assigned to {usermention} in {timediff}'";
 
         IMessageBuilder msg;
         if (addReactions) {

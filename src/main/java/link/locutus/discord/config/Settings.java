@@ -185,14 +185,15 @@ public class Settings extends Config {
 
         @Comment({"If attacks for completed wars are loaded into memory", "Ignored if load-active-attacks is disabled"})
         public boolean LOAD_INACTIVE_ATTACKS = false;
-        @Comment("If attacks for active wars are loaded into memory")
-        public boolean LOAD_ACTIVE_ATTACKS = false;
+
+        @Comment({"If attacks for completed wars are loaded into memory", "Ignored if load-active-attacks is disabled"})
+        public boolean LOAD_ACTIVE_ATTACKS = true;
 
         @Comment({
                 "Unload wars after days (-1 = load all wars)",
-                "Minimum = 6 days"
+                "Minimum = 120 turns (10 days)"
         })
-        public int UNLOAD_WARS_AFTER_DAYS = -1;
+        public int UNLOAD_WARS_AFTER_TURNS = -1;
 //
 //        @Comment({"If escalation alerts are run every time all wars are updated",
 //                "Requires ALL_WAR_SECONDS to be enabled"})

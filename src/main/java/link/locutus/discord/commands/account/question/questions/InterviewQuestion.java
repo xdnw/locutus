@@ -512,7 +512,7 @@ public enum InterviewQuestion implements Question {
     },
 
     CHECKUP("You can use the the command:\n" +
-            "> " + Settings.commandPrefix(true) + "checkup %user%\n" +
+            "> " + Settings.commandPrefix(true) + "checkup {usermention}\n" +
             "To perform an automated audit on yourself", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
@@ -524,7 +524,7 @@ public enum InterviewQuestion implements Question {
             "https://politicsandwar.com/nation/projects/\n" +
             "Cities (past your 10th) OR Projects can be purchased every 10 days. You start with 1 project slot, and get more for every 5k infra in your nation.\n\n" +
             "To see which projects the bot recommends (for a 120 day period), use:\n" +
-            "> " + Settings.commandPrefix(true) + "roi %user% 120\n\n" +
+            "> " + Settings.commandPrefix(true) + "roi {usermention} 120\n\n" +
             "We recommend getting two resource projects after your 10th city", false),
 
     BEIGE_LOOT("At higher city counts, there are less nations available to raid. You will need to find and hit nations as the come off of the beige protection color.\n" +

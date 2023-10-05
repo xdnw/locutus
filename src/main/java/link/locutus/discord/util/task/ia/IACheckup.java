@@ -612,7 +612,7 @@ public class IACheckup {
                         "<https://politicsandwar.com/nation/projects/>\n" +
                         "Cities (past your 10th) OR Projects can be purchased every 10 days. You start with 1 project slot, and get more for every 5k infra in your nation.\n\n" +
                         "To see which projects the bot recommends (for a 120 day period), use:\n" +
-                        "> " + Settings.commandPrefix(true) + "roi %user% 120\n\n" +
+                        "> " + Settings.commandPrefix(true) + "roi {usermention} 120\n\n" +
                         "We recommend getting two resource projects after your 10th city";
                 return new AbstractMap.SimpleEntry<>(false, desc);
             }

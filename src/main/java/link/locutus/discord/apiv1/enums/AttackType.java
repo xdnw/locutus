@@ -446,4 +446,8 @@ public enum AttackType {
                 return false;
         }
     }
+
+    public boolean canDamage() {
+        return this == FORTIFY || this == PEACE;
+    }
 }

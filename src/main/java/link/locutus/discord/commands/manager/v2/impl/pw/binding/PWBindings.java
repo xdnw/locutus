@@ -488,7 +488,7 @@ public class PWBindings extends BindingHelper {
     public static DBNation nation(@Default @Me User selfUser, String input) {
         DBNation nation = DiscordUtil.parseNation(input);
         if (nation == null) {
-            if (selfUser != null && input.equalsIgnoreCase("%user%")) {
+            if (selfUser != null && (input.equalsIgnoreCase("%user%") || input.equalsIgnoreCase("{usermention}"))) {
                 nation = DiscordUtil.getNation(selfUser);
             }
             if (nation == null) {

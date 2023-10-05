@@ -554,7 +554,7 @@ public class OptimalBuild extends Command {
         json = json.replaceAll(" ", "");
 
         String emoji = "Grant";
-        String command = Settings.commandPrefix(true) + "grant %user% " + json;
+        String command = Settings.commandPrefix(true) + "grant {usermention} " + json;
 
         result.append(" Disease: ").append(optimized.getDisease(hasProject)).append("\n");
         result.append(" Crime: ").append(optimized.getCrime(hasProject)).append("\n");

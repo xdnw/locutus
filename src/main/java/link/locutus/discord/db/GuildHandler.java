@@ -313,7 +313,7 @@ public class GuildHandler {
 
         String pending = "_" + Settings.commandPrefix(true) + "UpdateEmbed 'description:{description}\n" +
                 "\n" +
-                "Assigned to %user% in {timediff}'\n" +
+                "Assigned to {usermention} in {timediff}'\n" +
                 CM.interview.create.cmd.create(author.getAsMention()).toCommandArgs();
 
         IMessageBuilder msg = new DiscordChannelIO(alertChannel).create().embed(title, body.toString()).commandButton(pending, emoji);
@@ -590,7 +590,7 @@ public class GuildHandler {
             String emoji = "Claim";
             String pending = "_" + Settings.commandPrefix(true) + "UpdateEmbed 'description:{description}\n" +
                     "\n" +
-                    "Assigned to %user% in {timediff}'";
+                    "Assigned to {usermention} in {timediff}'";
 
             io.create().embed(title, body.toString())
                     .commandButton(pending, emoji).send();
@@ -1452,7 +1452,7 @@ public class GuildHandler {
         String assignEmoji = "Claim";
         String assignCmd = "." + Settings.commandPrefix(true) + "UpdateEmbed 'description:{description}\n" +
                 "\n" +
-                "Assigned to %user% in {timediff}'";
+                "Assigned to {usermention} in {timediff}'";
 
         DiscordChannelIO io = new DiscordChannelIO(channel);
         IMessageBuilder msg = io.create();
@@ -2178,7 +2178,7 @@ public class GuildHandler {
         String emoji = "Claim";
         String pending = "_" + Settings.commandPrefix(true) + "UpdateEmbed 'description:{description}\n" +
                 "\n" +
-                "Assigned to %user% in {timediff}'";
+                "Assigned to {usermention} in {timediff}'";
         body.append("\nPress `" + emoji + "` to assign yourself");
 
         DiscordUtil.createEmbedCommand(channel, title, body.toString(), warInfoEmoji, warInfoCmd, defInfoEmoji, defInfoCmd, emoji, pending);

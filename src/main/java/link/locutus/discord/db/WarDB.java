@@ -432,8 +432,7 @@ public class WarDB extends DBMainV2 {
 
     public void load() {
         System.out.println("Loading wars and attacks");
-        int loadWarsDays = Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS < 0 ? -1 : Math.max(Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS, 6);
-        loadWars(loadWarsDays);
+        loadWars(Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_TURNS);
         System.out.println("Loaded wars");
         if (Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS) {
             System.out.println("Loading attacks");
@@ -472,41 +471,23 @@ public class WarDB extends DBMainV2 {
         return activeWars.getNationsBlockading(nationId);
     }
 
-    public void loadWars(int days) {
-        if (days != 0) {
-            List<DBWar> saveWars = new ArrayList<>();
-
-            long now = System.currentTimeMillis();
-            long date = now - TimeUnit.DAYS.toMillis(days);
-            String whereClause = days > 0 ? " WHERE date > " + date : "";
-            query("SELECT * FROM wars" + whereClause, f -> {
-            }, (ThrowingConsumer<ResultSet>) rs -> {
-                while (rs.next()) {
-
-                    DBWar war = create(rs);
-//                    if (war.status == WarStatus.EXPIRED && now < war.possibleEndDate()) {
-//                        war.status = WarStatus.ACTIVE;
-//                        saveWars.add(war);
-//                    }
-                    setWar(war);
-                }
-            });
-            if (!saveWars.isEmpty()) {
-                saveWars(saveWars);
-            }
-
-        }
-
-
-        List<DBWar> wars = getWarByStatus(WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);
-
+    public void loadWars(int turns) {
+        if (turns > 0 && turns < 120) turns = 120;
         long currentTurn = TimeUtil.getTurn();
-        for (DBWar war : wars) {
-            long warTurn = TimeUtil.getTurn(war.date);
-            if (currentTurn - warTurn < 60) {
-                activeWars.addActiveWar(war);
+        long date = TimeUtil.getTimeFromTurn(currentTurn - turns);
+        String whereClause = turns > 0 ? " WHERE date > " + date : "";
+        query("SELECT * FROM wars" + whereClause, f -> {
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                DBWar war = create(rs);
+                setWar(war);
+
+                long warTurn = TimeUtil.getTurn(war.date);
+                if (currentTurn - warTurn < 60) {
+                    activeWars.addActiveWar(war);
+                }
             }
-        }
+        });
     }
 
     public List<AbstractCursor> getAttacks(Map<Integer, DBWar> wars, Predicate<AttackType> attackTypeFilter,  Predicate<AbstractCursor> preliminaryFilter, Predicate<AbstractCursor> attackFilter) {
@@ -2099,9 +2080,10 @@ public class WarDB extends DBMainV2 {
                 if (turn > lastUnloadAttacks) {
                     lastUnloadAttacks = turn;
                     Set<Integer> toRemove = null;
+                    long timeCutoff = TimeUtil.getTimeFromTurn(turn - 120);
                     for (int warId : attacksByWarId2.keySet()) {
                         DBWar war = getWar(warId);
-                        if (war != null && !war.isActive() && !attackIdsByWarId.containsKey(warId)) {
+                        if (war != null && !war.isActive() && war.date < timeCutoff) {
                             if (toRemove == null) toRemove = new IntOpenHashSet();
                             toRemove.add(warId);
                         }
@@ -2330,7 +2312,13 @@ public class WarDB extends DBMainV2 {
 
         String whereClause;
         if (!loadInactive) {
-            List<Integer> warIds = new ArrayList<>(activeWars.getActiveWarsById().keySet());
+            long dateCutoff = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 120);
+            List<Integer> warIds = new IntArrayList();
+            for (Map.Entry<Integer, DBWar> entry : warsById.entrySet()) {
+                DBWar war = entry.getValue();
+                if (war.date < dateCutoff) continue;
+                warIds.add(entry.getKey());
+            }
             Collections.sort(warIds);
             whereClause = " WHERE war_id in " + StringMan.getString(warIds);
         } else {
@@ -2555,28 +2543,20 @@ public class WarDB extends DBMainV2 {
 
         AttackCursorFactory factory = new AttackCursorFactory();
         // iterate all victory attacks
-        for (DBWar war : getWarsSince(time).values()) {
-            if (war.status != WarStatus.ATTACKER_VICTORY && war.status != WarStatus.DEFENDER_VICTORY) continue;
-            List<AbstractCursor> attacks = getAttacksByWarId(war, factory);
-            if (attacks == null || attacks.isEmpty()) continue;
-            // iterate backwards
-            for (int i = attacks.size() - 1; i >= 0; i--) {
-                AbstractCursor attack = attacks.get(i);
-                if (attack.getAttack_type() != AttackType.VICTORY) continue;
-                int looted = attack.getDefender_id();
-                Map.Entry<Long, double[]> existing = nationLoot.get(looted);
-                    if (existing == null || existing.getKey() < attack.getDate()) {
-                    double[] loot = attack.getLoot();
-                    if (loot == null) loot = ResourceType.getBuffer();
-                    double factor = 1 / attack.getLootPercent();
-                    double[] lootCopy = loot.clone();
-                    for (int j = 0; j < lootCopy.length; j++) {
-                        lootCopy[j] = lootCopy[j] * factor - lootCopy[j];
-                    }
-                    nationLoot.put(looted, new AbstractMap.SimpleEntry<>(attack.getDate(), lootCopy));
+        iterateAttacks(getWarsSince(time).values(), type -> type == AttackType.VICTORY, null, attack -> {
+            int looted = attack.getDefender_id();
+            Map.Entry<Long, double[]> existing = nationLoot.get(looted);
+            if (existing == null || existing.getKey() < attack.getDate()) {
+                double[] loot = attack.getLoot();
+                if (loot == null) loot = ResourceType.getBuffer();
+                double factor = 1 / attack.getLootPercent();
+                double[] lootCopy = loot.clone();
+                for (int j = 0; j < lootCopy.length; j++) {
+                    lootCopy[j] = lootCopy[j] * factor - lootCopy[j];
                 }
+                nationLoot.put(looted, new AbstractMap.SimpleEntry<>(attack.getDate(), lootCopy));
             }
-        }
+        });
         return nationLoot;
     }
 

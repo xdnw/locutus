@@ -120,7 +120,7 @@ public class NationDB extends DBMainV2 {
         int treaties = loadTreaties();
         LOGGER.info("Loaded " + treaties + " treaties");
 
-        importLegacyNationLoot(true);
+//        importLegacyNationLoot(true);
 
         markDirtyIncorrectNations(true, true);
 
