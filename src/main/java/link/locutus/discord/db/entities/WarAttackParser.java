@@ -29,7 +29,7 @@ public class WarAttackParser {
         Function<AbstractCursor, Boolean> isSecondary = b -> b.getAttacker_id() == war.defender_id;
         this.isPrimary = attacker ? isPrimary : isSecondary;
         this.isSecondary = attacker ? isSecondary : isPrimary;
-        attacks = war.getAttacks();
+        attacks = war.getAttacks2();
     }
 
     public WarAttackParser(GuildDB db, List<String> args, Set<Character> flags) {
@@ -53,7 +53,7 @@ public class WarAttackParser {
                 warUrl = Locutus.imp().getWarDb().getWar(warId);
                 if (warUrl == null) throw new IllegalArgumentException("War not found (out of sync?)");
 
-                attacks = Locutus.imp().getWarDb().getAttacksByWarId(warUrl);
+                attacks = Locutus.imp().getWarDb().getAttacksByWarId2(warUrl, true);
 
                 nameA = PnwUtil.getName(warUrl.attacker_id, false);
                 nameB = PnwUtil.getName(warUrl.defender_id, false);

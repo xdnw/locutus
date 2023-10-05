@@ -389,7 +389,7 @@ public class DBWar {
     }
 
     public AttackCost toCost() {
-        return toCost(getAttacks());
+        return toCost(getAttacks2());
     }
 
     public AttackCost toCost(List<AbstractCursor> attacks) {
@@ -432,7 +432,7 @@ public class DBWar {
     public int getControl(Predicate<AttackType> attackType, MilitaryUnit... units) {
         long acDate = 0;
         int acNation = 0;
-        for (AbstractCursor attack : getAttacks()) {
+        for (AbstractCursor attack : getAttacks2(false)) {
             if (attackType.test(attack.getAttack_type())) {
                 switch (attack.getSuccess()) {
                     case PYRRHIC_VICTORY, MODERATE_SUCCESS -> {

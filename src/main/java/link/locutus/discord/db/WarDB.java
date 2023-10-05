@@ -1236,7 +1236,7 @@ public class WarDB extends DBMainV2 {
             return stat;
         }
         int warId = war.warId;
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByWarId2(war);
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByWarId2(war, false);
 
         long startDate = war.date;
         long startTurn = TimeUtil.getTurn(startDate);

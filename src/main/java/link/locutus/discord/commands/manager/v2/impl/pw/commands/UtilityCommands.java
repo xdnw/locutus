@@ -445,13 +445,11 @@ public class UtilityCommands {
 
             for (DBWar war : Locutus.imp().getWarDb().getWarsByAlliance(aa.getAlliance_id())) {
 
-                List<AbstractCursor> attacks = war.getAttacks();
-                attacks.removeIf(f -> f.getAttack_type() != AttackType.A_LOOT);
-                if (attacks.size() != 1) continue;
-
-                AbstractCursor attack = attacks.get(0);
-                int attAA = war.isAttacker(attack.getAttacker_id()) ? war.attacker_aa : war.defender_aa;
-                if (attAA == aa.getAlliance_id()) continue;
+                int lostAA = war.status == WarStatus.ATTACKER_VICTORY ? war.defender_aa : war.status == WarStatus.DEFENDER_VICTORY ? war.attacker_aa : 0;
+                boolean isLooted = lostAA != 0 && lostAA == aaid;
+                if (!isLooted) continue;
+                int otherAA = war.status == WarStatus.ATTACKER_VICTORY ? war.attacker_aa : war.status == WarStatus.DEFENDER_VICTORY ? war.defender_aa : 0;
+                if (otherAA == aaid) continue;
                 boolean lowMil = false;
                 for (DBNation member : members) {
                     if (member.getVm_turns() != 0) continue;

@@ -523,7 +523,7 @@ public abstract class AGrantTemplate<T> {
         outer:
         for (int offensiveI = requireNOffensives; offensiveI < wars.size(); offensiveI++) {
             DBWar war = wars.get(offensiveI);
-            List<AbstractCursor> attacks = war.getAttacks();
+            List<AbstractCursor> attacks = war.getAttacks2();
             // reverse attacks
             Collections.reverse(attacks);
             for (AbstractCursor attack : attacks) {
