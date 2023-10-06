@@ -30,7 +30,7 @@ public class GPTTest {
         Settings.INSTANCE.WEB.REDIRECT = "http://localhost";
         Settings.INSTANCE.ENABLED_COMPONENTS.disableListeners();
         Settings.INSTANCE.ENABLED_COMPONENTS.disableTasks();
-        Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS = 0;
+        Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_TURNS = 0;
         Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT = false;
         Settings.INSTANCE.ENABLED_COMPONENTS.EVENTS = false;
         Settings.INSTANCE.ENABLED_COMPONENTS.WEB = false;

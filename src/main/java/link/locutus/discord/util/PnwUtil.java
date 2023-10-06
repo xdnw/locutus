@@ -1228,14 +1228,14 @@ public class PnwUtil {
 
     public static double convertedTotal(ResourceType type, double amt) {
         if (amt != 0) {
-            Locutus locutus = Locutus.imp();
-            if (locutus != null) {
+            try {
+                Locutus locutus = Locutus.imp();
                 if (amt < 0) {
                     return locutus.getTradeManager().getLowAvg(type) * amt;
                 } else {
                     return locutus.getTradeManager().getHighAvg(type) * amt;
                 }
-            }
+            } catch (NullPointerException ignore) {}
         }
         return 0;
     }

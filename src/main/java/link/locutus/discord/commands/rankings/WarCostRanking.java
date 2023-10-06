@@ -16,10 +16,12 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.math.ArrayUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -171,15 +173,16 @@ public class WarCostRanking extends Command {
 
         BiFunction<Boolean, AbstractCursor, Double> valueFunc;
         {
+            double[] rssBuffer = ResourceType.getBuffer();
             BiFunction<Boolean, AbstractCursor, Double> getValue = null;
             if (unitKill != null) {
                 MilitaryUnit finalUnit = unitKill;
-                getValue = (attacker, attack) -> attack.getUnitLosses(!attacker).getOrDefault(finalUnit, 0).doubleValue();
+                getValue = (attacker, attack) -> (double) attack.getUnitLosses(finalUnit, !attacker);
             }
             if (unitLoss != null) {
                 if (getValue != null) throw new IllegalArgumentException("Cannot combine multiple type rankings (1)");
                 MilitaryUnit finalUnit = unitLoss;
-                getValue = (attacker, attack) -> attack.getUnitLosses(attacker).getOrDefault(finalUnit, 0).doubleValue();
+                getValue = (attacker, attack) -> (double) attack.getUnitLosses(finalUnit, attacker);
             }
             if (attType != null) {
                 if (getValue != null) throw new IllegalArgumentException("Cannot combine multiple type rankings (2)");
@@ -190,17 +193,25 @@ public class WarCostRanking extends Command {
                 if (getValue != null) throw new IllegalArgumentException("Cannot combine multiple type rankings (3)");
                 double min = damage ? 0 : Double.NEGATIVE_INFINITY;
                 ResourceType finalResourceType = resourceType;
-                getValue = (attacker, attack) -> Math.max(min, attack.getLosses(attacker, units, infra, consumption, loot, buildings).getOrDefault(finalResourceType, 0d));
+                getValue = (attacker, attack) -> {
+                    Arrays.fill(rssBuffer, 0);
+                    return Math.max(min, attack.getLosses(rssBuffer, attacker, units, infra, consumption, loot, buildings)[finalResourceType.ordinal()]);
+                };
             }
             if (getValue == null) {
                 getValue = (attacker, attack) -> {
+                    Arrays.fill(rssBuffer, 0);
                     if (!damage) {
-                        return attack.getLossesConverted(attacker, units, infra, consumption, loot, buildings);
+                        return attack.getLossesConverted(rssBuffer, attacker, units, infra, consumption, loot, buildings);
                     } else {
                         double total = 0;
-                        Map<ResourceType, Double> losses = attack.getLosses(attacker, units, infra, consumption, loot, buildings);
-                        for (Map.Entry<ResourceType, Double> entry : losses.entrySet()) {
-                            if (entry.getValue() > 0) total += PnwUtil.convertedTotal(entry.getKey(), entry.getValue());
+                        double[] losses = attack.getLosses(rssBuffer, attacker, units, infra, consumption, loot, buildings);
+//                        for (Map.Entry<ResourceType, Double> entry : losses.entrySet()) {
+//                            if (entry.getValue() > 0) total += PnwUtil.convertedTotal(entry.getKey(), entry.getValue());
+//                        }
+                        for (ResourceType type : ResourceType.values) {
+                            double val = losses[type.ordinal()];
+                            if (val > 0) total += PnwUtil.convertedTotal(type, val);
                         }
                         return total;
                     }

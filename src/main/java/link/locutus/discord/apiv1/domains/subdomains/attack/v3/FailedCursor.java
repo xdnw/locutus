@@ -25,6 +25,11 @@ public abstract class FailedCursor extends AbstractCursor {
     }
 
     @Override
+    public int getUnitLosses(MilitaryUnit unit, boolean attacker) {
+        return 0;
+    }
+
+    @Override
     public int getVictor() {
         return getAttacker_id();
     }

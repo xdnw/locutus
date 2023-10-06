@@ -75,6 +75,8 @@ public abstract class DamageCursor extends AbstractCursor{
     }
 
     public abstract MilitaryUnit[] getUnits();
+
+    @Override
     public abstract int getUnitLosses(MilitaryUnit unit, boolean attacker);
 
     @Override

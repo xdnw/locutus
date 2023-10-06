@@ -242,57 +242,57 @@ public class WarAttackParser {
         return breakdown;
     }
 
-    public AttackCost toWarCost() {
-        AttackCost cost = new AttackCost(nameA, nameB);
+    public AttackCost toWarCost(boolean buildings, boolean ids, boolean victories, boolean wars, boolean inclAttacks) {
+        AttackCost cost = new AttackCost(nameA, nameB, buildings, ids, victories, wars, inclAttacks);
         cost.addCost(attacks, isPrimary, isSecondary);
         return cost;
     }
 
-    public Map<Long, AttackCost> toWarCostByDay() {
+    public Map<Long, AttackCost> toWarCostByDay(boolean buildings, boolean ids, boolean victories, boolean wars, boolean inclAttacks) {
         Map<Long, AttackCost> warCostByDay = new LinkedHashMap<>();
         for (AbstractCursor attack : attacks) {
             long turn = TimeUtil.getTurn(attack.getDate());
             long day = turn / 12;
-            AttackCost cost = warCostByDay.computeIfAbsent(day, f -> new AttackCost(nameA, nameB));
+            AttackCost cost = warCostByDay.computeIfAbsent(day, f -> new AttackCost(nameA, nameB, buildings, ids, victories, wars, inclAttacks));
             cost.addCost(attack, isPrimary, isSecondary);
         }
         return warCostByDay;
     }
 
-    public Map<Integer, AttackCost> toWarCostByNation() {
+    public Map<Integer, AttackCost> toWarCostByNation(boolean buildings, boolean ids, boolean victories, boolean wars, boolean inclAttacks) {
         Map<Integer, AttackCost> warCostByNation = new HashMap<>();
         for (AbstractCursor attack : attacks) {
             if (!isSecondary.apply(attack) && !isPrimary.apply(attack)) continue;
 
             {
                 String other = isPrimary.apply(attack) ? nameB : nameA;
-                AttackCost cost = warCostByNation.computeIfAbsent(attack.getAttacker_id(), f -> new AttackCost(PnwUtil.getName(attack.getAttacker_id(), false), other));
+                AttackCost cost = warCostByNation.computeIfAbsent(attack.getAttacker_id(), f -> new AttackCost(PnwUtil.getName(attack.getAttacker_id(), false), other, buildings, ids, victories, wars, inclAttacks));
                 cost.addCost(attack, true);
             }
 
             {
                 String other = isPrimary.apply(attack) ? nameA : nameB;
-                AttackCost cost = warCostByNation.computeIfAbsent(attack.getDefender_id(), f -> new AttackCost(PnwUtil.getName(attack.getDefender_id(), false), other));
+                AttackCost cost = warCostByNation.computeIfAbsent(attack.getDefender_id(), f -> new AttackCost(PnwUtil.getName(attack.getDefender_id(), false), other, buildings, ids, victories, wars, inclAttacks));
                 cost.addCost(attack, false);
             }
         }
         return warCostByNation;
     }
 
-    public Map<Integer, AttackCost> toWarCostByAlliance() {
+    public Map<Integer, AttackCost> toWarCostByAlliance(boolean buildings, boolean ids, boolean victories, boolean inclWars, boolean inclAttacks) {
         Map<Integer, DBWar> wars = getWarsById();
         Map<Integer, AttackCost> warCostByAA = new HashMap<>();
         for (AbstractCursor attack : attacks) {
             DBWar war = wars.get(attack.getWar_id());
             {
                 String other = isPrimary.apply(attack) ? nameB : nameA;
-                AttackCost cost = warCostByAA.computeIfAbsent(war.attacker_aa, f -> new AttackCost(PnwUtil.getName(war.attacker_aa, true), other));
+                AttackCost cost = warCostByAA.computeIfAbsent(war.attacker_aa, f -> new AttackCost(PnwUtil.getName(war.attacker_aa, true), other, buildings, ids, victories, inclWars, inclAttacks));
                 cost.addCost(attack, true);
             }
 
             {
                 String other = isPrimary.apply(attack) ? nameA : nameB;
-                AttackCost cost = warCostByAA.computeIfAbsent(war.defender_aa, f -> new AttackCost(PnwUtil.getName(war.defender_aa, true), other));
+                AttackCost cost = warCostByAA.computeIfAbsent(war.defender_aa, f -> new AttackCost(PnwUtil.getName(war.defender_aa, true), other, buildings, ids, victories, inclWars, inclAttacks));
                 cost.addCost(attack, false);
             }
         }

@@ -185,7 +185,7 @@ public enum AllianceMetric {
             nations.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id || f.getVm_turns() > 0);
             Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
 
-            AttackCost cost = new AttackCost();
+            AttackCost cost = new AttackCost("", "", false, false, false, false, false);
             long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
             List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksEither(nationIds, cutoff);
             cost.addCost(attacks, a -> nationIds.contains(a.getAttacker_id()), b -> nationIds.contains(b.getDefender_id()));

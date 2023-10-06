@@ -358,9 +358,9 @@ public class WarCategory {
                 message += ". " + MathMan.format(attack.getInfra_destroyed()) + " infra worth $" + MathMan.format(worth) + " was destroyed";
             }
             if (showCasualties) {
-                Map<MilitaryUnit, Integer> attLosses = attack.getUnitLosses(true);
+                Map<MilitaryUnit, Integer> attLosses = attack.getUnitLosses2(true);
                 if (!attLosses.isEmpty()) message += "\nAttacker unit losses: " + StringMan.getString(attLosses);
-                Map<MilitaryUnit, Integer> defLosses = attack.getUnitLosses(false);
+                Map<MilitaryUnit, Integer> defLosses = attack.getUnitLosses2(false);
                 if (!defLosses.isEmpty()) message += "\nDefender unit losses: " + StringMan.getString(defLosses);
             }
 

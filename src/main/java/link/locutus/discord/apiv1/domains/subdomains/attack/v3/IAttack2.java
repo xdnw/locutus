@@ -97,7 +97,7 @@ public interface IAttack2 {
     }
 
     default double getLossesConverted(double[] buffer, boolean attacker) {
-        return PnwUtil.convertedTotal(getLosses(buffer, attacker));
+        return getLossesConverted(buffer, attacker, true, true, true, true, true);
     }
 
     default double getLossesConverted(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
@@ -142,6 +142,5 @@ public interface IAttack2 {
         return damage;
     }
 
-//    Map<ResourceType, Double> getLosses(boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings);
     double[] getLosses(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings);
 }

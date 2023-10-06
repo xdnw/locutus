@@ -1705,10 +1705,7 @@ public class StatCommands {
             if (nation == null) continue;
             if (!natIds.contains(nation.getId()) && !aaIds.contains(nation.getAlliance_id())) continue;
 
-//            int nationId = nation.getNation_id();
-
             AttackCost attInactiveCost = new AttackCost();
-            AttackCost defInactiveCost = new AttackCost();
             AttackCost attActiveCost = new AttackCost();
             AttackCost defActiveCost = new AttackCost();
 

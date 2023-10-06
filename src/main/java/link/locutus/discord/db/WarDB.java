@@ -2218,11 +2218,12 @@ public class WarDB extends DBMainV2 {
 
             long now = System.currentTimeMillis();
 
+            int[] unitBuffer = MilitaryUnit.getBuffer();
             for (AbstractCursor attack : newAttacks) {
                 if (runAlerts) {
                     Locutus.imp().getNationDB().setNationActive(attack.getAttacker_id(), attack.getDate(), eventConsumer);
-                    Map<MilitaryUnit, Integer> attLosses = attack.getUnitLosses(true);
-                    Map<MilitaryUnit, Integer> defLosses = attack.getUnitLosses(false);
+                    Map<MilitaryUnit, Integer> attLosses = attack.getUnitLosses2(true);
+                    Map<MilitaryUnit, Integer> defLosses = attack.getUnitLosses2(false);
                     if (!attLosses.isEmpty()) {
                         Locutus.imp().getNationDB().updateNationUnits(attack.getAttacker_id(), attack.getDate(), attLosses, eventConsumer);
                     }

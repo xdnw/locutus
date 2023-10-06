@@ -56,7 +56,9 @@ public class WarCostRankingByDay extends Command {
                 Add `-i` to show Infra losses
                 Add `-o` to graph a running total
                 Add `-e` to show enemy stats instead of attacker
-                Add `-d` to show raw data (csv)""";
+                Add `-d` to show raw data (csv)
+                Add `-n` to show number buildings lost
+                """;
     }
 
     private void add2(TimeNumericTable<Map<String, WarAttackParser>> table, long dayRelative, long dayOffset, Map<String, WarAttackParser> parserMap, Map<String, Map<Long, AttackCost>> byDayMap, Function<AttackCost, Number> calc) {
@@ -95,7 +97,7 @@ public class WarCostRankingByDay extends Command {
             String arg = args.get(i);
             WarAttackParser parser = new WarAttackParser(guild, Arrays.asList(arg, "*", (days + 1) + "d"), flags);
             coalitions.put(arg, parser);
-            coalitionsByDay.put(arg, parser.toWarCostByDay());
+            coalitionsByDay.put(arg, parser.toWarCostByDay(true, false, false, false, false));
         }
 
         long min = Long.MAX_VALUE;
@@ -126,6 +128,13 @@ public class WarCostRankingByDay extends Command {
             @Override
             public void add(long day, Map<String, WarAttackParser> costMap) {
                 add2(this, day, finalMin, costMap, coalitionsByDay, f -> f.getUnitsLost(primary).getOrDefault(MilitaryUnit.SOLDIER, 0));
+                processTotal(total, this);
+            }
+        });
+        if (flags.contains('n')) tables.add(new TimeNumericTable<>("Building Losses", "day", null, labels) {
+            @Override
+            public void add(long day, Map<String, WarAttackParser> costMap) {
+                add2(this, day, finalMin, costMap, coalitionsByDay, f -> f.getNumBuildingsDestroyed(primary));
                 processTotal(total, this);
             }
         });

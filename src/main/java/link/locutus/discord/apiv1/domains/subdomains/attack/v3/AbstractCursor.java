@@ -138,21 +138,7 @@ public abstract class AbstractCursor implements IAttack2 {
     public double[] getLosses(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
         if (units) {
             double[] unitLosses = getUnitLossCost(buffer, attacker);
-//            for (Map.Entry<MilitaryUnit, Integer> entry : unitLosses.entrySet()) {
-//                MilitaryUnit unit = entry.getKey();
-//                int amt = entry.getValue();
-//                if (amt > 0) {
-//                    double[] cost = unit.getCost(amt);
-//                    for (ResourceType type : ResourceType.values) {
-//                        double rssCost = cost[type.ordinal()];
-//                        if (rssCost > 0) {
-//                            losses.put(type, losses.getOrDefault(type, 0d) + rssCost);
-//                        }
-//                    }
-//                }
-//            }
         }
-
         if (includeLoot) {
             double[] loot = getLoot();
             if (loot != null) {
@@ -196,6 +182,8 @@ public abstract class AbstractCursor implements IAttack2 {
     public abstract Set<Integer> getCityIdsDamaged();
 
     public abstract int[] getUnitLosses(int[] buffer, boolean isAttacker);
+
+    public abstract int getUnitLosses(MilitaryUnit unit, boolean attacker);
 
     public abstract double[] getUnitLossCost(double[] buffer, boolean isAttacker);
 

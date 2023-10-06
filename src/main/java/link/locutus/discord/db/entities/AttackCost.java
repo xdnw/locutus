@@ -342,6 +342,21 @@ public class AttackCost {
         return response.toString();
     }
 
+    public int getNumBuildingsDestroyed(boolean isAttacker) {
+        if (buildings1 == null) return 0;
+        int total = 0;
+        if (isAttacker) {
+            for (int num : buildings1) {
+                total += num;
+            }
+        } else {
+            for (int num : buildings2) {
+                total += num;
+            }
+        }
+        return total;
+    }
+
     private Map<Building, Integer> getBuildingsDestroyed(boolean isAttacker) {
         if (isAttacker) {
             return buildings1 == null ? Collections.emptyMap() : ArrayUtil.toMap(buildings1, Buildings.values());

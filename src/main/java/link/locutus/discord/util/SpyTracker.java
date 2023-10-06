@@ -221,7 +221,7 @@ public class SpyTracker {
                     for (AbstractCursor attack : attacks) {
                         boolean isAttacker = attack.getAttacker_id() == activity.nationId;
                         boolean checkNation = activity.isKill != isAttacker;
-                        Map<MilitaryUnit, Integer> losses = attack.getUnitLosses(checkNation);
+                        Map<MilitaryUnit, Integer> losses = attack.getUnitLosses2(checkNation);
                         Integer loss = losses.get(activity.unit);
                         if (loss != null) {
                             if (loss == activity.change) {

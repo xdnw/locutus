@@ -529,7 +529,6 @@ public class WarUpdateProcessor {
 
                 double maxAir80pct = Buildings.HANGAR.max() * Buildings.HANGAR.cap(attacker::hasProject) * attacker.getCities() * 0.66;
                 if (defender.getAircraft() == 0 && root.getDefcas2() == 0 && root.getDefcas3() == 0 && root.getAttcas2() > 0 && root.getMoney_looted() == 0 && defender.getSoldiers() > attacker.getSoldiers() && attacker.getAircraft() > maxAir80pct) {
-                    double cost = root.getLossesConverted(true);
                     if (defender.getActive_m() < 10000) {
                         String message = "You performed a ground attack using tanks against an enemy with a high amount of soldiers (but no tanks), no loot, and no aircraft. An airstrike may be cheaper at getting the initial soldiers down and avoiding tank losses";
                         return Map.entry(AttackTypeSubCategory.GROUND_TANKS_NO_LOOT_NO_ENEMY_AIR, message);
@@ -696,7 +695,7 @@ public class WarUpdateProcessor {
 
                     String message = AttackTypeSubCategory.AIRSTRIKE_INFRA.message.replace("{amount}", attAir + "");
 
-                    double usageCost = root.getLossesConverted(true, false, false, true, false, false);
+                    double usageCost = root.getLossesConverted(ResourceType.getBuffer(), true, false, false, true, false, false);
                     if (usageCost > root.getInfra_destroyed_value()) {
                         message += "\nYou used $" + MathMan.format(usageCost) + " worth of resources, and only destroyed $" + MathMan.format(root.getInfra_destroyed_value()) + " extra worth of infra";
                     } else {
@@ -724,7 +723,7 @@ public class WarUpdateProcessor {
                     if (attShips > 1 && defender.getAvg_infra() < 1850 && root.getCity_infra_before() <= 1850) {
                         String message = AttackTypeSubCategory.NAVAL_MAX_VS_NONE.message;
 
-                        double usageCost = root.getLossesConverted(true, false, false, true, false, false);
+                        double usageCost = root.getLossesConverted(ResourceType.getBuffer(), true, false, false, true, false, false);
                         if (usageCost > root.getInfra_destroyed_value()) {
                             message += "\nYou used $" + MathMan.format(usageCost) + " worth of resources, and only destroyed $" + MathMan.format(root.getInfra_destroyed_value()) + " extra worth of infra";
                         } else {

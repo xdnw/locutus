@@ -801,7 +801,7 @@ public class BankCommands {
 
         wars.removeIf(f -> {
             List<AbstractCursor> attacks = attacksByWar.get(f.warId);
-            AttackCost cost = f.toCost(attacks);
+            AttackCost cost = f.toCost(attacks, false, false, false, false, false);
             boolean primary = allyIds.contains(f.attacker_aa);
             return cost.convertedTotal(primary) <= 0;
         });
@@ -816,7 +816,7 @@ public class BankCommands {
 
         for (DBWar war : wars) {
             List<AbstractCursor> attacks = attacksByWar.get(war.warId);
-            AttackCost ac = war.toCost(attacks);
+            AttackCost ac = war.toCost(attacks, false, false, false, false, false);
             boolean primary = allies.contains(war.attacker_aa);
             double[] units = PnwUtil.resourcesToArray(ac.getUnitCost(primary));
             double[] consume = PnwUtil.resourcesToArray(ac.getConsumption(primary));

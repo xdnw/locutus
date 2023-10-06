@@ -389,15 +389,15 @@ public class DBWar {
     }
 
     public AttackCost toCost() {
-        return toCost(getAttacks2());
+        return toCost(getAttacks2(), true, true, true, true, true);
     }
 
-    public AttackCost toCost(List<AbstractCursor> attacks) {
+    public AttackCost toCost(List<AbstractCursor> attacks, boolean buildings, boolean ids, boolean victories, boolean wars, boolean inclAttacks) {
         String nameA = PnwUtil.getName(attacker_id, false);
         String nameB = PnwUtil.getName(defender_id, false);
         Function<AbstractCursor, Boolean> isPrimary = a -> a.getAttacker_id() == attacker_id;
         Function<AbstractCursor, Boolean> isSecondary = b -> b.getAttacker_id() == defender_id;
-        AttackCost cost = new AttackCost(nameA, nameB);
+        AttackCost cost = new AttackCost(nameA, nameB, buildings, ids, victories, wars, inclAttacks);
         cost.addCost(attacks, isPrimary, isSecondary);
         return cost;
     }

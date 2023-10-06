@@ -631,7 +631,7 @@ public class DBNation implements NationOrAlliance {
             Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWarsForNationOrAlliance(f -> f == nation_id, null, f -> f.date > finalLastLootDate);
             if (!wars.isEmpty()) {
                 WarParser cost = WarParser.of(wars.values(), f -> f.attacker_id == nation_id);
-                double total = cost.toWarCost().convertedTotal(true);
+                double total = cost.toWarCost(false, false, false, false, false).convertedTotal(true);
                 value -= total;
             }
         }
@@ -5562,10 +5562,10 @@ public class DBNation implements NationOrAlliance {
         this.wars_lost = wars_lost;
     }
 
-    public AttackCost getWarCost() {
-        AttackCost cost = new AttackCost();
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(nation_id, 0);
-        cost.addCost(attacks, a -> a.getAttacker_id() == nation_id, b -> b.getDefender_id() == nation_id);
+    public AttackCost getWarCost(boolean buildings, boolean ids, boolean victories, boolean wars, boolean attacks) {
+        AttackCost cost = new AttackCost(getName(), "*", buildings, ids, victories, wars, attacks);
+        cost.addCost(Locutus.imp().getWarDb().getAttacks(nation_id, 0),
+                a -> a.getAttacker_id() == nation_id, b -> b.getDefender_id() == nation_id);
         return cost;
     }
 

@@ -948,7 +948,7 @@ public class IACheckup {
 
         if (nation.getCities() < 10) {
             // raided 200m
-            AttackCost cost = nation.getWarCost();
+            AttackCost cost = nation.getWarCost(false, false, false, false, false);
             double total = PnwUtil.convertedTotal(cost.getLoot(true));
             if (total < 200000000) {
                 return null;
