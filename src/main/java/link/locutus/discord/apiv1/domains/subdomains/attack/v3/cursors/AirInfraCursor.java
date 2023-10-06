@@ -47,10 +47,10 @@ public class AirInfraCursor extends UnitCursor {
 
     @Override
     public int getUnitLosses(MilitaryUnit unit, boolean attacker) {
-        return switch (unit) {
-            case AIRCRAFT -> attacker ? attcas1 : defcas1;
-            default -> 0;
-        };
+        if (unit == MilitaryUnit.AIRCRAFT) {
+            return attacker ? attcas1 : defcas1;
+        }
+        return 0;
     }
 
     @Override

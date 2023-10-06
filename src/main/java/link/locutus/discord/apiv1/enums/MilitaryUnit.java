@@ -14,6 +14,7 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -97,6 +98,7 @@ public enum MilitaryUnit {
     public static double NUKE_RADIATION = 5;
 
     private final double[] cost;
+    private final Map<ResourceType, Double> costMap;
 
     protected final double score;
     private final double[] consumption;
@@ -111,6 +113,7 @@ public enum MilitaryUnit {
         this.name = name;
         this.emoji = emoji;
         this.cost = cost;
+        this.costMap = new EnumMap<>(PnwUtil.resourcesToMap(cost));
         this.upkeepPeace = peacetimeUpkeep;
         if (multiplyWartimeUpkeep) {
             this.upkeepWar = PnwUtil.multiply(peacetimeUpkeep.clone(), 1.5);
@@ -119,6 +122,10 @@ public enum MilitaryUnit {
         }
         this.consumption = consumption;
         this.score = score;
+    }
+
+    public static int[] getBuffer() {
+        return new int[MilitaryUnit.values.length];
     }
 
     public String getEmoji() {
@@ -254,6 +261,10 @@ public enum MilitaryUnit {
 
     public double[] getCost() {
         return this.cost;
+    }
+
+    public Map<ResourceType, Double> getCostMap() {
+        return costMap;
     }
 
     public double[] getCost(int amt) {

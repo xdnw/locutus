@@ -265,6 +265,10 @@ public class Buildings {
         return BUILDINGS[ordinal];
     }
 
+    public static int[] getBuffer() {
+        return new int[BUILDINGS.length];
+    }
+
     public static Building[] values() {
         return BUILDINGS;
     }

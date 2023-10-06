@@ -12,6 +12,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.io.BitBuffer;
+import link.locutus.discord.util.math.ArrayUtil;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -127,44 +128,48 @@ public abstract class AbstractCursor implements IAttack2 {
         return war_cached;
     }
 
+//    public Map<ResourceType, Double> getLosses2(boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
+//        double[] buffer = ResourceType.getBuffer();
+//        addLosses(buffer, attacker, units, infra, consumption, includeLoot, includeBuildings);
+//        return PnwUtil.resourcesToMap(buffer);
+//    }
+
     @Override
-    public Map<ResourceType, Double> getLosses(boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
-        Map<ResourceType, Double> losses = new HashMap<>();
+    public double[] getLosses(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
         if (units) {
-            Map<MilitaryUnit, Integer> unitLosses = getUnitLosses(attacker);
-            for (Map.Entry<MilitaryUnit, Integer> entry : unitLosses.entrySet()) {
-                MilitaryUnit unit = entry.getKey();
-                int amt = entry.getValue();
-                if (amt > 0) {
-                    double[] cost = unit.getCost(amt);
-                    for (ResourceType type : ResourceType.values) {
-                        double rssCost = cost[type.ordinal()];
-                        if (rssCost > 0) {
-                            losses.put(type, losses.getOrDefault(type, 0d) + rssCost);
-                        }
-                    }
-                }
-            }
+            double[] unitLosses = getUnitLossCost(buffer, attacker);
+//            for (Map.Entry<MilitaryUnit, Integer> entry : unitLosses.entrySet()) {
+//                MilitaryUnit unit = entry.getKey();
+//                int amt = entry.getValue();
+//                if (amt > 0) {
+//                    double[] cost = unit.getCost(amt);
+//                    for (ResourceType type : ResourceType.values) {
+//                        double rssCost = cost[type.ordinal()];
+//                        if (rssCost > 0) {
+//                            losses.put(type, losses.getOrDefault(type, 0d) + rssCost);
+//                        }
+//                    }
+//                }
+//            }
         }
 
         if (includeLoot) {
             double[] loot = getLoot();
             if (loot != null) {
-                Map<ResourceType, Double> lootDouble = PnwUtil.resourcesToMap(loot);
                 if (attacker) {
-                    PnwUtil.subResourcesToA(losses, lootDouble);
+                    ResourceType.subtract(buffer, loot);
                 } else {
-                    PnwUtil.addResourcesToA(losses, lootDouble);
+                    ResourceType.add(buffer, loot);
                 }
             }
             else if (getMoney_looted() != 0) {
                 int sign = (getVictor() == (attacker ? getAttacker_id() : getDefender_id())) ? -1 : 1;
-                losses.put(ResourceType.MONEY, losses.getOrDefault(ResourceType.MONEY, 0d) + getMoney_looted() * sign);
+                buffer[ResourceType.MONEY.ordinal()] += getMoney_looted() * sign;
             }
         }
         if (attacker ? getVictor() == getDefender_id() : getVictor() == getAttacker_id()) {
             if (infra && getInfra_destroyed_value() != 0) {
-                losses.put(ResourceType.MONEY, (losses.getOrDefault(ResourceType.MONEY, 0d) + getInfra_destroyed_value()));
+                buffer[ResourceType.MONEY.ordinal()] += getInfra_destroyed_value();
             }
         }
 
@@ -172,31 +177,30 @@ public abstract class AbstractCursor implements IAttack2 {
             double mun = attacker ? getAtt_mun_used() : getDef_mun_used();
             double gas = attacker ? getAtt_gas_used() : getDef_gas_used();
             if (mun > 0) {
-                losses.put(ResourceType.MUNITIONS, (losses.getOrDefault(ResourceType.MUNITIONS, 0d) + mun));
+                buffer[ResourceType.MUNITIONS.ordinal()] += mun;
             }
             if (gas > 0) {
-                losses.put(ResourceType.GASOLINE, (losses.getOrDefault(ResourceType.GASOLINE, 0d) + gas));
+                buffer[ResourceType.GASOLINE.ordinal()] += gas;
             }
         }
 
         if (includeBuildings && !attacker) {
-            for (Map.Entry<Building, Integer> entry : getBuildingsDestroyed().entrySet()) {
-                Building building = entry.getKey();
-                for (ResourceType type : ResourceType.values) {
-                    double rssCost = building.cost(type);
-                    if (rssCost > 0) {
-                        losses.put(type, losses.getOrDefault(type, 0d) + rssCost * entry.getValue());
-                    }
-                }
-            }
-
+            buffer = getBuildingCost(buffer);
         }
-        return losses;
+        return buffer;
     }
 
-    public abstract Map<Building, Integer> getBuildingsDestroyed();
-    public abstract Set<Integer> getCityIdsDamaged();
-    public abstract Map<MilitaryUnit, Integer> getUnitLosses(boolean isAttacker);
+    public abstract Map<Building, Integer> getBuildingsDestroyed2();
 
-    public abstract void addUnitLosses(int[] unitTotals, boolean isAttacker);
+    public abstract double[] getBuildingCost(double[] buffer);
+    public abstract Set<Integer> getCityIdsDamaged();
+
+    public abstract int[] getUnitLosses(int[] buffer, boolean isAttacker);
+
+    public abstract double[] getUnitLossCost(double[] buffer, boolean isAttacker);
+
+    public Map<MilitaryUnit, Integer> getUnitLosses2(boolean isAttacker) {
+        int[] buffer = MilitaryUnit.getBuffer();
+        return ArrayUtil.toMap(getUnitLosses(buffer, isAttacker), MilitaryUnit.values);
+    }
 }

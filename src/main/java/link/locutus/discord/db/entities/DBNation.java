@@ -3839,13 +3839,15 @@ public class DBNation implements NationOrAlliance {
         if (unit != MilitaryUnit.SPIES) {
             List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(getNation_id(), timeSince);
 
+            int[] buffer = null;
             outer:
             for (AbstractCursor attack : attacks) {
                 MilitaryUnit[] units = attack.getAttack_type().getUnits();
                 for (MilitaryUnit other : units) {
                     if (other == unit) {
-                        Map<MilitaryUnit, Integer> losses = attack.getUnitLosses(attack.getAttacker_id() == nation_id);
-                        lostInAttacks += losses.getOrDefault(unit, 0);
+                        if (buffer == null) buffer = MilitaryUnit.getBuffer();
+                        int[] losses = attack.getUnitLosses(buffer, attack.getAttacker_id() == nation_id);
+                        lostInAttacks += losses[unit.ordinal()];
                         continue outer;
                     }
                 }
@@ -5185,14 +5187,19 @@ public class DBNation implements NationOrAlliance {
         if (unit == MilitaryUnit.NUKE || unit == MilitaryUnit.MISSILE) {
             List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(getNation_id(), cutoff);
 
+            int[] buffer = null;
             outer:
             for (AbstractCursor attack : attacks) {
                 MilitaryUnit[] units = attack.getAttack_type().getUnits();
                 for (MilitaryUnit other : units) {
                     if (other == unit) {
-                        Map<MilitaryUnit, Integer> losses = attack.getUnitLosses(attack.getAttacker_id() == nation_id);
+                        if (buffer == null) buffer = MilitaryUnit.getBuffer();
+                        int[] losses = attack.getUnitLosses(buffer, attack.getAttacker_id() == nation_id);
                         long turn = TimeUtil.getTurn(attack.getDate());
-                        unitsLost.put(turn, losses.getOrDefault(unit, 0) + unitsLost.getOrDefault(turn, 0));
+                        int amt = losses[unit.ordinal()];
+                        if (amt > 0) {
+                            unitsLost.merge(turn, losses[unit.ordinal()], Integer::sum);
+                        }
                         continue outer;
                     }
                 }

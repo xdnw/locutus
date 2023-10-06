@@ -1,7 +1,9 @@
 package link.locutus.discord.util.math;
 
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
@@ -97,6 +99,28 @@ public class ArrayUtil {
                 return next;
             }
         };
+    }
+
+    public static <T> Map<T, Integer> toMap(int[] arr, T[] types) {
+        Object2IntOpenHashMap<T> map = new Object2IntOpenHashMap<>();
+        for (int i = 0; i < arr.length; i++) {
+            int amt = arr[i];
+            if (amt != 0) {
+                map.put(types[i], arr[i]);
+            }
+        }
+        return map;
+    }
+
+    public static <T> Map<T, Double> toMap(double[] arr, T[] types) {
+        Object2DoubleOpenHashMap<T> map = new Object2DoubleOpenHashMap<>();
+        for (int i = 0; i < arr.length; i++) {
+            double amt = arr[i];
+            if (amt != 0) {
+                map.put(types[i], arr[i]);
+            }
+        }
+        return map;
     }
 
     public static double cosineSimilarity(float[] vectorA, float[] vectorB) {

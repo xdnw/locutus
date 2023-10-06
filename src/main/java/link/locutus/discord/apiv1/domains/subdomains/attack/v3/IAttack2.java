@@ -96,16 +96,16 @@ public interface IAttack2 {
         return "" + Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war=" + getWar_id();
     }
 
-    default double getLossesConverted(boolean attacker) {
-        return PnwUtil.convertedTotal(getLosses(attacker));
+    default double getLossesConverted(double[] buffer, boolean attacker) {
+        return PnwUtil.convertedTotal(getLosses(buffer, attacker));
     }
 
-    default double getLossesConverted(boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
-        return PnwUtil.convertedTotal(getLosses(attacker, units, infra, consumption, includeLoot, includeBuildings));
+    default double getLossesConverted(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
+        return PnwUtil.convertedTotal(getLosses(buffer, attacker, units, infra, consumption, includeLoot, includeBuildings));
     }
 
-    default Map<ResourceType, Double> getLosses(boolean attacker) {
-        return getLosses(attacker, true, true, true, true, true);
+    default double[] getLosses(double[] buffer, boolean attacker) {
+        return getLosses(buffer, attacker, true, true, true, true, true);
     }
 
     default int getResistance() {
@@ -142,5 +142,6 @@ public interface IAttack2 {
         return damage;
     }
 
-    Map<ResourceType, Double> getLosses(boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings);
+//    Map<ResourceType, Double> getLosses(boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings);
+    double[] getLosses(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings);
 }
