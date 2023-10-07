@@ -42,6 +42,7 @@ public class DBBan {
         this.days_left = banQl.getDays_left() == null ? Integer.MAX_VALUE : banQl.getDays_left();
     }
 
+    @Command(desc = "Get time remaining on this ban (in milliseconds)")
     public long getTimeRemaining() {
         if (days_left == -1) return Integer.MAX_VALUE;
 
@@ -50,11 +51,47 @@ public class DBBan {
         return Math.max(0, expire - now);
     }
 
+    @Command(desc = "Is this ban expired")
     public boolean isExpired() {
         return getTimeRemaining() <= 0;
     }
 
+    @Command(desc = "Get the date this ban expires (epoch milliseconds)")
     public long getEndDate() {
         return date + TimeUnit.DAYS.toMillis(days_left);
+    }
+
+    @Command("Nation ID banned")
+    public int getNationId() {
+        return nation_id;
+    }
+
+    @Command("Discord ID banned")
+    public long getDiscordId() {
+        return discord_id;
+    }
+
+    @Command("Reason for ban")
+    public String getReason() {
+        return reason;
+    }
+
+    @Command("Date of ban")
+    public long getDate() {
+        return date;
+    }
+
+    @Command(desc = "Nation or discord corresponds to existing nation")
+    public boolean hasExistingNation() {
+        return getExistingNation(false) != null;
+    }
+
+    @Command(desc = "The existing nation (if any) that corresponds to this ban")
+    public DBNation getExistingNation(boolean checkNetwork) {
+        DBNation nation = DBNation.getById(nation_id);
+        if (nation == null) {
+            nation = DBNation.getByUser(discord_id);
+        }
+        return nation;
     }
 }

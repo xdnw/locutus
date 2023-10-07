@@ -34,22 +34,33 @@ public class Treaty {
         this.pending = false;
     }
 
+    @Command(desc = "If this treaty is pending approval")
     public boolean isPending() {
         return pending;
     }
 
+    @Command(desc = "Absolute turns (since unix epoch) this treaty ends")
     public long getTurnEnds() {
         return turn_ends;
     }
 
+    @Command(desc = "Number of turns until this treaty ends")
+    public int getTurnsRemaining() {
+        // int turn = TimeUtil.getTurn();
+        return (int) Math.max(0, turn_ends - TimeUtil.getTurn());
+    }
+
+    @Command(desc = "id of this treaty")
     public int getId() {
         return id;
     }
 
+    @Command(desc = "Date this treaty was signed")
     public long getDate() {
         return date;
     }
 
+    @Command(desc = "Type of this treaty")
     public TreatyType getType() {
         return type;
     }
@@ -72,20 +83,29 @@ public class Treaty {
         return id;
     }
 
+    @Command(desc = "id of the alliance that sent this treaty")
     public int getFromId() {
         return from;
     }
 
+    @Command(desc = "id of the alliance that received this treaty")
     public int getToId() {
         return to;
     }
 
+    @Command(desc = "Get the alliance that sent this treaty")
     public DBAlliance getFrom() {
         return DBAlliance.getOrCreate(getFromId());
     }
 
+    @Command(desc = "Get the alliance that received this treaty")
     public DBAlliance getTo() {
         return DBAlliance.getOrCreate(getToId());
+    }
+
+    @Command(desc = "If this treaty is between the given alliances")
+    public boolean isAlliance(Set<DBAlliance> fromOrTo) {
+        return fromOrTo.contains(getFrom()) || fromOrTo.contains(getTo());
     }
 
     @Override

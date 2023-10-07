@@ -28,12 +28,28 @@ public enum TreatyType {
         this.id = id;
     }
 
+    @Command(desc = "Get the name of the treaty.")
+    public String getName() {
+        return id;
+    }
+
     public String getId() {
         return id;
     }
 
+    @Command(desc = "Get the numeric strength of the treaty")
     public int getStrength() {
         return strength;
+    }
+
+    @Command(desc = "If this is a defensive treaty")
+    public boolean isDefensive() {
+        return this == MDP || this == MDOAP || this == ODP || this == ODOAP || this == PROTECTORATE;
+    }
+
+    @Command(desc = "If this is an offensive treaty")
+    public boolean isOffensive() {
+        return this == MDOAP || this == ODOAP;
     }
 
     public static TreatyType[] values = values();
