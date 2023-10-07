@@ -44,7 +44,6 @@ public class DBTreasure {
     }
 
     public Predicate<DBNation> getFilter(boolean checkColor, boolean checkContinent) {
-
         return getFilter(getMaxNationScore(), checkColor, checkContinent);
     }
 
@@ -61,6 +60,7 @@ public class DBTreasure {
         return maxNation.getScore();
     }
 
+    @Command(desc = "Time in milliseconds until this treasure respawns")
     public long getTimeUntilNextSpawn() {
         return getSpawnDate() + TimeUnit.DAYS.toMillis(60) - System.currentTimeMillis();
     }
@@ -69,12 +69,19 @@ public class DBTreasure {
         return System.currentTimeMillis() - getRespawnAlertDate();
     }
 
+    @Command(desc = "Get the nations that are in range of this treasure")
     public Set<DBNation> getNationsInRange() {
         return getNationsInRange(getMaxNationScore());
     }
 
+    @Command(desc = "Get the nations that are in range of this treasure")
     public Set<DBNation> getNationsInRange(double maxNationScore) {
         return Locutus.imp().getNationDB().getNationsMatching(getFilter(true, true));
+    }
+
+    @Command(desc = "Get the number of nations that are in range of this treasure")
+    public int getNumNationsInRange() {
+        return getNumNationsInRange(getMaxNationScore()).size();
     }
 
     public Predicate<DBNation> getFilter(double maxNationScore, boolean checkColor, boolean checkContinent) {
@@ -88,6 +95,7 @@ public class DBTreasure {
         });
     }
 
+    @Command(desc = "ID of this treasure")
     public int getId() {
         return id;
     }
@@ -110,34 +118,54 @@ public class DBTreasure {
     }
 
 
+    @Command(desc = "Name of this treasure")
     public String getName() {
         return name;
     }
 
+    @Command(desc = "Color of this treasure (if any)")
     public NationColor getColor() {
         return color;
     }
 
+    @Command(desc = "Revenue bonus of this treasure")
     public int getBonus() {
         return bonus;
     }
 
+    @Command(desc = "Continent of this treasure (if any)")
     public Continent getContinent() {
         return continent;
     }
 
+    @Command(desc = "Id of nation holding this treasure")
     public int getNation_id() {
         return nation_id;
+    }
+
+    @Command(desc = "The nation holding this treasure")
+    public DBNation getNation() {
+        return DBNation.getByid(nation_id);
+    }
+
+    public boolean matchesNation(NationFilter filter) {
+        DBNation nation = getNation();
+        if (nation != null) {
+            return filter.test(nation);
+        }
+        return false;
     }
 
     public void setNation_id(int nation_id) {
         this.nation_id = nation_id;
     }
 
+    @Command(desc = "Date this treasure spawned (epoch milliseconds)")
     public long getSpawnDate() {
         return spawn_date;
     }
 
+    @Command(desc = "Days remaining until this treasure respawns")
     public long getDaysRemaining() {
         return getTimeUntilNextSpawn() / TimeUnit.DAYS.toMillis(1);
     }
