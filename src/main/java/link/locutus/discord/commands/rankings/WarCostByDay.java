@@ -190,7 +190,7 @@ public class WarCostByDay extends Command {
             if (attack.getDate() > now) continue;
             long turn = TimeUtil.getTurn(attack.getDate());
             long day = turn / 12;
-            AttackCost cost = warCostByDay.computeIfAbsent(day, f -> new AttackCost(finalNameA, finalNameB, true, false, false, true, flags.contains('b')));
+            AttackCost cost = warCostByDay.computeIfAbsent(day, f -> new AttackCost(finalNameA, finalNameB, flags.contains('r'), false, false, false, flags.contains('b')));
             cost.addCost(attack, Objects.requireNonNull(isPrimary), Objects.requireNonNull(isSecondary));
         }
 
@@ -313,7 +313,7 @@ public class WarCostByDay extends Command {
             }
         }
 
-        AttackCost nullCost = new AttackCost();
+        AttackCost nullCost = new AttackCost("", "", flags.contains('r'), false, false, true, flags.contains('b'));
         for (long day = min; day <= max; day++) {
             long dayOffset = day - min;
             AttackCost cost = warCostByDay.get(day);

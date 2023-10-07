@@ -98,7 +98,7 @@ public class WarCostRankingByDay extends Command {
             String arg = args.get(i);
             WarAttackParser parser = new WarAttackParser(guild, Arrays.asList(arg, "*", (days + 1) + "d"), flags);
             coalitions.put(arg, parser);
-            coalitionsByDay.put(arg, parser.toWarCostByDay(true, false, false, false, false));
+            coalitionsByDay.put(arg, parser.toWarCostByDay(flags.contains('r'), false, false, false, flags.contains('b')));
         }
 
         long min = Long.MAX_VALUE;
