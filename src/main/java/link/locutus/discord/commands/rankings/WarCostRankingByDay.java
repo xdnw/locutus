@@ -50,6 +50,7 @@ public class WarCostRankingByDay extends Command {
                 Add `-u` to show unit losses
                 Add `-h` to show H-Bomb (nuke) losses
                 Add `-m` to show Missile losses
+                Add `-n` to show Ship losses
                 Add `-p` to show Plane losses
                 Add `-t` to show Tank losses
                 Add `-s` to show Soldier losses
@@ -57,7 +58,7 @@ public class WarCostRankingByDay extends Command {
                 Add `-o` to graph a running total
                 Add `-e` to show enemy stats instead of attacker
                 Add `-d` to show raw data (csv)
-                Add `-n` to show number buildings lost
+                Add `-r` to show number buildings lost
                 """;
     }
 
@@ -131,7 +132,7 @@ public class WarCostRankingByDay extends Command {
                 processTotal(total, this);
             }
         });
-        if (flags.contains('n')) tables.add(new TimeNumericTable<>("Building Losses", "day", null, labels) {
+        if (flags.contains('r')) tables.add(new TimeNumericTable<>("Building Losses", "day", null, labels) {
             @Override
             public void add(long day, Map<String, WarAttackParser> costMap) {
                 add2(this, day, finalMin, costMap, coalitionsByDay, f -> f.getNumBuildingsDestroyed(primary));

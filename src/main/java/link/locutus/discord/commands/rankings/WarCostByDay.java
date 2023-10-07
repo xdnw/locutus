@@ -11,9 +11,11 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.rankings.table.TimeDualNumericTable;
+import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
+import link.locutus.discord.db.entities.WarAttackParser;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
@@ -188,7 +190,7 @@ public class WarCostByDay extends Command {
             if (attack.getDate() > now) continue;
             long turn = TimeUtil.getTurn(attack.getDate());
             long day = turn / 12;
-            AttackCost cost = warCostByDay.computeIfAbsent(day, f -> new AttackCost(finalNameA, finalNameB));
+            AttackCost cost = warCostByDay.computeIfAbsent(day, f -> new AttackCost(finalNameA, finalNameB, true, false, false, true, flags.contains('b')));
             cost.addCost(attack, Objects.requireNonNull(isPrimary), Objects.requireNonNull(isSecondary));
         }
 
@@ -271,6 +273,13 @@ public class WarCostByDay extends Command {
             @Override
             public void add(long day, AttackCost cost) {
                 add(day, PnwUtil.convertedTotal(cost.getConsumption(true)), PnwUtil.convertedTotal(cost.getConsumption(false)));
+                processTotal(total, this);
+            }
+        });
+        if (flags.contains('r')) tables.add(new TimeDualNumericTable<>("Building Losses", "day", null, nameA, nameB) {
+            @Override
+            public void add(long day, AttackCost cost) {
+                add(day, cost.getNumBuildingsDestroyed(true), cost.getNumBuildingsDestroyed(true));
                 processTotal(total, this);
             }
         });
