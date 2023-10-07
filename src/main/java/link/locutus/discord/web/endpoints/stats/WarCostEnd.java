@@ -101,7 +101,7 @@ public class WarCostEnd extends Endpoint {
             };
         }
 
-        AttackCost cost = new AttackCost(nameA, nameB, true, false, false, false, false);
+        AttackCost cost = new AttackCost(nameA, nameB, true, true, false, false, false);
         cost.addCost(attacks, isPrimary, isSecondary);
 
         StringBuilder result = new StringBuilder(cost.toString());

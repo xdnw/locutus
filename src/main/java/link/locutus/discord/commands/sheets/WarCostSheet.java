@@ -134,13 +134,13 @@ public class WarCostSheet extends Command {
             }
             int nationId = nation.getNation_id();
 
-            AttackCost attInactiveCost = new AttackCost();
-            AttackCost defInactiveCost = new AttackCost();
-            AttackCost attActiveCost = new AttackCost();
-            AttackCost defActiveCost = new AttackCost();
+            AttackCost attInactiveCost = new AttackCost("", "", false, false, false, true, false);
+            AttackCost defInactiveCost = new AttackCost("", "", false, false, false, true, false);
+            AttackCost attActiveCost = new AttackCost("", "", false, false, false, true, false);
+            AttackCost defActiveCost = new AttackCost("", "", false, false, false, true, false);
 
-            AttackCost attSuicides = new AttackCost();
-            AttackCost defSuicides = new AttackCost();
+            AttackCost attSuicides = new AttackCost("", "", false, false, false, true, false);
+            AttackCost defSuicides = new AttackCost("", "", false, false, false, true, false);
 
             {
                 List<DBWar> wars = entry.getValue();

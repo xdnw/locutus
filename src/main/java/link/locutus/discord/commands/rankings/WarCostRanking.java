@@ -194,7 +194,7 @@ public class WarCostRanking extends Command {
                 double min = damage ? 0 : Double.NEGATIVE_INFINITY;
                 ResourceType finalResourceType = resourceType;
                 getValue = (attacker, attack) -> {
-                    Arrays.fill(rssBuffer, 0);
+                    rssBuffer[finalResourceType.ordinal()] = 0;
                     return Math.max(min, attack.getLosses(rssBuffer, attacker, units, infra, consumption, loot, buildings)[finalResourceType.ordinal()]);
                 };
             }
@@ -206,9 +206,6 @@ public class WarCostRanking extends Command {
                     } else {
                         double total = 0;
                         double[] losses = attack.getLosses(rssBuffer, attacker, units, infra, consumption, loot, buildings);
-//                        for (Map.Entry<ResourceType, Double> entry : losses.entrySet()) {
-//                            if (entry.getValue() > 0) total += PnwUtil.convertedTotal(entry.getKey(), entry.getValue());
-//                        }
                         for (ResourceType type : ResourceType.values) {
                             double val = losses[type.ordinal()];
                             if (val > 0) total += PnwUtil.convertedTotal(type, val);

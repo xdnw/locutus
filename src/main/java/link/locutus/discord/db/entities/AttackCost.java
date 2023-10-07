@@ -1,11 +1,14 @@
 package link.locutus.discord.db.entities;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArraySet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.util.MathMan;
@@ -16,6 +19,8 @@ import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.TriFunction;
+import org.apache.commons.lang3.tuple.Triple;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -24,7 +29,12 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 public class AttackCost {
     private final String nameB;
@@ -58,10 +68,90 @@ public class AttackCost {
     private final Set<AbstractCursor> primaryAttacks;// = new ObjectOpenHashSet<>();
     private final Set<AbstractCursor> secondaryAttacks;// = new ObjectOpenHashSet<>();
 
+    public void addCost(AttackCost other) {
+        ResourceType.add(loot1, other.loot1);
+        ResourceType.add(loot2, other.loot2);
+        ResourceType.add(total1, other.total1);
+        ResourceType.add(total2, other.total2);
+        infrn1 += other.infrn1;
+        infrn2 += other.infrn2;
+        ArrayUtil.apply(ArrayUtil.INT_ADD, unit1, other.unit1);
+        ArrayUtil.apply(ArrayUtil.INT_ADD, unit2, other.unit2);
+        ResourceType.add(consumption1, other.consumption1);
+        ResourceType.add(consumption2, other.consumption2);
+        if (buildings1 != null) ArrayUtil.apply(ArrayUtil.INT_ADD, buildings1, other.buildings1);
+        if (buildings2 != null) ArrayUtil.apply(ArrayUtil.INT_ADD, buildings2, other.buildings2);
+        if (ids1 != null && other.ids1 != null) ids1.addAll(other.ids1);
+        if (ids2 != null && other.ids2 != null) ids2.addAll(other.ids2);
+        if (victories1 != null && other.victories1 != null) victories1.addAll(other.victories1);
+        if (victories2 != null && other.victories2 != null) victories2.addAll(other.victories2);
+        if (wars != null && other.wars != null) wars.addAll(other.wars);
+        if (attacks != null && other.attacks != null) attacks.addAll(other.attacks);
+        if (primaryAttacks != null && other.primaryAttacks != null) primaryAttacks.addAll(other.primaryAttacks);
+        if (secondaryAttacks != null && other.secondaryAttacks != null) secondaryAttacks.addAll(other.secondaryAttacks);
+    }
 
-//    public AttackCost() {
-//        this(null, null, true, true, true, true, true);
-//    }
+    public static <T> Map<T, AttackCost> groupBy(Iterable<DBWar> wars,
+                                                 Predicate<AttackType> attackTypeFilter,
+                                                 Predicate<AbstractCursor> preliminaryFilter,
+                                                 Predicate<AbstractCursor> attackFilter,
+                                                 BiConsumer<AbstractCursor,
+                                                         BiConsumer<AbstractCursor, T>> groupBy,
+TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCost, Boolean>> addCost
+                                                 ) {
+        if (attackFilter == null) attackFilter = f -> true;
+        Map<T, AttackCost> resultByGroup = new Object2ObjectOpenHashMap<>();
+        Map<T, Map<Integer, AttackCost>> pendingByWar = new Object2ObjectOpenHashMap<>();
+
+        BiConsumer<T, Integer> condense = (nationId, warId) -> {
+            Map<Integer, AttackCost> byWar = pendingByWar.get(nationId);
+            if (byWar == null) return;
+            AttackCost cost = byWar.remove(warId);
+            if (cost != null) {
+                AttackCost existing = resultByGroup.get(nationId);
+                if (existing == null) {
+                    resultByGroup.put(nationId, cost);
+                } else {
+                    existing.addCost(cost);
+                }
+            }
+        };
+
+        BiConsumer<AbstractCursor, T> addAttack = (attack, group) -> {
+            Map.Entry<AttackCost, Boolean> costEntry = addCost.apply(
+                    new Function<Boolean, AttackCost>() {
+                        @Override
+                        public AttackCost apply(Boolean isAllowed) {
+                            if (isAllowed) {
+                                if (!resultByGroup.containsKey(group)) {
+                                    condense.accept(group, attack.getWar_id());
+                                }
+                                return resultByGroup.computeIfAbsent(group, f -> new AttackCost("", "", false, false, false, true, false));
+                            }
+                            return pendingByWar.computeIfAbsent(group, f -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(attack.getWar_id(), f -> new AttackCost("", "", false, false, false, false, false));
+                        }
+                    },
+                    attack,
+                    group
+            );
+            if (costEntry != null) {
+                AttackCost cost = costEntry.getKey();
+                cost.addCost(attack, costEntry.getValue());
+            }
+        };
+
+        Predicate<AbstractCursor> finalAttackFilter = attackFilter;
+        Locutus.imp().getWarDb().iterateAttacks(wars, attackTypeFilter, preliminaryFilter,
+        new Consumer<AbstractCursor>() {
+            @Override
+            public void accept(AbstractCursor attack) {
+                if (finalAttackFilter.test(attack)) {
+                    groupBy.accept(attack, addAttack);
+                }
+            }
+        });
+        return resultByGroup;
+    }
 
     public AttackCost(String nameA, String nameB, boolean buildings, boolean ids, boolean victories, boolean wars, boolean attacks) {
         this.nameA = nameA;
