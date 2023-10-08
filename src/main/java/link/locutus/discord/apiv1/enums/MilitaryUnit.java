@@ -113,7 +113,8 @@ public enum MilitaryUnit {
         this.name = name;
         this.emoji = emoji;
         this.cost = cost;
-        this.costMap = new EnumMap<>(PnwUtil.resourcesToMap(cost));
+        this.costMap = new EnumMap<>(ResourceType.class);
+        costMap.putAll(PnwUtil.resourcesToMap(cost));
         this.upkeepPeace = peacetimeUpkeep;
         if (multiplyWartimeUpkeep) {
             this.upkeepWar = PnwUtil.multiply(peacetimeUpkeep.clone(), 1.5);
