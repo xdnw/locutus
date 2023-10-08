@@ -1,5 +1,7 @@
 package link.locutus.discord.apiv1.enums;
 
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+
 public enum TreatyType {
     NONE(0),
     MDP(7),

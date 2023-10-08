@@ -1371,7 +1371,10 @@ public class StatCommands {
                     "Useful to see costs incurred by fighting for each nation, to plan for future wars, or to help with reimbursement"
     )
     @RolePermission(Roles.MILCOM)
-    public String WarCostByResourceSheet(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders, @Timestamp long time,
+    public static String WarCostByResourceSheet(@Me IMessageIO channel, @Me GuildDB db,
+                                                Set<NationOrAlliance> attackers,
+                                                Set<NationOrAlliance> defenders,
+                                                @Timestamp long time,
                                          @Switch("c") boolean excludeConsumption,
                                          @Switch("i") boolean excludeInfra,
                                          @Switch("l") boolean excludeLoot,

@@ -1859,6 +1859,12 @@ public class WarDB extends DBMainV2 {
         }
     }
 
+    public List<DBWar> getWarsByNationMatching(int nationId, Predicate<DBWar> filter) {
+        synchronized (warsByNationId) {
+            return warsByNationId.getOrDefault(nationId, Collections.emptyMap()).values().stream().filter(filter).collect(Collectors.toList());
+        }
+    }
+
     public DBWar getLastOffensiveWar(int nation) {
         return getWarsByNation(nation).stream().filter(f -> f.attacker_id == nation).max(Comparator.comparingInt(o -> o.warId)).orElse(null);
     }
