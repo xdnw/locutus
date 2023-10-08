@@ -3,6 +3,8 @@ package link.locutus.discord.commands.manager.v2.impl.discord;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.rankings.table.TableNumberFormat;
+import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.RateLimitUtil;
@@ -13,7 +15,6 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
@@ -321,9 +322,9 @@ public class DiscordMessageBuilder implements IMessageBuilder {
     }
 
     @Override
-    public IMessageBuilder graph(TimeNumericTable table) {
+    public IMessageBuilder graph(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat) {
         try {
-            images.put(table.getName(), table.write(true));
+            images.put(table.getName(), table.write(timeFormat, numberFormat));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

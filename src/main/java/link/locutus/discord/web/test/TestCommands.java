@@ -20,6 +20,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AllianceMetric;
@@ -214,7 +215,7 @@ public class TestCommands {
         String coalitionName = alliance.getName();
         Set<DBAlliance> coalition = Collections.singleton(alliance);
         TimeNumericTable table = AllianceMetric.generateTable(metrics, startTurn, endTurn, coalitionName, coalition);
-        byte[] data = table.write(true);
+        byte[] data = table.write(TimeFormat.TURN_TO_DATE, AllianceMetric.getFormat(metrics));
         StringBuilder body = new StringBuilder();
         body.append("Hello World\n");
         body.append("attachment://output.png");

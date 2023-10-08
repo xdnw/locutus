@@ -9,10 +9,8 @@ import de.erichseifert.gral.io.plots.DrawableWriter;
 import de.erichseifert.gral.io.plots.DrawableWriterFactory;
 import de.erichseifert.gral.plots.BarPlot;
 import de.erichseifert.gral.plots.colors.ColorMapper;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -23,13 +21,14 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.AlliancePlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.rankings.WarCostAB;
 import link.locutus.discord.commands.rankings.builder.*;
+import link.locutus.discord.commands.rankings.table.TableNumberFormat;
 import link.locutus.discord.commands.rankings.table.TimeDualNumericTable;
+import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.BaseballDB;
 import link.locutus.discord.db.GuildDB;
@@ -47,24 +46,20 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.trade.TradeManager;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import org.apache.commons.lang3.ClassUtils;
 import org.json.JSONObject;
 
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static link.locutus.discord.commands.rankings.WarCostRanking.scale;
@@ -130,7 +125,7 @@ public class StatCommands {
         }
 
         io.create()
-                .file("img.png", table.write(true))
+                .file("img.png", table.write(TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT))
                 .file("data.csv", StringMan.join(sheet, "\n"))
                 .append("Done!")
                 .send();
@@ -762,7 +757,7 @@ public class StatCommands {
         for (int score = (int) Math.max(10, minScore * 0.75 - 10); score < maxScore * 1.25 + 10; score++) {
             table.add(score, (Void) null);
         }
-        table.write(channel, false, attachJson);
+        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, attachJson);
         return null;
     }
 
@@ -814,7 +809,7 @@ public class StatCommands {
         for (int cities = min; cities <= max; cities++) {
             table.add(cities, (Void) null);
         }
-        table.write(channel, false, attachJson);
+        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, attachJson);
         return null;
     }
 
@@ -874,7 +869,7 @@ public class StatCommands {
         for (int score = (int) Math.max(10, minScore * 0.75 - 10); score < maxScore * 1.25 + 10; score++) {
             table.add(score, (Void) null);
         }
-        table.write(channel, false, attachJson);
+        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, attachJson);
         return null;
     }
 
@@ -1241,7 +1236,7 @@ public class StatCommands {
         for (int cities = min; cities <= max; cities++) {
             table.add(cities, (Void) null);
         }
-        table.write(channel, false, attachJson);
+        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, attachJson);
         return null;
     }
 
@@ -1253,7 +1248,7 @@ public class StatCommands {
         Set<DBAlliance>[] coalitions = alliances.stream().map(Collections::singleton).toList().toArray(new Set[0]);
         List<String> coalitionNames = alliances.stream().map(DBAlliance::getName).collect(Collectors.toList());
         TimeNumericTable table = AllianceMetric.generateTable(metric, turnStart, coalitionNames, coalitions);
-        table.write(channel, true, attachJson);
+        table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), attachJson);
         return "Done!";
     }
 
@@ -1263,7 +1258,7 @@ public class StatCommands {
                                     @Timestamp long time, @Switch("j") boolean attachJson) throws IOException {
         long turnStart = TimeUtil.getTurn(time);
         TimeNumericTable table = AllianceMetric.generateTable(metric, turnStart, null, coalition1, coalition2);
-        table.write(channel, true, attachJson);
+        table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), attachJson);
         return "Done!";
     }
 
@@ -1351,7 +1346,7 @@ public class StatCommands {
                                   @Timestamp long time, @Switch("j") boolean attachJson) throws IOException {
         TimeNumericTable<Void> table = TimeNumericTable.createForContinents(continents, time, Long.MAX_VALUE);
 
-        table.write(channel, true, attachJson);
+        table.write(channel, TimeFormat.TURN_TO_DATE, TableNumberFormat.SI_UNIT, attachJson);
         return "Done!";
     }
 
@@ -1362,7 +1357,7 @@ public class StatCommands {
         long turnStart = TimeUtil.getTurn(time);
         List<String> coalitionNames = List.of(metric.name());
         TimeNumericTable table = AllianceMetric.generateTable(metric, turnStart, coalitionNames, coalition);
-        table.write(channel, true, attachJson);
+        table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), attachJson);
         return "Done! " + user.getAsMention();
     }
 

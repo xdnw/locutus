@@ -36,6 +36,7 @@ public class TimeUtil {
     public static final SimpleDateFormat YYYY_MM_DD_FORMAT = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
 
     public static final DateTimeFormatter YYYY_MM_DD = DateTimeFormatter.ofPattern("yyyy-MM-dd", Locale.ENGLISH);
+    public static final SimpleDateFormat DD_MM_YYYY_HH = new SimpleDateFormat("dd/MM/yyyy HH", Locale.ENGLISH);
 
 
     static {
@@ -50,6 +51,7 @@ public class TimeUtil {
         WAR_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
         DD_MM_YY.setTimeZone(TimeZone.getTimeZone("UTC"));
         DD_MM_YYYY.setTimeZone(TimeZone.getTimeZone("UTC"));
+        DD_MM_YYYY_HH.setTimeZone(TimeZone.getTimeZone("UTC"));
     }
 
     public static String turnsToTime(long turns) {

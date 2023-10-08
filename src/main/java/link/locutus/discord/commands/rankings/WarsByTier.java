@@ -4,7 +4,9 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.rankings.table.TableNumberFormat;
 import link.locutus.discord.commands.rankings.table.TimeDualNumericTable;
+import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarParser;
 import link.locutus.discord.db.entities.DBNation;
@@ -83,7 +85,7 @@ public class WarsByTier extends Command {
             table.add(cities, (Void) null);
         }
 
-        table.write(channel, false, false);
+        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, false);
         return null;
     }
 }

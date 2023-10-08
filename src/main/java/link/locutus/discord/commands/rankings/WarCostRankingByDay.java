@@ -10,6 +10,8 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.rankings.table.TableNumberFormat;
+import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBNation;
@@ -245,7 +247,7 @@ public class WarCostRankingByDay extends Command {
         }
 
         for (TimeNumericTable<Map<String, WarAttackParser>> table : tables) {
-            table.write(channel, true, false);
+            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, false);
         }
         if (tables.isEmpty()) return "Please use one of the flag";
 

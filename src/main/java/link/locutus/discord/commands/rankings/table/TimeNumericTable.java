@@ -23,16 +23,10 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.CIEDE2000;
-import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.text.DateFormat;
-import java.text.DecimalFormat;
-import java.text.FieldPosition;
-import java.text.Format;
-import java.text.ParsePosition;
 import java.util.List;
 import java.util.*;
 import java.util.function.Function;
@@ -311,7 +305,7 @@ public abstract class TimeNumericTable<T> {
         return this;
     }
 
-    public XYPlot getTable(boolean dateFormatX) {
+    public XYPlot getTable(TimeFormat timeFormat, TableNumberFormat numberFormat) {
         DataSource[] series = new DataSource[amt];
         for (int i = 0; i < amt; i++) {
             DataSource source = new DataSeries(this.labels[i], data, 0, i + 1);
@@ -334,6 +328,13 @@ public abstract class TimeNumericTable<T> {
             min = Math.min(min, col.getStatistics(Statistics.MIN));
             max = Math.max(max, col.getStatistics(Statistics.MAX));
         }
+        if (numberFormat == TableNumberFormat.PERCENTAGE_ONE) {
+            min = 0;
+            max = 1;
+        } else if (numberFormat == TableNumberFormat.PERCENTAGE_100) {
+            min = 0;
+            max = 100;
+        }
         plot.getAxis(XYPlot.AXIS_Y).setRange(min, max);
 
 
@@ -354,6 +355,8 @@ public abstract class TimeNumericTable<T> {
         AxisRenderer axisRendererX = plot.getAxisRenderer(XYPlot.AXIS_X);
         axisRendererX.setTicksAutoSpaced(true);
         axisRendererX.setMinorTicksCount(4);
+        axisRendererX.setTickLabelFormat(MathMan.toFormat(timeFormat::toString));
+
 //        if (dateFormatX) {
 //            axisRendererX.setTickLabelFormat(new MathMan.RoundedMetricPrefixFormat());
 //        } else {
@@ -362,7 +365,7 @@ public abstract class TimeNumericTable<T> {
         AxisRenderer axisRendererY = plot.getAxisRenderer(XYPlot.AXIS_Y);
         axisRendererY.setTicksAutoSpaced(true);
         axisRendererY.setMinorTicksCount(4);
-        axisRendererY.setTickLabelFormat(new MathMan.RoundedMetricPrefixFormat());
+        axisRendererY.setTickLabelFormat(MathMan.toFormat(numberFormat::toString));
 
         Set<Color> colors = new HashSet<>();
         switch (amt) {
@@ -399,21 +402,21 @@ public abstract class TimeNumericTable<T> {
         return plot;
     }
 
-    public byte[] write(boolean date) throws IOException {
-        XYPlot plot = getTable(date);
+    public byte[] write(TimeFormat timeFormat, TableNumberFormat numberFormat) throws IOException {
+        XYPlot plot = getTable(timeFormat, numberFormat);
 
         DrawableWriter writer = DrawableWriterFactory.getInstance().get("image/png");
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         writer.write(plot, baos, 1400, 600);
         return baos.toByteArray();
     }
-    public void write(IMessageIO channel, boolean date, boolean attachJson) throws IOException {
-        IMessageBuilder msg = writeMsg(channel.create(), date, attachJson);
+    public void write(IMessageIO channel, TimeFormat timeFormat, TableNumberFormat numberFormat, boolean attachJson) throws IOException {
+        IMessageBuilder msg = writeMsg(channel.create(), timeFormat, numberFormat, attachJson);
         msg.send();
     }
 
-    public IMessageBuilder writeMsg(IMessageBuilder msg, boolean date, boolean attachJson) throws IOException {
-        msg  = msg.file("img.png", write(date));
+    public IMessageBuilder writeMsg(IMessageBuilder msg, TimeFormat timeFormat, TableNumberFormat numberFormat, boolean attachJson) throws IOException {
+        msg  = msg.file("img.png", write(timeFormat, numberFormat));
         if (attachJson) {
             msg = msg.file("data.json", toHtmlJson().toString());
         }

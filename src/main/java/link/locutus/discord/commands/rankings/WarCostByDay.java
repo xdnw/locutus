@@ -10,7 +10,9 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.rankings.table.TableNumberFormat;
 import link.locutus.discord.commands.rankings.table.TimeDualNumericTable;
+import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBNation;
@@ -327,7 +329,7 @@ public class WarCostByDay extends Command {
         }
 
         for (TimeDualNumericTable<AttackCost> table : tables) {
-            table.write(channel, true, false);
+            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, false);
         }
 
         return null;

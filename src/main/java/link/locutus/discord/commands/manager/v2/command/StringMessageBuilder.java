@@ -1,34 +1,17 @@
 package link.locutus.discord.commands.manager.v2.command;
 
+import link.locutus.discord.commands.rankings.table.TableNumberFormat;
+import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
-import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import net.dv8tion.jda.api.interactions.components.ActionRow;
-import net.dv8tion.jda.api.interactions.components.buttons.Button;
-import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
-import net.dv8tion.jda.api.utils.messages.MessageCreateData;
-import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
-import net.dv8tion.jda.api.utils.messages.MessageEditData;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.utils.URLEncodedUtils;
-import org.apache.http.message.BasicNameValuePair;
 
-import javax.annotation.Nullable;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import static net.dv8tion.jda.api.interactions.components.buttons.Button.ID_MAX_LENGTH;
 
 public class StringMessageBuilder implements IMessageBuilder {
 
@@ -184,9 +167,9 @@ public class StringMessageBuilder implements IMessageBuilder {
     }
 
     @Override
-    public IMessageBuilder graph(TimeNumericTable table) {
+    public IMessageBuilder graph(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat) {
         try {
-            images.put(table.getName(), table.write(true));
+            images.put(table.getName(), table.write(timeFormat, numberFormat));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

@@ -5,6 +5,8 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.rankings.table.TableNumberFormat;
+import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MarkupUtil;
@@ -135,9 +137,9 @@ public class WebMessage implements IMessageBuilder {
     }
 
     @Override
-    public IMessageBuilder graph(TimeNumericTable table) {
+    public IMessageBuilder graph(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat) {
         try {
-            attachments.put(table.getName() + ".png", table.write(true));
+            attachments.put(table.getName() + ".png", table.write(timeFormat, numberFormat));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

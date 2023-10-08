@@ -19,7 +19,9 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.WhitelistPermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
+import link.locutus.discord.commands.rankings.table.TableNumberFormat;
 import link.locutus.discord.commands.rankings.table.TimeDualNumericTable;
+import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.commands.trade.TradeRanking;
 import link.locutus.discord.config.Settings;
@@ -1213,7 +1215,7 @@ public class TradeCommands {
             table.add(day, (Void) null);
         }
 
-        table.write(channel, true, attachJson);
+        table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, attachJson);
         return "Done!";
     }
 
@@ -1267,7 +1269,7 @@ public class TradeCommands {
         }
 
 
-        table.write(channel, true, attachJson);
+        table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, attachJson);
 
         return "Done!";
     }
@@ -1358,7 +1360,7 @@ public class TradeCommands {
             }
 
 
-            table.write(channel, true, attachJson);
+            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, attachJson);
         }
 
 
@@ -1431,7 +1433,7 @@ public class TradeCommands {
                 }
             }
 
-            table.write(channel, true, attachJson);
+            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, attachJson);
         }
     }
 

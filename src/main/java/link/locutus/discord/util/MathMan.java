@@ -36,6 +36,20 @@ public class MathMan {
         suffixes.put(1_000_000_000_000_000_000L, "E");
     }
 
+    public static Format toFormat(Function<Number, String> formatFunc) {
+        return new Format() {
+            @Override
+            public StringBuffer format(Object obj, StringBuffer toAppendTo, FieldPosition pos) {
+                return toAppendTo.append(formatFunc.apply((Number) obj));
+            }
+
+            @Override
+            public Object parseObject(String source, ParsePosition pos) {
+                throw new UnsupportedOperationException();
+            }
+        };
+    }
+
     /**
      * Converts a number to a string in <a href="http://en.wikipedia.org/wiki/Metric_prefix">metric prefix</a> format.
      * For example, 7800000 will be formatted as '7.8M'. Numbers under 1000 will be unchanged. Refer to the tests for further examples.
