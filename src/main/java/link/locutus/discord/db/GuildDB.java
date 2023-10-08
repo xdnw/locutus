@@ -170,6 +170,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return grantTemplateManager;
     }
 
+    public long getLastModified() {
+        return getFile().lastModified();
+    }
+
     private void importLegacyRoles() {
 
         try {

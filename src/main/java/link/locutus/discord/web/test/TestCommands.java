@@ -20,7 +20,9 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.AllianceMetric;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Transaction2;
@@ -30,11 +32,19 @@ import link.locutus.discord.util.ImageUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
+import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -191,6 +201,25 @@ public class TestCommands {
         response.append("**" + FlowType.DEPOSIT + "**: worth `$" + MathMan.format(PnwUtil.convertedTotal(deposited)) + "`\n");
         response.append("```json\n" + ResourceType.toString(deposited) + "\n```\n");
         return response.toString();
+    }
+
+    @Command
+    public String testImage(@Me IMessageIO io, DBAlliance alliance) throws IOException {
+//        new EmbedBuilder().setImage()
+//        new MessageCreateBuilder().addEmbeds();
+//        channel.sendMessage()
+        List<AllianceMetric> metrics = new ArrayList<>(Arrays.asList(AllianceMetric.SOLDIER_PCT, AllianceMetric.TANK_PCT, AllianceMetric.AIRCRAFT_PCT, AllianceMetric.SHIP_PCT));
+        long endTurn = TimeUtil.getTurn();
+        long startTurn = endTurn - 120;
+        String coalitionName = alliance.getName();
+        Set<DBAlliance> coalition = Collections.singleton(alliance);
+        TimeNumericTable table = AllianceMetric.generateTable(metrics, startTurn, endTurn, coalitionName, coalition);
+        byte[] data = table.write(true);
+        StringBuilder body = new StringBuilder();
+        body.append("Hello World\n");
+        body.append("attachment://output.png");
+        io.create().image("output.png", data).embed("title", body.toString()).send();
+        return null;
     }
 
 //    public String test(NationPlaceholders placeholders, ValueStore store, String input, @Me DBNation me, @Me User user) {

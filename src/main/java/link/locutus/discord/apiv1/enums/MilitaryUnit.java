@@ -139,7 +139,7 @@ public enum MilitaryUnit {
         if (building != null) {
             cap = building.cap(hasProject) * building.perDay() * cities;
             if (hasProject.test(Projects.PROPAGANDA_BUREAU)) {
-                cap *= 1.1;
+                cap = (int) Math.round(cap * 1.1);
             }
         } else {
             cap = 0;

@@ -213,12 +213,11 @@ public class SlashCommandManager extends ListenerAdapter {
         response.append(indentStr).append("opt:").append(option.getName()).append("(desc:").append(option.getDescription().length()).append(")\n");
     }
 
-    public void setupCommands() {
+    public List<SlashCommandData>  generateCommandData() {
         new PrimitiveCompleter().register(commands.getStore());
         new DiscordCompleter().register(commands.getStore());
         new PWCompleter().register(commands.getStore());
         new GPTCompleter().register(commands.getStore());
-
 
         List<SlashCommandData> toRegister = new ArrayList<>();
         for (Map.Entry<String, CommandCallable> entry : commands.getCommands().getSubcommands().entrySet()) {
@@ -258,13 +257,16 @@ public class SlashCommandManager extends ListenerAdapter {
         System.out.println(builder);
 
 
-        Guild guild = root.getDiscordApi().getGuildById(Settings.INSTANCE.ROOT_SERVER); // testing
+        return toRegister;
+    }
+
+    public void registerCommandData(JDA jda) {
+        registerCommandData(jda, generateCommandData());
+    }
+
+    public void registerCommandData(JDA jda, List<SlashCommandData> toRegister) {
         if (!toRegister.isEmpty()) {
-
-            JDA api = Locutus.imp().getDiscordApi(guild.getIdLong());
-
-
-            List<net.dv8tion.jda.api.interactions.commands.Command> commands = RateLimitUtil.complete(api.updateCommands().addCommands(toRegister));
+            List<net.dv8tion.jda.api.interactions.commands.Command> commands = RateLimitUtil.complete(jda.updateCommands().addCommands(toRegister));
             for (net.dv8tion.jda.api.interactions.commands.Command command : commands) {
                 String path = command.getName();
                 commandIds.put(path, command.getIdLong());

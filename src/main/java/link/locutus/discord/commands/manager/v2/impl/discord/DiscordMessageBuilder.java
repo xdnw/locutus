@@ -15,6 +15,7 @@ import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
+import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
@@ -155,6 +156,13 @@ public class DiscordMessageBuilder implements IMessageBuilder {
         }
 
         if (!embeds.isEmpty()) {
+            if (embeds.size() == 1 && images.size() == 1) {
+                MessageEmbed embed = embeds.get(0);
+                EmbedBuilder builder = new EmbedBuilder(embed);
+                String name = "attachment://" + images.keySet().iterator().next();
+                builder.setImage(name);
+                embeds.set(0, builder.build());
+            }
             if (!remapLongCommands.isEmpty()) {
                 MessageEmbed embed = embeds.get(0);
                 EmbedBuilder builder = new EmbedBuilder(embed);
@@ -166,14 +174,22 @@ public class DiscordMessageBuilder implements IMessageBuilder {
 
                 builder.setThumbnail("https://example.com?" + query);
                 embeds.set(0, builder.build());
-//            embed.setImage("https://example.com?" + query);
             }
-
             discBuilder.setEmbeds(embeds);
         } else if (!remapLongCommands.isEmpty()) {
             throw new IllegalStateException("Cannot remap long commands without embeds: " + StringMan.getString(remapLongCommands));
         }
 
+        if (includeContent && (!files.isEmpty() || !images.isEmpty())) {
+            List<FileUpload> upload = new ArrayList<>();
+            for (Map.Entry<String, byte[]> entry : files.entrySet()) {
+                upload.add(FileUpload.fromData(entry.getValue(), entry.getKey()));
+            }
+            for (Map.Entry<String, byte[]> entry : images.entrySet()) {
+                upload.add(FileUpload.fromData(entry.getValue(), entry.getKey()));
+            }
+            discBuilder.setFiles(upload);
+        }
         if (includeContent && !content.isEmpty()) discBuilder.setContent(content.toString());
 
         return discBuilder.build();
