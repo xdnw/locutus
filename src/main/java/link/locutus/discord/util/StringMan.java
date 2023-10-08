@@ -490,11 +490,19 @@ public class StringMan {
         if (delim.length() > input.length() || limit <= 1) {
             return Collections.singletonList(input);
         }
-        return split(input, (str, fromIndex) -> str.indexOf(delim, fromIndex), limit);
+        return split(input, (str, fromIndex) -> str.startsWith(delim, fromIndex) ? delim.length() : null, limit);
+    }
+
+    public static void main(String[] args) {
+        String input = "!warcost Borg * 1";
+        int indexStart = input.indexOf(' ');
+        int indexEnd = input.indexOf(' ', indexStart + 1);
+        for (String s : StringMan.split(input, ' ')) {
+            System.out.println("S " + s);
+        }
     }
 
     public static List<String> split(String input, BiFunction<String, Integer, Integer> startsWith, int limit) {
-
         List<String> result = new ArrayList<>();
         int start = 0;
         int bracket = 0;
