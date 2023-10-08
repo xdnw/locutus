@@ -205,16 +205,17 @@ public class TestCommands {
     }
 
     @Command
-    public String testImage(@Me IMessageIO io, DBAlliance alliance) throws IOException {
+    public String testImage(@Me IMessageIO io, DBAlliance alliance1, DBAlliance alliance2) throws IOException {
 //        new EmbedBuilder().setImage()
 //        new MessageCreateBuilder().addEmbeds();
 //        channel.sendMessage()
-        List<AllianceMetric> metrics = new ArrayList<>(Arrays.asList(AllianceMetric.SOLDIER_PCT, AllianceMetric.TANK_PCT, AllianceMetric.AIRCRAFT_PCT, AllianceMetric.SHIP_PCT));
+        List<AllianceMetric> metrics = new ArrayList<>(Arrays.asList(AllianceMetric.MEMBERS));
         long endTurn = TimeUtil.getTurn();
         long startTurn = endTurn - 120;
-        String coalitionName = alliance.getName();
-        Set<DBAlliance> coalition = Collections.singleton(alliance);
-        TimeNumericTable table = AllianceMetric.generateTable(metrics, startTurn, endTurn, coalitionName, coalition);
+        String coalitionName = "Departures";
+        List<String> coalitions = Arrays.asList("col1", "col1");
+        List<Set<DBAlliance>> alliances = Arrays.asList(Collections.singleton(alliance1), Collections.singleton(alliance2));
+        TimeNumericTable table = AllianceMetric.generateTable(AllianceMetric.MEMBERS, startTurn, endTurn, coalitions, alliances.toArray(new Set[0]));
         byte[] data = table.write(TimeFormat.TURN_TO_DATE, AllianceMetric.getFormat(metrics));
         StringBuilder body = new StringBuilder();
         body.append("Hello World\n");

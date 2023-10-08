@@ -12,6 +12,8 @@ import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
+import link.locutus.discord.commands.rankings.table.TimeFormat;
+import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.commands.trade.subbank.BankAlerts;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -43,11 +45,16 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -722,6 +729,8 @@ public class NationUpdateProcessor {
         DBAlliance alliance = previous.getAlliance(false);
         if (alliance == null || alliance.getRank() > 120) return;
 
+        Set<DBAlliance> joinedAlliances = new LinkedHashSet<>(Arrays.asList(alliance));
+
         List<String> departureInfo = new ArrayList<>();
         int memberRemoves = 0;
 
@@ -747,14 +756,34 @@ public class NationUpdateProcessor {
             }
             departureInfo.add(line);
             memberRemoves++;
+
+            DBAlliance joinedAlliance = nation.getAlliance();
+            if (joinedAlliance != null && !joinedAlliance.equals(alliance)) {
+                joinedAlliances.add(joinedAlliance);
+            }
         }
 
         CM.alliance.departures cmd = CM.alliance.departures.cmd.create(alliance.getQualifiedId(), "7d", "*,#alliance_id!=" + alliance.getId(), "true", "true", null, null);
 
         if (memberRemoves >= 5) {
-            int aaRank = alliance.getRank();
+            Map<DBAlliance, Integer> ranks = Locutus.imp().getNationDB().getAllianceRanks(f -> f.getVm_turns() == 0 && f.getPositionEnum().id > Rank.MEMBER.id, true);
+            int aaRank = ranks.getOrDefault(alliance, -1);
             String title = memberRemoves + " departures from " + alliance.getName();
-
+            byte[] graphData = null;
+            {
+                joinedAlliances.removeIf(f -> f.getRank() > 80);
+                if (!joinedAlliances.isEmpty()) {
+                    long endTurn = TimeUtil.getTurn();
+                    long startTurn = endTurn - 120;
+                    List<String> coalitions = joinedAlliances.stream().map(DBAlliance::getName).collect(Collectors.toList());
+                    List<Set<DBAlliance>> alliances = joinedAlliances.stream().map(Collections::singleton).toList();
+                    TimeNumericTable table = AllianceMetric.generateTable(AllianceMetric.MEMBERS, startTurn, endTurn, coalitions, alliances.toArray(new Set[0]));
+                    try {
+                        graphData = table.write(TimeFormat.TURN_TO_DATE, AllianceMetric.MEMBERS.getFormat());
+                    } catch (IOException e) {
+                    }
+                }
+            }
 
             String body = PnwUtil.getMarkdownUrl(alliance.getId(), true) +
                     "(-" + MathMan.format(scoreDrop) + " score)";
@@ -770,12 +799,17 @@ public class NationUpdateProcessor {
             }
             body += "\n" + StringMan.join(departureInfo, "\n");
             String finalBody = body;
+            byte[] finalGraphData = graphData;
             AlertUtil.forEachChannel(f -> true, GuildKey.ORBIS_ALLIANCE_EXODUS_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
                 @Override
                 public void accept(MessageChannel channel, GuildDB guildDB) {
                     Integer topX = GuildKey.ALLIANCE_EXODUS_TOP_X.getOrNull(guildDB);
                     if (topX != null && topX < aaRank) return;
-                    new DiscordChannelIO(channel).create().embed(title, finalBody).commandButton(CommandBehavior.EPHEMERAL, cmd, "list departures").sendWhenFree();
+                    IMessageBuilder msg = new DiscordChannelIO(channel).create().embed(title, finalBody).commandButton(CommandBehavior.EPHEMERAL, cmd, "list departures");
+                    if (finalGraphData != null) {
+                        msg = msg.image("members.png", finalGraphData);
+                    }
+                    msg.sendWhenFree();
                 }
             });
         }

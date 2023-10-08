@@ -3660,6 +3660,17 @@ public class NationDB extends DBMainV2 {
         };
         return getNationsByAlliance(filter, sortByScore);
     }
+
+    public Map<DBAlliance, Integer> getAllianceRanks(Predicate<DBNation> filter, boolean sortByScore) {
+        Map<Integer, List<DBNation>> nations = getNationsByAlliance(filter, sortByScore);
+        Map<DBAlliance, Integer> ranks = new LinkedHashMap<>();
+        for (Map.Entry<Integer, List<DBNation>> entry : nations.entrySet()) {
+            DBAlliance alliance = DBAlliance.getOrCreate(entry.getKey());
+            ranks.put(alliance, ranks.size() + 1);
+        }
+        return ranks;
+    }
+
     public Map<Integer, List<DBNation>> getNationsByAlliance(Predicate<DBNation> filter, boolean sortByScore) {
         final Int2DoubleMap scoreMap = new Int2DoubleOpenHashMap();
         Int2ObjectOpenHashMap<List<DBNation>> nationsByAllianceFiltered = new Int2ObjectOpenHashMap<>();
