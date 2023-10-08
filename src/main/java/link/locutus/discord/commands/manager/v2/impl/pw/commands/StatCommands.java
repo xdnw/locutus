@@ -1529,7 +1529,7 @@ public class StatCommands {
                     "- damage inflicted (unit, infrastructure, consumption, total)\n" +
                     "- net resources (money, gasoline, munitions, aluminum, steel)")
     @RolePermission(Roles.MILCOM)
-    public String WarCostByAllianceSheet(@Me IMessageIO channel, @Me Guild guild,
+    public static String WarCostByAllianceSheet(@Me IMessageIO channel, @Me Guild guild,
                                          Set<DBNation> nations,
                                          @Timestamp long time,
                                          @Switch("i") boolean includeInactives,
