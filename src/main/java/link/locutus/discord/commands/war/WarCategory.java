@@ -693,7 +693,7 @@ public class WarCategory {
                 body.append(target.toMarkdown(true, true, false, false, true, false));
                 body.append("\n");
 
-                List<DBWar> wars = target.getActiveWars();
+                Set<DBWar> wars = target.getActiveWars();
                 for (DBWar war : wars) {
                     boolean defensive = war.getAttacker_id() == target.getNation_id();
                     DBNation participant = Locutus.imp().getNationDB().getNation(war.getAttacker_id() == target.getNation_id() ? war.getDefender_id() : war.getAttacker_id());
@@ -1184,25 +1184,25 @@ public class WarCategory {
 
         long start = System.currentTimeMillis();
         syncAlliances();
-        List<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(allianceIds, WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);
+        Set<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(allianceIds, WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);
         Map<Integer, List<DBWar>> byTarget = new RankBuilder<>(wars).group(war -> allianceIds.contains(war.getAttacker_aa()) ? war.getDefender_id() : war.getAttacker_id()).get();
 
         long createDiff = 0;
         long updateDiff = 0;
 
         for (Map.Entry<Integer, List<DBWar>> entry : byTarget.entrySet()) {
-            wars = entry.getValue();
+            List<DBWar> currentWars = entry.getValue();
             int targetId = entry.getKey();
             DBNation targetNation = Locutus.imp().getNationDB().getNation(targetId);
 
-            if (isActive(wars, targetNation)) {
+            if (isActive(currentWars, targetNation)) {
 
                 long createStart = System.currentTimeMillis();
                 WarRoom room = get(targetNation, true, force, force);
                 createDiff += (System.currentTimeMillis() - createStart);
 
                 long updateStart = System.currentTimeMillis();
-                room.addInitialParticipants(wars);
+                room.addInitialParticipants(currentWars);
                 updateDiff += (System.currentTimeMillis() - updateStart);
 
             } else {

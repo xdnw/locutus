@@ -1,5 +1,6 @@
 package link.locutus.discord.util.math;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
@@ -51,6 +52,7 @@ import java.util.function.Function;
 import java.util.function.IntBinaryOperator;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.function.ToIntFunction;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
@@ -1388,6 +1390,39 @@ public class ArrayUtil {
         }
     }
 
+    public static <T> int countElements(Class<T> clazz, Object object) {
+        if (object != null) {
+            if (object.getClass() == clazz) {
+                return 1;
+            } else {
+                ObjectOpenHashSet<T> elems = (ObjectOpenHashSet<T>) object;
+                return elems.size();
+            }
+        }
+        return 0;
+    }
+
+    public static <T> int countElements(Class<T> clazz, Object object, Predicate<T> filter) {
+        if (object != null) {
+            if (object.getClass() == clazz) {
+                if (filter.test((T) object)) {
+                    return 1;
+                }
+                return 0;
+            } else {
+                int count = 0;
+                ObjectOpenHashSet<T> elems = (ObjectOpenHashSet<T>) object;
+                for (T c : elems) {
+                    if (filter.test(c)) {
+                        count++;
+                    }
+                }
+                return count;
+            }
+        }
+        return 0;
+    }
+
     public static <T> void addElement(Class<T> clazz, Map<Integer, Object> map, int keyId, T elem) {
         Object existing = map.get(keyId);
         if (existing == null) {
@@ -1409,6 +1444,32 @@ public class ArrayUtil {
             set.add(elem);
             set.trim();
         }
+    }
+
+    public static <T> Set<T> toSet(Class<T> clazz, Object obj) {
+        if (obj == null) {
+            return Collections.emptySet();
+        }
+        if (obj.getClass() == clazz) {
+            return Collections.singleton((T) obj);
+        }
+        ObjectOpenHashSet<T> set = (ObjectOpenHashSet<T>) obj;
+        return new ObjectOpenHashSet<>(set);
+    }
+
+    public static <T> Map<Integer, T> toMap(Class<T> clazz, Object obj, ToIntFunction<T> getId) {
+        if (obj == null) {
+            return Collections.emptyMap();
+        }
+        if (obj.getClass() == clazz) {
+            return Collections.singletonMap(getId.applyAsInt((T) obj), (T) obj);
+        }
+        ObjectOpenHashSet<T> set = (ObjectOpenHashSet<T>) obj;
+        Int2ObjectArrayMap<T> map = new Int2ObjectArrayMap<>(set.size());
+        for (T elem : set) {
+            map.put(getId.applyAsInt(elem), elem);
+        }
+        return map;
     }
 
     public static <T> T removeElement(Class<T> clazz, Map<Integer, Object> map, int keyId, int id) {

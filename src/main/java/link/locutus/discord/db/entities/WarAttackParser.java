@@ -1,5 +1,7 @@
 package link.locutus.discord.db.entities;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.util.MathMan;
@@ -96,7 +98,7 @@ public class WarAttackParser {
                 HashSet<Integer> alliances = new HashSet<>();
                 alliances.addAll(aaIdss1);
                 alliances.addAll(aaIdss2);
-                List<DBWar> wars = Locutus.imp().getWarDb().getWars(alliances, start - TimeUnit.DAYS.toMillis(6), end);
+                Set<DBWar> wars = Locutus.imp().getWarDb().getWars(alliances, start - TimeUnit.DAYS.toMillis(6), end);
                 attacks = Locutus.imp().getWarDb().getAttacksByWars(wars, start, end);
                 Set<Integer> warIdsByAttacks = attacks.stream().map(a -> a.getWar_id()).collect(Collectors.toSet());
                 wars.removeIf(w -> w.getDate() > start && !warIdsByAttacks.contains(w.warId));
@@ -193,7 +195,7 @@ public class WarAttackParser {
                 warMap = new HashMap<>();
                 Set<Integer> warIds = new HashSet<>();
                 for (AbstractCursor attack : attacks) warIds.add(attack.getWar_id());
-                List<DBWar> wars = Locutus.imp().getWarDb().getWarsById(warIds);
+                Set<DBWar> wars = Locutus.imp().getWarDb().getWarsById(warIds);
                 for (DBWar war : wars) warMap.put(war.warId, war);
             }
             Map<Integer, DBWar> finalWarMap1 = warMap;
@@ -307,11 +309,11 @@ public class WarAttackParser {
         return map;
     }
 
-    public List<DBWar> getWars() {
-        Set<Integer> wars = new HashSet<>();
+    public Set<DBWar> getWars() {
+        Set<Integer> warIds = new IntOpenHashSet();
         for (AbstractCursor attack : attacks) {
-            wars.add(attack.getWar_id());
+            warIds.add(attack.getWar_id());
         }
-        return Locutus.imp().getWarDb().getWarsById(wars);
+        return Locutus.imp().getWarDb().getWarsById(warIds);
     }
 }

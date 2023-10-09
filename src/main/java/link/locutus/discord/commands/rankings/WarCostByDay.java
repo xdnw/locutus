@@ -120,7 +120,7 @@ public class WarCostByDay extends Command {
                 HashSet<Integer> alliances = new HashSet<>();
                 alliances.addAll(aaIdss1);
                 alliances.addAll(aaIdss2);
-                List<DBWar> wars = Locutus.imp().getWarDb().getWars(alliances, warCutoff);
+                Set<DBWar> wars = Locutus.imp().getWarDb().getWars(alliances, warCutoff);
                 Map<Integer, DBWar> warMap = new HashMap<>();
                 for (DBWar war : wars) warMap.put(war.warId, war);
                 attacks = Locutus.imp().getWarDb().getAttacksByWars(wars, cutoffMs);

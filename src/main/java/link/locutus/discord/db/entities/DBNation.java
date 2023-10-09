@@ -8,6 +8,7 @@ import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
@@ -677,7 +678,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Estimated combined strength of the enemies its fighting")
     public double getEnemyStrength() {
-        List<DBWar> wars = getActiveWars();
+        Set<DBWar> wars = getActiveWars();
         if (wars.isEmpty()) {
             return 0;
         }
@@ -868,7 +869,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Effective strength of the strongest nation this nation is attacking (offensive war)")
     public double getStrongestOffEnemyOfScore(double minScore, double maxScore) {
-        List<DBWar> wars = getActiveOffensiveWars();
+        Set<DBWar> wars = getActiveOffensiveWars();
         double strongest = -1;
         for (DBWar war : wars) {
             DBNation other = war.getNation(!war.isAttacker(this));
@@ -896,7 +897,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Get the effective military strength of the strongegst nation within the provided score range")
     public double getStrongestEnemyOfScore(double minScore, double maxScore) {
-        List<DBWar> wars = getActiveWars();
+        Set<DBWar> wars = getActiveWars();
         double strongest = -1;
         for (DBWar war : wars) {
             DBNation other = war.getNation(!war.isAttacker(this));
@@ -2881,7 +2882,7 @@ public class DBNation implements NationOrAlliance {
     @Command
     @RolePermission(Roles.MEMBER)
     public Map.Entry<Integer, Integer> getAllTimeOffDefWars() {
-        List<DBWar> wars = getWars();
+        Set<DBWar> wars = getWars();
         int off = (int) wars.stream().filter(f -> f.getAttacker_id() == nation_id).count();
         int def = (int) wars.stream().filter(f -> f.getDefender_id() == nation_id).count();
         return new AbstractMap.SimpleEntry<>(off, def);
@@ -4465,7 +4466,7 @@ public class DBNation implements NationOrAlliance {
 //        int[] beige = new int[days * 12 + 1];
         List<Map.Entry<Long, Integer>> beigeList = new ArrayList<>();
 
-        List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(nation_id);
+        Set<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(nation_id);
         for (DBWar war : wars) {
             ZonedDateTime warTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(war.getDate()), ZoneOffset.UTC);
             long warTurns = TimeUtil.getTurn(warTime);
@@ -4939,7 +4940,7 @@ public class DBNation implements NationOrAlliance {
         return new HashMap<>();
     }
 
-    public List<DBWar> getActiveWarsByStatus(WarStatus... statuses) {
+    public Set<DBWar> getActiveWarsByStatus(WarStatus... statuses) {
         return Locutus.imp().getWarDb().getWarsByNation(nation_id, statuses);
     }
 
@@ -4975,27 +4976,27 @@ public class DBNation implements NationOrAlliance {
         return false;
     }
 
-    public List<DBWar> getActiveWars() {
+    public Set<DBWar> getActiveWars() {
         return Locutus.imp().getWarDb().getActiveWars(nation_id);
     }
 
-    public List<DBWar> getActiveOffensiveWars() {
-        List<DBWar> myWars = getActiveWars();
-        if (myWars.isEmpty()) return Collections.emptyList();
-        List<DBWar> result = new ArrayList<>(myWars);
+    public Set<DBWar> getActiveOffensiveWars() {
+        Set<DBWar> myWars = getActiveWars();
+        if (myWars.isEmpty()) return Collections.emptySet();
+        Set<DBWar> result = new ObjectOpenHashSet<>(myWars);
         result.removeIf(f -> f.getAttacker_id() != nation_id);
         return result;
     }
 
-    public List<DBWar> getActiveDefensiveWars() {
-        List<DBWar> myWars = getActiveWars();
-        if (myWars.isEmpty()) return Collections.emptyList();
-        List<DBWar> result = new ArrayList<>(myWars);
+    public Set<DBWar> getActiveDefensiveWars() {
+        Set<DBWar> myWars = getActiveWars();
+        if (myWars.isEmpty()) return Collections.emptySet();
+        Set<DBWar> result = new ObjectOpenHashSet<>(myWars);
         result.removeIf(f -> f.getDefender_id() != nation_id);
         return result;
     }
 
-    public List<DBWar> getWars() {
+    public Set<DBWar> getWars() {
         return Locutus.imp().getWarDb().getWarsByNation(nation_id);
     }
 
@@ -5057,7 +5058,7 @@ public class DBNation implements NationOrAlliance {
 
     public String getWarInfoEmbed(boolean loot) {
         StringBuilder body = new StringBuilder();
-        List<DBWar> wars = this.getActiveWars();
+        Set<DBWar> wars = this.getActiveWars();
 
         for (DBWar war : wars) {
             body.append(getWarInfoEmbed(war, loot));

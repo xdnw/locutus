@@ -803,7 +803,7 @@ public class IACheckup {
     }
 
     private Map.Entry<Object, String> checkRaidTurnChange(DBNation me) {
-        List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id());
+        Set<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id());
         wars.removeIf(w -> w.getAttacker_id() != me.getNation_id());
 
         for (DBWar war : wars) {

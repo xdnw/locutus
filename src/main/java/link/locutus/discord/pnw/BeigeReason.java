@@ -133,7 +133,7 @@ public enum BeigeReason {
         }
 
         if (defender.getDef() > 0 && (attack == null ? !defender.isBeige() : defender.getBeigeTurns() <= 24) && war.getAttacker_id() == attacker.getNation_id()) {
-            List<DBWar> otherWars = defender.getWars();
+            Set<DBWar> otherWars = defender.getWars();
             int numSitting = 0;
             int numSitting4d = 0;
 

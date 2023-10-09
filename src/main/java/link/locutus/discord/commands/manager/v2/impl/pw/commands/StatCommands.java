@@ -89,7 +89,7 @@ public class StatCommands {
         }
 
         final List<AbstractCursor> attacks = new ArrayList<>();
-        Locutus.imp().getWarDb().getAttacks(wars, alllowedType, new Predicate<AbstractCursor>() {
+        Locutus.imp().getWarDb().getAttacks(wars.values(), alllowedType, new Predicate<AbstractCursor>() {
             @Override
             public boolean test(AbstractCursor attack) {
                 if (attack.getDate() > finalCutoff) {
@@ -365,7 +365,7 @@ public class StatCommands {
             msg.file(cost.getNumWars() + " wars", "- " + StringMan.join(cost.getWarIds(), "\n- "));
         }
         if (showWarTypes) {
-            List<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
+            Set<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
             Map<WarType, Integer> byType = new HashMap<>();
             for (DBWar war : wars) {
                 byType.put(war.getWarType(), byType.getOrDefault(war.getWarType(), 0) + 1);
@@ -377,7 +377,7 @@ public class StatCommands {
             msg.embed("War Types", response.toString());
         }
         if (listWarIds) {
-            List<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
+            Set<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
             Map<CoalitionWarStatus, Integer> byStatus = new HashMap<>();
             for (DBWar war : wars) {
                 CoalitionWarStatus status = switch (war.getStatus()) {

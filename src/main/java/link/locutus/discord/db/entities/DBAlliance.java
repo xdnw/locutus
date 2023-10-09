@@ -953,7 +953,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return Locutus.imp().getNationDB().getRemovesByAlliance(allianceId);
     }
 
-    public List<DBWar> getActiveWars() {
+    public Set<DBWar> getActiveWars() {
         return Locutus.imp().getWarDb().getActiveWars(Collections.singleton(allianceId), WarStatus.ACTIVE);
     }
 

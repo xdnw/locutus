@@ -1,6 +1,7 @@
 package link.locutus.discord.web.commands.page;
 
 import com.google.gson.Gson;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
@@ -344,7 +345,7 @@ public class IndexPages extends PageHelper {
 
         long start = System.currentTimeMillis();
         System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (0)");
-        List<DBWar> myWars = nation.getActiveWars();
+        List<DBWar> myWars = new ObjectArrayList<>(nation.getActiveWars());
 //        myWars = nation.getWars().subList(0, 5);
         System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (1)");
 

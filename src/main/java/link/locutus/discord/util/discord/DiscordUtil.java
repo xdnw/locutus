@@ -1297,7 +1297,7 @@ public class DiscordUtil {
 
             if (attIds != null || defIds != null) {
 
-                List<DBWar> wars = Locutus.imp().getWarDb().getActiveWarsByAlliance(defIds, attIds);
+                Set<DBWar> wars = Locutus.imp().getWarDb().getActiveWarsByAlliance(defIds, attIds);
                 wars.removeIf(w -> !w.isActive());
 
                 Set<Integer> nationIds = new LinkedHashSet<>();

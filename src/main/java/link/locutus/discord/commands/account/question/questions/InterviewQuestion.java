@@ -554,7 +554,7 @@ public enum InterviewQuestion implements Question {
             "- " + CM.alerts.beige.setBeigeAlertScoreLeeway.cmd.toSlashMention() + "", true) {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
-            List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id());
+            Set<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id());
             wars.removeIf(w -> w.getAttacker_id() != me.getNation_id());
 
             for (DBWar war : wars) {

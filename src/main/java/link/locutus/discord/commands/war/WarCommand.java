@@ -157,7 +157,7 @@ public class WarCommand extends Command {
                     nations.removeIf(f -> f.getCities() > finalMe.getCities());
                 }
 
-                List<DBWar> wars = me.getActiveWars();
+                Set<DBWar> wars = me.getActiveWars();
                 for (DBWar war : wars) {
                     nations.remove(war.getNation(true));
                     nations.remove(war.getNation(false));

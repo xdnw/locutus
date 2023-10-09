@@ -21,6 +21,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 public class InfraTemplate extends AGrantTemplate<Double>{
@@ -114,7 +115,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
             @Override
             public Boolean apply(DBNation receiver) {
 
-                List<DBWar> wars = receiver.getActiveWars();
+                Set<DBWar> wars = receiver.getActiveWars();
 
                 for(DBWar war : wars) {
 

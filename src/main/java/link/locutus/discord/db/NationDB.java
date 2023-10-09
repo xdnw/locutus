@@ -9,6 +9,7 @@ import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
@@ -4144,18 +4145,7 @@ public class NationDB extends DBMainV2 {
     public Map<Integer, DBCity> getCitiesV3(int nation_id) {
         synchronized (citiesByNation) {
             Object cities = citiesByNation.get(nation_id);
-            if (cities == null) {
-                return Collections.emptyMap();
-            }
-            if (cities instanceof DBCity city) {
-                return Collections.singletonMap(city.id, city);
-            }
-            ObjectOpenHashSet<DBCity> set = (ObjectOpenHashSet<DBCity>) cities;
-            Int2ObjectArrayMap<DBCity> map = new Int2ObjectArrayMap<>(set.size());
-            for (DBCity city : set) {
-                map.put(city.id, city);
-            }
-            return map;
+            return ArrayUtil.toMap(DBCity.class, cities, DBCity.GET_ID);
         }
     }
 

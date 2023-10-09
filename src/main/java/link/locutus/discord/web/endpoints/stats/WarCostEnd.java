@@ -44,7 +44,7 @@ public class WarCostEnd extends Endpoint {
             HashSet<Integer> alliances = new HashSet<>();
             alliances.addAll(aaIdss1);
             alliances.addAll(aaIdss2);
-            List<DBWar> wars = Locutus.imp().getWarDb().getWars(alliances, cutoffMs);
+            Set<DBWar> wars = Locutus.imp().getWarDb().getWars(alliances, cutoffMs);
             Map<Integer, DBWar> warMap = new HashMap<>();
             for (DBWar war : wars) warMap.put(war.warId, war);
             attacks = Locutus.imp().getWarDb().getAttacksByWars(wars, cutoffMs);

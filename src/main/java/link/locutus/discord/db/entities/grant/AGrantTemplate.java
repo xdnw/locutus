@@ -1,5 +1,6 @@
 package link.locutus.discord.db.entities.grant;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.DepositType;
@@ -515,7 +516,7 @@ public abstract class AGrantTemplate<T> {
     }
 
     public long getLatestAttackDate(DBNation receiver, int requireNOffensives) {
-        List<DBWar> wars = receiver.getWars();
+        List<DBWar> wars = new ObjectArrayList<>(receiver.getWars());
         wars.removeIf(f -> f.getAttacker_id() != receiver.getId());
         // sort wars date desc
         Collections.sort(wars, (o1, o2) -> Long.compare(o2.getDate(), o1.getDate()));

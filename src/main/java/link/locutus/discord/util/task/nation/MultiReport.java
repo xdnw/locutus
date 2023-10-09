@@ -430,7 +430,7 @@ public class MultiReport {
      * Maps a list of  wars to the opponent's nation id
      */
     private Map<Integer, List<DBWar>> getDefenders(int nationId) {
-        List<DBWar> myWars = Locutus.imp().getWarDb().getWarsByNation(nationId);
+        Set<DBWar> myWars = Locutus.imp().getWarDb().getWarsByNation(nationId);
         Map<Integer, List<DBWar>> defenders = new HashMap<>();
         for (DBWar war : myWars) {
             int otherId = war.getDefender_id() == nationId ? war.getAttacker_id() : war.getDefender_id();

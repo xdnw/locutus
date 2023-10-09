@@ -1,5 +1,6 @@
 package link.locutus.discord.web.commands.page;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.war.WarCategory;
@@ -57,7 +58,7 @@ public class WarPages {
         Set<Integer> aaIds = db.getAllianceIds();
         Set<Integer> enemies = db.getCoalition(Coalition.ENEMIES);
 
-        List<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(allies, WarStatus.ACTIVE, WarStatus.DEFENDER_OFFERED_PEACE, WarStatus.ATTACKER_OFFERED_PEACE);
+        List<DBWar> wars = new ObjectArrayList<>(Locutus.imp().getWarDb().getActiveWars(allies, WarStatus.ACTIVE, WarStatus.DEFENDER_OFFERED_PEACE, WarStatus.ATTACKER_OFFERED_PEACE));
         wars.removeIf(f -> {
             DBNation attacker = f.getNation(true);
             if (attacker == null || attacker.hasUnsetMil() || attacker.isBeige() || attacker.getDef() >= 3 || attacker.getVm_turns() > 0) return true;

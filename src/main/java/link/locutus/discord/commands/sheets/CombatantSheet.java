@@ -50,7 +50,7 @@ public class CombatantSheet extends Command {
         Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, args.get(0));
         if (alliances == null) return usage("Unknown alliance: `" + args.get(0) + "`", channel);
 
-        List<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(alliances, WarStatus.ACTIVE, WarStatus.DEFENDER_OFFERED_PEACE, WarStatus.ATTACKER_OFFERED_PEACE);
+        Set<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(alliances, WarStatus.ACTIVE, WarStatus.DEFENDER_OFFERED_PEACE, WarStatus.ATTACKER_OFFERED_PEACE);
         wars.removeIf(w -> {
             DBNation n1 = Locutus.imp().getNationDB().getNation(w.getAttacker_id());
             DBNation n2 = Locutus.imp().getNationDB().getNation(w.getDefender_id());

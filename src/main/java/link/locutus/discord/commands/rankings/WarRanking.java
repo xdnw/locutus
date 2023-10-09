@@ -71,12 +71,12 @@ public class WarRanking extends Command {
         boolean defensive = !flags.contains('o');
 
         long timeout = ZonedDateTime.now(ZoneOffset.UTC).toEpochSecond() * 1000L - TimeUnit.DAYS.toMillis(days);
-        Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWars();
-        wars.entrySet().removeIf(e -> e.getValue().getDate() < timeout);
+        Set<DBWar> wars = Locutus.imp().getWarDb().getWars();
+        wars.removeIf(e -> e.getDate() < timeout);
 
         boolean byAA = !flags.contains('a');
 
-        SummedMapRankBuilder<Integer, Double> ranksUnsorted = new RankBuilder<>(wars.values()).group((BiConsumer<DBWar, GroupedRankBuilder<Integer, DBWar>>) (dbWar, builder) -> {
+        SummedMapRankBuilder<Integer, Double> ranksUnsorted = new RankBuilder<>(wars).group((BiConsumer<DBWar, GroupedRankBuilder<Integer, DBWar>>) (dbWar, builder) -> {
             if (!allowedDefendersF.apply(dbWar.getDefender_aa()) || !allowedAttackersF.apply(dbWar.getAttacker_aa())) return;
             if (byAA) {
                 if (dbWar.getAttacker_aa() != 0 && offensive) builder.put(dbWar.getAttacker_aa(), dbWar);

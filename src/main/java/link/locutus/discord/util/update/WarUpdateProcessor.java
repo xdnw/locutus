@@ -609,10 +609,11 @@ public class WarUpdateProcessor {
                                 // enemy has less ground strength than enemies
 
                                 boolean enemyIsWeaker = true;
-                                List<DBWar> activeWars = defender.getActiveWars();
-                                for (DBWar otherWars : activeWars) {
-                                    DBNation other = war.getNation(!war.isAttacker(defender));
-                                    if (other == null || other.getActive_m() > 2440) continue;
+                                Set<DBWar> activeWars = defender.getActiveWars();
+                                for (DBWar otherWar : activeWars) {
+                                    if (otherWar == war) continue;
+                                    DBNation other = otherWar.getNation(!otherWar.isAttacker(defender));
+                                    if (other == null || other.getActive_m() > 2440 || other.getPositionEnum().id < Rank.MEMBER.id) continue;
                                     if (other.getGroundStrength(true, false) < defender.getGroundStrength(true, true) || other.getCities() > other.getCities() * 1.8) {
                                         enemyIsWeaker = false;
                                         break;
@@ -855,7 +856,7 @@ public class WarUpdateProcessor {
                     }
                 });
             } else if (defender.getOff() > 0 && stat.type != CounterType.UNCONTESTED) {
-                List<DBWar> wars = defender.getActiveWars();
+                Set<DBWar> wars = defender.getActiveWars();
                 Set<DBWar> escalatedWars = null;
                 for (DBWar war : wars) {
                     if (war.getAttacker_id() != defender.getNation_id()) continue;
@@ -915,10 +916,10 @@ public class WarUpdateProcessor {
     }
 
     public static void checkActiveConflicts() {
-        Map<Integer, DBWar> activeWars = Locutus.imp().getWarDb().getActiveWars();
+        Set<DBWar> activeWars = Locutus.imp().getWarDb().getActiveWars();
         Map<Integer, Set<DBWar>> defWarsByAA = new HashMap<>();
 
-        for (DBWar war : activeWars.values()) {
+        for (DBWar war : activeWars) {
             DBNation attacker = war.getNation(true);
             DBNation defender = war.getNation(false);
             if (attacker == null || attacker.getAlliance_id() == 0 || attacker.getVm_turns() > 0 || attacker.active_m() > 2880) continue;
@@ -958,7 +959,7 @@ public class WarUpdateProcessor {
             DBAlliance alliance = entry.getKey();
             Set<DBNation> nations = alliance.getNations(f -> !f.isGray() && f.getPositionEnum().id > Rank.APPLICANT.id && f.active_m() <= 2000 && f.getVm_turns() == 0);
 
-            List<DBWar> active = alliance.getActiveWars();
+            Set<DBWar> active = alliance.getActiveWars();
             Map<Integer, Integer> notableByAA = new HashMap<>();
             int max = 0;
 

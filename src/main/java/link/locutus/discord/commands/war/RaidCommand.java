@@ -279,7 +279,7 @@ public class RaidCommand extends Command {
 
         Map<Integer, Double> allianceScores = new HashMap<>();
 
-        List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id(), WarStatus.ACTIVE);
+        Set<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id(), WarStatus.ACTIVE);
         Map<Integer, List<DBWar>> attackingWars = new RankBuilder<>(wars).group(DBWar::getDefender_id).get();
 
         Map<Integer, List<DBBounty>> allBounties = Locutus.imp().getWarDb().getBountiesByNation();
@@ -461,7 +461,7 @@ public class RaidCommand extends Command {
 
                 costIncurred += minMilValue * activeChance;
 //
-                List<DBWar> enemyWars = Locutus.imp().getWarDb().getWarsByNation(enemy.getNation_id());
+                Set<DBWar> enemyWars = Locutus.imp().getWarDb().getWarsByNation(enemy.getNation_id());
                 if (!enemyWars.isEmpty()) {
                     DBWar lastWar = null;
                     for (DBWar war : enemyWars) {

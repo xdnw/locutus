@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 
 public class DBCity {
     public int id;
@@ -31,6 +32,8 @@ public class DBCity {
     public byte[] buildings3;
     public volatile long fetched;
     public long nuke_date;
+
+    public static final ToIntFunction<DBCity> GET_ID = c -> c.id;
 
     public DBCity() {
     }

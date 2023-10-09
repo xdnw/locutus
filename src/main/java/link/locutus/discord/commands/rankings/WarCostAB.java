@@ -87,7 +87,7 @@ public class WarCostAB extends Command {
             msg.file(cost.getNumWars() + " wars", "- " + StringMan.join(cost.getWarIds(), "\n- "));
         }
         if (flags.contains('t')) {
-            List<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
+            Set<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
             Map<WarType, Integer> byType = new HashMap<>();
             for (DBWar war : wars) {
                 byType.put(war.getWarType(), byType.getOrDefault(war.getWarType(), 0) + 1);
@@ -99,7 +99,7 @@ public class WarCostAB extends Command {
             msg.embed("War Types", response.toString());
         }
         if (flags.contains('s')) {
-            List<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
+            Set<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
             Map<CoalitionWarStatus, Integer> byStatus = new HashMap<>();
             for (DBWar war : wars) {
                 CoalitionWarStatus status = null;

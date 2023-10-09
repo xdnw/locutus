@@ -97,7 +97,7 @@ public class CounterSheet extends Command {
 
         Map<DBNation, List<DBWar>> enemies = new HashMap<>();
 
-        List<DBWar> defWars = Locutus.imp().getWarDb().getActiveWarsByAlliance(null, allies);
+        Set<DBWar> defWars = Locutus.imp().getWarDb().getActiveWarsByAlliance(null, allies);
         for (DBWar war : defWars) {
             if (!war.isActive()) continue;
             DBNation enemy = Locutus.imp().getNationDB().getNation(war.getAttacker_id());

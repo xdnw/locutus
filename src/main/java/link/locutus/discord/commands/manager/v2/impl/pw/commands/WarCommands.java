@@ -344,7 +344,7 @@ public class WarCommands {
         String explanation = db.getHandler().getBeigeCyclingInfo(Collections.singleton(BeigeReason.BEIGE_CYCLE), false);
         channel.send(explanation);
 
-        List<DBWar> wars = nation.getActiveWars();
+        Set<DBWar> wars = nation.getActiveWars();
         for (DBWar war : wars) {
             DBNation enemy = war.getNation(!war.isAttacker(nation));
 
@@ -1146,7 +1146,7 @@ public class WarCommands {
             targetsStorted.removeIf(f -> f.getCities() > finalMe.getCities());
         }
 
-        List<DBWar> wars = me.getActiveWars();
+        Set<DBWar> wars = me.getActiveWars();
         for (DBWar war : wars) {
             targetsStorted.remove(war.getNation(true));
             targetsStorted.remove(war.getNation(false));
@@ -2710,7 +2710,7 @@ public class WarCommands {
             case DEFENDER_OFFERED_PEACE, ACTIVE, ATTACKER_OFFERED_PEACE -> true;
             default ->  false;
 
-        }).values();
+        });
         wars.removeIf(w -> {
             DBNation n1 = Locutus.imp().getNationDB().getNation(w.getAttacker_id());
             DBNation n2 = Locutus.imp().getNationDB().getNation(w.getDefender_id());
@@ -3646,7 +3646,7 @@ public class WarCommands {
 
         Map<DBNation, List<DBWar>> enemies = new HashMap<>();
         Set<Integer> enemyAAs = db.getCoalition("enemies");
-        List<DBWar> defWars = Locutus.imp().getWarDb().getActiveWarsByAlliance(null, alliesIds);
+        Set<DBWar> defWars = Locutus.imp().getWarDb().getActiveWarsByAlliance(null, alliesIds);
         for (DBWar war : defWars) {
             if (!war.isActive()) continue;
             DBNation enemy = Locutus.imp().getNationDB().getNation(war.getAttacker_id());
@@ -3846,7 +3846,7 @@ public class WarCommands {
 
     @Command(desc="Show war info for a nation", aliases = {"wars", "warinfo"})
     public String wars(@Me IMessageIO channel, DBNation nation) {
-        List<DBWar> wars = nation.getActiveWars();
+        Set<DBWar> wars = nation.getActiveWars();
         String title = wars.size() + " wars";
         String body = nation.getWarInfoEmbed();
         channel.create().embed(title, body).send();
