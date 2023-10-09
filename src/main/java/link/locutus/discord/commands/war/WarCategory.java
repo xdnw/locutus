@@ -4,7 +4,6 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.SuccessType;
-import link.locutus.discord.commands.external.guild.WarRoom;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -145,29 +144,29 @@ public class WarCategory {
     public void update(DBWar from, DBWar to) {
         try {
             int targetId;
-            if (allianceIds.contains(to.attacker_aa)) {
-                targetId = to.defender_id;
-            } else if (allianceIds.contains(to.defender_aa)) {
-                targetId = to.attacker_id;
-            } else if (warRoomMap.containsKey(to.attacker_id)) {
-                targetId = to.attacker_id;
+            if (allianceIds.contains(to.getAttacker_aa())) {
+                targetId = to.getDefender_id();
+            } else if (allianceIds.contains(to.getDefender_aa())) {
+                targetId = to.getAttacker_id();
+            } else if (warRoomMap.containsKey(to.getAttacker_id())) {
+                targetId = to.getAttacker_id();
             } else {
                 return;
             }
 
 
-            int participantId = to.attacker_id == targetId ? to.defender_id : to.attacker_id;
+            int participantId = to.getAttacker_id() == targetId ? to.getDefender_id() : to.getAttacker_id();
             DBNation target = Locutus.imp().getNationDB().getNation(targetId);
             DBNation participant = Locutus.imp().getNationDB().getNation(participantId);
 
             boolean create = false;
-            if (isActive(target) && isActive(participant) && participant.getPosition() > 1 && (to.defender_id == participantId || target.getPosition() > 1)) {
+            if (isActive(target) && isActive(participant) && participant.getPosition() > 1 && (to.getDefender_id() == participantId || target.getPosition() > 1)) {
                 create = true;
             }
 
             WarRoom room = target == null ? warRoomMap.get(targetId) : get(target, create, create && from == null);
             if (room != null) {
-                if (to.attacker_id == target.getNation_id()) {
+                if (to.getAttacker_id() == target.getNation_id()) {
                     CounterStat counterStat = Locutus.imp().getWarDb().getCounterStat(to);
                     if (counterStat != null) {
                         switch (counterStat.type) {
@@ -182,7 +181,7 @@ public class WarCategory {
                         }
                     }
                 }
-                if ((from == null || to.status != from.status)) {
+                if ((from == null || to.getStatus() != from.getStatus())) {
                     room.updateParticipants(from, to, from == null);
                 }
             }
@@ -224,7 +223,7 @@ public class WarCategory {
     public boolean isActive(Collection<DBWar> wars, DBNation nation) {
         if (!isActive(nation)) return false;
         for (DBWar war : wars) {
-            int attackerId = war.attacker_id == nation.getNation_id() ? war.defender_id : war.attacker_id;
+            int attackerId = war.getAttacker_id() == nation.getNation_id() ? war.getDefender_id() : war.getAttacker_id();
             DBNation attacker = Locutus.imp().getNationDB().getNation(attackerId);
             if (attacker != null) {
                 if (isActive(attacker)) return true;
@@ -696,8 +695,8 @@ public class WarCategory {
 
                 List<DBWar> wars = target.getActiveWars();
                 for (DBWar war : wars) {
-                    boolean defensive = war.attacker_id == target.getNation_id();
-                    DBNation participant = Locutus.imp().getNationDB().getNation(war.attacker_id == target.getNation_id() ? war.defender_id : war.attacker_id);
+                    boolean defensive = war.getAttacker_id() == target.getNation_id();
+                    DBNation participant = Locutus.imp().getNationDB().getNation(war.getAttacker_id() == target.getNation_id() ? war.getDefender_id() : war.getAttacker_id());
 
                     if (participant != null && (participants.contains(participant) || participant.getActive_m() < 2880)) {
                         String typeStr = defensive ? "\uD83D\uDEE1 " : "\uD83D\uDD2A ";
@@ -1048,7 +1047,7 @@ public class WarCategory {
         }
 
         public void updateParticipants(DBWar from, DBWar to, boolean ping) {
-            int assignedId = to.attacker_id == target.getNation_id() ? to.defender_id : to.attacker_id;
+            int assignedId = to.getAttacker_id() == target.getNation_id() ? to.getDefender_id() : to.getAttacker_id();
             DBNation nation = Locutus.imp().getNationDB().getNation(assignedId);
             if (nation == null) return;
 
@@ -1064,7 +1063,7 @@ public class WarCategory {
                         RateLimitUtil.queue(channel.sendMessage(msg));
                     }
                 }
-            } else if (channel != null && (to.status == WarStatus.EXPIRED || to.status == WarStatus.ATTACKER_VICTORY || to.status == WarStatus.DEFENDER_VICTORY)) {
+            } else if (channel != null && (to.getStatus() == WarStatus.EXPIRED || to.getStatus() == WarStatus.ATTACKER_VICTORY || to.getStatus() == WarStatus.DEFENDER_VICTORY)) {
                 participants.remove(nation);
 
                 if (member != null) {
@@ -1186,7 +1185,7 @@ public class WarCategory {
         long start = System.currentTimeMillis();
         syncAlliances();
         List<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(allianceIds, WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);
-        Map<Integer, List<DBWar>> byTarget = new RankBuilder<>(wars).group(war -> allianceIds.contains(war.attacker_aa) ? war.defender_id : war.attacker_id).get();
+        Map<Integer, List<DBWar>> byTarget = new RankBuilder<>(wars).group(war -> allianceIds.contains(war.getAttacker_aa()) ? war.getDefender_id() : war.getAttacker_id()).get();
 
         long createDiff = 0;
         long updateDiff = 0;

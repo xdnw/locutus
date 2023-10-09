@@ -23,10 +23,10 @@ public class WarAttackParser {
     private final Function<AbstractCursor, Boolean> isPrimary, isSecondary;
 
     public WarAttackParser(DBWar war, boolean attacker) {
-        nameA = PnwUtil.getName(war.attacker_id, false);
-        nameB = PnwUtil.getName(war.defender_id, false);
-        Function<AbstractCursor, Boolean> isPrimary = a -> a.getAttacker_id() == war.attacker_id;
-        Function<AbstractCursor, Boolean> isSecondary = b -> b.getAttacker_id() == war.defender_id;
+        nameA = PnwUtil.getName(war.getAttacker_id(), false);
+        nameB = PnwUtil.getName(war.getDefender_id(), false);
+        Function<AbstractCursor, Boolean> isPrimary = a -> a.getAttacker_id() == war.getAttacker_id();
+        Function<AbstractCursor, Boolean> isSecondary = b -> b.getAttacker_id() == war.getDefender_id();
         this.isPrimary = attacker ? isPrimary : isSecondary;
         this.isSecondary = attacker ? isSecondary : isPrimary;
         attacks = war.getAttacks2();
@@ -55,11 +55,11 @@ public class WarAttackParser {
 
                 attacks = Locutus.imp().getWarDb().getAttacksByWarId2(warUrl, true);
 
-                nameA = PnwUtil.getName(warUrl.attacker_id, false);
-                nameB = PnwUtil.getName(warUrl.defender_id, false);
+                nameA = PnwUtil.getName(warUrl.getAttacker_id(), false);
+                nameB = PnwUtil.getName(warUrl.getDefender_id(), false);
                 DBWar finalWarUrl = warUrl;
-                isPrimary = a -> a.getAttacker_id() == finalWarUrl.attacker_id;
-                isSecondary = b -> b.getAttacker_id() == finalWarUrl.defender_id;
+                isPrimary = a -> a.getAttacker_id() == finalWarUrl.getAttacker_id();
+                isSecondary = b -> b.getAttacker_id() == finalWarUrl.getDefender_id();
             }
         } else if (args.size() == 2) {
             args = new ArrayList<>(args);
@@ -99,21 +99,21 @@ public class WarAttackParser {
                 List<DBWar> wars = Locutus.imp().getWarDb().getWars(alliances, start - TimeUnit.DAYS.toMillis(6), end);
                 attacks = Locutus.imp().getWarDb().getAttacksByWars(wars, start, end);
                 Set<Integer> warIdsByAttacks = attacks.stream().map(a -> a.getWar_id()).collect(Collectors.toSet());
-                wars.removeIf(w -> w.date > start && !warIdsByAttacks.contains(w.warId));
+                wars.removeIf(w -> w.getDate() > start && !warIdsByAttacks.contains(w.warId));
 
                 warMap = new HashMap<>();
                 for (DBWar war : wars) warMap.put(war.warId, war);
                 Map<Integer, DBWar> finalWarMap = warMap;
                 isPrimary = a -> {
                     DBWar war = finalWarMap.get(a.getWar_id());
-                    int aa1 = war.attacker_id == a.getAttacker_id() ? war.attacker_aa : war.defender_aa;
-                    int aa2 = war.attacker_id == a.getAttacker_id() ? war.defender_aa : war.attacker_aa;
+                    int aa1 = war.getAttacker_id() == a.getAttacker_id() ? war.getAttacker_aa() : war.getDefender_aa();
+                    int aa2 = war.getAttacker_id() == a.getAttacker_id() ? war.getDefender_aa() : war.getAttacker_aa();
                     return aaIdss1.contains(aa1) && aaIdss2.contains(aa2);
                 };
                 isSecondary = a -> {
                     DBWar war = finalWarMap.get(a.getWar_id());
-                    int aa1 = war.attacker_id == a.getAttacker_id() ? war.attacker_aa : war.defender_aa;
-                    int aa2 = war.attacker_id == a.getAttacker_id() ? war.defender_aa : war.attacker_aa;
+                    int aa1 = war.getAttacker_id() == a.getAttacker_id() ? war.getAttacker_aa() : war.getDefender_aa();
+                    int aa2 = war.getAttacker_id() == a.getAttacker_id() ? war.getDefender_aa() : war.getAttacker_aa();
                     return aaIdss2.contains(aa1) && aaIdss1.contains(aa2);
                 };
                 nameA = args.get(0);
@@ -203,7 +203,7 @@ public class WarAttackParser {
                 public boolean test(AbstractCursor attack) {
                     DBWar war = finalWarMap1.get(attack.getWar_id());
                     if (war == null) return true;
-                    boolean flip = war.attacker_id != attack.getAttacker_id();
+                    boolean flip = war.getAttacker_id() != attack.getAttacker_id();
                     return filter.apply(attack) == flip;
                 }
             });
@@ -286,13 +286,13 @@ public class WarAttackParser {
             DBWar war = wars.get(attack.getWar_id());
             {
                 String other = isPrimary.apply(attack) ? nameB : nameA;
-                AttackCost cost = warCostByAA.computeIfAbsent(war.attacker_aa, f -> new AttackCost(PnwUtil.getName(war.attacker_aa, true), other, buildings, ids, victories, inclWars, inclAttacks));
+                AttackCost cost = warCostByAA.computeIfAbsent(war.getAttacker_aa(), f -> new AttackCost(PnwUtil.getName(war.getAttacker_aa(), true), other, buildings, ids, victories, inclWars, inclAttacks));
                 cost.addCost(attack, true);
             }
 
             {
                 String other = isPrimary.apply(attack) ? nameA : nameB;
-                AttackCost cost = warCostByAA.computeIfAbsent(war.defender_aa, f -> new AttackCost(PnwUtil.getName(war.defender_aa, true), other, buildings, ids, victories, inclWars, inclAttacks));
+                AttackCost cost = warCostByAA.computeIfAbsent(war.getDefender_aa(), f -> new AttackCost(PnwUtil.getName(war.getDefender_aa(), true), other, buildings, ids, victories, inclWars, inclAttacks));
                 cost.addCost(attack, false);
             }
         }

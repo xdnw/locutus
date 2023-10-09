@@ -348,7 +348,7 @@ public class IndexPages extends PageHelper {
 //        myWars = nation.getWars().subList(0, 5);
         System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (1)");
 
-        Collections.sort(myWars, Comparator.comparingLong(o -> o.date));
+        Collections.sort(myWars, Comparator.comparingLong(o -> o.getDate()));
         Collections.reverse(myWars);
         System.out.println(((-start) + (start = System.currentTimeMillis())) + "ms (2)");
         List<AbstractCursor> attacks = myWars.isEmpty() ? Collections.emptyList() : Locutus.imp().getWarDb().getAttacksByWars(myWars);

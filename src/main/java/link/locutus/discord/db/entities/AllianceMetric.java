@@ -360,7 +360,7 @@ public enum AllianceMetric {
             double total = 0;
             for (DBNation nation : alliance.getMemberDBNations()) {
                 for (DBCity city : nation._getCitiesV3().values()) {
-                    total += nation.infraCost(0, city.infra);
+                    total += nation.infraCost(0, city.getInfra());
                 }
             }
             return total;
@@ -373,7 +373,7 @@ public enum AllianceMetric {
             double total = 0;
             for (DBNation nation : alliance.getMemberDBNations()) {
                 for (DBCity city : nation._getCitiesV3().values()) {
-                    total += nation.landCost(0, city.land);
+                    total += nation.landCost(0, city.getLand());
                 }
             }
             return total;

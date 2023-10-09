@@ -206,7 +206,7 @@ public class UnsortedCommands {
         // ensure nation is fighting target
         boolean isFighting = false;
         for (DBWar war : target.getActiveWars()) {
-            if (war.attacker_id == nation.getId() || war.defender_id == nation.getId()) {
+            if (war.getAttacker_id() == nation.getId() || war.getDefender_id() == nation.getId()) {
                 isFighting = true;
                 break;
             }

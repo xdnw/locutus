@@ -52,7 +52,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -180,7 +179,7 @@ public class NationUpdateProcessor {
 
                     boolean hasActiveWar = false;
                     for (DBWar war : nation.getActiveWars()) {
-                        if (war.attacker_id == attacker.getNation_id() || war.defender_id == attacker.getNation_id()) {
+                        if (war.getAttacker_id() == attacker.getNation_id() || war.getDefender_id() == attacker.getNation_id()) {
                             hasActiveWar = true;
                             break;
                         }

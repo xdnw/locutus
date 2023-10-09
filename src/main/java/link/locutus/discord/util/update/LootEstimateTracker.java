@@ -549,12 +549,12 @@ public class LootEstimateTracker {
 
     @Subscribe
     public void onInfraBuy(CityInfraBuyEvent event) {
-        handleInfraBuySell(event.getNation(), event.getPrevious().infra, event.getCurrent().infra, event.getTimeCreated());
+        handleInfraBuySell(event.getNation(), event.getPrevious().getInfra(), event.getCurrent().getInfra(), event.getTimeCreated());
     }
 
     @Subscribe
     public void onInfraSell(CityInfraSellEvent event) {
-        handleInfraBuySell(event.getNation(), event.getPrevious().infra, event.getCurrent().infra, event.getTimeCreated());
+        handleInfraBuySell(event.getNation(), event.getPrevious().getInfra(), event.getCurrent().getInfra(), event.getTimeCreated());
     }
 
     @Subscribe
@@ -567,12 +567,12 @@ public class LootEstimateTracker {
 
     @Subscribe
     public void onLandBuy(CityLandBuyEvent event) {
-        handleInfraBuySell(event.getNation(), event.getPrevious().land, event.getCurrent().land, event.getTimeCreated());
+        handleInfraBuySell(event.getNation(), event.getPrevious().getLand(), event.getCurrent().getLand(), event.getTimeCreated());
     }
 
     @Subscribe
     public void onLandSell(CityLandSellEvent event) {
-        handleInfraBuySell(event.getNation(), event.getPrevious().land, event.getCurrent().land, event.getTimeCreated());
+        handleInfraBuySell(event.getNation(), event.getPrevious().getLand(), event.getCurrent().getLand(), event.getTimeCreated());
     }
 
     @Subscribe

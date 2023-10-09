@@ -186,7 +186,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         // get max infra
         double maxInfra = 0;
         for (Map.Entry<Integer, DBCity> entry : receiver._getCitiesV3().entrySet()) {
-            maxInfra = Math.max(maxInfra, entry.getValue().infra);
+            maxInfra = Math.max(maxInfra, entry.getValue().getInfra());
         }
         // ensure build matches infra level
         {

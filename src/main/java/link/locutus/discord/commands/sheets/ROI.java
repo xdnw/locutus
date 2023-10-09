@@ -5,7 +5,6 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBCity;
@@ -18,10 +17,8 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
-import link.locutus.discord.apiv1.domains.City;
 import link.locutus.discord.apiv1.enums.DomesticPolicy;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
@@ -31,9 +28,7 @@ import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -293,7 +288,7 @@ public class ROI extends Command {
                 header.add("" + nation.getOff());
                 header.add("" + nation.getDef());
 
-                List<DBWar> wars = new ArrayList<>(Locutus.imp().getWarDb().getWarsForNationOrAlliance(f -> f == nation.getNation_id(), null, f -> f.defender_id == nation.getNation_id()).values());
+                List<DBWar> wars = new ArrayList<>(Locutus.imp().getWarDb().getWarsForNationOrAlliance(f -> f == nation.getNation_id(), null, f -> f.getDefender_id() == nation.getNation_id()).values());
                 long lastWar = 0;
                 if (!wars.isEmpty()) {
                     wars.sort((o1, o2) -> Integer.compare(o2.warId, o1.warId));

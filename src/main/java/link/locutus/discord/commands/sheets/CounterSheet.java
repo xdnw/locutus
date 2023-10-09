@@ -100,7 +100,7 @@ public class CounterSheet extends Command {
         List<DBWar> defWars = Locutus.imp().getWarDb().getActiveWarsByAlliance(null, allies);
         for (DBWar war : defWars) {
             if (!war.isActive()) continue;
-            DBNation enemy = Locutus.imp().getNationDB().getNation(war.attacker_id);
+            DBNation enemy = Locutus.imp().getNationDB().getNation(war.getAttacker_id());
             if (enemy == null) continue;
 
             if (!enemyAAs.contains(enemy.getAlliance_id())) {
@@ -108,7 +108,7 @@ public class CounterSheet extends Command {
                 if (stat.type == CounterType.IS_COUNTER || stat.type == CounterType.ESCALATION) continue;
             }
 
-            DBNation defender = Locutus.imp().getNationDB().getNation(war.defender_id);
+            DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
             if (defender == null) continue;
             if (flags.contains('a') && defender.getPosition() <= 1) continue;
             if (flags.contains('i') && defender.getActive_m() > 4880) continue;
@@ -205,7 +205,7 @@ public class CounterSheet extends Command {
             Rank rank = null;
 
             for (DBWar war : wars) {
-                DBNation defender = Locutus.imp().getNationDB().getNation(war.defender_id);
+                DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
                 if (defender == null) {
                     continue;
                 }
@@ -216,11 +216,11 @@ public class CounterSheet extends Command {
 
                 active_m = Math.min(active_m, defender.getActive_m());
 
-                if (aaIds.contains(Integer.valueOf(war.defender_aa))) {
+                if (aaIds.contains(Integer.valueOf(war.getDefender_aa()))) {
                     action = Math.min(action, 0);
-                } else if (protectorates.contains(war.defender_aa)) {
+                } else if (protectorates.contains(war.getDefender_aa())) {
                     action = Math.min(action, 1);
-                } else if (allies.contains(war.defender_aa)) {
+                } else if (allies.contains(war.getDefender_aa())) {
                     action = Math.min(action, 2);
                 } else {
                     continue;
@@ -272,7 +272,7 @@ public class CounterSheet extends Command {
             for (int i = 0; i < wars.size(); i++) {
                 DBWar war = wars.get(i);
                 String url = war.toUrl();
-                DBNation defender = Locutus.imp().getNationDB().getNation(war.defender_id);
+                DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
                 String warStr = defender.getNation() + "|" + defender.getAllianceName();
                 row.add(MarkupUtil.sheetUrl(warStr, url));
             }

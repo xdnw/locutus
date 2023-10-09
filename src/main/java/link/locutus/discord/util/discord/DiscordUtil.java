@@ -1302,8 +1302,8 @@ public class DiscordUtil {
 
                 Set<Integer> nationIds = new LinkedHashSet<>();
                 for (DBWar war : wars) {
-                    if (attIds != null) nationIds.add(war.attacker_id);
-                    if (defIds != null) nationIds.add(war.defender_id);
+                    if (attIds != null) nationIds.add(war.getAttacker_id());
+                    if (defIds != null) nationIds.add(war.getDefender_id());
                 }
 
                 nations.removeIf(f -> !nationIds.contains(f.getNation_id()));

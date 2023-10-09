@@ -111,7 +111,7 @@ public class CounterGenerator {
 
                 if (!inWarRoom.isEmpty()) {
                     for (DBWar war : att.getActiveWars()) {
-                        inWarRoom.remove(war.defender_id);
+                        inWarRoom.remove(war.getDefender_id());
                     }
 
                     if (!inWarRoom.isEmpty()) {

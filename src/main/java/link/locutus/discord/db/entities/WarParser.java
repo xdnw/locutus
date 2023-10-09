@@ -105,12 +105,12 @@ public class WarParser {
         if (coal1Alliances.isEmpty() && coal1Nations.isEmpty()) {
             this.isPrimary = w -> !getIsSecondary().apply(w);
         } else {
-            this.isPrimary = w -> this.coal1Alliances.contains(w.attacker_aa) || this.coal1Nations.contains(w.attacker_id);
+            this.isPrimary = w -> this.coal1Alliances.contains(w.getAttacker_aa()) || this.coal1Nations.contains(w.getAttacker_id());
         }
         if (coal2Alliances.isEmpty() && coal2Nations.isEmpty()) {
             this.isSecondary = w -> !getIsPrimary().apply(w);
         } else {
-            this.isSecondary = w -> this.coal2Alliances.contains(w.attacker_aa) || this.coal2Nations.contains(w.attacker_id);
+            this.isSecondary = w -> this.coal2Alliances.contains(w.getAttacker_aa()) || this.coal2Nations.contains(w.getAttacker_id());
         }
         this.start = start;
         this.end = end;
@@ -130,12 +130,12 @@ public class WarParser {
     }
 
     public WarParser allowedWarTypes(Set<WarType> allowedWarTypes) {
-        if (allowedWarTypes != null) getWars().entrySet().removeIf(f -> !allowedWarTypes.contains(f.getValue().warType));
+        if (allowedWarTypes != null) getWars().entrySet().removeIf(f -> !allowedWarTypes.contains(f.getValue().getWarType()));
         return this;
     }
 
     public WarParser allowWarStatuses(Set<WarStatus> statuses) {
-        if (statuses != null) getWars().entrySet().removeIf(f -> !statuses.contains(f.getValue().status));
+        if (statuses != null) getWars().entrySet().removeIf(f -> !statuses.contains(f.getValue().getStatus()));
         return this;
     }
 
@@ -172,7 +172,7 @@ public class WarParser {
             DBWar war = getWars().get(attack.getWar_id());
             if (war == null) return false;
             boolean isWarPrimary = isPrimary.apply(war);
-            return (isWarPrimary ? war.attacker_id : war.defender_id) == attack.getAttacker_id();
+            return (isWarPrimary ? war.getAttacker_id() : war.getDefender_id()) == attack.getAttacker_id();
         };
     }
 
@@ -181,7 +181,7 @@ public class WarParser {
             DBWar war = getWars().get(attack.getWar_id());
             if (war == null) return false;
             boolean isWarSecondary = isSecondary.apply(war);
-            return (isWarSecondary ? war.attacker_id : war.defender_id) == attack.getDefender_id();
+            return (isWarSecondary ? war.getAttacker_id() : war.getDefender_id()) == attack.getDefender_id();
         };
     }
 
@@ -265,13 +265,13 @@ public class WarParser {
             DBWar war = getWars().get(attack.getWar_id());
             {
                 String other = attPrimary.apply(attack) ? nameB : nameA;
-                AttackCost cost = warCostByAA.computeIfAbsent(war.attacker_aa, f -> new AttackCost(PnwUtil.getName(war.attacker_aa, true), other, buildings, ids, victories, wars, attacks));
+                AttackCost cost = warCostByAA.computeIfAbsent(war.getAttacker_aa(), f -> new AttackCost(PnwUtil.getName(war.getAttacker_aa(), true), other, buildings, ids, victories, wars, attacks));
                 cost.addCost(attack, true);
             }
 
             {
                 String other = attSecondary.apply(attack) ? nameA : nameB;
-                AttackCost cost = warCostByAA.computeIfAbsent(war.defender_aa, f -> new AttackCost(PnwUtil.getName(war.defender_aa, true), other, buildings, ids, victories, wars, attacks));
+                AttackCost cost = warCostByAA.computeIfAbsent(war.getDefender_aa(), f -> new AttackCost(PnwUtil.getName(war.getDefender_aa(), true), other, buildings, ids, victories, wars, attacks));
                 cost.addCost(attack, false);
             }
         }
@@ -306,13 +306,13 @@ public class WarParser {
             DBWar war = getWars().get(attack.getWar_id());
             {
                 String other = attPrimary.apply(attack) ? nameB : nameA;
-                AttackTypeBreakdown cost = warCostByAA.computeIfAbsent(war.attacker_aa, f -> new AttackTypeBreakdown(PnwUtil.getName(war.attacker_aa, true), other));
+                AttackTypeBreakdown cost = warCostByAA.computeIfAbsent(war.getAttacker_aa(), f -> new AttackTypeBreakdown(PnwUtil.getName(war.getAttacker_aa(), true), other));
                 cost.addAttack(attack, true);
             }
 
             {
                 String other = attSecondary.apply(attack) ? nameA : nameB;
-                AttackTypeBreakdown cost = warCostByAA.computeIfAbsent(war.defender_aa, f -> new AttackTypeBreakdown(PnwUtil.getName(war.defender_aa, true), other));
+                AttackTypeBreakdown cost = warCostByAA.computeIfAbsent(war.getDefender_aa(), f -> new AttackTypeBreakdown(PnwUtil.getName(war.getDefender_aa(), true), other));
                 cost.addAttack(attack, false);
             }
         }

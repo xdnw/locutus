@@ -72,18 +72,18 @@ public class WarRanking extends Command {
 
         long timeout = ZonedDateTime.now(ZoneOffset.UTC).toEpochSecond() * 1000L - TimeUnit.DAYS.toMillis(days);
         Map<Integer, DBWar> wars = Locutus.imp().getWarDb().getWars();
-        wars.entrySet().removeIf(e -> e.getValue().date < timeout);
+        wars.entrySet().removeIf(e -> e.getValue().getDate() < timeout);
 
         boolean byAA = !flags.contains('a');
 
         SummedMapRankBuilder<Integer, Double> ranksUnsorted = new RankBuilder<>(wars.values()).group((BiConsumer<DBWar, GroupedRankBuilder<Integer, DBWar>>) (dbWar, builder) -> {
-            if (!allowedDefendersF.apply(dbWar.defender_aa) || !allowedAttackersF.apply(dbWar.attacker_aa)) return;
+            if (!allowedDefendersF.apply(dbWar.getDefender_aa()) || !allowedAttackersF.apply(dbWar.getAttacker_aa())) return;
             if (byAA) {
-                if (dbWar.attacker_aa != 0 && offensive) builder.put(dbWar.attacker_aa, dbWar);
-                if (dbWar.defender_aa != 0 && defensive) builder.put(dbWar.defender_aa, dbWar);
+                if (dbWar.getAttacker_aa() != 0 && offensive) builder.put(dbWar.getAttacker_aa(), dbWar);
+                if (dbWar.getDefender_aa() != 0 && defensive) builder.put(dbWar.getDefender_aa(), dbWar);
             } else {
-                if (offensive) builder.put(dbWar.attacker_id, dbWar);
-                if (defensive) builder.put(dbWar.defender_id, dbWar);
+                if (offensive) builder.put(dbWar.getAttacker_id(), dbWar);
+                if (defensive) builder.put(dbWar.getDefender_id(), dbWar);
             }
         }).sumValues(f -> 1d);
         if (flags.contains('n') && byAA) {

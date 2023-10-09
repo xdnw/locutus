@@ -2,25 +2,19 @@ package link.locutus.discord.db.handlers;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.SuccessType;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.nation.NationBlockadedEvent;
 import link.locutus.discord.event.nation.NationUnblockadedEvent;
-import link.locutus.discord.util.MathMan;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public class ActiveWarHandler {
     private final Map<Integer, DBWar[]> activeWars = new Int2ObjectOpenHashMap<>();
@@ -48,8 +42,8 @@ public class ActiveWarHandler {
         return activeWars.isEmpty();
     }
     public void makeWarInactive(DBWar war) {
-        makeWarInactive(war.attacker_id, war.warId);
-        makeWarInactive(war.defender_id, war.warId);
+        makeWarInactive(war.getAttacker_id(), war.warId);
+        makeWarInactive(war.getDefender_id(), war.warId);
     }
 
     public DBWar getWar(int nationId, int warId) {
@@ -78,8 +72,8 @@ public class ActiveWarHandler {
         }
     }
     public void addActiveWar(DBWar war) {
-        addActiveWar(war.attacker_id, war);
-        addActiveWar(war.defender_id, war);
+        addActiveWar(war.getAttacker_id(), war);
+        addActiveWar(war.getDefender_id(), war);
     }
 
     public Map<Integer, DBWar> getActiveWarsById() {
@@ -146,7 +140,7 @@ public class ActiveWarHandler {
 
             Set<Integer> result = new IntOpenHashSet(Math.min(map.size(), wars.size()));
             for (DBWar war : wars) {
-                int otherId = war.isAttacker(nationId) ? war.defender_id : war.attacker_id;
+                int otherId = war.isAttacker(nationId) ? war.getDefender_id() : war.getAttacker_id();
                 if (map.containsKey(otherId)) {
                     result.add(otherId);
                 }
@@ -165,7 +159,7 @@ public class ActiveWarHandler {
 
             Set<Integer> result = new IntOpenHashSet(Math.min(map.size(), wars.size()));
             for (DBWar war : wars) {
-                int otherId = war.isAttacker(nationId) ? war.defender_id : war.attacker_id;
+                int otherId = war.isAttacker(nationId) ? war.getDefender_id() : war.getAttacker_id();
                 if (map.containsKey(otherId)) {
                     result.add(otherId);
                 }
@@ -180,8 +174,8 @@ public class ActiveWarHandler {
             // remove from blockaderMap
             synchronized (blockadeLock) {
                 long now = System.currentTimeMillis();
-                removeBlockade(previous.attacker_id, previous.defender_id, Long.MAX_VALUE, eventConsumer);
-                removeBlockade(previous.defender_id, previous.attacker_id, Long.MAX_VALUE, eventConsumer);
+                removeBlockade(previous.getAttacker_id(), previous.getDefender_id(), Long.MAX_VALUE, eventConsumer);
+                removeBlockade(previous.getDefender_id(), previous.getAttacker_id(), Long.MAX_VALUE, eventConsumer);
             }
         }
     }

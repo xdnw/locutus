@@ -9,12 +9,10 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.io.BitBuffer;
 import link.locutus.discord.util.math.ArrayUtil;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -66,20 +64,20 @@ public abstract class AbstractCursor implements IAttack2 {
         war_id = input.readInt();
         boolean isAttackerGreater = input.readBit();
         if (isAttackerGreater) {
-            if (war.attacker_id > war.defender_id) {
-                attacker_id = war.attacker_id;
-                defender_id = war.defender_id;
+            if (war.getAttacker_id() > war.getDefender_id()) {
+                attacker_id = war.getAttacker_id();
+                defender_id = war.getDefender_id();
             } else {
-                attacker_id = war.defender_id;
-                defender_id = war.attacker_id;
+                attacker_id = war.getDefender_id();
+                defender_id = war.getAttacker_id();
             }
         } else {
-            if (war.attacker_id > war.defender_id) {
-                attacker_id = war.defender_id;
-                defender_id = war.attacker_id;
+            if (war.getAttacker_id() > war.getDefender_id()) {
+                attacker_id = war.getDefender_id();
+                defender_id = war.getAttacker_id();
             } else {
-                attacker_id = war.attacker_id;
-                defender_id = war.defender_id;
+                attacker_id = war.getAttacker_id();
+                defender_id = war.getDefender_id();
             }
         }
     }

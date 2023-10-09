@@ -5,10 +5,12 @@ import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.bindings.ResolvedFunction;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
+import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -43,6 +45,7 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.DoubleBinaryOperator;
 import java.util.function.Function;
 import java.util.function.IntBinaryOperator;
@@ -1354,5 +1357,79 @@ public class ArrayUtil {
             return cached;
         });
         return result;
+    }
+
+
+    public static <T> T getElement(Class<T> clazz, Object arrayOrInst, int id) {
+        if (arrayOrInst != null) {
+            if (arrayOrInst.getClass() == clazz) {
+                if (arrayOrInst.equals(id)) {
+                    return (T) arrayOrInst;
+                }
+                return null;
+            }
+            // ObjectOpenHashSet
+            ObjectOpenHashSet<T> set = (ObjectOpenHashSet<T>) arrayOrInst;
+            return set.get((Integer) id);
+        }
+        return null;
+    }
+
+    public static <T> void iterateElements(Class<T> clazz, Object object, Consumer<T> city) {
+        if (object != null) {
+            if (object.getClass() == clazz) {
+                city.accept((T) object);
+            } else {
+                ObjectOpenHashSet<T> elems = (ObjectOpenHashSet<T>) object;
+                for (T c : elems) {
+                    city.accept(c);
+                }
+            }
+        }
+    }
+
+    public static <T> void addElement(Class<T> clazz, Map<Integer, Object> map, int keyId, T elem) {
+        Object existing = map.get(keyId);
+        if (existing == null) {
+            map.put(keyId, elem);
+            return;
+        }
+        if (existing.getClass() == clazz) {
+            if (existing.equals(elem)) {
+                map.put(keyId, elem);
+                return;
+            }
+            ObjectOpenHashSet<T> set = new ObjectOpenHashSet<>(2);
+            set.add((T) existing);
+            set.add(elem);
+            set.trim();
+            map.put(keyId, set);
+        } else {
+            ObjectOpenHashSet<T> set = (ObjectOpenHashSet<T>) existing;
+            set.add(elem);
+            set.trim();
+        }
+    }
+
+    public static <T> T removeElement(Class<T> clazz, Map<Integer, Object> map, int keyId, int id) {
+        Object existing = map.get(keyId);
+        if (existing == null) return null;
+        if (existing.getClass() == clazz) {
+            if (existing.equals(id)) {
+                map.remove(keyId);
+                return (T) existing;
+            }
+        } else {
+            ObjectOpenHashSet<T> set = (ObjectOpenHashSet<T>) existing;
+            T elem = set.get(id);
+            if (elem != null) {
+                set.remove(elem);
+                if (set.isEmpty()) {
+                    map.remove(keyId);
+                }
+                return elem;
+            }
+        }
+        return null;
     }
 }

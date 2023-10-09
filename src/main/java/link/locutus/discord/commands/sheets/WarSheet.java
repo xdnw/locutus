@@ -3,9 +3,7 @@ package link.locutus.discord.commands.sheets;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
-import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CounterStat;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.WarParser;
@@ -20,7 +18,6 @@ import link.locutus.discord.util.task.war.WarCard;
 import link.locutus.discord.apiv1.enums.WarType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -131,9 +128,9 @@ public class WarSheet extends Command {
             headers.set(1, war.getWarType().name());
             CounterStat counterStat = card.getCounterStat();
             headers.set(2, counterStat == null ? "" : counterStat.type.name());
-            headers.set(3, card.groundControl == war.attacker_id ? "Y" : "N");
-            headers.set(4, card.airSuperiority == war.attacker_id ? "Y" : "N");
-            headers.set(5, card.blockaded == war.attacker_id ? "Y" : "N");
+            headers.set(3, card.groundControl == war.getAttacker_id() ? "Y" : "N");
+            headers.set(4, card.airSuperiority == war.getAttacker_id() ? "Y" : "N");
+            headers.set(5, card.blockaded == war.getAttacker_id() ? "Y" : "N");
             headers.set(6, att.getShips());
             headers.set(7, att.getAircraft());
             headers.set(8, att.getTanks());
@@ -144,7 +141,7 @@ public class WarSheet extends Command {
             headers.set(13, MarkupUtil.sheetUrl(att.getNation(), att.getNationUrl()));
             headers.set(14, MarkupUtil.sheetUrl(att.getAllianceName(), att.getAllianceUrl()));
 
-            long turnStart = TimeUtil.getTurn(war.date);
+            long turnStart = TimeUtil.getTurn(war.getDate());
             long turns = 60 - (TimeUtil.getTurn() - turnStart);
             headers.set(15, turns);
 
@@ -157,9 +154,9 @@ public class WarSheet extends Command {
             headers.set(22, def.getTanks());
             headers.set(23, def.getAircraft());
             headers.set(24, def.getShips());
-            headers.set(25, card.groundControl == war.defender_id ? "Y" : "N");
-            headers.set(26, card.airSuperiority == war.defender_id ? "Y" : "N");
-            headers.set(27, card.blockaded == war.defender_id ? "Y" : "N");
+            headers.set(25, card.groundControl == war.getDefender_id() ? "Y" : "N");
+            headers.set(26, card.airSuperiority == war.getDefender_id() ? "Y" : "N");
+            headers.set(27, card.blockaded == war.getDefender_id() ? "Y" : "N");
 
             sheet.addRow(headers);
         }

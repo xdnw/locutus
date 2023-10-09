@@ -19,8 +19,6 @@ import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -71,8 +69,8 @@ public class WarCard {
     }
 
     public WarNation toWarNation(boolean attacker, Function<Integer, DBNation> provideNation) {
-        int nationId = attacker ? war.attacker_id : war.defender_id;
-        int otherId = attacker ? war.defender_id : war.attacker_id;
+        int nationId = attacker ? war.getAttacker_id() : war.getDefender_id();
+        int otherId = attacker ? war.getDefender_id() : war.getAttacker_id();
         DBNation nation = provideNation.apply(nationId);
         DBNation other = provideNation.apply(otherId);
 
@@ -96,7 +94,7 @@ public class WarCard {
         wn.setFortified(attacker ? attackerFortified : defenderFortified);
         wn.setResistance(attacker ? attackerResistance : defenderResistance);
         wn.setActionPoints(attacker ? attackerMAP : defenderMAP);
-        switch (war.warType) {
+        switch (war.getWarType()) {
             case RAID:
                 if (attacker) {
                     wn.setInfraFactor(0.25);
@@ -136,12 +134,12 @@ public class WarCard {
 
     public String condensedSubInfo(boolean attacker) {
         StringBuilder attStr = new StringBuilder();
-        int nation_id = attacker ? this.war.attacker_id : this.war.defender_id;
+        int nation_id = attacker ? this.war.getAttacker_id() : this.war.getDefender_id();
         if (blockaded == nation_id) attStr.append("\u26F5");
         if (airSuperiority == nation_id) attStr.append("\u2708");
         if (groundControl == nation_id) attStr.append("\uD83D\uDC82");
         if (!attacker ? defenderFortified : attackerFortified) attStr.append("\uD83C\uDFF0");
-        if (war.status == (!attacker ? WarStatus.DEFENDER_OFFERED_PEACE : WarStatus.ATTACKER_OFFERED_PEACE)) {
+        if (war.getStatus() == (!attacker ? WarStatus.DEFENDER_OFFERED_PEACE : WarStatus.ATTACKER_OFFERED_PEACE)) {
             attStr.append("\u2764");
         }
         attStr.append((attacker ? attackerMAP : defenderMAP) + "/12,");
@@ -218,7 +216,7 @@ public class WarCard {
 //    }
 
     public int turnsLeft() {
-        long turnStart = TimeUtil.getTurn(war.date);
+        long turnStart = TimeUtil.getTurn(war.getDate());
         long turnNow = TimeUtil.getTurn();
         return (int) Math.max(0, (60 - (turnNow - turnStart)));
     }
@@ -236,10 +234,10 @@ public class WarCard {
 
     public String getTitle() {
         String title = String.format("%s > %s- %s- %s",
-                PnwUtil.getName(war.attacker_id, false),
-                PnwUtil.getName(war.defender_id, false),
-                war.warType,
-                war.status
+                PnwUtil.getName(war.getAttacker_id(), false),
+                PnwUtil.getName(war.getDefender_id(), false),
+                war.getWarType(),
+                war.getStatus()
         );
         return title;
     }
@@ -274,7 +272,7 @@ public class WarCard {
         description.append(formatNation(true));
         description.append(formatNation(false));
 
-        long turnStart = TimeUtil.getTurn(war.date);
+        long turnStart = TimeUtil.getTurn(war.getDate());
         long turnNow = TimeUtil.getTurn();
         description.append(60 - (turnNow - turnStart) + "/60 Turns left");
 
@@ -309,10 +307,10 @@ public class WarCard {
         boolean isActive = war.isActive();
 //
         for (AbstractCursor attack : attacks) {
-            if (attack.getAttacker_id() == war.attacker_id) attackerFortified = false; else defenderFortified = false;
+            if (attack.getAttacker_id() == war.getAttacker_id()) attackerFortified = false; else defenderFortified = false;
             switch (attack.getAttack_type()) {
                 case FORTIFY:
-                    if (attack.getAttacker_id() == war.attacker_id) attackerFortified = true;
+                    if (attack.getAttacker_id() == war.getAttacker_id()) attackerFortified = true;
                     else defenderFortified = true;
                     break;
                 case GROUND:
@@ -373,7 +371,7 @@ public class WarCard {
                     airSuperiority = 0;
             }
             if (checkBlockade && blockadeDate != Long.MAX_VALUE) {
-                int blockader = blockaded == war.attacker_id ? war.defender_id : war.attacker_id;
+                int blockader = blockaded == war.getAttacker_id() ? war.getDefender_id() : war.getAttacker_id();
                 attacks = Locutus.imp().getWarDb().getAttacks(blockader, blockadeDate);
                 attacks.removeIf(a -> a.getDefender_id() != blockader || a.getSuccess() != SuccessType.IMMENSE_TRIUMPH);
                 if (!attacks.isEmpty() ||
@@ -485,8 +483,8 @@ public class WarCard {
         String blockadeSym = "\u26F5";
         String peaceSym = "\uD83D\uDD4A";
 
-        int nationId = attacker ? war.attacker_id : war.defender_id;
-        int otherId = attacker ? war.defender_id : war.attacker_id;
+        int nationId = attacker ? war.getAttacker_id() : war.getDefender_id();
+        int otherId = attacker ? war.getDefender_id() : war.getAttacker_id();
 
         String control = "";
         if (blockaded == nationId) {
@@ -501,7 +499,7 @@ public class WarCard {
         if (attacker ? attackerFortified : defenderFortified) {
             control += fortSym;
         }
-        if (war.status == (attacker ? WarStatus.ATTACKER_OFFERED_PEACE : WarStatus.DEFENDER_OFFERED_PEACE)) {
+        if (war.getStatus() == (attacker ? WarStatus.ATTACKER_OFFERED_PEACE : WarStatus.DEFENDER_OFFERED_PEACE)) {
             control += peaceSym;
         }
 
@@ -509,7 +507,7 @@ public class WarCard {
         String resBar = StringMan.repeat(getSquare(resistance), (resistance + 9) / 10);
         resBar = resBar + ("(" + resistance + "/100)");
 
-        int allianceId = attacker ? war.attacker_aa : war.defender_aa;
+        int allianceId = attacker ? war.getAttacker_aa() : war.getDefender_aa();
         String alliance = PnwUtil.getName(allianceId, true);
 
         DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
@@ -545,11 +543,11 @@ public class WarCard {
     }
 
     public boolean isActive() {
-        if (war.status != WarStatus.ACTIVE && war.status != WarStatus.DEFENDER_OFFERED_PEACE && war.status != WarStatus.ATTACKER_OFFERED_PEACE) {
+        if (war.getStatus() != WarStatus.ACTIVE && war.getStatus() != WarStatus.DEFENDER_OFFERED_PEACE && war.getStatus() != WarStatus.ATTACKER_OFFERED_PEACE) {
             return false;
         }
         if (attackerResistance > 0 && defenderResistance > 0) {
-            long turnStart = TimeUtil.getTurn(war.date);
+            long turnStart = TimeUtil.getTurn(war.getDate());
             long turnNow = TimeUtil.getTurn();
             return turnNow - turnStart < 60;
         }

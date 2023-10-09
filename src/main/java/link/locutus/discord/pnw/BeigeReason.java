@@ -132,14 +132,14 @@ public enum BeigeReason {
             }
         }
 
-        if (defender.getDef() > 0 && (attack == null ? !defender.isBeige() : defender.getBeigeTurns() <= 24) && war.attacker_id == attacker.getNation_id()) {
+        if (defender.getDef() > 0 && (attack == null ? !defender.isBeige() : defender.getBeigeTurns() <= 24) && war.getAttacker_id() == attacker.getNation_id()) {
             List<DBWar> otherWars = defender.getWars();
             int numSitting = 0;
             int numSitting4d = 0;
 
             for (DBWar other : otherWars) {
-                if (other.attacker_id == attacker.getNation_id()) continue;
-                if (other.attacker_id == defender.getNation_id()) continue;
+                if (other.getAttacker_id() == attacker.getNation_id()) continue;
+                if (other.getAttacker_id() == defender.getNation_id()) continue;
                 DBNation otherAttacker = other.getNation(true);
                 if (otherAttacker == null) continue;
                 if (otherAttacker.getGroundStrength(true, false) * 0.8 <= defender.getGroundStrength(true, true))
@@ -151,7 +151,7 @@ public enum BeigeReason {
                 if (defRes <= 12) continue;
                 if (attRes <= 25) continue;
 
-                long timeLeft = other.date + TimeUnit.DAYS.toMillis(5) - System.currentTimeMillis();
+                long timeLeft = other.getDate() + TimeUnit.DAYS.toMillis(5) - System.currentTimeMillis();
                 if (timeLeft >= TimeUnit.DAYS.toMillis(4)) {
                     numSitting4d++;
                 }

@@ -156,7 +156,7 @@
             </div>
         </div>
 <!--        <hr>-->
-        @if (permitted != null && isAttacker && (db.isEnemyAlliance(war.defender_aa))) {
+        @if (permitted != null && isAttacker && (db.isEnemyAlliance(war.getDefender_aa()))) {
         <div class="alert @if (permitted.isEmpty()) {
                 alert-danger
             } else {

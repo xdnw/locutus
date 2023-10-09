@@ -59,13 +59,13 @@ public class AttackQuery {
 
     public AttackQuery afterDate(long start) {
         long warCutoff = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(start) - 60);
-        wars.entrySet().removeIf(e -> e.getValue().date < warCutoff);
+        wars.entrySet().removeIf(e -> e.getValue().getDate() < warCutoff);
         appendPreliminaryFilter(f -> f.getDate() >= start);
         return this;
     }
 
     public AttackQuery beforeDate(long end) {
-        wars.entrySet().removeIf(e -> e.getValue().date > end);
+        wars.entrySet().removeIf(e -> e.getValue().getDate() > end);
         appendPreliminaryFilter(f -> f.getDate() <= end);
         return this;
 
@@ -73,7 +73,7 @@ public class AttackQuery {
 
     public AttackQuery between(long start, long end) {
         long warCutoff = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(start) - 60);
-        wars.entrySet().removeIf(e -> e.getValue().date < warCutoff || e.getValue().date > end);
+        wars.entrySet().removeIf(e -> e.getValue().getDate() < warCutoff || e.getValue().getDate() > end);
         appendPreliminaryFilter(f -> f.getDate() >= start && f.getDate() <= end);
         return this;
     }

@@ -5,7 +5,6 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.rankings.builder.GroupedRankBuilder;
 import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.db.GuildDB;
@@ -16,16 +15,13 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -167,7 +163,7 @@ public class WarCostSheet extends Command {
                     Function<AbstractCursor, Boolean> isSecondary = a -> a.getAttacker_id() != nationId;
 
                     AttackCost cost;
-                    if (war.attacker_id == nationId) {
+                    if (war.getAttacker_id() == nationId) {
                         if (selfAttack) {
                             if (enemyAttack) {
                                 cost = attActiveCost;

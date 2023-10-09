@@ -8,8 +8,6 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.task.war.WarCard;
-import link.locutus.discord.apiv1.domains.War;
-import link.locutus.discord.apiv1.domains.subdomains.WarContainer;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
@@ -23,7 +21,6 @@ import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -233,8 +230,8 @@ public class SimulatedWarNode {
     }
 
     public SimulatedWarNode(DBWar war) {
-        int aggId = war.attacker_id;
-        int defId = war.defender_id;
+        int aggId = war.getAttacker_id();
+        int defId = war.getDefender_id();
 
         aggressor = new WarNation(Locutus.imp().getNationDB().getNation(aggId));
         defender = new WarNation(Locutus.imp().getNationDB().getNation(defId));
@@ -257,21 +254,21 @@ public class SimulatedWarNode {
         int airSuperiority = war.getAirControl();
         int blockade = war.getBlockader();
 
-        if (groundControl == war.attacker_id) {
+        if (groundControl == war.getAttacker_id()) {
             aggressor.setGroundControl(true);
-        } else if (groundControl == war.defender_id) {
+        } else if (groundControl == war.getDefender_id()) {
             defender.setGroundControl(true);
         }
 
-        if (airSuperiority==(war.attacker_id)) {
+        if (airSuperiority==(war.getAttacker_id())) {
             aggressor.setAirControl(true);
-        } else if (airSuperiority==(war.defender_id)) {
+        } else if (airSuperiority==(war.getDefender_id())) {
             defender.setAirControl(true);
         }
 
-        if (blockade==(war.attacker_id)) {
+        if (blockade==(war.getAttacker_id())) {
             aggressor.setBlockade(true);
-        } else if (blockade==(war.defender_id)) {
+        } else if (blockade==(war.getDefender_id())) {
             defender.setBlockade(true);
         }
 

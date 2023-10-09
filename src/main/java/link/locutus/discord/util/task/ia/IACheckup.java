@@ -781,8 +781,8 @@ public class IACheckup {
         if (nation.getDef() > 0) return null;
         List<DBWar> maxMapWars = new ArrayList<>();
         for (DBWar war : nation.getActiveWars()) {
-            if (war.attacker_id != nation.getNation_id()) continue;
-            if (war.status != WarStatus.ACTIVE) continue;
+            if (war.getAttacker_id() != nation.getNation_id()) continue;
+            if (war.getStatus() != WarStatus.ACTIVE) continue;
             DBNation defender = DBNation.getById(war.getDefender_id());
             if (defender == null || defender.getActive_m() < 2880) continue;
             Map.Entry<Integer, Integer> map = war.getMap(war.getAttacks2(false));
@@ -804,10 +804,10 @@ public class IACheckup {
 
     private Map.Entry<Object, String> checkRaidTurnChange(DBNation me) {
         List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id());
-        wars.removeIf(w -> w.attacker_id != me.getNation_id());
+        wars.removeIf(w -> w.getAttacker_id() != me.getNation_id());
 
         for (DBWar war : wars) {
-            long date = war.date;
+            long date = war.getDate();
             if (TimeUtil.getTurn(date) != TimeUtil.getTurn(date - 120000)) {
                 return null;
             }

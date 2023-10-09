@@ -555,10 +555,10 @@ public enum InterviewQuestion implements Question {
         @Override
         public boolean validate(Guild guild, User author, DBNation me, DBNation sudoer, IMessageIO channel, String input) throws IOException {
             List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id());
-            wars.removeIf(w -> w.attacker_id != me.getNation_id());
+            wars.removeIf(w -> w.getAttacker_id() != me.getNation_id());
 
             for (DBWar war : wars) {
-                long date = war.date;
+                long date = war.getDate();
                 if (TimeUtil.getTurn(date) != TimeUtil.getTurn(date - 120000)) {
                     return true;
                 }

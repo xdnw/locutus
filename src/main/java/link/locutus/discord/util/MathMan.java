@@ -488,6 +488,38 @@ public class MathMan {
         return (short) (hash & 0xFFFF);
     }
 
+    public static void main(String[] args) {
+        char[][] testCases = {
+                {'A', 'B'}, {'a', 'b'}, {'0', '9'}, {'$', '*'},
+                {(char) 0, (char) 0}, {(char) -1, (char) -1},
+                {(char) 1, (char) 1}, {(char) (Character.MAX_VALUE - 1), (char) (Character.MAX_VALUE)}
+        };
+
+        for (char[] testCase : testCases) {
+            int combinedInt = pairChars(testCase[0], testCase[1]);
+            char[] unpairedChars = new char[] { getXFromInt(combinedInt), getYFromInt(combinedInt) };
+
+            System.out.println("Original: '" + testCase[0] + "' + '" + testCase[1] + "'");
+            System.out.println("Combined Int: " + combinedInt);
+            System.out.println("Unpaired Chars: '" + unpairedChars[0] + "' + '" + unpairedChars[1] + "'");
+            System.out.println();
+        }
+    }
+
+    public static int pairChars(char firstChar, char secondChar) {
+        // Combine the two chars into an int
+        return ((int) firstChar << 16) | (int) secondChar;
+    }
+
+    public static char getXFromInt(int combinedInt) {
+        return (char) (combinedInt >> 16);
+    }
+
+    public static char getYFromInt(int combinedInt) {
+        return (char) combinedInt;
+    }
+
+
     public static short pairByte(int x, int y) {
         return (short) ((x << 8) | (y & 0xFF));
     }

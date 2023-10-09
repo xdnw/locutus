@@ -49,7 +49,6 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
-import java.util.stream.Collectors;
 
 public class AllianceListener {
 
@@ -337,7 +336,7 @@ public class AllianceListener {
 
             Map<Integer, Integer> wars = new HashMap<>();
             for (DBWar activeWar : member.getActiveWars()) {
-                int otherAA = activeWar.attacker_id == member.getNation_id() ? activeWar.defender_aa : activeWar.attacker_aa;
+                int otherAA = activeWar.getAttacker_id() == member.getNation_id() ? activeWar.getDefender_aa() : activeWar.getAttacker_aa();
                 if (otherAA == 0) continue;
                 wars.put(otherAA, wars.getOrDefault(otherAA, 0) + 1);
             }

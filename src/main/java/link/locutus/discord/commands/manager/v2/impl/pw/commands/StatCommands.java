@@ -235,17 +235,17 @@ public class StatCommands {
                     DBWar war = wars.get(attack.getWar_id());
                     if (groupByAlliance) {
                         if (!onlyRankCoalition1 || parser.getIsPrimary().apply(war)) {
-                            map.put(war.attacker_aa, attack);
+                            map.put(war.getAttacker_aa(), attack);
                         }
                         if (!onlyRankCoalition1 || !parser.getIsPrimary().apply(war)) {
-                            map.put(war.defender_aa, attack);
+                            map.put(war.getDefender_aa(), attack);
                         }
                     } else {
                         if (!onlyRankCoalition1 || parser.getIsPrimary().apply(war)) {
-                            map.put(war.attacker_id, attack);
+                            map.put(war.getAttacker_id(), attack);
                         }
                         if (!onlyRankCoalition1 || !parser.getIsPrimary().apply(war)) {
-                            map.put(war.defender_id, attack);
+                            map.put(war.getDefender_id(), attack);
                         }
                     }
                 });
@@ -380,7 +380,7 @@ public class StatCommands {
             List<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
             Map<CoalitionWarStatus, Integer> byStatus = new HashMap<>();
             for (DBWar war : wars) {
-                CoalitionWarStatus status = switch (war.status) {
+                CoalitionWarStatus status = switch (war.getStatus()) {
                     case ATTACKER_OFFERED_PEACE, DEFENDER_OFFERED_PEACE, ACTIVE -> CoalitionWarStatus.ACTIVE;
                     case PEACE -> CoalitionWarStatus.PEACE;
                     case EXPIRED -> CoalitionWarStatus.EXPIRED;
@@ -543,7 +543,7 @@ public class StatCommands {
             switch (stat.type) {
                 case ESCALATION, IS_COUNTER -> countered[stat.isActive ? 1 : 0]++;
                 case UNCONTESTED -> {
-                    if (war.status == WarStatus.ATTACKER_VICTORY) {
+                    if (war.getStatus() == WarStatus.ATTACKER_VICTORY) {
                         uncontested[stat.isActive ? 1 : 0]++;
                     } else {
                         counter[stat.isActive ? 1 : 0]++;
@@ -1027,8 +1027,8 @@ public class StatCommands {
 
     public void warStatusRankingBy(boolean isAA, @Me GuildDB db, @Me IMessageIO channel, @Me JSONObject command, Set<DBNation> attackers, Set<DBNation> defenders, @Timestamp long time) {
         BiFunction<Boolean, DBWar, Integer> getId;
-        if (isAA) getId = (primary, war) -> primary ? war.attacker_aa : war.defender_aa;
-        else getId = (primary, war) -> primary ? war.attacker_id : war.defender_id;
+        if (isAA) getId = (primary, war) -> primary ? war.getAttacker_aa() : war.getDefender_aa();
+        else getId = (primary, war) -> primary ? war.getAttacker_id() : war.getDefender_id();
 
         WarParser parser = WarParser.ofAANatobj(null, attackers, null, defenders, time, Long.MAX_VALUE);
 
@@ -1039,12 +1039,12 @@ public class StatCommands {
             DBWar war = entry.getValue();
             boolean primary = parser.getIsPrimary().apply(war);
 
-            if (war.status == WarStatus.DEFENDER_VICTORY) primary = !primary;
+            if (war.getStatus() == WarStatus.DEFENDER_VICTORY) primary = !primary;
             int id = getId.apply(primary, war);
 
-            if (war.status == WarStatus.ATTACKER_VICTORY || war.status == WarStatus.DEFENDER_VICTORY) {
+            if (war.getStatus() == WarStatus.ATTACKER_VICTORY || war.getStatus() == WarStatus.DEFENDER_VICTORY) {
                 victoryByEntity.put(id, victoryByEntity.getOrDefault(id, 0) + 1);
-            } else if (war.status == WarStatus.EXPIRED) {
+            } else if (war.getStatus() == WarStatus.EXPIRED) {
                 expireByEntity.put(id, expireByEntity.getOrDefault(id, 0) + 1);
             }
         }
@@ -1424,7 +1424,7 @@ public class StatCommands {
         Set<Integer> warIdsAttAttacks = new IntOpenHashSet();
         Set<Integer> warIdsDefAttacks = new IntOpenHashSet();
 
-        Map<Integer, AttackCost> costByNation = AttackCost.groupBy(ArrayUtil.select(allWars.values(), f -> f.date >= time),
+        Map<Integer, AttackCost> costByNation = AttackCost.groupBy(ArrayUtil.select(allWars.values(), f -> f.getDate() >= time),
                 AttackType::canDamage,
                 f -> f.getDate() >= time, null,
                 new BiConsumer<AbstractCursor, BiConsumer<AbstractCursor, Integer>>() {
@@ -1437,18 +1437,18 @@ public class StatCommands {
                     @Override
                     public Map.Entry<AttackCost, Boolean> apply(Function<Boolean, AttackCost> getCost, AbstractCursor attack, Integer nationId) {
                         DBWar war = allWars.get(attack.getWar_id());
-                        Set<Integer> isAllowed = nationId == war.attacker_id ? warIdsAttAllowed : warIdsDefAllowed;
+                        Set<Integer> isAllowed = nationId == war.getAttacker_id() ? warIdsAttAllowed : warIdsDefAllowed;
 
-                        Set<Integer> warIdsAttacks = attack.getAttacker_id() == war.attacker_id ? warIdsAttAttacks : warIdsDefAttacks;
+                        Set<Integer> warIdsAttacks = attack.getAttacker_id() == war.getAttacker_id() ? warIdsAttAttacks : warIdsDefAttacks;
                         warIdsAttacks.add(attack.getWar_id());
 
                         boolean allowed = isAllowed.contains(attack.getWar_id());
                         if (!allowed) {
-                            Set<Integer> selfAttacksByWar = nationId == war.attacker_id ? warIdsAttAttacks : warIdsDefAttacks;
-                            Set<Integer> enemyAttacksByWar = nationId == war.attacker_id ? warIdsDefAttacks : warIdsAttAttacks;
+                            Set<Integer> selfAttacksByWar = nationId == war.getAttacker_id() ? warIdsAttAttacks : warIdsDefAttacks;
+                            Set<Integer> enemyAttacksByWar = nationId == war.getAttacker_id() ? warIdsDefAttacks : warIdsAttAttacks;
                             boolean selfAttack = selfAttacksByWar.contains(attack.getWar_id());
                             boolean enemyAttack = enemyAttacksByWar.contains(attack.getWar_id());
-                            if ((selfAttack && (includeGray || enemyAttack)) || (war.attacker_id != nationId && enemyAttack && includeDefensives)) {
+                            if ((selfAttack && (includeGray || enemyAttack)) || (war.getAttacker_id() != nationId && enemyAttack && includeDefensives)) {
                                 isAllowed.add(attack.getWar_id());
                                 allowed = true;
                             }
@@ -1569,9 +1569,9 @@ public class StatCommands {
         ));
         sheet.setHeader(header);
 
-        Map<Integer, DBWar> allWars = Locutus.imp().getWarDb().getWarsForNationOrAlliance(f -> nationIds.contains(f), null, f -> f.date >= time);
+        Map<Integer, DBWar> allWars = Locutus.imp().getWarDb().getWarsForNationOrAlliance(f -> nationIds.contains(f), null, f -> f.getDate() >= time);
 
-        Map<Integer, AttackCost> costByAlliance = AttackCost.groupBy(ArrayUtil.select(allWars.values(), f -> f.date >= time),
+        Map<Integer, AttackCost> costByAlliance = AttackCost.groupBy(ArrayUtil.select(allWars.values(), f -> f.getDate() >= time),
                 AttackType::canDamage,
                 f -> f.getDate() >= time,
                 new Predicate<AbstractCursor>() {
@@ -1586,8 +1586,8 @@ public class StatCommands {
                     @Override
                     public void accept(AbstractCursor attack, BiConsumer<AbstractCursor, Integer> groupBy) {
                         DBWar war = allWars.get(attack.getWar_id());
-                        if (nationsByAA.containsKey(war.attacker_aa)) groupBy.accept(attack, war.attacker_aa);
-                        if (nationsByAA.containsKey(war.defender_aa)) groupBy.accept(attack, war.defender_aa);
+                        if (nationsByAA.containsKey(war.getAttacker_aa())) groupBy.accept(attack, war.getAttacker_aa());
+                        if (nationsByAA.containsKey(war.getDefender_aa())) groupBy.accept(attack, war.getDefender_aa());
                     }
                 },
                 new TriFunction<Function<Boolean, AttackCost>, AbstractCursor, Integer, Map.Entry<AttackCost, Boolean>>() {
@@ -1595,7 +1595,7 @@ public class StatCommands {
                     public Map.Entry<AttackCost, Boolean> apply(Function<Boolean, AttackCost> getCost, AbstractCursor attack, Integer allianceId) {
                         AttackCost cost = getCost.apply(true);
                         DBWar war = allWars.get(attack.getWar_id());
-                        boolean isAttacker = war.attacker_id == attack.getAttacker_id() ? war.attacker_aa == allianceId : war.defender_aa == allianceId;
+                        boolean isAttacker = war.getAttacker_id() == attack.getAttacker_id() ? war.getAttacker_aa() == allianceId : war.getDefender_aa() == allianceId;
                         cost.addCost(attack, isAttacker);
                         return Map.entry(cost, isAttacker);
                     }
@@ -1695,9 +1695,9 @@ public class StatCommands {
 
         Map<Integer, List<DBWar>> warsByNation = new RankBuilder<>(allWars.values()).group((BiConsumer<DBWar, GroupedRankBuilder<Integer, DBWar>>) (war, group) -> {
             if (parser1.getIsPrimary().apply(war)) {
-                group.put(war.attacker_id, war);
+                group.put(war.getAttacker_id(), war);
             } else if (parser1.getIsSecondary().apply(war)) {
-                group.put(war.defender_id, war);
+                group.put(war.getDefender_id(), war);
             }
         }).get();
 
@@ -1742,7 +1742,7 @@ public class StatCommands {
                     Function<AbstractCursor, Boolean> isSecondary = a -> a.getAttacker_id() != nationId;
 
                     AttackCost cost;
-                    if (war.attacker_id == nationId) {
+                    if (war.getAttacker_id() == nationId) {
                         if (selfAttack) {
                             if (enemyAttack) {
                                 cost = attActiveCost;

@@ -50,14 +50,14 @@ public class WarCostEnd extends Endpoint {
             attacks = Locutus.imp().getWarDb().getAttacksByWars(wars, cutoffMs);
             isPrimary = a -> {
                 DBWar war = warMap.get(a.getWar_id());
-                int aa1 = war.attacker_id == a.getAttacker_id() ? war.attacker_aa : war.defender_aa;
-                int aa2 = war.attacker_id == a.getAttacker_id() ? war.defender_aa : war.attacker_aa;
+                int aa1 = war.getAttacker_id() == a.getAttacker_id() ? war.getAttacker_aa() : war.getDefender_aa();
+                int aa2 = war.getAttacker_id() == a.getAttacker_id() ? war.getDefender_aa() : war.getAttacker_aa();
                 return aaIdss1.contains(aa1) && aaIdss2.contains(aa2);
             };
             isSecondary = a -> {
                 DBWar war = warMap.get(a.getWar_id());
-                int aa1 = war.attacker_id == a.getAttacker_id() ? war.attacker_aa : war.defender_aa;
-                int aa2 = war.attacker_id == a.getAttacker_id() ? war.defender_aa : war.attacker_aa;
+                int aa1 = war.getAttacker_id() == a.getAttacker_id() ? war.getAttacker_aa() : war.getDefender_aa();
+                int aa2 = war.getAttacker_id() == a.getAttacker_id() ? war.getDefender_aa() : war.getAttacker_aa();
                 return aaIdss2.contains(aa1) && aaIdss1.contains(aa2);
             };
             nameA = args0;

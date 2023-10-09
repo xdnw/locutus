@@ -781,7 +781,7 @@ public class BankCommands {
         nations.removeIf(f -> f.getVm_turns() > 0 || f.getActive_m() > 10000 || f.getPosition() <= 1);
         List<DBWar> wars = new ArrayList<>(Locutus.imp().getWarDb().getWarsForNationOrAlliance(null,
                 f -> (allyIds.contains(f) || enemyIds.contains(f)),
-                f -> (allyIds.contains(f.attacker_aa) || allyIds.contains(f.defender_aa)) && (enemyIds.contains(f.attacker_aa) || enemyIds.contains(f.defender_aa)) && f.date > cutoff).values());
+                f -> (allyIds.contains(f.getAttacker_aa()) || allyIds.contains(f.getDefender_aa())) && (enemyIds.contains(f.getAttacker_aa()) || enemyIds.contains(f.getDefender_aa())) && f.getDate() > cutoff).values());
 
         List<AbstractCursor> allattacks = Locutus.imp().getWarDb().getAttacksByWars(wars);
         Map<Integer, List<AbstractCursor>> attacksByWar = new HashMap<>();
@@ -793,8 +793,8 @@ public class BankCommands {
             wars.removeIf(f -> {
                 List<AbstractCursor> attacks = attacksByWar.get(f.warId);
                 if (attacks == null) return true;
-                boolean att1 = attacks.stream().anyMatch(g -> g.getAttacker_id() == f.attacker_id);
-                boolean att2 = attacks.stream().anyMatch(g -> g.getAttacker_id() == f.defender_id);
+                boolean att1 = attacks.stream().anyMatch(g -> g.getAttacker_id() == f.getAttacker_id());
+                boolean att2 = attacks.stream().anyMatch(g -> g.getAttacker_id() == f.getDefender_id());
                 return !att1 || !att2;
             });
         }
@@ -802,13 +802,13 @@ public class BankCommands {
         wars.removeIf(f -> {
             List<AbstractCursor> attacks = attacksByWar.get(f.warId);
             AttackCost cost = f.toCost(attacks, false, false, false, false, false);
-            boolean primary = allyIds.contains(f.attacker_aa);
+            boolean primary = allyIds.contains(f.getAttacker_aa());
             return cost.convertedTotal(primary) <= 0;
         });
 
         for (DBWar war : wars) {
-            offensivesByNation.put(war.attacker_id, offensivesByNation.getOrDefault(war.attacker_id, 0) + 1);
-            defensivesByNation.put(war.defender_id, defensivesByNation.getOrDefault(war.defender_id, 0) + 1);
+            offensivesByNation.put(war.getAttacker_id(), offensivesByNation.getOrDefault(war.getAttacker_id(), 0) + 1);
+            defensivesByNation.put(war.getDefender_id(), defensivesByNation.getOrDefault(war.getDefender_id(), 0) + 1);
         }
 
 
@@ -817,7 +817,7 @@ public class BankCommands {
         for (DBWar war : wars) {
             List<AbstractCursor> attacks = attacksByWar.get(war.warId);
             AttackCost ac = war.toCost(attacks, false, false, false, false, false);
-            boolean primary = allies.contains(war.attacker_aa);
+            boolean primary = allies.contains(war.getAttacker_aa());
             double[] units = PnwUtil.resourcesToArray(ac.getUnitCost(primary));
             double[] consume = PnwUtil.resourcesToArray(ac.getConsumption(primary));
 
@@ -828,7 +828,7 @@ public class BankCommands {
                 cost[type.ordinal()] = Math.max(0, Math.min(warCostTotal[type.ordinal()], cost[type.ordinal()]));
             }
 
-            int nationId = primary ? war.attacker_id : war.defender_id;
+            int nationId = primary ? war.getAttacker_id() : war.getDefender_id();
             double[] total = warcostByNation.computeIfAbsent(nationId, f -> ResourceType.getBuffer());
             total = PnwUtil.add(total, cost);
         }

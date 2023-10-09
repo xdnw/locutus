@@ -516,9 +516,9 @@ public abstract class AGrantTemplate<T> {
 
     public long getLatestAttackDate(DBNation receiver, int requireNOffensives) {
         List<DBWar> wars = receiver.getWars();
-        wars.removeIf(f -> f.attacker_id != receiver.getId());
+        wars.removeIf(f -> f.getAttacker_id() != receiver.getId());
         // sort wars date desc
-        Collections.sort(wars, (o1, o2) -> Long.compare(o2.date, o1.date));
+        Collections.sort(wars, (o1, o2) -> Long.compare(o2.getDate(), o1.getDate()));
         int nOffensives = 0;
         outer:
         for (int offensiveI = requireNOffensives; offensiveI < wars.size(); offensiveI++) {
