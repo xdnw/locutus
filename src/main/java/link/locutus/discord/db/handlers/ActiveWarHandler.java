@@ -11,6 +11,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.nation.NationBlockadedEvent;
 import link.locutus.discord.event.nation.NationUnblockadedEvent;
+import link.locutus.discord.util.math.ArrayUtil;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -287,7 +288,7 @@ public class ActiveWarHandler {
 
             for (AbstractCursor attack : attacks) {
                 if (attack.getAttack_type() != AttackType.NAVAL) continue;
-                boolean isWarActive = activeWars2.contains((Integer) attack.getWar_id());
+                boolean isWarActive = activeWars2.contains(new ArrayUtil.IntKey(attack.getWar_id()));
 
                 if (attack.getSuccess() == SuccessType.IMMENSE_TRIUMPH) {
                     if (isWarActive) {

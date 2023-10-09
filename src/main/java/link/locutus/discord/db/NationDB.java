@@ -180,12 +180,7 @@ public class NationDB extends DBMainV2 {
         synchronized (citiesByNation) {
             Object nationCities = citiesByNation.get(nationId);
             if (nationCities != null) {
-                if (nationCities instanceof DBCity city) {
-                    return city.id == cityId ? city : null;
-                }
-                // ObjectOpenHashSet
-                ObjectOpenHashSet<DBCity> set = (ObjectOpenHashSet<DBCity>) nationCities;
-                return set.get((Integer) cityId);
+                return ArrayUtil.getElement(DBCity.class, nationCities, cityId);
             }
         }
         return null;

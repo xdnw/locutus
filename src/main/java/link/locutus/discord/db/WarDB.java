@@ -61,8 +61,8 @@ public class WarDB extends DBMainV2 {
 
     private final  ActiveWarHandler activeWars = new ActiveWarHandler();
     private final ObjectOpenHashSet<DBWar> warsById;
-    private final Map<Integer, Object> warsByAllianceId;
-    private final Map<Integer, Object> warsByNationId;
+    private final Int2ObjectOpenHashMap<Object> warsByAllianceId;
+    private final Int2ObjectOpenHashMap<Object> warsByNationId;
     private final Int2ObjectOpenHashMap<List<byte[]>> attacksByWarId2 = new Int2ObjectOpenHashMap<>();
     public WarDB() throws SQLException {
         this("war");
@@ -519,12 +519,13 @@ public class WarDB extends DBMainV2 {
         boolean fetchFromDB = !Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS;
 
         synchronized (attacksByWarId2) {
+            long cutoffDate = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 120);
             for (DBWar war : wars) {
                 int warId = war.getWarId();
                 List<byte[]> attacks = attacksByWarId2.get(warId);
 
                 if (attacks == null) {
-                    if (fetchFromDB && !war.isActive()) {
+                    if (fetchFromDB && war.getDate() < cutoffDate) {
                         if (warIdsFetch == null) warIdsFetch = new ObjectArrayList<>();
                         warIdsFetch.add(warId);
                     }
@@ -540,11 +541,13 @@ public class WarDB extends DBMainV2 {
                 }
             }
         }
+
         if (warIdsFetch != null) {
             String whereClause;
             if (warIdsFetch.size() == 1) {
                 whereClause = " WHERE `war_id` = " + warIdsFetch.get(0);
             } else {
+                Collections.sort(warIdsFetch);
                 whereClause = " WHERE `war_id` IN " + StringMan.getString(warIdsFetch);
             }
             String query = "SELECT * FROM `attacks3` " + whereClause + " ORDER BY `id` ASC";
@@ -553,7 +556,9 @@ public class WarDB extends DBMainV2 {
                     while (rs.next()) {
                         int warId = rs.getInt("war_id");
                         DBWar war = getWar(warId);
-                        if (war == null) continue;
+                        if (war == null) {
+                            continue;
+                        }
                         byte[] data = rs.getBytes("data");
                         AbstractCursor cursor = loader.apply(war, data);
                         if (cursor != null) {
@@ -1489,7 +1494,7 @@ public class WarDB extends DBMainV2 {
         // Find deleted wars
         for (int id = minId; id <= maxId; id++) {
             if (fetchedWarIds.contains(id)) continue;
-            DBWar war = activeWarsById.get((Integer) id);
+            DBWar war = activeWarsById.get(new ArrayUtil.IntKey(id));
             if (war == null) continue;
 
             DBWar newWar = new DBWar(war);
@@ -1621,7 +1626,7 @@ public class WarDB extends DBMainV2 {
         Set<Integer> newWarIds = new LinkedHashSet<>();
 
         for (DBWar war : dbWars) {
-            DBWar existing = warsById.get(war.warId);
+            DBWar existing = warsById.get(war);
 
             if ((existing == null && !war.isActive()) || (existing != null && (war.getStatus() == existing.getStatus() || !existing.isActive()))) continue;
 
@@ -1804,7 +1809,7 @@ public class WarDB extends DBMainV2 {
     }
 
     public DBWar getWar(int warId) {
-        return warsById.get(warId);
+        return warsById.get(new ArrayUtil.IntKey(warId));
     }
 
     public List<DBWar> getWars(int nation1, int nation2, long start, long end) {
@@ -1943,7 +1948,7 @@ public class WarDB extends DBMainV2 {
         Set<DBWar> result = new ObjectOpenHashSet<>();
         synchronized (warsById) {
             for (Integer id : warIds) {
-                DBWar war = warsById.get(id);
+                DBWar war = warsById.get(new ArrayUtil.IntKey(id));
                 if (war != null) result.add(war);
             }
         }

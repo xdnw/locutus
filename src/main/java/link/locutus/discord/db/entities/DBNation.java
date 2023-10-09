@@ -47,6 +47,7 @@ import link.locutus.discord.util.*;
 import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.TransferResult;
@@ -3077,8 +3078,11 @@ public class DBNation implements NationOrAlliance {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o instanceof Integer) {
-            return nation_id == (Integer) o;
+        if (o instanceof Integer i) {
+            return i.equals(nation_id);
+        }
+        if (o instanceof ArrayUtil.IntKey key) {
+            return key.key == nation_id;
         }
         if (o == null || getClass() != o.getClass()) return false;
 

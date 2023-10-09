@@ -12,6 +12,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.task.war.WarCard;
 import link.locutus.discord.apiv1.domains.subdomains.SWarContainer;
 import link.locutus.discord.apiv1.enums.WarType;
@@ -304,8 +305,8 @@ public class DBWar {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null) return false;
-        if (o instanceof Integer i) {
-            return warId == i;
+        if (o instanceof ArrayUtil.IntKey key) {
+            return key.key == warId;
         }
         if (getClass() != o.getClass()) return false;
 

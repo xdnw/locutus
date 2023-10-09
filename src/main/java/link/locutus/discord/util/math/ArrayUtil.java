@@ -1372,7 +1372,7 @@ public class ArrayUtil {
             }
             // ObjectOpenHashSet
             ObjectOpenHashSet<T> set = (ObjectOpenHashSet<T>) arrayOrInst;
-            return set.get((Integer) id);
+            return set.get(new IntKey(id));
         }
         return null;
     }
@@ -1387,6 +1387,28 @@ public class ArrayUtil {
                     city.accept(c);
                 }
             }
+        }
+    }
+
+    public static final class IntKey {
+        public final int key;
+
+        public IntKey(int key) {
+            this.key = key;
+        }
+
+        @Override
+        public int hashCode() {
+            return key;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof Integer) {
+                return key == (Integer) obj;
+            }
+            if (obj == null) return false;
+            return obj.equals(this);
         }
     }
 
@@ -1482,7 +1504,7 @@ public class ArrayUtil {
             }
         } else {
             ObjectOpenHashSet<T> set = (ObjectOpenHashSet<T>) existing;
-            T elem = set.get(id);
+            T elem = set.get(new IntKey(id));
             if (elem != null) {
                 set.remove(elem);
                 if (set.isEmpty()) {

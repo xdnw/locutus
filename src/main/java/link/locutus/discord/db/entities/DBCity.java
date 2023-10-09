@@ -14,6 +14,7 @@ import link.locutus.discord.event.Event;
 import link.locutus.discord.event.city.*;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.math.ArrayUtil;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -404,8 +405,8 @@ public class DBCity {
         if (obj instanceof DBCity city) {
             return city.id == id;
         }
-        if (obj instanceof Integer integer) {
-            return integer == id;
+        if (obj instanceof ArrayUtil.IntKey key) {
+            return key.key == id;
         }
         return false;
     }

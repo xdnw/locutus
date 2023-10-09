@@ -100,7 +100,7 @@ public class WarAttackParser {
                 alliances.addAll(aaIdss2);
                 Set<DBWar> wars = Locutus.imp().getWarDb().getWars(alliances, start - TimeUnit.DAYS.toMillis(6), end);
                 attacks = Locutus.imp().getWarDb().getAttacksByWars(wars, start, end);
-                Set<Integer> warIdsByAttacks = attacks.stream().map(a -> a.getWar_id()).collect(Collectors.toSet());
+                Set<Integer> warIdsByAttacks = attacks.stream().map(AbstractCursor::getWar_id).collect(Collectors.toSet());
                 wars.removeIf(w -> w.getDate() > start && !warIdsByAttacks.contains(w.warId));
 
                 warMap = new HashMap<>();

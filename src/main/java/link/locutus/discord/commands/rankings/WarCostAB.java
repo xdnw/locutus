@@ -76,7 +76,7 @@ public class WarCostAB extends Command {
         }
         if (attackSuccesStr != null) {
             Set<Integer> options = Arrays.stream(attackSuccesStr.split(",")).mapToInt(Integer::parseInt).boxed().collect(Collectors.toSet());
-            parser.getAttacks().removeIf(f -> !options.contains(f.getSuccess()));
+            parser.getAttacks().removeIf(f -> !options.contains(f.getSuccess().ordinal()));
         }
 
         AttackCost cost = parser.toWarCost(!flags.contains('b'), true, flags.contains('s'), flags.contains('w'), false);
