@@ -14,6 +14,7 @@ import link.locutus.discord.event.Event;
 import link.locutus.discord.event.city.*;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 
 import java.sql.ResultSet;
@@ -26,17 +27,20 @@ import java.util.function.ToIntFunction;
 
 public class DBCity {
     public int id;
+    public int nation_id;
     public long created;
+    public volatile long fetched;
     public int land_cents;
     public int infra_cents;
     public boolean powered;
     public byte[] buildings3;
-    public volatile long fetched;
-    public long nuke_date;
+    public int nuke_turn;
+
 
     public static final ToIntFunction<DBCity> GET_ID = c -> c.id;
 
-    public DBCity() {
+    public DBCity(int nation_id) {
+        this.nation_id = nation_id;
     }
 
     public DBCity(City cityV3) {
@@ -145,12 +149,14 @@ public class DBCity {
         this.infra_cents = toCopy.infra_cents;
         this.powered = toCopy.powered;;
         this.buildings3 = toCopy.buildings3;
-        this.nuke_date = toCopy.nuke_date;
+        this.nuke_turn = toCopy.nuke_turn;
+        this.nation_id = toCopy.nation_id;
     }
 
     public boolean set(City cityV3) {
         this.fetched = System.currentTimeMillis();
 
+        this.nation_id = cityV3.getNation_id();
         this.id = cityV3.getId();
         this.created = cityV3.getDate().getTime();
         this.land_cents = (int) Math.round(cityV3.getLand() * 100);
@@ -158,13 +164,13 @@ public class DBCity {
         if (cityV3.getPowered() != null) this.powered = cityV3.getPowered();
 
         if (cityV3.getNuke_date() != null) {
-            long now = System.currentTimeMillis();
-            long cutoff = now - TimeUnit.DAYS.toMillis(11);
-            long date = cityV3.getNuke_date().getTime();
-            if (date > now) {
-                if (this.nuke_date == 0) nuke_date = now;
-            } else if (date > cutoff) {
-                this.nuke_date = date;
+            long nowTurn = TimeUtil.getTurn();
+            long cutoff = nowTurn - 132;
+            long cityTurn = TimeUtil.getTurn(cityV3.getNuke_date().getTime());
+            if (cityTurn > nowTurn) {
+                if (this.nuke_turn == 0) nuke_turn = nuke_turn;
+            } else if (cityTurn > cutoff) {
+                this.nuke_turn = (int) cityTurn;
             }
         }
 
@@ -315,7 +321,7 @@ public class DBCity {
             changed = true;
         }
 
-        if (this.nuke_date != previous.nuke_date) {
+        if (this.nuke_turn != previous.nuke_turn) {
             if (eventConsumer != null) {
                 if (previousClone == null) previousClone = new DBCity(previous);
                 eventConsumer.accept(new CityNukeEvent(nationId, previousClone, this));
@@ -366,7 +372,7 @@ public class DBCity {
         return changed;
     }
 
-    public DBCity(ResultSet rs) throws SQLException {
+    public DBCity(ResultSet rs, int nationId) throws SQLException {
         id = rs.getInt("id");
         created = rs.getLong("created");
         infra_cents = rs.getInt("infra");
@@ -375,7 +381,8 @@ public class DBCity {
         buildings3 = rs.getBytes("improvements");
         condense();
         fetched = rs.getLong("update_flag");
-        nuke_date = rs.getLong("nuke_date");
+        nuke_turn = (int) TimeUtil.getTurn(rs.getLong("nuke_date"));
+        this.nation_id = nationId;
     }
 
     public DBCity(int id, JavaCity city) {
@@ -412,7 +419,7 @@ public class DBCity {
     }
 
     public JavaCity toJavaCity(Predicate<Project> hasProject) {
-        JavaCity javaCity = new JavaCity(buildings3, infra_cents * 0.01, land_cents * 0.01, created, nuke_date);
+        JavaCity javaCity = new JavaCity(buildings3, infra_cents * 0.01, land_cents * 0.01, created, nuke_turn);
         if (!powered && javaCity.getPoweredInfra() >= infra_cents * 0.01) {
             javaCity.getMetrics(hasProject).powered = false;
         }

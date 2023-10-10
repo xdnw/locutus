@@ -224,12 +224,13 @@ public class NationDB extends DBMainV2 {
 
     public boolean setCityNukeFromAttack(int nationId, int cityId, long timestamp, Consumer<Event> eventConsumer) {
         if (timestamp <= System.currentTimeMillis() - TimeUnit.DAYS.toMillis(11)) return false;
+        long turnstamp = TimeUtil.getTurn(timestamp);
 
         DBCity city = Locutus.imp().getNationDB().getDBCity(nationId, cityId);
-        if (city != null && city.nuke_date < timestamp) {
+        if (city != null && city.nuke_turn < turnstamp) {
 
             DBCity copyOriginal = eventConsumer == null ? null : new DBCity(city);
-            city.nuke_date = timestamp;
+            city.nuke_turn = (int) turnstamp;
             if (copyOriginal != null) eventConsumer.accept(new CityNukeEvent(nationId, copyOriginal, city));
 
             saveCities(List.of(Map.entry(nationId, city)));
@@ -1033,7 +1034,7 @@ public class NationDB extends DBMainV2 {
             return;
         }
 
-        DBCity buffer = new DBCity();
+        DBCity buffer = new DBCity(0);
 
         int originalDirtySize = dirtyCities.size();
 
@@ -1046,7 +1047,7 @@ public class NationDB extends DBMainV2 {
 
             DBCity existing = getDBCity(nationId, cityId);
             if (existing == null) {
-                existing = new DBCity();
+                existing = new DBCity(nationId);
                 existing.id = cityId;
                 existing.set(city);
                 if (eventConsumer != null) eventConsumer.accept(new CityCreateEvent(nationId, existing));
@@ -1215,7 +1216,7 @@ public class NationDB extends DBMainV2 {
         updateCities(completeCitiesByNation, true, eventConsumer);
     }
     private void updateCities(Map<Integer, Map<Integer, City>> completeCitiesByNation, boolean deleteMissing, Consumer<Event> eventConsumer) {
-        DBCity buffer = new DBCity();
+        DBCity buffer = new DBCity(0);
         List<Map.Entry<Integer, DBCity>> dirtyCities = new ArrayList<>(); // List<nation id, db city>
         AtomicBoolean dirtyFlag = new AtomicBoolean();
 
@@ -1370,7 +1371,7 @@ public class NationDB extends DBMainV2 {
     }
 
     public void updateCities(List<City> cities, Consumer<Event> eventConsumer) {
-        DBCity buffer = new DBCity();
+        DBCity buffer = new DBCity(0);
         List<Map.Entry<Integer, DBCity>> dirtyCities = new ArrayList<>(); // List<nation id, db city>
         AtomicBoolean dirtyFlag = new AtomicBoolean();
 
@@ -1544,7 +1545,7 @@ public class NationDB extends DBMainV2 {
      */
     private Map.Entry<Integer, DBCity> createCity(ResultSet rs) throws SQLException {
         int nationId = rs.getInt("nation");
-        DBCity data = new DBCity(rs);
+        DBCity data = new DBCity(rs, nationId);
         return Map.entry(nationId, data);
     }
 
@@ -4204,7 +4205,7 @@ public class NationDB extends DBMainV2 {
                 stmt.setBoolean(6, city.powered);
                 stmt.setBytes(7, city.buildings3);
                 stmt.setLong(8, city.fetched);
-                stmt.setLong(9, city.nuke_date);
+                stmt.setLong(9, TimeUtil.getTimeFromTurn(city.nuke_turn));
             }
         });
     }

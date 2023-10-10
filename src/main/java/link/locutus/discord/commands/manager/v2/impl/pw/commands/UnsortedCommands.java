@@ -883,9 +883,9 @@ public class UnsortedCommands {
         if (metrics.disease > 0) msg.append("\ndisease: " + MathMan.format(metrics.disease));
         if (metrics.pollution > 0) msg.append("\npollution: " + MathMan.format(metrics.pollution));
 
-        long nukeCutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(11);
-        if (jCity.getNukeDate() > nukeCutoff) {
-            msg.append("\nNuked: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - jCity.getNukeDate()) + " ago");
+        long nukeCutoff = TimeUtil.getTurn() - 132;
+        if (jCity.getNukeTurn() > nukeCutoff) {
+            msg.append("\nNuked: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - TimeUtil.getTimeFromTurn(jCity.getNukeTurn())) + " ago");
         }
 
         msg.send();

@@ -914,7 +914,7 @@ public class DataDumpParser {
                 CsvRow row = rows.next();
                 int nationId = Integer.parseInt(row.getField(header.nation_id));
                 if (allowedNationIds.test(nationId)) {
-                    DBCity city = loadCity(header, row);
+                    DBCity city = loadCity(header, row, nationId);
                     result.computeIfAbsent(nationId, k -> new Int2ObjectOpenHashMap<>()).put(city.id, city);
                 }
             }
@@ -992,8 +992,8 @@ public class DataDumpParser {
         return instance;
     }
 
-    public DBCity loadCity(CityHeader header, CsvRow row) throws ParseException {
-        DBCity city = new DBCity();
+    public DBCity loadCity(CityHeader header, CsvRow row, int nationId) throws ParseException {
+        DBCity city = new DBCity(nationId);
         city.id = Integer.parseInt(row.getField(header.city_id));
         Long createdCached = cityDateCache.get(city.id);
         if (createdCached == null) {
