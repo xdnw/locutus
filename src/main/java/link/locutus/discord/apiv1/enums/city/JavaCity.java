@@ -59,20 +59,19 @@ public class JavaCity {
     public static Map.Entry<DBNation, JavaCity> getOrCreate(int cityId, boolean update) {
         List<Event> events = new LinkedList<>();
         long now = System.currentTimeMillis();
-        Map.Entry<Integer, DBCity> cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId, true, events::add);
+        DBCity cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId, true, events::add);
         Locutus.imp().runEventsAsync(events);
         if (cityEntry != null) {
-            DBCity city = cityEntry.getValue();
-            if (update && now > city.fetched) {
-                city.update(true);
+            if (update && now > cityEntry.fetched) {
+                cityEntry.update(true);
             }
-            DBNation nation = DBNation.getById(cityEntry.getKey());
+            DBNation nation = DBNation.getById(cityEntry.getNationId());
             if (nation != null) {
-                return Map.entry(nation, city.toJavaCity(nation));
+                return Map.entry(nation, cityEntry.toJavaCity(nation));
             }
             DBNation dummy = new DBNation();
-            dummy.setNation_id(cityEntry.getKey());
-            return Map.entry(dummy, city.toJavaCity(f -> false));
+            dummy.setNation_id(cityEntry.getNationId());
+            return Map.entry(dummy, cityEntry.toJavaCity(f -> false));
         }
         return null;
     }

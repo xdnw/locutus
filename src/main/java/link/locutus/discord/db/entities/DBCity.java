@@ -449,4 +449,8 @@ public class DBCity {
     public void setLand(double v) {
         land_cents = (int) Math.round(v * 100);
     }
+
+    public int getNationId() {
+        return nation_id;
+    }
 }

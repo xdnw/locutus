@@ -233,7 +233,7 @@ public class NationDB extends DBMainV2 {
             city.nuke_turn = (int) turnstamp;
             if (copyOriginal != null) eventConsumer.accept(new CityNukeEvent(nationId, copyOriginal, city));
 
-            saveCities(List.of(Map.entry(nationId, city)));
+            saveCities(List.of(city));
             return true;
         }
         return false;
@@ -249,7 +249,7 @@ public class NationDB extends DBMainV2 {
                     eventConsumer.accept(new CityInfraDamageEvent(nationId, previous, city));
                 }
             }
-            saveCities(List.of(Map.entry(nationId, city)));
+            saveCities(List.of(city));
             return true;
         }
         return false;
@@ -1217,7 +1217,7 @@ public class NationDB extends DBMainV2 {
     }
     private void updateCities(Map<Integer, Map<Integer, City>> completeCitiesByNation, boolean deleteMissing, Consumer<Event> eventConsumer) {
         DBCity buffer = new DBCity(0);
-        List<Map.Entry<Integer, DBCity>> dirtyCities = new ArrayList<>(); // List<nation id, db city>
+        List<DBCity> dirtyCities = new ArrayList<>(); // List<nation id, db city>
         AtomicBoolean dirtyFlag = new AtomicBoolean();
 
         Set<Integer> citiesToDelete = new HashSet<>();
@@ -1263,7 +1263,7 @@ public class NationDB extends DBMainV2 {
                 dirtyFlag.set(false);
                 DBCity dbCity = processCityUpdate(city, buffer, eventConsumer, dirtyFlag);
                 if (dirtyFlag.get()) {
-                    dirtyCities.add(Map.entry(city.getNation_id(), dbCity));
+                    dirtyCities.add(dbCity);
                 }
             }
         }
@@ -1372,7 +1372,7 @@ public class NationDB extends DBMainV2 {
 
     public void updateCities(List<City> cities, Consumer<Event> eventConsumer) {
         DBCity buffer = new DBCity(0);
-        List<Map.Entry<Integer, DBCity>> dirtyCities = new ArrayList<>(); // List<nation id, db city>
+        List<DBCity> dirtyCities = new ArrayList<>(); // List<nation id, db city>
         AtomicBoolean dirtyFlag = new AtomicBoolean();
 
         for (City city : cities) {
@@ -1382,7 +1382,7 @@ public class NationDB extends DBMainV2 {
             dirtyFlag.set(false);
             DBCity dbCity = processCityUpdate(city, buffer, eventConsumer, dirtyFlag);
             if (dirtyFlag.get()) {
-                dirtyCities.add(Map.entry(city.getNation_id(), dbCity));
+                dirtyCities.add(dbCity);
             }
         }
 
@@ -1526,9 +1526,8 @@ public class NationDB extends DBMainV2 {
         SelectBuilder builder = getDb().selectBuilder("CITY_BUILDS").select("*");
         try (ResultSet rs = builder.executeRaw()) {
             while (rs.next()) {
-                Map.Entry<Integer, DBCity> entry = createCity(rs);
-                int nationId = entry.getKey();
-                DBCity city = entry.getValue();
+                DBCity city = createCity(rs);
+                int nationId = city.getNationId();
                 ArrayUtil.addElement(DBCity.class, citiesByNation, nationId, city);
                 total++;
             }
@@ -1543,10 +1542,9 @@ public class NationDB extends DBMainV2 {
      * @return (nation id, city)
      * @throws SQLException
      */
-    private Map.Entry<Integer, DBCity> createCity(ResultSet rs) throws SQLException {
+    private DBCity createCity(ResultSet rs) throws SQLException {
         int nationId = rs.getInt("nation");
-        DBCity data = new DBCity(rs, nationId);
-        return Map.entry(nationId, data);
+        return new DBCity(rs, nationId);
     }
 
     private void loadPositions() throws SQLException {
@@ -4154,17 +4152,17 @@ public class NationDB extends DBMainV2 {
         return result;
     }
 
-    public Map.Entry<Integer, DBCity> getCitiesV3ByCityId(int cityId) {
+    public DBCity getCitiesV3ByCityId(int cityId) {
         return getCitiesV3ByCityId(cityId, false, null);
     }
 
-    public Map.Entry<Integer, DBCity> getCitiesV3ByCityId(int cityId, boolean fetch, Consumer<Event> eventConsumer) {
+    public DBCity getCitiesV3ByCityId(int cityId, boolean fetch, Consumer<Event> eventConsumer) {
         synchronized (citiesByNation) {
             for (Map.Entry<Integer, Object> entry : citiesByNation.entrySet()) {
                 Object cities = entry.getValue();
                 DBCity city = ArrayUtil.getElement(DBCity.class, cities, cityId);
                 if (city != null) {
-                    return Map.entry(entry.getKey(), city);
+                    return city;
                 }
             }
         }
@@ -4179,24 +4177,21 @@ public class NationDB extends DBMainV2 {
     }
 
     public void saveAllCities() {
-        List<Map.Entry<Integer, DBCity>> allCities = new ArrayList<>();
+        List<DBCity> allCities = new ArrayList<>();
         synchronized (citiesByNation) {
             for (Map.Entry<Integer, Object> entry : citiesByNation.entrySet()) {
-                ArrayUtil.iterateElements(DBCity.class, entry.getKey(), (city) -> {
-                    allCities.add(Map.entry(entry.getKey(), city));
-                });
+                ArrayUtil.iterateElements(DBCity.class, entry.getKey(), allCities::add);
             }
         }
         saveCities(allCities);
     }
 
-    public void saveCities(List<Map.Entry<Integer, DBCity>> cities) {
+    public void saveCities(List<DBCity> cities) {
         if (cities.isEmpty()) return;
-        executeBatch(cities, "INSERT OR REPLACE INTO `CITY_BUILDS`(`id`, `nation`, `created`, `infra`, `land`, `powered`, `improvements`, `update_flag`, `nuke_date`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", new ThrowingBiConsumer<Map.Entry<Integer, DBCity>, PreparedStatement>() {
+        executeBatch(cities, "INSERT OR REPLACE INTO `CITY_BUILDS`(`id`, `nation`, `created`, `infra`, `land`, `powered`, `improvements`, `update_flag`, `nuke_date`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", new ThrowingBiConsumer<DBCity, PreparedStatement>() {
             @Override
-            public void acceptThrows(Map.Entry<Integer, DBCity> entry, PreparedStatement stmt) throws Exception {
-                int nationId = entry.getKey();
-                DBCity city = entry.getValue();
+            public void acceptThrows(DBCity city, PreparedStatement stmt) throws Exception {
+                int nationId = city.getNationId();
                 stmt.setInt(1, city.id);
                 stmt.setInt(2, nationId);
                 stmt.setLong(3, city.created);

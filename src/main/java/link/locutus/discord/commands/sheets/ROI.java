@@ -180,12 +180,11 @@ public class ROI extends Command {
             useSheet = nations.size() > 1;
         } else if (args.get(0).toLowerCase().contains("/city/")) {
             int cityId = Integer.parseInt(args.get(0).split("=")[1]);
-            Map.Entry<Integer, DBCity> cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
-            int nationId = cityEntry.getKey();
+            DBCity cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
+            int nationId = cityEntry.getNationId();
             DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
-            DBCity city = cityEntry.getValue();
-            city.update(true);
-            JavaCity from = city.toJavaCity(nation);
+            cityEntry.update(true);
+            JavaCity from = cityEntry.toJavaCity(nation);
             roi(nation, Integer.MAX_VALUE, Integer.MAX_VALUE, from, days, roiMap, 500);
         } else {
             Collection<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));

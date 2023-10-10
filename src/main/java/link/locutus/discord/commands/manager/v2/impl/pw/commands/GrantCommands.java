@@ -1576,7 +1576,7 @@ public class GrantCommands {
 //                }
 //            }
 //            if (switchBuildFunds) {
-//                for (Map.Entry<Integer, DBCity> entry : nation._getCitiesV3().entrySet()) {
+//                for (DBCity entry : nation._getCitiesV3().entrySet()) {
 //                    DBCity city = entry.getValue();
 //                    for (MilitaryUnit unit : MilitaryUnit.values) {
 //                        double required = grantMMR.get(unit);

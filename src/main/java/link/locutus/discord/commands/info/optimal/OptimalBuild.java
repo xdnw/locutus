@@ -248,11 +248,10 @@ public class OptimalBuild extends Command {
             }
             cityId = Integer.parseInt(cityArg.split("=")[1]);
 
-            Map.Entry<Integer, DBCity> cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
-            DBCity dbCity = cityEntry.getValue();
-            dbCity.update(true);
-            me = Locutus.imp().getNationDB().getNation(cityEntry.getKey());
-            origin = dbCity.toJavaCity(me);
+            DBCity cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId);
+            cityEntry.update(true);
+            me = Locutus.imp().getNationDB().getNation(cityEntry.getNationId());
+            origin = cityEntry.toJavaCity(me);
 
             checkup(io, me, cityId, origin); // show help
 
