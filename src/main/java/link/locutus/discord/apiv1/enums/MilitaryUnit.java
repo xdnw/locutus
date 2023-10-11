@@ -121,8 +121,14 @@ public enum MilitaryUnit {
         this.score = score;
     }
 
+    @Command(desc = "Get the emoji for this unit")
     public String getEmoji() {
         return emoji;
+    }
+
+    @Command(desc = "Get the max unit buys per day for a number of cities")
+    public int getMaxPerDay(int cities) {
+        return getMaxPerDay(cities, f -> false);
     }
 
     public int getMaxPerDay(int cities, Predicate<Project> hasProject) {
