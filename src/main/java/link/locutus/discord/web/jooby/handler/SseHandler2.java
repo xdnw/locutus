@@ -1,13 +1,13 @@
 package link.locutus.discord.web.jooby.handler;
 
-import io.javalin.core.util.Header;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
+import io.javalin.http.Header;
+import jakarta.servlet.AsyncContext;
+import jakarta.servlet.AsyncEvent;
+import jakarta.servlet.AsyncListener;
 import org.jetbrains.annotations.NotNull;
 
-import javax.servlet.AsyncContext;
-import javax.servlet.AsyncEvent;
-import javax.servlet.AsyncListener;
 import java.io.IOException;
 import java.util.function.Consumer;
 
@@ -20,20 +20,20 @@ public class SseHandler2 implements Handler {
 
     @Override
     public void handle(@NotNull Context ctx) throws Exception {
-        ctx.res.setStatus(200);
-        ctx.res.setCharacterEncoding("UTF-8");
+        ctx.res().setStatus(200);
+        ctx.res().setCharacterEncoding("UTF-8");
         ctx.contentType("text/event-stream");
         ctx.header(Header.CONNECTION, "close");
         ctx.header(Header.CACHE_CONTROL, "no-cache");
 //                ctx.res.flushBuffer();
 
-        if (!ctx.req.isAsyncStarted()) {
-            ctx.req.startAsync(ctx.req, ctx.res);
+        if (!ctx.req().isAsyncStarted()) {
+            ctx.req().startAsync(ctx.req(), ctx.res());
         }
-        AsyncContext async = ctx.req.getAsyncContext();
+        AsyncContext async = ctx.req().getAsyncContext();
         async.setTimeout(0);
 
-        ctx.res.flushBuffer();
+        ctx.res().flushBuffer();
 
         clientConsumer.accept(new SseClient2(ctx));
 

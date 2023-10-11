@@ -1,9 +1,11 @@
 package link.locutus.discord.db.entities;
 
 import link.locutus.discord.apiv1.enums.TreatyType;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.util.TimeUtil;
 
 import java.util.Locale;
+import java.util.Set;
 
 public class Treaty {
     private final int id;

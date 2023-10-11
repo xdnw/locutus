@@ -3,6 +3,7 @@ package link.locutus.discord.db.entities;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.commands.rankings.table.TableNumberFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
@@ -14,82 +15,81 @@ import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import static link.locutus.discord.commands.rankings.table.TableNumberFormat.*;
+
 public enum AllianceMetric {
-    SOLDIER(false) {
+    SOLDIER(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getMembersTotal().getSoldiers();
         }
     },
-    SOLDIER_PCT(true) {
+    SOLDIER_PCT(true, PERCENTAGE_ONE) {
         @Override
         public double apply(DBAlliance alliance) {
             DBNation total = alliance.getMembersTotal();
             return (double) total.getSoldiers() / (total.getCities() * Buildings.BARRACKS.cap(f -> false) * Buildings.BARRACKS.max());
         }
     },
-    TANK(false) {
+    TANK(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getMembersTotal().getTanks();
         }
     },
-    TANK_PCT(true) {
+    TANK_PCT(true, PERCENTAGE_ONE) {
         @Override
         public double apply(DBAlliance alliance) {
             DBNation total = alliance.getMembersTotal();
             return (double) total.getTanks() / (total.getCities() * Buildings.FACTORY.cap(f -> false) * Buildings.FACTORY.max());
         }
     },
-    AIRCRAFT(false) {
+    AIRCRAFT(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getMembersTotal().getAircraft();
         }
     },
-    AIRCRAFT_PCT(true) {
+    AIRCRAFT_PCT(true, PERCENTAGE_ONE) {
         @Override
         public double apply(DBAlliance alliance) {
             DBNation total = alliance.getMembersTotal();
             return (double) total.getAircraft() / (total.getCities() * Buildings.HANGAR.cap(f -> false) * Buildings.HANGAR.max());
         }
     },
-    SHIP(false) {
+    SHIP(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getMembersTotal().getShips();
         }
     },
-    SHIP_PCT(true) {
+    SHIP_PCT(true, PERCENTAGE_ONE) {
         @Override
         public double apply(DBAlliance alliance) {
             DBNation total = alliance.getMembersTotal();
             return (double) total.getShips() / (total.getCities() * Buildings.DRYDOCK.cap(f -> false) * Buildings.DRYDOCK.max());
         }
     },
-    INFRA(false) {
+    INFRA(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getMembersTotal().getInfra();
         }
     },
-    INFRA_AVG(true) {
+    INFRA_AVG(true, DECIMAL_ROUNDED) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getMembersTotal().getAvg_infra();
         }
     },
-    LAND(false) {
+    LAND(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             Set<DBNation> nations = alliance.getNations(true, 0, true);
@@ -100,7 +100,7 @@ public enum AllianceMetric {
             return totalLand;
         }
     },
-    LAND_AVG(true) {
+    LAND_AVG(true, DECIMAL_ROUNDED) {
         @Override
         public double apply(DBAlliance alliance) {
             Set<DBNation> nations = alliance.getNations(true, 0, true);
@@ -113,25 +113,25 @@ public enum AllianceMetric {
             return totalLand / num;
         }
     },
-    SCORE(false) {
+    SCORE(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getScore();
         }
     },
-    SCORE_AVG(true) {
+    SCORE_AVG(true, DECIMAL_ROUNDED) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getScore() / alliance.getNations(true, 0, true).size();
         }
     },
-    CITY(false) {
+    CITY(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getMembersTotal().getCities();
         }
     },
-    CITY_AVG(true) {
+    CITY_AVG(true, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             int total = 0;
@@ -140,59 +140,59 @@ public enum AllianceMetric {
             return (double) total / nations.size();
         }
     },
-    MEMBERS(false) {
+    MEMBERS(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getNations(true, 0, true).size();
         }
     },
-    MEMBERS_ACTIVE_1W(false) {
+    MEMBERS_ACTIVE_1W(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getNations(true, 1440 * 7, true).size();
         }
     },
-    VM(false) {
+    VM(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getNations().stream().filter(f -> f.getVm_turns() != 0 && f.getPosition() > Rank.APPLICANT.id).count();
         }
     },
-    INACTIVE_1W(false) {
+    INACTIVE_1W(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getNations().stream().filter(f -> f.getVm_turns() == 0 && f.getPosition() > Rank.APPLICANT.id && f.getActive_m() > 1440 * 7).count();
         }
     },
-    VM_PCT(true) {
+    VM_PCT(true, PERCENTAGE_ONE) {
         @Override
         public double apply(DBAlliance alliance) {
             Set<DBNation> nations = alliance.getNations();
             return nations.stream().filter(f -> f.getVm_turns() != 0 && f.getPosition() > Rank.APPLICANT.id).count() / (double) nations.size();
         }
     },
-    INACTIVE_PCT(true) {
+    INACTIVE_PCT(true, PERCENTAGE_ONE) {
         @Override
         public double apply(DBAlliance alliance) {
             Set<DBNation> nations = alliance.getNations();
             return nations.stream().filter(f -> f.getActive_m() > 1440 * 7 && f.getPosition() > Rank.APPLICANT.id).count() / (double) nations.size();
         }
     },
-    WARCOST_DAILY(false) {
+    WARCOST_DAILY(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             Set<DBNation> nations = alliance.getNations();
             nations.removeIf(f -> f.getPosition() <= Rank.APPLICANT.id || f.getVm_turns() > 0);
             Set<Integer> nationIds = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
 
-            AttackCost cost = new AttackCost();
+            AttackCost cost = new AttackCost("", "", false, false, false, false, false);
             long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1);
             List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksEither(nationIds, cutoff);
             cost.addCost(attacks, a -> nationIds.contains(a.getAttacker_id()), b -> nationIds.contains(b.getDefender_id()));
             return cost.convertedTotal(true);
         }
     },
-    REVENUE(false) {
+    REVENUE(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             Set<DBNation> nations = alliance.getNations();
@@ -209,7 +209,7 @@ public enum AllianceMetric {
             return PnwUtil.convertedTotal(totalRss);
         }
     },
-    OFFENSIVE_WARS(false) {
+    OFFENSIVE_WARS(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             int total = 0;
@@ -217,7 +217,7 @@ public enum AllianceMetric {
             return total;
         }
     },
-    OFFENSIVE_WARS_AVG(true) {
+    OFFENSIVE_WARS_AVG(true, DECIMAL_ROUNDED) {
         @Override
         public double apply(DBAlliance alliance) {
             int total = 0;
@@ -226,7 +226,7 @@ public enum AllianceMetric {
             return (double) total / nations.size();
         }
     },
-    DEFENSIVE_WARS(false) {
+    DEFENSIVE_WARS(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             int total = 0;
@@ -235,7 +235,7 @@ public enum AllianceMetric {
             return total;
         }
     },
-    DEFENSIVE_WARS_AVG(true) {
+    DEFENSIVE_WARS_AVG(true, DECIMAL_ROUNDED) {
         @Override
         public double apply(DBAlliance alliance) {
             int total = 0;
@@ -245,142 +245,142 @@ public enum AllianceMetric {
         }
     },
 
-    REVENUE_MONEY(false) {
+    REVENUE_MONEY(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             Map.Entry<Integer, double[]> tmp = aaRevenueCache;
             return tmp != null && tmp.getKey() == alliance.getAlliance_id() ? tmp.getValue()[ResourceType.MONEY.ordinal()] : 0d;
         }
     },
-    REVENUE_FOOD(false) {
+    REVENUE_FOOD(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             Map.Entry<Integer, double[]> tmp = aaRevenueCache;
             return tmp != null && tmp.getKey() == alliance.getAlliance_id() ? tmp.getValue()[ResourceType.FOOD.ordinal()] : 0d;
         }
     },
-    REVENUE_COAL(false) {
+    REVENUE_COAL(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             Map.Entry<Integer, double[]> tmp = aaRevenueCache;
             return tmp != null && tmp.getKey() == alliance.getAlliance_id() ? tmp.getValue()[ResourceType.COAL.ordinal()] : 0d;
         }
     },
-    REVENUE_OIL(false) {
+    REVENUE_OIL(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             Map.Entry<Integer, double[]> tmp = aaRevenueCache;
             return tmp != null && tmp.getKey() == alliance.getAlliance_id() ? tmp.getValue()[ResourceType.OIL.ordinal()] : 0d;
         }
     },
-    REVENUE_URANIUM(false) {
+    REVENUE_URANIUM(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             Map.Entry<Integer, double[]> tmp = aaRevenueCache;
             return tmp != null && tmp.getKey() == alliance.getAlliance_id() ? tmp.getValue()[ResourceType.URANIUM.ordinal()] : 0d;
         }
     },
-    REVENUE_LEAD(false) {
+    REVENUE_LEAD(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             Map.Entry<Integer, double[]> tmp = aaRevenueCache;
             return tmp != null && tmp.getKey() == alliance.getAlliance_id() ? tmp.getValue()[ResourceType.LEAD.ordinal()] : 0d;
         }
     },
-    REVENUE_IRON(false) {
+    REVENUE_IRON(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             Map.Entry<Integer, double[]> tmp = aaRevenueCache;
             return tmp != null && tmp.getKey() == alliance.getAlliance_id() ? tmp.getValue()[ResourceType.IRON.ordinal()] : 0d;
         }
     },
-    REVENUE_BAUXITE(false) {
+    REVENUE_BAUXITE(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             Map.Entry<Integer, double[]> tmp = aaRevenueCache;
             return tmp != null && tmp.getKey() == alliance.getAlliance_id() ? tmp.getValue()[ResourceType.BAUXITE.ordinal()] : 0d;
         }
     },
-    REVENUE_GASOLINE(false) {
+    REVENUE_GASOLINE(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             Map.Entry<Integer, double[]> tmp = aaRevenueCache;
             return tmp != null && tmp.getKey() == alliance.getAlliance_id() ? tmp.getValue()[ResourceType.GASOLINE.ordinal()] : 0d;
         }
     },
-    REVENUE_MUNITIONS(false) {
+    REVENUE_MUNITIONS(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             Map.Entry<Integer, double[]> tmp = aaRevenueCache;
             return tmp != null && tmp.getKey() == alliance.getAlliance_id() ? tmp.getValue()[ResourceType.MUNITIONS.ordinal()] : 0d;
         }
     },
-    REVENUE_STEEL(false) {
+    REVENUE_STEEL(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             Map.Entry<Integer, double[]> tmp = aaRevenueCache;
             return tmp != null && tmp.getKey() == alliance.getAlliance_id() ? tmp.getValue()[ResourceType.STEEL.ordinal()] : 0d;
         }
     },
-    REVENUE_ALUMINUM(false) {
+    REVENUE_ALUMINUM(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             Map.Entry<Integer, double[]> tmp = aaRevenueCache;
             return tmp != null && tmp.getKey() == alliance.getAlliance_id() ? tmp.getValue()[ResourceType.ALUMINUM.ordinal()] : 0d;
         }
     },
-    BARRACKS_PCT(true) {
+    BARRACKS_PCT(true, PERCENTAGE_ONE) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getMembersTotal().getMMRBuildingArr()[0] / Buildings.BARRACKS.cap(f -> false);
         }
     },
-    FACTORY_PCT(true) {
+    FACTORY_PCT(true, PERCENTAGE_ONE) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getMembersTotal().getMMRBuildingArr()[1] / Buildings.FACTORY.cap(f -> false);
         }
     },
-    HANGAR_PCT(true) {
+    HANGAR_PCT(true, PERCENTAGE_ONE) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getMembersTotal().getMMRBuildingArr()[2] / Buildings.HANGAR.cap(f -> false);
         }
     },
-    DRYDOCK_PCT(true) {
+    DRYDOCK_PCT(true, PERCENTAGE_ONE) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getMembersTotal().getMMRBuildingArr()[3] / Buildings.DRYDOCK.cap(f -> false);
         }
     },
 
-    INFRA_VALUE(false) {
+    INFRA_VALUE(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             double total = 0;
             for (DBNation nation : alliance.getMemberDBNations()) {
                 for (DBCity city : nation._getCitiesV3().values()) {
-                    total += nation.infraCost(0, city.infra);
+                    total += nation.infraCost(0, city.getInfra());
                 }
             }
             return total;
         }
     },
 
-    LAND_VALUE(false) {
+    LAND_VALUE(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             double total = 0;
             for (DBNation nation : alliance.getMemberDBNations()) {
                 for (DBCity city : nation._getCitiesV3().values()) {
-                    total += nation.landCost(0, city.land);
+                    total += nation.landCost(0, city.getLand());
                 }
             }
             return total;
         }
     },
 
-    PROJECT_VALUE(false) {
+    PROJECT_VALUE(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             double total = 0;
@@ -393,7 +393,7 @@ public enum AllianceMetric {
         }
     },
 
-    CITY_VALUE(false) {
+    CITY_VALUE(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             double total = 0;
@@ -404,13 +404,13 @@ public enum AllianceMetric {
         }
     },
 
-    NUKE(false) {
+    NUKE(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getMembersTotal().getNukes();
         }
     },
-    NUKE_AVG(true) {
+    NUKE_AVG(true, DECIMAL_ROUNDED) {
         @Override
         public double apply(DBAlliance alliance) {
             Set<DBNation> nations = alliance.getNations(true, 0, true);
@@ -424,13 +424,13 @@ public enum AllianceMetric {
         }
     },
 
-    MISSILE(false) {
+    MISSILE(false, SI_UNIT) {
         @Override
         public double apply(DBAlliance alliance) {
             return alliance.getMembersTotal().getMissiles();
         }
     },
-    MISSILE_AVG(true) {
+    MISSILE_AVG(true, DECIMAL_ROUNDED) {
         @Override
         public double apply(DBAlliance alliance) {
             Set<DBNation> nations = alliance.getNations(true, 0, true);
@@ -444,7 +444,7 @@ public enum AllianceMetric {
         }
     },
 
-    GROUND_PCT(true) {
+    GROUND_PCT(true, PERCENTAGE_ONE) {
         @Override
         public double apply(DBAlliance alliance) {
             DBNation total = alliance.getMembersTotal();
@@ -505,9 +505,26 @@ public enum AllianceMetric {
     private static Map.Entry<Integer, double[]> aaRevenueCache;
 
     private final boolean average;
+    private final TableNumberFormat format;
 
-    AllianceMetric(boolean averageInAggregate) {
+    AllianceMetric(boolean averageInAggregate, TableNumberFormat format) {
         this.average = averageInAggregate;
+        this.format = format;
+    }
+
+    public TableNumberFormat getFormat() {
+        return format;
+    }
+
+    public static TableNumberFormat getFormat(Collection<AllianceMetric> metrics) {
+        Set<TableNumberFormat> formats = metrics.stream().map(AllianceMetric::getFormat).collect(Collectors.toSet());
+        if (formats.size() == 1) {
+            return formats.iterator().next();
+        }
+        if (formats.contains(SI_UNIT)) {
+            return SI_UNIT;
+        }
+        return TableNumberFormat.DECIMAL_ROUNDED;
     }
 
     public boolean shouldAverage() {

@@ -2,6 +2,7 @@ package link.locutus.discord.commands.rankings;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -18,6 +19,7 @@ import net.dv8tion.jda.api.entities.User;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -72,6 +74,7 @@ public class NetProfitPerWar extends Command {
         Predicate<DBWar> finalWarFilter = warFilter;
         List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacks(cutoffMs, Long.MAX_VALUE, f -> f.possibleEndDate() >= cutoffMs && finalWarFilter.test(f), f -> true);
 
+        double[] buffer = ResourceType.getBuffer();
         SummedMapRankBuilder<Integer, Number> byNation = new RankBuilder<>(attacks)
                 .group((BiConsumer<AbstractCursor, GroupedRankBuilder<Integer, AbstractCursor>>) (attack, map) -> {
                     // Group attacks into attacker and defender
@@ -81,7 +84,11 @@ public class NetProfitPerWar extends Command {
                         // Convert attack to profit value
                         (nationdId, attack) -> {
                             DBNation nation = nations.get(nationdId);
-                            return nation != null ? sign * attack.getLossesConverted(attack.getAttacker_id() == nationdId) : 0;
+                            if (nation != null) {
+                                Arrays.fill(buffer, 0);
+                                return sign * attack.getLossesConverted(buffer, attack.getAttacker_id() == nationdId);
+                            }
+                            return 0;
                         })
                 // Average it per war
                 .average();

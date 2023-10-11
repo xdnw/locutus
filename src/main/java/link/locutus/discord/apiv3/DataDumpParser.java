@@ -547,9 +547,9 @@ public class DataDumpParser {
         Set<Integer> nationsAtWar = new HashSet<>();
         for (Map.Entry<DBWar, Long> entry : getWarEndDates.entrySet()) {
             DBWar war = entry.getKey();
-            if (war.date <= timestamp && timestamp <= entry.getValue()) {
-                nationsAtWar.add(war.attacker_id);
-                nationsAtWar.add(war.defender_id);
+            if (war.getDate() <= timestamp && timestamp <= entry.getValue()) {
+                nationsAtWar.add(war.getAttacker_id());
+                nationsAtWar.add(war.getDefender_id());
             }
         }
         return nationsAtWar;
@@ -568,7 +568,7 @@ public class DataDumpParser {
             }
         }
         for (DBWar war : wars.values()) {
-            long expireDate = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(war.date) + 60);
+            long expireDate = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(war.getDate()) + 60);
             warEndDates.putIfAbsent(war, expireDate);
         }
         return warEndDates;
@@ -756,26 +756,27 @@ public class DataDumpParser {
                             for (Map.Entry<Integer, DBCity> cityEntry : currentCities.entrySet()) {
                                 DBCity previousCity = previousCities.get(cityEntry.getKey());
                                 DBCity city = cityEntry.getValue();
-                                double infra = previousCity == null ? 10 : previousCity.infra;
-                                double land = previousCity == null ? 250 : previousCity.land;
-                                byte[] previousBuildings;
-                                if (previousCity != null) {
-                                    previousBuildings = previousCity.buildings;
-                                } else {
-                                    previousBuildings = new byte[city.buildings.length];
-                                }
+                                double infra = previousCity == null ? 10 : previousCity.getInfra();
+                                double land = previousCity == null ? 250 : previousCity.getLand();
                                 double[] total = ResourceType.getBuffer();
-                                for (Building building : Buildings.values()) {
-                                    int amt = city.buildings[building.ordinal()] - previousBuildings[building.ordinal()];
-                                    if (amt > 0) total = building.cost(total, amt);
+                                if (previousCity == null) {
+                                    for (Building building : Buildings.values()) {
+                                        int amt = city.get(building);
+                                        if (amt > 0) total = building.cost(total, amt);
+                                    }
+                                } else {
+                                    for (Building building : Buildings.values()) {
+                                        int amt = city.get(building) - previousCity.get(building);
+                                        if (amt > 0) total = building.cost(total, amt);
+                                    }
                                 }
                                 tracker.add(nationId, currentTimestamp, total);
 
-                                if (city.infra > infra + 0.01) {
-                                    tracker.add(nationId, currentTimestamp, currentNation.infraCost(infra, city.infra));
+                                if (city.getInfra() > infra + 0.01) {
+                                    tracker.add(nationId, currentTimestamp, currentNation.infraCost(infra, city.getInfra()));
                                 }
-                                if (city.land > land + 0.01) {
-                                    tracker.add(nationId, currentTimestamp, currentNation.landCost(infra, city.infra));
+                                if (city.getLand() > land + 0.01) {
+                                    tracker.add(nationId, currentTimestamp, currentNation.landCost(infra, city.getInfra()));
                                 }
                             }
 
@@ -913,7 +914,7 @@ public class DataDumpParser {
                 CsvRow row = rows.next();
                 int nationId = Integer.parseInt(row.getField(header.nation_id));
                 if (allowedNationIds.test(nationId)) {
-                    DBCity city = loadCity(header, row);
+                    DBCity city = loadCity(header, row, nationId);
                     result.computeIfAbsent(nationId, k -> new Int2ObjectOpenHashMap<>()).put(city.id, city);
                 }
             }
@@ -991,8 +992,8 @@ public class DataDumpParser {
         return instance;
     }
 
-    public DBCity loadCity(CityHeader header, CsvRow row) throws ParseException {
-        DBCity city = new DBCity();
+    public DBCity loadCity(CityHeader header, CsvRow row, int nationId) throws ParseException {
+        DBCity city = new DBCity(nationId);
         city.id = Integer.parseInt(row.getField(header.city_id));
         Long createdCached = cityDateCache.get(city.id);
         if (createdCached == null) {
@@ -1000,36 +1001,39 @@ public class DataDumpParser {
             cityDateCache.put(city.id, createdCached);
         }
         city.created = createdCached;
-        city.infra = Double.parseDouble(row.getField(header.infrastructure));
-        city.land = Double.parseDouble(row.getField(header.land));
+        city.setInfra(Double.parseDouble(row.getField(header.infrastructure)));
+        city.setLand(Double.parseDouble(row.getField(header.land)));
 
-        city.buildings[Buildings.OIL_POWER.ordinal()] += Byte.parseByte(row.getField(header.oil_power_plants));
-        city.buildings[Buildings.WIND_POWER.ordinal()] += Byte.parseByte(row.getField(header.wind_power_plants));
-        city.buildings[Buildings.COAL_POWER.ordinal()] += Byte.parseByte(row.getField(header.coal_power_plants));
-        city.buildings[Buildings.NUCLEAR_POWER.ordinal()] += Byte.parseByte(row.getField(header.nuclear_power_plants));
-        city.buildings[Buildings.COAL_MINE.ordinal()] += Byte.parseByte(row.getField(header.coal_mines));
-        city.buildings[Buildings.OIL_WELL.ordinal()] += Byte.parseByte(row.getField(header.oil_wells));
-        city.buildings[Buildings.URANIUM_MINE.ordinal()] += Byte.parseByte(row.getField(header.uranium_mines));
-        city.buildings[Buildings.IRON_MINE.ordinal()] += Byte.parseByte(row.getField(header.iron_mines));
-        city.buildings[Buildings.LEAD_MINE.ordinal()] += Byte.parseByte(row.getField(header.lead_mines));
-        city.buildings[Buildings.BAUXITE_MINE.ordinal()] += Byte.parseByte(row.getField(header.bauxite_mines));
-        city.buildings[Buildings.FARM.ordinal()] += Byte.parseByte(row.getField(header.farms));
-        city.buildings[Buildings.POLICE_STATION.ordinal()] += Byte.parseByte(row.getField(header.police_stations));
-        city.buildings[Buildings.HOSPITAL.ordinal()] += Byte.parseByte(row.getField(header.hospitals));
-        city.buildings[Buildings.RECYCLING_CENTER.ordinal()] += Byte.parseByte(row.getField(header.recycling_centers));
-        city.buildings[Buildings.SUBWAY.ordinal()] += Byte.parseByte(row.getField(header.subway));
-        city.buildings[Buildings.SUPERMARKET.ordinal()] += Byte.parseByte(row.getField(header.supermarkets));
-        city.buildings[Buildings.BANK.ordinal()] += Byte.parseByte(row.getField(header.banks));
-        city.buildings[Buildings.MALL.ordinal()] += Byte.parseByte(row.getField(header.shopping_malls));
-        city.buildings[Buildings.STADIUM.ordinal()] += Byte.parseByte(row.getField(header.stadiums));
-        city.buildings[Buildings.GAS_REFINERY.ordinal()] += Byte.parseByte(row.getField(header.oil_refineries));
-        city.buildings[Buildings.ALUMINUM_REFINERY.ordinal()] += Byte.parseByte(row.getField(header.aluminum_refineries));
-        city.buildings[Buildings.STEEL_MILL.ordinal()] += Byte.parseByte(row.getField(header.steel_mills));
-        city.buildings[Buildings.MUNITIONS_FACTORY.ordinal()] += Byte.parseByte(row.getField(header.munitions_factories));
-        city.buildings[Buildings.BARRACKS.ordinal()] += Byte.parseByte(row.getField(header.barracks));
-        city.buildings[Buildings.FACTORY.ordinal()] += Byte.parseByte(row.getField(header.factories));
-        city.buildings[Buildings.HANGAR.ordinal()] += Byte.parseByte(row.getField(header.hangars));
-        city.buildings[Buildings.DRYDOCK.ordinal()] += Byte.parseByte(row.getField(header.drydocks));
+        byte[] buildings = new byte[Buildings.size()];
+        buildings[Buildings.OIL_POWER.ordinal()] += Byte.parseByte(row.getField(header.oil_power_plants));
+        buildings[Buildings.WIND_POWER.ordinal()] += Byte.parseByte(row.getField(header.wind_power_plants));
+        buildings[Buildings.COAL_POWER.ordinal()] += Byte.parseByte(row.getField(header.coal_power_plants));
+        buildings[Buildings.NUCLEAR_POWER.ordinal()] += Byte.parseByte(row.getField(header.nuclear_power_plants));
+        buildings[Buildings.COAL_MINE.ordinal()] += Byte.parseByte(row.getField(header.coal_mines));
+        buildings[Buildings.OIL_WELL.ordinal()] += Byte.parseByte(row.getField(header.oil_wells));
+        buildings[Buildings.URANIUM_MINE.ordinal()] += Byte.parseByte(row.getField(header.uranium_mines));
+        buildings[Buildings.IRON_MINE.ordinal()] += Byte.parseByte(row.getField(header.iron_mines));
+        buildings[Buildings.LEAD_MINE.ordinal()] += Byte.parseByte(row.getField(header.lead_mines));
+        buildings[Buildings.BAUXITE_MINE.ordinal()] += Byte.parseByte(row.getField(header.bauxite_mines));
+        buildings[Buildings.FARM.ordinal()] += Byte.parseByte(row.getField(header.farms));
+        buildings[Buildings.POLICE_STATION.ordinal()] += Byte.parseByte(row.getField(header.police_stations));
+        buildings[Buildings.HOSPITAL.ordinal()] += Byte.parseByte(row.getField(header.hospitals));
+        buildings[Buildings.RECYCLING_CENTER.ordinal()] += Byte.parseByte(row.getField(header.recycling_centers));
+        buildings[Buildings.SUBWAY.ordinal()] += Byte.parseByte(row.getField(header.subway));
+        buildings[Buildings.SUPERMARKET.ordinal()] += Byte.parseByte(row.getField(header.supermarkets));
+        buildings[Buildings.BANK.ordinal()] += Byte.parseByte(row.getField(header.banks));
+        buildings[Buildings.MALL.ordinal()] += Byte.parseByte(row.getField(header.shopping_malls));
+        buildings[Buildings.STADIUM.ordinal()] += Byte.parseByte(row.getField(header.stadiums));
+        buildings[Buildings.GAS_REFINERY.ordinal()] += Byte.parseByte(row.getField(header.oil_refineries));
+        buildings[Buildings.ALUMINUM_REFINERY.ordinal()] += Byte.parseByte(row.getField(header.aluminum_refineries));
+        buildings[Buildings.STEEL_MILL.ordinal()] += Byte.parseByte(row.getField(header.steel_mills));
+        buildings[Buildings.MUNITIONS_FACTORY.ordinal()] += Byte.parseByte(row.getField(header.munitions_factories));
+        buildings[Buildings.BARRACKS.ordinal()] += Byte.parseByte(row.getField(header.barracks));
+        buildings[Buildings.FACTORY.ordinal()] += Byte.parseByte(row.getField(header.factories));
+        buildings[Buildings.HANGAR.ordinal()] += Byte.parseByte(row.getField(header.hangars));
+        buildings[Buildings.DRYDOCK.ordinal()] += Byte.parseByte(row.getField(header.drydocks));
+        city.buildings3 = buildings;
+        city.condense();
 
         return city;
     }

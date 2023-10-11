@@ -7,6 +7,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
@@ -74,7 +75,33 @@ public abstract class DamageCursor extends AbstractCursor{
     }
 
     public abstract MilitaryUnit[] getUnits();
+
+    @Override
     public abstract int getUnitLosses(MilitaryUnit unit, boolean attacker);
+
+    @Override
+    public double[] getUnitLossCost(double[] buffer, boolean isAttacker) {
+        for (MilitaryUnit unit : getUnits()) {
+            int losses = getUnitLosses(unit, isAttacker);
+            if (losses > 0) {
+                for (Map.Entry<ResourceType, Double> entry : unit.getCostMap().entrySet()) {
+                    buffer[entry.getKey().ordinal()] += entry.getValue() * losses;
+                }
+            }
+        }
+        return buffer;
+    }
+
+    @Override
+    public int[] getUnitLosses(int[] buffer, boolean isAttacker) {
+        for (MilitaryUnit unit : getUnits()) {
+            int losses = getUnitLosses(unit, isAttacker);
+            if (losses > 0) {
+                buffer[unit.ordinal()] += losses;
+            }
+        }
+        return buffer;
+    }
 
     @Override
     public int getAttcas1() {
@@ -107,7 +134,7 @@ public abstract class DamageCursor extends AbstractCursor{
     }
 
     @Override
-    public Map<Building, Integer> getBuildingsDestroyed() {
+    public Map<Building, Integer> getBuildingsDestroyed2() {
         if (num_improvements == 0 || buildingsDestroyed.isEmpty()) {
             return Collections.emptyMap();
         }
@@ -118,6 +145,24 @@ public abstract class DamageCursor extends AbstractCursor{
             result.put(Buildings.get(typeId), (int) amt);
         }
         return result;
+    }
+
+    @Override
+    public double[] getBuildingCost(double[] buffer) {
+        if (num_improvements != 0 && !buildingsDestroyed.isEmpty()) {
+            for (Map.Entry<Byte, Byte> entry : buildingsDestroyed.entrySet()) {
+                byte typeId = entry.getKey();
+                byte amt = entry.getValue();
+                Building building = Buildings.get(typeId);
+                for (ResourceType type : ResourceType.values) {
+                    double rssCost = building.cost(type);
+                    if (rssCost > 0) {
+                        buffer[type.ordinal()] += rssCost * amt;
+                    }
+                }
+            }
+        }
+        return buffer;
     }
 
     @Override

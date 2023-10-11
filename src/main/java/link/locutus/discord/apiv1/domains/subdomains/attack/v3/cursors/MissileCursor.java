@@ -25,10 +25,7 @@ public class MissileCursor extends ProjectileCursor {
 
     @Override
     public int getUnitLosses(MilitaryUnit unit, boolean attacker) {
-        return switch (unit) {
-            case MISSILE -> attacker ? 1 : 0;
-            default -> 0;
-        };
+        return unit == MilitaryUnit.MISSILE ? 1 : 0;
     }
 
     @Override

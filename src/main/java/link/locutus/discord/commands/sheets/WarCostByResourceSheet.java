@@ -1,25 +1,34 @@
 package link.locutus.discord.commands.sheets;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.scheduler.TriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
+import org.jooq.meta.derby.sys.Sys;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -31,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 public class WarCostByResourceSheet extends Command {
@@ -40,7 +50,7 @@ public class WarCostByResourceSheet extends Command {
 
     @Override
     public String help() {
-        return "`" + super.help() + " <nations> <enemy-alliances> <days>`";
+        return "`" + super.help() + " <nations> <enemy-alliances> <time>`";
     }
 
     @Override
@@ -67,170 +77,30 @@ public class WarCostByResourceSheet extends Command {
         if (guild == null) return "not in guild";
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
 
-        Set<Integer> attAAId = DiscordUtil.parseAllianceIds(guild, args.get(0));
-        Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
-        Set<Integer> alliances = args.get(1).equals("*") ? null : DiscordUtil.parseAllianceIds(guild, args.get(1));
-        Function<Integer, Boolean> aaFilter = f -> true;
+        Set<NationOrAlliance> attackers = PWBindings.nationOrAlliance(null, guild, args.get(0));
+        Set<NationOrAlliance> defenders = PWBindings.nationOrAlliance(null, guild, args.get(1));
 
-        if (nations.isEmpty()) return usage("No nations found for `" + args.get(0) + "`", channel);
-        if (alliances == null || alliances.isEmpty()) {
-            if (!args.get(1).equalsIgnoreCase("*")) return usage("No alliances found for: `" + args.get(1) + "`", channel);
-        } else {
-            aaFilter = f -> alliances.contains(f);
+        long timeRel = TimeUtil.timeToSec(args.get(2));
+        if (timeRel < 60) {
+            return "Invalid time: `" + args.get(2) + "` use e.g. `5d` for days";
         }
 
-        Integer days = MathMan.parseInt(args.get(2));
-        if (days == null) {
-            return "Invalid number of days: `" + args.get(2) + "`";
-        }
-        long cutoffMs = ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).toEpochSecond() * 1000L;
+        long cutoffMs = System.currentTimeMillis() - timeRel * 1000;
 
-        CompletableFuture<IMessageBuilder> msgFuture = channel.sendMessage("Please wait...");
-
-        SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKeys.WAR_COST_BY_RESOURCE_SHEET);
-        List<Object> header = new ArrayList<>(Arrays.asList(
-                // Raids	Raid profit	Raid Ratio	Def	Def Loss	Def Dmg	Def Ratio	Off	Off Loss	Off Dmg	Off Ratio	Wars	War Loss	War Dmg	War Ratio
-            "nation",
-            "alliance",
-            "wars"
-        ));
-
-        for (ResourceType type : ResourceType.values) {
-            header.add(type.name());
-        }
-        header.add("convertedTotal");
-
-        sheet.clear("A:Z");
-
-        sheet.setHeader(header);
-
-        long start = System.currentTimeMillis();
-        for (DBNation nation : nations) {
-            if (System.currentTimeMillis() - start > 10000) {
-                IMessageBuilder msg = msgFuture.get();
-                if (msg != null && msg.getId() > 0) {
-                    msg.clear().append("Updating wars for " + nation.getNation()).sendIfFree();
-                }
-                start = System.currentTimeMillis();
-            }
-            int nationId = nation.getNation_id();
-
-            AttackCost activeCost = new AttackCost();
-
-            {
-                List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(nationId);
-                Map<Integer, List<AbstractCursor>> allAttacks = Locutus.imp().getWarDb().getAttacksByNationGroupWar(nationId, cutoffMs);
-
-                for (DBWar war : wars) {
-                    if (war.date < cutoffMs) {
-                        continue;
-                    }
-                    if (!aaFilter.apply(war.attacker_aa) && !aaFilter.apply(war.defender_aa)) {
-                        continue;
-                    }
-                    if (attAAId != null && !attAAId.isEmpty() && !attAAId.contains(war.attacker_aa) && !attAAId.contains(war.defender_aa)) {
-                        continue;
-                    }
-
-                    List<AbstractCursor> warAttacks = allAttacks.getOrDefault(war.warId, Collections.emptyList());
-
-                    boolean selfAttack = false;
-                    boolean enemyAttack = false;
-
-                    for (AbstractCursor attack : warAttacks) {
-                        if (attack.getAttacker_id() == nationId) {
-                            selfAttack = true;
-                        } else {
-                            enemyAttack = true;
-                        }
-                    }
-
-                    Function<AbstractCursor, Boolean> isPrimary = a -> a.getAttacker_id() == nationId;
-                    Function<AbstractCursor, Boolean> isSecondary = a -> a.getAttacker_id() != nationId;
-
-                    AttackCost cost = null;
-                    if (war.attacker_id == nationId) {
-                        if (selfAttack) {
-                            if (enemyAttack) {
-                                cost = activeCost;
-                            } else if (flags.contains('g')) {
-                                cost = activeCost;
-                            }
-                        } else if (enemyAttack) {
-//                            cost = attSuicides;
-                        } else {
-                            continue;
-                        }
-                    } else {
-                        if (selfAttack) {
-                            if (enemyAttack) {
-                                cost = activeCost;
-                            } else if (flags.contains('g')) {
-                                cost = activeCost;
-                            }
-                        } else if (enemyAttack && flags.contains('d')) {
-                            cost = activeCost;
-                        } else {
-                            continue;
-                        }
-                    }
-
-                    if (cost != null) {
-                        cost.addCost(warAttacks, isPrimary, isSecondary);
-                    }
-                }
-            }
-
-            header = new ArrayList<>();
-            header.add(MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
-            header.add(MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
-
-            int numWars = activeCost.getNumWars();
-            header.add(numWars);
-
-            Map<ResourceType, Double> total = new HashMap<>();
-
-            if (!flags.contains('c')) {
-                total = PnwUtil.add(total, activeCost.getConsumption(true));
-            }
-            if (!flags.contains('i')) {
-                double infraCost = activeCost.getInfraLost(true);
-                total.put(ResourceType.MONEY, total.getOrDefault(ResourceType.MONEY, 0d) + infraCost);
-            }
-            if (!flags.contains('l')) {
-                total = PnwUtil.add(total, activeCost.getLoot(true));
-            }
-            if (!flags.contains('u')) {
-                total = PnwUtil.add(total, activeCost.getUnitCost(true));
-            }
-
-            if (flags.contains('n')) {
-                for (Map.Entry<ResourceType, Double> entry : total.entrySet()) {
-                    entry.setValue(entry.getValue() / nation.getCities());
-                }
-            }
-            if (flags.contains('w')) {
-                for (Map.Entry<ResourceType, Double> entry : total.entrySet()) {
-                    entry.setValue(numWars == 0 ? 0 : entry.getValue() / numWars);
-                }
-            }
-
-            for (ResourceType type : ResourceType.values) {
-                header.add(total.getOrDefault(type, 0d));
-            }
-            header.add(PnwUtil.convertedTotal(total));
-
-            sheet.addRow(header);
-        }
-
-        try {
-            IMessageBuilder msg = msgFuture.get();
-            if (msg != null && msg.getId() > 0) channel.delete(msg.getId());
-        } catch (Throwable e) {
-            e.printStackTrace();
-        }
-        sheet.set(0, 0);
-        sheet.attach(channel.create(), "war_cost_resource").send();
-        return null;
+        return StatCommands.WarCostByResourceSheet(
+                channel,
+                guildDb,
+                attackers,
+                defenders,
+                cutoffMs,
+                flags.contains('c'),
+                flags.contains('i'),
+                flags.contains('l'),
+                flags.contains('u'),
+                flags.contains('g'),
+                flags.contains('d'),
+                flags.contains('n'),
+                flags.contains('w'),
+            null);
     }
 }

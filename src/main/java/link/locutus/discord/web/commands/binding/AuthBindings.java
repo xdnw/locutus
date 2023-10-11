@@ -7,6 +7,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.javalin.http.Context;
+import io.javalin.http.HttpStatus;
 import io.javalin.http.RedirectResponse;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
@@ -79,7 +80,7 @@ public class AuthBindings extends WebBindingHelper {
             System.out.println(":||Remove Redirect discord oauth user page");
             url = AuthBindings.getDiscordAuthUrl();
         }
-        throw new RedirectResponse(0, url);
+        throw new RedirectResponse(HttpStatus.SEE_OTHER, url);
     }
     @Binding
     @Me
@@ -99,7 +100,7 @@ public class AuthBindings extends WebBindingHelper {
         } else {
             url = WebRoot.REDIRECT + "/page/login?nation";
         }
-        throw new RedirectResponse(0, url);
+        throw new RedirectResponse(HttpStatus.SEE_OTHER, url);
     }
 
     public static void setGuild(Context context, Guild guild) {
@@ -128,10 +129,10 @@ public class AuthBindings extends WebBindingHelper {
         }
         if (allowRedirect) {
             if (user == null && nation == null) {
-                throw new RedirectResponse(0, WebRoot.REDIRECT + "/page/login");
+                throw new RedirectResponse(HttpStatus.SEE_OTHER, WebRoot.REDIRECT + "/page/login");
             }
 
-            throw new RedirectResponse(0, WM.guildselect.cmd.toPageUrl());
+            throw new RedirectResponse(HttpStatus.SEE_OTHER, WM.guildselect.cmd.toPageUrl());
         }
         return null;
     }
@@ -310,7 +311,7 @@ public class AuthBindings extends WebBindingHelper {
         String oAuthCookieId = PageHandler.CookieType.DISCORD_OAUTH.getCookieId();
         String discordAuth = cookies.get(oAuthCookieId);
         if (discordAuth == null) {
-            String setCookie = context.res.getHeader("Set-Cookie");
+            String setCookie = context.res().getHeader("Set-Cookie");
             if (setCookie != null && !setCookie.isEmpty()) {
                 List<HttpCookie> httpCookies = HttpCookie.parse(setCookie);
                 for (HttpCookie cookie : httpCookies) {
@@ -408,7 +409,7 @@ public class AuthBindings extends WebBindingHelper {
                                 webDb.addTempToken(verifiedUid, auth);
                                 String redirect = getRedirect(context);
                                 if (redirect != null) {
-                                    throw new RedirectResponse(0, redirect);
+                                    throw new RedirectResponse(HttpStatus.SEE_OTHER, redirect);
                                 }
                                 return null;
                             } else {
@@ -428,7 +429,7 @@ public class AuthBindings extends WebBindingHelper {
             DBNation nation = auth.getNation();
             User user = auth.getUser();
             if (requireUser && user == null) {
-                throw new RedirectResponse(0, getDiscordAuthUrl());
+                throw new RedirectResponse(HttpStatus.SEE_OTHER, getDiscordAuthUrl());
             }
             if ((user != null || nation != null) && (!requireNation || nation != null)) {
                 return auth;
@@ -436,7 +437,7 @@ public class AuthBindings extends WebBindingHelper {
         }
 
         if (requireUser) {
-            throw new RedirectResponse(0, getDiscordAuthUrl());
+            throw new RedirectResponse(HttpStatus.SEE_OTHER, getDiscordAuthUrl());
         }
 
         if (requireNation || isLoginPage) {
@@ -477,7 +478,7 @@ public class AuthBindings extends WebBindingHelper {
                         } else {
                             mailUrl = Settings.INSTANCE.PNW_URL() + "/mail/inbox";
                         }
-                        throw new RedirectResponse(0, mailUrl);
+                        throw new RedirectResponse(HttpStatus.SEE_OTHER, mailUrl);
                     } else {
                         errors.add("Could not send mail to nation: " + nationIdFilter + " | " + result);
                     }
@@ -514,7 +515,7 @@ public class AuthBindings extends WebBindingHelper {
             }
             if (requireNation) {
                 String html = rocker.auth.nationpicker.template(errors, nationArray, nationIdArray).render().toString();
-                throw new RedirectResponse(0, html);
+                throw new RedirectResponse(HttpStatus.SEE_OTHER, html);
             } else {
                 allowRedirect = true;
             }
@@ -525,7 +526,7 @@ public class AuthBindings extends WebBindingHelper {
             String mailAuthUrl = WebRoot.REDIRECT + "/page/login?nation";
 
             String html = rocker.auth.picker.template(discordAuthUrl, mailAuthUrl).render().toString();
-            throw new RedirectResponse(0, html);
+            throw new RedirectResponse(HttpStatus.SEE_OTHER, html);
         }
         return null;
     }

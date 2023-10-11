@@ -115,8 +115,8 @@ public enum BeigeReason {
         }
 
         if (defender.getActive_m() < 2880 && defender.getVm_turns() == 0) {
-            List<AbstractCursor> attacks = war.getAttacks();
-            Map.Entry<Integer, Integer> res = war.getResistance(war.getAttacks());
+            List<AbstractCursor> attacks = war.getAttacks2(false);
+            Map.Entry<Integer, Integer> res = war.getResistance(war.getAttacks2(false));
             int otherRes = war.isAttacker(attacker) ? res.getKey() : res.getValue();
             if (otherRes <= 42) {
                 if (war.isAttacker(attacker)) {
@@ -132,26 +132,26 @@ public enum BeigeReason {
             }
         }
 
-        if (defender.getDef() > 0 && (attack == null ? !defender.isBeige() : defender.getBeigeTurns() <= 24) && war.attacker_id == attacker.getNation_id()) {
-            List<DBWar> otherWars = defender.getWars();
+        if (defender.getDef() > 0 && (attack == null ? !defender.isBeige() : defender.getBeigeTurns() <= 24) && war.getAttacker_id() == attacker.getNation_id()) {
+            Set<DBWar> otherWars = defender.getWars();
             int numSitting = 0;
             int numSitting4d = 0;
 
             for (DBWar other : otherWars) {
-                if (other.attacker_id == attacker.getNation_id()) continue;
-                if (other.attacker_id == defender.getNation_id()) continue;
+                if (other.getAttacker_id() == attacker.getNation_id()) continue;
+                if (other.getAttacker_id() == defender.getNation_id()) continue;
                 DBNation otherAttacker = other.getNation(true);
                 if (otherAttacker == null) continue;
                 if (otherAttacker.getGroundStrength(true, false) * 0.8 <= defender.getGroundStrength(true, true))
                     continue;
                 if (otherAttacker.getAircraft() * 0.8 <= defender.getAircraft()) continue;
-                Map.Entry<Integer, Integer> resistance = other.getResistance(other.getAttacks());
+                Map.Entry<Integer, Integer> resistance = other.getResistance(other.getAttacks2());
                 Integer defRes = resistance.getValue();
                 Integer attRes = resistance.getKey();
                 if (defRes <= 12) continue;
                 if (attRes <= 25) continue;
 
-                long timeLeft = other.date + TimeUnit.DAYS.toMillis(5) - System.currentTimeMillis();
+                long timeLeft = other.getDate() + TimeUnit.DAYS.toMillis(5) - System.currentTimeMillis();
                 if (timeLeft >= TimeUnit.DAYS.toMillis(4)) {
                     numSitting4d++;
                 }

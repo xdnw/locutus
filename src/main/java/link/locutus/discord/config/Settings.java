@@ -183,14 +183,17 @@ public class Settings extends Config {
         @Comment("Fetches all wars (default 5 minutes)")
         public int ALL_WAR_SECONDS = 60 * 5;
 
-        @Comment({
-                "Unload attacks after days (-1 = load all attacks)",
-                "Must be less than or equal to `unload-wars-after-days`"
-        })
-        public int UNLOAD_ATTACKS_AFTER_DAYS = -1;
+        @Comment({"If attacks for completed wars are loaded into memory", "Ignored if load-active-attacks is disabled"})
+        public boolean LOAD_INACTIVE_ATTACKS = false;
 
-        @Comment("Unload wars after days (-1 = load all wars)")
-        public int UNLOAD_WARS_AFTER_DAYS = -1;
+        @Comment({"If attacks for completed wars are loaded into memory", "Ignored if load-active-attacks is disabled"})
+        public boolean LOAD_ACTIVE_ATTACKS = true;
+
+        @Comment({
+                "Unload wars after days (-1 = load all wars)",
+                "Minimum = 120 turns (10 days)"
+        })
+        public int UNLOAD_WARS_AFTER_TURNS = -1;
 //
 //        @Comment({"If escalation alerts are run every time all wars are updated",
 //                "Requires ALL_WAR_SECONDS to be enabled"})
@@ -476,9 +479,10 @@ public class Settings extends Config {
         "- Set to empty string to not use an ssl certificate",
         })
         public String CERT_PATH = "C:/Certbot/live/locutus.link/";
+        public String PRIVKEY_PATH = "C:/Certbot/live/locutus.link/";
         @Comment({"The password or passphrase for the certificate",
         "Leave blank if there is none"})
-        public String CERT_PASSWORD = "";
+        public String PRIVKEY_PASSWORD = "";
         @Comment("Port used for HTTP. Set to 0 to disable")
         public int PORT_HTTP = 80;
         @Comment("Port used for secure HTTPS. Set to 0 to disable")
@@ -550,11 +554,35 @@ public class Settings extends Config {
         @Create
         public SQLITE SQLITE;
 
+        @Create
+        public SYNC SYNC;
+
         public static final class SQLITE {
             @Comment("Should SQLite be used?")
             public boolean USE = true;
             @Comment("The directory to store the database in")
             public String DIRECTORY = "database";
+        }
+
+        public static class SYNC {
+            public long BOT_ID = 0;
+            public String WEB_URL = "";
+
+            @Create
+            public REGISTRATION REGISTRATION;
+
+            @Create
+            public BALANCES BALANCES;
+
+            public static final class REGISTRATION {
+                public boolean ENABLED = false;
+            }
+
+            public static final class BALANCES {
+                public boolean ENABLED = false;
+                public List<Long> GUILDS = new ArrayList<>();
+            }
+
         }
 //
 //        @Comment("TODO: MySQL support is not fully implemented. Request this to be finished if important")

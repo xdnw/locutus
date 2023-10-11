@@ -78,9 +78,9 @@ public class DiscordHookIO implements IMessageIO {
                 discMsg.content.setLength(0);
             }
             CompletableFuture<IMessageBuilder> msgFuture = null;
+            boolean sendFiles = true;
             if (!discMsg.content.isEmpty() || !discMsg.buttons.isEmpty() || !discMsg.embeds.isEmpty()) {
                 MessageCreateData message = discMsg.build(true);
-
                 if (message.getContent().length() > 20000) {
                     Message result = null;
                     if (!discMsg.buttons.isEmpty() || !discMsg.embeds.isEmpty()) {
@@ -93,11 +93,12 @@ public class DiscordHookIO implements IMessageIO {
                         msgFuture = future.thenApply(f -> new DiscordMessageBuilder(this, f));
                     }
                 } else {
+                    sendFiles = false;
                     CompletableFuture<Message> future = RateLimitUtil.queue(hook.sendMessage(message));
                     msgFuture = future.thenApply(f -> new DiscordMessageBuilder(this, f));
                 }
             }
-            if (!discMsg.files.isEmpty() || !discMsg.images.isEmpty()) {
+            if (sendFiles && (!discMsg.files.isEmpty() || !discMsg.images.isEmpty())) {
                 Map<String, byte[]> allFiles = new HashMap<>(discMsg.files);
                 allFiles.putAll(discMsg.images);
                 Message result = null;

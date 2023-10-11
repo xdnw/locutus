@@ -7,10 +7,8 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.*;
 
@@ -55,7 +53,7 @@ public class CounterStats extends Command {
             switch (stat.type) {
                 case ESCALATION, IS_COUNTER -> countered[stat.isActive ? 1 : 0]++;
                 case UNCONTESTED -> {
-                    if (war.status == WarStatus.ATTACKER_VICTORY) {
+                    if (war.getStatus() == WarStatus.ATTACKER_VICTORY) {
                         uncontested[stat.isActive ? 1 : 0]++;
                     } else {
                         counter[stat.isActive ? 1 : 0]++;

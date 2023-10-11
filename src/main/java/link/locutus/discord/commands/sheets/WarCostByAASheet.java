@@ -5,6 +5,7 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -66,103 +67,15 @@ public class WarCostByAASheet extends Command {
         Set<DBNation> nationSet = DiscordUtil.parseNations(guild, args.get(0));
         Map<Integer, List<DBNation>> nationsByAA = Locutus.imp().getNationDB().getNationsByAlliance(nationSet, false, !includeInactive, !includeApps, true);
 
-        boolean byAlliance = args.get(0).contains("*");
-
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
 
-        SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKeys.WAR_COST_BY_ALLIANCE_SHEET);
-        List<Object> header = new ArrayList<>(Arrays.asList(
-                "alliance",
-                "score",
-                "cities",
-
-                "net unit dmg",
-                "net infra dmg",
-                "net loot dmg",
-                "net consumption",
-                "net dmg",
-
-                "unit loss",
-                "infra loss",
-                "consume loss",
-                "loss",
-
-                "unit dmg",
-                "infra dmg",
-                "consume dmg",
-                "dmg",
-
-                "money",
-                "gasoline",
-                "munitions",
-                "aluminum",
-                "steel"
-        ));
-        sheet.setHeader(header);
-
-        for (Map.Entry<Integer, List<DBNation>> entry : nationsByAA.entrySet()) {
-            int aaId = entry.getKey();
-            AttackCost warCost = new AttackCost();
-
-            List<DBNation> aaNations = entry.getValue();
-            Set<Integer> nationIds = new HashSet<>();
-            for (DBNation aaNation : aaNations) nationIds.add(aaNation.getNation_id());
-
-            List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksAny(nationIds, cutoff);
-
-            attacks.removeIf(n -> {
-                DBNation nat1 = Locutus.imp().getNationDB().getNation(n.getAttacker_id());
-                DBNation nat2 = Locutus.imp().getNationDB().getNation(n.getAttacker_id());
-                return nat1 == null || nat2 == null || !nationsByAA.containsKey(nat1.getAlliance_id()) || !nationsByAA.containsKey(nat2.getAlliance_id());
-            });
-
-            Function<AbstractCursor, Boolean> isPrimary = new Function<AbstractCursor, Boolean>() {
-                @Override
-                public Boolean apply(AbstractCursor attack) {
-                    return Locutus.imp().getNationDB().getNation(attack.getAttacker_id()).getAlliance_id() == aaId;
-                }
-            };
-            warCost.addCost(attacks, isPrimary, f -> !isPrimary.apply(f));
-
-            DBAlliance alliance = DBAlliance.getOrCreate(entry.getKey());
-
-
-            ArrayList<Object> row = new ArrayList<>();
-            row.add(MarkupUtil.sheetUrl(alliance.getName(), alliance.getUrl()));
-
-            SimpleNationList aaMembers = new SimpleNationList(alliance.getNations());
-            row.add(aaMembers.getScore());
-            row.add(aaMembers.getTotal().getCities());
-
-            row.add(-PnwUtil.convertedTotal(warCost.getNetUnitCost(true)));
-            row.add(-PnwUtil.convertedTotal(warCost.getNetInfraCost(true)));
-            row.add(-PnwUtil.convertedTotal(warCost.getLoot(true)));
-            row.add(-PnwUtil.convertedTotal(warCost.getNetConsumptionCost(true)));
-            row.add(-PnwUtil.convertedTotal(warCost.getNetCost(true)));
-
-            row.add(PnwUtil.convertedTotal(warCost.getUnitCost(true)));
-            row.add((warCost.getInfraLost(true)));
-            row.add(PnwUtil.convertedTotal(warCost.getConsumption(true)));
-            row.add(PnwUtil.convertedTotal(warCost.getTotal(true)));
-
-            row.add(PnwUtil.convertedTotal(warCost.getUnitCost(false)));
-            row.add((warCost.getInfraLost(false)));
-            row.add(PnwUtil.convertedTotal(warCost.getConsumption(false)));
-            row.add(PnwUtil.convertedTotal(warCost.getTotal(false)));
-
-            row.add(warCost.getUnitCost(true).getOrDefault(ResourceType.MONEY, 0d) - warCost.getLoot(true).getOrDefault(ResourceType.MONEY, 0d));
-            row.add(warCost.getTotal(true).getOrDefault(ResourceType.GASOLINE, 0d));
-            row.add(warCost.getTotal(true).getOrDefault(ResourceType.MUNITIONS, 0d));
-            row.add(warCost.getTotal(true).getOrDefault(ResourceType.ALUMINUM, 0d));
-            row.add(warCost.getTotal(true).getOrDefault(ResourceType.STEEL, 0d));
-
-            sheet.addRow(row);
-        }
-
-        sheet.clear("A:Z");
-        sheet.set(0, 0);
-
-        sheet.attach(channel.create(), "war_cost_aa").send();
-        return null;
+        return StatCommands.WarCostByAllianceSheet(
+                channel,
+                guild,
+                nationSet,
+                cutoff,
+                flags.contains('i'),
+                flags.contains('a')
+        );
     }
 }

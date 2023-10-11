@@ -1093,7 +1093,7 @@ public class BankDB extends DBMainV3 {
 //    public void importTransactionsLegacy() {
 //        BankDB bankDb = Locutus.imp().getBankDB();
 //
-//        Set<Long> offshores = Locutus.imp().getRootBank().getGuildDB().getCoalitionRaw(Coalition.OFFSHORE);
+//        Set<Long> offshores = Locutus.imp().getRootBank().getGuildDB().getCoalition2(Coalition.OFFSHORE);
 //        List<Transfer> transfersLegacy = bankDb.getBankTransactionsLegacy();
 //        transfersLegacy.removeIf(f -> f.getReceiver() > 10000);
 //        transfersLegacy.removeIf(f -> !offshores.contains((long) f.getSender()) && !offshores.contains((long) f.getReceiver()) || f.getAmount() == 0);

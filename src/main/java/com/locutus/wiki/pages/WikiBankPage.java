@@ -200,6 +200,8 @@ public class WikiBankPage extends BotWikiGen {
                 "Note: It is recommended to set the global `" + GuildKey.BANKER_WITHDRAW_LIMIT.name() + "` to a low value so that users who have no individual limit set do not have unwarranted access to funds\n" +
                 "Set the interval the limit applies to (e.g. 1h)",
                 commandMarkdownSpoiler(CM.settings_bank_access.BANKER_WITHDRAW_LIMIT_INTERVAL.cmd),
+                "# Route Withdrawals via Alliance Bank",
+                commandMarkdownSpoiler(CM.settings_bank_access.ROUTE_ALLIANCE_BANK.cmd),
                 "# Offshore browser addon",
                 """
                 Userscript browser addon to more easily select / offshore the funds that you need.

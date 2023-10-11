@@ -2,7 +2,9 @@ package link.locutus.discord.db.entities;
 
 import com.politicsandwar.graphql.model.BannedNation;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.pnw.PNWUser;
+import link.locutus.discord.util.discord.DiscordUtil;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -42,6 +44,11 @@ public class DBBan {
         this.days_left = banQl.getDays_left() == null ? Integer.MAX_VALUE : banQl.getDays_left();
     }
 
+    @Command(desc = "Nation ID banned")
+    public int getNation_id() {
+        return nation_id;
+    }
+
     @Command(desc = "Get time remaining on this ban (in milliseconds)")
     public long getTimeRemaining() {
         if (days_left == -1) return Integer.MAX_VALUE;
@@ -61,22 +68,17 @@ public class DBBan {
         return date + TimeUnit.DAYS.toMillis(days_left);
     }
 
-    @Command("Nation ID banned")
-    public int getNationId() {
-        return nation_id;
-    }
-
-    @Command("Discord ID banned")
+    @Command(desc = "Discord ID banned")
     public long getDiscordId() {
         return discord_id;
     }
 
-    @Command("Reason for ban")
+    @Command(desc = "Reason for ban")
     public String getReason() {
         return reason;
     }
 
-    @Command("Date of ban")
+    @Command(desc = "Date of ban")
     public long getDate() {
         return date;
     }
@@ -90,7 +92,7 @@ public class DBBan {
     public DBNation getExistingNation(boolean checkNetwork) {
         DBNation nation = DBNation.getById(nation_id);
         if (nation == null) {
-            nation = DBNation.getByUser(discord_id);
+            nation = DiscordUtil.getNation(discord_id);
         }
         return nation;
     }

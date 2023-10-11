@@ -6,13 +6,15 @@ import com.politicsandwar.graphql.model.*;
 import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.SNationContainer;
 import link.locutus.discord.db.entities.DBTreasure;
@@ -53,7 +55,6 @@ import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import org.slf4j.LoggerFactory;;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.sql.PreparedStatement;
@@ -77,13 +78,12 @@ public class NationDB extends DBMainV2 {
     private final Map<Integer, DBNation> nationsById = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Map<Integer, DBNation>> nationsByAlliance = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, DBAlliance> alliancesById = new Int2ObjectOpenHashMap<>();
-    private final Map<Integer, Map<Integer, DBCity>> citiesByNation = new Int2ObjectOpenHashMap<>();
+    private final Int2ObjectOpenHashMap<Object> citiesByNation = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, DBAlliancePosition> positionsById = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Map<Integer, DBAlliancePosition>> positionsByAllianceId = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Map<Integer, Treaty>> treatiesByAlliance = new Int2ObjectOpenHashMap<>();
     private final Set<Integer> dirtyCities = Collections.synchronizedSet(new LinkedHashSet<>());
     private final Set<Integer> dirtyNations = Collections.synchronizedSet(new LinkedHashSet<>());
-
     private final Map<Integer, Set<DBTreasure>> treasuresByNation = new Int2ObjectOpenHashMap<>();
     private final Map<String, DBTreasure> treasuresByName = new ConcurrentHashMap<>();
     private ReportManager reportManager;
@@ -99,6 +99,23 @@ public class NationDB extends DBMainV2 {
 
     public LoanManager getLoanManager() {
         return loanManager;
+    }
+
+    private void condenseCities() {
+        ObjectOpenHashSet<ByteArrayList> cityBytes = new ObjectOpenHashSet<>();
+        for (Map.Entry<Integer, Object> entry : citiesByNation.entrySet()) {
+            ArrayUtil.iterateElements(DBCity.class, entry.getValue(), dbCity -> {
+                ByteArrayList currBytes = new ByteArrayList(dbCity.buildings3);
+                ByteArrayList existing = cityBytes.get(currBytes);
+                if (existing != null) {
+                    dbCity.buildings3 = existing.elements();
+                } else {
+                    cityBytes.add(currBytes);
+                    dbCity.buildings3 = currBytes.elements();
+                }
+            });
+        }
+
     }
 
     public void load() throws SQLException {
@@ -122,7 +139,7 @@ public class NationDB extends DBMainV2 {
         int treaties = loadTreaties();
         LOGGER.info("Loaded " + treaties + " treaties");
 
-        importLegacyNationLoot(true);
+//        importLegacyNationLoot(true);
 
         markDirtyIncorrectNations(true, true);
 
@@ -161,9 +178,9 @@ public class NationDB extends DBMainV2 {
 
     public DBCity getDBCity(int nationId, int cityId) {
         synchronized (citiesByNation) {
-            Map<Integer, DBCity> nationCities = citiesByNation.get(nationId);
+            Object nationCities = citiesByNation.get(nationId);
             if (nationCities != null) {
-                return nationCities.get(cityId);
+                return ArrayUtil.getElement(DBCity.class, nationCities, cityId);
             }
         }
         return null;
@@ -207,15 +224,16 @@ public class NationDB extends DBMainV2 {
 
     public boolean setCityNukeFromAttack(int nationId, int cityId, long timestamp, Consumer<Event> eventConsumer) {
         if (timestamp <= System.currentTimeMillis() - TimeUnit.DAYS.toMillis(11)) return false;
+        long turnstamp = TimeUtil.getTurn(timestamp);
 
         DBCity city = Locutus.imp().getNationDB().getDBCity(nationId, cityId);
-        if (city != null && city.nuke_date < timestamp) {
+        if (city != null && city.nuke_turn < turnstamp) {
 
             DBCity copyOriginal = eventConsumer == null ? null : new DBCity(city);
-            city.nuke_date = timestamp;
+            city.nuke_turn = (int) turnstamp;
             if (copyOriginal != null) eventConsumer.accept(new CityNukeEvent(nationId, copyOriginal, city));
 
-            saveCities(List.of(Map.entry(nationId, city)));
+            saveCities(List.of(city));
             return true;
         }
         return false;
@@ -223,15 +241,15 @@ public class NationDB extends DBMainV2 {
 
     public boolean setCityInfraFromAttack(int nationId, int cityId, double infra, long timestamp, Consumer<Event> eventConsumer) {
         DBCity city = getDBCity(nationId, cityId);
-        if (city != null && city.fetched < timestamp && Math.round(infra * 100) != Math.round(city.infra * 100)) {
+        if (city != null && city.fetched < timestamp && Math.round(infra * 100) != Math.round(city.getInfra() * 100)) {
             DBCity previous = new DBCity(city);
-            city.infra = infra;
+            city.setInfra(infra);
             if (eventConsumer != null) {
-                if (Math.round(infra * 100) != Math.round(previous.infra * 100)) {
+                if (Math.round(infra * 100) != Math.round(previous.getInfra() * 100)) {
                     eventConsumer.accept(new CityInfraDamageEvent(nationId, previous, city));
                 }
             }
-            saveCities(List.of(Map.entry(nationId, city)));
+            saveCities(List.of(city));
             return true;
         }
         return false;
@@ -990,15 +1008,13 @@ public class NationDB extends DBMainV2 {
     public void updateCitiesV2(Consumer<Event> eventConsumer) {
         Map<Integer, Integer> citiesToDeleteToNationId = new HashMap<>();
         synchronized (citiesByNation) {
-            for (Map.Entry<Integer, Map<Integer, DBCity>> natEntry : citiesByNation.entrySet()) {
+            for (Map.Entry<Integer, Object> natEntry : citiesByNation.entrySet()) {
                 int natId = natEntry.getKey();
                 DBNation nation = getNation(natId);
                 if (nation != null && nation.getVm_turns() > 0) continue;
-                Map<Integer, DBCity> cities = natEntry.getValue();
+                Object cities = natEntry.getValue();
                 synchronized (cities) {
-                    for (DBCity city : cities.values()) {
-                        citiesToDeleteToNationId.put(city.id, natId);
-                    }
+                    ArrayUtil.iterateElements(DBCity.class, natEntry.getValue(), city -> citiesToDeleteToNationId.put(city.id, natId));
                 }
             }
         }
@@ -1018,7 +1034,7 @@ public class NationDB extends DBMainV2 {
             return;
         }
 
-        DBCity buffer = new DBCity();
+        DBCity buffer = new DBCity(0);
 
         int originalDirtySize = dirtyCities.size();
 
@@ -1031,12 +1047,13 @@ public class NationDB extends DBMainV2 {
 
             DBCity existing = getDBCity(nationId, cityId);
             if (existing == null) {
-                existing = new DBCity();
+                existing = new DBCity(nationId);
+                existing.id = cityId;
+                existing.set(city);
                 if (eventConsumer != null) eventConsumer.accept(new CityCreateEvent(nationId, existing));
                 dirtyCities.add(cityId);
                 synchronized (citiesByNation) {
-                    citiesByNation.computeIfAbsent(nationId, f -> new Int2ObjectOpenHashMap<>())
-                            .put(cityId, existing);
+                    ArrayUtil.addElement(DBCity.class, citiesByNation, nationId, existing);
                 }
             } else {
                 double maxInfra = Double.parseDouble(city.getMaxinfra());
@@ -1060,10 +1077,7 @@ public class NationDB extends DBMainV2 {
                 int cityId = entry.getKey();
                 int nationId = entry.getValue();
                 synchronized (citiesByNation) {
-                    Map<Integer, DBCity> nationCities = citiesByNation.get(nationId);
-                    if (nationCities != null) {
-                        nationCities.remove(cityId);
-                    }
+                   ArrayUtil.removeElement(DBCity.class, citiesByNation, nationId, cityId);
                 }
             }
             System.out.println("Delete cities 1 " + citiesToDeleteToNationId.size());
@@ -1162,21 +1176,19 @@ public class NationDB extends DBMainV2 {
 
     private List<Integer> getNewCityIds(int amt, Set<Integer> ignoreIds) {
         Set<Integer> cityIds = new HashSet<>(ignoreIds);
-        int maxId = 0;
+        int[] maxIds = new int[1];
         synchronized (citiesByNation) {
-            for (Map<Integer, DBCity> cityMap : citiesByNation.values()) {
-                synchronized (cityMap) {
-                    for (DBCity city : cityMap.values()) {
-                        maxId = Math.max(city.id, maxId);
-                        cityIds.add(city.id);
-                    }
-                }
+            for (Object cityMap : citiesByNation.values()) {
+                ArrayUtil.iterateElements(DBCity.class, cityMap, (city) -> {
+                    maxIds[0] = Math.max(city.id, maxIds[0]);
+                    cityIds.add(city.id);
+                });
             }
         }
         if (lastNewCityFetched == 0) {
-            lastNewCityFetched = maxId;
+            lastNewCityFetched = maxIds[0];
         } else {
-            lastNewCityFetched = Math.min(maxId, lastNewCityFetched);
+            lastNewCityFetched = Math.min(maxIds[0], lastNewCityFetched);
         }
         List<Integer> newIds = new ArrayList<>();
         while (newIds.size() < amt) {
@@ -1204,12 +1216,13 @@ public class NationDB extends DBMainV2 {
         updateCities(completeCitiesByNation, true, eventConsumer);
     }
     private void updateCities(Map<Integer, Map<Integer, City>> completeCitiesByNation, boolean deleteMissing, Consumer<Event> eventConsumer) {
-        DBCity buffer = new DBCity();
-        List<Map.Entry<Integer, DBCity>> dirtyCities = new ArrayList<>(); // List<nation id, db city>
+        DBCity buffer = new DBCity(0);
+        List<DBCity> dirtyCities = new ArrayList<>(); // List<nation id, db city>
         AtomicBoolean dirtyFlag = new AtomicBoolean();
 
         Set<Integer> citiesToDelete = new HashSet<>();
 
+        List<Event> events = null;
         for (Map.Entry<Integer, Map<Integer, City>> nationEntry : completeCitiesByNation.entrySet()) {
             int nationId = nationEntry.getKey();
             Map<Integer, City> cities = nationEntry.getValue();
@@ -1220,37 +1233,37 @@ public class NationDB extends DBMainV2 {
                 }
             }
 
-            Map<Integer, DBCity> existingMap = Collections.EMPTY_MAP;
             synchronized (citiesByNation) {
-                Map<Integer, DBCity> map = citiesByNation.get(nationId);
+                Object map = citiesByNation.get(nationId);
                 if (map != null) {
-                    existingMap = new HashMap<>(map);
-                }
-            }
+                    if (deleteMissing) {
+                        IntList toDelete = new IntArrayList();
+                        ArrayUtil.iterateElements(DBCity.class, map, dbCity -> {
+                            City city = cities.get(dbCity.id);
+                            if (city == null) {
+                                toDelete.add(dbCity.id);
 
-            if (deleteMissing) {
-                for (Map.Entry<Integer, DBCity> cityEntry : existingMap.entrySet()) {
-                    City city = cities.get(cityEntry.getKey());
-                    if (city == null) {
-                        synchronized (citiesByNation) {
-                            Map<Integer, DBCity> map = citiesByNation.get(nationId);
-                            if (map != null) {
-                                map.remove(cityEntry.getKey());
                             }
-                        }
-                        citiesToDelete.add(cityEntry.getKey());
-                        if (eventConsumer != null) {
-                            eventConsumer.accept(new CityDeleteEvent(nationId, cityEntry.getValue()));
+                        });
+                        for (int cityId : toDelete) {
+                            citiesToDelete.add(cityId);
+                            DBCity city = ArrayUtil.getElement(DBCity.class, map, cityId);
+                            ArrayUtil.removeElement(DBCity.class, citiesByNation, nationId, cityId);
+                            if (eventConsumer != null) {
+                                if (events == null) events = new ArrayList<>();
+                                events.add(new CityDeleteEvent(nationId, city));
+                            }
                         }
                     }
                 }
             }
+
             for (Map.Entry<Integer, City> cityEntry : cities.entrySet()) {
                 City city = cityEntry.getValue();
                 dirtyFlag.set(false);
                 DBCity dbCity = processCityUpdate(city, buffer, eventConsumer, dirtyFlag);
                 if (dirtyFlag.get()) {
-                    dirtyCities.add(Map.entry(city.getNation_id(), dbCity));
+                    dirtyCities.add(dbCity);
                 }
             }
         }
@@ -1261,19 +1274,21 @@ public class NationDB extends DBMainV2 {
         if (!dirtyCities.isEmpty()) {
             saveCities(dirtyCities);
         }
+        if (events != null) {
+            events.forEach(eventConsumer);
+        }
     }
 
 
     public boolean deleteCities(Set<Integer> cityIds, Consumer<Event> eventConsumer) {
         Map<Integer, Integer> cityIdNationId = new HashMap<>();
         synchronized (citiesByNation) {
-            for (Map.Entry<Integer, Map<Integer, DBCity>> entry : citiesByNation.entrySet()) {
-                Map<Integer, DBCity> nationCities = entry.getValue();
-                for (Map.Entry<Integer, DBCity> cityEntry : nationCities.entrySet()) {
-                    if (cityIds.contains(cityEntry.getKey())) {
-                        cityIdNationId.put(cityEntry.getKey(), entry.getKey());
+            for (Map.Entry<Integer, Object> entry : citiesByNation.entrySet()) {
+                ArrayUtil.iterateElements(DBCity.class, entry.getValue(), dbCity -> {
+                    if (cityIds.contains(dbCity.id)) {
+                        cityIdNationId.put(dbCity.id, entry.getKey());
                     }
-                }
+                });
             }
         }
         return deleteCities2(cityIdNationId, eventConsumer);
@@ -1294,10 +1309,7 @@ public class NationDB extends DBMainV2 {
             int cityId = entry.getKey();
             DBCity existing = null;
             synchronized (citiesByNation) {
-                Map<Integer, DBCity> map = citiesByNation.get(nationId);
-                if (map != null) {
-                    existing = map.remove(cityId);
-                }
+                existing =ArrayUtil.removeElement(DBCity.class, citiesByNation, nationId, cityId);
             }
             if (eventConsumer != null && existing != null) {
                 eventConsumer.accept(new CityDeleteEvent(nationId, existing));
@@ -1359,8 +1371,8 @@ public class NationDB extends DBMainV2 {
     }
 
     public void updateCities(List<City> cities, Consumer<Event> eventConsumer) {
-        DBCity buffer = new DBCity();
-        List<Map.Entry<Integer, DBCity>> dirtyCities = new ArrayList<>(); // List<nation id, db city>
+        DBCity buffer = new DBCity(0);
+        List<DBCity> dirtyCities = new ArrayList<>(); // List<nation id, db city>
         AtomicBoolean dirtyFlag = new AtomicBoolean();
 
         for (City city : cities) {
@@ -1370,7 +1382,7 @@ public class NationDB extends DBMainV2 {
             dirtyFlag.set(false);
             DBCity dbCity = processCityUpdate(city, buffer, eventConsumer, dirtyFlag);
             if (dirtyFlag.get()) {
-                dirtyCities.add(Map.entry(city.getNation_id(), dbCity));
+                dirtyCities.add(dbCity);
             }
         }
 
@@ -1400,8 +1412,7 @@ public class NationDB extends DBMainV2 {
             existing = new DBCity(city);
             if (city.getNation_id() == 510930) System.out.println("Remove:||  New city " + city.getId() + " " + city.getName() + " " + city.getNation_id());
             synchronized (citiesByNation) {
-                Map<Integer, DBCity> map = citiesByNation.computeIfAbsent(city.getNation_id(), f -> new Int2ObjectOpenHashMap<>());
-                map.put(city.getId(), existing);
+                ArrayUtil.addElement(DBCity.class, citiesByNation, city.getNation_id(), existing);
             }
             if (existing.runChangeEvents(city.getNation_id(), null, eventConsumer)) {
                 dirtyFlag.set(true);
@@ -1409,6 +1420,7 @@ public class NationDB extends DBMainV2 {
         }
         return existing;
     }
+
     public DBAlliance getAlliance(int id) {
         synchronized (alliancesById) {
             return alliancesById.get(id);
@@ -1514,13 +1526,14 @@ public class NationDB extends DBMainV2 {
         SelectBuilder builder = getDb().selectBuilder("CITY_BUILDS").select("*");
         try (ResultSet rs = builder.executeRaw()) {
             while (rs.next()) {
-                Map.Entry<Integer, DBCity> entry = createCity(rs);
-                int nationId = entry.getKey();
-                DBCity city = entry.getValue();
-                citiesByNation.computeIfAbsent(nationId, f -> new Int2ObjectOpenHashMap<>()).put(city.id, city);
+                DBCity city = createCity(rs);
+                int nationId = city.getNationId();
+                ArrayUtil.addElement(DBCity.class, citiesByNation, nationId, city);
                 total++;
             }
         }
+        condenseCities();
+        citiesByNation.trim();
         return total;
     }
 
@@ -1529,10 +1542,9 @@ public class NationDB extends DBMainV2 {
      * @return (nation id, city)
      * @throws SQLException
      */
-    private Map.Entry<Integer, DBCity> createCity(ResultSet rs) throws SQLException {
+    private DBCity createCity(ResultSet rs) throws SQLException {
         int nationId = rs.getInt("nation");
-        DBCity data = new DBCity(rs);
-        return Map.entry(nationId, data);
+        return new DBCity(rs, nationId);
     }
 
     private void loadPositions() throws SQLException {
@@ -2345,6 +2357,20 @@ public class NationDB extends DBMainV2 {
             e.printStackTrace();
         }
         return results;
+    }
+
+    public DBBan getBanById(int id) {
+        String select = "SELECT * FROM banned_nations WHERE nation_id = ?";
+        try (PreparedStatement stmt = getConnection().prepareStatement(select)) {
+            stmt.setInt(1, id);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return new DBBan(rs);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     public Map<Integer, DBBan> getBansByNation() {
@@ -3199,6 +3225,30 @@ public class NationDB extends DBMainV2 {
         });
         return result;
     }
+
+    public Set<Treaty> getTreatiesMatching(Predicate<Treaty> filter) {
+        Set<Treaty> treaties = new ObjectOpenHashSet<>();
+        synchronized (treatiesByAlliance) {
+            for (Map<Integer, Treaty> allianceTreaties : treatiesByAlliance.values()) {
+                for (Treaty treaty : allianceTreaties.values()) {
+                    if (filter.test(treaty)) {
+                        treaties.add(treaty);
+                    }
+                }
+            }
+        }
+        return treaties;
+    }
+
+    public Set<Treaty> getTreaties() {
+        Set<Treaty> treaties = new ObjectOpenHashSet<>();
+        synchronized (treatiesByAlliance) {
+            for (Map<Integer, Treaty> allianceTreaties : treatiesByAlliance.values()) {
+                treaties.addAll(allianceTreaties.values());
+            }
+        }
+        return treaties;
+    }
     public Map<Integer, Treaty> getTreaties(int allianceId, TreatyType... types) {
         Map<Integer, Treaty> treaties = getTreaties(allianceId);
         Set<TreatyType> typesSet = new HashSet<>(Arrays.asList(types));
@@ -3624,6 +3674,17 @@ public class NationDB extends DBMainV2 {
         };
         return getNationsByAlliance(filter, sortByScore);
     }
+
+    public Map<DBAlliance, Integer> getAllianceRanks(Predicate<DBNation> filter, boolean sortByScore) {
+        Map<Integer, List<DBNation>> nations = getNationsByAlliance(filter, sortByScore);
+        Map<DBAlliance, Integer> ranks = new LinkedHashMap<>();
+        for (Map.Entry<Integer, List<DBNation>> entry : nations.entrySet()) {
+            DBAlliance alliance = DBAlliance.getOrCreate(entry.getKey());
+            ranks.put(alliance, ranks.size() + 1);
+        }
+        return ranks;
+    }
+
     public Map<Integer, List<DBNation>> getNationsByAlliance(Predicate<DBNation> filter, boolean sortByScore) {
         final Int2DoubleMap scoreMap = new Int2DoubleOpenHashMap();
         Int2ObjectOpenHashMap<List<DBNation>> nationsByAllianceFiltered = new Int2ObjectOpenHashMap<>();
@@ -4077,7 +4138,8 @@ public class NationDB extends DBMainV2 {
 
     public Map<Integer, DBCity> getCitiesV3(int nation_id) {
         synchronized (citiesByNation) {
-            return Collections.unmodifiableMap(citiesByNation.getOrDefault(nation_id, Collections.EMPTY_MAP));
+            Object cities = citiesByNation.get(nation_id);
+            return ArrayUtil.toMap(DBCity.class, cities, DBCity.GET_ID);
         }
     }
 
@@ -4090,16 +4152,18 @@ public class NationDB extends DBMainV2 {
         return result;
     }
 
-    public Map.Entry<Integer, DBCity> getCitiesV3ByCityId(int cityId) {
+    public DBCity getCitiesV3ByCityId(int cityId) {
         return getCitiesV3ByCityId(cityId, false, null);
     }
 
-    public Map.Entry<Integer, DBCity> getCitiesV3ByCityId(int cityId, boolean fetch, Consumer<Event> eventConsumer) {
-        for (Map.Entry<Integer, Map<Integer, DBCity>> entry : citiesByNation.entrySet()) {
-            Map<Integer, DBCity> cities = entry.getValue();
-            if (cities.containsKey(cityId)) {
-                DBCity city = cities.get(cityId);
-                return Map.entry(entry.getKey(), city);
+    public DBCity getCitiesV3ByCityId(int cityId, boolean fetch, Consumer<Event> eventConsumer) {
+        synchronized (citiesByNation) {
+            for (Map.Entry<Integer, Object> entry : citiesByNation.entrySet()) {
+                Object cities = entry.getValue();
+                DBCity city = ArrayUtil.getElement(DBCity.class, cities, cityId);
+                if (city != null) {
+                    return city;
+                }
             }
         }
         if (fetch) {
@@ -4113,33 +4177,30 @@ public class NationDB extends DBMainV2 {
     }
 
     public void saveAllCities() {
-        List<Map.Entry<Integer, DBCity>> allCities = new ArrayList<>();
+        List<DBCity> allCities = new ArrayList<>();
         synchronized (citiesByNation) {
-            for (Map.Entry<Integer, Map<Integer, DBCity>> entry : citiesByNation.entrySet()) {
-                for (Map.Entry<Integer, DBCity> entry2 : entry.getValue().entrySet()) {
-                    allCities.add(Map.entry(entry.getKey(), entry2.getValue()));
-                }
+            for (Map.Entry<Integer, Object> entry : citiesByNation.entrySet()) {
+                ArrayUtil.iterateElements(DBCity.class, entry.getKey(), allCities::add);
             }
         }
         saveCities(allCities);
     }
 
-    public void saveCities(List<Map.Entry<Integer, DBCity>> cities) {
+    public void saveCities(List<DBCity> cities) {
         if (cities.isEmpty()) return;
-        executeBatch(cities, "INSERT OR REPLACE INTO `CITY_BUILDS`(`id`, `nation`, `created`, `infra`, `land`, `powered`, `improvements`, `update_flag`, `nuke_date`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", new ThrowingBiConsumer<Map.Entry<Integer, DBCity>, PreparedStatement>() {
+        executeBatch(cities, "INSERT OR REPLACE INTO `CITY_BUILDS`(`id`, `nation`, `created`, `infra`, `land`, `powered`, `improvements`, `update_flag`, `nuke_date`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", new ThrowingBiConsumer<DBCity, PreparedStatement>() {
             @Override
-            public void acceptThrows(Map.Entry<Integer, DBCity> entry, PreparedStatement stmt) throws Exception {
-                int nationId = entry.getKey();
-                DBCity city = entry.getValue();
+            public void acceptThrows(DBCity city, PreparedStatement stmt) throws Exception {
+                int nationId = city.getNationId();
                 stmt.setInt(1, city.id);
                 stmt.setInt(2, nationId);
                 stmt.setLong(3, city.created);
-                stmt.setInt(4, (int) (city.infra * 100));
-                stmt.setInt(5, (int) (city.land * 100));
+                stmt.setInt(4, (int) (city.getInfra() * 100));
+                stmt.setInt(5, (int) (city.getLand() * 100));
                 stmt.setBoolean(6, city.powered);
-                stmt.setBytes(7, city.buildings);
+                stmt.setBytes(7, city.buildings3);
                 stmt.setLong(8, city.fetched);
-                stmt.setLong(9, city.nuke_date);
+                stmt.setLong(9, TimeUtil.getTimeFromTurn(city.nuke_turn));
             }
         });
     }
@@ -4238,8 +4299,10 @@ public class NationDB extends DBMainV2 {
                     continue;
                 }
                 synchronized (citiesByNation) {
-                    Map<Integer, DBCity> cities = citiesByNation.remove(id);
-                    if (cities != null) citiesToDelete.addAll(cities.keySet());
+                    Object cities = citiesByNation.remove(id);
+                    if (cities != null) {
+                        ArrayUtil.iterateElements(DBCity.class, cities, city -> citiesToDelete.add(city.id));
+                    }
                 }
                 synchronized (nationsById) {
                     nationsById.remove(id);

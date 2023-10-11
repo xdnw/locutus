@@ -1,7 +1,12 @@
 package link.locutus.discord.apiv1.enums;
 
 import com.politicsandwar.graphql.model.Color;
+import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.util.PnwUtil;
 
 import java.util.Collection;
@@ -47,9 +52,9 @@ public enum  NationColor implements NationList {
     @Command(desc = "Get the number of nations on this color.")
     public int getNumNations(@Default NationFilter filter) {
         if (filter != null) {
-            return Locutus.imp().getNationDb().getNationsMatching(f -> f.getColor() == this && filter.test(f)).size();
+            return Locutus.imp().getNationDB().getNationsMatching(f -> f.getColor() == this && filter.test(f)).size();
         }
-        return Locutus.imp().getNationDb().getNationsMatching(f -> f.getColor() == this).size();
+        return Locutus.imp().getNationDB().getNationsMatching(f -> f.getColor() == this).size();
     }
 
     @Command(desc = "If this is a taxable color")
@@ -104,5 +109,17 @@ public enum  NationColor implements NationList {
             case "YELLOW": return YELLOW;
             default: throw new IllegalArgumentException("Unknown color: " + color.getColor());
         }
+    }
+
+    public Set<DBNation> getNationsMatching(@Default NationFilter filter) {
+        if (filter != null) {
+            return Locutus.imp().getNationDB().getNationsMatching(f -> f.getColor() == this && filter.test(f));
+        }
+        return Locutus.imp().getNationDB().getNationsMatching(f -> f.getColor() == this);
+    }
+
+    @Override
+    public Collection<DBNation> getNations() {
+        return getNationsMatching(null);
     }
 }

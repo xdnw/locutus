@@ -4,6 +4,7 @@ import com.politicsandwar.graphql.model.Treasure;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.NationColor;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 
 import java.util.List;
@@ -81,7 +82,7 @@ public class DBTreasure {
 
     @Command(desc = "Get the number of nations that are in range of this treasure")
     public int getNumNationsInRange() {
-        return getNumNationsInRange(getMaxNationScore()).size();
+        return getNationsInRange(getMaxNationScore()).size();
     }
 
     public Predicate<DBNation> getFilter(double maxNationScore, boolean checkColor, boolean checkContinent) {
@@ -145,7 +146,7 @@ public class DBTreasure {
 
     @Command(desc = "The nation holding this treasure")
     public DBNation getNation() {
-        return DBNation.getByid(nation_id);
+        return DBNation.getById(nation_id);
     }
 
     public boolean matchesNation(NationFilter filter) {

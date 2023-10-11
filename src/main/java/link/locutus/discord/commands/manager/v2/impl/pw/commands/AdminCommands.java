@@ -97,10 +97,12 @@ public class AdminCommands {
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
-    public void savePojos(CommandManager2 manager) throws IOException {
+    public String savePojos() throws IOException {
+        CommandManager2 manager = Locutus.cmd().getV2();
         manager.getCommands().savePojo(null, CM.class, "CM");
         manager.getNationPlaceholders().getCommands().savePojo(null, CM.class, "NationCommands");
         manager.getAlliancePlaceholders().getCommands().savePojo(null, CM.class, "AllianceCommands");
+        return "Done!";
     }
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)

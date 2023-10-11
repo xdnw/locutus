@@ -11,7 +11,6 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.*;
 
@@ -43,8 +42,9 @@ public class GetCoalitions extends Command {
         boolean isAdmin = Roles.ADMIN.has(author, guild);
         if (args.size() > 1) return usage(args.size(), 1, channel);
 
-        Map<String, Set<Long>> coalitions = Locutus.imp().getGuildDB(guild).getCoalitionsRaw();
-        List<String> coalitionNames = new ArrayList<>(coalitions.keySet());
+        GuildDB db = Locutus.imp().getGuildDB(guild);
+//        Map<String, Set<Long>> coalitions = Locutus.imp().getGuildDB(guild).getCoalitionsRaw();
+        List<String> coalitionNames = new ArrayList<>(db.getCoalitionNames());
         Collections.sort(coalitionNames);
 
         StringBuilder response = new StringBuilder();
@@ -52,7 +52,7 @@ public class GetCoalitions extends Command {
             if (coalition.equalsIgnoreCase("offshore") && !isAdmin) {
                 continue;
             }
-            Set<Long> alliances = coalitions.get(coalition);
+            Set<Long> alliances = db.getCoalitionRaw(coalition);
             List<String> names = new ArrayList<>();
             for (long allianceOrGuildId : alliances) {
                 String name;

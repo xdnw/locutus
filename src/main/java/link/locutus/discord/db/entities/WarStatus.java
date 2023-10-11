@@ -15,4 +15,12 @@ public enum WarStatus {
     public static WarStatus parse(String input) {
         return valueOf(input.toUpperCase().replace(" ", "_"));
     }
+
+    public static boolean[] toArray(WarStatus... statuses) {
+        boolean[] warStatuses = new boolean[WarStatus.values.length];
+        for (WarStatus status : statuses) {
+            warStatuses[status.ordinal()] = true;
+        }
+        return warStatuses;
+    }
 }

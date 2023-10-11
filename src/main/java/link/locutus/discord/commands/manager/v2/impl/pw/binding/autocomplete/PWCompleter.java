@@ -138,7 +138,7 @@ public class PWCompleter extends BindingHelper {
         for (Coalition coalition : Coalition.values()) {
             options.add(coalition.name());
         }
-        for (String coalition : db.getCoalitions().keySet()) {
+        for (String coalition : db.getCoalitionNames()) {
             if (Coalition.getOrNull(coalition) != null) continue;
             options.add(coalition);
         }

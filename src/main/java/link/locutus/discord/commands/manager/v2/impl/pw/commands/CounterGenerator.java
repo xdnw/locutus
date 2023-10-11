@@ -87,7 +87,7 @@ public class CounterGenerator {
                         maxOffFactor = 0;
                         break;
                     }
-                    List<AbstractCursor> attacks = war.getAttacks();
+                    List<AbstractCursor> attacks = war.getAttacks2(false);
                     Map.Entry<Integer, Integer> resistance = war.getResistance(attacks);
                     Map.Entry<Integer, Integer> map = war.getMap(attacks);
                     int remainingHours = Math.max(0, ((resistance.getValue() - (10 * map.getValue() / 3)) / 10) * 3);
@@ -111,7 +111,7 @@ public class CounterGenerator {
 
                 if (!inWarRoom.isEmpty()) {
                     for (DBWar war : att.getActiveWars()) {
-                        inWarRoom.remove(war.defender_id);
+                        inWarRoom.remove(war.getDefender_id());
                     }
 
                     if (!inWarRoom.isEmpty()) {

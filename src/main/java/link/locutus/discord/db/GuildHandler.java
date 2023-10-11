@@ -313,7 +313,7 @@ public class GuildHandler {
 
         String pending = "_" + Settings.commandPrefix(true) + "UpdateEmbed 'description:{description}\n" +
                 "\n" +
-                "Assigned to %user% in {timediff}'\n" +
+                "Assigned to {usermention} in {timediff}'\n" +
                 CM.interview.create.cmd.create(author.getAsMention()).toCommandArgs();
 
         IMessageBuilder msg = new DiscordChannelIO(alertChannel).create().embed(title, body.toString()).commandButton(pending, emoji);
@@ -500,7 +500,7 @@ public class GuildHandler {
             DBCity previous = event.getPrevious();
             DBCity current = event.getCurrent();
 
-            if (previous.infra <= threshold && current.infra > threshold && (nation.getCities() < 8 || nation.getOff() >= 5)) {
+            if (previous.getInfra() <= threshold && current.getInfra() > threshold && (nation.getCities() < 8 || nation.getOff() >= 5)) {
                 AlertUtil.auditAlert(nation, AutoAuditType.HIGH_INFRA, (f) -> AutoAuditType.HIGH_INFRA.message + "\n" + current.getUrl());
             }
         }
@@ -519,7 +519,7 @@ public class GuildHandler {
                     if (building == Buildings.FARM && !nation.hasProject(Projects.MASS_IRRIGATION) && nation.getAvgLand() < 2000) {
                         String msg = AutoAuditType.UNPROFITABLE_FARMS.message;
                         AlertUtil.auditAlert(nation, AutoAuditType.UNPROFITABLE_FARMS, (f) -> " ```" + msg + "```" + "\n" + city.getUrl());
-                    } else if (building == Buildings.WIND_POWER && (amt > 1 || (city.infra <= 2000 || city.infra > 2250))) {
+                    } else if (building == Buildings.WIND_POWER && (amt > 1 || (city.getInfra() <= 2000 || city.getInfra() > 2250))) {
                         String msg = AutoAuditType.WIND_POWER.message;
                         AlertUtil.auditAlert(nation, AutoAuditType.WIND_POWER, (f) -> " ```" + msg + "```" + "\n" + city.getUrl());
                     }
@@ -590,7 +590,7 @@ public class GuildHandler {
             String emoji = "Claim";
             String pending = "_" + Settings.commandPrefix(true) + "UpdateEmbed 'description:{description}\n" +
                     "\n" +
-                    "Assigned to %user% in {timediff}'";
+                    "Assigned to {usermention} in {timediff}'";
 
             io.create().embed(title, body.toString())
                     .commandButton(pending, emoji).send();
@@ -982,14 +982,14 @@ public class GuildHandler {
 //                        case 1700:
 //                        case 1500:
 //                            localRequirement.add(seniority);
-//                            localRequirement.add(new Grant.Requirement("Infra grants are restricted during wartime. Please contact econ (or remove the `enemies` coalition)", overrideSafe, f -> getDb().getCoalitionRaw(Coalition.ENEMIES).isEmpty()));
+//                            localRequirement.add(new Grant.Requirement("Infra grants are restricted during wartime. Please contact econ (or remove the `enemies` coalition)", overrideSafe, f -> getDb().getCoalition2(Coalition.ENEMIES).isEmpty()));
 //                            localRequirement.add(noWarRequirement);
 //                            break;
 //                        case 2000:
 //                            localRequirement.add(seniority);
 //                            localRequirement.add(noWarRequirement);
 //                            localRequirement.add(new Grant.Requirement("Nation does not have 10 cities", overrideSafe, f -> f.getCities() >= 10));
-//                            localRequirement.add(new Grant.Requirement("Infra grants are restricted during wartime. Please contact econ", overrideSafe, f -> getDb().getCoalitionRaw(Coalition.ENEMIES).isEmpty()));
+//                            localRequirement.add(new Grant.Requirement("Infra grants are restricted during wartime. Please contact econ", overrideSafe, f -> getDb().getCoalition2(Coalition.ENEMIES).isEmpty()));
 //                            localRequirement.add(new Grant.Requirement("Domestic policy must be set to URBANIZATION for infra grants above 1700: <https://politicsandwar.com/nation/edit/>", overrideSafe, f -> f.getDomesticPolicy() == DomesticPolicy.URBANIZATION));
 //                            localRequirement.add(new Grant.Requirement("Infra grants above 1700 whilst raiding/warring require econ approval", overrideSafe, f -> {
 //                                if (f.getDef() > 0) return false;
@@ -1452,7 +1452,7 @@ public class GuildHandler {
         String assignEmoji = "Claim";
         String assignCmd = "." + Settings.commandPrefix(true) + "UpdateEmbed 'description:{description}\n" +
                 "\n" +
-                "Assigned to %user% in {timediff}'";
+                "Assigned to {usermention} in {timediff}'";
 
         DiscordChannelIO io = new DiscordChannelIO(channel);
         IMessageBuilder msg = io.create();
@@ -1652,7 +1652,7 @@ public class GuildHandler {
                                     DBNation nation = war.getNation(true);
                                     if (nation == null) continue;
                                     User user = nation.getUser();
-                                    if ((!aaIds.contains(war.attacker_aa)) && (user == null || guild.getMember(user) == null))
+                                    if ((!aaIds.contains(war.getAttacker_aa())) && (user == null || guild.getMember(user) == null))
                                         continue;
 
                                     String title = "Do Not Raid/" + channel.getIdLong();
@@ -1680,11 +1680,11 @@ public class GuildHandler {
                             CounterStat counterStat = war.getCounterStat();
                             String counterStatStr = counterStat == null ? "" : counterStat.type.getDescription();
 
-                            String attUrl = attacker != null ? attacker.getNationUrl() : PnwUtil.getNationUrl(war.attacker_id);
-                            String defUrl = defender != null ? defender.getNationUrl() : PnwUtil.getNationUrl(war.defender_id);
+                            String attUrl = attacker != null ? attacker.getNationUrl() : PnwUtil.getNationUrl(war.getAttacker_id());
+                            String defUrl = defender != null ? defender.getNationUrl() : PnwUtil.getNationUrl(war.getDefender_id());
 
-                            String attAAUrl = attacker != null ? attacker.getAllianceUrl() : PnwUtil.getNationUrl(war.attacker_aa);
-                            String defAAUrl = defender != null ? defender.getAllianceUrl() : PnwUtil.getNationUrl(war.defender_aa);
+                            String attAAUrl = attacker != null ? attacker.getAllianceUrl() : PnwUtil.getNationUrl(war.getAttacker_aa());
+                            String defAAUrl = defender != null ? defender.getAllianceUrl() : PnwUtil.getNationUrl(war.getDefender_aa());
                             {
                                 if (!offensive && !counterStatStr.isEmpty())
                                     body.append("**" + counterStatStr + "**\n");
@@ -1740,8 +1740,8 @@ public class GuildHandler {
                                     bodyRaw.append("- " + Rank.byId(attacker.getPosition()));
                                 }
                                 bodyRaw.append("\n");
-                                if (!offensive && war.attacker_aa != 0) {
-                                    bodyRaw.append("AA: <" + attAAUrl + "> (" + PnwUtil.getName(war.attacker_aa, true) + ")\n");
+                                if (!offensive && war.getAttacker_aa() != 0) {
+                                    bodyRaw.append("AA: <" + attAAUrl + "> (" + PnwUtil.getName(war.getAttacker_aa(), true) + ")\n");
                                 }
                                 if (attacker != null) {
                                     bodyRaw.append(attacker.toMarkdown(false, true, true));
@@ -1752,8 +1752,8 @@ public class GuildHandler {
                                     bodyRaw.append("- " + Rank.byId(defender.getPosition()));
                                 }
                                 bodyRaw.append("\n");
-                                if (offensive && war.attacker_aa != 0) {
-                                    bodyRaw.append("AA: <" + defAAUrl + "> (" + PnwUtil.getName(war.defender_aa, true) + ")\n");
+                                if (offensive && war.getAttacker_aa() != 0) {
+                                    bodyRaw.append("AA: <" + defAAUrl + "> (" + PnwUtil.getName(war.getDefender_aa(), true) + ")\n");
                                 }
                                 if (defender != null) {
                                     bodyRaw.append(defender.toMarkdown(false, true, true));
@@ -1908,7 +1908,7 @@ public class GuildHandler {
                     trackedDef = getTrackedWarAlliances(false);
                 }
 
-                if (trackedDef.contains(current.defender_aa)) {
+                if (trackedDef.contains(current.getDefender_aa())) {
                     // defensive
                     if (hideApps == Boolean.TRUE && defender.getPosition() <= 1) {
                         return false;
@@ -1917,7 +1917,7 @@ public class GuildHandler {
                     if (trackedOff == null) {
                         trackedOff = getTrackedWarAlliances(true);
                     }
-                    if (trackedOff.contains(current.attacker_aa)) {
+                    if (trackedOff.contains(current.getAttacker_aa())) {
                         // offensive
                     }
                 }
@@ -2135,7 +2135,7 @@ public class GuildHandler {
         body.append("\nEnemy: " + MarkupUtil.markdownUrl(defender.getNation(), defender.getNationUrl()) + " | " + MarkupUtil.markdownUrl(defender.getAllianceName(), defender.getAllianceUrl()));
         body.append("\n- Cities: " + defender.getCities());
 
-        Map.Entry<Integer, Integer> res = war.getResistance(war.getAttacks());
+        Map.Entry<Integer, Integer> res = war.getResistance(war.getAttacks2());
         int otherRes = war.isAttacker(attacker) ? res.getKey() : res.getValue();
         body.append("\nMy Resistance: " + otherRes);
 
@@ -2178,7 +2178,7 @@ public class GuildHandler {
         String emoji = "Claim";
         String pending = "_" + Settings.commandPrefix(true) + "UpdateEmbed 'description:{description}\n" +
                 "\n" +
-                "Assigned to %user% in {timediff}'";
+                "Assigned to {usermention} in {timediff}'";
         body.append("\nPress `" + emoji + "` to assign yourself");
 
         DiscordUtil.createEmbedCommand(channel, title, body.toString(), warInfoEmoji, warInfoCmd, defInfoEmoji, defInfoCmd, emoji, pending);
@@ -2681,10 +2681,10 @@ public class GuildHandler {
         String title = "War " + previous.getStatus() + " -> " + current.getStatus();
         StringBuilder body = new StringBuilder();
         body.append("War: " + MarkupUtil.markdownUrl("Click Here", current.toUrl())).append("\n");
-        body.append("ATT: " + PnwUtil.getMarkdownUrl(current.attacker_id, false) +
-                " | " + PnwUtil.getMarkdownUrl(current.attacker_aa, true)).append("\n");
-        body.append("DEF: " + PnwUtil.getMarkdownUrl(current.defender_id, false) +
-                " | " + PnwUtil.getMarkdownUrl(current.defender_aa, true)).append("\n");
+        body.append("ATT: " + PnwUtil.getMarkdownUrl(current.getAttacker_id(), false) +
+                " | " + PnwUtil.getMarkdownUrl(current.getAttacker_aa(), true)).append("\n");
+        body.append("DEF: " + PnwUtil.getMarkdownUrl(current.getDefender_id(), false) +
+                " | " + PnwUtil.getMarkdownUrl(current.getDefender_aa(), true)).append("\n");
 
         System.out.println("Create peace alert");
         DiscordUtil.createEmbedCommand(channel, title, body.toString());

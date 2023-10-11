@@ -52,16 +52,16 @@ public class CityUpdateProcessor {
 
         DBNation nation = DBNation.getById(event.getNationId());
 
-        if (city.infra % 50 != 0 && nation != null) {
-            System.out.println(":||TODO: Fix infra buy audit: " + event.getPrevious().infra + " -> " + city.infra);
+        if (city.getInfra() % 50 != 0 && nation != null) {
+            System.out.println(":||TODO: Fix infra buy audit: " + event.getPrevious().getInfra() + " -> " + city.getInfra());
             if (true) return;
             AlertUtil.auditAlert(nation, AutoAuditType.UNEVEN_INFRA, new Function<GuildDB, String>() {
                 @Override
                 public String apply(GuildDB guildDB) {
-                    int ideal = (int) (city.infra - city.infra % 50);
+                    int ideal = (int) (city.getInfra() - city.getInfra() % 50);
                     String msg = AutoAuditType.UNEVEN_INFRA.message
                             .replace("{city}", PnwUtil.getCityUrl(city.id));
-                    return "You bought uneven infra in <" + PnwUtil.getCityUrl(city.id) + "> (" + MathMan.format(city.infra) + " infra) but only get a building slot every `50` infra.\n" +
+                    return "You bought uneven infra in <" + PnwUtil.getCityUrl(city.id) + "> (" + MathMan.format(city.getInfra()) + " infra) but only get a building slot every `50` infra.\n" +
                             "You can enter e.g. `@" + ideal + "` to buy up to that amount";
                 }
             });

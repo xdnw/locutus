@@ -166,7 +166,7 @@ public class Spyops extends Command {
         if (!aaIds.isEmpty()) allies.addAll(aaIds);
 
         Set<Integer> myEnemies = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id()).stream()
-                .map(dbWar -> dbWar.attacker_id == me.getNation_id() ? dbWar.defender_id : dbWar.attacker_id)
+                .map(dbWar -> dbWar.getAttacker_id() == me.getNation_id() ? dbWar.getDefender_id() : dbWar.getAttacker_id())
                 .collect(Collectors.toSet());
 
         Function<DBNation, Boolean> isInSpyRange = nation -> me.isInSpyRange(nation) || myEnemies.contains(nation.getNation_id());
@@ -183,10 +183,10 @@ public class Spyops extends Command {
             nations = new LinkedHashSet<>();
             for (DBWar value : active.values()) {
                 int other;
-                if (isInvolved.apply(value.attacker_id)) {
-                    other = value.defender_id;
-                } else if (isInvolved.apply(value.defender_id)) {
-                    other = value.attacker_id;
+                if (isInvolved.apply(value.getAttacker_id())) {
+                    other = value.getDefender_id();
+                } else if (isInvolved.apply(value.getDefender_id())) {
+                    other = value.getAttacker_id();
                 } else {
                     continue;
                 }

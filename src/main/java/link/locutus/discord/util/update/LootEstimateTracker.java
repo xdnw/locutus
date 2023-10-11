@@ -549,12 +549,12 @@ public class LootEstimateTracker {
 
     @Subscribe
     public void onInfraBuy(CityInfraBuyEvent event) {
-        handleInfraBuySell(event.getNation(), event.getPrevious().infra, event.getCurrent().infra, event.getTimeCreated());
+        handleInfraBuySell(event.getNation(), event.getPrevious().getInfra(), event.getCurrent().getInfra(), event.getTimeCreated());
     }
 
     @Subscribe
     public void onInfraSell(CityInfraSellEvent event) {
-        handleInfraBuySell(event.getNation(), event.getPrevious().infra, event.getCurrent().infra, event.getTimeCreated());
+        handleInfraBuySell(event.getNation(), event.getPrevious().getInfra(), event.getCurrent().getInfra(), event.getTimeCreated());
     }
 
     @Subscribe
@@ -567,12 +567,12 @@ public class LootEstimateTracker {
 
     @Subscribe
     public void onLandBuy(CityLandBuyEvent event) {
-        handleInfraBuySell(event.getNation(), event.getPrevious().land, event.getCurrent().land, event.getTimeCreated());
+        handleInfraBuySell(event.getNation(), event.getPrevious().getLand(), event.getCurrent().getLand(), event.getTimeCreated());
     }
 
     @Subscribe
     public void onLandSell(CityLandSellEvent event) {
-        handleInfraBuySell(event.getNation(), event.getPrevious().land, event.getCurrent().land, event.getTimeCreated());
+        handleInfraBuySell(event.getNation(), event.getPrevious().getLand(), event.getCurrent().getLand(), event.getTimeCreated());
     }
 
     @Subscribe
@@ -601,17 +601,17 @@ public class LootEstimateTracker {
 
     public void onAttack(AbstractCursor attack, boolean hasSalvage) {
         // consumption
-        double[] attLoss = PnwUtil.resourcesToArray(attack.getLosses(true, false, false, true, true, false));
-        double[] defLoss = PnwUtil.resourcesToArray(attack.getLosses(false, false, false, true, true, false));
+        double[] attLoss = (attack.getLosses(ResourceType.getBuffer(), true, false, false, true, true, false));
+        double[] defLoss = (attack.getLosses(ResourceType.getBuffer(), false, false, false, true, true, false));
 
         // Handle airstrike money (since it comes under unit losses, which we are excluding)
         if (attack.getAttack_type() == AttackType.AIRSTRIKE_MONEY && attack.getDefcas1() > 0) {
             defLoss[ResourceType.MONEY.ordinal()] += attack.getDefcas1();
         }
         if (attack.getSuccess() != SuccessType.UTTER_FAILURE && hasSalvage) {
-            Map<ResourceType, Double> unitLosses = attack.getLosses(true, true, false, false, false, false);
-            attLoss[ResourceType.STEEL.ordinal()] -= unitLosses.getOrDefault(ResourceType.STEEL, 0d) * 0.05;
-            attLoss[ResourceType.ALUMINUM.ordinal()] -= unitLosses.getOrDefault(ResourceType.ALUMINUM, 0d) * 0.05;
+            double[] unitLosses = attack.getLosses(ResourceType.getBuffer(), true, true, false, false, false, false);
+            attLoss[ResourceType.STEEL.ordinal()] -= unitLosses[ResourceType.STEEL.ordinal()] * 0.05;
+            attLoss[ResourceType.ALUMINUM.ordinal()] -= unitLosses[ResourceType.ALUMINUM.ordinal()] * 0.05;
         }
         // negate this
         add(attack.getAttacker_id(), attack.getDate(), ResourceType.negative(attLoss));

@@ -12,7 +12,6 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import rocker.grant.nation;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -437,8 +436,8 @@ public class BlitzGenerator {
             Map<Integer, List<DBWar>> wars = Locutus.imp().getWarDb().getActiveWarsByAttacker(natIds, natIds, WarStatus.ACTIVE, WarStatus.DEFENDER_OFFERED_PEACE, WarStatus.ATTACKER_OFFERED_PEACE);
             for (Map.Entry<Integer, List<DBWar>> entry : wars.entrySet()) {
                 for (DBWar war : entry.getValue()) {
-                    DBNation attacker = Locutus.imp().getNationDB().getNation(war.attacker_id);
-                    DBNation defender = Locutus.imp().getNationDB().getNation(war.defender_id);
+                    DBNation attacker = Locutus.imp().getNationDB().getNation(war.getAttacker_id());
+                    DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
                     if (attacker == null || defender == null) continue;
                     if (!war.isActive()) continue;
 
@@ -483,8 +482,8 @@ public class BlitzGenerator {
 
         if (!warsToRemove.isEmpty()) {
             for (DBWar war : warsToRemove) {
-                DBNation attacker = Locutus.imp().getNationDB().getNation(war.attacker_id);
-                DBNation defender = Locutus.imp().getNationDB().getNation(war.defender_id);
+                DBNation attacker = Locutus.imp().getNationDB().getNation(war.getAttacker_id());
+                DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
                 defTargets.getOrDefault(defender, Collections.emptyList()).remove(attacker);
                 defTargets.getOrDefault(attacker, Collections.emptyList()).remove(defender);
             }
@@ -555,8 +554,8 @@ public class BlitzGenerator {
             Map<Integer, List<DBWar>> wars = Locutus.imp().getWarDb().getActiveWarsByAttacker(natIds, natIds, WarStatus.ACTIVE, WarStatus.DEFENDER_OFFERED_PEACE, WarStatus.ATTACKER_OFFERED_PEACE);
             for (Map.Entry<Integer, List<DBWar>> entry : wars.entrySet()) {
                 for (DBWar war : entry.getValue()) {
-                    DBNation attacker = Locutus.imp().getNationDB().getNation(war.attacker_id);
-                    DBNation defender = Locutus.imp().getNationDB().getNation(war.defender_id);
+                    DBNation attacker = Locutus.imp().getNationDB().getNation(war.getAttacker_id());
+                    DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
                     if (attacker == null || defender == null) continue;
                     if (!war.isActive()) continue;
 
@@ -856,8 +855,8 @@ public class BlitzGenerator {
 
         if (!warsToRemove.isEmpty()) {
             for (DBWar war : warsToRemove) {
-                DBNation attacker = Locutus.imp().getNationDB().getNation(war.attacker_id);
-                DBNation defender = Locutus.imp().getNationDB().getNation(war.defender_id);
+                DBNation attacker = Locutus.imp().getNationDB().getNation(war.getAttacker_id());
+                DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
                 defTargets.getOrDefault(defender, Collections.emptyList()).remove(attacker);
                 defTargets.getOrDefault(attacker, Collections.emptyList()).remove(defender);
             }

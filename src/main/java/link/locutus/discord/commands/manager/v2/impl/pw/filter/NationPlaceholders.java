@@ -195,7 +195,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     }
 
     @Override
-    protected Predicate<DBNation> parseSingleFilter(ValueStore store, String name) {
+    public Predicate<DBNation> parseSingleFilter(ValueStore store, String name) {
         String nameLower = name.toLowerCase(Locale.ROOT);
         Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
         if (name.equals("*")) {

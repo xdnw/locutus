@@ -743,7 +743,7 @@ public class BankCommands {
                 note = "#alliance=" + from.getAlliance_id();
             }
             note += " #tx_id=" + UUID.randomUUID().toString();
-            TransferResult response = bank.transferUnsafe(null, to, resources, note);
+            TransferResult response = bank.transferUnsafe2(null, to, resources, note, null);
             results.add(response);
         }
         if (results.size() == 1) {
@@ -781,7 +781,7 @@ public class BankCommands {
         nations.removeIf(f -> f.getVm_turns() > 0 || f.getActive_m() > 10000 || f.getPosition() <= 1);
         List<DBWar> wars = new ArrayList<>(Locutus.imp().getWarDb().getWarsForNationOrAlliance(null,
                 f -> (allyIds.contains(f) || enemyIds.contains(f)),
-                f -> (allyIds.contains(f.attacker_aa) || allyIds.contains(f.defender_aa)) && (enemyIds.contains(f.attacker_aa) || enemyIds.contains(f.defender_aa)) && f.date > cutoff).values());
+                f -> (allyIds.contains(f.getAttacker_aa()) || allyIds.contains(f.getDefender_aa())) && (enemyIds.contains(f.getAttacker_aa()) || enemyIds.contains(f.getDefender_aa())) && f.getDate() > cutoff).values());
 
         List<AbstractCursor> allattacks = Locutus.imp().getWarDb().getAttacksByWars(wars);
         Map<Integer, List<AbstractCursor>> attacksByWar = new HashMap<>();
@@ -793,22 +793,22 @@ public class BankCommands {
             wars.removeIf(f -> {
                 List<AbstractCursor> attacks = attacksByWar.get(f.warId);
                 if (attacks == null) return true;
-                boolean att1 = attacks.stream().anyMatch(g -> g.getAttacker_id() == f.attacker_id);
-                boolean att2 = attacks.stream().anyMatch(g -> g.getAttacker_id() == f.defender_id);
+                boolean att1 = attacks.stream().anyMatch(g -> g.getAttacker_id() == f.getAttacker_id());
+                boolean att2 = attacks.stream().anyMatch(g -> g.getAttacker_id() == f.getDefender_id());
                 return !att1 || !att2;
             });
         }
 
         wars.removeIf(f -> {
             List<AbstractCursor> attacks = attacksByWar.get(f.warId);
-            AttackCost cost = f.toCost(attacks);
-            boolean primary = allyIds.contains(f.attacker_aa);
+            AttackCost cost = f.toCost(attacks, false, false, false, false, false);
+            boolean primary = allyIds.contains(f.getAttacker_aa());
             return cost.convertedTotal(primary) <= 0;
         });
 
         for (DBWar war : wars) {
-            offensivesByNation.put(war.attacker_id, offensivesByNation.getOrDefault(war.attacker_id, 0) + 1);
-            defensivesByNation.put(war.defender_id, defensivesByNation.getOrDefault(war.defender_id, 0) + 1);
+            offensivesByNation.put(war.getAttacker_id(), offensivesByNation.getOrDefault(war.getAttacker_id(), 0) + 1);
+            defensivesByNation.put(war.getDefender_id(), defensivesByNation.getOrDefault(war.getDefender_id(), 0) + 1);
         }
 
 
@@ -816,8 +816,8 @@ public class BankCommands {
 
         for (DBWar war : wars) {
             List<AbstractCursor> attacks = attacksByWar.get(war.warId);
-            AttackCost ac = war.toCost(attacks);
-            boolean primary = allies.contains(war.attacker_aa);
+            AttackCost ac = war.toCost(attacks, false, false, false, false, false);
+            boolean primary = allies.contains(war.getAttacker_aa());
             double[] units = PnwUtil.resourcesToArray(ac.getUnitCost(primary));
             double[] consume = PnwUtil.resourcesToArray(ac.getConsumption(primary));
 
@@ -828,7 +828,7 @@ public class BankCommands {
                 cost[type.ordinal()] = Math.max(0, Math.min(warCostTotal[type.ordinal()], cost[type.ordinal()]));
             }
 
-            int nationId = primary ? war.attacker_id : war.defender_id;
+            int nationId = primary ? war.getAttacker_id() : war.getDefender_id();
             double[] total = warcostByNation.computeIfAbsent(nationId, f -> ResourceType.getBuffer());
             total = PnwUtil.add(total, cost);
         }
@@ -1312,9 +1312,9 @@ public class BankCommands {
                     }
                     if (nation.isGray()) status = OffshoreInstance.TransferStatus.GRAY;
                     if (nation.isBeige() && nation.getCities() <= 4) status = OffshoreInstance.TransferStatus.BEIGE;
-                    if (status != OffshoreInstance.TransferStatus.SUCCESS) debug += " (use the `force` parameter to override)";
+                    if (!status.isSuccess()) debug += " (use the `force` parameter to override)";
                 }
-                if (status != OffshoreInstance.TransferStatus.SUCCESS) {
+                if (!status.isSuccess()) {
                     iter.remove();
                     allStatuses.add(nation.getName() + "\t" + status.name() + "\t" + status.getMessage() + debug);
                 }
@@ -2237,7 +2237,10 @@ public class BankCommands {
                                @Arg("Do NOT include deposits") @Switch("d") boolean noDeposits,
                                @Arg("Include past depositors") @Switch("p") Set<Integer> includePastDepositors,
                                @Arg("Do NOT include escrow sheet") @Switch("e") boolean noEscrowSheet,
-                               @Switch("n") DepositType useFlowNote,
+                               @Arg("Only show the flow for this note\n" +
+                                       "i.e. To only see funds marked as #TRADE\n" +
+                                       "This is for transfer flow breakdown internal, withdrawal, and deposit")
+                                  @Switch("n") DepositType useFlowNote,
                                @Switch("f") boolean force
 
     ) throws GeneralSecurityException, IOException {
@@ -2860,7 +2863,7 @@ public class BankCommands {
 
             output.append(receiver.getUrl() + "\t" + receiver.isAlliance() + "\t" + StringMan.getString(amount) + "\t" + result.getStatus() + "\t" + "\"" + result.getMessageJoined(false).replace("\n", " ") + "\"");
             output.append("\n");
-            if (result.getStatus() == OffshoreInstance.TransferStatus.SUCCESS || result.getStatus() == OffshoreInstance.TransferStatus.SENT_TO_ALLIANCE_BANK) {
+            if (result.getStatus().isSuccess()) {
                 totalSent = PnwUtil.add(totalSent, PnwUtil.resourcesToMap(amount));
                 io.create().embed(result.toTitleString(), result.toEmbedString()).send();
             }

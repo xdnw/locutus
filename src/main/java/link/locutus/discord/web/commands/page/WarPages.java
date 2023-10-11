@@ -1,5 +1,6 @@
 package link.locutus.discord.web.commands.page;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.war.WarCategory;
@@ -57,7 +58,7 @@ public class WarPages {
         Set<Integer> aaIds = db.getAllianceIds();
         Set<Integer> enemies = db.getCoalition(Coalition.ENEMIES);
 
-        List<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(allies, WarStatus.ACTIVE, WarStatus.DEFENDER_OFFERED_PEACE, WarStatus.ATTACKER_OFFERED_PEACE);
+        List<DBWar> wars = new ObjectArrayList<>(Locutus.imp().getWarDb().getActiveWars(allies, WarStatus.ACTIVE, WarStatus.DEFENDER_OFFERED_PEACE, WarStatus.ATTACKER_OFFERED_PEACE));
         wars.removeIf(f -> {
             DBNation attacker = f.getNation(true);
             if (attacker == null || attacker.hasUnsetMil() || attacker.isBeige() || attacker.getDef() >= 3 || attacker.getVm_turns() > 0) return true;
@@ -72,7 +73,7 @@ public class WarPages {
 
         wars.removeIf(f -> {
             CounterStat stat = counterStatMap.get(f);
-            if (stat != null && !enemies.contains(f.attacker_aa) && stat.type == CounterType.IS_COUNTER) {
+            if (stat != null && !enemies.contains(f.getAttacker_aa()) && stat.type == CounterType.IS_COUNTER) {
                 return true;
             }
             return false;
@@ -85,7 +86,7 @@ public class WarPages {
         Collections.sort(wars, new Comparator<DBWar>() {
             @Override
             public int compare(DBWar o1, DBWar o2) {
-                return Long.compare(o2.date, o1.date);
+                return Long.compare(o2.getDate(), o1.getDate());
             }
         });
 
@@ -103,27 +104,27 @@ public class WarPages {
             });
         }
 
-        table.addColumn("type", false, false, f -> f.warType);
+        table.addColumn("type", false, false, f -> f.getWarType());
         table.addColumn("ctrl", true, false, f -> {
             String a = "";
             String b = "";
             WarCard card = warCardMap.get(f);
-            if (card.blockaded == f.attacker_id) a += "<span data-toggle=\"tooltip\" title=\"attacker blockaded\">\u26F5</span>";
-            if (card.blockaded == f.defender_id) a += "<span data-toggle=\"tooltip\" title=\"defender blockaded\">\u26F5</span>";
+            if (card.blockaded == f.getAttacker_id()) a += "<span data-toggle=\"tooltip\" title=\"attacker blockaded\">\u26F5</span>";
+            if (card.blockaded == f.getDefender_id()) a += "<span data-toggle=\"tooltip\" title=\"defender blockaded\">\u26F5</span>";
 
-            if (card.airSuperiority == f.attacker_id) a += "<span data-toggle=\"tooltip\" title=\"attacker air control\">\u2708</span>";
-            if (card.airSuperiority == f.defender_id) a += "<span data-toggle=\"tooltip\" title=\"defender air control\">\u2708</span>";
+            if (card.airSuperiority == f.getAttacker_id()) a += "<span data-toggle=\"tooltip\" title=\"attacker air control\">\u2708</span>";
+            if (card.airSuperiority == f.getDefender_id()) a += "<span data-toggle=\"tooltip\" title=\"defender air control\">\u2708</span>";
 
-            if (card.groundControl == f.attacker_id) a += "<span data-toggle=\"tooltip\" title=\"attacker ground control\">\uD83D\uDC82</span>";
-            if (card.groundControl == f.defender_id) a += "<span data-toggle=\"tooltip\" title=\"attacker ground control\">\uD83D\uDC82</span>";
+            if (card.groundControl == f.getAttacker_id()) a += "<span data-toggle=\"tooltip\" title=\"attacker ground control\">\uD83D\uDC82</span>";
+            if (card.groundControl == f.getDefender_id()) a += "<span data-toggle=\"tooltip\" title=\"attacker ground control\">\uD83D\uDC82</span>";
 
             if (card.attackerFortified) a += "<span data-toggle=\"tooltip\" title=\"attacker fortified\">\uD83D\uDEE1</span>";
             if (card.defenderFortified) a += "<span data-toggle=\"tooltip\" title=\"defender fortified\">\uD83D\uDEE1</span>";
 
-            if (f.status == WarStatus.ATTACKER_OFFERED_PEACE) {
+            if (f.getStatus() == WarStatus.ATTACKER_OFFERED_PEACE) {
                 a += "<span data-toggle=\"tooltip\" title=\"attacker offers peace\">\uD83D\uDC95</span>";
             }
-            if (f.status == WarStatus.DEFENDER_OFFERED_PEACE) {
+            if (f.getStatus() == WarStatus.DEFENDER_OFFERED_PEACE) {
                 b += "<span data-toggle=\"tooltip\" title=\"defender offers peace\">\uD83D\uDC95</span>";
             }
             return a + "<br>" + b;
@@ -148,20 +149,20 @@ public class WarPages {
 
         table.addColumn("blockaded", false, false, f -> {
             WarCard card = warCardMap.get(f);
-            if (card.blockaded == f.attacker_id) return "attacker";
-            if (card.blockaded == f.defender_id) return "defender";
+            if (card.blockaded == f.getAttacker_id()) return "attacker";
+            if (card.blockaded == f.getDefender_id()) return "defender";
             return "none";
         });
         table.addColumn("AC", false, false, f -> {
             WarCard card = warCardMap.get(f);
-            if (card.airSuperiority == f.attacker_id) return "attacker";
-            if (card.airSuperiority == f.defender_id) return "defender";
+            if (card.airSuperiority == f.getAttacker_id()) return "attacker";
+            if (card.airSuperiority == f.getDefender_id()) return "defender";
             return "none";
         });
         table.addColumn("GC", false, false, f -> {
             WarCard card = warCardMap.get(f);
-            if (card.groundControl == f.attacker_id) return "attacker";
-            if (card.groundControl == f.defender_id) return "defender";
+            if (card.groundControl == f.getAttacker_id()) return "attacker";
+            if (card.groundControl == f.getDefender_id()) return "defender";
             return "none";
         });
         table.addColumn("resistance", false, false, f -> {
@@ -176,7 +177,7 @@ public class WarPages {
             return TimeUtil.secToTime(TimeUnit.MINUTES, f.getNation(false).getActive_m());
         });
         table.addColumn("actions", false, false, f -> {
-            String cmd = CM.war.counter.auto.cmd.create(f.attacker_id + "", null, null, null, null, null).toCommandArgs();
+            String cmd = CM.war.counter.auto.cmd.create(f.getAttacker_id() + "", null, null, null, null, null).toCommandArgs();
             String button = "<button cmd=\"" + cmd + "\" type=\"button\" class=\"btn-sm btn-primary\">Autocounter</button>";
             return button;
         });

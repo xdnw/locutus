@@ -894,7 +894,7 @@ public class GrantCommands {
 
 
             //saves grant record into the database
-            if (status.getStatus() == OffshoreInstance.TransferStatus.SUCCESS || status.getStatus() == OffshoreInstance.TransferStatus.SENT_TO_ALLIANCE_BANK) {
+            if (status.getStatus().isSuccess()) {
                 GrantTemplateManager.GrantSendRecord record = new GrantTemplateManager.GrantSendRecord(template.getName(), me.getId(), receiver.getId(), template.getType(), cost, System.currentTimeMillis());
                 db.getGrantTemplateManager().saveGrantRecord(record);
             }
@@ -1291,7 +1291,7 @@ public class GrantCommands {
 //
 //                        if (amount >= 1500) {
 //                            grant.addRequirement(seniority);
-//                            grant.addRequirement(new Grant.Requirement("Infra grants are restricted during wartime. Please contact econ (or remove the `enemies` coalition)", econStaff, f -> db.getCoalitionRaw(Coalition.ENEMIES).isEmpty()));
+//                            grant.addRequirement(new Grant.Requirement("Infra grants are restricted during wartime. Please contact econ (or remove the `enemies` coalition)", econStaff, f -> db.getCoalition2(Coalition.ENEMIES).isEmpty()));
 //                            grant.addRequirement(noWarRequirement);
 //                        }
 //                        if (amount > 1700) {
@@ -1300,7 +1300,7 @@ public class GrantCommands {
 //                        if (amount >= 2000) {
 //                            grant.addRequirement(seniority);
 //                            grant.addRequirement(noWarRequirement);
-//                            grant.addRequirement(new Grant.Requirement("Infra grants are restricted during wartime. Please contact econ", econStaff, f -> db.getCoalitionRaw(Coalition.ENEMIES).isEmpty()));
+//                            grant.addRequirement(new Grant.Requirement("Infra grants are restricted during wartime. Please contact econ", econStaff, f -> db.getCoalition2(Coalition.ENEMIES).isEmpty()));
 //                            grant.addRequirement(new Grant.Requirement("Domestic policy must be set to URBANIZATION for infra grants above 1700: <https://politicsandwar.com/nation/edit/>", econStaff, f -> f.getDomesticPolicy() == DomesticPolicy.URBANIZATION));
 //                            grant.addRequirement(new Grant.Requirement("Infra grants above 1700 whilst raiding/warring require econ approval", econStaff, f -> {
 //                                if (f.getDef() > 0) return false;
@@ -1576,7 +1576,7 @@ public class GrantCommands {
 //                }
 //            }
 //            if (switchBuildFunds) {
-//                for (Map.Entry<Integer, DBCity> entry : nation._getCitiesV3().entrySet()) {
+//                for (DBCity entry : nation._getCitiesV3().entrySet()) {
 //                    DBCity city = entry.getValue();
 //                    for (MilitaryUnit unit : MilitaryUnit.values) {
 //                        double required = grantMMR.get(unit);
@@ -1941,11 +1941,11 @@ public class GrantCommands {
                     return null;
                 }
                 default:
-                case TURN_CHANGE:
                 case OTHER: {
                     channel.create().embed("Escrow " + result.toTitleString(), result.toEmbedString()).send();
                     return null;
                 }
+                case TURN_CHANGE:
                 case BLOCKADE:
                 case MULTI:
                 case INSUFFICIENT_FUNDS:

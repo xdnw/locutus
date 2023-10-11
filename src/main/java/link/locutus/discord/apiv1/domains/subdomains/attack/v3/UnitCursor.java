@@ -111,20 +111,4 @@ public abstract class UnitCursor extends DamageCursor {
     public double getDef_mun_used() {
         return def_mun_used_cents * 0.01;
     }
-
-    @Override
-    public Map<MilitaryUnit, Integer> getUnitLosses(boolean isAttacker) {
-        Map<MilitaryUnit, Integer> losses = new Object2ObjectOpenHashMap<>(getUnits().length);
-        for (MilitaryUnit unit : getUnits()) {
-            losses.put(unit, getUnitLosses(unit, isAttacker));
-        }
-        return losses;
-    }
-
-    @Override
-    public void addUnitLosses(int[] unitTotals, boolean isAttacker) {
-        for (MilitaryUnit unit : getUnits()) {
-            unitTotals[unit.ordinal()] += getUnitLosses(unit, isAttacker);
-        }
-    }
 }

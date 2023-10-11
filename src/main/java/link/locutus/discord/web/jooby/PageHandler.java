@@ -1,7 +1,7 @@
 package link.locutus.discord.web.jooby;
 
 import com.google.common.hash.Hashing;
-import io.javalin.core.util.Header;
+import io.javalin.http.Header;
 import io.javalin.http.RedirectResponse;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
@@ -258,7 +258,7 @@ public class PageHandler implements Handler {
         } finally {
             try {
                 Thread.sleep(2000);
-                sse.ctx.res.getOutputStream().close();
+                sse.ctx.res().getOutputStream().close();
             } catch (IOException | InterruptedException e) {
                 e.printStackTrace();
             }

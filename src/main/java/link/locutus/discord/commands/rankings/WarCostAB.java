@@ -7,7 +7,6 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CoalitionWarStatus;
@@ -26,7 +25,6 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarType;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -78,10 +76,10 @@ public class WarCostAB extends Command {
         }
         if (attackSuccesStr != null) {
             Set<Integer> options = Arrays.stream(attackSuccesStr.split(",")).mapToInt(Integer::parseInt).boxed().collect(Collectors.toSet());
-            parser.getAttacks().removeIf(f -> !options.contains(f.getSuccess()));
+            parser.getAttacks().removeIf(f -> !options.contains(f.getSuccess().ordinal()));
         }
 
-        AttackCost cost = parser.toWarCost();
+        AttackCost cost = parser.toWarCost(!flags.contains('b'), true, flags.contains('s'), flags.contains('w'), false);
 
         StringBuilder result = new StringBuilder(cost.toString(!flags.contains('u'), !flags.contains('i'), !flags.contains('c'), !flags.contains('l'), !flags.contains('b')));
         IMessageBuilder msg = channel.create();
@@ -89,7 +87,7 @@ public class WarCostAB extends Command {
             msg.file(cost.getNumWars() + " wars", "- " + StringMan.join(cost.getWarIds(), "\n- "));
         }
         if (flags.contains('t')) {
-            List<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
+            Set<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
             Map<WarType, Integer> byType = new HashMap<>();
             for (DBWar war : wars) {
                 byType.put(war.getWarType(), byType.getOrDefault(war.getWarType(), 0) + 1);
@@ -101,11 +99,11 @@ public class WarCostAB extends Command {
             msg.embed("War Types", response.toString());
         }
         if (flags.contains('s')) {
-            List<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
+            Set<DBWar> wars = Locutus.imp().getWarDb().getWarsById(cost.getWarIds());
             Map<CoalitionWarStatus, Integer> byStatus = new HashMap<>();
             for (DBWar war : wars) {
                 CoalitionWarStatus status = null;
-                switch (war.status) {
+                switch (war.getStatus()) {
                     case ATTACKER_OFFERED_PEACE:
                     case DEFENDER_OFFERED_PEACE:
                     case ACTIVE:
@@ -159,8 +157,8 @@ public class WarCostAB extends Command {
         }
 
         DBNation nation = null;
-        if (aaIds.contains(warUrl.attacker_aa)) nation = Locutus.imp().getNationDB().getNation(warUrl.attacker_id);
-        else if (aaIds.contains(warUrl.defender_aa)) nation = Locutus.imp().getNationDB().getNation(warUrl.defender_id);
+        if (aaIds.contains(warUrl.getAttacker_aa())) nation = Locutus.imp().getNationDB().getNation(warUrl.getAttacker_id());
+        else if (aaIds.contains(warUrl.getDefender_aa())) nation = Locutus.imp().getNationDB().getNation(warUrl.getDefender_id());
         else {
             return;
         }

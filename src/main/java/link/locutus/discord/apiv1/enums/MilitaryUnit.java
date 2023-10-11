@@ -14,6 +14,7 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -97,6 +98,7 @@ public enum MilitaryUnit {
     public static double NUKE_RADIATION = 5;
 
     private final double[] cost;
+    private final Map<ResourceType, Double> costMap;
 
     protected final double score;
     private final double[] consumption;
@@ -111,6 +113,8 @@ public enum MilitaryUnit {
         this.name = name;
         this.emoji = emoji;
         this.cost = cost;
+        this.costMap = new EnumMap<>(ResourceType.class);
+        costMap.putAll(PnwUtil.resourcesToMap(cost));
         this.upkeepPeace = peacetimeUpkeep;
         if (multiplyWartimeUpkeep) {
             this.upkeepWar = PnwUtil.multiply(peacetimeUpkeep.clone(), 1.5);
@@ -122,6 +126,10 @@ public enum MilitaryUnit {
     }
 
     @Command(desc = "Get the emoji for this unit")
+    public static int[] getBuffer() {
+        return new int[MilitaryUnit.values.length];
+    }
+
     public String getEmoji() {
         return emoji;
     }
@@ -137,7 +145,7 @@ public enum MilitaryUnit {
         if (building != null) {
             cap = building.cap(hasProject) * building.perDay() * cities;
             if (hasProject.test(Projects.PROPAGANDA_BUREAU)) {
-                cap *= 1.1;
+                cap = (int) Math.round(cap * 1.1);
             }
         } else {
             cap = 0;
@@ -260,6 +268,10 @@ public enum MilitaryUnit {
 
     public double[] getCost() {
         return this.cost;
+    }
+
+    public Map<ResourceType, Double> getCostMap() {
+        return costMap;
     }
 
     public double[] getCost(int amt) {

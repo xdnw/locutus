@@ -36,6 +36,20 @@ public class MathMan {
         suffixes.put(1_000_000_000_000_000_000L, "E");
     }
 
+    public static Format toFormat(Function<Number, String> formatFunc) {
+        return new Format() {
+            @Override
+            public StringBuffer format(Object obj, StringBuffer toAppendTo, FieldPosition pos) {
+                return toAppendTo.append(formatFunc.apply((Number) obj));
+            }
+
+            @Override
+            public Object parseObject(String source, ParsePosition pos) {
+                throw new UnsupportedOperationException();
+            }
+        };
+    }
+
     /**
      * Converts a number to a string in <a href="http://en.wikipedia.org/wiki/Metric_prefix">metric prefix</a> format.
      * For example, 7800000 will be formatted as '7.8M'. Numbers under 1000 will be unchanged. Refer to the tests for further examples.
@@ -473,6 +487,38 @@ public class MathMan {
     public static short unpairY(int hash) {
         return (short) (hash & 0xFFFF);
     }
+
+    public static void main(String[] args) {
+        char[][] testCases = {
+                {'A', 'B'}, {'a', 'b'}, {'0', '9'}, {'$', '*'},
+                {(char) 0, (char) 0}, {(char) -1, (char) -1},
+                {(char) 1, (char) 1}, {(char) (Character.MAX_VALUE - 1), (char) (Character.MAX_VALUE)}
+        };
+
+        for (char[] testCase : testCases) {
+            int combinedInt = pairChars(testCase[0], testCase[1]);
+            char[] unpairedChars = new char[] { getXFromInt(combinedInt), getYFromInt(combinedInt) };
+
+            System.out.println("Original: '" + testCase[0] + "' + '" + testCase[1] + "'");
+            System.out.println("Combined Int: " + combinedInt);
+            System.out.println("Unpaired Chars: '" + unpairedChars[0] + "' + '" + unpairedChars[1] + "'");
+            System.out.println();
+        }
+    }
+
+    public static int pairChars(char firstChar, char secondChar) {
+        // Combine the two chars into an int
+        return ((int) firstChar << 16) | (int) secondChar;
+    }
+
+    public static char getXFromInt(int combinedInt) {
+        return (char) (combinedInt >> 16);
+    }
+
+    public static char getYFromInt(int combinedInt) {
+        return (char) combinedInt;
+    }
+
 
     public static short pairByte(int x, int y) {
         return (short) ((x << 8) | (y & 0xFF));

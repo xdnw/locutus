@@ -12,6 +12,7 @@ import net.dv8tion.jda.api.entities.Guild;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.Map;
 
 public class EndpointPages extends PageHelper {
@@ -20,6 +21,20 @@ public class EndpointPages extends PageHelper {
     @Command
     @NoForm
     public String login(Context context, @Default Integer nation, @Default Long user) throws IOException {
+        System.out.println("method " + context.method());
+        System.out.println("headers " + context.res().getHeaderNames());
+        Iterator<String> iter = context.req().getHeaderNames().asIterator();
+        while (iter.hasNext()) {
+            String header = iter.next();
+            System.out.println("- " + header + " " + context.req().getHeader(header));
+        }
+        System.out.println("login " + context.req().getRemoteUser());
+        System.out.println("attr " + context.attributeMap());
+        System.out.println("host " + context.host());
+        System.out.println("ip " + context.ip());
+        System.out.println("session " + context.sessionAttributeMap());
+
+
         Map<String, String> queryMap = PageHandler.parseQueryMap(context.queryParamMap());
         boolean requireNation = queryMap.containsKey("nation");
         boolean requireUser = queryMap.containsKey("user");

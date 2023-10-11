@@ -1,6 +1,7 @@
 package link.locutus.discord.db;
 
 import com.google.common.eventbus.AsyncEventBus;
+import it.unimi.dsi.fastutil.ints.IntArraySet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.AccessType;
@@ -82,6 +83,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static link.locutus.discord.db.entities.Coalition.FROZEN_FUNDS;
+import static link.locutus.discord.db.entities.Coalition.OFFSHORE;
+import static link.locutus.discord.db.entities.Coalition.OFFSHORING;
 
 /**
  * The GuildDB class represents a Discord guild database for the Locutus Discord bot written in Java.
@@ -164,6 +168,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         }
         return grantTemplateManager;
+    }
+
+    public long getLastModified() {
+        return getFile().lastModified();
     }
 
     private void importLegacyRoles() {
@@ -2272,9 +2280,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     public boolean isOffshore(boolean allowInvalid) {
         if (isDelegateServer()) return false;
 
-        Set<Long> offshoring = getCoalitionRaw(Coalition.OFFSHORING);
+        Set<Long> offshoring = getCoalitionRaw(OFFSHORING);
         if (offshoring.isEmpty()) return false;
-        Set<Long> offshore = getCoalitionRaw(Coalition.OFFSHORE);
+        Set<Long> offshore = getCoalitionRaw(OFFSHORE);
         if (offshore.isEmpty()) return false;
 
         if (getOrNull(GuildKey.API_KEY) == null || (!allowInvalid && !isValidAlliance())) {
@@ -2306,10 +2314,14 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     public Set<String> findCoalitions(int aaId) {
+        loadCoalitions();
         Set<String> coalitions = new LinkedHashSet<>();
-        for (Map.Entry<String, Set<Integer>> entry : getCoalitions().entrySet()) {
-            if (entry.getValue().contains(aaId)) {
-                coalitions.add(entry.getKey());
+        for (Map.Entry<Long, Set<Long>> entry : coalitions2.entrySet()) {
+            if (entry.getValue().contains((long) aaId)) {
+                String name = coalitionId2Name.get(entry.getKey());
+                if (name != null) {
+                    coalitions.add(name);
+                }
             }
         }
         return coalitions;
@@ -2351,14 +2363,16 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     public Map.Entry<GuildDB, Integer> getOffshoreDB() {
         Set<Integer> aaIds = getAllianceIds();
 
-        Set<Integer> offshores = getCoalition(Coalition.OFFSHORE);
-        for (int offshoreId : offshores) {
+        Set<Long> offshores = getCoalitionRaw(OFFSHORE);
+        for (long offshoreIdLong : offshores) {
+            if (offshoreIdLong > Integer.MAX_VALUE) continue;
+            int offshoreId = (int) offshoreIdLong;
             DBAlliance aa = DBAlliance.get(offshoreId);
             if (aa == null) continue;
 
             GuildDB otherDb = aa.getGuildDB();
             if (otherDb == null) continue;
-            Set<Long> offshoring = otherDb.getCoalitionRaw(Coalition.OFFSHORING);
+            Set<Long> offshoring = otherDb.getCoalitionRaw(OFFSHORING);
             if (!offshoring.contains((long) offshoreId)) {
                 continue;
             }
@@ -2422,6 +2436,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 }
             }
         }
+    }
+
+    public Set<String> getCoalitionNames() {
+        loadCoalitions();
+        return new LinkedHashSet<>(coalitionName2Id.keySet());
     }
 
     public enum AutoNickOption {
@@ -2509,8 +2528,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         }
 
-        for (Map.Entry<String, Set<Integer>> entry : getCoalitions().entrySet()) {
-            String name = entry.getKey().toLowerCase();
+        for (Map.Entry<String, Long> entry : coalitionName2Id.entrySet()) {
+            String name = entry.getKey();
             if (!name.startsWith("dnr_")) continue;
 
             String[] split = name.split("_");
@@ -2519,7 +2538,13 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             if (!Character.isDigit(timeStr.charAt(0))) continue;
 
             long time = TimeUtil.timeToSec(timeStr) * 1000L;
-            for (Integer aaId : entry.getValue()) {
+
+            Set<Long> ids = coalitions2.get(entry.getValue());
+            if (ids == null || ids.isEmpty()) continue;
+
+            for (long id : ids) {
+                if (id > Integer.MAX_VALUE) continue;
+                int aaId = (int) id;
                 if (split.length == 3 && split[1].equalsIgnoreCase("member")) {
                     dnr_timediff_member.put(aaId, time);
                 } else if (true || split[1].equalsIgnoreCase("applicant")) {
@@ -2842,48 +2867,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return null;
     }
 
-    public void addCoalition(long allianceId, Coalition coalition) {
-        addCoalition(allianceId, coalition.name().toLowerCase());
-    }
-
-    public void addCoalition(long allianceId, String coalition) {
-        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
-        if (faServer != null && faServer.getIdLong() != getIdLong()) {
-            faServer.addCoalition(allianceId, coalition);
-            return;
-        }
-        synchronized (OffshoreInstance.BANK_LOCK) {
-            loadCoalitions();
-            if (coalitions == null) coalitions = new ConcurrentHashMap<>();
-            coalitions.computeIfAbsent(coalition.toLowerCase(), f -> new LinkedHashSet<>()).add((long) allianceId);
-
-            update("INSERT OR IGNORE INTO `COALITIONS`(`alliance_id`, `coalition`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-                stmt.setLong(1, allianceId);
-                stmt.setString(2, coalition.toLowerCase());
-            });
-        }
-    }
-
-    public void removeCoalition(long allianceId, Coalition coalition) {
-        removeCoalition(allianceId, coalition.name().toLowerCase());
-    }
-
-    public void removeCoalition(long allianceId, String coalition) {
-        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
-        if (faServer != null && faServer.getIdLong() != getIdLong()) {
-            faServer.removeCoalition(allianceId, coalition);
-            return;
-        }
-        synchronized (OffshoreInstance.BANK_LOCK) {
-            Set<Long> set = coalitions.getOrDefault(coalition, Collections.emptySet());
-            if (set != null) set.remove(allianceId);
-            update("DELETE FROM `COALITIONS` WHERE `alliance_id` = ? AND LOWER(coalition) = LOWER(?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-                stmt.setLong(1, allianceId);
-                stmt.setString(2, coalition.toLowerCase());
-            });
-        }
-    }
-
     public Set<Integer> getAllies() {
         return getAllies(false);
     }
@@ -2906,7 +2889,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         Map<Member, UnmaskedReason> result = new HashMap<>();
 
         Set<Integer> allowedAAs = new HashSet<>(getAllianceIds());
-        allowedAAs.addAll(getCoalition(Coalition.OFFSHORE));
+        allowedAAs.addAll(getCoalition(OFFSHORE));
         for (Role role : roles) {
             List<Member> members = guild.getMembersWithRoles(role);
             for (Member member : members) {
@@ -2947,8 +2930,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return allies;
     }
 
-    private Map<String, Set<Long>> coalitions = null;
-
     private Map<String, Set<Integer>> coalitionToAlliances(Map<String, Set<Long>> input) {
         Map<String, Set<Integer>> result = new HashMap<>();
         for (Map.Entry<String, Set<Long>> entry : input.entrySet()) {
@@ -2968,25 +2949,27 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         return result;
     }
 
-    public Map<String, Set<Long>> getCoalitionsRaw() {
-        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
-        if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getCoalitionsRaw();
-        loadCoalitions();
-        return Collections.unmodifiableMap(coalitions);
-    }
-
-    public void loadCoalitions() {
-        if (coalitions == null) {
+    private Map<Long, Set<Long>> coalitions2 = null;
+    private Map<Long, String> coalitionId2Name = null;
+    private Map<String, Long> coalitionName2Id = null;
+    private void loadCoalitions() {
+        if (coalitions2 == null) {
             synchronized (this) {
-                if (coalitions == null) {
-                    coalitions = new ConcurrentHashMap<>();
+                if (coalitions2 == null) {
+                    coalitions2 = new ConcurrentHashMap<>();
+                    coalitionId2Name = new ConcurrentHashMap<>();
+                    coalitionName2Id = new ConcurrentHashMap<>();
+
                     try (PreparedStatement stmt = prepareQuery("select * FROM COALITIONS")) {
                         try (ResultSet rs = stmt.executeQuery()) {
                             while (rs.next()) {
                                 long allianceId = rs.getLong("alliance_id");
-                                String coalition = rs.getString("coalition").toLowerCase();
-                                Set<Long> set = coalitions.computeIfAbsent(coalition, k -> new LinkedHashSet<>());
-                                set.add(allianceId);
+                                String coalition = rs.getString("coalition").toLowerCase(Locale.ROOT);
+                                long id = StringMan.hash(coalition);
+
+                                coalitionId2Name.put(id, coalition);
+                                coalitionName2Id.put(coalition, id);
+                                coalitions2.computeIfAbsent(id, k -> ConcurrentHashMap.newKeySet()).add(allianceId);
                             }
                         }
                     } catch (SQLException e) {
@@ -2996,53 +2979,173 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         }
     }
-    public Map<String, Set<Integer>> getCoalitions() {
+
+//    public Map<String, Set<Long>> getCoalitionsRaw() {
+//        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
+//        if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getCoalitionsRaw();
+//        loadCoalitions();
+//        return Collections.unmodifiableMap(coalitions);
+//    }
+
+    public void addCoalition(long allianceId, Coalition coalition) {
+        addCoalition(allianceId, coalition.getNameLower(), coalition);
+    }
+
+    public void addCoalition(long allianceId, String coalition) {
+        addCoalition(allianceId, coalition.toLowerCase(Locale.ROOT), null);
+    }
+
+    private void addCoalition(long allianceId, String coalition, Coalition coalitionParsed) {
         GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
-        if (faServer != null) return faServer.getCoalitions();
+        if (faServer != null && faServer.getIdLong() != getIdLong()) {
+            faServer.addCoalition(allianceId, coalition, coalitionParsed);
+            return;
+        }
         loadCoalitions();
-        return coalitionToAlliances(coalitions);
+        if (coalitionParsed == null) coalitionParsed = getCoalitionEnumOrNull(coalition);
+        Object lock = getLock(coalitionParsed);
+        synchronized (lock) {
+            long hash = coalitionName2Id.computeIfAbsent(coalition, StringMan::hash);
+            coalitions2.computeIfAbsent(hash, k -> ConcurrentHashMap.newKeySet()).add(allianceId);
+            coalitionId2Name.put(hash, coalition);
+
+            update("INSERT OR IGNORE INTO `COALITIONS`(`alliance_id`, `coalition`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+                stmt.setLong(1, allianceId);
+                stmt.setString(2, coalition);
+            });
+        }
+    }
+
+    public void removeCoalition(long allianceId, Coalition coalition) {
+        removeCoalition(allianceId, coalition.getNameLower(), coalition);
+    }
+
+    public void removeCoalition(long allianceId, String coalition) {
+        removeCoalition(allianceId, coalition.toLowerCase(Locale.ROOT), null);
+    }
+
+    private void removeCoalition(long allianceId, String coalition, Coalition coalitionParsed) {
+        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
+        if (faServer != null && faServer.getIdLong() != getIdLong()) {
+            faServer.removeCoalition(allianceId, coalition);
+            return;
+        }
+        loadCoalitions();
+        if (coalitionParsed == null) coalitionParsed = getCoalitionEnumOrNull(coalition);
+        Object lock = getLock(coalitionParsed);
+        synchronized (lock) {
+            Long hash = coalitionName2Id.get(coalition);
+            if (hash != null) {
+                Set<Long> set = coalitions2.get(hash);
+                if (set != null) {
+                    set.remove(allianceId);
+                    update("INSERT OR IGNORE INTO `COALITIONS`(`alliance_id`, `coalition`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+                        stmt.setLong(1, allianceId);
+                        stmt.setString(2, coalition);
+                    });
+                }
+            }
+        }
+    }
+
+    public Set<Long> removeCoalition(String coalition) {
+        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
+        if (faServer != null && faServer.getIdLong() != getIdLong()) {
+            return faServer.removeCoalition(coalition);
+        }
+        loadCoalitions();
+        Coalition coalitionParsed = getCoalitionEnumOrNull(coalition);
+        Object lock = getLock(coalitionParsed);
+
+        update("DELETE FROM `COALITIONS` WHERE LOWER(coalition) = LOWER(?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setString(1, coalition);
+        });
+        synchronized (lock) {
+            Long hash = coalitionName2Id.remove(coalition);
+            if (hash != null) {
+                coalitionId2Name.remove(hash);
+                return coalitions2.remove(hash);
+            }
+            return Collections.emptySet();
+        }
+    }
+
+    private Coalition getCoalitionEnumOrNull(String coalition) {
+        try {
+            return Coalition.valueOf(coalition.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {}
+        return null;
+    }
+
+    private Object getLock(Coalition coalitionParsed) {
+        if (coalitionParsed == OFFSHORE || coalitionParsed == OFFSHORING || coalitionParsed == FROZEN_FUNDS) {
+            return OffshoreInstance.BANK_LOCK;
+        }
+        return coalitions2;
     }
 
     public Set<Integer> getCoalition(Coalition coalition) {
-        return getCoalition(coalition.name().toLowerCase());
+        Set<Long> longs = getCoalitionRaw(coalition);
+        if (longs.isEmpty()) return Collections.emptySet();
+        IntArraySet copy = new IntArraySet(longs.size());
+        for (Long l : longs) {
+            copy.add(l.intValue());
+        }
+        return copy;
+    }
+
+    public Set<Integer> getCoalition(String coalition) {
+        Set<Long> longs = getCoalitionRaw(coalition);
+        if (longs.isEmpty()) return Collections.emptySet();
+        IntArraySet copy = new IntArraySet(longs.size());
+        for (Long l : longs) {
+            copy.add(l.intValue());
+        }
+        return copy;
+    }
+
+    public Set<Long> getCoalitionById(long id) {
+        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
+        if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getCoalitionById(id);
+        loadCoalitions();
+        return coalitions2.getOrDefault(id, Collections.emptySet());
     }
 
     public Set<Long> getCoalitionRaw(Coalition coalition) {
-        return getCoalitionRaw(coalition.name().toLowerCase());
+        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
+        if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getCoalitionRaw(coalition);
+        loadCoalitions();
+        Long hash = coalitionName2Id.get(coalition.getNameLower());
+        if (hash == null) {
+            return Collections.emptySet();
+        }
+        return coalitions2.getOrDefault(hash, Collections.emptySet());
+    }
+
+    public Set<Long> getCoalitionRaw(String coalition) {
+        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
+        if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getCoalitionRaw(coalition);
+        loadCoalitions();
+        Long hash = coalitionName2Id.get(coalition.toLowerCase(Locale.ROOT));
+        if (hash == null) {
+            return Collections.emptySet();
+        }
+        return coalitions2.getOrDefault(hash, Collections.emptySet());
+    }
+
+    public Long getCoalitionId(String coalition, boolean create) {
+        loadCoalitions();
+        if (coalition.startsWith("~")) coalition = coalition.substring(1);
+        return coalitionName2Id.getOrDefault(coalition.toLowerCase(Locale.ROOT), create ? StringMan.hash(coalition) : null);
     }
 
     public Set<Long> getTrackedBanks() {
-        Set<Long> tracked = new LinkedHashSet<>(getCoalitionRaw(Coalition.OFFSHORE));
+        Set<Long> tracked = new LinkedHashSet<>(getCoalitionRaw(OFFSHORE));
         tracked.add(getGuild().getIdLong());
         tracked.addAll(getCoalitionRaw(Coalition.TRACK_DEPOSITS));
         for (Integer id : getAllianceIds()) tracked.add(id.longValue());
         tracked = PnwUtil.expandCoalition(tracked);
         return tracked;
-    }
-    public Set<Long> getCoalitionRaw(String coalition) {
-        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
-        if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getCoalitionRaw(coalition);
-        synchronized (this) {
-            loadCoalitions();
-            Set<Long> raw = coalitions.getOrDefault(coalition, Collections.emptySet());
-            return Collections.unmodifiableSet(raw);
-        }
-    }
-
-    public Set<Integer> getCoalition(String coalition) {
-        coalition = coalition.toLowerCase();
-        Set<Integer> result = getCoalitions().get(coalition);
-        if (result == null && Coalition.getOrNull(coalition) == null) {
-            Coalition namedCoal = Coalition.getOrNull(coalition);
-            if (namedCoal == null) {
-                GuildDB locutusStats = Locutus.imp().getRootCoalitionServer();
-                if (locutusStats != null) {
-                    result = locutusStats.getCoalitions().get(coalition);
-                }
-            }
-        }
-        if (result == null) result = Collections.emptySet();
-        return new LinkedHashSet<>(result);
     }
 
     public Set<Integer> getAllianceIds() {
@@ -3064,7 +3167,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             if (aaIds == null) return Collections.emptySet();
             return aaIds;
         }
-        Set<Integer> offshore = getCoalition(Coalition.OFFSHORE);
+        Set<Integer> offshore = getCoalition(OFFSHORE);
         if (offshore.isEmpty()) {
             if (aaIds == null) return Collections.emptySet();
             return aaIds;
@@ -3114,22 +3217,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             allowedReasons.remove(BeigeReason.UNDER_C10_SLOG);
         }
         return allowedReasons;
-    }
-
-    public void removeCoalition(String coalition) {
-        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
-        if (faServer != null && faServer.getIdLong() != getIdLong()) {
-            faServer.removeCoalition(coalition);
-            return;
-        }
-        synchronized (this) {
-            if (coalitions != null) {
-                coalitions.remove(coalition.toLowerCase());
-            }
-        }
-        update("DELETE FROM `COALITIONS` WHERE LOWER(coalition) = LOWER(?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, coalition);
-        });
     }
 
     public void addRole(Roles locutusRole, Role discordRole, long allianceId) {

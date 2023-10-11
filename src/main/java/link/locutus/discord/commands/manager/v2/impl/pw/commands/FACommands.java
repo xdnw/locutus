@@ -107,8 +107,7 @@ public class FACommands {
     @Command(desc = "List the bot coalitions")
     @RolePermission(Roles.MEMBER)
     public String listCoalition(@Me User user, @Me GuildDB db, @Arg("Only list alliances or guilds containing this filter") @Default String filter, @Arg("List the alliance and guild ids instead of names") @Switch("i") boolean listIds, @Arg("Ignore deleted alliances") @Switch("d") boolean ignoreDeleted) {
-        Map<String, Set<Long>> coalitions = db.getCoalitionsRaw();
-        List<String> coalitionNames = new ArrayList<>(coalitions.keySet());
+        List<String> coalitionNames = new ArrayList<>(db.getCoalitionNames());
         Collections.sort(coalitionNames);
         if (filter != null) filter = filter.toLowerCase(Locale.ROOT);
 
@@ -117,7 +116,7 @@ public class FACommands {
             if (coalition.equalsIgnoreCase("offshore") && !Roles.FOREIGN_AFFAIRS.has(user, db.getGuild())) {
                 continue;
             }
-            Set<Long> alliances = coalitions.get(coalition);
+            Set<Long> alliances = db.getCoalitionRaw(coalition);
             List<String> names = new ArrayList<>();
             for (long allianceOrGuildId : alliances) {
                 String name;

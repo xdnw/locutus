@@ -157,7 +157,7 @@ public class Counter extends Command {
                 double totalStr = 0;
                 int numWars = 0;
 
-                List<DBWar> wars = nation.getActiveWars();
+                Set<DBWar> wars = nation.getActiveWars();
                 if (wars.isEmpty()) {
                     continue;
                 }
