@@ -191,6 +191,7 @@ public enum ResourceType {
         return -1;
     }
 
+    @Command(desc = "The building corresponding to this resource (if any)")
     public Building getBuilding() {
         return Buildings.RESOURCE_BUILDING.get(this);
     }
@@ -375,6 +376,7 @@ public enum ResourceType {
         this.graphId = graphId;
     }
 
+    @Command(desc = "The id of this resource on the graph")
     public int getGraphId() {
         return graphId;
     }
@@ -397,26 +399,32 @@ public enum ResourceType {
         return url;
     }
 
+    @Command(desc = "If this is a raw resource")
     public boolean isRaw() {
         return inputs == null || inputs.length == 0 && cap > 0;
     }
 
+    @Command(desc = "If this is a manufactured resource")
     public boolean isManufactured() {
         return inputs != null && inputs.length > 0;
     }
 
+    @Command(desc = "The pollution modifier for this resource's production")
     public int getPollution() {
         return pollution;
     }
 
+    @Command(desc = "The upkeep modifier for this resource's production")
     public int getUpkeep() {
         return upkeep;
     }
 
+    @Command(desc = "The base input for this resource (if manufactured)")
     public int getBaseInput() {
         return baseInput;
     }
 
+    @Command(desc = "The project boost factor for this resource's production (if any)")
     public double getBoostFactor() {
         return boostFactor;
     }
@@ -438,14 +446,17 @@ public enum ResourceType {
         return baseProduction * factor;
     }
 
+    @Command(desc = "The input output ratio for this resource (if manufactured)")
     public double getManufacturingMultiplier() {
         return baseProduction / baseInput;
     }
 
+    @Command(desc = "The project required to boost this resource's production (if any)")
     public Project getProject() {
         return project == null ? null : project.get();
     }
 
+    @Command(desc = "The building cap for this resource's production")
     public int getCap() {
         return cap;
     }
@@ -459,6 +470,7 @@ public enum ResourceType {
         return base * (1+0.5*((improvements - 1) * capInverse)) *improvements;
     }
 
+    @Command(desc = "The market value of this resource (weekly average)")
     public double getMarketValue() {
         return Locutus.imp().getTradeManager().getLowAvg(this);
     }
@@ -467,8 +479,51 @@ public enum ResourceType {
         return inputs;
     }
 
+    @Command(desc = "The input resources for this resource (if manufactured)")
+    public List<ResourceType> getInputList() {
+        return Arrays.asList(inputs);
+    }
+
+    @Command(desc = "The name of this resource")
     public String getName() {
         return name;
+    }
+
+    @Command(desc = 'If this resource has a corresponding building')
+    public boolean hasBuilding() {
+        return getBuilding() != null;
+    }
+
+    @Command(desc = "Continents of this resource (if any)")
+    public Set<Continent> getContinents() {
+        Building building = getBuilding();
+        if (building == null) return Collections.emptySet();
+        return building.getContinents();
+    }
+
+    @Command(desc = "If this resource is on the given continent")
+    public boolean isContinent(Set<Continent> continents) {
+        Building building = getBuilding();
+        if (building == null) return false;
+        return building.isContinent(continents);
+    }
+
+    @Command(desc = "The total production of resources for nations")
+    public Map<ResourceType, Double> getProduction(Set<DBNation> nations, boolean includeNegatives) {
+        double[] total = ResourceType.getBuffer();
+        for (DBNation nation : nations) {
+            double[] revenue = nation.getRevenue();
+            if (includeNegatives) {
+                ResourceType.add(total, revenue);
+            } else {
+                for (int i = 0; i < revenue.length; i++) {
+                    if (revenue[i] > 0) {
+                        total[i] += revenue[i];
+                    }
+                }
+            }
+        }
+        return PnwUtil.resourcesToMap(total);
     }
 
     public String getBankString() {
