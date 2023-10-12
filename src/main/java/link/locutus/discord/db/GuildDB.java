@@ -844,35 +844,17 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             executeStmt(query.toString());
         }
         {
-            String nations = "CREATE TABLE IF NOT EXISTS `TRANSACTIONS` (`id` INT NOT NULL PRIMARY KEY, `from` BIGINT NOT NULL, `to` BIGINT NOT NULL, `resources` BLOB NOT NULL, `note` VARCHAR)";
-            try (Statement stmt = getConnection().createStatement()) {
-                stmt.addBatch(nations);
-                stmt.executeBatch();
-                stmt.clearBatch();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        };
-
-        {
             String query = "CREATE TABLE IF NOT EXISTS `ANNOUNCEMENTS2` (`ann_id` INTEGER PRIMARY KEY AUTOINCREMENT, `sender` BIGINT NOT NULL, `active` BOOLEAN NOT NULL, `title` VARCHAR NOT NULL, `content` VARCHAR NOT NULL, `replacements` VARCHAR NOT NULL, `filter` VARCHAR NOT NULL, `date` BIGINT NOT NULL)";
             executeStmt(query);
 
             String query2 = "CREATE TABLE IF NOT EXISTS `ANNOUNCEMENTS_PLAYER2` (`receiver` INT NOT NULL, `ann_id` INT NOT NULL, `active` BOOLEAN NOT NULL, `diff` BLOB NOT NULL, PRIMARY KEY(receiver, ann_id), FOREIGN KEY(ann_id) REFERENCES ANNOUNCEMENTS2(ann_id))";
             executeStmt(query2);
         }
-
-//        {
-//            String query = "CREATE TABLE IF NOT EXISTS `ORDERED_COUNTERS` (`ann_id` INTEGER PRIMARY KEY AUTOINCREMENT, `sender` INT NOT NULL, `active` BOOLEAN NOT NULL, `title` VARCHAR NOT NULL, `content` VARCHAR NOT NULL, `replacements` VARCHAR NOT NULL, `filter` VARCHAR NOT NULL, `date` INT NOT NULL)";
-//            executeStmt(query);
-//        }
-
         {
             String query = "CREATE TABLE IF NOT EXISTS `INTERVIEW_MESSAGES2` (`message_id` BIGINT NOT NULL PRIMARY KEY, `channel_id` BIGINT NOT NULL, `sender` BIGINT NOT NULL, `date_created` BIGINT NOT NULL, `date_updated` BIGINT NOT NULL, `message` VARCHAR NOT NULL)";
             executeStmt(query);
             purgeOldInterviews(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(14));
         }
-
         {
             String nations = "CREATE TABLE IF NOT EXISTS `NATION_META` (`id` BIGINT NOT NULL, `key` BIGINT NOT NULL, `meta` BLOB NOT NULL, PRIMARY KEY(id, key))";
             try (Statement stmt = getConnection().createStatement()) {
@@ -940,45 +922,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
 
         };
-
-//        {
-//            String create = "CREATE TABLE IF NOT EXISTS `BEIGE_TARGET_ALERTS` (`user` INT NOT NULL, `target`)";
-//            try (Statement stmt = getConnection().createStatement()) {
-//                stmt.addBatch(create);
-//                stmt.executeBatch();
-//                stmt.clearBatch();
-//            } catch (SQLException e) {
-//                e.printStackTrace();
-//            }
-//        };
-
-//        {
-//            List<String> stmts = new ArrayList<>();
-//            stmts.add("CREATE TEMPORARY TABLE BANK_DEPOSIT_backup(`nationId` INT NOT NULL, `resource` INT NOT NULL, `amount` INT NOT NULL, `note` VARCHAR, PRIMARY KEY(nationId, resource, note));");
-//            stmts.add("INSERT INTO BANK_DEPOSIT_backup(nationId, resource, amount) SELECT nationId, resource, amount FROM BANK_DEPOSIT;");
-//            stmts.add("DROP TABLE BANK_DEPOSIT;");
-//            stmts.add("CREATE TABLE BANK_DEPOSIT(`nationId` INT NOT NULL, `resource` INT NOT NULL, `amount` INT NOT NULL, `note` VARCHAR NOT NULL, PRIMARY KEY(nationId, resource, note));");
-//            stmts.add("INSERT INTO BANK_DEPOSIT SELECT * FROM BANK_DEPOSIT_backup;");
-//            stmts.add("DROP TABLE BANK_DEPOSIT_backup;");
-//            for (String create : stmts) {
-//                try (PreparedStatement stmt = getConnection().prepareStatement(create)) {
-//                    stmt.executeUpdate();
-//                    getConnection().commit();
-//                } catch (SQLException e) {
-//                    e.printStackTrace();
-//                }
-//            }
-//        });
-//        {
-//            String create = "UPDATE BANK_DEPOSIT SET note = '' WHERE note IS NULL";
-//            try (Statement stmt = getConnection().createStatement()) {
-//                stmt.addBatch(create);
-//                stmt.executeBatch();
-//                stmt.clearBatch();
-//            } catch (SQLException e) {
-//                e.printStackTrace();
-//            }
-//        });
     }
 
 //    public void unsubscribeAllBeige(User user) {

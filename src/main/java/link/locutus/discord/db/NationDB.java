@@ -2264,20 +2264,20 @@ public class NationDB extends DBMainV2 {
         executeStmt("CREATE INDEX IF NOT EXISTS index_banned_nations_discord_id ON banned_nations (discord_id);");
 
         purgeOldBeigeReminders();
-
-        //Create table IMPORTED_LOANS
-        executeStmt("CREATE TABLE IF NOT EXISTS IMPORTED_LOANS (" +
-                        "allianceOrGuild BIGINT NOT NULL, " +
-                        "nation_id INT NOT NULL, " +
-                        "loan_date BIGINT NOT NULL, " +
-                        "loaner_user BIGINT NOT NULL, " +
-                        "status INT NOT NULL, " +
-                        "principal BLOB NOT NULL, " +
-                        "remaining BLOB NOT NULL, " +
-                        "date_submitted BIGINT NOT NULL, " +
-                        "PRIMARY KEY(allianceOrGuild, nation_id))");
-        //Add index for nation_id
-        executeStmt("CREATE INDEX IF NOT EXISTS index_imported_loans_nation_id ON IMPORTED_LOANS (nation_id);");
+//
+//        //Create table IMPORTED_LOANS
+//        executeStmt("CREATE TABLE IF NOT EXISTS IMPORTED_LOANS (" +
+//                        "allianceOrGuild BIGINT NOT NULL, " +
+//                        "nation_id INT NOT NULL, " +
+//                        "loan_date BIGINT NOT NULL, " +
+//                        "loaner_user BIGINT NOT NULL, " +
+//                        "status INT NOT NULL, " +
+//                        "principal BLOB NOT NULL, " +
+//                        "remaining BLOB NOT NULL, " +
+//                        "date_submitted BIGINT NOT NULL, " +
+//                        "PRIMARY KEY(allianceOrGuild, nation_id))");
+//        //Add index for nation_id
+//        executeStmt("CREATE INDEX IF NOT EXISTS index_imported_loans_nation_id ON IMPORTED_LOANS (nation_id);");
 
         this.reportManager = new ReportManager(this);
 
