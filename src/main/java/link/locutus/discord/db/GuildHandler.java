@@ -2394,57 +2394,74 @@ public class GuildHandler {
             MessageChannel output = db.getOrNull(GuildKey.RECRUIT_MESSAGE_OUTPUT, false);
             if (output == null) return;
 
-            Set<Integer> aaIds = db.getAllianceIds();
-            if (aaIds.isEmpty()) return;
+            GuildDB root = Locutus.imp().getRootDb();
+            boolean isWhitelisted = root != null && root.getCoalitionRaw("whitelisted_mail").contains(getDb().getIdLong());
 
-            Set<DBNation> members = Locutus.imp().getNationDB().getNations(aaIds);
-            members.removeIf(f -> f.getPosition() < Rank.MEMBER.id);
-            members.removeIf(f -> f.getActive_m() > 2880);
-            members.removeIf(f -> f.getVm_turns() > 0);
-            members.removeIf(DBNation::isGray);
+            if (!isWhitelisted) {
+                Set<Integer> aaIds = db.getAllianceIds();
+                if (aaIds.isEmpty()) return;
 
-            if (members.isEmpty()) return;
-            if (members.size() < 10 && !db.isWhitelisted()) {
-                boolean allowed = false;
-                Map<Long, Role> roleMap = Roles.INTERNAL_AFFAIRS.toRoleMap(db);
-                Set<Member> membersWithRoles = new HashSet<>();
-                if (!roleMap.isEmpty()) {
-                    Set<Role> iaRoles = new HashSet<>(roleMap.values());
-                    for (Role role : iaRoles) {
-                        membersWithRoles.addAll(guild.getMembersWithRoles(role));
-                    }
-                    for (Member member : membersWithRoles) {
-                        if (member.getOnlineStatus() == OnlineStatus.ONLINE) {
-                            allowed = true;
-                        }
-                    }
-                }
-                if (membersWithRoles.isEmpty()) {
+                Set<DBNation> members = Locutus.imp().getNationDB().getNations(aaIds);
+                members.removeIf(f -> f.getPosition() < Rank.MEMBER.id);
+                members.removeIf(f -> f.getActive_m() > 2880);
+                members.removeIf(f -> f.getVm_turns() > 0);
+                members.removeIf(DBNation::isGray);
+
+                if (members.isEmpty()) {
                     try {
-                        RateLimitUtil.queueWhenFree(output.sendMessage("Please set " + CM.role.setAlias.cmd.create(Roles.INTERNAL_AFFAIRS.name(), null, null, null) + " and assign it to an active gov member (RECRUIT_MESSAGE_OUTPUT has been disabled)"));
+                        RateLimitUtil.queueWhenFree(output.sendMessage("No active members found in the alliance.\n" +
+                                "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention()));
                         db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
                     } catch (Throwable e) {
                         e.printStackTrace();
                     }
                     return;
                 }
-                if (!allowed) {
-                    if (!sentNoIAMessage) {
-                        try {
-                            sentNoIAMessage = true;
-                            RateLimitUtil.queueWhenFree(output.sendMessage("No INTERNAL_AFFAIRS is currently offline (note: This restriction only applies to alliances with 9 or less active members. To avoid recruitment graveyards)\n"));
-                        } catch (Throwable e) {
-                            db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
-                            e.printStackTrace();
+                if (members.size() < 10 && !db.isWhitelisted()) {
+                    boolean allowed = false;
+                    Map<Long, Role> roleMap = Roles.INTERNAL_AFFAIRS.toRoleMap(db);
+                    Set<Member> membersWithRoles = new HashSet<>();
+                    if (!roleMap.isEmpty()) {
+                        Set<Role> iaRoles = new HashSet<>(roleMap.values());
+                        for (Role role : iaRoles) {
+                            membersWithRoles.addAll(guild.getMembersWithRoles(role));
+                        }
+                        for (Member member : membersWithRoles) {
+                            if (member.getOnlineStatus() == OnlineStatus.ONLINE) {
+                                allowed = true;
+                            }
                         }
                     }
-                    return;
+                    if (membersWithRoles.isEmpty()) {
+                        try {
+                            RateLimitUtil.queueWhenFree(output.sendMessage("Please set " + CM.role.setAlias.cmd.create(Roles.INTERNAL_AFFAIRS.name(), null, null, null) + " and assign it to an active gov member\n" +
+                                    "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention()));
+                            db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
+                        } catch (Throwable e) {
+                            e.printStackTrace();
+                        }
+                        return;
+                    }
+                    if (!allowed) {
+                        if (!sentNoIAMessage) {
+                            try {
+                                sentNoIAMessage = true;
+                                RateLimitUtil.queueWhenFree(output.sendMessage("No INTERNAL_AFFAIRS is currently offline (note: This restriction only applies to alliances with 9 or less active members. To avoid recruitment graveyards)\n" +
+                                        "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention()));
+                            } catch (Throwable e) {
+                                db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
+                                e.printStackTrace();
+                            }
+                        }
+                        return;
+                    }
                 }
             }
 
             if (!GuildKey.RECRUIT_MESSAGE_OUTPUT.allowed(db)) {
                 try {
-                    RateLimitUtil.queueWhenFree(output.sendMessage("Only existant alliances can send messages (RECRUIT_MESSAGE_OUTPUT has been disabled)"));
+                    RateLimitUtil.queueWhenFree(output.sendMessage("Only existant alliances can send messages\n" +
+                            "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention()));
                     db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
                 } catch (Throwable e) {
                     e.printStackTrace();

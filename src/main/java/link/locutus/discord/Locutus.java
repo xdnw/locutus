@@ -274,7 +274,7 @@ public final class Locutus extends ListenerAdapter {
     public Locutus start() throws InterruptedException, LoginException, SQLException, ClassNotFoundException {
         backup();
         if (Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT) {
-            JDABuilder builder = JDABuilder.createLight(discordToken, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.GUILD_MESSAGE_REACTIONS, GatewayIntent.DIRECT_MESSAGES);
+            JDABuilder builder = JDABuilder.createLight(discordToken, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.DIRECT_MESSAGES);
             if (Settings.INSTANCE.ENABLED_COMPONENTS.SLASH_COMMANDS) {
                 this.slashCommands = new SlashCommandManager(this);
                 builder.addEventListeners(slashCommands);

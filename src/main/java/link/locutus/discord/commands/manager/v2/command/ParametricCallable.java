@@ -723,6 +723,12 @@ public class ParametricCallable implements ICommand {
                     }
                     Class typeClass = ReflectionUtil.getClassType(param.getType());
                     if (typeClass.isAssignableFrom(o.getClass())) return o;
+                    if (typeClass.isPrimitive()) {
+                        Class<?> wrapper = ReflectionUtil.getWrapperClass(typeClass);
+                        if (wrapper.isAssignableFrom(o.getClass())) {
+                            return o;
+                        }
+                    }
                     if (o.getClass() != String.class) {
                         throw new IllegalArgumentException("Cannot parse " + o.getClass() + " to " + typeClass + " for " + getFullPath() + " parameter " + param.getName());
                     }

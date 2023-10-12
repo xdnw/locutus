@@ -5,6 +5,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.utils.cache.CacheFlag;
 
 import java.util.ArrayList;
 import java.util.Collection;

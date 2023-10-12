@@ -87,7 +87,7 @@ public class UpdateEmbed extends Command {
 
         String setDesc = DiscordUtil.parseArg(args, "description");
         if (setDesc != null) {
-            builder.setDescription(DiscordCommands.parse(setDesc.replace(("{description}"), Objects.requireNonNull(embed.getDescription())), embed, message));
+            builder.setDescription(DiscordCommands.parse(setDesc.replace(("{description}"), Objects.requireNonNull(embed.getDescription())), embed, message).replace("%user%", author.getAsMention()));
         }
 
 

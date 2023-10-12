@@ -358,8 +358,9 @@ public class StringMan {
         boolean forward = isBracketForwards(startC);
         int increment = forward ? 1 : -1;
         int end = forward ? sequence.length() : -1;
+        Function<Integer, Boolean> incrementTest = forward ? i -> i < end : i -> i > end;
         int count = 0;
-        for (int i = index + increment; i != end; i += increment) {
+        for (int i = index + increment; incrementTest.apply(i); i += increment) {
             char c = sequence.charAt(i);
             if (c == startC) {
                 count++;
