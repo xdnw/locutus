@@ -15,10 +15,10 @@ public class CityBuildingChangeEvent extends CityChangeEvent {
     public CityBuildingChangeEvent(int nation, DBCity previous, DBCity current) {
         super(nation, previous, current);
         this.change = new HashMap<>();
-        for (int i = 0; i < current.buildings.length; i++) {
-            int diff = current.buildings[i] - previous.buildings[i];
+        for (Building building : Buildings.values()) {
+            int diff = current.get(building) - previous.get(building);
             if (diff > 0) {
-                change.put(Buildings.get(i), diff);
+                change.put(building, diff);
             }
         }
     }

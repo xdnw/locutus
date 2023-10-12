@@ -271,10 +271,10 @@ public class WarUpdateProcessor {
                 if (!toUpdate.isEmpty()) {
                     toUpdate.clear();
                 }
-                toUpdate.addAll(warCatsByAA.getOrDefault(current.attacker_aa, Collections.emptySet()));
-                toUpdate.addAll(warCatsByAA.getOrDefault(current.defender_aa, Collections.emptySet()));
-                toUpdate.addAll(warCatsByRoom.getOrDefault(current.attacker_id, Collections.emptySet()));
-                toUpdate.addAll(warCatsByRoom.getOrDefault(current.defender_id, Collections.emptySet()));
+                toUpdate.addAll(warCatsByAA.getOrDefault(current.getAttacker_aa(), Collections.emptySet()));
+                toUpdate.addAll(warCatsByAA.getOrDefault(current.getDefender_aa(), Collections.emptySet()));
+                toUpdate.addAll(warCatsByRoom.getOrDefault(current.getAttacker_id(), Collections.emptySet()));
+                toUpdate.addAll(warCatsByRoom.getOrDefault(current.getDefender_id(), Collections.emptySet()));
                 if (!toUpdate.isEmpty()) {
                     if (wars.size() > 25 && RateLimitUtil.getCurrentUsed() > 55) {
                         while (RateLimitUtil.getCurrentUsed(true) > 55) {
@@ -340,9 +340,9 @@ public class WarUpdateProcessor {
 
         for (Map.Entry<DBWar, DBWar> entry : wars) {
             DBWar war = entry.getValue();
-            if (war.attacker_aa == 0 && war.defender_aa == 0) continue;
-            if (war.defender_aa != 0) {
-                for (GuildHandler guildHandler : defGuildsByAA.getOrDefault(war.defender_aa, Collections.emptySet())) {
+            if (war.getAttacker_aa() == 0 && war.getDefender_aa() == 0) continue;
+            if (war.getDefender_aa() != 0) {
+                for (GuildHandler guildHandler : defGuildsByAA.getOrDefault(war.getDefender_aa(), Collections.emptySet())) {
                     boolean shouldAlert = shouldAlertWar.computeIfAbsent(guildHandler, GuildHandler::shouldAlertWar).apply(entry.getKey(), entry.getValue());
                     if (shouldAlert) {
                         toCreate++;
@@ -350,8 +350,8 @@ public class WarUpdateProcessor {
                     }
                 }
             }
-            if (war.attacker_aa != 0) {
-                for (GuildHandler guildHandler : offGuildsByAA.getOrDefault(war.attacker_aa, Collections.emptySet())) {
+            if (war.getAttacker_aa() != 0) {
+                for (GuildHandler guildHandler : offGuildsByAA.getOrDefault(war.getAttacker_aa(), Collections.emptySet())) {
                     boolean shouldAlert = shouldAlertWar.computeIfAbsent(guildHandler, GuildHandler::shouldAlertWar).apply(entry.getKey(), entry.getValue());
                     if (shouldAlert) {
                         toCreate++;
@@ -529,7 +529,6 @@ public class WarUpdateProcessor {
 
                 double maxAir80pct = Buildings.HANGAR.max() * Buildings.HANGAR.cap(attacker::hasProject) * attacker.getCities() * 0.66;
                 if (defender.getAircraft() == 0 && root.getDefcas2() == 0 && root.getDefcas3() == 0 && root.getAttcas2() > 0 && root.getMoney_looted() == 0 && defender.getSoldiers() > attacker.getSoldiers() && attacker.getAircraft() > maxAir80pct) {
-                    double cost = root.getLossesConverted(true);
                     if (defender.getActive_m() < 10000) {
                         String message = "You performed a ground attack using tanks against an enemy with a high amount of soldiers (but no tanks), no loot, and no aircraft. An airstrike may be cheaper at getting the initial soldiers down and avoiding tank losses";
                         return Map.entry(AttackTypeSubCategory.GROUND_TANKS_NO_LOOT_NO_ENEMY_AIR, message);
@@ -558,9 +557,9 @@ public class WarUpdateProcessor {
                     double extraInfraDestroyed = ((attTanks - (defTanks * 0.5)) * 0.01) * 0.95 * (root.getSuccess().ordinal() / 3d);
                     DBWar war = Locutus.imp().getWarDb().getWar(root.getWar_id());
                     if (war != null) {
-                        if (war.warType == WarType.RAID) {
+                        if (war.getWarType() == WarType.RAID) {
                             extraInfraDestroyed *= 0.25;
-                        } else if (war.warType == WarType.ORD) {
+                        } else if (war.getWarType() == WarType.ORD) {
                             extraInfraDestroyed *= 0.5;
                         }
                     }
@@ -583,7 +582,7 @@ public class WarUpdateProcessor {
             case VICTORY:
                 break;
             case FORTIFY:
-                List<AbstractCursor> attacks = root.getWar().getAttacks();
+                List<AbstractCursor> attacks = root.getWar().getAttacks2(false);
                 attacks.removeIf(f -> f.getWar_attack_id() >= root.getWar_attack_id() || f.getAttacker_id() != root.getAttacker_id());
                 if (attacks.size() > 0 && attacks.get(attacks.size() - 1).getAttack_type() == AttackType.FORTIFY) {
                     return AttackTypeSubCategory.DOUBLE_FORTIFY.toPair();
@@ -600,7 +599,7 @@ public class WarUpdateProcessor {
                 if (defender.getTanks() > 0 && defender.getSoldiers() < root.getDefcas2() && attacker.getSoldiers() * 0.4 > defender.getSoldiers() && root.getDefcas1() == 0 && attacker.getGroundStrength(true, false) > defender.getGroundStrength(true, true)) {
                     int attAir = (int) (root.getAtt_gas_used() * 4);
                     if (attAir > 3) {
-                        attacks = root.getWar().getAttacks();
+                        attacks = root.getWar().getAttacks2(false);
                         attacks.remove(root);
                         DBWar war = Locutus.imp().getWarDb().getWar(root.getWar_id());
                         if (war != null) {
@@ -610,10 +609,11 @@ public class WarUpdateProcessor {
                                 // enemy has less ground strength than enemies
 
                                 boolean enemyIsWeaker = true;
-                                List<DBWar> activeWars = defender.getActiveWars();
-                                for (DBWar otherWars : activeWars) {
-                                    DBNation other = war.getNation(!war.isAttacker(defender));
-                                    if (other == null || other.getActive_m() > 2440) continue;
+                                Set<DBWar> activeWars = defender.getActiveWars();
+                                for (DBWar otherWar : activeWars) {
+                                    if (otherWar == war) continue;
+                                    DBNation other = otherWar.getNation(!otherWar.isAttacker(defender));
+                                    if (other == null || other.getActive_m() > 2440 || other.getPositionEnum().id < Rank.MEMBER.id) continue;
                                     if (other.getGroundStrength(true, false) < defender.getGroundStrength(true, true) || other.getCities() > other.getCities() * 1.8) {
                                         enemyIsWeaker = false;
                                         break;
@@ -696,7 +696,7 @@ public class WarUpdateProcessor {
 
                     String message = AttackTypeSubCategory.AIRSTRIKE_INFRA.message.replace("{amount}", attAir + "");
 
-                    double usageCost = root.getLossesConverted(true, false, false, true, false, false);
+                    double usageCost = root.getLossesConverted(ResourceType.getBuffer(), true, false, false, true, false, false);
                     if (usageCost > root.getInfra_destroyed_value()) {
                         message += "\nYou used $" + MathMan.format(usageCost) + " worth of resources, and only destroyed $" + MathMan.format(root.getInfra_destroyed_value()) + " extra worth of infra";
                     } else {
@@ -724,7 +724,7 @@ public class WarUpdateProcessor {
                     if (attShips > 1 && defender.getAvg_infra() < 1850 && root.getCity_infra_before() <= 1850) {
                         String message = AttackTypeSubCategory.NAVAL_MAX_VS_NONE.message;
 
-                        double usageCost = root.getLossesConverted(true, false, false, true, false, false);
+                        double usageCost = root.getLossesConverted(ResourceType.getBuffer(), true, false, false, true, false, false);
                         if (usageCost > root.getInfra_destroyed_value()) {
                             message += "\nYou used $" + MathMan.format(usageCost) + " worth of resources, and only destroyed $" + MathMan.format(root.getInfra_destroyed_value()) + " extra worth of infra";
                         } else {
@@ -739,7 +739,7 @@ public class WarUpdateProcessor {
                             ((defender.getAircraft() > 0 && defender.getAircraft() < attacker.getAircraft() * 0.8) ||
                             (defender.getAircraft() < attacker.getAircraft() && defender.getGroundStrength(true, false) > 0 && defender.getGroundStrength(true, false) < attacker.getGroundStrength(true, true)))) {
 
-                        attacks = root.getWar().getAttacks();
+                        attacks = root.getWar().getAttacks2(false);
                         for (AbstractCursor attack : attacks) {
                             if (attack.getAttack_type() == NAVAL && attack.getWar_attack_id() != root.getWar_attack_id()) {
                                 return AttackTypeSubCategory.NAVAL_ALREADY_BLOCKADED.toPair();
@@ -762,8 +762,8 @@ public class WarUpdateProcessor {
 
     public static void processLegacy(DBWar previous, DBWar current) throws IOException {
         try {
-            DBNation attacker = Locutus.imp().getNationDB().getNation(current.attacker_id);
-            DBNation defender = Locutus.imp().getNationDB().getNation(current.defender_id);
+            DBNation attacker = Locutus.imp().getNationDB().getNation(current.getAttacker_id());
+            DBNation defender = Locutus.imp().getNationDB().getNation(current.getDefender_id());
 
             if (defender != null && defender.getAlliance_id() == 0 && defender.getActive_m() > 10000) return;
 
@@ -821,7 +821,7 @@ public class WarUpdateProcessor {
                 }
             }
 
-            if (current.defender_id == Settings.INSTANCE.NATION_ID) {
+            if (current.getDefender_id() == Settings.INSTANCE.NATION_ID) {
                 String body = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + Settings.INSTANCE.ALLIANCE_ID() + "&display=bank";
                 AlertUtil.displayTray("" + Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war=" + current.warId, body);
                 if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
@@ -856,12 +856,12 @@ public class WarUpdateProcessor {
                     }
                 });
             } else if (defender.getOff() > 0 && stat.type != CounterType.UNCONTESTED) {
-                List<DBWar> wars = defender.getActiveWars();
+                Set<DBWar> wars = defender.getActiveWars();
                 Set<DBWar> escalatedWars = null;
                 for (DBWar war : wars) {
-                    if (war.attacker_id != defender.getNation_id()) continue;
+                    if (war.getAttacker_id() != defender.getNation_id()) continue;
 
-                    DBNation warDef = DBNation.getById(war.defender_id);
+                    DBNation warDef = DBNation.getById(war.getDefender_id());
                     if (warDef == null || warDef.getPosition() < 1) continue;
                     CounterStat stats = war.getCounterStat();
                     if (stats != null && stats.type == CounterType.IS_COUNTER) {
@@ -893,17 +893,17 @@ public class WarUpdateProcessor {
     }
 
     private static void checkWarType(DBWar current, DBNation attacker, DBNation defender, PNWUser user, GuildDB guildDb, Guild guild, Member member) {
-        if (current.warType == WarType.RAID) return;
+        if (current.getWarType() == WarType.RAID) return;
         if (defender.getAvg_infra() > 1700 && defender.getActive_m() < 10000) return;
 
         AlertUtil.auditAlert(attacker, AutoAuditType.WAR_TYPE_NOT_RAID, f -> {
             Set<DBBounty> bounties = Locutus.imp().getWarDb().getBounties(defender.getNation_id());
             for (DBBounty bounty : bounties) {
-                if (bounty.getType() == current.warType) return null;
+                if (bounty.getType() == current.getWarType()) return null;
             }
 
             String message = AutoAuditType.WAR_TYPE_NOT_RAID.message.replace("{war}",  current.toUrl())
-                    .replace("{type}", current.warType + "");
+                    .replace("{type}", current.getWarType() + "");
             if (defender.getActive_m() > 10000) message += " as the enemy is inactive";
             else if (defender.getAvg_infra() <= 1000) message += " as the enemy already has reduced infra";
             else if (defender.getAvg_infra() <= attacker.getAvg_infra()) message += " as the enemy has lower infra than you";
@@ -916,15 +916,15 @@ public class WarUpdateProcessor {
     }
 
     public static void checkActiveConflicts() {
-        Map<Integer, DBWar> activeWars = Locutus.imp().getWarDb().getActiveWars();
+        Set<DBWar> activeWars = Locutus.imp().getWarDb().getActiveWars();
         Map<Integer, Set<DBWar>> defWarsByAA = new HashMap<>();
 
-        for (DBWar war : activeWars.values()) {
+        for (DBWar war : activeWars) {
             DBNation attacker = war.getNation(true);
             DBNation defender = war.getNation(false);
             if (attacker == null || attacker.getAlliance_id() == 0 || attacker.getVm_turns() > 0 || attacker.active_m() > 2880) continue;
-            if (defender == null || defender.getPositionEnum().id <= Rank.APPLICANT.id || defender.getVm_turns() > 0 || defender.active_m() > 2000 || defender.isGray() || defender.getAlliance_id() != war.defender_aa) continue;
-            int aaId = war.defender_aa;
+            if (defender == null || defender.getPositionEnum().id <= Rank.APPLICANT.id || defender.getVm_turns() > 0 || defender.active_m() > 2000 || defender.isGray() || defender.getAlliance_id() != war.getDefender_aa()) continue;
+            int aaId = war.getDefender_aa();
             defWarsByAA.computeIfAbsent(aaId, f -> new HashSet<>()).add(war);
         }
 
@@ -959,15 +959,15 @@ public class WarUpdateProcessor {
             DBAlliance alliance = entry.getKey();
             Set<DBNation> nations = alliance.getNations(f -> !f.isGray() && f.getPositionEnum().id > Rank.APPLICANT.id && f.active_m() <= 2000 && f.getVm_turns() == 0);
 
-            List<DBWar> active = alliance.getActiveWars();
+            Set<DBWar> active = alliance.getActiveWars();
             Map<Integer, Integer> notableByAA = new HashMap<>();
             int max = 0;
 
             outer:
             for (DBWar war : active) {
-                int otherAA = war.attacker_aa;
+                int otherAA = war.getAttacker_aa();
                 if (otherAA == 0) continue;
-                if (war.defender_aa != alliance.getAlliance_id()) continue;
+                if (war.getDefender_aa() != alliance.getAlliance_id()) continue;
 
                 DBNation attacker = war.getNation(true);
                 DBNation defender = war.getNation(false);

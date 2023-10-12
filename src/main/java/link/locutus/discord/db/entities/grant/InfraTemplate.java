@@ -21,6 +21,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 public class InfraTemplate extends AGrantTemplate<Double>{
@@ -114,7 +115,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
             @Override
             public Boolean apply(DBNation receiver) {
 
-                List<DBWar> wars = receiver.getActiveWars();
+                Set<DBWar> wars = receiver.getActiveWars();
 
                 for(DBWar war : wars) {
 
@@ -223,10 +224,10 @@ public class InfraTemplate extends AGrantTemplate<Double>{
             // get max Double from cityGrantHistory
             double max = cityGrantHistory.values().stream().mapToDouble(f -> f).max().orElse(0);
 
-            if (max > city.infra)
-                throw new IllegalArgumentException("The city `" + entry.getKey() + "` has received a prior grant for " + max + " infra. The city only has " + city.infra + " infra currently. The last attack date is " + latestAttackDate + " allow_rebuild=" + allow_rebuild);
+            if (max > city.getInfra())
+                throw new IllegalArgumentException("The city `" + entry.getKey() + "` has received a prior grant for " + max + " infra. The city only has " + city.getInfra() + " infra currently. The last attack date is " + latestAttackDate + " allow_rebuild=" + allow_rebuild);
 
-            max = Math.max(city.infra, max);
+            max = Math.max(city.getInfra(), max);
 
             if (city.created > cutoff) {
                 cost += receiver.infraCost(max, parsed);

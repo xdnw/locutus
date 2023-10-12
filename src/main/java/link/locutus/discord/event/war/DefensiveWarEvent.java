@@ -10,6 +10,6 @@ public class DefensiveWarEvent extends WarCreateEvent {
 
     @Override
     protected void postToGuilds() {
-        post(Locutus.imp().getGuildDBByAA(getCurrent().defender_aa));
+        post(Locutus.imp().getGuildDBByAA(getCurrent().getDefender_aa()));
     }
 }

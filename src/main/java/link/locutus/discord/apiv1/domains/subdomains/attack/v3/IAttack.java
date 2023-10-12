@@ -1,15 +1,12 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
 import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
-import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.PnwUtil;
 
-import java.util.Map;
-
-public interface IAttack2 {
+public interface IAttack {
     /*
     "war_attack_id=" + getWar_attack_id() +
                 ", epoch=" + getDate() +
@@ -96,17 +93,53 @@ public interface IAttack2 {
         return "" + Settings.INSTANCE.PNW_URL() + "/nation/war/timeline/war=" + getWar_id();
     }
 
-    default double getLossesConverted(boolean attacker) {
-        return PnwUtil.convertedTotal(getLosses(attacker));
+    default double getLossesConverted(double[] buffer, boolean attacker) {
+        return getLossesConverted(buffer, attacker, true, true, true, true, true);
     }
 
-    default double getLossesConverted(boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
-        return PnwUtil.convertedTotal(getLosses(attacker, units, infra, consumption, includeLoot, includeBuildings));
+    default double getLossesConverted(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings) {
+        return PnwUtil.convertedTotal(getLosses(buffer, attacker, units, infra, consumption, includeLoot, includeBuildings));
     }
 
-    default Map<ResourceType, Double> getLosses(boolean attacker) {
-        return getLosses(attacker, true, true, true, true, true);
+    default double[] getLosses(double[] buffer, boolean attacker) {
+        return getLosses(buffer, attacker, true, true, true, true, true);
     }
 
-    Map<ResourceType, Double> getLosses(boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings);
+    default int getResistance() {
+        if (getSuccess() == SuccessType.UTTER_FAILURE) return 0;
+        int damage;
+        switch (getAttack_type()) {
+            default: {
+                return 0;
+            }
+            case FORTIFY:
+                return 0;
+            case GROUND:
+                damage = 10;
+                break;
+            case AIRSTRIKE_INFRA:
+            case AIRSTRIKE_SOLDIER:
+            case AIRSTRIKE_TANK:
+            case AIRSTRIKE_MONEY:
+            case AIRSTRIKE_SHIP:
+            case AIRSTRIKE_AIRCRAFT:
+                damage = 12;
+                break;
+            case NAVAL:
+                damage = 14;
+                break;
+            case MISSILE:
+                damage = 24;
+                break;
+            case NUKE:
+                damage = 31;
+                break;
+        }
+        damage -= (9 - getSuccess().ordinal() * 3);
+        return damage;
+    }
+
+    double[] getLosses(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings);
+
+    DBWar getWar();
 }

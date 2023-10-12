@@ -1,14 +1,19 @@
 package link.locutus.discord.apiv1.enums;
 
 import com.politicsandwar.graphql.model.Color;
+import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.util.PnwUtil;
 
 import java.util.Collection;
 import java.util.Locale;
 import java.util.Set;
 
-public enum  NationColor {
+public enum  NationColor implements NationList {
     AQUA,
     BEIGE,
     BLACK,
@@ -32,13 +37,32 @@ public enum  NationColor {
     private int turnBonus;
     private String votedName;
 
+    @Command(desc = "Get the bonus turn income for nations on this color.")
     public int getTurnBonus() {
         if (this == GRAY) return 0;
         if (this == BEIGE) return 50_000;
         return turnBonus;
     }
 
-    public int getTurnBonus(Collection<DBNation> nationsOnColor, boolean cap) {
+    @Command(desc = "Get the name of the color.")
+    public String getName() {
+        return name();
+    }
+
+    @Command(desc = "Get the number of nations on this color.")
+    public int getNumNations(@Default NationFilter filter) {
+        if (filter != null) {
+            return Locutus.imp().getNationDB().getNationsMatching(f -> f.getColor() == this && filter.test(f)).size();
+        }
+        return Locutus.imp().getNationDB().getNationsMatching(f -> f.getColor() == this).size();
+    }
+
+    @Command(desc = "If this is a taxable color")
+    public boolean isTaxable() {
+        return this != GRAY && this != BEIGE;
+    }
+
+    public int getTurnBonus(Set<DBNation> nationsOnColor, boolean cap) {
         if (this == GRAY) return 0;
         if (this == BEIGE) return 50_000;
         double totalRev = 0;
@@ -56,6 +80,7 @@ public enum  NationColor {
         this.turnBonus = amt;
     }
 
+    @Command(desc = "Get the name of the color that was voted by nations.")
     public String getVotedName() {
         return votedName == null ? name() : votedName;
     }
@@ -84,5 +109,17 @@ public enum  NationColor {
             case "YELLOW": return YELLOW;
             default: throw new IllegalArgumentException("Unknown color: " + color.getColor());
         }
+    }
+
+    public Set<DBNation> getNationsMatching(@Default NationFilter filter) {
+        if (filter != null) {
+            return Locutus.imp().getNationDB().getNationsMatching(f -> f.getColor() == this && filter.test(f));
+        }
+        return Locutus.imp().getNationDB().getNationsMatching(f -> f.getColor() == this);
+    }
+
+    @Override
+    public Collection<DBNation> getNations() {
+        return getNationsMatching(null);
     }
 }

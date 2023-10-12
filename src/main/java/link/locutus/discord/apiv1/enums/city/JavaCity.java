@@ -52,28 +52,26 @@ public class JavaCity {
     private double infra;
     private double land_;
     private long dateCreated;
-
-    private long nuke_date;
+    private int nuke_turn;
 
     private Metrics metrics;
 
     public static Map.Entry<DBNation, JavaCity> getOrCreate(int cityId, boolean update) {
         List<Event> events = new LinkedList<>();
         long now = System.currentTimeMillis();
-        Map.Entry<Integer, DBCity> cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId, true, events::add);
+        DBCity cityEntry = Locutus.imp().getNationDB().getCitiesV3ByCityId(cityId, true, events::add);
         Locutus.imp().runEventsAsync(events);
         if (cityEntry != null) {
-            DBCity city = cityEntry.getValue();
-            if (update && now > city.fetched) {
-                city.update(true);
+            if (update && now > cityEntry.fetched) {
+                cityEntry.update(true);
             }
-            DBNation nation = DBNation.getById(cityEntry.getKey());
+            DBNation nation = DBNation.getById(cityEntry.getNationId());
             if (nation != null) {
-                return Map.entry(nation, city.toJavaCity(nation));
+                return Map.entry(nation, cityEntry.toJavaCity(nation));
             }
             DBNation dummy = new DBNation();
-            dummy.setNation_id(cityEntry.getKey());
-            return Map.entry(dummy, city.toJavaCity(f -> false));
+            dummy.setNation_id(cityEntry.getNationId());
+            return Map.entry(dummy, cityEntry.toJavaCity(f -> false));
         }
         return null;
     }
@@ -105,7 +103,7 @@ public class JavaCity {
         this.infra = other.infra;
         this.dateCreated = other.dateCreated;
         this.land_ = other.land_;
-        this.nuke_date = other.nuke_date;
+        this.nuke_turn = other.nuke_turn;
     }
 
     public void clearMetrics() {
@@ -115,8 +113,8 @@ public class JavaCity {
         }
     }
 
-    public long getNukeDate() {
-        return nuke_date;
+    public long getNukeTurn() {
+        return nuke_turn;
     }
 
     public String getMMR() {
@@ -167,15 +165,13 @@ public class JavaCity {
             pollution = 0;
             commerce = 0;
 
-            if (city.nuke_date > 1596163005000L) {
-                double pollutionMax = 400d;
-                int turnsMax = 11 * 12;
-                long turns = TimeUtil.getTurn() - TimeUtil.getTurn(city.nuke_date);
-                if (turns < turnsMax) {
-                    double nukePollution = (turnsMax - turns) * pollutionMax / (turnsMax);
-                    if (nukePollution > 0) {
-                        pollution += (int) nukePollution;
-                    }
+            double pollutionMax = 400d;
+            int turnsMax = 11 * 12;
+            long turns = TimeUtil.getTurn() - city.nuke_turn;
+            if (turns < turnsMax) {
+                double nukePollution = (turnsMax - turns) * pollutionMax / (turnsMax);
+                if (nukePollution > 0) {
+                    pollution += (int) nukePollution;
                 }
             }
 
@@ -297,12 +293,12 @@ public class JavaCity {
         initImpTotal();
     }
 
-    public JavaCity(byte[] buildings, double infra, double land, long dateCreated, long nuke_date) {
+    public JavaCity(byte[] buildings, double infra, double land, long dateCreated, int nuke_turn) {
         this.buildings = buildings;
         this.dateCreated = dateCreated;
         this.land_ = land;
         this.infra = infra;
-        this.nuke_date = nuke_date;
+        this.nuke_turn = nuke_turn;
         initImpTotal();
     }
 
@@ -445,7 +441,7 @@ public class JavaCity {
 
         if (city.getNuclearpollution() > 0) {
             double turns = 11 * 12 * (400d - city.getNuclearpollution()) / 400d;
-            nuke_date = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - ((int) turns));
+            nuke_turn = (int) (TimeUtil.getTurn() - ((int) turns));
         }
 
         metrics = new Metrics();

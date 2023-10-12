@@ -11,7 +11,6 @@ import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Activity;
-import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.CounterStat;
 import link.locutus.discord.db.entities.CounterType;
 import link.locutus.discord.db.entities.DBAlliance;
@@ -27,25 +26,16 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.WarType;
-import link.locutus.discord.apiv1.enums.city.building.Buildings;
-import link.locutus.discord.apiv1.enums.TreatyType;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -289,7 +279,7 @@ public class RaidCommand extends Command {
 
         Map<Integer, Double> allianceScores = new HashMap<>();
 
-        List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id(), WarStatus.ACTIVE);
+        Set<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id(), WarStatus.ACTIVE);
         Map<Integer, List<DBWar>> attackingWars = new RankBuilder<>(wars).group(DBWar::getDefender_id).get();
 
         Map<Integer, List<DBBounty>> allBounties = Locutus.imp().getWarDb().getBountiesByNation();
@@ -471,13 +461,13 @@ public class RaidCommand extends Command {
 
                 costIncurred += minMilValue * activeChance;
 //
-                List<DBWar> enemyWars = Locutus.imp().getWarDb().getWarsByNation(enemy.getNation_id());
+                Set<DBWar> enemyWars = Locutus.imp().getWarDb().getWarsByNation(enemy.getNation_id());
                 if (!enemyWars.isEmpty()) {
                     DBWar lastWar = null;
                     for (DBWar war : enemyWars) {
-                        if (war.defender_id == enemy.getNation_id()) {
+                        if (war.getDefender_id() == enemy.getNation_id()) {
                             lastWar = war;
-                            if (war.status != WarStatus.ACTIVE) {
+                            if (war.getStatus() != WarStatus.ACTIVE) {
                                 break;
                             }
                             CounterStat counter = Locutus.imp().getWarDb().getCounterStat(lastWar);
@@ -488,9 +478,9 @@ public class RaidCommand extends Command {
                         }
                     }
                     if (lastWar != null) {
-                        if (lastWar.status == WarStatus.DEFENDER_VICTORY) {
+                        if (lastWar.getStatus() == WarStatus.DEFENDER_VICTORY) {
                             winChance *= 0.5;
-                        } else if (lastWar.status != WarStatus.ATTACKER_VICTORY) {
+                        } else if (lastWar.getStatus() != WarStatus.ATTACKER_VICTORY) {
                             winChance *= 0.9;
                         }
                     }

@@ -760,6 +760,17 @@ public class TradeDB extends DBMainV2 {
             return null;
         }
     }
+
+    public List<DBTrade> getTradesById(Collection<Integer> ids) {
+        if (ids.isEmpty()) return Collections.emptyList();
+        if (ids.size() == 1) {
+            return Collections.singletonList(getTradeById(ids.iterator().next()));
+        }
+        List<Integer> idsList = new ArrayList<>(ids);
+        idsList.sort(Comparator.naturalOrder());
+        return getTrades(f -> f.where(QueryCondition.in("tradeId", idsList.toArray())));
+    }
+
     public Map<Long, Double> getAverage(long minDate, ResourceType type, int minQuantity, int min, int max) {
         String query = "select\n" +
                 "trades.date,sum(ppu * quantity),sum(quantity)\n" +

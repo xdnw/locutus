@@ -389,14 +389,22 @@ public enum AttackType {
     }
 
 
+    @Command(desc = "Resistance points dealt for a successful attack")
     public int getResistanceIT() {
         return resistanceIT;
     }
 
+    @Command(desc = "Resistance points dealt for an attack with the given success types")
+    public int getResistance(SuccessType type) {
+
+    }
+
+    @Command(desc = "The Military Action Points (MAP) used for this attack type")
     public int getMapUsed() {
         return mapUsed;
     }
 
+    @Command(desc = "The name of this attack type")
     public String getName() {
         return name;
     }
@@ -437,6 +445,7 @@ public enum AttackType {
         return map;
     }
 
+    @Command(desc = "If this attack type is a victory")
     public boolean isVictory() {
         switch (this) {
             case VICTORY:
@@ -445,5 +454,9 @@ public enum AttackType {
             default:
                 return false;
         }
+    }
+
+    public boolean canDamage() {
+        return this == FORTIFY || this == PEACE;
     }
 }

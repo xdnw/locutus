@@ -1,21 +1,16 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3.cursors;
 
 import com.politicsandwar.graphql.model.WarAttack;
-import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.FailedCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.io.BitBuffer;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -85,7 +80,7 @@ public class ALootCursor extends FailedCursor {
             if (alliance_id == 0) {
                 DBWar war = getWar();
                 if (war != null) {
-                    alliance_id = war.attacker_id == attacker_id ? war.defender_aa : war.attacker_aa;
+                    alliance_id = war.getAttacker_id() == attacker_id ? war.getDefender_aa() : war.getAttacker_aa();
                 }
             }
 

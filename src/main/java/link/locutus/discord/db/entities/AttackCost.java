@@ -1,6 +1,16 @@
 package link.locutus.discord.db.entities;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArraySet;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArraySet;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -8,64 +18,187 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
+import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.scheduler.TriFunction;
+import org.apache.commons.lang3.tuple.Triple;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 public class AttackCost {
     private final String nameB;
     private final String nameA;
 
-    private Map<ResourceType, Double> loot1 = new HashMap<>();
-    private Map<ResourceType, Double> loot2 = new HashMap<>();
+    private final double[] loot1 = ResourceType.getBuffer();
+    private final double[] loot2 = ResourceType.getBuffer();
 
-    private Map<ResourceType, Double> total1 = new HashMap<>();
-    private Map<ResourceType, Double> total2 = new HashMap<>();
+    private final double[] total1 = ResourceType.getBuffer();
+    private final double[] total2 = ResourceType.getBuffer();
 
     private double infrn1 = 0;
     private double infrn2 = 0;
 
-    private Map<MilitaryUnit, Integer> unit1 = new HashMap<>();
-    private Map<MilitaryUnit, Integer> unit2 = new HashMap<>();
+    private final int[] unit1 = new int[MilitaryUnit.values.length];
+    private final int[] unit2 = new int[MilitaryUnit.values.length];
 
-    private Map<ResourceType, Double> consumption1 = new HashMap<>();
-    private Map<ResourceType, Double> consumption2 = new HashMap<>();
+    private final double[] consumption1 = ResourceType.getBuffer();
+    private final double[] consumption2 = ResourceType.getBuffer();
 
-    private Map<Building, Integer> buildings1 = new HashMap<>();
-    private Map<Building, Integer> buildings2 = new HashMap<>();
+    private final int[] buildings1;// = new Object2IntOpenHashMap<>();
+    private final int[] buildings2;// = new Object2IntOpenHashMap<>();
 
-    private Set<Integer> ids1 = new LinkedHashSet<>();
-    private Set<Integer> ids2 = new LinkedHashSet<>();
+    private final Set<Integer> ids1;// = new IntOpenHashSet();
+    private final Set<Integer> ids2;// = new IntOpenHashSet();
 
-    private Set<Integer> victories1 = new LinkedHashSet<>();
-    private Set<Integer> victories2 = new LinkedHashSet<>();
-    private Set<Integer> wars = new LinkedHashSet<>();
-    private Set<AbstractCursor> attacks = new LinkedHashSet<>();
-    private Set<AbstractCursor> primaryAttacks = new LinkedHashSet<>();
-    private Set<AbstractCursor> secondaryAttacks = new LinkedHashSet<>();
+    private final Set<Integer> victories1;// = new IntOpenHashSet();
+    private final Set<Integer> victories2;// = new IntOpenHashSet();
+    private final Set<Integer> wars;// = new IntOpenHashSet();
+    private final Set<AbstractCursor> attacks;// = new ObjectOpenHashSet<>();
+    private final Set<AbstractCursor> primaryAttacks;// = new ObjectOpenHashSet<>();
+    private final Set<AbstractCursor> secondaryAttacks;// = new ObjectOpenHashSet<>();
 
-
-    public AttackCost() {
-        nameA = "";
-        nameB = "";
+    public void addCost(AttackCost other) {
+        ResourceType.add(loot1, other.loot1);
+        ResourceType.add(loot2, other.loot2);
+        ResourceType.add(total1, other.total1);
+        ResourceType.add(total2, other.total2);
+        infrn1 += other.infrn1;
+        infrn2 += other.infrn2;
+        ArrayUtil.apply(ArrayUtil.INT_ADD, unit1, other.unit1);
+        ArrayUtil.apply(ArrayUtil.INT_ADD, unit2, other.unit2);
+        ResourceType.add(consumption1, other.consumption1);
+        ResourceType.add(consumption2, other.consumption2);
+        if (buildings1 != null) ArrayUtil.apply(ArrayUtil.INT_ADD, buildings1, other.buildings1);
+        if (buildings2 != null) ArrayUtil.apply(ArrayUtil.INT_ADD, buildings2, other.buildings2);
+        if (ids1 != null && other.ids1 != null) ids1.addAll(other.ids1);
+        if (ids2 != null && other.ids2 != null) ids2.addAll(other.ids2);
+        if (victories1 != null && other.victories1 != null) victories1.addAll(other.victories1);
+        if (victories2 != null && other.victories2 != null) victories2.addAll(other.victories2);
+        if (wars != null && other.wars != null) wars.addAll(other.wars);
+        if (attacks != null && other.attacks != null) attacks.addAll(other.attacks);
+        if (primaryAttacks != null && other.primaryAttacks != null) primaryAttacks.addAll(other.primaryAttacks);
+        if (secondaryAttacks != null && other.secondaryAttacks != null) secondaryAttacks.addAll(other.secondaryAttacks);
     }
 
-    public AttackCost(String nameA, String nameB) {
+    public static <T> Map<T, AttackCost> groupBy(Iterable<DBWar> wars,
+                                                 Predicate<AttackType> attackTypeFilter,
+                                                 Predicate<AbstractCursor> preliminaryFilter,
+                                                 Predicate<AbstractCursor> attackFilter,
+                                                 BiConsumer<AbstractCursor,
+                                                         BiConsumer<AbstractCursor, T>> groupBy,
+TriFunction<Function<Boolean, AttackCost>, AbstractCursor, T, Map.Entry<AttackCost, Boolean>> addCost
+                                                 ) {
+        if (attackFilter == null) attackFilter = f -> true;
+        Map<T, AttackCost> resultByGroup = new Object2ObjectOpenHashMap<>();
+        Map<T, Map<Integer, AttackCost>> pendingByWar = new Object2ObjectOpenHashMap<>();
+
+        BiConsumer<T, Integer> condense = (nationId, warId) -> {
+            Map<Integer, AttackCost> byWar = pendingByWar.get(nationId);
+            if (byWar == null) return;
+            AttackCost cost = byWar.remove(warId);
+            if (cost != null) {
+                AttackCost existing = resultByGroup.get(nationId);
+                if (existing == null) {
+                    resultByGroup.put(nationId, cost);
+                } else {
+                    existing.addCost(cost);
+                }
+            }
+        };
+
+        BiConsumer<AbstractCursor, T> addAttack = (attack, group) -> {
+            Map.Entry<AttackCost, Boolean> costEntry = addCost.apply(
+                    new Function<Boolean, AttackCost>() {
+                        @Override
+                        public AttackCost apply(Boolean isAllowed) {
+                            if (isAllowed) {
+                                if (!resultByGroup.containsKey(group)) {
+                                    condense.accept(group, attack.getWar_id());
+                                }
+                                return resultByGroup.computeIfAbsent(group, f -> new AttackCost("", "", false, false, false, true, false));
+                            }
+                            return pendingByWar.computeIfAbsent(group, f -> new Int2ObjectOpenHashMap<>()).computeIfAbsent(attack.getWar_id(), f -> new AttackCost("", "", false, false, false, false, false));
+                        }
+                    },
+                    attack,
+                    group
+            );
+            if (costEntry != null) {
+                AttackCost cost = costEntry.getKey();
+                cost.addCost(attack, costEntry.getValue());
+            }
+        };
+
+        Predicate<AbstractCursor> finalAttackFilter = attackFilter;
+        Locutus.imp().getWarDb().iterateAttacks(wars, attackTypeFilter, preliminaryFilter,
+        new Consumer<AbstractCursor>() {
+            @Override
+            public void accept(AbstractCursor attack) {
+                if (finalAttackFilter.test(attack)) {
+                    groupBy.accept(attack, addAttack);
+                }
+            }
+        });
+        return resultByGroup;
+    }
+
+    public AttackCost(String nameA, String nameB, boolean buildings, boolean ids, boolean victories, boolean wars, boolean attacks) {
         this.nameA = nameA;
         this.nameB = nameB;
+        if (buildings) {
+            buildings1 = Buildings.getBuffer();
+            buildings2 = Buildings.getBuffer();
+        } else {
+            buildings1 = null;
+            buildings2 = null;
+        }
+        if (ids) {
+            ids1 = new IntOpenHashSet();
+            ids2 = new IntOpenHashSet();
+        } else {
+            ids1 = null;
+            ids2 = null;
+        }
+        if (victories) {
+            victories1 = new IntOpenHashSet();
+            victories2 = new IntOpenHashSet();
+        } else {
+            victories1 = null;
+            victories2 = null;
+        }
+        if (wars) {
+            this.wars = new IntOpenHashSet();
+        } else {
+            this.wars = null;
+        }
+        if (attacks) {
+            this.attacks = new ObjectOpenHashSet<>();
+            this.primaryAttacks = new ObjectOpenHashSet<>();
+            this.secondaryAttacks = new ObjectOpenHashSet<>();
+        } else {
+            this.attacks = null;
+            this.primaryAttacks = null;
+            this.secondaryAttacks = null;
+        }
     }
 
     public Map<MilitaryUnit, Integer> getUnitsLost(boolean isPrimary) {
-        return isPrimary ? unit1 : unit2;
+        return ArrayUtil.toMap(isPrimary ? unit1 : unit2, MilitaryUnit.values);
     }
 
     public Map<ResourceType, Double> getLoot(boolean isPrimary) {
-        return isPrimary ? loot1 : loot2;
+        return PnwUtil.resourcesToMap(isPrimary ? loot1 : loot2);
     }
 
     public Map<ResourceType, Double> getTotal(boolean isPrimary, boolean units, boolean infra, boolean consumption, boolean loot) {
@@ -78,7 +211,7 @@ public class AttackCost {
     }
 
     public Map<ResourceType, Double> getTotal(boolean isPrimary) {
-        return isPrimary ? total1 : total2;
+        return PnwUtil.resourcesToMap(isPrimary ? total1 : total2);
     }
 
     private Map<ResourceType, Double> getNetCost(Map<ResourceType, Double> map1, Map<ResourceType, Double> map2) {
@@ -122,7 +255,7 @@ public class AttackCost {
     }
 
     public Map<ResourceType, Double> getConsumption(boolean isPrimary) {
-        return isPrimary ? consumption1 : consumption2;
+        return PnwUtil.resourcesToMap(isPrimary ? consumption1 : consumption2);
     }
 
     public Map<ResourceType, Double> getUnitCost(boolean isPrimary) {
@@ -144,26 +277,31 @@ public class AttackCost {
     }
 
     public Set<Integer> getIds(boolean isPrimary) {
+        if (ids1 == null) return Collections.emptySet();
         return isPrimary ? ids1 : ids2;
     }
 
     public Set<Integer> getWarIds() {
+        if (wars == null) return Collections.emptySet();
         return wars;
     }
 
     public int getNumWars() {
-        return wars.size();
+        return wars == null ? 0 : wars.size();
     }
 
     public Set<AbstractCursor> getAttacks() {
+        if (attacks == null) return Collections.emptySet();
         return attacks;
     }
 
     public Set<AbstractCursor> getAttacks(boolean isPrimary) {
+        if (attacks == null) return Collections.emptySet();
         return isPrimary ? primaryAttacks : secondaryAttacks;
     }
 
     public Set<Integer> getVictories(boolean attacker) {
+        if (victories1 == null) return Collections.emptySet();
         return attacker ? victories1 : victories2;
     }
 
@@ -182,62 +320,54 @@ public class AttackCost {
         boolean secondary = isSecondary.apply(attack);
 
         if (primary || secondary) {
-            if (attack.getAttack_type() == AttackType.VICTORY) {
+            if (victories1 != null && attack.getAttack_type() == AttackType.VICTORY) {
                 if (primary) victories1.add(attack.getWar_id());
                 else victories2.add(attack.getWar_id());
             }
-            this.attacks.add(attack);
-            if (primary) primaryAttacks.add(attack);
-            if (secondary) secondaryAttacks.add(attack);
+            if (this.attacks != null) {
+                this.attacks.add(attack);
+                if (primary) primaryAttacks.add(attack);
+                if (secondary) secondaryAttacks.add(attack);
+            }
 
-            wars.add(attack.getWar_id());
-            Map<MilitaryUnit, Integer> attUnit = attack.getUnitLosses(true);
-            Map<MilitaryUnit, Integer> defUnit = attack.getUnitLosses(false);
-
-            Map<ResourceType, Double> attLoot = attack.getLosses(true, false, false, false, true, false);
-            Map<ResourceType, Double> defLoot = attack.getLosses(false, false, false, false, true, false);
-
-            Map<ResourceType, Double> attConsume = attack.getLosses(true, false, false, true, false, false);
-            Map<ResourceType, Double> defConsume = attack.getLosses(false, false, false, true, false, false);
-
+            if (this.wars != null) {
+                wars.add(attack.getWar_id());
+            }
             double attInfra = 0;
             double defInfra = attack.getInfra_destroyed_value();
 
-            Map<Building, Integer> defBuild = attack.getBuildingsDestroyed();
-
-            Map<ResourceType, Double> attTotal = attack.getLosses(true, true, true, true, true, true);
-            Map<ResourceType, Double> defTotal = attack.getLosses(false, true, true, true, true, true);
-
-
-
             if (primary) {
-                ids1.add(attack.getAttacker_id());
-                ids2.add(attack.getDefender_id());
-                unit1 = PnwUtil.add(unit1, attUnit);
-                unit2 = PnwUtil.add(unit2, defUnit);
-                loot1 = PnwUtil.addResourcesToA(loot1, attLoot);
-                loot2 = PnwUtil.addResourcesToA(loot2, defLoot);
-                consumption1 = PnwUtil.addResourcesToA(consumption1, attConsume);
-                consumption2 = PnwUtil.addResourcesToA(consumption2, defConsume);
-                total1 = PnwUtil.addResourcesToA(total1, attTotal);
-                total2 = PnwUtil.addResourcesToA(total2, defTotal);
+                if (ids1 != null) {
+                    ids1.add(attack.getAttacker_id());
+                    ids2.add(attack.getDefender_id());
+                }
+                attack.getUnitLosses(unit1, true);
+                attack.getUnitLosses(unit2, false);
+                attack.getLosses(loot1, true, false, false, false, true, false);
+                attack.getLosses(loot2, false, false, false, false, true, false);
+                attack.getLosses(consumption1, true, false, false, true, false, false);
+                attack.getLosses(consumption2, false, false, false, true, false, false);
+                attack.getLosses(total1, true, true, true, true, true, true);
+                attack.getLosses(total2, false, true, true, true, true, true);
                 infrn1 += attInfra;
                 infrn2 += defInfra;
-                buildings2 = PnwUtil.add(buildings2, defBuild);
+                if (buildings2 != null) attack.addBuildingsDestroyed(buildings2);
             } else if (secondary) {
-                ids2.add(attack.getAttacker_id());
-                ids1.add(attack.getDefender_id());
-                unit1 = PnwUtil.add(unit1, defUnit);
-                unit2 = PnwUtil.add(unit2, attUnit);
-                loot1 = PnwUtil.addResourcesToA(loot1, defLoot);
-                loot2 = PnwUtil.addResourcesToA(loot2, attLoot);
-                consumption1 = PnwUtil.addResourcesToA(consumption1, defConsume);
-                consumption2 = PnwUtil.addResourcesToA(consumption2, attConsume);
-                total1 = PnwUtil.addResourcesToA(total1, defTotal);
-                total2 = PnwUtil.addResourcesToA(total2, attTotal);
+                if (ids1 != null) {
+                    ids2.add(attack.getAttacker_id());
+                    ids1.add(attack.getDefender_id());
+                }
+                attack.getUnitLosses(unit1, false);
+                attack.getUnitLosses(unit2, true);
+                attack.getLosses(loot1, false, false, false, false, true, false);
+                attack.getLosses(loot2, true, false, false, false, true, false);
+                attack.getLosses(consumption1, false, false, false, true, false, false);
+                attack.getLosses(consumption2, true, false, false, true, false, false);
+                attack.getLosses(total1, false, true, true, true, true, true);
+                attack.getLosses(total2, true, true, true, true, true, true);
                 infrn1 += defInfra;
                 infrn2 += attInfra;
-                buildings1 = PnwUtil.add(buildings1, defBuild);
+                if (buildings1 != null) attack.addBuildingsDestroyed(buildings1);
             }
         }
     }
@@ -302,11 +432,26 @@ public class AttackCost {
         return response.toString();
     }
 
+    public int getNumBuildingsDestroyed(boolean isAttacker) {
+        if (buildings1 == null) return 0;
+        int total = 0;
+        if (isAttacker) {
+            for (int num : buildings1) {
+                total += num;
+            }
+        } else {
+            for (int num : buildings2) {
+                total += num;
+            }
+        }
+        return total;
+    }
+
     private Map<Building, Integer> getBuildingsDestroyed(boolean isAttacker) {
         if (isAttacker) {
-            return buildings1;
+            return buildings1 == null ? Collections.emptyMap() : ArrayUtil.toMap(buildings1, Buildings.values());
         } else {
-            return buildings2;
+            return buildings2 == null ? Collections.emptyMap() : ArrayUtil.toMap(buildings2, Buildings.values());
         }
     }
 }

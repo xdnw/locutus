@@ -344,7 +344,7 @@ public class WarCommands {
         String explanation = db.getHandler().getBeigeCyclingInfo(Collections.singleton(BeigeReason.BEIGE_CYCLE), false);
         channel.send(explanation);
 
-        List<DBWar> wars = nation.getActiveWars();
+        Set<DBWar> wars = nation.getActiveWars();
         for (DBWar war : wars) {
             DBNation enemy = war.getNation(!war.isAttacker(nation));
 
@@ -1146,7 +1146,7 @@ public class WarCommands {
             targetsStorted.removeIf(f -> f.getCities() > finalMe.getCities());
         }
 
-        List<DBWar> wars = me.getActiveWars();
+        Set<DBWar> wars = me.getActiveWars();
         for (DBWar war : wars) {
             targetsStorted.remove(war.getNation(true));
             targetsStorted.remove(war.getNation(false));
@@ -1694,7 +1694,7 @@ public class WarCommands {
         allies.addAll(aaIds);
 
         Set<Integer> myEnemies = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id()).stream()
-                .map(dbWar -> dbWar.attacker_id == me.getNation_id() ? dbWar.defender_id : dbWar.attacker_id)
+                .map(dbWar -> dbWar.getAttacker_id() == me.getNation_id() ? dbWar.getDefender_id() : dbWar.getAttacker_id())
                 .collect(Collectors.toSet());
 
         Function<DBNation, Boolean> isInSpyRange = nation -> me.isInSpyRange(nation) || myEnemies.contains(nation.getNation_id());
@@ -1911,16 +1911,16 @@ public class WarCommands {
                     boolean hasLostOrActive = false;
                     DBWar latest = null;
                     for (DBWar war : defender.getWars()) {
-                        if (latest == null || war.date > latest.date) {
+                        if (latest == null || war.getDate() > latest.getDate()) {
                             latest = war;
                         }
-                        if (war.defender_id != defender.getId()) {
+                        if (war.getDefender_id() != defender.getId()) {
                             continue;
                         }
-                        if (war.date < defender.lastActiveMs()) {
+                        if (war.getDate() < defender.lastActiveMs()) {
                             continue;
                         }
-                        switch (war.status) {
+                        switch (war.getStatus()) {
                             case ACTIVE:
                             case ATTACKER_VICTORY:
                             case ATTACKER_OFFERED_PEACE:
@@ -1930,15 +1930,15 @@ public class WarCommands {
                     }
                     if (hasLostOrActive) {
                         fightChance = 0;
-                    } else if (latest.date > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30)) {
-                        if (latest.status == WarStatus.EXPIRED || latest.status == WarStatus.DEFENDER_VICTORY || latest.status == WarStatus.PEACE) {
+                    } else if (latest.getDate() > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30)) {
+                        if (latest.getStatus() == WarStatus.EXPIRED || latest.getStatus() == WarStatus.DEFENDER_VICTORY || latest.getStatus() == WarStatus.PEACE) {
                             fightChance = 0.5;
                         } else if (latest != null) {
 
                         } else {
                             // proportional to activity
                         }
-                    } else if (latest.status == WarStatus.DEFENDER_OFFERED_PEACE) {
+                    } else if (latest.getStatus() == WarStatus.DEFENDER_OFFERED_PEACE) {
                         fightChance = 0.5;
                     }
                 }
@@ -2706,14 +2706,14 @@ public class WarCommands {
         nations.removeIf(f -> f.getVm_turns() > 0);
 
         Set<Integer> nationIds = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
-        Collection<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(nationIds::contains, f -> switch (f.status) {
+        Collection<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(nationIds::contains, f -> switch (f.getStatus()) {
             case DEFENDER_OFFERED_PEACE, ACTIVE, ATTACKER_OFFERED_PEACE -> true;
             default ->  false;
 
-        }).values();
+        });
         wars.removeIf(w -> {
-            DBNation n1 = Locutus.imp().getNationDB().getNation(w.attacker_id);
-            DBNation n2 = Locutus.imp().getNationDB().getNation(w.defender_id);
+            DBNation n1 = Locutus.imp().getNationDB().getNation(w.getAttacker_id());
+            DBNation n2 = Locutus.imp().getNationDB().getNation(w.getDefender_id());
             if (n1 == null || n2 == null) {
                 return true;
             }
@@ -2835,8 +2835,8 @@ public class WarCommands {
         int i = 0;
         for (WarCard warcard : warcards) {
             DBWar war = warcard.getWar();
-            DBNation n1 = Locutus.imp().getNationDB().getNation(war.attacker_id);
-            DBNation n2 = Locutus.imp().getNationDB().getNation(war.defender_id);
+            DBNation n1 = Locutus.imp().getNationDB().getNation(war.getAttacker_id());
+            DBNation n2 = Locutus.imp().getNationDB().getNation(war.getDefender_id());
             WarNation attacker = warcard.toWarNation(true);
             WarNation defender = warcard.toWarNation(false);
 
@@ -3543,9 +3543,9 @@ public class WarCommands {
             headers.set(1, war.getWarType().name());
             CounterStat counterStat = card.getCounterStat();
             headers.set(2, counterStat == null ? "" : counterStat.type.name());
-            headers.set(3, card.groundControl == war.attacker_id ? "Y" : "N");
-            headers.set(4, card.airSuperiority == war.attacker_id ? "Y" : "N");
-            headers.set(5, card.blockaded == war.attacker_id ? "Y" : "N");
+            headers.set(3, card.groundControl == war.getAttacker_id() ? "Y" : "N");
+            headers.set(4, card.airSuperiority == war.getAttacker_id() ? "Y" : "N");
+            headers.set(5, card.blockaded == war.getAttacker_id() ? "Y" : "N");
             headers.set(6, att.getShips());
             headers.set(7, att.getAircraft());
             headers.set(8, att.getTanks());
@@ -3556,7 +3556,7 @@ public class WarCommands {
             headers.set(13, MarkupUtil.sheetUrl(att.getNation(), att.getNationUrl()));
             headers.set(14, MarkupUtil.sheetUrl(att.getAllianceName(), att.getAllianceUrl()));
 
-            long turnStart = TimeUtil.getTurn(war.date);
+            long turnStart = TimeUtil.getTurn(war.getDate());
             long turns = 60 - (TimeUtil.getTurn() - turnStart);
             headers.set(15, turns);
 
@@ -3569,9 +3569,9 @@ public class WarCommands {
             headers.set(22, def.getTanks());
             headers.set(23, def.getAircraft());
             headers.set(24, def.getShips());
-            headers.set(25, card.groundControl == war.defender_id ? "Y" : "N");
-            headers.set(26, card.airSuperiority == war.defender_id ? "Y" : "N");
-            headers.set(27, card.blockaded == war.defender_id ? "Y" : "N");
+            headers.set(25, card.groundControl == war.getDefender_id() ? "Y" : "N");
+            headers.set(26, card.airSuperiority == war.getDefender_id() ? "Y" : "N");
+            headers.set(27, card.blockaded == war.getDefender_id() ? "Y" : "N");
 
             sheet.addRow(headers);
         }
@@ -3646,10 +3646,10 @@ public class WarCommands {
 
         Map<DBNation, List<DBWar>> enemies = new HashMap<>();
         Set<Integer> enemyAAs = db.getCoalition("enemies");
-        List<DBWar> defWars = Locutus.imp().getWarDb().getActiveWarsByAlliance(null, alliesIds);
+        Set<DBWar> defWars = Locutus.imp().getWarDb().getActiveWarsByAlliance(null, alliesIds);
         for (DBWar war : defWars) {
             if (!war.isActive()) continue;
-            DBNation enemy = Locutus.imp().getNationDB().getNation(war.attacker_id);
+            DBNation enemy = Locutus.imp().getNationDB().getNation(war.getAttacker_id());
             if (enemy == null) continue;
 
             if (!enemyAAs.contains(enemy.getAlliance_id())) {
@@ -3657,7 +3657,7 @@ public class WarCommands {
                 if (stat.type == CounterType.IS_COUNTER || stat.type == CounterType.ESCALATION) continue;
             }
 
-            DBNation defender = Locutus.imp().getNationDB().getNation(war.defender_id);
+            DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
             if (defender == null) continue;
             if (excludeApplicants && defender.getPosition() <= 1) continue;
             if (excludeInactives && defender.getActive_m() > 4880) continue;
@@ -3755,7 +3755,7 @@ public class WarCommands {
             Rank rank = null;
 
             for (DBWar war : wars) {
-                DBNation defender = Locutus.imp().getNationDB().getNation(war.defender_id);
+                DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
                 if (defender == null) {
                     continue;
                 }
@@ -3766,11 +3766,11 @@ public class WarCommands {
 
                 active_m = Math.min(active_m, defender.getActive_m());
 
-                if (aaIds.contains(Integer.valueOf(war.defender_aa))) {
+                if (aaIds.contains(Integer.valueOf(war.getDefender_aa()))) {
                     action = Math.min(action, 0);
-                } else if (protectorates.contains(war.defender_aa)) {
+                } else if (protectorates.contains(war.getDefender_aa())) {
                     action = Math.min(action, 1);
-                } else if (alliesIds.contains(war.defender_aa)) {
+                } else if (alliesIds.contains(war.getDefender_aa())) {
                     action = Math.min(action, 2);
                 } else {
                     continue;
@@ -3822,7 +3822,7 @@ public class WarCommands {
             for (int i = 0; i < wars.size(); i++) {
                 DBWar war = wars.get(i);
                 String url = war.toUrl();
-                DBNation defender = Locutus.imp().getNationDB().getNation(war.defender_id);
+                DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
                 String warStr = defender.getNation() + "|" + defender.getAllianceName();
                 row.add(MarkupUtil.sheetUrl(warStr, url));
             }
@@ -3846,7 +3846,7 @@ public class WarCommands {
 
     @Command(desc="Show war info for a nation", aliases = {"wars", "warinfo"})
     public String wars(@Me IMessageIO channel, DBNation nation) {
-        List<DBWar> wars = nation.getActiveWars();
+        Set<DBWar> wars = nation.getActiveWars();
         String title = wars.size() + " wars";
         String body = nation.getWarInfoEmbed();
         channel.create().embed(title, body).send();
@@ -3938,7 +3938,7 @@ public class WarCommands {
                              @Arg("Include counters from the same alliance as the defender")
                              @Switch("s") boolean allowSameAlliance) {
         Set<Integer> allies = db.getAllies(true);
-        int enemyId = allies.contains(war.attacker_aa) ? war.defender_id : war.attacker_id;
+        int enemyId = allies.contains(war.getAttacker_aa()) ? war.getDefender_id() : war.getAttacker_id();
         DBNation enemy = DBNation.getById(enemyId);
         if (enemy == null) throw new IllegalArgumentException("No nation found for id `" + enemyId + "`");
         return counter(me, db, enemy, counterWith, allowAttackersWithMaxOffensives, filterWeak, onlyActive, requireDiscord, ping, allowSameAlliance);

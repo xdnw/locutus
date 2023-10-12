@@ -877,8 +877,8 @@ public class IACategory {
                 boolean counterOff = false;
                 boolean counterDef = false;
                 for (DBWar war : nation.getWars()) {
-                    if (TimeUtil.checkTurnChange(war.date)) snipe = true;
-                    if (war.defender_id == nation.getNation_id()) counterDef = true;
+                    if (TimeUtil.checkTurnChange(war.getDate())) snipe = true;
+                    if (war.getDefender_id() == nation.getNation_id()) counterDef = true;
                     else {
                         try {
                             if (war.getCounterStat().type == CounterType.IS_COUNTER) counterOff = true;

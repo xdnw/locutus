@@ -50,22 +50,27 @@ public class DBBounty {
         );
     }
 
+    @Command(desc = "Get the date this bounty was posted (epoch milliseconds)")
     public long getDate() {
         return date;
     }
 
+    @Command(desc = "Get the nation id of the bounty")
     public int getNationId() {
         return nationId;
     }
 
+    @Command(desc = "The nation id posting the bounty (if any)")
     public int getPostedBy() {
         return postedBy;
     }
 
+    @Command(desc = "The type of bounty")
     public WarType getType() {
         return type;
     }
 
+    @Command(desc = "The amount of the bounty")
     public long getAmount() {
         return amount;
     }
@@ -121,6 +126,7 @@ public class DBBounty {
         DiscordUtil.createEmbedCommand(channel.getIdLong(), title, embed);
     }
 
+    @Command(desc = "Get the id of this bounty")
     public int getId() {
         return id;
     }

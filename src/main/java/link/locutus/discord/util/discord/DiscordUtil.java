@@ -1297,13 +1297,13 @@ public class DiscordUtil {
 
             if (attIds != null || defIds != null) {
 
-                List<DBWar> wars = Locutus.imp().getWarDb().getActiveWarsByAlliance(defIds, attIds);
+                Set<DBWar> wars = Locutus.imp().getWarDb().getActiveWarsByAlliance(defIds, attIds);
                 wars.removeIf(w -> !w.isActive());
 
                 Set<Integer> nationIds = new LinkedHashSet<>();
                 for (DBWar war : wars) {
-                    if (attIds != null) nationIds.add(war.attacker_id);
-                    if (defIds != null) nationIds.add(war.defender_id);
+                    if (attIds != null) nationIds.add(war.getAttacker_id());
+                    if (defIds != null) nationIds.add(war.getDefender_id());
                 }
 
                 nations.removeIf(f -> !nationIds.contains(f.getNation_id()));
@@ -1639,19 +1639,23 @@ public class DiscordUtil {
     }
 
     public static Set<Integer> parseAllianceIds(Guild guild, String aa) {
+        return parseAllianceIds(guild, aa, true);
+    }
+
+    public static Set<Integer> parseAllianceIds(Guild guild, String aa, boolean allowCoalitions) {
         Set<Integer> aaIds = new HashSet<>();
         for (String aaName : aa.split(",")) {
             aaName = aaName.trim();
             Integer aaId = null;
 
-            if (aaName.startsWith("~")) {
+            if (aaName.startsWith("~") && allowCoalitions) {
                 aaName = aaName.substring(1);
             } else {
                 aaId = PnwUtil.parseAllianceId(aaName);
             }
 
             if (aaId == null) {
-                if (guild != null) {
+                if (allowCoalitions && guild != null) {
                     Set<Integer> coa = Locutus.imp().getGuildDB(guild).getCoalition(aaName);
                     if (coa.isEmpty()) {
                         GuildDB locutusStats = Locutus.imp().getGuildDB(Settings.INSTANCE.ROOT_COALITION_SERVER);

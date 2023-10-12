@@ -7,6 +7,9 @@ import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.TaxRate;
+import link.locutus.discord.commands.rankings.table.TableNumberFormat;
+import link.locutus.discord.commands.rankings.table.TimeFormat;
+import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AllianceMeta;
 import link.locutus.discord.db.entities.AllianceMetric;
@@ -32,8 +35,11 @@ import link.locutus.discord.util.scheduler.CaughtTask;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -225,13 +231,34 @@ public class AllianceListener {
 
         if (alertAlliances.isEmpty()) return;
 
+        long endTurn = TimeUtil.getTurn();
+        long startTurn = endTurn - 84;
+        TimeNumericTable table;
+        if (alertAlliances.size() == 1) {
+            DBAlliance alliance = alertAlliances.keySet().iterator().next();
+            List<AllianceMetric> metrics = new ArrayList<>(Arrays.asList(AllianceMetric.SOLDIER_PCT, AllianceMetric.TANK_PCT, AllianceMetric.AIRCRAFT_PCT, AllianceMetric.SHIP_PCT));
+            table = AllianceMetric.generateTable(metrics, startTurn, endTurn, alliance.getName(), Collections.singleton(alliance));
+        } else {
+            List<String> coalitions = alertAlliances.keySet().stream().map(DBAlliance::getName).toList();
+            List<Set<DBAlliance>> alliances = alertAlliances.keySet().stream().map(Set::of).toList();
+            AllianceMetric metric = AllianceMetric.TANK_PCT;
+            table = AllianceMetric.generateTable(metric, startTurn, endTurn, coalitions, alliances.toArray(Set[]::new));
+        }
+        byte[] graphData;
+        try {
+            graphData = table.write(TimeFormat.TURN_TO_DATE, TableNumberFormat.PERCENTAGE_ONE);
+        } catch (IOException e) {
+            graphData = null;
+        }
+        byte[] finalGraphData = graphData;
+
         AlertUtil.forEachChannel(f -> true, GuildKey.AA_GROUND_UNIT_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB db) {
                 // get alert role
                 Role role = Roles.GROUND_MILITARIZE_ALERT.toRole(db);
 
-                String title = "Ground Militarization Alert";
+                String title = "Ground Militarization";
                 StringBuilder body = new StringBuilder();
 
                 Integer topX = GuildKey.AA_GROUND_TOP_X.getOrNull(db);
@@ -265,6 +292,7 @@ public class AllianceListener {
                 CM.alliance.stats.metricsByTurn graphCmd = CM.alliance.stats.metricsByTurn.cmd.create(AllianceMetric.GROUND_PCT.name(), StringMan.join(allowedIds, ","), "7d", null);
                 IMessageBuilder msg = new DiscordChannelIO(channel).create()
                         .embed(title, body.toString())
+                        .image("level.png", finalGraphData)
                         .commandButton(CommandBehavior.EPHEMERAL, graphCmd, "graph");
 
                 if (role != null) {
@@ -308,7 +336,7 @@ public class AllianceListener {
 
             Map<Integer, Integer> wars = new HashMap<>();
             for (DBWar activeWar : member.getActiveWars()) {
-                int otherAA = activeWar.attacker_id == member.getNation_id() ? activeWar.defender_aa : activeWar.attacker_aa;
+                int otherAA = activeWar.getAttacker_id() == member.getNation_id() ? activeWar.getDefender_aa() : activeWar.getAttacker_aa();
                 if (otherAA == 0) continue;
                 wars.put(otherAA, wars.getOrDefault(otherAA, 0) + 1);
             }

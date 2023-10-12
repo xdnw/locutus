@@ -221,7 +221,7 @@ public class SpyTracker {
                     for (AbstractCursor attack : attacks) {
                         boolean isAttacker = attack.getAttacker_id() == activity.nationId;
                         boolean checkNation = activity.isKill != isAttacker;
-                        Map<MilitaryUnit, Integer> losses = attack.getUnitLosses(checkNation);
+                        Map<MilitaryUnit, Integer> losses = attack.getUnitLosses2(checkNation);
                         Integer loss = losses.get(activity.unit);
                         if (loss != null) {
                             if (loss == activity.change) {
@@ -350,8 +350,8 @@ public class SpyTracker {
 
                     Set<Integer> enemies = new HashSet<>();
                     for (DBWar war : defender.getActiveWars()) {
-                        enemies.add(war.attacker_id);
-                        enemies.add(war.defender_id);
+                        enemies.add(war.getAttacker_id());
+                        enemies.add(war.getDefender_id());
                     }
                     if (!enemies.isEmpty() && alert.close.removeIf(o -> enemies.contains(o.nationId))) {
                         alert.close.clear();

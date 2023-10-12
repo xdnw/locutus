@@ -6,6 +6,7 @@ import com.locutus.wiki.pages.WikiAntiLeakPage;
 import com.locutus.wiki.pages.WikiArgumentsPage;
 import com.locutus.wiki.pages.WikiAuditingPage;
 import com.locutus.wiki.pages.WikiAutoMaskingPage;
+import com.locutus.wiki.pages.WikiBankFlows;
 import com.locutus.wiki.pages.WikiBankPage;
 import com.locutus.wiki.pages.WikiBeigeCyclingPage;
 import com.locutus.wiki.pages.WikiBlitzPage;
@@ -80,6 +81,8 @@ public class WikiGenHandler {
         pages.add(new WikiEmbassyPage(manager));
         //Deposits System
         pages.add(new WikiDepositsPage(manager));
+        //Deposits System
+        pages.add(new WikiBankFlows(manager));
 //        //Setup an offshore or bank
         pages.add(new WikiBankPage(manager));
 //        //Interview System

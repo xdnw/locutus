@@ -874,7 +874,7 @@ public class IACommands {
             row.add(nation.getShips() + "");
             row.add(nation.getOff() + "");
 
-            List<DBWar> wars = nation.getActiveOffensiveWars();
+            Set<DBWar> wars = nation.getActiveOffensiveWars();
             int offInactive = 0;
             double lootInactive = 0;
             for (DBWar war : wars) {

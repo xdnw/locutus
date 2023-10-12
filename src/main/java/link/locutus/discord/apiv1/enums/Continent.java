@@ -1,16 +1,28 @@
 package link.locutus.discord.apiv1.enums;
 
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.city.building.Building;
+import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
+import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.util.trade.TradeManager;
 import org.apache.commons.lang3.text.WordUtils;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Predicate;
 
 import static link.locutus.discord.apiv1.enums.ResourceType.*;
 
@@ -52,6 +64,30 @@ public enum Continent {
         return List.of(resources);
     }
 
+    @Command(desc = "If this continent has the given resource")
+    public boolean hasResource(ResourceType type) {
+        for (ResourceType resource : resources) {
+            if (resource == type) return true;
+        }
+        return false;
+    }
+
+    @Command(desc = "Returns the buildings that are available on this continent")
+    public Set<Building> getBuildings() {
+        Set<Building> result = new ObjectOpenHashSet<>();
+        for (Building building : Buildings.values()) {
+            if (building.canBuild(this)) {
+                result.add(building);
+            }
+        }
+        return result;
+    }
+
+    @Command(desc = "If the given building can be built on this continent")
+    public boolean canBuild(Building building) {
+        return building.canBuild(this);
+    }
+
     public ResourceType[] getResourceArray() {
         return resources;
     }
@@ -70,6 +106,62 @@ public enum Continent {
         }
     }
 
+    @Command(desc = "Returns the food production ratio for this continent (0.0 - 1.0)")
+    public double getFoodRatio() {
+        TradeManager manager = Locutus.imp().getTradeManager();
+        double global = 0;
+        double local = 0;
+        for (Continent continent : Continent.values) {
+            double rads = manager.getGlobalRadiation(continent);
+            if (continent == this) local = rads;
+            global += rads;
+        }
+        global /= 5;
+
+        double modifier = getSeasonModifier();
+        modifier *= (1 - (local + global) / 1000d);
+        return modifier;
+    }
+
+    public Set<DBNation> getNations(@Default NationFilter filter) {
+        Predicate<DBNation> filter2 = filter == null ? null : filter.toCached(Long.MAX_VALUE);
+        return Locutus.imp().getNationDB().getNationsMatching(f -> f.getContinent() == this && (filter2 == null || filter2.test(f)));
+    }
+
+    @Command(desc = "Number of nations on this continent")
+    public int getNumNations(@Default NationFilter filter) {
+        return getNations(filter).size();
+    }
+
+    @Command(desc = "Returns the total value of the given attribute for the nations")
+    public double getTotal(NationAttributeDouble attribute, @Default NationFilter filter) {
+        double total = 0;
+        for (DBNation nation : getNations(filter)) {
+            total += attribute.apply(nation);
+        }
+        return total;
+    }
+
+    @Command(desc = "Returns the total value of the given attribute per nation")
+    public double getAverage(NationAttributeDouble attribute, @Default NationFilter filter) {
+        double total = 0;
+        Set<DBNation> nations = getNations(filter);
+        for (DBNation nation : nations) {
+            total += attribute.apply(nation);
+        }
+        return total / nations.size();
+    }
+
+    @Command(desc = "Returns the average value of the given attribute per another attribute (such as cities)")
+    public double getAveragePer(NationAttributeDouble attribute, NationAttributeDouble per, @Default NationFilter filter) {
+        double total = 0;
+        double perTotal = 0;
+        for (DBNation nation : getNations(filter)) {
+            total += attribute.apply(nation);
+            perTotal += per.apply(nation);
+        }
+        return total / perTotal;
+    }
 
     @Command(desc = "Returns the season modifier for this continent")
     public double getSeasonModifier() {

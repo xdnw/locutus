@@ -5,7 +5,6 @@ import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.enums.NationLootType;
-import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
@@ -47,7 +46,6 @@ import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.nation.MultiReport;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
 import link.locutus.discord.util.task.roles.IAutoRoleTask;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -67,7 +65,6 @@ import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.security.GeneralSecurityException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -445,13 +442,11 @@ public class UtilityCommands {
 
             for (DBWar war : Locutus.imp().getWarDb().getWarsByAlliance(aa.getAlliance_id())) {
 
-                List<AbstractCursor> attacks = war.getAttacks();
-                attacks.removeIf(f -> f.getAttack_type() != AttackType.A_LOOT);
-                if (attacks.size() != 1) continue;
-
-                AbstractCursor attack = attacks.get(0);
-                int attAA = war.isAttacker(attack.getAttacker_id()) ? war.attacker_aa : war.defender_aa;
-                if (attAA == aa.getAlliance_id()) continue;
+                int lostAA = war.getStatus() == WarStatus.ATTACKER_VICTORY ? war.getDefender_aa() : war.getStatus() == WarStatus.DEFENDER_VICTORY ? war.getAttacker_aa() : 0;
+                boolean isLooted = lostAA != 0 && lostAA == aaid;
+                if (!isLooted) continue;
+                int otherAA = war.getStatus() == WarStatus.ATTACKER_VICTORY ? war.getAttacker_aa() : war.getStatus() == WarStatus.DEFENDER_VICTORY ? war.getDefender_aa() : 0;
+                if (otherAA == aaid) continue;
                 boolean lowMil = false;
                 for (DBNation member : members) {
                     if (member.getVm_turns() != 0) continue;
@@ -772,14 +767,14 @@ public class UtilityCommands {
         SummedMapRankBuilder<Integer, Double> ranksUnsorted = new RankBuilder<>(wars.values()).group(new BiConsumer<DBWar, GroupedRankBuilder<Integer, DBWar>>() {
             @Override
             public void accept(DBWar dbWar, GroupedRankBuilder<Integer, DBWar> builder) {
-                if (warType != null && dbWar.warType != warType) return;
-                if (statuses != null && !statuses.contains(dbWar.status)) return;
+                if (warType != null && dbWar.getWarType() != warType) return;
+                if (statuses != null && !statuses.contains(dbWar.getStatus())) return;
                 if (!rankByNation) {
-                    if (dbWar.attacker_aa != 0 && !onlyDefensives) builder.put(dbWar.attacker_aa, dbWar);
-                    if (dbWar.defender_aa != 0 && !onlyOffensives) builder.put(dbWar.defender_aa, dbWar);
+                    if (dbWar.getAttacker_aa() != 0 && !onlyDefensives) builder.put(dbWar.getAttacker_aa(), dbWar);
+                    if (dbWar.getDefender_aa() != 0 && !onlyOffensives) builder.put(dbWar.getDefender_aa(), dbWar);
                 } else {
-                    if (!onlyDefensives) builder.put(dbWar.attacker_id, dbWar);
-                    if (!onlyOffensives) builder.put(dbWar.defender_id, dbWar);
+                    if (!onlyDefensives) builder.put(dbWar.getAttacker_id(), dbWar);
+                    if (!onlyOffensives) builder.put(dbWar.getDefender_id(), dbWar);
                 }
             }
         }).sumValues(f -> 1d);

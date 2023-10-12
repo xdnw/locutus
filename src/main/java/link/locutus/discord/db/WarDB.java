@@ -2,21 +2,22 @@ package link.locutus.discord.db;
 
 import com.google.common.collect.Lists;
 import com.politicsandwar.graphql.model.*;
-import com.ptsmods.mysqlw.query.builder.SelectBuilder;
 import com.ptsmods.mysqlw.table.ColumnType;
 import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArraySet;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.domains.subdomains.WarAttacksContainer;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AttackCursorFactory;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.WarType;
-import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.config.Settings;
@@ -29,7 +30,6 @@ import link.locutus.discord.event.nation.NationChangeColorEvent;
 import link.locutus.discord.event.war.AttackEvent;
 import link.locutus.discord.event.bounty.BountyCreateEvent;
 import link.locutus.discord.event.bounty.BountyRemoveEvent;
-import link.locutus.discord.event.war.WarStatusChangeEvent;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
@@ -38,20 +38,17 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
-import link.locutus.discord.util.update.NationUpdateProcessor;
 import link.locutus.discord.util.update.WarUpdateProcessor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.SWarContainer;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import org.sqlite.core.DB;
 
 import java.io.IOException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -64,17 +61,17 @@ public class WarDB extends DBMainV2 {
 
 
     private final  ActiveWarHandler activeWars = new ActiveWarHandler();
-    private Map<Integer, DBWar> warsById;
-    private Map<Integer, Map<Integer, DBWar>> warsByAllianceId;
-    private Map<Integer, Map<Integer, DBWar>> warsByNationId;
-    private final Int2ObjectOpenHashMap<List<byte[]>> attacksByWarId = new Int2ObjectOpenHashMap<>();
+    private final ObjectOpenHashSet<DBWar> warsById;
+    private final Int2ObjectOpenHashMap<Object> warsByAllianceId;
+    private final Int2ObjectOpenHashMap<Object> warsByNationId;
+    private final Int2ObjectOpenHashMap<List<byte[]>> attacksByWarId2 = new Int2ObjectOpenHashMap<>();
     public WarDB() throws SQLException {
         this("war");
     }
 
     public WarDB(String name) throws SQLException {
         super(Settings.INSTANCE.DATABASE, name);
-        warsById = new Int2ObjectOpenHashMap<>();
+        warsById = new ObjectOpenHashSet<>();
         warsByAllianceId = new Int2ObjectOpenHashMap<>();
         warsByNationId = new Int2ObjectOpenHashMap<>();
     }
@@ -191,14 +188,14 @@ public class WarDB extends DBMainV2 {
             throw new IllegalArgumentException("War id mismatch");
         }
         //    private int attacker_nation_id;
-        if (legacy.getAttacker_id() != cursor.getAttacker_id() && (war == null || war.attacker_id != cursor.getAttacker_id())) {
+        if (legacy.getAttacker_id() != cursor.getAttacker_id() && (war == null || war.getAttacker_id() != cursor.getAttacker_id())) {
             // print att/def of legacy and cursor
             System.out.println("Legacy att/def: " + legacy.getAttacker_id() + " | " + legacy.getDefender_id());
             System.out.println("Cursor att/def: " + cursor.getAttacker_id() + " | " + cursor.getDefender_id());
             throw new IllegalArgumentException("Attacker nation id mismatch " + cursor.getAttacker_id() + " != " + legacy.getAttacker_id());
         }
         //    private int defender_nation_id;
-        if (legacy.getDefender_id() != cursor.getDefender_id() && (war == null || war.defender_id != cursor.getDefender_id())) {
+        if (legacy.getDefender_id() != cursor.getDefender_id() && (war == null || war.getDefender_id() != cursor.getDefender_id())) {
             throw new IllegalArgumentException("Defender nation id mismatch");
         }
         //    private AttackType attack_type;
@@ -410,79 +407,33 @@ public class WarDB extends DBMainV2 {
         }
     }
 
-    public void testLoadAttacks2() {
-        String whereClause;
-        if (Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS == 0) {
-            return ;
-        } else if (Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS >= 0) {
-            long date = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS);
-            whereClause = " WHERE date > " + date;
-        } else {
-            whereClause = "";
-        }
-
-        AttackCursorFactory cursorManager = new AttackCursorFactory();
-
-        Map<AttackType, Integer> countByType = new EnumMap<>(AttackType.class);
-        int num_attacks = 0;
-        int numErrors = 0;
-        try (PreparedStatement stmt= getConnection().prepareStatement("select * FROM `attacks2`" + whereClause + " ORDER BY `war_attack_id` ASC", ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_READ_ONLY)) {
-            stmt.setFetchSize(2 << 16);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    DBAttack legacy = createAttack(rs);
-                    AbstractCursor cursor = cursorManager.load(legacy, true);
-
-                    countByType.compute(legacy.getAttack_type(), (k, v) -> v == null ? 1 : v + 1);
-                    validateAttack(null, legacy, cursor);
-
-
-                    num_attacks++;
-
-                    // check values match
-
-                    // serialize then deserialize to check matches
-
-                    // test api v3 war attack matches
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        System.out.println("Loaded " + num_attacks + " attacks | " + numErrors + " errors");
-    }
-
     private void setWar(DBWar war) {
         synchronized (warsByAllianceId) {
-            if (war.attacker_aa != 0)
-                warsByAllianceId.computeIfAbsent(war.attacker_aa, f -> new Int2ObjectOpenHashMap<>()).put(war.warId, war);
-            if (war.defender_aa != 0)
-                warsByAllianceId.computeIfAbsent(war.defender_aa, f -> new Int2ObjectOpenHashMap<>()).put(war.warId, war);
+            if (war.getAttacker_aa() != 0)
+                ArrayUtil.addElement(DBWar.class, warsByAllianceId, war.getAttacker_aa(), war);
+            if (war.getDefender_aa() != 0)
+                ArrayUtil.addElement(DBWar.class, warsByAllianceId, war.getDefender_aa(), war);
         }
         synchronized (warsByNationId) {
-            warsByNationId.computeIfAbsent(war.attacker_id, f -> new Int2ObjectOpenHashMap<>()).put(war.warId, war);
-            warsByNationId.computeIfAbsent(war.defender_id, f -> new Int2ObjectOpenHashMap<>()).put(war.warId, war);
+            ArrayUtil.addElement(DBWar.class, warsByNationId, war.getAttacker_id(), war);
+            ArrayUtil.addElement(DBWar.class, warsByNationId, war.getDefender_id(), war);
         }
         synchronized (warsById) {
-            warsById.put(war.warId, war);
+            warsById.add(war);
         }
     }
 
     public void load() {
         System.out.println("Loading wars and attacks");
-        int loadWarsDays = Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS < 0 ? -1 : Math.max(Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_DAYS, 6);
-        loadWars(loadWarsDays);
+        loadWars(Settings.INSTANCE.TASKS.UNLOAD_WARS_AFTER_TURNS);
         System.out.println("Loaded wars");
-        int loadAttackDays = Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS < 0 ? -1 : Math.min(Settings.INSTANCE.TASKS.UNLOAD_ATTACKS_AFTER_DAYS, Math.max(0, loadWarsDays));
-        if (loadAttackDays != 0) {
+        if (Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS) {
             System.out.println("Loading attacks");
             importLegacyAttacks();
             System.out.println("Loaded legacy attacks");
             long start = System.currentTimeMillis();
-            loadAttacks(loadAttackDays);
+            loadAttacks(Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS, Settings.INSTANCE.TASKS.LOAD_ACTIVE_ATTACKS);
             System.out.println("Loaded attacks in " + (System.currentTimeMillis() - start) + "ms");
-            System.out.println("Loaded attacks " + attacksByWarId.size());
 
             System.out.println("Updating attacks");
 
@@ -513,81 +464,145 @@ public class WarDB extends DBMainV2 {
         return activeWars.getNationsBlockading(nationId);
     }
 
-    public void loadWars(int days) {
-        if (days != 0) {
-            List<DBWar> saveWars = new ArrayList<>();
-
-            long now = System.currentTimeMillis();
-            long date = now - TimeUnit.DAYS.toMillis(days);
-            String whereClause = days > 0 ? " WHERE date > " + date : "";
-            query("SELECT * FROM wars" + whereClause, f -> {
-            }, (ThrowingConsumer<ResultSet>) rs -> {
-                while (rs.next()) {
-
-                    DBWar war = create(rs);
-//                    if (war.status == WarStatus.EXPIRED && now < war.possibleEndDate()) {
-//                        war.status = WarStatus.ACTIVE;
-//                        saveWars.add(war);
-//                    }
-                    setWar(war);
-                }
-            });
-            if (!saveWars.isEmpty()) {
-                saveWars(saveWars);
-            }
-
-        }
-
-
-        List<DBWar> wars = getWarByStatus(WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);
-
+    public void loadWars(int turns) {
+        if (turns > 0 && turns < 120) turns = 120;
         long currentTurn = TimeUtil.getTurn();
-        for (DBWar war : wars) {
-            long warTurn = TimeUtil.getTurn(war.date);
-            if (currentTurn - warTurn < 60) {
-                activeWars.addActiveWar(war);
+        long date = TimeUtil.getTimeFromTurn(currentTurn - turns);
+        String whereClause = turns > 0 ? " WHERE date > " + date : "";
+        query("SELECT * FROM wars" + whereClause, f -> {
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                DBWar war = create(rs);
+                setWar(war);
+
+                long warTurn = TimeUtil.getTurn(war.getDate());
+                if (currentTurn - warTurn < 60) {
+                    activeWars.addActiveWar(war);
+                }
             }
-        }
+        });
     }
 
-    public List<AbstractCursor> getAttacks(Map<Integer, DBWar> wars, Predicate<AttackType> attackTypeFilter,  Predicate<AbstractCursor> preliminaryFilter, Predicate<AbstractCursor> attackFilter) {
+    public List<AbstractCursor> getAttacks(Collection<DBWar> wars, Predicate<AttackType> attackTypeFilter,  Predicate<AbstractCursor> preliminaryFilter, Predicate<AbstractCursor> attackFilter) {
         List<AbstractCursor> result = new ObjectArrayList<>();
-        final BiFunction<DBWar, byte[], AbstractCursor> loader;
-        if (attackTypeFilter != null) {
-            if (preliminaryFilter != null) {
-                loader = (war, data) -> attackCursorFactory.loadWithTypePretest(war, data, true, attackTypeFilter, preliminaryFilter);
-            } else {
-                loader = (war, data) -> attackCursorFactory.loadWithType(war, data, true, attackTypeFilter);
-            }
-        } else if (preliminaryFilter != null) {
-            loader = (war, data) -> attackCursorFactory.loadWithPretest(war, data, true, preliminaryFilter);
-        } else {
-            loader = (war, data) -> attackCursorFactory.load(war, data, true);
-        }
+        final BiFunction<DBWar, byte[], AbstractCursor> loader = createLoader(attackTypeFilter, preliminaryFilter);
         final Consumer<AbstractCursor> attackAdder = attackFilter == null ? result::add : cursor -> {
             if (attackFilter.test(cursor)) {
                 result.add(cursor);
             }
         };
-        synchronized (attacksByWarId) {
-            for (Map.Entry<Integer, DBWar> entry : wars.entrySet()) {
-                int warId = entry.getKey();
-                List<byte[]> attacks = attacksByWarId.get(warId);
-                if (attacks == null || attacks.isEmpty()) continue;
-
-                DBWar war = entry.getValue();
-
-                for (byte[] data : attacks) {
-                    AbstractCursor cursor = loader.apply(war, data);
-                    if (cursor == null) continue;
-                    attackAdder.accept(cursor);
-                }
-            }
-        }
+        iterateAttacks(wars, loader, attackAdder);
         return result;
     }
 
-    public Map<DBWar, List<AbstractCursor>> getAttacksByWar(Map<Integer, DBWar> wars, Predicate<AttackType> attackTypeFilter,  Predicate<AbstractCursor> preliminaryFilter, Predicate<AbstractCursor> attackFilter) {
+    public BiFunction<DBWar, byte[], AbstractCursor> createLoader(Predicate<AttackType> attackTypeFilter,  Predicate<AbstractCursor> preliminaryFilter) {
+        if (attackTypeFilter != null) {
+            if (preliminaryFilter != null) {
+                return (war, data) -> attackCursorFactory.loadWithTypePretest(war, data, true, attackTypeFilter, preliminaryFilter);
+            } else {
+                return (war, data) -> attackCursorFactory.loadWithType(war, data, true, attackTypeFilter);
+            }
+        } else if (preliminaryFilter != null) {
+            return (war, data) -> attackCursorFactory.loadWithPretest(war, data, true, preliminaryFilter);
+        } else {
+            return (war, data) -> attackCursorFactory.load(war, data, true);
+        }
+    }
+
+    public void iterateAttacks(Iterable<DBWar> wars, Predicate<AttackType> attackTypeFilter,  Predicate<AbstractCursor> preliminaryFilter, Consumer<AbstractCursor> forEachAttack) {
+        BiFunction<DBWar, byte[], AbstractCursor> loader = createLoader(attackTypeFilter, preliminaryFilter);
+        iterateAttacks(wars, loader, forEachAttack);
+    }
+
+    public void iterateAttacks(Iterable<DBWar> wars, BiFunction<DBWar, byte[], AbstractCursor> loader, Consumer<AbstractCursor> forEachAttack) {
+        List<Integer> warIdsFetch = null;
+
+        boolean fetchFromDB = !Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS;
+
+        synchronized (attacksByWarId2) {
+            long cutoffDate = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 120);
+            for (DBWar war : wars) {
+                int warId = war.getWarId();
+                List<byte[]> attacks = attacksByWarId2.get(warId);
+
+                if (attacks == null) {
+                    if (fetchFromDB && war.getDate() < cutoffDate) {
+                        if (warIdsFetch == null) warIdsFetch = new ObjectArrayList<>();
+                        warIdsFetch.add(warId);
+                    }
+                    continue;
+                }
+                if (attacks.isEmpty()) continue;
+
+                for (byte[] data : attacks) {
+                    AbstractCursor cursor = loader.apply(war, data);
+                    if (cursor != null) {
+                        forEachAttack.accept(cursor);
+                    }
+                }
+            }
+        }
+
+        if (warIdsFetch != null) {
+            String whereClause;
+            if (warIdsFetch.size() == 1) {
+                whereClause = " WHERE `war_id` = " + warIdsFetch.get(0);
+            } else {
+                Collections.sort(warIdsFetch);
+                whereClause = " WHERE `war_id` IN " + StringMan.getString(warIdsFetch);
+            }
+            String query = "SELECT * FROM `attacks3` " + whereClause + " ORDER BY `id` ASC";
+            try (PreparedStatement stmt = prepareQuery(query)) {
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        int warId = rs.getInt("war_id");
+                        DBWar war = getWar(warId);
+                        if (war == null) {
+                            continue;
+                        }
+                        byte[] data = rs.getBytes("data");
+                        AbstractCursor cursor = loader.apply(war, data);
+                        if (cursor != null) {
+                            forEachAttack.accept(cursor);
+                        }
+                    }
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public Set<IAttack> getAttacksById(Set<Integer> ids) {
+        if (ids.isEmpty()) return Collections.emptySet();
+        List<Integer> idsSorted = new IntArrayList(ids);
+        Collections.sort(idsSorted);
+        Set<IAttack> attacks = new ObjectOpenHashSet<>();
+        String query = "SELECT * FROM `attacks3` WHERE `id` ";
+        if (ids.size() == 1) {
+            query += " = " + idsSorted.get(0);
+        } else {
+            query += " IN " + StringMan.getString(idsSorted);
+        }
+        try (PreparedStatement stmt = prepareQuery(query)) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int warId = rs.getInt("war_id");
+                    DBWar war = getWar(warId);
+                    if (war == null) {
+                        continue;
+                    }
+                    byte[] data = (rs.getBytes("data"));
+                    attacks.add(attackCursorFactory.load(war, data, true));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return attacks;
+    }
+
+    public Map<DBWar, List<AbstractCursor>> getAttacksByWar(Collection<DBWar> wars, Predicate<AttackType> attackTypeFilter,  Predicate<AbstractCursor> preliminaryFilter, Predicate<AbstractCursor> attackFilter) {
         Map<DBWar, List<AbstractCursor>> result = new Object2ObjectOpenHashMap<>();
         final BiFunction<DBWar, byte[], AbstractCursor> loader;
         if (attackTypeFilter != null) {
@@ -610,31 +625,31 @@ public class WarDB extends DBMainV2 {
                 list.add(cursor);
             }
         };
-        synchronized (attacksByWarId) {
-            for (Map.Entry<Integer, DBWar> entry : wars.entrySet()) {
-                int warId = entry.getKey();
-                List<byte[]> attacks = attacksByWarId.get(warId);
-                if (attacks == null || attacks.isEmpty()) continue;
-
-                DBWar war = entry.getValue();
-
-                for (byte[] data : attacks) {
-                    AbstractCursor cursor = loader.apply(war, data);
-                    attackAdder.accept(cursor);
-                }
-            }
-        }
+        iterateAttacks(wars, loader, attackAdder);
         return result;
     }
 
-    public List<AbstractCursor> getAttacksByWarId(DBWar war) {
-        return getAttacksByWarId(war, attackCursorFactory);
+    public List<AbstractCursor> getAttacksByWarId2(DBWar war, boolean loadInactive) {
+        return getAttacksByWarId2(war, attackCursorFactory, loadInactive);
     }
 
-    public List<AbstractCursor> getAttacksByWarId(DBWar war, AttackCursorFactory factory) {
+    public List<AbstractCursor> getAttacksByWarId2(DBWar war, AttackCursorFactory factory, boolean loadInactive) {
         List<byte[]> attacks;
-        synchronized (attacksByWarId) {
-            attacks = attacksByWarId.get(war.warId);
+        synchronized (attacksByWarId2) {
+            attacks = attacksByWarId2.get(war.warId);
+            if (loadInactive && attacks == null && !Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS && !war.isActive()) {
+                String query = "SELECT * FROM `attacks3` WHERE `war_id` = " + war.warId;
+                try (PreparedStatement stmt = prepareQuery(query)) {
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        attacks = new ObjectArrayList<>();
+                        while (rs.next()) {
+                            attacks.add(rs.getBytes("data"));
+                        }
+                    }
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
         }
         if (attacks == null || attacks.isEmpty()) return Collections.emptyList();
         // use guava transform
@@ -646,16 +661,18 @@ public class WarDB extends DBMainV2 {
         Map<Integer, DBWar> result = new Int2ObjectOpenHashMap<>();
         if (alliances != null) {
             synchronized (warsByAllianceId) {
-                for (Map.Entry<Integer, Map<Integer, DBWar>> entry : warsByAllianceId.entrySet()) {
+                for (Map.Entry<Integer, Object> entry : warsByAllianceId.entrySet()) {
                     if (alliances.test(entry.getKey())) {
                         if (warFilter != null) {
-                            for (Map.Entry<Integer, DBWar> warEntry : entry.getValue().entrySet()) {
-                                if (warFilter.test(warEntry.getValue())) {
-                                    result.put(warEntry.getKey(), warEntry.getValue());
+                            ArrayUtil.iterateElements(DBWar.class, entry.getValue(), war -> {
+                                if (warFilter.test(war)) {
+                                    result.put(war.warId, war);
                                 }
-                            }
+                            });
                         } else {
-                            result.putAll(entry.getValue());
+                            ArrayUtil.iterateElements(DBWar.class, entry.getValue(), war -> {
+                                result.put(war.warId, war);
+                            });
                         }
                     }
                 }
@@ -663,16 +680,18 @@ public class WarDB extends DBMainV2 {
         }
         if (nations != null) {
             synchronized (warsByNationId) {
-                for (Map.Entry<Integer, Map<Integer, DBWar>> entry : warsByNationId.entrySet()) {
+                for (Map.Entry<Integer, Object> entry : warsByNationId.entrySet()) {
                     if (nations.test(entry.getKey())) {
                         if (warFilter != null) {
-                            for (Map.Entry<Integer, DBWar> warEntry : entry.getValue().entrySet()) {
-                                if (warFilter.test(warEntry.getValue())) {
-                                    result.put(warEntry.getKey(), warEntry.getValue());
+                            ArrayUtil.iterateElements(DBWar.class, entry.getValue(), war -> {
+                                if (warFilter.test(war)) {
+                                    result.put(war.warId, war);
                                 }
-                            }
+                            });
                         } else {
-                            result.putAll(entry.getValue());
+                            ArrayUtil.iterateElements(DBWar.class, entry.getValue(), war -> {
+                                result.put(war.warId, war);
+                            });
                         }
                     }
                 }
@@ -681,11 +700,11 @@ public class WarDB extends DBMainV2 {
         else if (alliances == null) {
             synchronized (warsById) {
                 if (warFilter == null) {
-                    result.putAll(warsById);
+                    warsById.forEach((war) -> result.put(war.warId, war));
                 } else {
-                    for (Map.Entry<Integer, DBWar> warEntry : warsById.entrySet()) {
-                        if (warFilter.test(warEntry.getValue())) {
-                            result.put(warEntry.getKey(), warEntry.getValue());
+                    for (DBWar war : warsById) {
+                        if (warFilter.test(war)) {
+                            result.put(war.warId, war);
                         }
                     }
                 }
@@ -694,7 +713,7 @@ public class WarDB extends DBMainV2 {
         return result;
     }
 
-    public List<AbstractCursor> getAttacksByWars(List<DBWar> wars, long cuttoffMs) {
+    public List<AbstractCursor> getAttacksByWars(Collection<DBWar> wars, long cuttoffMs) {
         return getAttacksByWars(wars, cuttoffMs, Long.MAX_VALUE);
     }
 
@@ -703,17 +722,17 @@ public class WarDB extends DBMainV2 {
     }
 
     public List<AbstractCursor> getAttacks(Set<Integer> nationIds, long start, long end) {
-        Set<DBWar> allWars = new LinkedHashSet<>();
+        Set<DBWar> allWars = new ObjectOpenHashSet<>();
         long startWithExpire = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(start) - 60);
         synchronized (warsByNationId) {
             for (int nationId : nationIds) {
-                Map<Integer, DBWar> natWars = warsByNationId.get(nationId);
+                Object natWars = warsByNationId.get(nationId);
                 if (natWars != null) {
-                    for (DBWar war : natWars.values()) {
-                        if (!nationIds.contains(war.attacker_id) || !nationIds.contains(war.defender_id)) continue;
-                        if (war.date < startWithExpire || war.date > end) continue;
+                    ArrayUtil.iterateElements(DBWar.class, natWars, war -> {
+                        if (!nationIds.contains(war.getAttacker_id()) || !nationIds.contains(war.getDefender_id())) return;
+                        if (war.getDate() < startWithExpire || war.getDate() > end) return;
                         allWars.add(war);
-                    }
+                    });
                 }
             }
         }
@@ -729,12 +748,12 @@ public class WarDB extends DBMainV2 {
         long startWithExpire = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(start) - 60);
         synchronized (warsByNationId) {
             for (int nationId : nationIds) {
-                Map<Integer, DBWar> natWars = warsByNationId.get(nationId);
+                Object natWars = warsByNationId.get(nationId);
                 if (natWars != null) {
-                    for (DBWar war : natWars.values()) {
-                        if (war.date < startWithExpire || war.date > end) continue;
+                    ArrayUtil.iterateElements(DBWar.class, natWars, war -> {
+                        if (war.getDate() < startWithExpire || war.getDate() > end) return;
                         allWars.add(war);
-                    }
+                    });
                 }
             }
         }
@@ -749,12 +768,12 @@ public class WarDB extends DBMainV2 {
         long startWithExpire = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(start) - 60);
         synchronized (warsByNationId) {
             for (int nationId : nationIds) {
-                Map<Integer, DBWar> natWars = warsByNationId.get(nationId);
+                Object natWars = warsByNationId.get(nationId);
                 if (natWars != null) {
-                    for (DBWar war : natWars.values()) {
-                        if (war.date < startWithExpire || war.date > end) continue;
+                    ArrayUtil.iterateElements(DBWar.class, natWars, war -> {
+                        if (war.getDate() < startWithExpire || war.getDate() > end) return;
                         allWars.add(war);
-                    }
+                    });
                 }
             }
         }
@@ -949,15 +968,15 @@ public class WarDB extends DBMainV2 {
 
     }
 
-    public Map<Integer, DBWar> getActiveWars() {
+    public ObjectOpenHashSet<DBWar> getActiveWars() {
         return activeWars.getActiveWars();
     }
 
-    public List<DBWar> getActiveWars(int nationId) {
+    public Set<DBWar> getActiveWars(int nationId) {
         return activeWars.getActiveWars(nationId);
     }
 
-    public Map<Integer, DBWar> getActiveWars(Predicate<Integer> nationId, Predicate<DBWar> warPredicate) {
+    public ObjectOpenHashSet<DBWar> getActiveWars(Predicate<Integer> nationId, Predicate<DBWar> warPredicate) {
         return activeWars.getActiveWars(nationId, warPredicate);
     }
 
@@ -1153,7 +1172,7 @@ public class WarDB extends DBMainV2 {
                     countered[stat.isActive ? 1 : 0]++;
                     continue;
                 case UNCONTESTED:
-                    if (war.status == WarStatus.ATTACKER_VICTORY) {
+                    if (war.getStatus() == WarStatus.ATTACKER_VICTORY) {
                         uncontested[stat.isActive ? 1 : 0]++;
                     } else {
                         counter[stat.isActive ? 1 : 0]++;
@@ -1178,7 +1197,7 @@ public class WarDB extends DBMainV2 {
     }
 
     public List<Map.Entry<DBWar, CounterStat>> getCounters(Collection<Integer> alliances) {
-        Map<Integer, DBWar> wars = getWarsForNationOrAlliance(null, alliances::contains, f -> alliances.contains(f.defender_aa));
+        Map<Integer, DBWar> wars = getWarsForNationOrAlliance(null, alliances::contains, f -> alliances.contains(f.getDefender_aa()));
         String queryStr = "SELECT * FROM COUNTER_STATS WHERE id IN " + StringMan.getString(wars.values().stream().map(f -> f.warId).collect(Collectors.toList()));
         try (PreparedStatement stmt= getConnection().prepareStatement(queryStr)) {
             try (ResultSet rs = stmt.executeQuery()) {
@@ -1220,30 +1239,30 @@ public class WarDB extends DBMainV2 {
     }
 
     public CounterStat updateCounter(DBWar war) {
-        DBNation attacker = Locutus.imp().getNationDB().getNation(war.attacker_id);
-        DBNation defender = Locutus.imp().getNationDB().getNation(war.defender_id);
-        if (war.attacker_aa == 0 || war.defender_aa == 0) {
+        DBNation attacker = Locutus.imp().getNationDB().getNation(war.getAttacker_id());
+        DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
+        if (war.getAttacker_aa() == 0 || war.getDefender_aa() == 0) {
             CounterStat stat = new CounterStat();
             stat.type = CounterType.UNCONTESTED;
             stat.isActive = defender != null && defender.getActive_m() < 2880;
             return stat;
         }
         int warId = war.warId;
-        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByWarId(war);
+        List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByWarId2(war, false);
 
-        long startDate = war.date;
+        long startDate = war.getDate();
         long startTurn = TimeUtil.getTurn(startDate);
 
         long endTurn = startTurn + 60 - 1;
         long endDate = TimeUtil.getTimeFromTurn(endTurn + 1);
 
-        boolean isOngoing = war.status == WarStatus.ACTIVE || war.status == WarStatus.DEFENDER_OFFERED_PEACE || war.status == WarStatus.ATTACKER_OFFERED_PEACE;
-        boolean isActive = war.status == WarStatus.DEFENDER_OFFERED_PEACE || war.status == WarStatus.DEFENDER_VICTORY || war.status == WarStatus.ATTACKER_OFFERED_PEACE;
+        boolean isOngoing = war.getStatus() == WarStatus.ACTIVE || war.getStatus() == WarStatus.DEFENDER_OFFERED_PEACE || war.getStatus() == WarStatus.ATTACKER_OFFERED_PEACE;
+        boolean isActive = war.getStatus() == WarStatus.DEFENDER_OFFERED_PEACE || war.getStatus() == WarStatus.DEFENDER_VICTORY || war.getStatus() == WarStatus.ATTACKER_OFFERED_PEACE;
         for (AbstractCursor attack : attacks) {
-            if (attack.getAttack_type() == AttackType.VICTORY && attack.getAttacker_id() == war.attacker_id) {
-                war.status = WarStatus.ATTACKER_VICTORY;
+            if (attack.getAttack_type() == AttackType.VICTORY && attack.getAttacker_id() == war.getAttacker_id()) {
+                war.setStatus(WarStatus.ATTACKER_VICTORY);
             }
-            if (attack.getAttacker_id() == war.defender_id) isActive = true;
+            if (attack.getAttacker_id() == war.getDefender_id()) isActive = true;
             switch (attack.getAttack_type()) {
                 case A_LOOT:
                 case VICTORY:
@@ -1254,8 +1273,8 @@ public class WarDB extends DBMainV2 {
             }
         }
 
-        Set<Integer> attAA = new HashSet<>(Collections.singleton(war.attacker_aa));
-        for (Map.Entry<Integer, Treaty> entry : Locutus.imp().getNationDB().getTreaties(war.attacker_aa).entrySet()) {
+        Set<Integer> attAA = new HashSet<>(Collections.singleton(war.getAttacker_aa()));
+        for (Map.Entry<Integer, Treaty> entry : Locutus.imp().getNationDB().getTreaties(war.getAttacker_aa()).entrySet()) {
             switch (entry.getValue().getType()) {
                 case MDP:
                 case MDOAP:
@@ -1266,8 +1285,8 @@ public class WarDB extends DBMainV2 {
             }
         }
 
-        Set<Integer> defAA = new HashSet<>(Collections.singleton(war.defender_aa));
-        for (Map.Entry<Integer, Treaty> entry : Locutus.imp().getNationDB().getTreaties(war.defender_aa).entrySet()) {
+        Set<Integer> defAA = new HashSet<>(Collections.singleton(war.getDefender_aa()));
+        for (Map.Entry<Integer, Treaty> entry : Locutus.imp().getNationDB().getTreaties(war.getDefender_aa()).entrySet()) {
             switch (entry.getValue().getType()) {
                 case MDP:
                 case MDOAP:
@@ -1281,18 +1300,18 @@ public class WarDB extends DBMainV2 {
         Set<Integer> counters = new HashSet<>();
         Set<Integer> isCounter = new HashSet<>();
 
-        Set<Integer> nationIds = new HashSet<>(Arrays.asList(war.attacker_id, war.defender_id));
+        Set<Integer> nationIds = new HashSet<>(Arrays.asList(war.getAttacker_id(), war.getDefender_id()));
         long finalEndDate = endDate;
         Collection<DBWar> possibleCounters = getWarsForNationOrAlliance(nationIds::contains, null,
-                f -> f.date >= startDate - TimeUnit.DAYS.toMillis(5) && f.date <= finalEndDate).values();
+                f -> f.getDate() >= startDate - TimeUnit.DAYS.toMillis(5) && f.getDate() <= finalEndDate).values();
         for (DBWar other : possibleCounters) {
             if (other.warId == war.warId) continue;
-            if (attAA.contains(other.attacker_aa) || !(defAA.contains(other.attacker_aa))) continue;
-            if (other.date < war.date) {
-                if (other.attacker_id == war.defender_id && attAA.contains(other.defender_aa)) {
+            if (attAA.contains(other.getAttacker_aa()) || !(defAA.contains(other.getAttacker_aa()))) continue;
+            if (other.getDate() < war.getDate()) {
+                if (other.getAttacker_id() == war.getDefender_id() && attAA.contains(other.getDefender_aa())) {
                     isCounter.add(other.warId);
                 }
-            } else if (other.defender_id == war.attacker_id) {
+            } else if (other.getDefender_id() == war.getAttacker_id()) {
                 counters.add(other.warId);
             }
         }
@@ -1326,6 +1345,21 @@ public class WarDB extends DBMainV2 {
         stat.type = type;
         stat.isActive = isActive;
         return stat;
+    }
+
+    public DBBounty getBountyById(int id) {
+        String query = "SELECT * FROM `BOUNTIES_V3` WHERE id = ?";
+        try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
+            stmt.setInt(1, id);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new DBBounty(rs);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     public Set<DBBounty> getBounties(int nationId) {
@@ -1485,16 +1519,16 @@ public class WarDB extends DBMainV2 {
             return false;
         }
         Set<Integer> fetchedWarIds = dbWars.stream().map(DBWar::getWarId).collect(Collectors.toSet());
-        Map<Integer, DBWar> activeWarsById = activeWars.getActiveWarsById();
+        ObjectOpenHashSet<DBWar> activeWarsById = activeWars.getActiveWarsById();
 
         // Find deleted wars
         for (int id = minId; id <= maxId; id++) {
             if (fetchedWarIds.contains(id)) continue;
-            DBWar war = activeWarsById.get(id);
+            DBWar war = activeWarsById.get(new ArrayUtil.IntKey(id));
             if (war == null) continue;
 
             DBWar newWar = new DBWar(war);
-            newWar.status = WarStatus.EXPIRED;
+            newWar.setStatus(WarStatus.EXPIRED);
             dbWars.add(newWar);
         }
 
@@ -1510,8 +1544,11 @@ public class WarDB extends DBMainV2 {
                 return updateAllWars(eventConsumer);
             }
         }
-
-        List<Integer> ids = activeWars.getActiveWars().keySet().stream().toList();
+        ObjectOpenHashSet<DBWar> wars = activeWars.getActiveWars();
+        List<Integer> ids = new IntArrayList(wars.size());
+        for (DBWar war : wars) {
+            ids.add(war.getWarId());
+        }
         fetchWarsById(ids, eventConsumer);
         return true;
     }
@@ -1543,7 +1580,7 @@ public class WarDB extends DBMainV2 {
     }
 
     public void fetchNewWars(Consumer<Event> eventConsumer) {
-        int maxId = activeWars.getActiveWars().keySet().stream().mapToInt(i -> i).max().orElse(0);
+        int maxId = activeWars.getActiveWars().stream().mapToInt(f -> f.warId).max().orElse(0);
         if (maxId == 0) {
             System.out.println("No active wars");
             return;
@@ -1563,7 +1600,7 @@ public class WarDB extends DBMainV2 {
         int newWarsToFetch = 100;
         int numToUpdate = Math.min(999, PoliticsAndWarV3.WARS_PER_PAGE);
 
-        List<DBWar> mostActiveWars = new ObjectArrayList<>(activeWars.getActiveWars().values());
+        List<DBWar> mostActiveWars = new ObjectArrayList<>(activeWars.getActiveWars());
         if (mostActiveWars.isEmpty()) return false;
 
         int latestWarId = 0;
@@ -1619,16 +1656,16 @@ public class WarDB extends DBMainV2 {
         Set<Integer> newWarIds = new LinkedHashSet<>();
 
         for (DBWar war : dbWars) {
-            DBWar existing = warsById.get(war.warId);
+            DBWar existing = warsById.get(war);
 
-            if ((existing == null && !war.isActive()) || (existing != null && (war.status == existing.status || !existing.isActive()))) continue;
+            if ((existing == null && !war.isActive()) || (existing != null && (war.getStatus() == existing.getStatus() || !existing.isActive()))) continue;
 
             prevWars.add(existing);
             newWars.add(war);
             newWarIds.add(war.getWarId());
 
-            if (existing == null && war.date > System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(15) && war.status == WarStatus.ACTIVE) {
-                Locutus.imp().getNationDB().setNationActive(war.attacker_id, war.date, eventConsumer);
+            if (existing == null && war.getDate() > System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(15) && war.getStatus() == WarStatus.ACTIVE) {
+                Locutus.imp().getNationDB().setNationActive(war.getAttacker_id(), war.getDate(), eventConsumer);
                 DBNation attacker = war.getNation(true);
                 if (attacker != null && attacker.isBeige()) {
                     DBNation copy = eventConsumer == null ? null : new DBNation(attacker);
@@ -1637,22 +1674,22 @@ public class WarDB extends DBMainV2 {
                 }
             }
 
-            DBNation attacker = Locutus.imp().getNationDB().getNation(war.attacker_id);
-            DBNation defender = Locutus.imp().getNationDB().getNation(war.defender_id);
-            if (war.attacker_aa == 0 && attacker != null) {
-                war.attacker_aa = attacker.getAlliance_id();
+            DBNation attacker = Locutus.imp().getNationDB().getNation(war.getAttacker_id());
+            DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
+            if (war.getAttacker_aa() == 0 && attacker != null) {
+                war.setAttacker_aa(attacker.getAlliance_id());
             }
-            if (war.defender_aa == 0 && defender != null) {
-                war.defender_aa = defender.getAlliance_id();
+            if (war.getDefender_aa() == 0 && defender != null) {
+                war.setDefender_aa(defender.getAlliance_id());
             }
         }
 
         long currentTurn = TimeUtil.getTurn();
-        for (DBWar war : activeWars.getActiveWars().values()) {
+        for (DBWar war : activeWars.getActiveWars()) {
             // Handle deleted wars
             if (expectedIds != null && expectedIds.contains(war.getWarId()) && !idsFetched.contains(war.getWarId())) {
                 prevWars.add(new DBWar(war));
-                war.status = WarStatus.EXPIRED;
+                war.setStatus(WarStatus.EXPIRED);
                 newWars.add(war);
                 continue;
             }
@@ -1690,8 +1727,8 @@ public class WarDB extends DBMainV2 {
             if (newWar.isActive()) {
                 activeWars.addActiveWar(newWar);
             } else {
-                if (previous != null && previous.isActive() && (newWar.status == WarStatus.DEFENDER_VICTORY || newWar.status == WarStatus.ATTACKER_VICTORY)) {
-                    boolean isAttacker = newWar.status == WarStatus.ATTACKER_VICTORY;
+                if (previous != null && previous.isActive() && (newWar.getStatus() == WarStatus.DEFENDER_VICTORY || newWar.getStatus() == WarStatus.ATTACKER_VICTORY)) {
+                    boolean isAttacker = newWar.getStatus() == WarStatus.ATTACKER_VICTORY;
                     DBNation defender = newWar.getNation(!isAttacker);
                     if (defender.getColor() != NationColor.BEIGE) {
                         DBNation copyOriginal = new DBNation(defender);
@@ -1739,13 +1776,13 @@ public class WarDB extends DBMainV2 {
 
         ThrowingBiConsumer<DBWar, PreparedStatement> setStmt = (war, stmt) -> {
             stmt.setInt(1, war.warId);
-            stmt.setLong(2, war.attacker_id);
-            stmt.setInt(3, war.defender_id);
-            stmt.setInt(4, war.attacker_aa);
-            stmt.setInt(5, war.defender_aa);
-            stmt.setInt(6, war.warType.ordinal());
-            stmt.setInt(7, war.status.ordinal());
-            stmt.setLong(8, war.date);
+            stmt.setLong(2, war.getAttacker_id());
+            stmt.setInt(3, war.getDefender_id());
+            stmt.setInt(4, war.getAttacker_aa());
+            stmt.setInt(5, war.getDefender_aa());
+            stmt.setInt(6, war.getWarType().ordinal());
+            stmt.setInt(7, war.getStatus().ordinal());
+            stmt.setLong(8, war.getDate());
         };
         if (values.size() == 1) {
             DBWar value = values.iterator().next();
@@ -1757,16 +1794,16 @@ public class WarDB extends DBMainV2 {
     }
 
     public Map<Integer, DBWar> getWars(WarStatus status) {
-        return getWars(f -> f.status == status);
+        return getWars(f -> f.getStatus() == status);
     }
 
     public Map<Integer, DBWar> getWarsSince(long date) {
-        return getWars(f -> f.date > date);
+        return getWars(f -> f.getDate() > date);
     }
 
-    public Map<Integer, DBWar> getWars() {
+    public ObjectOpenHashSet<DBWar> getWars() {
         synchronized (warsById) {
-            return new Int2ObjectOpenHashMap<>(warsById);
+            return new ObjectOpenHashSet<>(warsById);
         }
     }
 
@@ -1777,8 +1814,8 @@ public class WarDB extends DBMainV2 {
         activeWars.getActiveWars(f -> all.contains(f), new Predicate<DBWar>() {
             @Override
             public boolean test(DBWar war) {
-                if (attackers.contains(war.attacker_id) || defenders.contains(war.defender_id)) {
-                    List<DBWar> list = map.computeIfAbsent(war.attacker_id, k -> new ArrayList<>());
+                if (attackers.contains(war.getAttacker_id()) || defenders.contains(war.getDefender_id())) {
+                    List<DBWar> list = map.computeIfAbsent(war.getAttacker_id(), k -> new ArrayList<>());
                     list.add(war);
                 }
                 return false;
@@ -1802,19 +1839,19 @@ public class WarDB extends DBMainV2 {
     }
 
     public DBWar getWar(int warId) {
-        return warsById.get(warId);
+        return warsById.get(new ArrayUtil.IntKey(warId));
     }
 
     public List<DBWar> getWars(int nation1, int nation2, long start, long end) {
         List<DBWar> list = new ArrayList<>();
         synchronized (warsByNationId) {
-            Map<Integer, DBWar> wars = warsByNationId.get(nation1);
+            Object wars = warsByNationId.get(nation1);
             if (wars != null) {
-                for (DBWar war : wars.values()) {
-                    if ((war.defender_id == nation2 || war.attacker_id == nation1) && war.date > start && war.date < end) {
-                        list.add(war);
+                ArrayUtil.iterateElements(DBWar.class, wars, dbWar -> {
+                    if ((dbWar.getDefender_id() == nation2 || dbWar.getAttacker_id() == nation1) && dbWar.getDate() > start && dbWar.getDate() < end) {
+                        list.add(dbWar);
                     }
-                }
+                });
             }
         }
         return list;
@@ -1822,85 +1859,126 @@ public class WarDB extends DBMainV2 {
 
     public DBWar getActiveWarByNation(int attacker, int defender) {
         for (DBWar war : activeWars.getActiveWars(attacker)) {
-            if (war.attacker_id == attacker && war.defender_id == defender) {
+            if (war.getAttacker_id() == attacker && war.getDefender_id() == defender) {
                 return war;
             }
         }
         return null;
     }
 
-    public List<DBWar> getWarsByNation(int nation, WarStatus status) {
+    public Set<DBWar> getWarsByNation(int nation, WarStatus status) {
         if (status == WarStatus.ACTIVE || status == WarStatus.ATTACKER_OFFERED_PEACE || status == WarStatus.DEFENDER_OFFERED_PEACE) {
-            return activeWars.getActiveWars(nation).stream().filter(f -> f.status == status).collect(Collectors.toList());
+            Set<DBWar> wars = new ObjectOpenHashSet<>();
+            for (DBWar war : activeWars.getActiveWars(nation)) {
+                if (war.getStatus() == status) {
+                    wars.add(war);
+                }
+            }
+            return wars;
         }
         synchronized (warsByNationId) {
-            return (warsByNationId.getOrDefault(nation, Collections.emptyMap()).values().stream().filter(f -> f.status == status).collect(Collectors.toList()));
+            Object wars = warsByNationId.get(nation);
+            if (wars == null) return Collections.emptySet();
+            Set<DBWar> list = new ObjectOpenHashSet<>();
+            ArrayUtil.iterateElements(DBWar.class, wars, dbWar -> {
+                if (dbWar.getStatus() == status) {
+                    list.add(dbWar);
+                }
+            });
+            return list;
         }
     }
 
-    public List<DBWar> getActiveWarsByAlliance(Set<Integer> attackerAA, Set<Integer> defenderAA) {
-        return new ArrayList<>(activeWars.getActiveWars(f -> true, f -> (attackerAA == null || attackerAA.contains(f.attacker_aa)) && (defenderAA == null || defenderAA.contains(f.defender_aa))).values());
+    public Set<DBWar> getActiveWarsByAlliance(Set<Integer> attackerAA, Set<Integer> defenderAA) {
+        return activeWars.getActiveWars(f -> true, f -> (attackerAA == null || attackerAA.contains(f.getAttacker_aa())) && (defenderAA == null || defenderAA.contains(f.getDefender_aa())));
     }
 
-    public List<DBWar> getWarsByAlliance(int attacker) {
+    public Set<DBWar> getWarsByAlliance(int attacker) {
         synchronized (warsByAllianceId) {
-            Map<Integer, DBWar> wars = warsByAllianceId.get(attacker);
-            if (wars == null) return Collections.emptyList();
-            return new ArrayList<>(wars.values());
+            Object wars = warsByAllianceId.get(attacker);
+            if (wars == null) return Collections.emptySet();
+            return ArrayUtil.toSet(DBWar.class, wars);
         }
     }
 
-    public List<DBWar> getWarsByNation(int nationId) {
+    public Set<DBWar> getWarsByNation(int nationId) {
         synchronized (warsByNationId) {
-            return new ArrayList<>(warsByNationId.getOrDefault(nationId, Collections.emptyMap()).values());
+            return ArrayUtil.toSet(DBWar.class, warsByNationId.get(nationId));
+        }
+    }
+
+    public Set<DBWar> getWarsByNationMatching(int nationId, Predicate<DBWar> filter) {
+        synchronized (warsByNationId) {
+            Object wars = warsByNationId.get(nationId);
+            if (wars == null) return Collections.emptySet();
+            Set<DBWar> list = new ObjectOpenHashSet<>();
+            ArrayUtil.iterateElements(DBWar.class, wars, dbWar -> {
+                if (filter.test(dbWar)) {
+                    list.add(dbWar);
+                }
+            });
+            return list;
         }
     }
 
     public DBWar getLastOffensiveWar(int nation) {
-        return getWarsByNation(nation).stream().filter(f -> f.attacker_id == nation).max(Comparator.comparingInt(o -> o.warId)).orElse(null);
+        return getWarsByNation(nation).stream().filter(f -> f.getAttacker_id() == nation).max(Comparator.comparingInt(o -> o.warId)).orElse(null);
     }
 
     public DBWar getLastDefensiveWar(int nation) {
-        return getWarsByNation(nation).stream().filter(f -> f.defender_id == nation).max(Comparator.comparingInt(o -> o.warId)).orElse(null);
+        return getWarsByNation(nation).stream().filter(f -> f.getDefender_id() == nation).max(Comparator.comparingInt(o -> o.warId)).orElse(null);
     }
 
     public DBWar getLastWar(int nationId) {
         return getWarsByNation(nationId).stream().max(Comparator.comparingInt(o -> o.warId)).orElse(null);
     }
 
-    public List<DBWar> getWarsByNation(int nation, WarStatus... statuses) {
+    public Set<DBWar> getWarsByNation(int nation, WarStatus... statuses) {
         if (statuses.length == 0) return getWarsByNation(nation);
         if (statuses.length == 1) return getWarsByNation(nation, statuses[0]);
         Set<WarStatus> statusSet = new HashSet<>(Arrays.asList(statuses));
 
         synchronized (warsByNationId) {
-            return (warsByNationId.getOrDefault(nation, Collections.emptyMap()).values().stream().filter(f -> statusSet.contains(f.status)).collect(Collectors.toList()));
+            Object wars = warsByNationId.get(nation);
+            Set<DBWar> set = new ObjectOpenHashSet<>();
+            ArrayUtil.iterateElements(DBWar.class, wars, dbWar -> {
+                if (statusSet.contains(dbWar.getStatus())) {
+                    set.add(dbWar);
+                }
+            });
+            return set;
         }
     }
 
-    public List<DBWar> getActiveWars(Set<Integer> alliances, WarStatus... statuses) {
-        Set<WarStatus> statusSet = new HashSet<>(Arrays.asList(statuses));
-        return new ArrayList<>(activeWars.getActiveWars(f -> true, f -> (alliances.contains(f.attacker_aa) || alliances.contains(f.defender_aa)) && statusSet.contains(f.status)).values());
+    public Set<DBWar> getActiveWars(Set<Integer> alliances, WarStatus... statuses) {
+        if (statuses.length == 0) {
+            return Collections.emptySet();
+        }
+        // ordinal to boolean array
+        boolean[] warStatuses = WarStatus.toArray(statuses);
+        // enum set?
+        return activeWars.getActiveWars(f -> true, f -> (alliances.contains(f.getAttacker_aa()) || alliances.contains(f.getDefender_aa())) && warStatuses[f.getStatus().ordinal()]);
     }
 
-    public List<DBWar> getWarByStatus(WarStatus... statuses) {
-        Set<WarStatus> statusSet = new HashSet<>(Arrays.asList(statuses));
-        return new ArrayList<>(getWars(f -> statusSet.contains(f.status)).values());
+    public Set<DBWar> getWarByStatus(WarStatus... statuses) {
+        boolean[] warStatuses = WarStatus.toArray(statuses);
+        return new ObjectOpenHashSet<>(getWars(f -> warStatuses[f.getStatus().ordinal()]).values());
     }
 
-    public List<DBWar> getWars(Set<Integer> alliances, long start) {
+    public Set<DBWar> getWars(Set<Integer> alliances, long start) {
         return getWars(alliances, start, Long.MAX_VALUE);
     }
 
-    public List<DBWar> getWars(Set<Integer> alliances, long start, long end) {
-        return new ArrayList<>(getWarsForNationOrAlliance(null, f -> alliances.contains(f), f -> f.date > start && f.date < end).values());
+    public Set<DBWar> getWars(Set<Integer> alliances, long start, long end) {
+        Map<Integer, DBWar> wars = getWarsForNationOrAlliance(null, alliances::contains, f -> f.getDate() > start && f.getDate() < end);
+        return new ObjectOpenHashSet<>(wars.values());
     }
 
-    public List<DBWar> getWarsById(Set<Integer> warIds) {
-        List<DBWar> result = new ArrayList<>();
+    public Set<DBWar> getWarsById(Set<Integer> warIds) {
+        Set<DBWar> result = new ObjectOpenHashSet<>();
         synchronized (warsById) {
             for (Integer id : warIds) {
-                DBWar war = warsById.get(id);
+                DBWar war = warsById.get(new ArrayUtil.IntKey(id));
                 if (war != null) result.add(war);
             }
         }
@@ -1921,25 +1999,25 @@ public class WarDB extends DBMainV2 {
             isAllowed = new Predicate<DBWar>() {
                 @Override
                 public boolean test(DBWar war) {
-                    if (war.date < start || war.date > end) return false;
-                    return coal2Alliances.contains(war.attacker_aa) || coal2Nations.contains(war.attacker_id) || coal2Alliances.contains(war.defender_aa) || coal2Nations.contains(war.defender_id);
+                    if (war.getDate() < start || war.getDate() > end) return false;
+                    return coal2Alliances.contains(war.getAttacker_aa()) || coal2Nations.contains(war.getAttacker_id()) || coal2Alliances.contains(war.getDefender_aa()) || coal2Nations.contains(war.getDefender_id());
                 }
             };
         } else if (coal2Alliances.isEmpty() && coal2Nations.isEmpty()) {
             isAllowed = new Predicate<DBWar>() {
                 @Override
                 public boolean test(DBWar war) {
-                    if (war.date < start || war.date > end) return false;
-                    return coal1Alliances.contains(war.attacker_aa) || coal1Nations.contains(war.attacker_id) || coal1Alliances.contains(war.defender_aa) || coal1Nations.contains(war.defender_id);
+                    if (war.getDate() < start || war.getDate() > end) return false;
+                    return coal1Alliances.contains(war.getAttacker_aa()) || coal1Nations.contains(war.getAttacker_id()) || coal1Alliances.contains(war.getDefender_aa()) || coal1Nations.contains(war.getDefender_id());
                 }
             };
         } else {
             isAllowed = new Predicate<DBWar>() {
                 @Override
                 public boolean test(DBWar war) {
-                    if (war.date < start || war.date > end) return false;
-                    return ((coal1Alliances.contains(war.attacker_aa) || coal1Nations.contains(war.attacker_id)) && (coal2Alliances.contains(war.defender_aa) || coal2Nations.contains(war.defender_id))) ||
-                            ((coal1Alliances.contains(war.defender_aa) || coal1Nations.contains(war.defender_id)) && (coal2Alliances.contains(war.attacker_aa) || coal2Nations.contains(war.attacker_id)));
+                    if (war.getDate() < start || war.getDate() > end) return false;
+                    return ((coal1Alliances.contains(war.getAttacker_aa()) || coal1Nations.contains(war.getAttacker_id())) && (coal2Alliances.contains(war.getDefender_aa()) || coal2Nations.contains(war.getDefender_id()))) ||
+                            ((coal1Alliances.contains(war.getDefender_aa()) || coal1Nations.contains(war.getDefender_id())) && (coal2Alliances.contains(war.getAttacker_aa()) || coal2Nations.contains(war.getAttacker_id())));
                 }
             };
         }
@@ -2004,7 +2082,7 @@ public class WarDB extends DBMainV2 {
 //    }
 
     private final AttackCursorFactory attackCursorFactory = new AttackCursorFactory();
-
+    private long lastUnloadAttacks = 0;
     public void saveAttacks(Collection<AbstractCursor> values) {
         if (values.isEmpty()) return;
 
@@ -2046,12 +2124,13 @@ public class WarDB extends DBMainV2 {
         }
         List<AttackEntry> toSave = new ArrayList<>();
         Map<Integer, Set<Integer>> attackIdsByWarId = new Int2ObjectOpenHashMap<>();
+
         // add to attacks map
-        synchronized (attacksByWarId) {
+        synchronized (attacksByWarId2) {
             for (AbstractCursor attack : values) {
                 // AttackEntry(int id, int war_id, int attacker_id, int defender_id, long date, byte[] data) {
                 toSave.add(new AttackEntry(attack.getWar_attack_id(), attack.getWar_id(), attack.getAttacker_id(), attack.getDefender_id(), attack.getDate(), attackCursorFactory.toBytes(attack)));
-                List<byte[]> attacks = attacksByWarId.get(attack.getWar_id());
+                List<byte[]> attacks = attacksByWarId2.get(attack.getWar_id());
 
                 Set<Integer> attackIds = attackIdsByWarId.get(attack.getWar_id());
                 if (attackIds == null && attacks != null && !attacks.isEmpty()) {
@@ -2065,11 +2144,31 @@ public class WarDB extends DBMainV2 {
                 if (attackIds != null && attackIds.contains(attack.getWar_attack_id())) continue;
                 if (attacks == null) {
                     attacks = new ObjectArrayList<>();
-                    attacksByWarId.put(attack.getWar_id(), attacks);
+                    attacksByWarId2.put(attack.getWar_id(), attacks);
                 }
 
                 byte[] data = attackCursorFactory.toBytes(attack);
                 attacks.add(data);
+            }
+            if (!Settings.INSTANCE.TASKS.LOAD_INACTIVE_ATTACKS && values.size() > 1) {
+                long turn = TimeUtil.getTurn();
+                if (turn > lastUnloadAttacks) {
+                    lastUnloadAttacks = turn;
+                    Set<Integer> toRemove = null;
+                    long timeCutoff = TimeUtil.getTimeFromTurn(turn - 120);
+                    for (int warId : attacksByWarId2.keySet()) {
+                        DBWar war = getWar(warId);
+                        if (war != null && !war.isActive() && war.getDate() < timeCutoff) {
+                            if (toRemove == null) toRemove = new IntOpenHashSet();
+                            toRemove.add(warId);
+                        }
+                    }
+                    if (toRemove != null) {
+                        for (int warId : toRemove) {
+                            attacksByWarId2.remove(warId);
+                        }
+                    }
+                }
             }
         }
 
@@ -2179,9 +2278,9 @@ public class WarDB extends DBMainV2 {
             {
                 Set<Integer> warIds = newAttacks.stream().map(AbstractCursor::getWar_id).collect(Collectors.toSet());
                 Set<Integer> existingAttackIds = new IntOpenHashSet();
-                synchronized (attacksByWarId) {
+                synchronized (attacksByWarId2) {
                     for (int warId : warIds) {
-                        List<byte[]> attackData = attacksByWarId.get(warId);
+                        List<byte[]> attackData = attacksByWarId2.get(warId);
                         if (attackData == null || attackData.isEmpty()) continue;
                         for (byte[] data : attackData) {
                             existingAttackIds.add(factory.getId(data));
@@ -2194,11 +2293,12 @@ public class WarDB extends DBMainV2 {
 
             long now = System.currentTimeMillis();
 
+            int[] unitBuffer = MilitaryUnit.getBuffer();
             for (AbstractCursor attack : newAttacks) {
                 if (runAlerts) {
                     Locutus.imp().getNationDB().setNationActive(attack.getAttacker_id(), attack.getDate(), eventConsumer);
-                    Map<MilitaryUnit, Integer> attLosses = attack.getUnitLosses(true);
-                    Map<MilitaryUnit, Integer> defLosses = attack.getUnitLosses(false);
+                    Map<MilitaryUnit, Integer> attLosses = attack.getUnitLosses2(true);
+                    Map<MilitaryUnit, Integer> defLosses = attack.getUnitLosses2(false);
                     if (!attLosses.isEmpty()) {
                         Locutus.imp().getNationDB().updateNationUnits(attack.getAttacker_id(), attack.getDate(), attLosses, eventConsumer);
                     }
@@ -2226,9 +2326,9 @@ public class WarDB extends DBMainV2 {
                                     eventConsumer.accept(new NationChangeColorEvent(copyOriginal, defender));
                             }
                             DBWar oldWar = new DBWar(war);
-                            WarStatus newStatus = war.attacker_id == attack.getAttacker_id() ? WarStatus.ATTACKER_VICTORY : WarStatus.DEFENDER_VICTORY;
-                            if (war.status != newStatus) {
-                                war.status = newStatus;
+                            WarStatus newStatus = war.getAttacker_id() == attack.getAttacker_id() ? WarStatus.ATTACKER_VICTORY : WarStatus.DEFENDER_VICTORY;
+                            if (war.getStatus() != newStatus) {
+                                war.setStatus(newStatus);
                                 warsToSave.add(war);
                                 if (eventConsumer != null) {
                                     warsToProcess.add(new AbstractMap.SimpleEntry<>(oldWar, war));
@@ -2283,19 +2383,25 @@ public class WarDB extends DBMainV2 {
         return true;
     }
 
-    public void loadAttacks(int days) {
+    public void loadAttacks(boolean loadInactive, boolean loadActive) {
+        if (!loadActive) return;
+
         String whereClause;
-        if (days == 0) {
-            return;
-        } else if (days >= 0) {
-            long date = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
-            whereClause = " WHERE date > " + date;
+        if (!loadInactive) {
+            long dateCutoff = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 120);
+            List<Integer> warIds = new IntArrayList();
+            synchronized (warsById) {
+                for (DBWar war : warsById) {
+                    if (war.getDate() < dateCutoff) continue;
+                    warIds.add(war.getWarId());
+                }
+            }
+            Collections.sort(warIds);
+            whereClause = " WHERE war_id in " + StringMan.getString(warIds);
         } else {
             whereClause = "";
         }
         String query = "SELECT * FROM `attacks3` " + whereClause + " ORDER BY `id` ASC";
-        // `war_id`, `attacker_nation_id`, `defender_nation_id`, `date`, `data`
-        // Int2ObjectOpenHashMap<List<byte[]>> attacksByWarId (is a field for this class)
         AttackCursorFactory factory = new AttackCursorFactory();
         try (PreparedStatement stmt = prepareQuery(query)) {
             try (ResultSet rs = stmt.executeQuery()) {
@@ -2305,11 +2411,11 @@ public class WarDB extends DBMainV2 {
                     if (war == null) {
                         continue;
                     }
-                    List<byte[]> list = attacksByWarId.get(warId);
+                    List<byte[]> list = attacksByWarId2.get(warId);
                     if (list == null) {
                         // use fastUtil
                         list = new ObjectArrayList<>();
-                        attacksByWarId.put(warId, list);
+                        attacksByWarId2.put(warId, list);
                     }
                     byte[] bytes = rs.getBytes("data");
                     list.add(bytes);
@@ -2320,45 +2426,37 @@ public class WarDB extends DBMainV2 {
         }
     }
 
-    public Map<Integer, List<AbstractCursor>> getAttacksByNationGroupWar(int nationId, long startDate) {
-        Map<Integer, List<AbstractCursor>> result = new Int2ObjectOpenHashMap<>();
-        // attacks start within 5 days after a war
-        long cutoff = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(startDate) + 60);
-        synchronized (warsByNationId) {
-            Map<Integer, DBWar> warMap = warsByNationId.get(nationId);
-            if (warMap != null) {
-                for (DBWar war : warMap.values()) {
-                    if (war.date > cutoff) {
-                        continue;
-                    }
-                    List<AbstractCursor> list = getAttacksByWarId(war, new AttackCursorFactory());
-                    if (list != null && !list.isEmpty()) {
-                        result.put(war.warId, list);
-                    }
-                }
-            }
-        }
-        return result;
-    }
+//    public Map<Integer, List<AbstractCursor>> getAttacksByNationGroupWar2(int nationId, long startDate) {
+//        Map<Integer, List<AbstractCursor>> result = new Int2ObjectOpenHashMap<>();
+//        // attacks start within 5 days after a war
+//        long cutoff = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(startDate) + 60);
+//        synchronized (warsByNationId) {
+//            Map<Integer, DBWar> warMap = warsByNationId.get(nationId);
+//            if (warMap != null) {
+//                for (DBWar war : warMap.values()) {
+//                    if (war.date > cutoff) {
+//                        continue;
+//                    }
+//                    List<AbstractCursor> list = getAttacksByWarId(war, new AttackCursorFactory());
+//                    if (list != null && !list.isEmpty()) {
+//                        result.put(war.warId, list);
+//                    }
+//                }
+//            }
+//        }
+//        return result;
+//    }
 
     public void iterateAttacks(long start, long end, Predicate<DBWar> ifWar, Consumer<AbstractCursor> consumer) {
         if (start > end) return;
         AttackCursorFactory factory = new AttackCursorFactory();
-
+        Predicate<AbstractCursor> pretest = attack -> attack.getDate() >= start && attack.getDate() <= end;
         synchronized (warsById) {
-            for (Map.Entry<Integer, DBWar> entry : warsById.entrySet()) {
-                DBWar war = entry.getValue();
-                if (war.date > end) continue;
-                if (war.possibleEndDate() < start) continue;
-                if (!ifWar.test(war)) continue;
-
-                for (AbstractCursor attack : getAttacksByWarId(war, factory)) {
-                    if (attack.getDate() > end) break;
-                    if (attack.getDate() < start) continue;
-                    consumer.accept(attack);
-                }
-            }
+            iterateAttacks(ArrayUtil.select(warsById,
+                            war -> war.getDate() <= end && war.possibleEndDate() >= start && ifWar.test(war)),
+                    (war, data) -> factory.loadWithPretest(war, data, true, pretest), consumer);
         }
+
     }
 
     public List<AbstractCursor> getAttacks(long start, long end, Predicate<DBWar> ifWar, Predicate<AbstractCursor> filter) {
@@ -2366,19 +2464,15 @@ public class WarDB extends DBMainV2 {
         List<AbstractCursor> list = new ObjectArrayList<>();
         AttackCursorFactory factory = new AttackCursorFactory();
 
+        Predicate<AbstractCursor> pretest = attack -> attack.getDate() >= start && attack.getDate() <= end;
+        if (filter != null) {
+            pretest = pretest.and(filter);
+        }
         synchronized (warsById) {
-            for (Map.Entry<Integer, DBWar> entry : warsById.entrySet()) {
-                DBWar war = entry.getValue();
-                if (war.date > end) continue;
-                if (war.possibleEndDate() < start) continue;
-                if (!ifWar.test(war)) continue;
-
-                for (AbstractCursor attack : getAttacksByWarId(war, factory)) {
-                    if (attack.getDate() > end) break;
-                    if (attack.getDate() < start) continue;
-                    if (filter.test(attack)) list.add(attack);
-                }
-            }
+            Predicate<AbstractCursor> finalPretest = pretest;
+            iterateAttacks(ArrayUtil.select(warsById,
+                            war -> war.getDate() <= end && war.possibleEndDate() >= start && ifWar.test(war)),
+                    (war, data) -> factory.loadWithPretest(war, data, true, finalPretest), list::add);
         }
         return list;
     }
@@ -2526,33 +2620,25 @@ public class WarDB extends DBMainV2 {
 
         AttackCursorFactory factory = new AttackCursorFactory();
         // iterate all victory attacks
-        for (DBWar war : getWarsSince(time).values()) {
-            if (war.status != WarStatus.ATTACKER_VICTORY && war.status != WarStatus.DEFENDER_VICTORY) continue;
-            List<AbstractCursor> attacks = getAttacksByWarId(war, factory);
-            if (attacks == null || attacks.isEmpty()) continue;
-            // iterate backwards
-            for (int i = attacks.size() - 1; i >= 0; i--) {
-                AbstractCursor attack = attacks.get(i);
-                if (attack.getAttack_type() != AttackType.VICTORY) continue;
-                int looted = attack.getDefender_id();
-                Map.Entry<Long, double[]> existing = nationLoot.get(looted);
-                    if (existing == null || existing.getKey() < attack.getDate()) {
-                    double[] loot = attack.getLoot();
-                    if (loot == null) loot = ResourceType.getBuffer();
-                    double factor = 1 / attack.getLootPercent();
-                    double[] lootCopy = loot.clone();
-                    for (int j = 0; j < lootCopy.length; j++) {
-                        lootCopy[j] = lootCopy[j] * factor - lootCopy[j];
-                    }
-                    nationLoot.put(looted, new AbstractMap.SimpleEntry<>(attack.getDate(), lootCopy));
+        iterateAttacks(getWarsSince(time).values(), type -> type == AttackType.VICTORY, null, attack -> {
+            int looted = attack.getDefender_id();
+            Map.Entry<Long, double[]> existing = nationLoot.get(looted);
+            if (existing == null || existing.getKey() < attack.getDate()) {
+                double[] loot = attack.getLoot();
+                if (loot == null) loot = ResourceType.getBuffer();
+                double factor = 1 / attack.getLootPercent();
+                double[] lootCopy = loot.clone();
+                for (int j = 0; j < lootCopy.length; j++) {
+                    lootCopy[j] = lootCopy[j] * factor - lootCopy[j];
                 }
+                nationLoot.put(looted, new AbstractMap.SimpleEntry<>(attack.getDate(), lootCopy));
             }
-        }
+        });
         return nationLoot;
     }
 
     public List<AbstractCursor> getAttacks(int nation_id) {
-        List<DBWar> wars = getWarsByNation(nation_id);
+        Set<DBWar> wars = getWarsByNation(nation_id);
         return getAttacksByWars(wars);
     }
     public List<AbstractCursor> getAttacks(int nation_id, long cuttoffMs) {
@@ -2561,10 +2647,10 @@ public class WarDB extends DBMainV2 {
     public List<AbstractCursor> getAttacks(int nation_id, long start, long end) {
         if (start <= 0 && end == Long.MAX_VALUE) return getAttacks(nation_id);
 
-        List<DBWar> wars = getWarsByNation(nation_id);
+        Set<DBWar> wars = getWarsByNation(nation_id);
         // remove wars outside the date
         long startWithExpire = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(start) - 60);
-        wars.removeIf(f -> f.date < startWithExpire || f.date > end);
+        wars.removeIf(f -> f.getDate() < startWithExpire || f.getDate() > end);
         List<AbstractCursor> attacks = getAttacksByWars(wars, start, end);
         return attacks;
     }
@@ -2582,55 +2668,46 @@ public class WarDB extends DBMainV2 {
 
     public int countWarsByNation(int nation_id, long date) {
         if (date == 0) {
-            return warsByNationId.getOrDefault(nation_id, Collections.emptyMap()).size();
+            synchronized (warsByAllianceId) {
+                Object wars = warsByAllianceId.get(nation_id);
+                return ArrayUtil.countElements(DBWar.class, wars);
+            }
         }
         synchronized (warsByNationId) {
-            Map<Integer, DBWar> wars = warsByNationId.get(nation_id);
+            Object wars = warsByNationId.get(nation_id);
             if (wars == null) return 0;
-            int total = 0;
-            for (DBWar war : wars.values()) {
-                if (war.date > date) total++;
-            }
-            return total;
+
+            return ArrayUtil.countElements(DBWar.class, wars, war -> war.getDate() > date);
         }
     }
 
     public int countOffWarsByNation(int nation_id, long date) {
         synchronized (warsByNationId) {
-            Map<Integer, DBWar> wars = warsByNationId.get(nation_id);
+            Object wars = warsByNationId.get(nation_id);
             if (wars == null) return 0;
-            int total = 0;
-            for (DBWar war : wars.values()) {
-                if (war.attacker_id == nation_id && war.date > date) total++;
-            }
-            return total;
+            return ArrayUtil.countElements(DBWar.class, wars, war -> war.getAttacker_id() == nation_id && war.getDate() > date);
         }
     }
 
     public int countDefWarsByNation(int nation_id, long date) {
         synchronized (warsByNationId) {
-            Map<Integer, DBWar> wars = warsByNationId.get(nation_id);
+            Object wars = warsByNationId.get(nation_id);
             if (wars == null) return 0;
-            int total = 0;
-            for (DBWar war : wars.values()) {
-                if (war.defender_id == nation_id && war.date > date) total++;
-            }
-            return total;
+            return ArrayUtil.countElements(DBWar.class, wars, war -> war.getDefender_id() == nation_id && war.getDate() > date);
         }
     }
 
     public int countWarsByAlliance(int alliance_id, long date) {
         if (date == 0) {
-            return warsByAllianceId.getOrDefault(alliance_id, Collections.emptyMap()).size();
+            synchronized (warsByAllianceId) {
+                Object wars = warsByAllianceId.get(alliance_id);
+                return ArrayUtil.countElements(DBWar.class, wars);
+            }
         }
         synchronized (warsByAllianceId) {
-            Map<Integer, DBWar> wars = warsByAllianceId.get(alliance_id);
+            Object wars = warsByAllianceId.get(alliance_id);
             if (wars == null) return 0;
-            int total = 0;
-            for (DBWar war : wars.values()) {
-                if (war.date > date) total++;
-            }
-            return total;
+            return ArrayUtil.countElements(DBWar.class, wars, war -> war.getDate() > date);
         }
     }
 

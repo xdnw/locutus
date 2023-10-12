@@ -46,7 +46,7 @@ public class DiscordBindings extends BindingHelper {
     public static User user(@Me User selfUser, String name) {
         User user = DiscordUtil.getUser(name);
         if (user == null) {
-            if (selfUser != null && name.equalsIgnoreCase("%user%")) {
+            if (selfUser != null && (name.equalsIgnoreCase("%user%") || name.equalsIgnoreCase("{usermention}"))) {
                 return selfUser;
             }
             throw new IllegalArgumentException("No user found for: `" + name + "`");

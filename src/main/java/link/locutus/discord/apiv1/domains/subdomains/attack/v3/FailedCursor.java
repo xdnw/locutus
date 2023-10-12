@@ -15,13 +15,18 @@ public abstract class FailedCursor extends AbstractCursor {
     }
 
     @Override
-    public void addUnitLosses(int[] unitTotals, boolean isAttacker) {
-
+    public int[] getUnitLosses(int[] buffer, boolean isAttacker) {
+        return buffer;
     }
 
     @Override
-    public Map<MilitaryUnit, Integer> getUnitLosses(boolean isAttacker) {
-        return Collections.emptyMap();
+    public double[] getUnitLossCost(double[] buffer, boolean isAttacker) {
+        return buffer;
+    }
+
+    @Override
+    public int getUnitLosses(MilitaryUnit unit, boolean attacker) {
+        return 0;
     }
 
     @Override
@@ -80,8 +85,12 @@ public abstract class FailedCursor extends AbstractCursor {
     }
 
     @Override
-    public Map<Building, Integer> getBuildingsDestroyed() {
+    public Map<Building, Integer> getBuildingsDestroyed2() {
         return Collections.emptyMap();
+    }
+
+    public double[] getBuildingCost(double[] buffer) {
+        return buffer;
     }
 
     @Override

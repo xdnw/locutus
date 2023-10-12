@@ -61,7 +61,7 @@ public class WarInfo extends Command {
         if (warId == null || Locutus.imp().getWarDb().getWar(warId) == null) {
             DBNation nation = DiscordUtil.parseNation(args.get(0));
             if (nation == null) return "Invalid warId: " + warId;
-            List<DBWar> wars = nation.getActiveWars();
+            Set<DBWar> wars = nation.getActiveWars();
             String title = wars.size() + " wars";
             String body = nation.getWarInfoEmbed(flags.contains('l'));
             channel.create().embed(title, body).send();

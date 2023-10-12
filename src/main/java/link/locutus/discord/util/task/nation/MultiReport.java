@@ -106,10 +106,10 @@ public class MultiReport {
                 for (Map.Entry<DBWar, DBWar> warEntry : wars) {
                     String key = warEntry.getKey().warId + "";
                     String value = warEntry.getValue().warId + "";
-                    if (warEntry.getKey().attacker_id == this.nationId || warEntry.getKey().defender_id == this.nationId) {
+                    if (warEntry.getKey().getAttacker_id() == this.nationId || warEntry.getKey().getDefender_id() == this.nationId) {
                         key = "**" + key + "**";
                     }
-                    if (warEntry.getValue().attacker_id == this.nationId || warEntry.getValue().defender_id == this.nationId) {
+                    if (warEntry.getValue().getAttacker_id() == this.nationId || warEntry.getValue().getDefender_id() == this.nationId) {
                         value = "**" + value + "**";
                     }
                     simpleList.add("(" + key + "," + value + ")");
@@ -314,12 +314,12 @@ public class MultiReport {
                         DBWar a = checkWars.get(i);
                         DBWar b = checkWars.get(j);
 
-                        int multiId1 = a.attacker_id == defender ? a.defender_id : a.attacker_id;
-                        int multiId2 = b.attacker_id == defender ? b.defender_id : b.attacker_id;
+                        int multiId1 = a.getAttacker_id() == defender ? a.getDefender_id() : a.getAttacker_id();
+                        int multiId2 = b.getAttacker_id() == defender ? b.getDefender_id() : b.getAttacker_id();
                         if (multiId1 == multiId2) continue;
-                        if (a.attacker_id != multiId1 && b.attacker_id != multiId2) continue;
+                        if (a.getAttacker_id() != multiId1 && b.getAttacker_id() != multiId2) continue;
 
-                        if (TimeUnit.MILLISECONDS.toDays(Math.abs(a.date - b.date)) > 6) {
+                        if (TimeUnit.MILLISECONDS.toDays(Math.abs(a.getDate() - b.getDate())) > 6) {
                             continue;
                         }
 
@@ -430,10 +430,10 @@ public class MultiReport {
      * Maps a list of  wars to the opponent's nation id
      */
     private Map<Integer, List<DBWar>> getDefenders(int nationId) {
-        List<DBWar> myWars = Locutus.imp().getWarDb().getWarsByNation(nationId);
+        Set<DBWar> myWars = Locutus.imp().getWarDb().getWarsByNation(nationId);
         Map<Integer, List<DBWar>> defenders = new HashMap<>();
         for (DBWar war : myWars) {
-            int otherId = war.defender_id == nationId ? war.attacker_id : war.defender_id;
+            int otherId = war.getDefender_id() == nationId ? war.getAttacker_id() : war.getDefender_id();
             defenders.computeIfAbsent(otherId, i -> Lists.newArrayList()).add(war);
         }
         return defenders;

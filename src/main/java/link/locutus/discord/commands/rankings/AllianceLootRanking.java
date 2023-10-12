@@ -8,19 +8,15 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.entities.DBWar;
-import link.locutus.discord.db.entities.WarStatus;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.*;
-import java.util.function.Predicate;
 
 import static link.locutus.discord.util.MathMan.format;
 
@@ -53,7 +49,7 @@ public class AllianceLootRanking extends Command {
         Map<Integer, Map<ResourceType, Double>> byAlliance = new HashMap<>();
 
         List<AbstractCursor> attacks = Locutus.imp().getWarDb().queryAttacks()
-                .withWars(f -> f.possibleEndDate() >= cutoffMs && (f.attacker_aa > 0 || f.defender_aa > 0)).afterDate(cutoffMs).withTypes(AttackType.A_LOOT, AttackType.VICTORY, AttackType.GROUND).getList();
+                .withWars(f -> f.possibleEndDate() >= cutoffMs && (f.getAttacker_aa() > 0 || f.getDefender_aa() > 0)).afterDate(cutoffMs).withTypes(AttackType.A_LOOT, AttackType.VICTORY, AttackType.GROUND).getList();
 
         for (AbstractCursor attack : attacks) {
 

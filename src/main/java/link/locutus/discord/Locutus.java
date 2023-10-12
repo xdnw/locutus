@@ -49,6 +49,7 @@ import link.locutus.discord.apiv1.PoliticsAndWarBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.SelfUser;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
@@ -56,8 +57,10 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.emoji.EmojiUnion;
+import net.dv8tion.jda.api.events.guild.GuildAvailableEvent;
 import net.dv8tion.jda.api.events.guild.GuildBanEvent;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
+import net.dv8tion.jda.api.events.guild.GuildReadyEvent;
 import net.dv8tion.jda.api.events.guild.invite.GuildInviteCreateEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberRoleAddEvent;
@@ -68,6 +71,7 @@ import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.InteractionHook;
+import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.Component;
 import net.dv8tion.jda.api.interactions.components.ItemComponent;
@@ -88,6 +92,7 @@ import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
@@ -272,7 +277,9 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public Locutus start() throws InterruptedException, LoginException, SQLException, ClassNotFoundException {
+        long start = System.currentTimeMillis();
         backup();
+        System.out.println("remove:|| backup " + (((-start)) + (start = System.currentTimeMillis())));
         if (Settings.INSTANCE.ENABLED_COMPONENTS.DISCORD_BOT) {
             JDABuilder builder = JDABuilder.createLight(discordToken, GatewayIntent.GUILD_MEMBERS, GatewayIntent.GUILD_MESSAGES, GatewayIntent.DIRECT_MESSAGES);
             if (Settings.INSTANCE.ENABLED_COMPONENTS.SLASH_COMMANDS) {
@@ -283,7 +290,7 @@ public final class Locutus extends ListenerAdapter {
                 builder.addEventListeners(this);
             }
             builder
-                    .setChunkingFilter(ChunkingFilter.ALL)
+                    .setChunkingFilter(ChunkingFilter.NONE)
                     .setBulkDeleteSplittingEnabled(false)
                     .setCompression(Compression.ZLIB)
                     .setMemberCachePolicy(MemberCachePolicy.ALL);
@@ -327,38 +334,49 @@ public final class Locutus extends ListenerAdapter {
 //            }
 //            rootInstance = builder.useSharding(whitelistArr.length, whitelistArr.length + 1).build();
 
+            System.out.println("remove:|| building " + (((-start)) + (start = System.currentTimeMillis())));
             JDA jda = builder.build();
+            if (slashCommands != null) slashCommands.registerCommandData(jda);
+            System.out.println(":||Remove build " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
+            setSelfUser(jda);
+            System.out.println(":||Remove Setup slash commands " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
             manager.put(jda);
+            jda.awaitStatus(JDA.Status.LOADING_SUBSYSTEMS);
+            System.out.println(":||Remove subsystems " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
             manager.awaitReady();
-
-
-            long appId = jda.getSelfUser().getApplicationIdLong();
-            if (appId > 0) {
-                Settings.INSTANCE.APPLICATION_ID = appId;
+            if (Settings.INSTANCE.ENABLED_COMPONENTS.CREATE_DATABASES_ON_STARTUP) {
+                initDBPartial(true);
+            }
+            Guild rootGuild = manager.getGuildById(Settings.INSTANCE.ROOT_SERVER);
+            if (rootGuild != null) {
+                System.out.println(":||Remove get guild " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
+                this.server = rootGuild;
+                System.out.println("remove:|| init db " + (((-start)) + (start = System.currentTimeMillis())));
+            } else {
+                throw new IllegalStateException("Invalid guild: " + Settings.INSTANCE.ROOT_SERVER + " as `root-server` in " + Settings.INSTANCE.getDefaultFile().getAbsolutePath());
             }
 
-            if (this.slashCommands != null) {
-                this.slashCommands.setupCommands();
-            }
+            System.out.println(":||Remove ready " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
 
-            this.server = manager.getGuildById(Settings.INSTANCE.ROOT_SERVER);
+            setSelfUser(jda);
+
+            if (Settings.INSTANCE.ENABLED_COMPONENTS.CREATE_DATABASES_ON_STARTUP) initDBPartial(false);
+
+            System.out.println(":||Remove init db 2 " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
 
             if (Settings.INSTANCE.FORUM_FEED_SERVER > 0) {
-                Guild guild = getDiscordApi().getGuildById(Settings.INSTANCE.FORUM_FEED_SERVER);
-                if (guild == null) throw new IllegalStateException("Invalid guild: " + Settings.INSTANCE.FORUM_FEED_SERVER + " as FORUM_FEED_SERVER in " + Settings.INSTANCE.getDefaultFile());
-                this.forumDb = new ForumDB(guild);
+                Guild forumGuild = getDiscordApi().getGuildById(Settings.INSTANCE.FORUM_FEED_SERVER);
+                if (forumGuild == null) throw new IllegalStateException("Invalid guild: " + Settings.INSTANCE.FORUM_FEED_SERVER + " as FORUM_FEED_SERVER in " + Settings.INSTANCE.getDefaultFile());
+                this.forumDb = new ForumDB(forumGuild);
             }
 
-            if (Settings.INSTANCE.ENABLED_COMPONENTS.CREATE_DATABASES_ON_STARTUP) {
-                try {
-                    initGuildDB();
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
-            }
+            System.out.println("remove:|| init forum db " + (((-start)) + (start = System.currentTimeMillis())));
+
             if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS) {
                 initRepeatingTasks();
             }
+
+            System.out.println("remove:|| init repeating tasks " + (((-start)) + (start = System.currentTimeMillis())));
 
             for (long guildId : Settings.INSTANCE.MODERATION.BANNED_GUILDS) {
                 Guild guild = getDiscordApi().getGuildById(guildId);
@@ -366,6 +384,8 @@ public final class Locutus extends ListenerAdapter {
                     link.locutus.discord.util.RateLimitUtil.queue(guild.leave());
                 }
             }
+
+            System.out.println("remove:|| banned guilds " + (((-start)) + (start = System.currentTimeMillis())));
 
             if (!Settings.INSTANCE.MODERATION.BANNED_ALLIANCES.isEmpty()) {
                 for (GuildDB value : getGuildDatabases().values()) {
@@ -380,32 +400,37 @@ public final class Locutus extends ListenerAdapter {
                     }
                 }
             }
+            System.out.println("remove:|| banned alliances " + (((-start)) + (start = System.currentTimeMillis())));
 
             // load members
-//            {
-//                Deque<Guild> queue = new ArrayDeque<>(jda.getGuilds());
-//                Runnable[] queueFunc = new Runnable[1];
-//                queueFunc[0] = new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        Guild guild = queue.poll();
-//                        if (guild == null) {
-//                            System.out.println("Done loading guild members");
-//                            return;
-//                        }
-//                        if (guild.getMembers().size() >= 249) {
-//                            guild.loadMembers().onSuccess(f -> {
-//                                System.out.println("Loaded " + f.size() + " members for " + guild);
-//                                queueFunc[0].run();
-//                            }).onError(f -> {
-//                                System.out.println("Failed to load members for " + guild);
-//                                queueFunc[0].run();
-//                            });
-//                        }
-//                    }
-//                };
-//                queueFunc[0].run();
-//            }
+            {
+                List<GuildDB> queue = new ArrayList<>(guildDatabases.values());
+                // sort by GuildDB.getLastModified (highest first)
+                queue.sort(Comparator.comparingLong(GuildDB::getLastModified).reversed());
+
+                AtomicInteger index = new AtomicInteger(0);
+                Runnable[] queueFunc = new Runnable[1];
+                queueFunc[0] = new Runnable() {
+                    @Override
+                    public void run() {
+                        GuildDB db = queue.size() > index.get() ? queue.get(index.getAndIncrement()) : null;
+                        if (db == null || !db.getGuild().isLoaded()) {
+                            System.out.println("Done loading guild members");
+                            return;
+                        }
+                        Guild guild = db.getGuild();
+                        System.out.println(":||Remove Loading members for " + guild);
+                        guild.loadMembers().onSuccess(f -> {
+                            System.out.println("Loaded " + f.size() + " members for " + guild);
+                            queueFunc[0].run();
+                        }).onError(f -> {
+                            System.out.println("Failed to load members for " + guild);
+                            queueFunc[0].run();
+                        });
+                    }
+                };
+                queueFunc[0].run();
+            }
         }
 
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB && (Settings.INSTANCE.WEB.PORT_HTTP > 0 || Settings.INSTANCE.WEB.PORT_HTTPS > 0)) {
@@ -426,6 +451,22 @@ public final class Locutus extends ListenerAdapter {
         }
 
         return this;
+    }
+
+    @Override
+    public void onGuildReady(@NotNull GuildReadyEvent event) {
+        System.out.println("Guild ready fired");
+        manager.put(event.getGuild().getIdLong(), event.getJDA());
+    }
+
+    private void setSelfUser(JDA jda) {
+        SelfUser self = jda.getSelfUser();
+        if (self != null) {
+            long appId = self.getApplicationIdLong();
+            if (appId > 0) {
+                Settings.INSTANCE.APPLICATION_ID = appId;
+            }
+        }
     }
 
     private void backup() {
@@ -468,28 +509,14 @@ public final class Locutus extends ListenerAdapter {
     }
 
     public GuildDB getGuildDB(Guild guild) {
-        return getGuildDB(guild != null ? guild.getIdLong() : Settings.INSTANCE.ROOT_SERVER);
-    }
-
-    public GuildDB getGuildDB(long guildId) {
-        return getGuildDB(guildId, true);
-    }
-
-    public GuildDB getGuildDB(long guildId, boolean cache) {
-        if (cache) initGuildDB();
-        GuildDB db = guildDatabases.get(guildId);
-        if (db != null) {
-            return db;
-        }
-        Guild guild = manager.getGuildById(guildId);
         if (guild == null) return null;
         synchronized (guildDatabases) {
-            db = guildDatabases.get(guildId);
+            GuildDB db = guildDatabases.get(guild.getIdLong());
             if (db != null) return db;
 
             try {
                 db = new GuildDB(guild);
-                guildDatabases.put(guildId, db);
+                guildDatabases.put(guild.getIdLong(), db);
                 return db;
             } catch (SQLException | ClassNotFoundException e) {
                 throw new RuntimeException(e);
@@ -497,21 +524,31 @@ public final class Locutus extends ListenerAdapter {
         }
     }
 
+    public GuildDB getGuildDB(long guildId) {
+        GuildDB db = guildDatabases.get(guildId);
+        if (db != null) {
+            return db;
+        }
+        Guild guild = manager.getGuildById(guildId);
+        return getGuildDB(guild);
+    }
+
+    private void initDBPartial(boolean deleteTimeLocks) {
+        if (deleteTimeLocks) {
+            TimeUtil.deleteOldTimeLocks();
+        }
+        synchronized (guildDatabases) {
+            for (Guild guild : manager.getGuilds()) {
+                getGuildDB(guild.getIdLong());
+            }
+        }
+    }
+
     private Map<Long, GuildDB> initGuildDB() {
+        if (guildDatabases.isEmpty()) return guildDatabases;
         synchronized (guildDatabases) {
             if (guildDatabases.isEmpty()) {
-                TimeUtil.deleteOldTimeLocks();
-                for (Guild guild : manager.getGuilds()) {
-                    GuildDB db = getGuildDB(guild.getIdLong(), false);
-//                    String key = db.getOrNull(GuildKey.API_KEY);
-//                    if (key == null) continue;
-//
-//                    ApiRecord record;
-//                    String keyInfo = Locutus.imp().getDiscordDB().getInfo("key." + key);
-//                    if (keyInfo == null) {
-//
-//                    }
-                }
+                initDBPartial(false);
             }
             return guildDatabases;
         }
@@ -526,14 +563,6 @@ public final class Locutus extends ListenerAdapter {
                 return db;
             }
         }
-//        if (Locutus.imp().getNationDB().getAllianceName(allianceId) != null) {
-//            for (Map.Entry<Long, GuildDB> entry : initGuildDB().entrySet()) {
-//                GuildDB db = entry.getValue();
-//                if (db.getCoalition("offshore").contains(allianceId)) {
-//                    return db;
-//                }
-//            }
-//        }
         return null;
     }
 
@@ -959,6 +988,14 @@ public final class Locutus extends ListenerAdapter {
     @Override
     public void onGuildJoin(@Nonnull GuildJoinEvent event) {
         manager.put(event.getGuild().getIdLong(), event.getJDA());
+        System.out.println(":||Remove load members guild join");
+        event.getGuild().loadMembers();
+    }
+
+    @Override
+    public void onGuildAvailable(@NotNull GuildAvailableEvent event) {
+        System.out.println(":||Remove load members guild available");
+        event.getGuild().loadMembers();
     }
 
     @Override

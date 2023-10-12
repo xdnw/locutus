@@ -711,13 +711,13 @@ public class WebPWBindings extends WebBindingHelper {
     @Binding(types=String.class)
     @GuildCoalition
     public String coalition(@Me GuildDB db, ParameterData param) {
-        Map<String, Set<Integer>> options = db.getCoalitions();
+        List<String> options = new ArrayList<>(db.getCoalitionNames());
         for (Coalition value : Coalition.values()) {
-            options.putIfAbsent(value.name().toLowerCase(), Collections.emptySet());
+            options.add(value.name().toLowerCase());
         }
-        return WebUtil.generateSearchableDropdown(param, options.entrySet(), (obj, names, values, subtext) -> {
-            names.add(obj.getKey());
-            subtext.add(obj.getValue().size() + " entries");
+        return WebUtil.generateSearchableDropdown(param, options, (obj, names, values, subtext) -> {
+            names.add(obj);
+            subtext.add(db.getCoalition(obj).size() + " entries");
         });
     }
 

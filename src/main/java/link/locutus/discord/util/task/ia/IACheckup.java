@@ -612,7 +612,7 @@ public class IACheckup {
                         "<https://politicsandwar.com/nation/projects/>\n" +
                         "Cities (past your 10th) OR Projects can be purchased every 10 days. You start with 1 project slot, and get more for every 5k infra in your nation.\n\n" +
                         "To see which projects the bot recommends (for a 120 day period), use:\n" +
-                        "> " + Settings.commandPrefix(true) + "roi %user% 120\n\n" +
+                        "> " + Settings.commandPrefix(true) + "roi {usermention} 120\n\n" +
                         "We recommend getting two resource projects after your 10th city";
                 return new AbstractMap.SimpleEntry<>(false, desc);
             }
@@ -781,11 +781,11 @@ public class IACheckup {
         if (nation.getDef() > 0) return null;
         List<DBWar> maxMapWars = new ArrayList<>();
         for (DBWar war : nation.getActiveWars()) {
-            if (war.attacker_id != nation.getNation_id()) continue;
-            if (war.status != WarStatus.ACTIVE) continue;
+            if (war.getAttacker_id() != nation.getNation_id()) continue;
+            if (war.getStatus() != WarStatus.ACTIVE) continue;
             DBNation defender = DBNation.getById(war.getDefender_id());
             if (defender == null || defender.getActive_m() < 2880) continue;
-            Map.Entry<Integer, Integer> map = war.getMap(war.getAttacks());
+            Map.Entry<Integer, Integer> map = war.getMap(war.getAttacks2(false));
             if (map.getKey() >= 12) {
                 maxMapWars.add(war);
             }
@@ -803,11 +803,11 @@ public class IACheckup {
     }
 
     private Map.Entry<Object, String> checkRaidTurnChange(DBNation me) {
-        List<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id());
-        wars.removeIf(w -> w.attacker_id != me.getNation_id());
+        Set<DBWar> wars = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id());
+        wars.removeIf(w -> w.getAttacker_id() != me.getNation_id());
 
         for (DBWar war : wars) {
-            long date = war.date;
+            long date = war.getDate();
             if (TimeUtil.getTurn(date) != TimeUtil.getTurn(date - 120000)) {
                 return null;
             }
@@ -948,7 +948,7 @@ public class IACheckup {
 
         if (nation.getCities() < 10) {
             // raided 200m
-            AttackCost cost = nation.getWarCost();
+            AttackCost cost = nation.getWarCost(false, false, false, false, false);
             double total = PnwUtil.convertedTotal(cost.getLoot(true));
             if (total < 200000000) {
                 return null;

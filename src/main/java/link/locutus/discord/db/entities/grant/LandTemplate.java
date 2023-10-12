@@ -103,11 +103,11 @@ public class LandTemplate extends AGrantTemplate<Double>{
             DBCity city = entry.getValue();
             double land = topCity.getOrDefault(entry.getKey(), 0D);
 
-            if(land > city.land)
+            if(land > city.getLand())
                 throw new IllegalArgumentException("The nation with the id: " + receiver.getId() + " has already received a land grant of " + land + " land and shouldn't get the land grant of " + parsed);
 
             if (city.created > cutoff) {
-                cost += receiver.landCost(Math.max(topCity.getOrDefault(entry.getKey(), 0D), city.land), parsed);
+                cost += receiver.landCost(Math.max(topCity.getOrDefault(entry.getKey(), 0D), city.getLand()), parsed);
             }
         }
 

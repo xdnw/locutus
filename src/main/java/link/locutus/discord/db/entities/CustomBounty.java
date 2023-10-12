@@ -272,13 +272,13 @@ public class CustomBounty {
         }
         Set<DBWar> wars = new HashSet<>(Locutus.imp().getWarDb().getWars(alliances, nations, attackerNations, attackerAlliances, date, Long.MAX_VALUE).values());
         if (onlyOffensives) {
-            wars.removeIf(f -> !nations.contains(f.attacker_id) && !alliances.contains(f.attacker_aa));
+            wars.removeIf(f -> !nations.contains(f.getAttacker_id()) && !alliances.contains(f.getAttacker_aa()));
         }
         if (!allowedWarTypes.isEmpty()) {
-            wars.removeIf(f -> !allowedWarTypes.contains(f.warType));
+            wars.removeIf(f -> !allowedWarTypes.contains(f.getWarType()));
         }
         if (!allowedWarStatus.isEmpty()) {
-            wars.removeIf(f -> !allowedWarStatus.contains(f.status));
+            wars.removeIf(f -> !allowedWarStatus.contains(f.getStatus()));
         }
         // get validating attacks
         List<AbstractCursor> attacks = getAttacks(wars, attackerNations, attackerAlliances);
@@ -298,8 +298,8 @@ public class CustomBounty {
             Map<Integer, Set<DBNation>> warSnapshots = Locutus.imp().getNationDB().getWarSnapshots(warIds);
 
             for (DBWar war : wars) {
-                boolean isAttacker = nations.contains(war.attacker_id) || alliances.contains(war.attacker_aa);
-                int targetId = isAttacker ? war.defender_id : war.attacker_id;
+                boolean isAttacker = nations.contains(war.getAttacker_id()) || alliances.contains(war.getAttacker_aa());
+                int targetId = isAttacker ? war.getDefender_id() : war.getAttacker_id();
 
                 Set<DBNation> snapshots = warSnapshots.get(war.warId);
                 DBNation snapshotNation = DBNation.getById(targetId);
@@ -346,7 +346,7 @@ public class CustomBounty {
         List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByWars(wars);
         Set<Integer> offensiveWarIds = new HashSet<>();
         for (DBWar war : wars) {
-            if (nations.contains(war.attacker_id) || alliances.contains(war.attacker_aa)) {
+            if (nations.contains(war.getAttacker_id()) || alliances.contains(war.getAttacker_aa())) {
                 offensiveWarIds.add(war.warId);
             }
         }

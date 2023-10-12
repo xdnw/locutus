@@ -17,10 +17,8 @@ import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.FileUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.math.BigInteger;
 import java.util.*;
@@ -140,11 +138,11 @@ public class ListMultisByAlliance extends Command {
     }
 
     private Set<Integer> getDefenders(int nationId, Map<Integer, DBWar> allWars) {
-        List<DBWar> myWars = allWars.values().stream().filter(f -> f.attacker_id == nationId || f.defender_id == nationId).toList();
+        List<DBWar> myWars = allWars.values().stream().filter(f -> f.getAttacker_id() == nationId || f.getDefender_id() == nationId).toList();
         Set<Integer> defenders = new HashSet<>();
         for (DBWar war : myWars) {
-            if (war.defender_id != nationId) {
-                defenders.add(war.defender_id);
+            if (war.getDefender_id() != nationId) {
+                defenders.add(war.getDefender_id());
             }
         }
         return defenders;

@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -490,6 +491,10 @@ public class StringMan {
         if (delim.length() > input.length() || limit <= 1) {
             return Collections.singletonList(input);
         }
+        return split(input, (str, fromIndex) -> str.startsWith(delim, fromIndex) ? delim.length() : null, limit);
+    }
+
+    public static List<String> split(String input, BiFunction<String, Integer, Integer> startsWith, int limit) {
         List<String> result = new ArrayList<>();
         int start = 0;
         int bracket = 0;
@@ -532,25 +537,27 @@ public class StringMan {
                 }
             }
 
-            if (delim != null && input.startsWith(delim, current) && !inQuotes) {
-                String toAdd = input.substring(start, current);
-                if (!toAdd.isEmpty()) {
-                    switch (toAdd.charAt(0)) {
-                        case '\'':
-                        case '\"':
-                        case '\u201C':
-                        case '\u201D':
-                            toAdd = toAdd.substring(1, toAdd.length() - 1);
+            if (!inQuotes && startsWith != null) {
+                Integer foundLen = startsWith.apply(input, current);
+                if (foundLen != null && foundLen != -1) {
+                    String toAdd = input.substring(start, current);
+                    if (!toAdd.isEmpty()) {
+                        switch (toAdd.charAt(0)) {
+                            case '\'':
+                            case '\"':
+                            case '\u201C':
+                            case '\u201D':
+                                toAdd = toAdd.substring(1, toAdd.length() - 1);
+                        }
+                        if (!toAdd.trim().isEmpty()) result.add(toAdd);
+                    } else if (inQuotes) {
+                        result.add("");
                     }
-                    if (!toAdd.trim().isEmpty()) result.add(toAdd);
-                } else if (inQuotes) {
-                    result.add("");
+                    start = current + foundLen;
+                    if (--limit <= 1) {
+                        startsWith = null;
+                    }
                 }
-                start = current + delim.length();
-                if (--limit <= 1) {
-                    delim = null;
-                }
-
             }
         }
         return result;
@@ -1103,6 +1110,12 @@ public class StringMan {
         }
 
         return hash;
+    }
+
+    public static long hash(String input) {
+        BigInteger value = StringMan.hash_fnv1a_64(input.getBytes());
+        value = value.add(BigInteger.valueOf(Long.MIN_VALUE));
+        return value.longValueExact();
     }
 
     public static BigInteger hash_fnv1a_64(byte[] data) {

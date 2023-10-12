@@ -8,7 +8,6 @@ import com.politicsandwar.graphql.model.NationsQueryRequest;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
-import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
@@ -485,7 +484,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
             DBNation defender = war.getNation(false);
             if (attacker == null || attacker.active_m() > 7200) continue;
             if (defender == null || defender.active_m() > 7200) continue;
-            int otherAAId = war.attacker_aa == allianceId ? war.defender_aa : war.attacker_aa;
+            int otherAAId = war.getAttacker_aa() == allianceId ? war.getDefender_aa() : war.getAttacker_aa();
             if (otherAAId > 0) {
                 DBAlliance otherAA = DBAlliance.getOrCreate(otherAAId);
                 warsByAlliance.put(otherAA, warsByAlliance.getOrDefault(otherAA, 0) + 1);
@@ -548,6 +547,18 @@ public class DBAlliance implements NationList, NationOrAlliance {
         Set<DBNation> nations = filter == null ? getNations() : getNations(filter.toCached(Long.MAX_VALUE));
         return nations.stream().mapToDouble(attribute::apply).average().orElse(0);
     }
+
+    @Command(desc = "Returns the average value of the given attribute per another attribute (such as cities)")
+    public double getAveragePer(NationAttributeDouble attribute, NationAttributeDouble per, @Default NationFilter filter) {
+        double total = 0;
+        double perTotal = 0;
+        for (DBNation nation : getNations(filter.toCached(Long.MAX_VALUE))) {
+            total += attribute.apply(nation);
+            perTotal += per.apply(nation);
+        }
+        return total / perTotal;
+    }
+
 
     @Command(desc = "Count of nations in alliance matching a filter")
     public int countNations(@Default NationFilter filter) {
@@ -942,7 +953,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return Locutus.imp().getNationDB().getRemovesByAlliance(allianceId);
     }
 
-    public List<DBWar> getActiveWars() {
+    public Set<DBWar> getActiveWars() {
         return Locutus.imp().getWarDb().getActiveWars(Collections.singleton(allianceId), WarStatus.ACTIVE);
     }
 
@@ -1214,14 +1225,11 @@ public class DBAlliance implements NationList, NationOrAlliance {
         }
 
         for (DBWar war : Locutus.imp().getWarDb().getWarsByAlliance(getAlliance_id())) {
-
-            List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksByWarId(war);
-            attacks.removeIf(f -> f.getAttack_type() != AttackType.A_LOOT);
-            if (attacks.size() != 1) continue;
-
-            AbstractCursor attack = attacks.get(0);
-            int attAA = war.isAttacker(attack.getAttacker_id()) ? war.attacker_aa : war.defender_aa;
-            if (attAA == getAlliance_id()) continue;
+            int lostAA = war.getStatus() == WarStatus.ATTACKER_VICTORY ? war.getDefender_aa() : war.getStatus() == WarStatus.DEFENDER_VICTORY ? war.getAttacker_aa() : 0;
+            boolean isLooted = lostAA != 0 && lostAA == getAlliance_id();
+            if (!isLooted) continue;
+            int otherAA = war.getStatus() == WarStatus.ATTACKER_VICTORY ? war.getAttacker_aa() : war.getStatus() == WarStatus.DEFENDER_VICTORY ? war.getDefender_aa() : 0;
+            if (otherAA == getAlliance_id()) continue;
             boolean lowMil = false;
             for (DBNation member : members) {
                 if (member.getVm_turns() != 0) continue;

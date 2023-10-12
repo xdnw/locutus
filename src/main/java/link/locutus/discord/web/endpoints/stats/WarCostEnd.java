@@ -44,20 +44,20 @@ public class WarCostEnd extends Endpoint {
             HashSet<Integer> alliances = new HashSet<>();
             alliances.addAll(aaIdss1);
             alliances.addAll(aaIdss2);
-            List<DBWar> wars = Locutus.imp().getWarDb().getWars(alliances, cutoffMs);
+            Set<DBWar> wars = Locutus.imp().getWarDb().getWars(alliances, cutoffMs);
             Map<Integer, DBWar> warMap = new HashMap<>();
             for (DBWar war : wars) warMap.put(war.warId, war);
             attacks = Locutus.imp().getWarDb().getAttacksByWars(wars, cutoffMs);
             isPrimary = a -> {
                 DBWar war = warMap.get(a.getWar_id());
-                int aa1 = war.attacker_id == a.getAttacker_id() ? war.attacker_aa : war.defender_aa;
-                int aa2 = war.attacker_id == a.getAttacker_id() ? war.defender_aa : war.attacker_aa;
+                int aa1 = war.getAttacker_id() == a.getAttacker_id() ? war.getAttacker_aa() : war.getDefender_aa();
+                int aa2 = war.getAttacker_id() == a.getAttacker_id() ? war.getDefender_aa() : war.getAttacker_aa();
                 return aaIdss1.contains(aa1) && aaIdss2.contains(aa2);
             };
             isSecondary = a -> {
                 DBWar war = warMap.get(a.getWar_id());
-                int aa1 = war.attacker_id == a.getAttacker_id() ? war.attacker_aa : war.defender_aa;
-                int aa2 = war.attacker_id == a.getAttacker_id() ? war.defender_aa : war.attacker_aa;
+                int aa1 = war.getAttacker_id() == a.getAttacker_id() ? war.getAttacker_aa() : war.getDefender_aa();
+                int aa2 = war.getAttacker_id() == a.getAttacker_id() ? war.getDefender_aa() : war.getAttacker_aa();
                 return aaIdss2.contains(aa1) && aaIdss1.contains(aa2);
             };
             nameA = args0;
@@ -101,7 +101,7 @@ public class WarCostEnd extends Endpoint {
             };
         }
 
-        AttackCost cost = new AttackCost(nameA, nameB);
+        AttackCost cost = new AttackCost(nameA, nameB, true, true, false, false, false);
         cost.addCost(attacks, isPrimary, isSecondary);
 
         StringBuilder result = new StringBuilder(cost.toString());

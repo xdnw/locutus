@@ -9,19 +9,14 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.apiv1.domains.War;
-import link.locutus.discord.apiv1.domains.subdomains.WarContainer;
 import link.locutus.discord.util.io.PagePriority;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -80,16 +75,16 @@ public class CounterSpy extends Command {
             int warId = Integer.parseInt(args.get(0).split("=")[1].replaceAll("/", ""));
             DBWar war = Locutus.imp().getWarDb().getWar(warId);
 
-            int counterId = war.attacker_id;
+            int counterId = war.getAttacker_id();
             DBNation counter = Locutus.imp().getNationDB().getNation(counterId);
 
             int defenderId;
             if (counter.getAlliance_id() == me.getAlliance_id() || (guild != null && Locutus.imp().getGuildDB(guild).getAllies().contains(counter.getAlliance_id()))) {
-                counterId = (war.defender_id);
+                counterId = (war.getDefender_id());
                 counter = Locutus.imp().getNationDB().getNation(counterId);
-                defenderId = (war.attacker_id);
+                defenderId = (war.getAttacker_id());
             } else {
-                defenderId = (war.defender_id);
+                defenderId = (war.getDefender_id());
             }
             enemy = counter;
         } else {

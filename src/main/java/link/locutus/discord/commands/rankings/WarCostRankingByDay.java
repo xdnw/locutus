@@ -10,6 +10,8 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.rankings.table.TableNumberFormat;
+import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBNation;
@@ -50,13 +52,16 @@ public class WarCostRankingByDay extends Command {
                 Add `-u` to show unit losses
                 Add `-h` to show H-Bomb (nuke) losses
                 Add `-m` to show Missile losses
+                Add `-n` to show Ship losses
                 Add `-p` to show Plane losses
                 Add `-t` to show Tank losses
                 Add `-s` to show Soldier losses
                 Add `-i` to show Infra losses
                 Add `-o` to graph a running total
                 Add `-e` to show enemy stats instead of attacker
-                Add `-d` to show raw data (csv)""";
+                Add `-d` to show raw data (csv)
+                Add `-r` to show number buildings lost
+                """;
     }
 
     private void add2(TimeNumericTable<Map<String, WarAttackParser>> table, long dayRelative, long dayOffset, Map<String, WarAttackParser> parserMap, Map<String, Map<Long, AttackCost>> byDayMap, Function<AttackCost, Number> calc) {
@@ -95,7 +100,7 @@ public class WarCostRankingByDay extends Command {
             String arg = args.get(i);
             WarAttackParser parser = new WarAttackParser(guild, Arrays.asList(arg, "*", (days + 1) + "d"), flags);
             coalitions.put(arg, parser);
-            coalitionsByDay.put(arg, parser.toWarCostByDay());
+            coalitionsByDay.put(arg, parser.toWarCostByDay(flags.contains('r'), false, false, false, flags.contains('b')));
         }
 
         long min = Long.MAX_VALUE;
@@ -126,6 +131,13 @@ public class WarCostRankingByDay extends Command {
             @Override
             public void add(long day, Map<String, WarAttackParser> costMap) {
                 add2(this, day, finalMin, costMap, coalitionsByDay, f -> f.getUnitsLost(primary).getOrDefault(MilitaryUnit.SOLDIER, 0));
+                processTotal(total, this);
+            }
+        });
+        if (flags.contains('r')) tables.add(new TimeNumericTable<>("Building Losses", "day", null, labels) {
+            @Override
+            public void add(long day, Map<String, WarAttackParser> costMap) {
+                add2(this, day, finalMin, costMap, coalitionsByDay, f -> f.getNumBuildingsDestroyed(primary));
                 processTotal(total, this);
             }
         });
@@ -235,7 +247,7 @@ public class WarCostRankingByDay extends Command {
         }
 
         for (TimeNumericTable<Map<String, WarAttackParser>> table : tables) {
-            table.write(channel, true, false);
+            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, false);
         }
         if (tables.isEmpty()) return "Please use one of the flag";
 

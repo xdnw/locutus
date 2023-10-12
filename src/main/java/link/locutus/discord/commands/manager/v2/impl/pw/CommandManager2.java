@@ -161,6 +161,8 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        this.commands.registerMethod(new TestCommands(), List.of("test"), "testImage", "test_image");
+
         this.commands.registerMethod(new TestCommands(), List.of("deposits"), "viewFlow", "flows");
         this.commands.registerMethod(new TestCommands(), List.of("deposits"), "shiftFlow", "shiftFlow");
 
@@ -168,6 +170,7 @@ public class CommandManager2 {
 
         this.commands.registerMethod(new UtilityCommands(), List.of("building"), "buildingCost", "cost");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "syncBans", "bans");
+        this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "savePojos", "pojos");
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "list"), "hasSameNetworkAsBan", "multis");
 
         this.commands.registerMethod(new GPTCommands(), List.of("help"), "find_placeholder", "find_nation_placeholder");

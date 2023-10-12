@@ -2471,6 +2471,20 @@ public class GuildKey {
         }
     }.setupRequirements(f -> f.requires(ENABLE_WAR_ROOMS));
 
+    public static GuildSetting<Boolean> ROUTE_ALLIANCE_BANK = new GuildBooleanSetting(GuildSettingCategory.BANK_ACCESS) {
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String ROUTE_ALLIANCE_BANK(@Me GuildDB db, @Me User user, boolean value) {
+            return ROUTE_ALLIANCE_BANK.setAndValidate(db, user, value);
+        }
+
+        @Override
+        public String help() {
+            return "If true, all transfers from the offshore will send via the alliance bank";
+        }
+    }.requireValidAlliance().requiresOffshore().requiresWhitelisted();
+
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 
     static {

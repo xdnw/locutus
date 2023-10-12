@@ -206,7 +206,7 @@ public class UnsortedCommands {
         // ensure nation is fighting target
         boolean isFighting = false;
         for (DBWar war : target.getActiveWars()) {
-            if (war.attacker_id == nation.getId() || war.defender_id == nation.getId()) {
+            if (war.getAttacker_id() == nation.getId() || war.getDefender_id() == nation.getId()) {
                 isFighting = true;
                 break;
             }
@@ -883,9 +883,9 @@ public class UnsortedCommands {
         if (metrics.disease > 0) msg.append("\ndisease: " + MathMan.format(metrics.disease));
         if (metrics.pollution > 0) msg.append("\npollution: " + MathMan.format(metrics.pollution));
 
-        long nukeCutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(11);
-        if (jCity.getNukeDate() > nukeCutoff) {
-            msg.append("\nNuked: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - jCity.getNukeDate()) + " ago");
+        long nukeCutoff = TimeUtil.getTurn() - 132;
+        if (jCity.getNukeTurn() > nukeCutoff) {
+            msg.append("\nNuked: " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, System.currentTimeMillis() - TimeUtil.getTimeFromTurn(jCity.getNukeTurn())) + " ago");
         }
 
         msg.send();
@@ -1199,7 +1199,7 @@ public class UnsortedCommands {
                 // buttons
                 IMessageBuilder msg = io.create().append("Options:");
                 for (String option : options) {
-                    msg.commandButton(CommandBehavior.DELETE_MESSAGE, CM.copyPasta.cmd.create(option, null, null), option);
+                    msg.commandButton(CommandBehavior.DELETE_MESSAGE, CM.copyPasta.cmd.create(option, null, null, null), option);
                 }
                 msg.send();
                 return null;

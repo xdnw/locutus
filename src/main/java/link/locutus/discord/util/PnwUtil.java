@@ -112,11 +112,12 @@ public class PnwUtil {
     public static String getSphereName(int sphereId) {
         GuildDB db = Locutus.imp().getRootCoalitionServer();
         if (db != null) {
-            for (Map.Entry<String, Set<Integer>> entry : db.getCoalitions().entrySet()) {
-                Coalition namedCoal = Coalition.getOrNull(entry.getKey());
+            for (String coalition : db.getCoalitionNames()) {
+                Coalition namedCoal = Coalition.getOrNull(coalition);
                 if (namedCoal != null) continue;
-                if (entry.getValue().contains(sphereId)) {
-                    return entry.getKey();
+                Set<Long> ids = db.getCoalitionRaw(coalition);
+                if (ids.contains((long) sphereId)) {
+                    return coalition;
                 }
             }
         }
@@ -1227,14 +1228,14 @@ public class PnwUtil {
 
     public static double convertedTotal(ResourceType type, double amt) {
         if (amt != 0) {
-            Locutus locutus = Locutus.imp();
-            if (locutus != null) {
+            try {
+                Locutus locutus = Locutus.imp();
                 if (amt < 0) {
                     return locutus.getTradeManager().getLowAvg(type) * amt;
                 } else {
                     return locutus.getTradeManager().getHighAvg(type) * amt;
                 }
-            }
+            } catch (NullPointerException ignore) {}
         }
         return 0;
     }

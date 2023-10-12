@@ -5,6 +5,8 @@ import de.vandermeer.asciitable.AT_Context;
 import de.vandermeer.asciitable.AsciiTable;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
+import link.locutus.discord.commands.rankings.table.TableNumberFormat;
+import link.locutus.discord.commands.rankings.table.TimeFormat;
 import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.RateLimitUtil;
@@ -303,7 +305,7 @@ public interface IMessageBuilder {
     IMessageBuilder file(String name, byte[] data);
 
     @CheckReturnValue
-    IMessageBuilder graph(TimeNumericTable table);
+    IMessageBuilder graph(TimeNumericTable table, TimeFormat timeFormat, TableNumberFormat numberFormat);
 
     CompletableFuture<IMessageBuilder> send();
 

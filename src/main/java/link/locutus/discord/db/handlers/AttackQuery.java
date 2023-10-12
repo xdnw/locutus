@@ -1,5 +1,6 @@
 package link.locutus.discord.db.handlers;
 
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.AttackType;
@@ -19,7 +20,7 @@ import java.util.stream.Collectors;
 
 public class AttackQuery {
 
-    public Map<Integer, DBWar> wars;
+    public ObjectOpenHashSet<DBWar> wars;
     public Predicate<AttackType> attackTypeFilter;
     public Predicate<AbstractCursor> preliminaryFilter;
     public Predicate<AbstractCursor> attackFilter;
@@ -32,40 +33,44 @@ public class AttackQuery {
         return Locutus.imp().getWarDb();
     }
 
+    public AttackQuery withWars(Collection<DBWar> wars) {
+        this.wars = wars instanceof ObjectOpenHashSet ? (ObjectOpenHashSet<DBWar>) wars : new ObjectOpenHashSet<>(wars);
+        return this;
+    }
+
     public AttackQuery withWars(Map<Integer, DBWar> wars) {
+        this.wars = new ObjectOpenHashSet<>(wars.values());
+        return this;
+    }
+
+    public AttackQuery withWarSet(ObjectOpenHashSet<DBWar> wars) {
         this.wars = wars;
         return this;
     }
 
     public AttackQuery withWarSet(Function<WarDB, Set<DBWar>> dbConsumer) {
-        wars = dbConsumer.apply(getDb()).stream().collect(Collectors.toMap(DBWar::getWarId, Function.identity()));
-        return this;
+        return withWars(dbConsumer.apply(getDb()));
     }
 
     public AttackQuery withWarMap(Function<WarDB, Map<Integer, DBWar>> dbConsumer) {
-        wars = dbConsumer.apply(getDb());
-        return this;
-    }
-
-    public AttackQuery withWars(Collection<DBWar> wars) {
-        this.wars = wars.stream().collect(Collectors.toMap(DBWar::getWarId, Function.identity()));
-        return this;
+        return withWars(dbConsumer.apply(getDb()));
     }
 
     public AttackQuery withWar(DBWar war) {
-        this.wars = Collections.singletonMap(war.getWarId(), war);
+        this.wars = new ObjectOpenHashSet<>(1);
+        this.wars.add(war);
         return this;
     }
 
     public AttackQuery afterDate(long start) {
         long warCutoff = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(start) - 60);
-        wars.entrySet().removeIf(e -> e.getValue().date < warCutoff);
+        wars.removeIf(e -> e.getDate() < warCutoff);
         appendPreliminaryFilter(f -> f.getDate() >= start);
         return this;
     }
 
     public AttackQuery beforeDate(long end) {
-        wars.entrySet().removeIf(e -> e.getValue().date > end);
+        wars.removeIf(e -> e.getDate() > end);
         appendPreliminaryFilter(f -> f.getDate() <= end);
         return this;
 
@@ -73,7 +78,7 @@ public class AttackQuery {
 
     public AttackQuery between(long start, long end) {
         long warCutoff = TimeUtil.getTimeFromTurn(TimeUtil.getTurn(start) - 60);
-        wars.entrySet().removeIf(e -> e.getValue().date < warCutoff || e.getValue().date > end);
+        wars.removeIf(e -> e.getDate() < warCutoff || e.getDate() > end);
         appendPreliminaryFilter(f -> f.getDate() >= start && f.getDate() <= end);
         return this;
     }
@@ -84,7 +89,7 @@ public class AttackQuery {
     }
 
     public AttackQuery withWarsForNationOrAlliance(Predicate<Integer> nations, Predicate<Integer> alliances, Predicate<DBWar> warFilter) {
-        wars = getDb().getWarsForNationOrAlliance(nations, alliances, warFilter);
+        withWars(getDb().getWarsForNationOrAlliance(nations, alliances, warFilter));
         return this;
     }
 
@@ -94,7 +99,7 @@ public class AttackQuery {
     }
 
     public AttackQuery withWars(Predicate<DBWar> warFilter) {
-        wars = getDb().getWars(warFilter);
+        withWars(getDb().getWars(warFilter));
         return this;
     }
 
@@ -130,7 +135,7 @@ public class AttackQuery {
     }
 
     public AttackQuery withAllWars() {
-        return this.withWars(getDb().getWars());
+        return this.withWarSet(getDb().getWars());
     }
 
     public AttackQuery withActiveWars() {
