@@ -16,7 +16,7 @@ import link.locutus.discord.util.math.ArrayUtil;
 import java.util.Map;
 import java.util.Set;
 
-public abstract class AbstractCursor implements IAttack2 {
+public abstract class AbstractCursor implements IAttack {
     protected DBWar war_cached;
     protected int war_attack_id;
     protected long date;
@@ -116,6 +116,7 @@ public abstract class AbstractCursor implements IAttack2 {
         return war_id;
     }
 
+    @Override
     public DBWar getWar() {
         if (war_cached == null) {
             Locutus lc = Locutus.imp();

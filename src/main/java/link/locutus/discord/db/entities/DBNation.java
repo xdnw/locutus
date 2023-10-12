@@ -272,6 +272,15 @@ public class DBNation implements NationOrAlliance {
         return Locutus.imp().getNationDB().getNation(nationId);
     }
 
+    public static DBNation getOrCreate(int nationId) {
+        DBNation existing = getById(nationId);
+        if (existing == null) {
+            existing = new DBNation();
+            existing.nation_id = nationId;
+        }
+        return existing;
+    }
+
     public DBNation() {
         projects = -1;
         beigeTimer = 14 * 12;

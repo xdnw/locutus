@@ -161,6 +161,8 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        this.commands.registerMethod(new TestCommands(), List.of("test"), "testImage", "test_image");
+
         this.commands.registerMethod(new TestCommands(), List.of("deposits"), "viewFlow", "flows");
         this.commands.registerMethod(new TestCommands(), List.of("deposits"), "shiftFlow", "shiftFlow");
 

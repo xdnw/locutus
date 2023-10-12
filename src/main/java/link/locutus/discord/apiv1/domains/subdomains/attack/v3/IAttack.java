@@ -1,15 +1,12 @@
 package link.locutus.discord.apiv1.domains.subdomains.attack.v3;
 
 import link.locutus.discord.apiv1.enums.AttackType;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.SuccessType;
-import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.config.Settings;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.PnwUtil;
 
-import java.util.Map;
-
-public interface IAttack2 {
+public interface IAttack {
     /*
     "war_attack_id=" + getWar_attack_id() +
                 ", epoch=" + getDate() +
@@ -143,4 +140,6 @@ public interface IAttack2 {
     }
 
     double[] getLosses(double[] buffer, boolean attacker, boolean units, boolean infra, boolean consumption, boolean includeLoot, boolean includeBuildings);
+
+    DBWar getWar();
 }

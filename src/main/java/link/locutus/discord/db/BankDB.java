@@ -1,15 +1,11 @@
 package link.locutus.discord.db;
 
 import com.politicsandwar.graphql.model.*;
-import com.ptsmods.mysqlw.query.QueryCondition;
-import com.ptsmods.mysqlw.query.QueryOrder;
-import com.ptsmods.mysqlw.query.builder.SelectBuilder;
-import com.ptsmods.mysqlw.table.ColumnType;
-import com.ptsmods.mysqlw.table.TablePreset;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.entities.BankRecord;
-import link.locutus.discord.apiv2.PoliticsAndWarV2;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
@@ -19,19 +15,14 @@ import link.locutus.discord.event.bank.TransactionEvent;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.io.PagePriority;
-import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
-import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.User;
-import org.example.jooq.bank.Tables;
 import org.example.jooq.bank.tables.records.SubscriptionsRecord;
 import org.example.jooq.bank.tables.records.TaxDepositsDateRecord;
-import org.example.jooq.bank.tables.records.TaxEstimateRecord;
 import org.example.jooq.bank.tables.records.Transactions_2Record;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -39,39 +30,19 @@ import org.jooq.Condition;
 import org.jooq.GroupField;
 import org.jooq.Index;
 import org.jooq.InsertSetMoreStep;
-import org.jooq.Loader;
-import org.jooq.LoaderError;
-import org.jooq.LoaderOptionsStep;
-import org.jooq.Operator;
-import org.jooq.OrderField;
 import org.jooq.Query;
 import org.jooq.Record;
 import org.jooq.Result;
-import org.jooq.SelectConditionStep;
-import org.jooq.SelectConnectByStep;
-import org.jooq.SelectForUpdateStep;
-import org.jooq.SelectJoinStep;
-import org.jooq.SelectLimitPercentStep;
-import org.jooq.SelectLimitStep;
-import org.jooq.SelectSeekStep1;
-import org.jooq.SelectWhereStep;
-import org.jooq.SelectWithTiesStep;
 import org.jooq.SortField;
-import org.jooq.TableField;
-import org.jooq.TableLike;
 import org.jooq.exception.InvalidResultException;
 import org.jooq.impl.DSL;
-import org.jooq.impl.SQLDataType;
 
-import java.io.File;
-import java.io.IOException;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -84,26 +55,12 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
-import static link.locutus.discord.apiv1.enums.ResourceType.ALUMINUM;
-import static link.locutus.discord.apiv1.enums.ResourceType.BAUXITE;
-import static link.locutus.discord.apiv1.enums.ResourceType.COAL;
-import static link.locutus.discord.apiv1.enums.ResourceType.FOOD;
-import static link.locutus.discord.apiv1.enums.ResourceType.GASOLINE;
-import static link.locutus.discord.apiv1.enums.ResourceType.IRON;
-import static link.locutus.discord.apiv1.enums.ResourceType.LEAD;
-import static link.locutus.discord.apiv1.enums.ResourceType.MONEY;
-import static link.locutus.discord.apiv1.enums.ResourceType.MUNITIONS;
-import static link.locutus.discord.apiv1.enums.ResourceType.OIL;
-import static link.locutus.discord.apiv1.enums.ResourceType.STEEL;
-import static link.locutus.discord.apiv1.enums.ResourceType.URANIUM;
 import static org.example.jooq.bank.Tables.LOOT_DIFF_BY_TAX_ID;
 import static org.example.jooq.bank.Tables.SUBSCRIPTIONS;
 import static org.example.jooq.bank.Tables.TAX_BRACKETS;
@@ -111,7 +68,6 @@ import static org.example.jooq.bank.Tables.TAX_DEPOSITS_DATE;
 import static org.example.jooq.bank.Tables.TAX_ESTIMATE;
 import static org.example.jooq.bank.Tables.TRANSACTIONS_2;
 import static org.example.jooq.bank.Tables.TRANSACTIONS_ALLIANCE_2;
-import static org.example.jooq.web.Tables.TOKENS3;
 import static org.jooq.impl.DSL.lower;
 
 public class BankDB extends DBMainV3 {
@@ -573,6 +529,18 @@ public class BankDB extends DBMainV3 {
         }
     }
 
+    public List<Transaction2> getTransactionsbyId(Collection<Integer> ids) {
+        if (ids.isEmpty()) {
+            return Collections.emptyList();
+        }
+        if (ids.size() == 1) {
+            return getTransactions(TRANSACTIONS_2.TX_ID.eq(ids.iterator().next()), null, null);
+        }
+        List<Integer> idsSorted = new IntArrayList(ids);
+        idsSorted.sort(Comparator.naturalOrder());
+        return getTransactions(TRANSACTIONS_2.TX_ID.in(idsSorted), TRANSACTIONS_2.TX_ID.desc(), null);
+    }
+
     public List<Transaction2> getTransactionsByBySenderOrReceiver(Set<Long> senders, Set<Long> receivers, long minDateMs) {
         return getTransactions(TRANSACTIONS_2.TX_DATETIME.ge(minDateMs).and(TRANSACTIONS_2.SENDER_ID.in(senders).and(TRANSACTIONS_2.RECEIVER_ID.in(receivers))), TRANSACTIONS_2.TX_ID.desc(), null);
     }
@@ -750,8 +718,44 @@ public class BankDB extends DBMainV3 {
     }
 
     public List<TaxDeposit> getTaxesPaid(int nation, int alliance) {
-        List<TaxDeposit> list = new ArrayList<>();
+        List<TaxDeposit> list = new ObjectArrayList<>();
         ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.ALLIANCE.eq(alliance).and(TAX_DEPOSITS_DATE.NATION.eq(nation))).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
+        return list;
+    }
+
+    public List<TaxDeposit> getTaxesByIds(Collection<Integer> ids) {
+        List<Integer> idsSorted = new IntArrayList(ids);
+        idsSorted.sort(Comparator.naturalOrder());
+        List<TaxDeposit> list = new ObjectArrayList<>();
+        if (ids.size() == 1) {
+            ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.ID.eq(ids.iterator().next())).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
+        } else {
+            ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.ID.in(idsSorted)).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
+        }
+        return list;
+    }
+
+    public List<TaxDeposit> getTaxesByBrackets(Collection<Integer> bracketIds) {
+        List<Integer> idsSorted = new IntArrayList(bracketIds);
+        idsSorted.sort(Comparator.naturalOrder());
+        List<TaxDeposit> list = new ObjectArrayList<>();
+        if (idsSorted.size() == 1) {
+            ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.TAX_ID.eq(idsSorted.iterator().next())).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
+        } else {
+            ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.TAX_ID.in(idsSorted)).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
+        }
+        return list;
+    }
+
+    public List<TaxDeposit> getTaxesByNations(Collection<Integer> nationIds) {
+        List<Integer> idsSorted = new IntArrayList(nationIds);
+        idsSorted.sort(Comparator.naturalOrder());
+        List<TaxDeposit> list = new ObjectArrayList<>();
+        if (idsSorted.size() == 1) {
+            ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.NATION.eq(idsSorted.iterator().next())).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
+        } else {
+            ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.NATION.in(idsSorted)).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
+        }
         return list;
     }
 

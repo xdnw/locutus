@@ -14,6 +14,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.WarAttacksContainer;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AttackCursorFactory;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.WarType;
@@ -570,6 +571,35 @@ public class WarDB extends DBMainV2 {
                 e.printStackTrace();
             }
         }
+    }
+
+    public Set<IAttack> getAttacksById(Set<Integer> ids) {
+        if (ids.isEmpty()) return Collections.emptySet();
+        List<Integer> idsSorted = new IntArrayList(ids);
+        Collections.sort(idsSorted);
+        Set<IAttack> attacks = new ObjectOpenHashSet<>();
+        String query = "SELECT * FROM `attacks3` WHERE `id` ";
+        if (ids.size() == 1) {
+            query += " = " + idsSorted.get(0);
+        } else {
+            query += " IN " + StringMan.getString(idsSorted);
+        }
+        try (PreparedStatement stmt = prepareQuery(query)) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    int warId = rs.getInt("war_id");
+                    DBWar war = getWar(warId);
+                    if (war == null) {
+                        continue;
+                    }
+                    byte[] data = (rs.getBytes("data"));
+                    attacks.add(attackCursorFactory.load(war, data, true));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return attacks;
     }
 
     public Map<DBWar, List<AbstractCursor>> getAttacksByWar(Collection<DBWar> wars, Predicate<AttackType> attackTypeFilter,  Predicate<AbstractCursor> preliminaryFilter, Predicate<AbstractCursor> attackFilter) {

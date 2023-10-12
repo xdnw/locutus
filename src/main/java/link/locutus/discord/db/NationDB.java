@@ -4143,6 +4143,16 @@ public class NationDB extends DBMainV2 {
         }
     }
 
+    public Set<DBCity> getCities() {
+        synchronized (citiesByNation) {
+            Set<DBCity> result = new ObjectOpenHashSet<>();
+            for (Object cities : citiesByNation.values()) {
+                ArrayUtil.iterateElements(DBCity.class, cities, result::add);
+            }
+            return result;
+        }
+    }
+
     public Map<Integer, Map<Integer, DBCity>> getCitiesV3(Set<Integer> nationIds) {
         Map<Integer, Map<Integer, DBCity>> result = new LinkedHashMap<>();
         for (int id : nationIds) {

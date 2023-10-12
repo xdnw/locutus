@@ -405,7 +405,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "City url", examples = {"city/id=371923"})
-    public DBCity cityUrl(String input) {
+    public static DBCity cityUrl(String input) {
         int cityId;
         if (input.contains("city/id=")) {
             cityId = Integer.parseInt(input.split("=")[1]);
@@ -517,6 +517,10 @@ public class PWBindings extends BindingHelper {
 
     @Binding(value = "A nation or alliance name, url or id. Prefix with `AA:` or `nation:` to avoid ambiguity if there exists both by the same name or id", examples = {"Borg", "https://politicsandwar.com/alliance/id=1234", "aa:1234"})
     public static NationOrAlliance nationOrAlliance(ParameterData data, String input) {
+        return nationOrAlliance(data, input, false);
+    }
+
+    public static NationOrAlliance nationOrAlliance(ParameterData data, String input, boolean forceAllowDeleted) {
         String lower = input.toLowerCase();
         if (lower.startsWith("aa:")) {
             return alliance(data, input.split(":", 2)[1]);
@@ -524,7 +528,7 @@ public class PWBindings extends BindingHelper {
         if (lower.contains("alliance/id=")) {
             return alliance(data, input);
         }
-        DBNation nation = DiscordUtil.parseNation(input, data != null && data.getAnnotation(AllowDeleted.class) != null);
+        DBNation nation = DiscordUtil.parseNation(input, forceAllowDeleted || (data != null && data.getAnnotation(AllowDeleted.class) != null));
         if (nation == null) {
             return alliance(data, input);
         }
@@ -715,7 +719,11 @@ public class PWBindings extends BindingHelper {
 
     @Binding(examples = "borg,AA:Cataclysm,#position>1", value = "A comma separated list of nations, alliances and filters")
     public static Set<DBNation> nations(ParameterData data, @Default @Me Guild guild, String input) {
-        Set<DBNation> nations = DiscordUtil.parseNations(guild, input, false, false, false, data != null && data.getAnnotation(AllowDeleted.class) != null);
+        return nations(data, guild, input, false);
+    }
+
+    public static Set<DBNation> nations(ParameterData data, @Default @Me Guild guild, String input, boolean forceAllowDeleted) {
+        Set<DBNation> nations = DiscordUtil.parseNations(guild, input, false, false, false, forceAllowDeleted || (data != null && data.getAnnotation(AllowDeleted.class) != null));
         if (nations == null) throw new IllegalArgumentException("Invalid nations: " + input);
         return nations;
     }
@@ -750,6 +758,10 @@ public class PWBindings extends BindingHelper {
 
     @Binding(examples = "borg,AA:Cataclysm", value = "A comma separated list of nations and alliances")
     public static Set<NationOrAlliance> nationOrAlliance(ParameterData data, @Default @Me Guild guild, String input) {
+        return nationOrAlliance(data, guild, input, false);
+    }
+
+    public static Set<NationOrAlliance> nationOrAlliance(ParameterData data, @Default @Me Guild guild, String input, boolean forceAllowDeleted) {
         Set<NationOrAlliance> result = new LinkedHashSet<>();
 
         for (String group : input.split("\\|+")) {
@@ -761,7 +773,7 @@ public class PWBindings extends BindingHelper {
                 for (String arg : args) {
                     try {
                         DBAlliance aa = alliance(data, arg);
-                        if (aa.exists() || (data != null && data.getAnnotation(AllowDeleted.class) != null)) {
+                        if (forceAllowDeleted || (data != null && data.getAnnotation(AllowDeleted.class) != null) || aa.exists()) {
                             result.add(aa);
                             continue;
                         }
@@ -780,7 +792,7 @@ public class PWBindings extends BindingHelper {
             } else {
                 remainder.add(group);
             }
-            result.addAll(nations(data, guild, StringMan.join(remainder, ",")));
+            result.addAll(nations(data, guild, StringMan.join(remainder, ","), forceAllowDeleted));
         }
         if (result.isEmpty()) throw new IllegalArgumentException("Invalid nations or alliances: `" + input + "`");
         return result;
