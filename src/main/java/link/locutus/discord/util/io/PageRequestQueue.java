@@ -154,7 +154,7 @@ public class PageRequestQueue {
                 return task;
             }
 
-            if (maxCount < 30 || true) {
+            if (maxCount < 30) {
                 return task;
             }
 
@@ -172,7 +172,7 @@ public class PageRequestQueue {
                 }
             }
 
-            if (maxCount < 59) {
+            if (maxCount <= 59) {
                 firstTask = task;
             } else {
                 int over = minuteCount - 58;
@@ -192,7 +192,7 @@ public class PageRequestQueue {
             }
         }
         if (minWait != Long.MAX_VALUE) {
-            long wait = minWait - System.currentTimeMillis();
+            long wait = Math.min(60000, minWait - System.currentTimeMillis());
             waitTime.set(wait);
             return null;
         }

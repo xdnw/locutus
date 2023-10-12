@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.google.common.base.CaseFormat;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
@@ -62,8 +63,10 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.test.IACategory;
+import link.locutus.discord.util.offshore.test.IAChannel;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
@@ -74,9 +77,11 @@ import link.locutus.discord.util.sheet.templates.TransferSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.channel.unions.DefaultGuildChannelUnion;
 import net.dv8tion.jda.api.requests.restaction.InviteAction;
+import org.apache.commons.lang3.text.WordUtils;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -87,6 +92,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -1598,6 +1604,172 @@ public class UnsortedCommands {
         return new OptimalBuild().onCommand(io, guild, author, me, cmd, flags);
     }
 
+    @Command(desc = "Run audits on member nations and generate a sheet of the results")
+    @IsAlliance
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MENTOR, Roles.INTERVIEWER}, any = true)
+    public void auditSheet(@Me GuildDB db,
+                             @Me IMessageIO io,
+                             @Default Set<DBNation> nations,
+                             @Switch("i") Set<IACheckup.AuditType> includeAudits,
+                             @Switch("e") Set<IACheckup.AuditType> excludeAudits,
+                             @Switch("u") boolean forceUpdate,
+                             @Switch("v") boolean verbose,
+                             @Switch("s") SpreadSheet sheet) throws IOException, ExecutionException, InterruptedException, GeneralSecurityException {
+        if (includeAudits == null) {
+            includeAudits = new HashSet<>();
+            for (IACheckup.AuditType value : IACheckup.AuditType.values()) {
+                if (excludeAudits == null || !excludeAudits.contains(value)) {
+                    includeAudits.add(value);
+                }
+            }
+        }
+
+        if (nations == null) {
+            nations = db.getAllianceList().getNations(true, 0, true);
+        }
+        AtomicInteger notAllianceRemoved = new AtomicInteger();
+        AtomicInteger appRemoved = new AtomicInteger();
+        AtomicInteger vmRemoved = new AtomicInteger();
+        nations.removeIf(f -> {
+            if (!db.isAllianceId(f.getAlliance_id())) {
+                notAllianceRemoved.incrementAndGet();
+                return true;
+            }
+            if (f.getPositionEnum().id < Rank.MEMBER.id) {
+                appRemoved.incrementAndGet();
+                return true;
+            }
+            if (f.getVm_turns() > 0) {
+                vmRemoved.incrementAndGet();
+                return true;
+            }
+            return false;
+        });
+
+        if (nations.isEmpty()) {
+            StringBuilder msg = new StringBuilder("No nations found");
+            if (notAllianceRemoved.get() > 0) {
+                msg.append("\n- Removed " + notAllianceRemoved.get() + " nations were not in the alliance");
+            }
+            if (appRemoved.get() > 0) {
+                msg.append("\n- Removed " + appRemoved.get() + " nations were not members");
+            }
+            if (vmRemoved.get() > 0) {
+                msg.append("\n- Removed " + vmRemoved.get() + " nations were in vacation mode");
+            }
+            throw new IllegalArgumentException(msg.toString());
+        }
+        IACheckup checkup = new IACheckup(db, db.getAllianceList().subList(nations), false);
+        IACheckup.AuditType[] audits = includeAudits.toArray(new IACheckup.AuditType[0]);
+        Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> auditResults = checkup.checkup(nations, null, audits, !forceUpdate);
+
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKeys.IA_SHEET);
+        }
+
+        List<String> header = new ArrayList<>(Arrays.asList(
+                "nation",
+                "interview",
+                "username",
+                "active_m",
+                "cities",
+                "avg_infra",
+                "off"
+        ));
+        for (IACheckup.AuditType type : audits) {
+            header.add(type.name().toLowerCase(Locale.ROOT));
+        }
+        sheet.addRow(header);
+
+        IACategory iaCat = db.getIACategory();
+
+        Map<IACheckup.AuditType, Integer> failedCount = new LinkedHashMap<>();
+        Map<IACheckup.AuditSeverity, Integer> failedBySeverity = new LinkedHashMap<>();
+        Map<IACheckup.AuditSeverity, Integer> nationBySeverity = new LinkedHashMap<>();
+
+        for (Map.Entry<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> entry : auditResults.entrySet()) {
+            DBNation nation = entry.getKey();
+            header.set(0, nation.getSheetUrl());
+
+            header.set(1, "");
+            if (iaCat != null) {
+                IAChannel channel = iaCat.get(nation);
+                if (channel != null) {
+                    TextChannel text = channel.getChannel();
+                    if (text != null) {
+                        header.set(1, MarkupUtil.sheetUrl(text.getName(), text.getJumpUrl()));
+                    }
+                }
+            }
+
+            User user = nation.getUser();
+            header.set(2, "");
+            if (user != null) {
+                String url = DiscordUtil.userUrl(user.getIdLong(), false);
+                String name = DiscordUtil.getFullUsername(user);
+                header.set(2, MarkupUtil.sheetUrl(name, url));
+            }
+
+            header.set(3, nation.getActive_m() + "");
+            header.set(4, nation.getCities() + "");
+            header.set(5, MathMan.format(nation.getAvg_infra()));
+            header.set(6, MathMan.format(nation.getOff()));
+
+            Map<IACheckup.AuditType, Map.Entry<Object, String>> auditMap = entry.getValue();
+            IACheckup.AuditSeverity highest = null;
+
+            int i = 7;
+            for (IACheckup.AuditType audit : audits) {
+                Map.Entry<Object, String> value = auditMap.get(audit);
+                if (value == null || value.getValue() == null) {
+                    header.set(i, "");
+                } else {
+                    if (highest == null || highest.ordinal() < audit.severity.ordinal()) {
+                        highest = audit.severity;
+                    }
+                    // use merge
+                    failedCount.merge(audit, 1, Integer::sum);
+                    failedBySeverity.merge(audit.severity, 1, Integer::sum);
+                    if (verbose) {
+                        header.set(i, value.getValue());
+                    } else {
+                        header.set(i, StringMan.getString(value.getKey()));
+                    }
+                }
+                if (highest != null) {
+                    nationBySeverity.merge(highest, 1, Integer::sum);
+                }
+                i++;
+            }
+        }
+        sheet.clearAll();
+        sheet.set(0, 0);
+        IMessageBuilder msg = sheet.attach(io.create(), "revenue");
+
+        // sum nationBySeverity
+        int auditsTotal = nations.size() * audits.length;
+        int auditsPassed = auditsTotal - failedBySeverity.values().stream().mapToInt(Integer::intValue).sum();
+        int nationsTotal = nations.size();
+        int nationsPassedAll = nationsTotal - nationBySeverity.values().stream().mapToInt(Integer::intValue).sum();
+
+        msg.append("## Summary\n")
+                        .append("- `" + auditsPassed + "/" + auditsTotal + "` audits passed\n")
+                        .append("- `" + nationsPassedAll + "/" + nationsTotal + "` nations passed ALL audits\n");
+        if (!failedCount.isEmpty()) {
+            failedCount = ArrayUtil.sortMap(failedCount, false);
+            msg.append("## By Type\n- `" + StringMan.getString(failedCount) + "`\n");
+        }
+        if (!failedBySeverity.isEmpty()) {
+            failedBySeverity = ArrayUtil.sortMap(failedBySeverity, false);
+            msg.append("## \\# Audits By Severity\n- `" + StringMan.getString(failedBySeverity) + "`\n");
+        }
+        if (!nationBySeverity.isEmpty()) {
+            nationBySeverity = ArrayUtil.sortMap(nationBySeverity, false);
+            msg.append("## \\# Nations By Severity\n- `" + StringMan.getString(nationBySeverity) + "`\n");
+        }
+        msg.send();
+    }
+
     @Command(desc = "Get the invite for the linked milcom server")
     @RolePermission(Roles.ADMIN)
     public String sendInvite(@Me GuildDB db,
@@ -1769,4 +1941,6 @@ public class UnsortedCommands {
 
         return "Done. See " + CM.announcement.find.cmd.toSlashMention() + "\n" + author.getAsMention();
     }
+
+
 }

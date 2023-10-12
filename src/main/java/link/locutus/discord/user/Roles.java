@@ -91,9 +91,9 @@ public enum Roles {
         }
     },
 
-    APPLICANT(16, "Applying to join the alliance (this role doesn't grant any elevated permissions)", GuildKey.INTERVIEW_PENDING_ALERTS),
-    INTERVIEWER(17, "Role to get pinged when a user requests an interview", GuildKey.INTERVIEW_PENDING_ALERTS),
-    MENTOR(18, "Role to get pinged when a user requests mentoring (can be same as interviewer)", GuildKey.INTERVIEW_PENDING_ALERTS),
+    APPLICANT(16, "Applying to join the alliance in-game", GuildKey.INTERVIEW_PENDING_ALERTS),
+    INTERVIEWER(17, "Role to get pinged when a user requests an interview to join the alliance", GuildKey.INTERVIEW_PENDING_ALERTS),
+    MENTOR(18, "Role for mentoring applicants who have completed their interview", GuildKey.INTERVIEW_PENDING_ALERTS),
     GRADUATED(19, "Members with this role will have their interview channels archived", GuildKey.INTERVIEW_PENDING_ALERTS) {
         @Override
         public boolean has(Member member) {
