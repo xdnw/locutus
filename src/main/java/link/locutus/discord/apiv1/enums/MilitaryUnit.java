@@ -1,6 +1,7 @@
 package link.locutus.discord.apiv1.enums;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.SpyCount;

@@ -4,12 +4,14 @@ import com.politicsandwar.graphql.model.Bankrec;
 import it.unimi.dsi.fastutil.io.FastByteArrayInputStream;
 import it.unimi.dsi.fastutil.io.FastByteArrayOutputStream;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.PnwUtil;
 
@@ -18,9 +20,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -489,7 +493,7 @@ public enum ResourceType {
         return name;
     }
 
-    @Command(desc = 'If this resource has a corresponding building')
+    @Command(desc = "If this resource has a corresponding building")
     public boolean hasBuilding() {
         return getBuilding() != null;
     }
@@ -502,10 +506,13 @@ public enum ResourceType {
     }
 
     @Command(desc = "If this resource is on the given continent")
-    public boolean isContinent(Set<Continent> continents) {
+    public boolean canProduceInAny(Set<Continent> continents) {
         Building building = getBuilding();
         if (building == null) return false;
-        return building.isContinent(continents);
+        for (Continent continent : continents) {
+            if (building.canBuild(continent)) return true;
+        }
+        return false;
     }
 
     @Command(desc = "The total production of resources for nations")

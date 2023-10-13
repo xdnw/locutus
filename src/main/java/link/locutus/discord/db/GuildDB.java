@@ -18,9 +18,11 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
+import link.locutus.discord.db.entities.grant.TemplateTypes;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.handlers.SyncableDatabase;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
@@ -131,7 +133,7 @@ import static link.locutus.discord.db.entities.Coalition.OFFSHORING;
  * Most Related:
  * {@link Locutus} - The main Discord bot class that utilizes the GuildDB for guild-specific operations.
  */
-public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
+public class GuildDB extends DBMain implements NationOrAllianceOrGuild, SyncableDatabase {
     private final Guild guild;
     private volatile IAutoRoleTask autoRoleTask;
     private GuildHandler handler;
@@ -150,6 +152,23 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         if (gpt != null) {
             gpt.getConverter().initDocumentConversion(this);
         }
+    }
+
+    @Override
+    public Map<String, String> getTablesToSync() {
+        Map<String, String> tableToColumn = new LinkedHashMap<>();
+        if (grantTemplateManager != null) {
+            for (TemplateTypes type : TemplateTypes.values()) {
+                tableToColumn.put(type.getTable(), "date_created");
+            }
+            tableToColumn.put("GRANTS_SENT", "date");
+        }
+        tableToColumn.put("INTERNAL_TRANSACTIONS2", "tx_datetime");
+        tableToColumn.put("NATION_META", "date_updated");
+        tableToColumn.put("ROLES2", "date_updated");
+        tableToColumn.put("INFO", "date_updated");
+        tableToColumn.put("COALITIONS", "date_updated");
+        return tableToColumn;
     }
 
     public GrantTemplateManager getGrantTemplateManager() {
@@ -528,10 +547,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         }
         checkNotNull(key);
         checkNotNull(value);
-        update("INSERT OR REPLACE INTO `NATION_META`(`id`, `key`, `meta`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        update("INSERT OR REPLACE INTO `NATION_META`(`id`, `key`, `meta`, `date_updated`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setLong(1, userId);
             stmt.setInt(2, key.ordinal());
             stmt.setBytes(3, value);
+            stmt.setLong(4, System.currentTimeMillis());
         });
     }
 
@@ -549,7 +569,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                     if (nationId < Integer.MAX_VALUE) {
                         DBNation nation = Locutus.imp().getNationDB().getNation((int) nationId);
                         byte[] data = rs.getBytes("meta");
-
                         result.put(nation, data);
                     }
                 }
@@ -623,13 +642,16 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             delegate.deleteMeta(userId, key);
             return;
         }
-        update("DELETE FROM NATION_META where id = ? AND key = ?", new ThrowingConsumer<PreparedStatement>() {
-            @Override
-            public void acceptThrows(PreparedStatement stmt) throws Exception {
-                stmt.setLong(1, userId);
-                stmt.setInt(2, key.ordinal());
-            }
-        });
+        synchronized (this) {
+            logDeletion("NATION_META", System.currentTimeMillis(), new String[]{"id", "key"}, userId, key.ordinal());
+            update("DELETE FROM NATION_META where id = ? AND key = ?", new ThrowingConsumer<PreparedStatement>() {
+                @Override
+                public void acceptThrows(PreparedStatement stmt) throws Exception {
+                    stmt.setLong(1, userId);
+                    stmt.setInt(2, key.ordinal());
+                }
+            });
+        }
     }
 
     @Override
@@ -856,7 +878,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             purgeOldInterviews(System.currentTimeMillis() - TimeUnit.DAYS.toMillis(14));
         }
         {
-            String nations = "CREATE TABLE IF NOT EXISTS `NATION_META` (`id` BIGINT NOT NULL, `key` BIGINT NOT NULL, `meta` BLOB NOT NULL, PRIMARY KEY(id, key))";
+            String nations = "CREATE TABLE IF NOT EXISTS `NATION_META` (`id` BIGINT NOT NULL, `key` BIGINT NOT NULL, `meta` BLOB NOT NULL, date_updated BIGINT NOT NULL, PRIMARY KEY(id, key))";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(nations);
                 stmt.executeBatch();
@@ -864,10 +886,15 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             } catch (SQLException e) {
                 e.printStackTrace();
             }
+            // add date if missing
+            if (getTableColumns(getConnection(), "NATION_META").stream().noneMatch(c -> c.equalsIgnoreCase("date_updated"))) {
+                executeStmt("ALTER TABLE NATION_META ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis());
+            }
         };
 
         {
-            String create = "CREATE TABLE IF NOT EXISTS `ROLES2` (`role` BIGINT NOT NULL, `alias` BIGINT NOT NULL, `alliance` BIGINT NOT NULL)";
+            // primary key, role, alliance
+            String create = "CREATE TABLE IF NOT EXISTS `ROLES2` (`role` BIGINT NOT NULL, `alias` BIGINT NOT NULL, `alliance` BIGINT NOT NULL, `date_updated` BIGINT NOT NULL, PRIMARY KEY(role, alliance))";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(create);
                 stmt.executeBatch();
@@ -875,15 +902,62 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             } catch (SQLException e) {
                 e.printStackTrace();
             }
+            if (getTableColumns(getConnection(), "ROLES2").stream().noneMatch(c -> c.equalsIgnoreCase("date_updated"))) {
+                executeStmt("ALTER TABLE ROLES2 ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis());
+            }
+            try (Statement stmt = getConnection().createStatement()) {
+                // Check if the table exists
+                ResultSet tables = getConnection().getMetaData().getTables(null, null, "ROLES2", null);
+                if (tables.next()) {
+                    // Check if the primary key doesn't exist
+                    ResultSet primaryKeys = getConnection().getMetaData().getPrimaryKeys(null, null, "ROLES2");
+                    boolean primaryKeyExists = primaryKeys.next();
+                    if (!primaryKeyExists) {
+                        ResultSet rowCountQuery = stmt.executeQuery("SELECT COUNT(*) FROM ROLES2");
+                        int rowCount = rowCountQuery.getInt(1);
+                        // Add the primary key
+                        String createTableSQL = "CREATE TABLE IF NOT EXISTS ROLES2 (role BIGINT NOT NULL, " +
+                                "alias BIGINT NOT NULL, alliance BIGINT NOT NULL, date_updated BIGINT NOT NULL, " +
+                                "PRIMARY KEY (role, alliance))";
+                        stmt.execute("PRAGMA foreign_keys=off");
+                        stmt.execute("BEGIN TRANSACTION");
+                        stmt.execute("ALTER TABLE ROLES2 RENAME TO ROLES2_old");
+                        stmt.execute(createTableSQL);
+                        stmt.execute("INSERT INTO ROLES2 SELECT * FROM ROLES2_old");
+                        stmt.execute("COMMIT");
+                        stmt.execute("PRAGMA foreign_keys=on");
+
+                        // Check the row count of the new table
+                        rowCountQuery = stmt.executeQuery("SELECT COUNT(*) FROM ROLES2");
+                        int newRowCount = rowCountQuery.getInt(1);
+
+                        if (rowCount == newRowCount) {
+                            stmt.execute("DROP TABLE ROLES2_old");
+                            System.out.println("Primary key added to the ROLES2 table.");
+                        } else {
+                            System.err.println("Data migration failed. The old table still exists.");
+                        }
+                    } else {
+                        System.out.println("Primary key already exists in the ROLES2 table.");
+                    }
+                } else {
+                    System.out.println("ROLES2 table does not exist.");
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         };
         {
-            String create = "CREATE TABLE IF NOT EXISTS `COALITIONS` (`alliance_id` BIGINT NOT NULL, `coalition` VARCHAR NOT NULL, PRIMARY KEY(alliance_id, coalition))";
+            String create = "CREATE TABLE IF NOT EXISTS `COALITIONS` (`alliance_id` BIGINT NOT NULL, `coalition` VARCHAR NOT NULL, `date_updated` BIGINT NOT NULL, PRIMARY KEY(alliance_id, coalition))";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(create);
                 stmt.executeBatch();
                 stmt.clearBatch();
             } catch (SQLException e) {
                 e.printStackTrace();
+            }
+            if (getTableColumns("COALITIONS").stream().noneMatch(c -> c.equalsIgnoreCase("date_updated"))) {
+                executeStmt("ALTER TABLE COALITIONS ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis());
             }
         };
         {
@@ -907,7 +981,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             }
         };
         {
-            String create = "CREATE TABLE IF NOT EXISTS `INFO` (`key` VARCHAR NOT NULL PRIMARY KEY, `value` VARCHAR NOT NULL)";
+            String create = "CREATE TABLE IF NOT EXISTS `INFO` (`key` VARCHAR NOT NULL PRIMARY KEY, `value` VARCHAR NOT NULL, `date_updated` BIGINT NOT NULL)";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(create);
                 stmt.executeBatch();
@@ -919,6 +993,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 // Rename AUTOROLE to AUTOROLE_ALLIANCES in `key`
                 String updateKey = "UPDATE INFO SET key = 'AUTOROLE_ALLIANCES' WHERE key = 'AUTOROLE'";
                 executeStmt(updateKey);
+            }
+            if (getTableColumns(getConnection(), "INFO").stream().noneMatch(c -> c.equalsIgnoreCase("date_updated"))) {
+                executeStmt("ALTER TABLE `INFO` ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis());
             }
 
         };
@@ -2644,10 +2721,14 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
     }
 
     private void deleteInfo(String key) {
-        info.remove(key.toLowerCase());
-        update("DELETE FROM `INFO` where `key` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, key.toLowerCase());
-        });
+        String keyLower = key.toLowerCase(Locale.ROOT);
+        info.remove(keyLower);
+        synchronized (this) {
+            logDeletion("INFO", System.currentTimeMillis(), "key", keyLower);
+            update("DELETE FROM `INFO` where `key` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+                stmt.setString(1, keyLower);
+            });
+        }
     }
 
     public void setCopyPasta(String key, String value) {
@@ -2663,9 +2744,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         checkNotNull(value);
         initInfo();
         synchronized (this) {
-            update("INSERT OR REPLACE INTO `INFO`(`key`, `value`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            update("INSERT OR REPLACE INTO `INFO`(`key`, `value`, `date_updated`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
                 stmt.setString(1, key.toLowerCase());
                 stmt.setString(2, value);
+                stmt.setLong(3, System.currentTimeMillis());
             });
             info.put(key.toLowerCase(), value);
         }
@@ -2952,9 +3034,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
             coalitions2.computeIfAbsent(hash, k -> ConcurrentHashMap.newKeySet()).add(allianceId);
             coalitionId2Name.put(hash, coalition);
 
-            update("INSERT OR IGNORE INTO `COALITIONS`(`alliance_id`, `coalition`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            update("INSERT OR IGNORE INTO `COALITIONS`(`alliance_id`, `coalition`, `date_updated`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
                 stmt.setLong(1, allianceId);
                 stmt.setString(2, coalition);
+                stmt.setLong(3, System.currentTimeMillis());
             });
         }
     }
@@ -2982,9 +3065,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
                 Set<Long> set = coalitions2.get(hash);
                 if (set != null) {
                     set.remove(allianceId);
-                    update("INSERT OR IGNORE INTO `COALITIONS`(`alliance_id`, `coalition`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+                    update("INSERT OR IGNORE INTO `COALITIONS`(`alliance_id`, `coalition`, `date_updated`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
                         stmt.setLong(1, allianceId);
                         stmt.setString(2, coalition);
+                        stmt.setLong(3, System.currentTimeMillis());
                     });
                 }
             }
@@ -3170,10 +3254,11 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild {
         loadRoles();
         deleteRole(locutusRole, allianceId, false);
         roleToAccountToDiscord.computeIfAbsent(locutusRole, f -> new ConcurrentHashMap<>()).put(allianceId, discordRole);
-        update("INSERT OR REPLACE INTO `ROLES2`(`role`, `alias`, `alliance`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        update("INSERT OR REPLACE INTO `ROLES2`(`role`, `alias`, `alliance`, `date_updated`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setLong(1, locutusRole.getId());
             stmt.setLong(2, discordRole);
             stmt.setLong(3, allianceId);
+            stmt.setLong(4, System.currentTimeMillis());
         });
     }
     public void deleteRole(Roles role, long alliance) {

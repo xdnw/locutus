@@ -10,6 +10,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DiscordBan;
 import link.locutus.discord.db.entities.DiscordMeta;
+import link.locutus.discord.db.handlers.SyncableDatabase;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.nation.NationRegisterEvent;
 import link.locutus.discord.pnw.PNWUser;
@@ -41,7 +42,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class DiscordDB extends DBMainV2 {
+public class DiscordDB extends DBMainV2 implements SyncableDatabase {
 
     public DiscordDB() throws SQLException, ClassNotFoundException {
         this("locutus");
@@ -52,14 +53,29 @@ public class DiscordDB extends DBMainV2 {
     }
 
     @Override
+    public Map<String, String> getTablesToSync() {
+        return Map.of(
+                "USERS", "date_updated",
+                "CREDENTIALS2", "date_updated",
+                "API_KEYS3", "date_updated"
+        );
+    }
+
+    @Override
     public void createTables() {
-        executeStmt("CREATE TABLE IF NOT EXISTS `USERS` (`nation_id` INT NOT NULL, `discord_id` BIGINT NOT NULL, `discord_name` VARCHAR, PRIMARY KEY(discord_id))");
+        executeStmt("CREATE TABLE IF NOT EXISTS `USERS` (`nation_id` INT NOT NULL, `discord_id` BIGINT NOT NULL, `discord_name` VARCHAR, `date_updated` BIGINT NOT NULL, PRIMARY KEY(discord_id))");
         executeStmt("CREATE TABLE IF NOT EXISTS `UUIDS` (`nation_id` INT NOT NULL, `uuid` BLOB NOT NULL, `date` BIGINT NOT NULL, PRIMARY KEY(nation_id, uuid, date))");
-        executeStmt("CREATE TABLE IF NOT EXISTS `CREDENTIALS2` (`discordid` BIGINT NOT NULL PRIMARY KEY, `user` VARCHAR NOT NULL, `password` VARCHAR NOT NULL, `salt` VARCHAR NOT NULL)");
+        executeStmt("CREATE TABLE IF NOT EXISTS `CREDENTIALS2` (`discordid` BIGINT NOT NULL PRIMARY KEY, `user` VARCHAR NOT NULL, `password` VARCHAR NOT NULL, `salt` VARCHAR NOT NULL, `date_updated` BIGINT NOT NULL)");
         executeStmt("CREATE TABLE IF NOT EXISTS `VERIFIED` (`nation_id` INT NOT NULL PRIMARY KEY)");
         executeStmt("CREATE TABLE IF NOT EXISTS `DISCORD_META` (`key` BIGINT NOT NULL, `id` BIGINT NOT NULL, `value` BLOB NOT NULL, PRIMARY KEY(`key`, `id`))");
-        executeStmt("CREATE TABLE IF NOT EXISTS `API_KEYS3`(`nation_id` INT NOT NULL PRIMARY KEY, `api_key` BLOB, `bot_key` BLOB)");
+        executeStmt("CREATE TABLE IF NOT EXISTS `API_KEYS3`(`nation_id` INT NOT NULL PRIMARY KEY, `api_key` BLOB, `bot_key` BLOB, `date_updated` BIGINT NOT NULL)");
         executeStmt("CREATE TABLE IF NOT EXISTS `DISCORD_BANS`(`user` BIGINT NOT NULL, `server` BIGINT NOT NULL, `date` BIGINT NOT NULL, `reason` VARCHAR, PRIMARY KEY(`user`, `server`))");
+
+        for (String table : new String[]{"USERS", "CREDENTIALS2", "API_KEYS3"}) {
+            if (getTableColumns(table).stream().noneMatch(c -> c.equalsIgnoreCase("date_updated"))) {
+                executeStmt("ALTER TABLE " + table + " ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis());
+            }
+        }
 
         setupApiKeys();
     }
@@ -127,10 +143,11 @@ public class DiscordDB extends DBMainV2 {
                     byte[] botKeyBytes = botKey == null ? null : new BigInteger(botKey, 16).toByteArray();
 
                     // insert into API_KEYS3
-                    try (PreparedStatement stmt2 = prepareQuery("INSERT OR REPLACE INTO API_KEYS3 VALUES (?, ?, ?)")) {
+                    try (PreparedStatement stmt2 = prepareQuery("INSERT OR REPLACE INTO API_KEYS3 VALUES (?, ?, ?, ?)")) {
                         stmt2.setInt(1, nationId);
                         stmt2.setBytes(2, keyBytes);
                         stmt2.setBytes(3, botKeyBytes);
+                        stmt2.setLong(4, System.currentTimeMillis());
                         stmt2.executeUpdate();
                     }
                 }
@@ -146,19 +163,19 @@ public class DiscordDB extends DBMainV2 {
 
     public void addApiKey(int nationId, String key) {
         byte[] keyId = new BigInteger(key.toLowerCase(Locale.ROOT), 16).toByteArray();
-        update("INSERT OR REPLACE INTO `API_KEYS3`(`nation_id`, `api_key`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        update("INSERT OR REPLACE INTO `API_KEYS3`(`nation_id`, `api_key`, `date_updated`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
             stmt.setBytes(2, keyId);
-
+            stmt.setLong(3, System.currentTimeMillis());
         });
     }
 
     public void addBotKey(int nationId, String key) {
         byte[] keyId = new BigInteger(key.toLowerCase(Locale.ROOT), 16).toByteArray();
-        update("INSERT OR REPLACE INTO `API_KEYS3`(`nation_id`, `bot_key`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        update("INSERT OR REPLACE INTO `API_KEYS3`(`nation_id`, `bot_key`, `date_updated`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
             stmt.setBytes(2, keyId);
-
+            stmt.setLong(3, System.currentTimeMillis());
         });
     }
 
@@ -169,11 +186,11 @@ public class DiscordDB extends DBMainV2 {
         }
         byte[] keyId = new BigInteger(key, 16).toByteArray();
         byte[] botId = new BigInteger(botKey, 16).toByteArray();
-        update("INSERT OR REPLACE INTO `API_KEYS3`(`nation_id`, `api_key`, `bot_key`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        update("INSERT OR REPLACE INTO `API_KEYS3`(`nation_id`, `api_key`, `bot_key`, `date_updated`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
             stmt.setBytes(2, keyId);
             stmt.setBytes(3, botId);
-
+            stmt.setLong(4, System.currentTimeMillis());
         });
     }
 
@@ -210,15 +227,17 @@ public class DiscordDB extends DBMainV2 {
     }
 
     public void deleteApiKey(String key) {
-        update("UPDATE API_KEYS3 SET api_key = NULL WHERE api_key = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setBytes(1, new BigInteger(key.toLowerCase(Locale.ROOT), 16).toByteArray());
+        update("UPDATE API_KEYS3 SET api_key = NULL, `date_updated` = ? WHERE api_key = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, System.currentTimeMillis());
+            stmt.setBytes(2, new BigInteger(key.toLowerCase(Locale.ROOT), 16).toByteArray());
 
         });
     }
 
     public void deleteBotKey(String key) {
-        update("UPDATE API_KEYS3 SET bot_key = NULL WHERE bot_key = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setBytes(1, new BigInteger(key.toLowerCase(Locale.ROOT), 16).toByteArray());
+        update("UPDATE API_KEYS3 SET bot_key = NULL, `date_updated` = ? WHERE bot_key = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setLong(1, System.currentTimeMillis());
+            stmt.setBytes(2, new BigInteger(key.toLowerCase(Locale.ROOT), 16).toByteArray());
 
         });
     }
@@ -365,11 +384,12 @@ public class DiscordDB extends DBMainV2 {
             byte[] userEnc = EncryptionUtil.encrypt2(EncryptionUtil.encrypt2(user.getBytes(StandardCharsets.ISO_8859_1), secret), salt);
             byte[] passEnc = EncryptionUtil.encrypt2(EncryptionUtil.encrypt2(password.getBytes(StandardCharsets.ISO_8859_1), secret), salt);
 
-            update("INSERT OR REPLACE INTO `CREDENTIALS2` (`discordid`, `user`, `password`, `salt`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            update("INSERT OR REPLACE INTO `CREDENTIALS2` (`discordid`, `user`, `password`, `salt`, `date_updated`) VALUES(?, ?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
                 stmt.setLong(1, nationId);
                 stmt.setString(2, Base64.encodeBase64String(userEnc));
                 stmt.setString(3, Base64.encodeBase64String(passEnc));
                 stmt.setString(4, Base64.encodeBase64String(salt));
+                stmt.setLong(5, System.currentTimeMillis());
             });
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -672,10 +692,11 @@ public class DiscordDB extends DBMainV2 {
         PNWUser existing = userNationCache.put(user.getNationId(), user);
         if (existing != null && existing.getDiscordId() == user.getDiscordId() && user.getNationId() == existing.getNationId()) return;
 
-        update("INSERT OR REPLACE INTO `USERS`(`nation_id`, `discord_id`, `discord_name`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        update("INSERT OR REPLACE INTO `USERS`(`nation_id`, `discord_id`, `discord_name`, `date_updated`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, user.getNationId());
             stmt.setLong(2, user.getDiscordId());
             stmt.setString(3, user.getDiscordName());
+            stmt.setLong(4, System.currentTimeMillis());
         });
     }
 

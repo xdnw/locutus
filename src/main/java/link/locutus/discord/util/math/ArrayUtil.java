@@ -568,6 +568,13 @@ public class ArrayUtil {
         };
     }
 
+    public static <T> Map<T, String> sortStringMap(Map<T, String> unsorted, boolean ascendingAlphabetValues) {
+        Comparator<String> valueComparator = ascendingAlphabetValues ?
+                Comparator.comparing(String::toString) :
+                Comparator.reverseOrder();
+        return sortMap(unsorted, valueComparator);
+    }
+
     public static <T, V extends Number> Map<T, V> sortMap(Map<T, V> unsorted, boolean ascendingValues) {
         Comparator<V> valueComparator = ascendingValues ?
                 Comparator.comparingDouble(Number::doubleValue) :

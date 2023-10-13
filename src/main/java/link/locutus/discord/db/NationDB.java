@@ -28,6 +28,7 @@ import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.Treaty;
+import link.locutus.discord.db.handlers.SyncableDatabase;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.alliance.AllianceCreateEvent;
 import link.locutus.discord.event.alliance.AllianceDeleteEvent;
@@ -73,7 +74,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class NationDB extends DBMainV2 {
+public class NationDB extends DBMainV2 implements SyncableDatabase {
     private static final Logger LOGGER = LoggerFactory.getLogger(NationDB.class.getSimpleName());
     private final Map<Integer, DBNation> nationsById = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Map<Integer, DBNation>> nationsByAlliance = new Int2ObjectOpenHashMap<>();
@@ -2043,6 +2044,11 @@ public class NationDB extends DBMainV2 {
         );
     }
 
+    @Override
+    public Map<String, String> getTablesToSync() {
+        return Map.of("NATION_META", "date_updated");
+    }
+
     public void createTables() {
         {
             // loot_estimates int nation_id, double[] min, double[] max, double[] offset, long lastTurnRevenue, int tax_id
@@ -2158,13 +2164,16 @@ public class NationDB extends DBMainV2 {
         }
 
         {
-            String nations = "CREATE TABLE IF NOT EXISTS `NATION_META` (`id` BIGINT NOT NULL, `key` BIGINT NOT NULL, `meta` BLOB NOT NULL, PRIMARY KEY(id, key))";
+            String nations = "CREATE TABLE IF NOT EXISTS `NATION_META` (`id` BIGINT NOT NULL, `key` BIGINT NOT NULL, `meta` BLOB NOT NULL, `date_updated` BIGINT NOT NULL, PRIMARY KEY(id, key))";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(nations);
                 stmt.executeBatch();
                 stmt.clearBatch();
             } catch (SQLException e) {
                 e.printStackTrace();
+            }
+            if (getTableColumns("NATION_META").stream().noneMatch(c -> c.equalsIgnoreCase("date_updated"))) {
+                executeStmt("ALTER TABLE NATION_META ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis());
             }
         }
         ;
@@ -2999,7 +3008,7 @@ public class NationDB extends DBMainV2 {
     public void setMeta(int nationId, int ordinal, byte[] value) {
         checkNotNull(value);
         long pair = MathMan.pairInt(nationId, ordinal);
-        update("INSERT OR REPLACE INTO `NATION_META`(`id`, `key`, `meta`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        update("INSERT OR REPLACE INTO `NATION_META`(`id`, `key`, `meta`, `date_updated`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
             stmt.setInt(2, ordinal);
             stmt.setBytes(3, value);
