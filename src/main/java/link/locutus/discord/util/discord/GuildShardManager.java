@@ -9,6 +9,7 @@ import net.dv8tion.jda.api.utils.cache.CacheFlag;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -95,7 +96,8 @@ public class GuildShardManager {
     }
 
     public void awaitReady() throws InterruptedException {
-        for (JDA jda : instances) {
+        Set<JDA> copy = new HashSet<>(instances);
+        for (JDA jda : copy) {
             jda.awaitReady();
             for (Guild guild : jda.getGuilds()) {
                 discordAPIMap.put(guild.getIdLong(), jda);
