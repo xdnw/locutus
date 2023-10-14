@@ -1886,16 +1886,6 @@ public class BankCommands {
                     response.append("Failed to reset escrow balance: " + e.getMessage() + "\n");
                 }
             }
-
-            System.out.println(StringMan.getString(deposits));
-            System.out.println(StringMan.getString(tax));
-            System.out.println(StringMan.getString(loan));
-
-
-
-
-
-
         }
 
         if (!force) {
