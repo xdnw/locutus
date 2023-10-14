@@ -77,14 +77,14 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     }
 
     public NationAttribute getMetric(ValueStore<?> store, String id, boolean ignorePerms) {
-        TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, id, null, 0, true);
+        TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, "{" + id + "}", null, 0, true);
         if (typeFunction == null) return null;
         return new NationAttribute<>(id, "", typeFunction.getType(), typeFunction);
     }
 
     public NationAttributeDouble getMetricDouble(ValueStore store, String id, boolean ignorePerms) {
-        TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, id, null, 0, true);
         if (typeFunction == null) return null;
+        TypedFunction<DBNation, ?> typeFunction = formatRecursively(store, "{" + id + "}", null, 0, true);
 
         TypedFunction<DBNation, ?> genericFunc = typeFunction;
         Function<DBNation, Double> func;
