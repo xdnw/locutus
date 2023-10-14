@@ -348,13 +348,9 @@ public class PnwUtil {
         }
         double[] rss = result.computeIfAbsent(type, f -> ResourceType.getBuffer());
         if (sign == 1) {
-            for (int i = 0; i < rss.length; i++) {
-                rss[i] += amount[i];
-            }
+            ResourceType.add(rss, amount);
         } else if (sign == -1) {
-            for (int i = 0; i < rss.length; i++) {
-                rss[i] -= amount[i];
-            }
+            ResourceType.subtract(rss, amount);
         } else {
             for (int i = 0; i < rss.length; i++) {
                 rss[i] += amount[i] * sign;

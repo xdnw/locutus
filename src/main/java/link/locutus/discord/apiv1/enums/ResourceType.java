@@ -118,7 +118,9 @@ public enum ResourceType {
 
     public static double[] subtract(double[] resources, double[] values) {
         for (int i = 0; i < values.length; i++) {
-            resources[i] -= values[i];
+            double amt = values[i];
+            double curr = resources[i];
+            resources[i] = (Math.round(curr * 100) - Math.round(amt * 100)) * 0.01;
         }
         return resources;
     }
@@ -132,7 +134,19 @@ public enum ResourceType {
     }
     public static double[] add(double[] resources, double[] values) {
         for (int i = 0; i < values.length; i++) {
-            resources[i] += values[i];
+            double amt = values[i];
+            double curr = resources[i];
+            resources[i] = Math.round(amt * 100) * 0.01 + Math.round(curr * 100) * 0.01;
+        }
+        return resources;
+    }
+
+    public static double[] round(double[] resources) {
+        for (int i = 0; i < resources.length; i++) {
+            double amt = resources[i];
+            if (amt != 0) {
+                resources[i] = Math.round(amt * 100) * 0.01;
+            }
         }
         return resources;
     }

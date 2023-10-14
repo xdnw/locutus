@@ -1816,17 +1816,12 @@ public class BankCommands {
         double[] totalExpire = ResourceType.getBuffer();
         double[] totalEscrow = ResourceType.getBuffer();
 
-        System.out.println(StringMan.getString(totalDeposits));
-        System.out.println(StringMan.getString(totalTax));
-        System.out.println(StringMan.getString(totalLoan));
-        System.out.println(StringMan.getString(totalExpire));
-        System.out.println(StringMan.getString(totalEscrow));
-
         for (DBNation nation : nations.getNations()) {
             Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, force ? 0L : -1L, 0, true);
 
             double[] deposits = depoByType.get(DepositType.DEPOSIT);
             if (deposits != null && !ignoreBankDeposits && !ResourceType.isZero(deposits)) {
+                ResourceType.round(deposits);
                 response.append("Subtracting `" + nation.getQualifiedId() + " " + PnwUtil.resourcesToString(deposits) + " #deposit`\n");
                 ResourceType.subtract(totalDeposits, deposits);
                 if (force) db.subBalance(now, nation, me.getNation_id(), "#deposit", deposits);
@@ -1834,6 +1829,7 @@ public class BankCommands {
 
             double[] tax = depoByType.get(DepositType.TAX);
             if (tax != null && !ignoreTaxes && !ResourceType.isZero(tax)) {
+                ResourceType.round(tax);
                 response.append("Subtracting `" + nation.getQualifiedId() + " " + PnwUtil.resourcesToString(tax) + " #tax`\n");
                 ResourceType.subtract(totalTax, tax);
                 if (force) db.subBalance(now, nation, me.getNation_id(), "#tax", tax);
@@ -1841,6 +1837,7 @@ public class BankCommands {
 
             double[] loan = depoByType.get(DepositType.LOAN);
             if (loan != null && !ignoreLoans && !ResourceType.isZero(loan)) {
+                ResourceType.round(loan);
                 response.append("Subtracting `" + nation.getQualifiedId() + " " + PnwUtil.resourcesToString(loan) + " #loan`\n");
                 ResourceType.subtract(totalLoan, loan);
                 if (force) db.subBalance(now, nation, me.getNation_id(), "#loan", loan);
@@ -1889,6 +1886,16 @@ public class BankCommands {
                     response.append("Failed to reset escrow balance: " + e.getMessage() + "\n");
                 }
             }
+
+            System.out.println(StringMan.getString(deposits));
+            System.out.println(StringMan.getString(tax));
+            System.out.println(StringMan.getString(loan));
+
+
+
+
+
+
         }
 
         if (!force) {
@@ -2396,7 +2403,7 @@ public class BankCommands {
             int i = 12;
             for (ResourceType type : ResourceType.values) {
                 if (type == ResourceType.CREDITS) continue;
-                header.set((i++), total[type.ordinal()]);
+                header.set((i++), MathMan.format(total[type.ordinal()]));
             }
             double[] normalized = PnwUtil.normalize(total);
             if (PnwUtil.convertedTotal(normalized) > 0) {

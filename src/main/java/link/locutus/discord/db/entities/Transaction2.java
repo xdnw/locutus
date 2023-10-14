@@ -316,7 +316,7 @@ public class Transaction2 {
         int i = 9;
         for (ResourceType type : ResourceType.values) {
             if (type == ResourceType.CREDITS) continue;
-            stmt.setLong(i, (long) (resources[type.ordinal()] * 100d));
+            stmt.setLong(i, Math.round(resources[type.ordinal()] * 100d));
             i++;
         }
     }
