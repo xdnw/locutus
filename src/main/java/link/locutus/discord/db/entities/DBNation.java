@@ -76,6 +76,7 @@ import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
@@ -4969,24 +4970,25 @@ public class DBNation implements NationOrAlliance {
         return false;
     }
 
-    @Command(desc = "If online ingame or discord")
-    public boolean isOnline() {
-        if (active_m() < 60) return true;
+    @Command(desc = "Discord online status")
+    public OnlineStatus getOnlineStatus() {
         User user = getUser();
         if (user != null) {
             for (Guild guild : user.getMutualGuilds()) {
                 Member member = guild.getMember(user);
                 if (member != null) {
-
-                    switch (member.getOnlineStatus()) {
-                        case ONLINE:
-                        case DO_NOT_DISTURB:
-                            return true;
-                    }
+                    return member.getOnlineStatus();
                 }
             }
         }
-        return false;
+        return OnlineStatus.OFFLINE;
+    }
+
+    @Command(desc = "If online ingame or discord")
+    public boolean isOnline() {
+        if (active_m() < 60) return true;
+        OnlineStatus status = getOnlineStatus();
+        return status == OnlineStatus.ONLINE || status == OnlineStatus.DO_NOT_DISTURB;
     }
 
     public Set<DBWar> getActiveWars() {
