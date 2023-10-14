@@ -607,7 +607,7 @@ public class Settings extends Config {
         public String SCRIPT = "";
         @Comment({"Intervals in turns between backups",
         "Set to 0 to always make a new backup on startup"})
-        public int TURNS = 1;
+        public int TURNS = 2;
     }
 
     private File defaultFile = new File("config" + File.separator + "config.yaml");
