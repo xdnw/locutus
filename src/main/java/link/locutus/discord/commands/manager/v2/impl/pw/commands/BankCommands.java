@@ -1816,6 +1816,12 @@ public class BankCommands {
         double[] totalExpire = ResourceType.getBuffer();
         double[] totalEscrow = ResourceType.getBuffer();
 
+        System.out.println(StringMan.getString(totalDeposits));
+        System.out.println(StringMan.getString(totalTax));
+        System.out.println(StringMan.getString(totalLoan));
+        System.out.println(StringMan.getString(totalExpire));
+        System.out.println(StringMan.getString(totalEscrow));
+
         for (DBNation nation : nations.getNations()) {
             Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, force ? 0L : -1L, 0, true);
 
