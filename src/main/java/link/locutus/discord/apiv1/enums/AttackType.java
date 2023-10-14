@@ -1,6 +1,7 @@
 package link.locutus.discord.apiv1.enums;
 
 import link.locutus.discord.apiv1.enums.city.JavaCity;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.db.entities.DBNation;
 
 import java.util.*;
@@ -395,8 +396,11 @@ public enum AttackType {
     }
 
     @Command(desc = "Resistance points dealt for an attack with the given success types")
-    public int getResistance(SuccessType type) {
-
+    public int getResistance(SuccessType success) {
+        if (this == MISSILE || this == NUKE) {
+            return success == SuccessType.UTTER_FAILURE ? 0 : getResistanceIT();
+        }
+        return getResistanceIT() - (9 - success.ordinal() * 3);
     }
 
     @Command(desc = "The Military Action Points (MAP) used for this attack type")

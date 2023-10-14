@@ -10,12 +10,16 @@ import link.locutus.discord.apiv1.enums.city.building.imp.AMilitaryBuilding;
 import link.locutus.discord.apiv1.enums.city.building.imp.APowerBuilding;
 import link.locutus.discord.apiv1.enums.city.building.imp.AResourceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import rocker.grant.city;
 
 
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public interface Building {
 
@@ -60,9 +64,15 @@ public interface Building {
         return true;
     }
 
+    @Command(desc = "Get the numeric id of this building")
     int ordinal();
 
     double profitConverted(Continent continent, double rads, Predicate<Project> hasProject, JavaCity city, int amt);
 
     double[] profit(Continent continent, double rads, long date, Predicate<Project> hasProject, JavaCity city, double[] profitBuffer, int turns);
+
+    @Command(desc = "Get the continents this building can be built on")
+    default Set<Continent> getContinents() {
+        return Arrays.stream(Continent.values()).filter(this::canBuild).collect(Collectors.toSet());
+    }
 }

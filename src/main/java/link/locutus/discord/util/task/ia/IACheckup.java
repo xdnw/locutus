@@ -114,13 +114,17 @@ public class IACheckup {
     }
 
     public Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> checkup(Collection<DBNation> nations, Consumer<DBNation> onEach, boolean fast) throws InterruptedException, ExecutionException, IOException {
+        return checkup(nations, onEach, AuditType.values(), fast);
+    }
+
+    public Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> checkup(Collection<DBNation> nations, Consumer<DBNation> onEach, AuditType[] auditTypes, boolean fast) throws InterruptedException, ExecutionException, IOException {
         Map<DBNation, Map<AuditType, Map.Entry<Object, String>>> result = new LinkedHashMap<>();
         for (DBNation nation : nations) {
             if (nation.getVm_turns() != 0 || nation.getActive_m() > 10000) continue;
 
             if (onEach != null) onEach.accept(nation);
 
-            Map<AuditType, Map.Entry<Object, String>> nationMap = checkup(nation, AuditType.values(), fast, fast);
+            Map<AuditType, Map.Entry<Object, String>> nationMap = checkup(nation, auditTypes, fast, fast);
             result.put(nation, nationMap);
         }
         return result;

@@ -3,9 +3,14 @@ package link.locutus.discord.util.math;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2DoubleSortedMap;
+import it.unimi.dsi.fastutil.objects.Object2DoubleSortedMaps;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectAVLTreeMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectRBTreeMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectSortedMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
@@ -15,6 +20,7 @@ import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.task.ia.IACheckup;
 import org.apache.commons.lang3.math.NumberUtils;
 
 import javax.annotation.Nullable;
@@ -53,6 +59,7 @@ import java.util.function.IntBinaryOperator;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.ToIntFunction;
+import java.util.stream.Collectors;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
@@ -561,6 +568,35 @@ public class ArrayUtil {
         };
     }
 
+    public static <T> Map<T, String> sortStringMap(Map<T, String> unsorted, boolean ascendingAlphabetValues) {
+        Comparator<String> valueComparator = ascendingAlphabetValues ?
+                Comparator.comparing(String::toString) :
+                Comparator.reverseOrder();
+        return sortMap(unsorted, valueComparator);
+    }
+
+    public static <T, V extends Number> Map<T, V> sortMap(Map<T, V> unsorted, boolean ascendingValues) {
+        Comparator<V> valueComparator = ascendingValues ?
+                Comparator.comparingDouble(Number::doubleValue) :
+                (o1, o2) -> Double.compare(o2.doubleValue(), o1.doubleValue());
+        return sortMap(unsorted, valueComparator);
+    }
+
+    public static <T, V> Map<T, V> sortMap(Map<T, V> unsorted, Comparator<V> valueComparator) {
+        // Sort the entries of the map by values using the provided comparator
+        List<Map.Entry<T, V>> sortedEntries = unsorted.entrySet()
+                .stream()
+                .sorted(Map.Entry.comparingByValue(valueComparator))
+                .toList();
+
+        // Create a LinkedHashMap to maintain the order of sorted entries
+        Map<T, V> sortedMap = new LinkedHashMap<>();
+        for (Map.Entry<T, V> entry : sortedEntries) {
+            sortedMap.put(entry.getKey(), entry.getValue());
+        }
+
+        return sortedMap;
+    }
     public interface MathToken<T extends MathToken<T>> {
         T create(String input);
         T add(T other);

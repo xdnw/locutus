@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationFilterString;
 import link.locutus.discord.util.math.ArrayUtil;
+import org.jooq.meta.derby.sys.Sys;
 
 import java.lang.reflect.InvocationTargetException;
 import java.sql.PreparedStatement;
@@ -260,12 +261,15 @@ public class GrantTemplateManager {
 
         String table = template.getType().getTable();
         String name = template.getName();
-        String sql = "DELETE FROM `" + table + "` WHERE `name` = ?";
-        try (PreparedStatement stmt = db.prepareQuery(sql)) {
-            stmt.setString(1, name);
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
+        synchronized (db) {
+            db.logDeletion(table, System.currentTimeMillis(), "name", name);
+            String sql = "DELETE FROM `" + table + "` WHERE `name` = ?";
+            try (PreparedStatement stmt = db.prepareQuery(sql)) {
+                stmt.setString(1, name);
+                stmt.executeUpdate();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
     }
 

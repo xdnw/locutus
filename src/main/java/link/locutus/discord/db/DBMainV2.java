@@ -185,44 +185,7 @@ public class DBMainV2 implements Closeable {
     public <T> int[] executeBatch(Collection<T> objects, String query, BiConsumer<T, PreparedStatement> consumer) {
         if (objects.isEmpty()) return new int[0];
         synchronized (this) {
-            try {
-                if (objects.size() == 1) {
-                    try (PreparedStatement ps = getConnection().prepareStatement(query)) {
-                        consumer.accept(objects.iterator().next(), ps);
-                        int result = ps.executeUpdate();
-                        return new int[]{result};
-                    }
-                }
-                getConnection().setAutoCommit(false);
-                try (PreparedStatement ps = getConnection().prepareStatement(query)) {
-                    boolean clear = false;
-                    for (T object : objects) {
-                        if (clear) ps.clearParameters();
-                        clear = true;
-                        consumer.accept(object, ps);
-                        ps.addBatch();
-                    }
-                    return ps.executeBatch();
-                }
-                finally {
-                    try {
-                        getConnection().commit();
-                    } catch (SQLException e) {
-                        e.printStackTrace();
-                        throw new RuntimeException(e);
-                    } finally {
-                        try {
-                            getConnection().setAutoCommit(true);
-                        } catch (SQLException e) {
-                            e.printStackTrace();
-                            throw new RuntimeException(e);
-                        }
-                    }
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-                throw new RuntimeException(e);
-            }
+            return SQLUtil.executeBatch(getConnection(), objects, query, consumer);
         }
     }
 

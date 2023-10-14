@@ -168,6 +168,11 @@ public class PWBindings extends BindingHelper {
         return emum(DBLoan.Status.class, input);
     }
 
+    @Binding(value = "The success type of an attack")
+    public SuccessType SuccessType(String input) {
+        return emum(SuccessType.class, input);
+    }
+
     @Binding
     public static DBBan ban(String input) {
         if (MathMan.isInteger(input)) {

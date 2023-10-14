@@ -28,6 +28,7 @@ import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.Treaty;
+import link.locutus.discord.db.handlers.SyncableDatabase;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.event.alliance.AllianceCreateEvent;
 import link.locutus.discord.event.alliance.AllianceDeleteEvent;
@@ -73,7 +74,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class NationDB extends DBMainV2 {
+public class NationDB extends DBMainV2 implements SyncableDatabase {
     private static final Logger LOGGER = LoggerFactory.getLogger(NationDB.class.getSimpleName());
     private final Map<Integer, DBNation> nationsById = new Int2ObjectOpenHashMap<>();
     private final Map<Integer, Map<Integer, DBNation>> nationsByAlliance = new Int2ObjectOpenHashMap<>();
@@ -2043,6 +2044,16 @@ public class NationDB extends DBMainV2 {
         );
     }
 
+    @Override
+    public Set<String> getTablesAllowingDeletion() {
+        return Set.of("NATION_META");
+    }
+
+    @Override
+    public Map<String, String> getTablesToSync() {
+        return Map.of("NATION_META", "date_updated");
+    }
+
     public void createTables() {
         {
             // loot_estimates int nation_id, double[] min, double[] max, double[] offset, long lastTurnRevenue, int tax_id
@@ -2158,13 +2169,16 @@ public class NationDB extends DBMainV2 {
         }
 
         {
-            String nations = "CREATE TABLE IF NOT EXISTS `NATION_META` (`id` BIGINT NOT NULL, `key` BIGINT NOT NULL, `meta` BLOB NOT NULL, PRIMARY KEY(id, key))";
+            String nations = "CREATE TABLE IF NOT EXISTS `NATION_META` (`id` BIGINT NOT NULL, `key` BIGINT NOT NULL, `meta` BLOB NOT NULL, `date_updated` BIGINT NOT NULL, PRIMARY KEY(id, key))";
             try (Statement stmt = getConnection().createStatement()) {
                 stmt.addBatch(nations);
                 stmt.executeBatch();
                 stmt.clearBatch();
             } catch (SQLException e) {
                 e.printStackTrace();
+            }
+            if (getTableColumns("NATION_META").stream().noneMatch(c -> c.equalsIgnoreCase("date_updated"))) {
+                executeStmt("ALTER TABLE NATION_META ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis());
             }
         }
         ;
@@ -2264,24 +2278,26 @@ public class NationDB extends DBMainV2 {
         executeStmt("CREATE INDEX IF NOT EXISTS index_banned_nations_discord_id ON banned_nations (discord_id);");
 
         purgeOldBeigeReminders();
-
-        //Create table IMPORTED_LOANS
-        executeStmt("CREATE TABLE IF NOT EXISTS IMPORTED_LOANS (" +
-                        "allianceOrGuild BIGINT NOT NULL, " +
-                        "nation_id INT NOT NULL, " +
-                        "loan_date BIGINT NOT NULL, " +
-                        "loaner_user BIGINT NOT NULL, " +
-                        "status INT NOT NULL, " +
-                        "principal BLOB NOT NULL, " +
-                        "remaining BLOB NOT NULL, " +
-                        "date_submitted BIGINT NOT NULL, " +
-                        "PRIMARY KEY(allianceOrGuild, nation_id))");
-        //Add index for nation_id
-        executeStmt("CREATE INDEX IF NOT EXISTS index_imported_loans_nation_id ON IMPORTED_LOANS (nation_id);");
+//
+//        //Create table IMPORTED_LOANS
+//        executeStmt("CREATE TABLE IF NOT EXISTS IMPORTED_LOANS (" +
+//                        "allianceOrGuild BIGINT NOT NULL, " +
+//                        "nation_id INT NOT NULL, " +
+//                        "loan_date BIGINT NOT NULL, " +
+//                        "loaner_user BIGINT NOT NULL, " +
+//                        "status INT NOT NULL, " +
+//                        "principal BLOB NOT NULL, " +
+//                        "remaining BLOB NOT NULL, " +
+//                        "date_submitted BIGINT NOT NULL, " +
+//                        "PRIMARY KEY(allianceOrGuild, nation_id))");
+//        //Add index for nation_id
+//        executeStmt("CREATE INDEX IF NOT EXISTS index_imported_loans_nation_id ON IMPORTED_LOANS (nation_id);");
 
         this.reportManager = new ReportManager(this);
 
         this.loanManager = new LoanManager(this);
+
+        createDeletionsTables();
     }
 
     public void importMultiBans() {
@@ -2955,7 +2971,6 @@ public class NationDB extends DBMainV2 {
 
     public void loadAndPurgeMeta() {
         List<Integer> toDelete = new ArrayList<>();
-
         try (PreparedStatement stmt = prepareQuery("select * FROM NATION_META")) {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -2999,10 +3014,11 @@ public class NationDB extends DBMainV2 {
     public void setMeta(int nationId, int ordinal, byte[] value) {
         checkNotNull(value);
         long pair = MathMan.pairInt(nationId, ordinal);
-        update("INSERT OR REPLACE INTO `NATION_META`(`id`, `key`, `meta`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        update("INSERT OR REPLACE INTO `NATION_META`(`id`, `key`, `meta`, `date_updated`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
             stmt.setInt(2, ordinal);
             stmt.setBytes(3, value);
+            stmt.setLong(4, System.currentTimeMillis());
         });
     }
 
@@ -3011,32 +3027,34 @@ public class NationDB extends DBMainV2 {
     }
 
     public void deleteMeta(int nationId, int keyId) {
-        update("DELETE FROM NATION_META where id = ? AND key = ?", new ThrowingConsumer<PreparedStatement>() {
-            @Override
-            public void acceptThrows(PreparedStatement stmt) throws Exception {
-                stmt.setInt(1, nationId);
-                stmt.setInt(2, keyId);
-            }
-        });
+        synchronized (this) {
+            logDeletion("NATION_META", System.currentTimeMillis(), new String[]{"id", "key"}, nationId, keyId);
+            update("DELETE FROM NATION_META where id = ? AND key = ?", new ThrowingConsumer<PreparedStatement>() {
+                @Override
+                public void acceptThrows(PreparedStatement stmt) throws Exception {
+                    stmt.setInt(1, nationId);
+                    stmt.setInt(2, keyId);
+                }
+            });
+        }
     }
 
 
     public void deleteMeta(AllianceMeta key) {
-        update("DELETE FROM NATION_META where key = ? AND id < 0", new ThrowingConsumer<PreparedStatement>() {
-            @Override
-            public void acceptThrows(PreparedStatement stmt) throws Exception {
-                stmt.setInt(1, key.ordinal());
-            }
-        });
+        String condition = "key = " + key.ordinal() + " AND id < 0";
+        deleteMeta(condition);
     }
 
     public void deleteMeta(NationMeta key) {
-        update("DELETE FROM NATION_META where key = ? AND id > 0", new ThrowingConsumer<PreparedStatement>() {
-            @Override
-            public void acceptThrows(PreparedStatement stmt) throws Exception {
-                stmt.setInt(1, key.ordinal());
-            }
-        });
+        String condition = "key = " + key.ordinal() + " AND id > 0";
+        deleteMeta(condition);
+    }
+
+    private void deleteMeta(String condition) {
+        synchronized (this) {
+            logDeletion("NATION_META", System.currentTimeMillis(), condition, "id", "key");
+            update("DELETE FROM NATION_META where " + condition);
+        }
     }
 
     public void deleteBeigeReminder(int attacker, int target) {
