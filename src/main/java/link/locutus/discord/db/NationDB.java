@@ -2045,6 +2045,11 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     }
 
     @Override
+    public Set<String> getTablesAllowingDeletion() {
+        return Set.of("NATION_META");
+    }
+
+    @Override
     public Map<String, String> getTablesToSync() {
         return Map.of("NATION_META", "date_updated");
     }
@@ -2291,6 +2296,8 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         this.reportManager = new ReportManager(this);
 
         this.loanManager = new LoanManager(this);
+
+        createDeletionsTables();
     }
 
     public void importMultiBans() {
@@ -2964,7 +2971,6 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
 
     public void loadAndPurgeMeta() {
         List<Integer> toDelete = new ArrayList<>();
-
         try (PreparedStatement stmt = prepareQuery("select * FROM NATION_META")) {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -3012,6 +3018,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             stmt.setInt(1, nationId);
             stmt.setInt(2, ordinal);
             stmt.setBytes(3, value);
+            stmt.setLong(4, System.currentTimeMillis());
         });
     }
 
@@ -3020,32 +3027,34 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public void deleteMeta(int nationId, int keyId) {
-        update("DELETE FROM NATION_META where id = ? AND key = ?", new ThrowingConsumer<PreparedStatement>() {
-            @Override
-            public void acceptThrows(PreparedStatement stmt) throws Exception {
-                stmt.setInt(1, nationId);
-                stmt.setInt(2, keyId);
-            }
-        });
+        synchronized (this) {
+            logDeletion("NATION_META", System.currentTimeMillis(), new String[]{"id", "key"}, nationId, keyId);
+            update("DELETE FROM NATION_META where id = ? AND key = ?", new ThrowingConsumer<PreparedStatement>() {
+                @Override
+                public void acceptThrows(PreparedStatement stmt) throws Exception {
+                    stmt.setInt(1, nationId);
+                    stmt.setInt(2, keyId);
+                }
+            });
+        }
     }
 
 
     public void deleteMeta(AllianceMeta key) {
-        update("DELETE FROM NATION_META where key = ? AND id < 0", new ThrowingConsumer<PreparedStatement>() {
-            @Override
-            public void acceptThrows(PreparedStatement stmt) throws Exception {
-                stmt.setInt(1, key.ordinal());
-            }
-        });
+        String condition = "key = " + key.ordinal() + " AND id < 0";
+        deleteMeta(condition);
     }
 
     public void deleteMeta(NationMeta key) {
-        update("DELETE FROM NATION_META where key = ? AND id > 0", new ThrowingConsumer<PreparedStatement>() {
-            @Override
-            public void acceptThrows(PreparedStatement stmt) throws Exception {
-                stmt.setInt(1, key.ordinal());
-            }
-        });
+        String condition = "key = " + key.ordinal() + " AND id > 0";
+        deleteMeta(condition);
+    }
+
+    private void deleteMeta(String condition) {
+        synchronized (this) {
+            logDeletion("NATION_META", System.currentTimeMillis(), condition, "id", "key");
+            update("DELETE FROM NATION_META where " + condition);
+        }
     }
 
     public void deleteBeigeReminder(int attacker, int target) {

@@ -566,23 +566,8 @@ public class Settings extends Config {
 
         public static class SYNC {
             public long BOT_ID = 0;
-            public String WEB_URL = "";
-
-            @Create
-            public REGISTRATION REGISTRATION;
-
-            @Create
-            public BALANCES BALANCES;
-
-            public static final class REGISTRATION {
-                public boolean ENABLED = false;
-            }
-
-            public static final class BALANCES {
-                public boolean ENABLED = false;
-                public List<Long> GUILDS = new ArrayList<>();
-            }
-
+            public String WEB_ENDPOINT = "";
+            public boolean ENABLED = false;
         }
 //
 //        @Comment("TODO: MySQL support is not fully implemented. Request this to be finished if important")

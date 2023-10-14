@@ -1,5 +1,6 @@
 package link.locutus.discord.db.handlers;
 
+import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.SQLUtil;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 
@@ -49,6 +50,14 @@ public interface SyncableDatabase {
         return columnNames;
     }
 
+    default void createDeletionsTables() {
+        if (Settings.INSTANCE.DATABASE.SYNC.ENABLED) {
+            for (String table : getTablesAllowingDeletion()) {
+                createDeletionsTable(table);
+            }
+        }
+    }
+
     private void createDeletionsTable(String tableName) {
         Map<String, String> primaryKeyNameType = getPrimaryKeys(tableName);
         StringBuilder createStmt = new StringBuilder("CREATE TABLE IF NOT EXISTS " + tableName + "_deletions (");
@@ -89,29 +98,50 @@ public interface SyncableDatabase {
     }
 
     default void logDeletions(String tableName, long date, String[] primaryKeys, List<Object[]> primaryKeyValues) {
-        if (primaryKeyValues.isEmpty()) return;
-        String deletionTable = tableName + "_deletions";
-        StringBuilder query = new StringBuilder("INSERT OR REPLACE INTO " + deletionTable + " (");
-        for (int i = 0; i < primaryKeys.length; i++) {
-            query.append(primaryKeys[i]);
-            if (i < primaryKeys.length - 1) {
-                query.append(", ");
+        if (Settings.INSTANCE.DATABASE.SYNC.ENABLED) {
+            if (primaryKeyValues.isEmpty()) return;
+            String deletionTable = tableName + "_deletions";
+            StringBuilder query = new StringBuilder("INSERT OR REPLACE INTO " + deletionTable + " (");
+            for (int i = 0; i < primaryKeys.length; i++) {
+                query.append(primaryKeys[i]);
+                if (i < primaryKeys.length - 1) {
+                    query.append(", ");
+                }
+            }
+            query.append(", date_updated) VALUES (");
+            for (int i = 0; i < primaryKeys.length + 1; i++) {
+                query.append("?");
+                if (i < primaryKeys.length + 1 - 1) {
+                    query.append(", ");
+                }
+            }
+            query.append(")");
+            SQLUtil.executeBatch(getConnection(), primaryKeyValues, query.toString(), (ThrowingBiConsumer<Object[], PreparedStatement>) (keyValues, stmt) -> {
+                for (int i = 0; i < keyValues.length; i++) {
+                    stmt.setObject(i + 1, keyValues[i]);
+                }
+                stmt.setLong(keyValues.length + 1, date);
+            });
+        }
+    }
+    default void logDeletion(String nationMeta, long date, String condition, String... columns) {
+        if (Settings.INSTANCE.DATABASE.SYNC.ENABLED) {
+            String select = "SELECT " + String.join(", ", columns) + " FROM " + nationMeta + " WHERE " + condition;
+            try (PreparedStatement stmt = getConnection().prepareStatement(select)) {
+                ResultSet resultSet = stmt.executeQuery();
+                List<Object[]> list = new ArrayList<>();
+                while (resultSet.next()) {
+                    Object[] objects = new Object[columns.length];
+                    for (int i = 0; i < columns.length; i++) {
+                        objects[i] = resultSet.getObject(columns[i]);
+                    }
+                    list.add(objects);
+                }
+                logDeletions(nationMeta, date, columns, list);
+            } catch (SQLException e) {
+                e.printStackTrace();
             }
         }
-        query.append(", date_updated) VALUES (");
-        for (int i = 0; i < primaryKeys.length + 1; i++) {
-            query.append("?");
-            if (i < primaryKeys.length + 1 - 1) {
-                query.append(", ");
-            }
-        }
-        query.append(")");
-        SQLUtil.executeBatch(getConnection(), primaryKeyValues, query.toString(), (ThrowingBiConsumer<Object[], PreparedStatement>) (keyValues, stmt) -> {
-            for (int i = 0; i < keyValues.length; i++) {
-                stmt.setObject(i + 1, keyValues[i]);
-            }
-            stmt.setLong(keyValues.length + 1, date);
-        });
     }
 
     default void logDeletion(String tableName, long date, String primaryKey, Object primaryKeyValue) {
@@ -272,40 +302,25 @@ public interface SyncableDatabase {
 
     default void writeDeletions(Object lock, String table, List<String> primaryKeys, DataInputStream is) throws IOException {
         List<Object[]> data = deserializeSQLRowData(primaryKeys.size() + 1, is);
+        String query = constructDeletionQuery(table, primaryKeys);
         synchronized (lock) {
-            constructDeletionQuery(); // todo
+            SQLUtil.executeBatch(getConnection(), data, query, (ThrowingBiConsumer<Object[], PreparedStatement>) (rowData, preparedStatement) -> {
+                for (int i = 0; i < rowData.length; i++) {
+                    Object value = rowData[i];
+                    SQLUtil.set(preparedStatement, i + 1, value);
+                }
+            });
         }
     }
 
     default void writeData(Object lock, String table, List<String> columns, DataInputStream is) throws IOException {
         List<Object[]> data = deserializeSQLRowData(columns.size(), is);
+        String query = constructInsertQuery(table, columns);
         synchronized (lock) {
-            // Construct the INSERT query
-            String query = constructInsertQuery(table, columns);
-
-            // Use the executeBatch method to insert data into the database
-            SQLUtil.executeBatch(getConnection(), data, query, (rowData, preparedStatement) -> {
-                try {
-                    for (int i = 0; i < rowData.length; i++) {
-                        Object value = rowData[i];
-                        if (value == null) {
-                            preparedStatement.setNull(i + 1, Types.NULL);
-                        } else if (value instanceof String) {
-                            preparedStatement.setString(i + 1, (String) value);
-                        } else if (value instanceof Integer) {
-                            preparedStatement.setInt(i + 1, (Integer) value);
-                        } else if (value instanceof Long) {
-                            preparedStatement.setLong(i + 1, (Long) value);
-                        } else if (value instanceof Double) {
-                            preparedStatement.setDouble(i + 1, (Double) value);
-                        } else if (value instanceof byte[]) {
-                            preparedStatement.setBytes(i + 1, (byte[]) value);
-                        } else {
-                            throw new IllegalArgumentException("Unsupported data type: " + value.getClass().getName());
-                        }
-                    }
-                } catch (SQLException e) {
-                    e.printStackTrace();
+            SQLUtil.executeBatch(getConnection(), data, query, (ThrowingBiConsumer<Object[], PreparedStatement>) (rowData, preparedStatement) -> {
+                for (int i = 0; i < rowData.length; i++) {
+                    Object value = rowData[i];
+                    SQLUtil.set(preparedStatement, i + 1, value);
                 }
             });
         }
@@ -335,7 +350,7 @@ public interface SyncableDatabase {
         for (String column : primaryKeys) {
             queryBuilder.append(column).append(" = ? AND ");
         }
-        queryBuilder.append("date_updated <= ?");
-
+        queryBuilder.append("date_updated < ?");
+        return queryBuilder.toString();
     }
 }

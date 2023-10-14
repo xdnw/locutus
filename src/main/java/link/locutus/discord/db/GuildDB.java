@@ -155,6 +155,21 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
     }
 
     @Override
+    public Set<String> getTablesAllowingDeletion() {
+        Set<String> tables = new HashSet<>();
+        if (grantTemplateManager != null) {
+            for (TemplateTypes type : TemplateTypes.values()) {
+                tables.add(type.getTable());
+            }
+        }
+        tables.add("NATION_META");
+        tables.add("ROLES2");
+        tables.add("INFO");
+        tables.add("COALITIONS");
+        return tables;
+    }
+
+    @Override
     public Map<String, String> getTablesToSync() {
         Map<String, String> tableToColumn = new LinkedHashMap<>();
         if (grantTemplateManager != null) {
@@ -887,7 +902,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
                 e.printStackTrace();
             }
             // add date if missing
-            if (getTableColumns(getConnection(), "NATION_META").stream().noneMatch(c -> c.equalsIgnoreCase("date_updated"))) {
+            if (getTableColumns("NATION_META").stream().noneMatch(c -> c.equalsIgnoreCase("date_updated"))) {
                 executeStmt("ALTER TABLE NATION_META ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis());
             }
         };
@@ -902,46 +917,45 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
             } catch (SQLException e) {
                 e.printStackTrace();
             }
-            if (getTableColumns(getConnection(), "ROLES2").stream().noneMatch(c -> c.equalsIgnoreCase("date_updated"))) {
+            if (getTableColumns("ROLES2").stream().noneMatch(c -> c.equalsIgnoreCase("date_updated"))) {
                 executeStmt("ALTER TABLE ROLES2 ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis());
             }
             try (Statement stmt = getConnection().createStatement()) {
                 // Check if the table exists
-                ResultSet tables = getConnection().getMetaData().getTables(null, null, "ROLES2", null);
-                if (tables.next()) {
-                    // Check if the primary key doesn't exist
-                    ResultSet primaryKeys = getConnection().getMetaData().getPrimaryKeys(null, null, "ROLES2");
-                    boolean primaryKeyExists = primaryKeys.next();
-                    if (!primaryKeyExists) {
-                        ResultSet rowCountQuery = stmt.executeQuery("SELECT COUNT(*) FROM ROLES2");
-                        int rowCount = rowCountQuery.getInt(1);
-                        // Add the primary key
-                        String createTableSQL = "CREATE TABLE IF NOT EXISTS ROLES2 (role BIGINT NOT NULL, " +
-                                "alias BIGINT NOT NULL, alliance BIGINT NOT NULL, date_updated BIGINT NOT NULL, " +
-                                "PRIMARY KEY (role, alliance))";
-                        stmt.execute("PRAGMA foreign_keys=off");
-                        stmt.execute("BEGIN TRANSACTION");
-                        stmt.execute("ALTER TABLE ROLES2 RENAME TO ROLES2_old");
-                        stmt.execute(createTableSQL);
-                        stmt.execute("INSERT INTO ROLES2 SELECT * FROM ROLES2_old");
-                        stmt.execute("COMMIT");
-                        stmt.execute("PRAGMA foreign_keys=on");
+                // Check if the primary key doesn't exist
+                boolean primaryKeyExists;
+                try (ResultSet primaryKeys = getConnection().getMetaData().getPrimaryKeys(null, null, "ROLES2")) {
+                    primaryKeyExists = primaryKeys.next();
+                }
+                if (!primaryKeyExists) {
+                    int rowCount;
+                    try (ResultSet rowCountQuery = stmt.executeQuery("SELECT COUNT(*) FROM ROLES2")) {
+                        rowCount = rowCountQuery.getInt(1);
+                    }
+                    // Add the primary key
+                    String createTableSQL = "CREATE TABLE IF NOT EXISTS ROLES2 (role BIGINT NOT NULL, " +
+                            "alias BIGINT NOT NULL, alliance BIGINT NOT NULL, date_updated BIGINT NOT NULL, " +
+                            "PRIMARY KEY (role, alliance))";
+                    stmt.execute("BEGIN TRANSACTION");
+                    stmt.execute("ALTER TABLE ROLES2 RENAME TO ROLES2_old");
+                    stmt.execute(createTableSQL);
+                    stmt.execute("INSERT INTO ROLES2 SELECT * FROM ROLES2_old");
+                    stmt.execute("COMMIT");
 
-                        // Check the row count of the new table
-                        rowCountQuery = stmt.executeQuery("SELECT COUNT(*) FROM ROLES2");
-                        int newRowCount = rowCountQuery.getInt(1);
+                    // Check the row count of the new table
+                    int newRowCount;
+                    try (ResultSet rowCountQuery = stmt.executeQuery("SELECT COUNT(*) FROM ROLES2")) {
+                        newRowCount = rowCountQuery.getInt(1);
+                    }
 
-                        if (rowCount == newRowCount) {
-                            stmt.execute("DROP TABLE ROLES2_old");
-                            System.out.println("Primary key added to the ROLES2 table.");
-                        } else {
-                            System.err.println("Data migration failed. The old table still exists.");
-                        }
+                    if (rowCount == newRowCount) {
+                        stmt.execute("DROP TABLE ROLES2_old");
+                        System.out.println("Primary key added to the ROLES2 table.");
                     } else {
-                        System.out.println("Primary key already exists in the ROLES2 table.");
+                        System.err.println("Data migration failed. The old table still exists.");
                     }
                 } else {
-                    System.out.println("ROLES2 table does not exist.");
+                    System.out.println("Primary key already exists in the ROLES2 table.");
                 }
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -994,11 +1008,12 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
                 String updateKey = "UPDATE INFO SET key = 'AUTOROLE_ALLIANCES' WHERE key = 'AUTOROLE'";
                 executeStmt(updateKey);
             }
-            if (getTableColumns(getConnection(), "INFO").stream().noneMatch(c -> c.equalsIgnoreCase("date_updated"))) {
+            if (getTableColumns("INFO").stream().noneMatch(c -> c.equalsIgnoreCase("date_updated"))) {
                 executeStmt("ALTER TABLE `INFO` ADD COLUMN date_updated BIGINT NOT NULL DEFAULT " + System.currentTimeMillis());
             }
 
         };
+        createDeletionsTables();
     }
 
 //    public void unsubscribeAllBeige(User user) {
@@ -3080,17 +3095,19 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
         if (faServer != null && faServer.getIdLong() != getIdLong()) {
             return faServer.removeCoalition(coalition);
         }
+        String coalitionLower = coalition.toLowerCase(Locale.ROOT);
         loadCoalitions();
-        Coalition coalitionParsed = getCoalitionEnumOrNull(coalition);
+        Coalition coalitionParsed = getCoalitionEnumOrNull(coalitionLower);
         Object lock = getLock(coalitionParsed);
 
-        update("DELETE FROM `COALITIONS` WHERE LOWER(coalition) = LOWER(?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, coalition);
-        });
         synchronized (lock) {
-            Long hash = coalitionName2Id.remove(coalition);
+            Long hash = coalitionName2Id.remove(coalitionLower);
             if (hash != null) {
                 coalitionId2Name.remove(hash);
+                logDeletion("COALITIONS", System.currentTimeMillis(), "coalition", coalitionLower);
+                update("DELETE FROM `COALITIONS` WHERE LOWER(coalition) = LOWER(?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+                    stmt.setString(1, coalitionLower);
+                });
                 return coalitions2.remove(hash);
             }
             return Collections.emptySet();
@@ -3272,18 +3289,27 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
                 existing.remove(alliance);
             }
         }
-        update("DELETE FROM `ROLES2` WHERE `role` = ? AND `alliance` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setLong(1, role.getId());
-            stmt.setLong(2, alliance);
-        });
+        synchronized (this) {
+            logDeletion("ROLES2", System.currentTimeMillis(), new String[]{"role", "alliance"}, role.getId(), alliance);
+            update("DELETE FROM `ROLES2` WHERE `role` = ? AND `alliance` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+                stmt.setLong(1, role.getId());
+                stmt.setLong(2, alliance);
+            });
+        }
     }
 
     public void deleteRole(Roles role) {
         loadRoles();
-        roleToAccountToDiscord.remove(role);
-        update("DELETE FROM `ROLES2` WHERE `role` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setLong(1, role.getId());
-        });
+        Map<Long, Long> removed = roleToAccountToDiscord.remove(role);
+        synchronized (this) {
+            for (Map.Entry<Long, Long> entry : removed.entrySet()) {
+                long allianceId = entry.getKey();
+                logDeletion("ROLES2", System.currentTimeMillis(), new String[]{"role", "alliance"}, role.getId(), allianceId);
+            }
+            update("DELETE FROM `ROLES2` WHERE `role` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+                stmt.setLong(1, role.getId());
+            });
+        }
     }
 
     public  Map<Roles, Map<Long, Long>> getMappingRaw() {

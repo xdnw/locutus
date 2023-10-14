@@ -56,28 +56,28 @@ public class SyncManager {
 
     }
 
-    private void sendData(User user, DataOutputStream out) {
-        Set<Long> guildIds = user.getMutualGuilds().stream().map(ISnowflake::getIdLong).collect(Collectors.toSet());
-        sendData(guildIds, out);
-    }
-
-    private void sendData(Set<Long> guildIds, DataOutputStream out, long timestamp) {
-        iterateInstances(guildIds, new Consumer<SyncableDatabase>() {
-            @Override
-            public void accept(SyncableDatabase db) {
-                Map<String, String> tables = db.getTablesToSync();
-                for (Map.Entry<String, String> entry : tables.entrySet()) {
-                    String tableName = entry.getKey();
-                    String columnName = entry.getValue();
-
-                    List<Object[]> rows = db.getTableData(db.getConnection(), tableName, columnName, timestamp);
-                }
-
-
-
-            }
-        });
-    }
+//    private void sendData(User user, DataOutputStream out) {
+//        Set<Long> guildIds = user.getMutualGuilds().stream().map(ISnowflake::getIdLong).collect(Collectors.toSet());
+//        sendData(guildIds, out);
+//    }
+//
+//    private void sendData(Set<Long> guildIds, DataOutputStream out, long timestamp) {
+//        iterateInstances(guildIds, new Consumer<SyncableDatabase>() {
+//            @Override
+//            public void accept(SyncableDatabase db) {
+//                Map<String, String> tables = db.getTablesToSync();
+//                for (Map.Entry<String, String> entry : tables.entrySet()) {
+//                    String tableName = entry.getKey();
+//                    String columnName = entry.getValue();
+//
+//                    List<Object[]> rows = db.getTableData(db.getConnection(), tableName, columnName, timestamp);
+//                }
+//
+//
+//
+//            }
+//        });
+//    }
 
     private void storeData(DataInputStream in, long timestamp) {
         // if timestamp == 0, store all data, delete rows not matching (but only if new rows are > 0, and table allows deletion)

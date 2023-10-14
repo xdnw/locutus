@@ -27,6 +27,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.codec.binary.Hex;
+import org.jooq.meta.derby.sys.Sys;
 
 import java.lang.reflect.Type;
 import java.math.BigInteger;
@@ -50,6 +51,12 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     public DiscordDB(String name) throws SQLException, ClassNotFoundException {
         super(name);
         if (tableExists("credentials")) migrateCredentials();
+    }
+
+    @Override
+    public Set<String> getTablesAllowingDeletion() {
+        // all tables in getTablesToSync
+        return Set.of("USERS", "CREDENTIALS2", "API_KEYS3");
     }
 
     @Override
@@ -78,6 +85,8 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         }
 
         setupApiKeys();
+
+        createDeletionsTables();
     }
 
     public List<DiscordBan> getBans(long userId) {
@@ -220,10 +229,12 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public void deleteApiKeyPairByNation(int nationId) {
-        update("DELETE FROM `API_KEYS3` WHERE nation_id = ? ", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setLong(1, nationId);
-
-        });
+        synchronized (this) {
+            logDeletion("API_KEYS3", System.currentTimeMillis(), "nation_id", nationId);
+            update("DELETE FROM `API_KEYS3` WHERE nation_id = ? ", (ThrowingConsumer<PreparedStatement>) stmt -> {
+                stmt.setLong(1, nationId);
+            });
+        }
     }
 
     public void deleteApiKey(String key) {
@@ -356,9 +367,12 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public void logout(long nationId) {
-        update("DELETE FROM `CREDENTIALS2` where `discordid` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setLong(1, nationId);
-        });
+        synchronized (this) {
+            logDeletion("CREDENTIALS2", System.currentTimeMillis(), "discordid", nationId);
+            update("DELETE FROM `CREDENTIALS2` where `discordid` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+                stmt.setLong(1, nationId);
+            });
+        }
     }
 
     private void migrateCredentials() {
@@ -819,12 +833,18 @@ public class DiscordDB extends DBMainV2 implements SyncableDatabase {
         if (nationId != null) {
             PNWUser user = userNationCache.remove(nationId);
             if (user != null) {
-                userCache.remove(user.getDiscordId());
+                userCache.remove(discordId = user.getDiscordId());
             }
         }
-        update("DELETE FROM `USERS` WHERE nation_id = ? OR discord_id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setInt(1, nationId == null ? -1 : nationId);
-            stmt.setLong(2, discordId == null ? -1 : discordId);
-        });
+        if (discordId != null) {
+            synchronized (this) {
+                logDeletion("USERS", System.currentTimeMillis(), "discord_id", discordId);
+                Long finalDiscordId = discordId;
+                update("DELETE FROM `USERS` WHERE discord_id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+                    stmt.setLong(1, finalDiscordId == null ? -1 : finalDiscordId);
+                });
+            }
+        }
+
     }
 }
