@@ -156,6 +156,7 @@ public abstract class DBMainV3 implements Closeable {
                     "pragma mmap_size = 30000000000;");
         }
         this.ctx = DSL.using(this.getConnection(), SQLDialect.SQLITE);
+        ctx.settings().withExecuteLogging(false);
         return connection;
     }
 
