@@ -41,9 +41,11 @@ public class DBCity {
 
     public DBCity(int nation_id) {
         this.nation_id = nation_id;
+        this.buildings3 = new byte[Buildings.size()];
     }
 
     public DBCity(City cityV3) {
+        this.buildings3 = new byte[Buildings.size()];
         set(cityV3);
     }
 
@@ -63,14 +65,21 @@ public class DBCity {
             if (b >= 0 && b < 16) continue;
             return;
         }
-        byte[] half = new byte[Buildings.size() >> 1];
-        for (int i = 0; i < half.length; i++) {
-            half[i] = (byte) ((buildings3[i << 1] & 0x0F) | ((buildings3[(i << 1) + 1] & 0x0F) << 4));
+        byte[] half = new byte[(buildings3.length + 1) >> 1];
+        for (int i = 0, j = 0; i < buildings3.length; i += 2, j++) {
+            int number1 = buildings3[i] & 0xFF;
+            int number2 = (i + 1 < buildings3.length) ? buildings3[i + 1] & 0xFF : 0; // Pad with 0 if uneven length
+            byte packedNumbers = (byte)((number1 << 4) | number2);
+            half[j] = packedNumbers;
         }
         buildings3 = half;
     }
 
-    private byte[] toFull() {
+    public static void main(String[] args) {
+        System.out.println();
+    }
+
+    public byte[] toFull() {
         if (this.buildings3.length == Buildings.size()) {
             return buildings3;
         }
@@ -155,7 +164,6 @@ public class DBCity {
 
     public boolean set(City cityV3) {
         this.fetched = System.currentTimeMillis();
-
         this.nation_id = cityV3.getNation_id();
         this.id = cityV3.getId();
         this.created = cityV3.getDate().getTime();
@@ -379,6 +387,9 @@ public class DBCity {
         land_cents = rs.getInt("land");
         powered = rs.getBoolean("powered");
         buildings3 = rs.getBytes("improvements");
+        if (buildings3.length < 14) {
+            buildings3 = Arrays.copyOf(buildings3, buildings3.length + 1);
+        }
         condense();
         fetched = rs.getLong("update_flag");
         nuke_turn = (int) TimeUtil.getTurn(rs.getLong("nuke_date"));
@@ -419,7 +430,7 @@ public class DBCity {
     }
 
     public JavaCity toJavaCity(Predicate<Project> hasProject) {
-        JavaCity javaCity = new JavaCity(buildings3, infra_cents * 0.01, land_cents * 0.01, created, nuke_turn);
+        JavaCity javaCity = new JavaCity(this.createCopy(), infra_cents * 0.01, land_cents * 0.01, created, nuke_turn);
         if (!powered && javaCity.getPoweredInfra() >= infra_cents * 0.01) {
             javaCity.getMetrics(hasProject).powered = false;
         }

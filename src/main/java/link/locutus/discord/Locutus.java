@@ -344,9 +344,11 @@ public final class Locutus extends ListenerAdapter {
             jda.awaitStatus(JDA.Status.LOADING_SUBSYSTEMS);
             System.out.println(":||Remove subsystems " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
             manager.awaitReady();
+            setSelfUser(jda);
             if (Settings.INSTANCE.ENABLED_COMPONENTS.CREATE_DATABASES_ON_STARTUP) {
                 initDBPartial(true);
             }
+            System.out.println(":||Remove init db " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
             Guild rootGuild = manager.getGuildById(Settings.INSTANCE.ROOT_SERVER);
             if (rootGuild != null) {
                 System.out.println(":||Remove get guild " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
@@ -358,9 +360,7 @@ public final class Locutus extends ListenerAdapter {
 
             System.out.println(":||Remove ready " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
 
-            setSelfUser(jda);
 
-            if (Settings.INSTANCE.ENABLED_COMPONENTS.CREATE_DATABASES_ON_STARTUP) initDBPartial(false);
 
             System.out.println(":||Remove init db 2 " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
 
@@ -434,7 +434,11 @@ public final class Locutus extends ListenerAdapter {
         }
 
         if (Settings.INSTANCE.ENABLED_COMPONENTS.WEB && (Settings.INSTANCE.WEB.PORT_HTTP > 0 || Settings.INSTANCE.WEB.PORT_HTTPS > 0)) {
-            new WebRoot(Settings.INSTANCE.WEB.PORT_HTTP, Settings.INSTANCE.WEB.PORT_HTTPS);
+            try {
+                new WebRoot(Settings.INSTANCE.WEB.PORT_HTTP, Settings.INSTANCE.WEB.PORT_HTTPS);
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
         }
         if (Settings.INSTANCE.ENABLED_COMPONENTS.REPEATING_TASKS && Settings.INSTANCE.ENABLED_COMPONENTS.SUBSCRIPTIONS) {
             this.pusher = new PnwPusherShardManager();
@@ -519,6 +523,7 @@ public final class Locutus extends ListenerAdapter {
                 guildDatabases.put(guild.getIdLong(), db);
                 return db;
             } catch (SQLException | ClassNotFoundException e) {
+                e.printStackTrace();
                 throw new RuntimeException(e);
             }
         }

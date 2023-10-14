@@ -2411,10 +2411,10 @@ public class GuildHandler {
                     try {
                         RateLimitUtil.queueWhenFree(output.sendMessage("No active members found in the alliance.\n" +
                                 "- Disabling `" + GuildKey.RECRUIT_MESSAGE_OUTPUT.name() + "`: enable with " + GuildKey.RECRUIT_MESSAGE_OUTPUT.getCommandMention()));
-                        db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
                     } catch (Throwable e) {
                         e.printStackTrace();
                     }
+                    db.deleteInfo(GuildKey.RECRUIT_MESSAGE_OUTPUT);
                     return;
                 }
                 if (members.size() < 10 && !db.isWhitelisted()) {

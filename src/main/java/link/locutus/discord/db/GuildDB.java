@@ -394,10 +394,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
     }
     public boolean hasCoalitionPermsOnRoot(String coalition, boolean allowDelegate) {
         Set<Integer> aaids = getAllianceIds();
-
-        Guild rootServer = Locutus.imp().getServer();
-        GuildDB rootDB = Locutus.imp().getGuildDB(rootServer);
+        GuildDB rootDB = Locutus.imp().getRootDb();
         if (this == rootDB) return true;
+        if (rootDB == null) return false;
         Set<Long> coalMembers = rootDB.getCoalitionRaw(coalition);
         if (coalMembers.contains(getIdLong())) {
             return true;
@@ -3140,7 +3139,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
 
     public Set<Integer> getCoalition(String coalition) {
         Set<Long> longs = getCoalitionRaw(coalition);
-        if (longs.isEmpty()) return Collections.emptySet();
+        if (longs.isEmpty()) return new IntArraySet();
         IntArraySet copy = new IntArraySet(longs.size());
         for (Long l : longs) {
             copy.add(l.intValue());

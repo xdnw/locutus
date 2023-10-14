@@ -17,6 +17,7 @@ import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindin
 import link.locutus.discord.commands.manager.v2.binding.bindings.ResolvedFunction;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.db.entities.DBCity;
+import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.IOUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -1506,10 +1507,12 @@ public class ArrayUtil {
 
     public static <T> Set<T> toSet(Class<T> clazz, Object obj) {
         if (obj == null) {
-            return Collections.emptySet();
+            return new ObjectOpenHashSet<>();
         }
         if (obj.getClass() == clazz) {
-            return Collections.singleton((T) obj);
+            Set<T> set = new ObjectOpenHashSet<>(1);
+            set.add((T) obj);
+            return set;
         }
         ObjectOpenHashSet<T> set = (ObjectOpenHashSet<T>) obj;
         return new ObjectOpenHashSet<>(set);

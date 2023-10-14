@@ -191,6 +191,9 @@ public class PageRequestQueue {
                 return firstTask;
             }
         }
+        if (true && firstTask != null) {
+            return firstTask;
+        }
         if (minWait != Long.MAX_VALUE) {
             long wait = Math.min(60000, minWait - System.currentTimeMillis());
             waitTime.set(wait);

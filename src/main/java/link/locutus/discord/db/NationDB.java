@@ -4226,7 +4226,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                 stmt.setInt(4, (int) (city.getInfra() * 100));
                 stmt.setInt(5, (int) (city.getLand() * 100));
                 stmt.setBoolean(6, city.powered);
-                stmt.setBytes(7, city.buildings3);
+                stmt.setBytes(7, city.toFull());
                 stmt.setLong(8, city.fetched);
                 stmt.setLong(9, TimeUtil.getTimeFromTurn(city.nuke_turn));
             }

@@ -478,8 +478,8 @@ public class Settings extends Config {
         "- You can get a free certificate from e.g. https://zerossl.com/ or https://letsencrypt.org/",
         "- Set to empty string to not use an ssl certificate",
         })
-        public String CERT_PATH = "C:/Certbot/live/locutus.link/";
-        public String PRIVKEY_PATH = "C:/Certbot/live/locutus.link/";
+        public String CERT_PATH = "C:/Certbot/live/locutus.link/fullchain.pem";
+        public String PRIVKEY_PATH = "C:/Certbot/live/locutus.link/privkey.pem";
         @Comment({"The password or passphrase for the certificate",
         "Leave blank if there is none"})
         public String PRIVKEY_PASSWORD = "";
@@ -592,7 +592,7 @@ public class Settings extends Config {
         public String SCRIPT = "";
         @Comment({"Intervals in turns between backups",
         "Set to 0 to always make a new backup on startup"})
-        public int TURNS = 1;
+        public int TURNS = 2;
     }
 
     private File defaultFile = new File("config" + File.separator + "config.yaml");
