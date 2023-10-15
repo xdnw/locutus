@@ -101,6 +101,9 @@ public class PNWUser {
     }
 
     public String getDiscordName() {
+        if (discordName != null) {
+            return discordName;
+        }
         User user = Locutus.imp().getDiscordApi().getUserById(discordId);
         if (user != null) {
             discordName = DiscordUtil.getFullUsername(user);

@@ -98,7 +98,7 @@ public class WebRoot {
         this.app = Javalin.create(config -> {
             config.plugins.register(plugin);
 //            config.enableCorsForOrigin();
-            config.compression.brotliAndGzip(3, 3);
+            config.compression.gzipOnly(3);
 //            config.server(() -> {
 //                Server server = new Server(); // configure this however you want
 //                LocutusSSLHandler.configureServer(server, portMain, portHTTPS);

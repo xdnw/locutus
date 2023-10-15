@@ -480,7 +480,6 @@ public final class Locutus extends ListenerAdapter {
 
     @Override
     public void onGuildReady(@NotNull GuildReadyEvent event) {
-        System.out.println("Guild ready fired");
         manager.put(event.getGuild().getIdLong(), event.getJDA());
     }
 

@@ -180,7 +180,7 @@ public class PageRequestQueue {
             }
         }
 
-        if (hasNonRateLimitedTask) {
+        if (hasNonRateLimitedTask || true) {
             if (firstDelayTask != null) {
                 return firstDelayTask;
             }
@@ -190,9 +190,6 @@ public class PageRequestQueue {
             if (firstTask != null) {
                 return firstTask;
             }
-        }
-        if (true && firstTask != null) {
-            return firstTask;
         }
         if (minWait != Long.MAX_VALUE) {
             long wait = Math.min(60000, minWait - System.currentTimeMillis());
