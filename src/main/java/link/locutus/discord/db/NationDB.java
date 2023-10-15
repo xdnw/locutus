@@ -1906,6 +1906,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             for (Map.Entry<DBNation, DBNation> entry : nationChanges.entrySet()) {
                 DBNation prev = entry.getValue();
                 DBNation curr = entry.getKey();
+                if (curr == null) continue;
                 if (prev == null || curr.getCities() != prev.getCities()) {
                     fetchCitiesOfNations.add(curr.getNation_id());
                 }
@@ -1915,6 +1916,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             for (Map.Entry<DBNation, DBNation> entry : nationChanges.entrySet()) {
                 DBNation prev = entry.getValue();
                 DBNation curr = entry.getKey();
+                if (curr == null) continue;
                 if (prev == null || (Math.round((curr.getScore() - prev.getScore()) * 100) != 0 && Math.round(100 * (curr.estimateScore() - curr.getScore())) != 0)) {
                     fetchCitiesOfNations.add(curr.getNation_id());
                 }

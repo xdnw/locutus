@@ -2677,7 +2677,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public void setCities(int cities) {
-        if (cities > this.cities && this.cities != 0) {
+        if (((cities > 20 && cities > this.cities) || (cities <= 20 && cities < this.cities)) && this.cities != 0) {
             this.cityTimer = TimeUtil.getTurn() + GameTimers.CITY.getTurns();
         }
         this.cities = cities;
@@ -4653,6 +4653,7 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Turns left on the city timer")
     public long getCityTurns() {
+        if (cities < 20) return 0;
         return (cityTimer - TimeUtil.getTurn());
     }
 
