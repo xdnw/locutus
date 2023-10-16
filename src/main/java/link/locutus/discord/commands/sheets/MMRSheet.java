@@ -59,7 +59,7 @@ public class MMRSheet extends Command {
             if (args.size() != 1) return usage(args.size(), 1, channel);
             if (args.get(0).contains("*")) return "Cannot use *";
 
-            Collection<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
+            Collection<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, 999);
 
             GuildDB db = Locutus.imp().getGuildDB(guild);
 

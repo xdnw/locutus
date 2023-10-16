@@ -72,7 +72,7 @@ public class Damage extends Command {
                 }
             }
         } else {
-            nations = DiscordUtil.parseNations(guild, args.get(0));
+            nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, 999);
         }
         nations.removeIf(f -> f.getDef() >= 3);
         nations.removeIf(f -> f.getVm_turns() != 0);

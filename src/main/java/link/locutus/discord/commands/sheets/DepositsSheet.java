@@ -61,7 +61,7 @@ public class DepositsSheet extends Command {
         if (args.isEmpty()) {
             nations = null;
         } else {
-            nations = (DiscordUtil.parseNations(guild, args.get(0)));
+            nations = (DiscordUtil.parseNations(guild, author, me, args.get(0), false, 999));
             if (args.size() == 2) {
                 Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, args.get(1));
                 tracked = new LinkedHashSet<>();

@@ -79,7 +79,7 @@ public class MailCommand extends Command implements Noformat {
                 return "Mail: " + result;
             }
 
-            Set<DBNation> nations = DiscordUtil.parseNations(guild, arg0);
+            Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, arg0, false, false);
             if (nations.isEmpty()) {
                 return "Invalid nation `" + arg0 + "`";
             }

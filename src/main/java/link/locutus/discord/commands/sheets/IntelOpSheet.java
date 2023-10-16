@@ -68,7 +68,7 @@ public class IntelOpSheet extends Command {
 
         long millis = TimeUtil.timeToSec(args.get(0)) * 1000L;
         long cutOff = System.currentTimeMillis() - millis;
-        Set<DBNation> attackers = DiscordUtil.parseNations(guild, args.get(1));
+        Set<DBNation> attackers = DiscordUtil.parseNations(guild, author, me, args.get(1), false, 999);
         attackers.removeIf(f -> f.getPosition() <= 1 || f.getActive_m() > 1440 || f.getVm_turns() > 0);
         Integer topX = db.getOrNull(GuildKey.DO_NOT_RAID_TOP_X);
         if (args.size() > 2) topX = Integer.parseInt(args.get(2));

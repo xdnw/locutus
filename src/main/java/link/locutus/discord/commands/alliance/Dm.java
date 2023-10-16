@@ -43,7 +43,7 @@ public class Dm extends Command {
         if (user != null) {
             mentions.add(user);
         } else {
-            for (DBNation nation : DiscordUtil.parseNations(guild, args.get(0))) {
+            for (DBNation nation : DiscordUtil.parseNations(guild, author, me, args.get(0), false, false)) {
                 PNWUser pnwUser = nation.getDBUser();
                 if (pnwUser != null) {
                     user = pnwUser.getUser();

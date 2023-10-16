@@ -51,7 +51,7 @@ public class ProjectSheet extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) return usage(args.size(), 1, channel);
 
-        Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
+        Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, 999);
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
 

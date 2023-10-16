@@ -139,8 +139,8 @@ public class WarCostByDay extends Command {
                 nameA = args.get(0);
                 nameB = args.get(1);
             } else {
-                Set<DBNation> alliances1 = DiscordUtil.parseNations(guild, args.get(0));
-                Set<DBNation> alliances2 = DiscordUtil.parseNations(guild, args.get(1));
+                Set<DBNation> alliances1 = DiscordUtil.parseNations(guild, author, me, args.get(0), false, 999);
+                Set<DBNation> alliances2 = DiscordUtil.parseNations(guild, author, me, args.get(1), false, 999);
                 Set<Integer> allIds = new HashSet<>();
 
                 for (DBNation nation : alliances1) allIds.add(nation.getNation_id());

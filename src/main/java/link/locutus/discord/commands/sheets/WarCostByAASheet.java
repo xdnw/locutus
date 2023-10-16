@@ -64,7 +64,7 @@ public class WarCostByAASheet extends Command {
         long cutoff = 0;
         if (args.size() == 2) cutoff = System.currentTimeMillis() - TimeUtil.timeToSec(args.get(1)) * 1000l;
 
-        Set<DBNation> nationSet = DiscordUtil.parseNations(guild, args.get(0));
+        Set<DBNation> nationSet = DiscordUtil.parseNations(guild, author, me, args.get(0), false, 999);
         Map<Integer, List<DBNation>> nationsByAA = Locutus.imp().getNationDB().getNationsByAlliance(nationSet, false, !includeInactive, !includeApps, true);
 
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);

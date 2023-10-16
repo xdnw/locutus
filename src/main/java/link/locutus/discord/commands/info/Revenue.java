@@ -98,7 +98,7 @@ public class Revenue extends Command {
             cities.put(nation, map);
         } else {
             showTradeAndMilitary = true;
-            Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
+            Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);
             if (!flags.contains('i')) {
                 nations.removeIf(f -> f.getAlliance_id() == 0 || f.getVm_turns() != 0);
             }

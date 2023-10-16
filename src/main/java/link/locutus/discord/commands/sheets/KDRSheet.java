@@ -49,7 +49,7 @@ public class KDRSheet extends Command {
 //        if (guild == null) return "not in guild";
 //        GuildDB guildDb = Locutus.imp().getGuildDB(guild);
 //
-//        Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
+//        Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, 999);
 //
 //        if (nations.isEmpty()) return usage("Invalid nation: `" + args.get(0) + "`", channel);
 //

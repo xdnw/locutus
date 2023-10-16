@@ -108,7 +108,7 @@ public class Counter extends Command {
                 pool = Locutus.imp().getNationDB().getNations(allies);
             } else {
                 try {
-                    pool = DiscordUtil.parseNations(guild, args.get(1));
+                    pool = DiscordUtil.parseNations(guild, author, me, args.get(1), false, 999);
                 } catch (Throwable e) {
                     e.printStackTrace();
                     throw e;

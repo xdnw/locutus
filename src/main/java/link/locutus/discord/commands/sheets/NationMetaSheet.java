@@ -58,7 +58,7 @@ public class NationMetaSheet extends Command {
 
         sheet.setHeader(header);
 
-        Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
+        Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, 999);
 
         for (DBNation nation : nations) {
             User user = nation.getUser();

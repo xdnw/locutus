@@ -53,7 +53,7 @@ public class IASheet extends Command {
         if (aaIds.isEmpty()) return "Please use " + GuildKey.ALLIANCE_ID.getCommandMention() + "";
 
         if (args.size() != 1) return usage();
-        List<DBNation> nations = new ArrayList<>(DiscordUtil.parseNations(guild, args.get(0)));
+        List<DBNation> nations = new ArrayList<>(DiscordUtil.parseNations(guild, author, me, args.get(0), false, 999));
         for (DBNation nation : nations) {
             if (!db.isAllianceId(nation.getAlliance_id())) {
                 return "Nation `" + nation.getName() + "` is in " + nation.getAlliance().getQualifiedId() + " but this server is registered to: "

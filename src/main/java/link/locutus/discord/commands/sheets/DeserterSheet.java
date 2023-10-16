@@ -85,7 +85,7 @@ public class DeserterSheet extends Command {
         if (removes.isEmpty()) return "No history found";
         Set<DBNation> filter = null;
         if (args.size() == 3) {
-            filter = DiscordUtil.parseNations(guild, args.get(2));
+            filter = DiscordUtil.parseNations(guild, author, me, args.get(2), false, 999);
         }
 
         List<Map.Entry<DBNation, Map.Entry<Long, Rank>>> nations = new ArrayList<>();

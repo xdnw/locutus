@@ -38,7 +38,7 @@ public class RunAllNations extends Command implements Noformat {
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 2) return usage(args.size(), 2, channel);
-        Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
+        Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);
 
         if (nations.size() == 0) return "No nations found for `" + args.get(0) + "`";
         if (nations.size() > 200 && !Roles.ADMIN.hasOnRoot(author)) return "Too many nations (max 200).";

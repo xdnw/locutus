@@ -48,7 +48,7 @@ public class AllianceLootLosses extends Command {
         long cutOff = System.currentTimeMillis() - millis;
 
         Map<Integer, Double> allianceScores = new HashMap<>();
-        List<DBNation> allNations = new ArrayList<>(DiscordUtil.parseNations(guild, args.get(1)));
+        List<DBNation> allNations = new ArrayList<>(DiscordUtil.parseNations(guild, author, me, args.get(1), false, 999));
         allNations.removeIf(n -> n.getVm_turns() > 0 || n.getPosition() <= 1);
         for (DBNation nation : allNations) {
             allianceScores.put(nation.getAlliance_id(), nation.getScore() + allianceScores.getOrDefault(nation.getAlliance_id(), 0d));

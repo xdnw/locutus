@@ -36,9 +36,7 @@ public class NationFilterString implements NationFilter {
 
     @Override
     public boolean test(DBNation nation) {
-        String localFilter = "#nation_id=" + nation.getNation_id() + "," + filter;
-        Set<DBNation> nations = DiscordUtil.parseNations(guild, localFilter);
-        return nations != null && nations.contains(nation);
+        return predicate.test(nation);
     }
 
     @Override
