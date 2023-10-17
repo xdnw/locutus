@@ -120,7 +120,7 @@ public class WarCommand extends Command {
                         nations.removeIf(n -> n.getPosition() <= 1);
                     }
                 } else {
-                    nations = DiscordUtil.parseNations(guild, aa);
+                    nations = DiscordUtil.parseNations(guild, author, me, aa, false, false);
                 }
 
                 if (!includeInactives) nations.removeIf(n -> n.getActive_m() >= 2440);

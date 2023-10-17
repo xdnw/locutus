@@ -259,6 +259,10 @@ public abstract class Placeholders<T> {
                 s -> getSingleFilter(store2, s, cache));
     }
 
+    public Set<T> parseSet(Guild guild, User author, DBNation nation, String input) {
+        return parseSet(createLocals(guild, author, nation), input);
+    }
+
     public Set<T> parseSet(ValueStore store2, String input) {
         Map<String, Map<T, Object>> cache = new Object2ObjectOpenHashMap<>();
         return ArrayUtil.resolveQuery(input,

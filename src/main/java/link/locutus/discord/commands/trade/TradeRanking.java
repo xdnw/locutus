@@ -62,7 +62,7 @@ public class TradeRanking extends Command {
         }
         boolean isAA = flags.contains('a');
         Function<DBNation, Integer> groupBy = isAA ? groupBy = f -> f.getAlliance_id() : f -> f.getNation_id();
-        Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, 999);
+        Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);
         if (nations.isEmpty()) {
             return "invalid user `" + args.get(0) + "`";
         }

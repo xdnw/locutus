@@ -390,8 +390,8 @@ public class WebPWBindings extends WebBindingHelper {
                     filterStr = filterStr.replace("{guild_alliance_id}", "AA:" + StringMan.join(aaIds, ",AA:"));
                 }
             }
-            filterStr = Locutus.imp().getCommandManager().getV2().getNationPlaceholders().format2(guild, me, user, filterStr, me, true);
-            options = DiscordUtil.parseNations(guild, filterStr);
+            filterStr = Locutus.cmd().getV2().getNationPlaceholders().format2(guild, me, user, filterStr, me, true);
+            options = Locutus.cmd().getV2().getNationPlaceholders().parseSet(valueStore, filterStr);
         } else {
             options = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
             options.removeIf(f -> f.getVm_turns() > 0 && (f.getPosition() <= 1 || f.getCities() < 7));

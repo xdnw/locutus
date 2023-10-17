@@ -234,7 +234,7 @@ public class RaidCommand extends Command {
                     String arg = "#warrange=" + score + "," + aa;
                     if (!beige) arg = "#isbeige=0," + arg;
                     if (slots == -1) arg = "#def<3," + arg;
-                    nations = DiscordUtil.parseNations(guild, arg);
+                    nations = DiscordUtil.parseNations(guild, user, me, arg, false, false);
                 }
         }
 

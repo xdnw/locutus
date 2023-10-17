@@ -68,7 +68,7 @@ public class InterviewSheet extends Command {
 
         sheet.setHeader(header);
 
-        Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, 999);
+        Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);
 
         for (DBNation nation : nations) {
             User user = nation.getUser();

@@ -1,14 +1,17 @@
 package link.locutus.discord.db.entities;
 
+import it.unimi.dsi.fastutil.ints.Int2BooleanOpenHashMap;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.math.ArrayUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -16,9 +19,8 @@ import java.util.stream.Collectors;
 public class NationFilterString implements NationFilter {
     private final String filter;
     private final Predicate<DBNation> predicate;
-    private final Guild guild;
-    private Set<Integer> cachedNations;
-    private long dateCached;
+    private Predicate<DBNation> cached;
+    private long cacheDate;
 
     public NationFilterString(String filter, Guild guild, User user, DBNation nation) {
         NationPlaceholders placeholders = Locutus.cmd().getV2().getNationPlaceholders();
@@ -26,7 +28,6 @@ public class NationFilterString implements NationFilter {
         this.predicate = placeholders.parseFilter(store, filter);
 
         this.filter = filter;
-        this.guild = guild;
     }
 
     @Override
@@ -41,13 +42,28 @@ public class NationFilterString implements NationFilter {
 
     @Override
     public Predicate<DBNation> toCached(long expireAfter) {
-        return nation -> {
-            if (cachedNations == null || System.currentTimeMillis() - dateCached > expireAfter) {
-                Set<DBNation> nations = DiscordUtil.parseNations(guild, filter);
-                cachedNations = nations.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
-                dateCached = System.currentTimeMillis();
+        long now = System.currentTimeMillis();
+        Predicate<DBNation> tmp = this.cached;
+        if (tmp != null && now - cacheDate < expireAfter) {
+            return tmp;
+        }
+        tmp = new Predicate<>() {
+            private final Map<Integer, Boolean> result = new Int2BooleanOpenHashMap();
+
+            @Override
+            public boolean test(DBNation nation) {
+                int nationId = nation.getNation_id();
+                Boolean existing = result.get(nationId);
+                if (existing != null) {
+                    return existing;
+                }
+                existing = predicate.test(nation);
+                result.put(nationId, existing);
+                return existing;
             }
-            return cachedNations.contains(nation.getNation_id());
         };
+        cached = tmp;
+        cacheDate = now;
+        return tmp;
     }
 }

@@ -53,7 +53,7 @@ public class TradeProfit extends Command {
         if (args.size() != 2) {
             return usage(args.size(), 2, channel);
         }
-        Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, 999);
+        Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);
         if (nations.isEmpty()) {
             return "invalid user `" + args.get(0) + "`";
         }

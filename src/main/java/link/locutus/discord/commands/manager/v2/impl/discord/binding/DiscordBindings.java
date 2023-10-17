@@ -4,6 +4,7 @@ import cn.easyproject.easyocr.ImageType;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Filter;
@@ -40,6 +41,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 
 public class DiscordBindings extends BindingHelper {
     @Binding(examples = {"@user", "borg"}, value = "A discord user mention, or if a nation name, id or url if they are registered")
@@ -136,7 +138,7 @@ public class DiscordBindings extends BindingHelper {
     }
 
     @Binding(examples = {"@member1,@member2", "`*`"}, value = "A comma separated list of discord user mentions, or if a nation name, id or url if they are registered")
-    public Set<Member> members(@Me Guild guild, String input) {
+    public Set<Member> members(ValueStore store, @Me Guild guild, String input) {
         Set<Member> members = new LinkedHashSet<>();
         for (String arg : input.split("[|]+")) {
             if (arg.equalsIgnoreCase("*")) {
@@ -148,10 +150,10 @@ public class DiscordBindings extends BindingHelper {
                     }
                 }
             } else {
-                Set<DBNation> nations = DiscordUtil.parseNations(guild, arg);
+                Predicate<DBNation> filter = Locutus.cmd().getV2().getNationPlaceholders().parseFilter(store, arg);
                 for (Member member : guild.getMembers()) {
                     DBNation nation = DiscordUtil.getNation(member.getUser());
-                    if (nation != null && nations.contains(nation)) {
+                    if (nation != null && filter.test(nation)) {
                         members.add(member);
                     }
                 }

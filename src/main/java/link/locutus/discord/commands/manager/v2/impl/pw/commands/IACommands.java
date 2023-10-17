@@ -1755,10 +1755,10 @@ public class IACommands {
 
     @Command(desc = "List the interview channels, by category + activity")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.INTERNAL_AFFAIRS_STAFF}, any=true)
-    public String iachannels(@Me User author, @Me Guild guild, @Me GuildDB db, String filter, @Arg("Highlight channels inactive for longer than the time specified") @Default("1d") @Timediff long time) throws IOException, GeneralSecurityException {
+    public String iachannels(@Me User author, @Me DBNation me, @Me Guild guild, @Me GuildDB db, String filter, @Arg("Highlight channels inactive for longer than the time specified") @Default("1d") @Timediff long time) throws IOException, GeneralSecurityException {
         try {
             if (!filter.isEmpty()) filter += ",*";
-            Set<DBNation> allowedNations = DiscordUtil.parseNations(guild, filter);
+            Set<DBNation> allowedNations = DiscordUtil.parseNations(guild, author, me, filter, false, false);
 
             Set<Integer> aaIds = db.getAllianceIds();
             if (aaIds.isEmpty()) return "No alliance set " + GuildKey.ALLIANCE_ID.getCommandMention() + "";

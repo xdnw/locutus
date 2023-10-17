@@ -93,8 +93,8 @@ public class BlitzSheet extends Command {
             return usage(args.size(), 2, channel);
         }
 
-        Set<DBNation> attNations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, 999);
-        Set<DBNation> defNations = DiscordUtil.parseNations(guild, author, me, args.get(1), false, 999);
+        Set<DBNation> attNations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);
+        Set<DBNation> defNations = DiscordUtil.parseNations(guild, author, me, args.get(1), false, false);
 
         if (attNations == null || attNations.isEmpty())  return "Invalid alliance or coalition: `" + args.get(0) + "`";
         if (defNations == null || defNations.isEmpty())  return "Invalid alliance or coalition: `" + args.get(1) + "`";

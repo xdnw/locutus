@@ -69,7 +69,7 @@ public class WarCostSheet extends Command {
 
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
 
-        WarParser parser1 = WarParser.of(guild, args.get(0), args.get(1), cutOff);
+        WarParser parser1 = WarParser.of(guild, author, me, args.get(0), args.get(1), cutOff);
 
         CompletableFuture<IMessageBuilder> msgFuture = (channel.sendMessage("Please wait..."));
 

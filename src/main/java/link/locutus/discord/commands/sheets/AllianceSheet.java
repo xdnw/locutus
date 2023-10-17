@@ -71,7 +71,7 @@ public class AllianceSheet extends Command implements Noformat {
             header.set(i, arg);
         }
 
-        Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, 999);
+        Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);
         if (nations.isEmpty()) return "No nations found for `" + args.get(0) + "`";
 
         AlliancePlaceholders aaPlaceholders = Locutus.imp().getCommandManager().getV2().getAlliancePlaceholders();

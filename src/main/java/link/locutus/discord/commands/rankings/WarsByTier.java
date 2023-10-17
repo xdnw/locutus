@@ -51,7 +51,7 @@ public class WarsByTier extends Command {
         long start = System.currentTimeMillis() - TimeUtil.timeToSec(args.get(2)) * 1000L;
         if (flags.contains('a')) start = Math.max(start, System.currentTimeMillis() - TimeUnit.DAYS.toMillis(5));
 
-        WarParser offensive = WarParser.of(guild, args.get(0), args.get(1), start, Long.MAX_VALUE);
+        WarParser offensive = WarParser.of(guild, author, me, args.get(0), args.get(1), start, Long.MAX_VALUE);
 
         Map<Integer, Integer> col1 = new HashMap<>();
         Map<Integer, Integer> col2 = new HashMap<>();
