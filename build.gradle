@@ -24,6 +24,7 @@ plugins {
     id "io.github.kobylynskyi.graphql.codegen" version "5.4.0"
     id "com.github.johnrengelman.shadow" version "7.1.2"
     id "nu.studer.jooq" version "8.0"
+    id 'maven-publish'
 }
 
 apply plugin: "kotlin"
@@ -31,6 +32,19 @@ apply plugin: 'java'
 
 group 'link.locutus'
 version '1.0-SNAPSHOT'
+
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = "https://maven.pkg.github.com/xdnw/locutus"
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+}
 
 repositories {
     mavenLocal()

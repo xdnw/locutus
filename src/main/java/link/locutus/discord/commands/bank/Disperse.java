@@ -98,7 +98,7 @@ public class Disperse extends Command {
         DepositType.DepositTypeInfo type = PWBindings.DepositTypeInfo(args.get(2));
 
         String arg = args.get(0);
-        List<DBNation> nations = new ArrayList<>(DiscordUtil.parseNations(guild, arg));
+        List<DBNation> nations = new ArrayList<>(DiscordUtil.parseNations(guild, author, me, arg, false, false));
         if (nations.size() != 1 || !flags.contains('b')) {
             nations.removeIf(n -> n.getPosition() <= 1);
             nations.removeIf(n -> n.getVm_turns() != 0);

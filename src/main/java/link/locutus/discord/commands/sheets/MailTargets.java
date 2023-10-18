@@ -129,7 +129,7 @@ public class MailTargets extends Command {
 
         long start = System.currentTimeMillis();
 
-        Set<DBNation> allowedNations = DiscordUtil.parseNations(guild, args.get(2));
+        Set<DBNation> allowedNations = DiscordUtil.parseNations(guild, author, me, args.get(2), false, false);
         if (allowedNations.isEmpty()) return "No nations found for: " + args.get(2);
 
         Map<DBNation, Map.Entry<String, String>> mailTargets = new HashMap<>();

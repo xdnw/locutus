@@ -91,8 +91,8 @@ public class SpySheet extends Command {
             allowedOpTypes.remove(SpyCount.Operation.SOLDIER);
         }
 
-        Set<DBNation> attackers = DiscordUtil.parseNations(guild, args.get(0));
-        Set<DBNation> defenders = DiscordUtil.parseNations(guild, args.get(1));
+        Set<DBNation> attackers = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);
+        Set<DBNation> defenders = DiscordUtil.parseNations(guild, author, me, args.get(1), false, false);
         attackers.removeIf(f -> f.hasUnsetMil());
         defenders.removeIf(f -> f.hasUnsetMil());
 

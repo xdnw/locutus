@@ -187,7 +187,7 @@ public class ROI extends Command {
             JavaCity from = cityEntry.toJavaCity(nation);
             roi(nation, Integer.MAX_VALUE, Integer.MAX_VALUE, from, days, roiMap, 500);
         } else {
-            Collection<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
+            Collection<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);
             nations.removeIf(n -> n.getActive_m() > 10000 || n.getVm_turns() > 0);
             if (nations.size() > 1 && !Roles.ADMIN.hasOnRoot(author)) {
                 nations.removeIf(n -> !aaIds.contains(n.getAlliance_id()));

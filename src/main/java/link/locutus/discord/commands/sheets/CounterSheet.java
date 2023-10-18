@@ -124,7 +124,7 @@ public class CounterSheet extends Command {
         }
 
         if (args.size() >= 1 && !args.get(0).equalsIgnoreCase("*")) {
-            Set<DBNation> enemyFilter = DiscordUtil.parseNations(guild, args.get(0));
+            Set<DBNation> enemyFilter = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);
             enemies.entrySet().removeIf(n -> !enemyFilter.contains(n.getKey()));
         }
 

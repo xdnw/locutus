@@ -10,6 +10,7 @@ import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.User;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -34,11 +35,11 @@ public class WarAttackParser {
         attacks = war.getAttacks2();
     }
 
-    public WarAttackParser(GuildDB db, List<String> args, Set<Character> flags) {
-        this(db == null ? null : db.getGuild(), args, flags);
+    public WarAttackParser(GuildDB db, User author, DBNation me, List<String> args, Set<Character> flags) {
+        this(db == null ? null : db.getGuild(), author, me, args, flags);
     }
 
-    public WarAttackParser(Guild guild, List<String> args, Set<Character> flags) {
+    public WarAttackParser(Guild guild, User author, DBNation me, List<String> args, Set<Character> flags) {
         List<AbstractCursor> attacks = new ArrayList<>();
         Function<AbstractCursor, Boolean> isPrimary = null;
         Function<AbstractCursor, Boolean> isSecondary = null;
@@ -121,8 +122,8 @@ public class WarAttackParser {
                 nameA = args.get(0);
                 nameB = args.get(1);
             } else {
-                Set<DBNation> alliances1 = DiscordUtil.parseNations(guild, args.get(0));
-                Set<DBNation> alliances2 = DiscordUtil.parseNations(guild, args.get(1));
+                Set<DBNation> alliances1 = DiscordUtil.parseNations(guild, author, me, args.get(0), false, true);
+                Set<DBNation> alliances2 = DiscordUtil.parseNations(guild, author, me, args.get(1), false, true);
                 Set<Integer> allIds = new HashSet<>();
 
                 for (DBNation nation : alliances1) allIds.add(nation.getNation_id());

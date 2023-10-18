@@ -87,7 +87,7 @@ public class LeftAA extends Command {
             if (removes.isEmpty()) return "No history found.";
             Set<DBNation> filter = null;
             if (args.size() == 3) {
-                filter = DiscordUtil.parseNations(guild, args.get(2));
+                filter = DiscordUtil.parseNations(guild, author, me, args.get(2), false, true);
             }
 
             for (Map.Entry<Integer, Map.Entry<Long, Rank>> entry : removes.entrySet()) {

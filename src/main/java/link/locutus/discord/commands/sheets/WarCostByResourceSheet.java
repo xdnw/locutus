@@ -77,8 +77,8 @@ public class WarCostByResourceSheet extends Command {
         if (guild == null) return "not in guild";
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
 
-        Set<NationOrAlliance> attackers = PWBindings.nationOrAlliance(null, guild, args.get(0));
-        Set<NationOrAlliance> defenders = PWBindings.nationOrAlliance(null, guild, args.get(1));
+        Set<NationOrAlliance> attackers = PWBindings.nationOrAlliance(null, guild, args.get(0), author, me);
+        Set<NationOrAlliance> defenders = PWBindings.nationOrAlliance(null, guild, args.get(1), author, me);
 
         long timeRel = TimeUtil.timeToSec(args.get(2));
         if (timeRel < 60) {

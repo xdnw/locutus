@@ -91,7 +91,7 @@ public class Spyops extends Command {
 
         try {
             String title = "Recommended ops";
-            String body = run(channel, finalNation, db, args, flags);
+            String body = run(channel, author, me, finalNation, db, args, flags);
 
             if (flags.contains('r')) {
                 return body;
@@ -120,7 +120,7 @@ public class Spyops extends Command {
         }
     }
 
-    public String run(IMessageIO channel, DBNation me, GuildDB db, List<String> args, Set<Character> flags) throws IOException {
+    public String run(IMessageIO channel, User author, DBNation me, DBNation attacker, GuildDB db, List<String> args, Set<Character> flags) throws IOException {
         double minSuccess = 50;
         int numOps = 5;
 
@@ -140,7 +140,7 @@ public class Spyops extends Command {
         if (args.size() != 2) {
             return usage(args.size(), 2, channel);
         }
-        if (me == null) {
+        if (attacker == null) {
             return "Please use " + CM.register.cmd.toSlashMention() + "";
         }
 
@@ -161,18 +161,18 @@ public class Spyops extends Command {
         Set<Integer> allies = new HashSet<>();
         Set<Integer> alliesCoalition = db.getCoalition("allies");
         if (alliesCoalition != null) allies.addAll(alliesCoalition);
-        if (me.getAlliance_id() != 0) allies.add(me.getAlliance_id());
+        if (attacker.getAlliance_id() != 0) allies.add(attacker.getAlliance_id());
         Set<Integer> aaIds = db.getAllianceIds();
         if (!aaIds.isEmpty()) allies.addAll(aaIds);
 
-        Set<Integer> myEnemies = Locutus.imp().getWarDb().getWarsByNation(me.getNation_id()).stream()
-                .map(dbWar -> dbWar.getAttacker_id() == me.getNation_id() ? dbWar.getDefender_id() : dbWar.getAttacker_id())
+        Set<Integer> myEnemies = Locutus.imp().getWarDb().getWarsByNation(attacker.getNation_id()).stream()
+                .map(dbWar -> dbWar.getAttacker_id() == attacker.getNation_id() ? dbWar.getDefender_id() : dbWar.getAttacker_id())
                 .collect(Collectors.toSet());
 
-        Function<DBNation, Boolean> isInSpyRange = nation -> me.isInSpyRange(nation) || myEnemies.contains(nation.getNation_id());
+        Function<DBNation, Boolean> isInSpyRange = nation -> attacker.isInSpyRange(nation) || myEnemies.contains(nation.getNation_id());
 
         Function<Integer, Boolean> isInvolved = integer -> {
-            if (integer == me.getNation_id()) return true;
+            if (integer == attacker.getNation_id()) return true;
             DBNation nation = Locutus.imp().getNationDB().getNation(integer);
             return nation != null && allies.contains(nation.getAlliance_id());
         };
@@ -196,7 +196,7 @@ public class Spyops extends Command {
                 }
             }
         } else {
-            nations = DiscordUtil.parseNations(db.getGuild(), args.get(0));
+            nations = DiscordUtil.parseNations(db.getGuild(), author, me, args.get(0), false, false);
         }
         nations.removeIf(nation -> {
             if (!isInSpyRange.apply(nation)) return true;
@@ -211,7 +211,7 @@ public class Spyops extends Command {
             return "No nations found (1)";
         }
 
-        int mySpies = me.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE);
+        int mySpies = attacker.updateSpies(PagePriority.ESPIONAGE_ODDS_SINGLE);
         long dcTime = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - (TimeUtil.getTurn() % 12));
 
         List<Map.Entry<DBNation, Map.Entry<SpyCount.Operation, Map.Entry<Integer, Double>>>> netDamage = new ArrayList<>();
@@ -269,7 +269,7 @@ public class Spyops extends Command {
             return "No nations found (2)";
         }
 
-        StringBuilder body = new StringBuilder("Results for " + me.getNation() + ":\n");
+        StringBuilder body = new StringBuilder("Results for " + attacker.getNation() + ":\n");
 
         ArrayList<Map.Entry<DBNation, Runnable>> targets = new ArrayList<>();
 

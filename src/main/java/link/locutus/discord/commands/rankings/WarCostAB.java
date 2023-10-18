@@ -69,7 +69,7 @@ public class WarCostAB extends Command {
 
         String arg0 = args.get(0);
 
-        WarAttackParser parser = new WarAttackParser(guild, args, flags);
+        WarAttackParser parser = new WarAttackParser(guild, author, me, args, flags);
         if (attackTypeStr != null) {
             Set<AttackType> options = new HashSet<>(BindingHelper.emumList(AttackType.class, attackTypeStr.toUpperCase(Locale.ROOT)));
             parser.getAttacks().removeIf(f -> !options.contains(f.getAttack_type()));

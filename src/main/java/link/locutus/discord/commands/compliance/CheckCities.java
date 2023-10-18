@@ -73,7 +73,7 @@ public class CheckCities extends Command {
                     n.getActive_m() > 10000
                     );
         } else {
-            nations = DiscordUtil.parseNations(guild, args.get(0));
+            nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);
         }
 
         if (aaIds.isEmpty()) return "No alliance registered to this guild";

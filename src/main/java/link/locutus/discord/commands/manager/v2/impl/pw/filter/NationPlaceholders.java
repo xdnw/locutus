@@ -226,7 +226,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
 
         boolean containsAA = nameLower.contains("/alliance/");
         DBNation nation = containsAA ? null : DiscordUtil.parseNation(name, true);
-        if (nation == null || containsAA) {
+        if (nation == null) {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name);
             if (alliances == null) {
                 Role role = guild != null ? DiscordUtil.getRole(guild, name) : null;

@@ -39,7 +39,7 @@ public class Mask extends Command {
         boolean value = args.get(2).toLowerCase().startsWith("t") || args.get(2).equals("1");
 
         StringBuilder response = new StringBuilder();
-        Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
+        Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);
         if (nations.isEmpty()) return "Unknown nation: `" + args.get(0) + "`";
         for (DBNation nation : nations) {
             User user = nation == null ? null : nation.getUser();

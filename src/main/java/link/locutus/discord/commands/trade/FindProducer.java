@@ -73,7 +73,7 @@ public class FindProducer extends Command {
 
         List<DBNation> nations;
         if (args.size() >= 2) {
-            nations = new ArrayList<>(DiscordUtil.parseNations(guild, args.get(1)));
+            nations = new ArrayList<>(DiscordUtil.parseNations(guild, author, me, args.get(1), false, false));
         } else {
             nations = new ArrayList<>(Locutus.imp().getNationDB().getNations().values());
         }

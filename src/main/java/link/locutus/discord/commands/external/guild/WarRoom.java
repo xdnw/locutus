@@ -108,7 +108,7 @@ public class WarRoom extends Command {
             channel.sendMessage("Generating channels...");
 
             if (filterArg != null) {
-                Set<DBNation> nations = DiscordUtil.parseNations(guild, filterArg);
+                Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, filterArg, false, false);
                 for (Map.Entry<DBNation, Set<DBNation>> entry : targets.entrySet()) {
                     entry.getValue().removeIf(f -> !nations.contains(f));
                 }

@@ -179,7 +179,7 @@ public class GrantCmd extends Command {
         me = DiscordUtil.parseNation(args.get(0));
         String typeArg = args.get(1);
         if (me == null) {
-            Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
+            Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);
             Set<Integer> requiredAAs = guildDb.getAllianceIds();
             if (!flags.contains('f')) nations.removeIf(f -> !requiredAAs.contains(f.getAlliance_id()));
             if (nations.isEmpty()) return "Invalid nation: `" + args.get(0) + "`";

@@ -40,7 +40,7 @@ public class NoteSheet extends Command {
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         if (args.size() != 1) return usage(args.size(), 1, channel);
-        Set<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
+        Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, false);
         if (nations == null || nations.isEmpty()) return usage("Invalid nations: `" + args.get(0) + "`", channel);
 
         GuildDB db = Locutus.imp().getGuildDB(guild);

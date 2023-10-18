@@ -267,12 +267,14 @@ public class PlaceholdersMap {
                 "TODO CM REF",
                 (store, input) -> {
                     Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
+                    User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
+                    DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
 
                     if (SpreadSheet.isSheet(input)) {
                         Set<String> inputs = SpreadSheet.parseSheet(input, List.of("nations"), true, (type, str) -> str);
                         Set<NationList> lists = new HashSet<>();
                         for (String str : inputs) {
-                            Set<DBNation> nations = PWBindings.nations(null, guild, str);
+                            Set<DBNation> nations = PWBindings.nations(null, guild, str, author, me);
                             lists.add(new SimpleNationList(nations).setFilter(str));
                         }
                         return lists;
@@ -498,7 +500,9 @@ public class PlaceholdersMap {
                         return getTaxes(store, null, Set.of(id), null);
                     }
                     Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
-                    Set<DBNation> nations = PWBindings.nations(null, guild, input);
+                    User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
+                    DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
+                    Set<DBNation> nations = PWBindings.nations(null, guild, input, author, me);
                     Set<Integer> ids = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
                     return getTaxes(store, null, null, ids);
 
@@ -607,7 +611,9 @@ public class PlaceholdersMap {
                         return f -> f.getWar_attack_id() == id;
                     }
                     Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
-                    Set<NationOrAlliance> allowed = PWBindings.nationOrAlliance(null, guild, input, true);
+                    User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
+                    DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
+                    Set<NationOrAlliance> allowed = PWBindings.nationOrAlliance(null, guild, input, true, author, me);
                     return f -> {
                         DBWar war = f.getWar();
                         DBNation attacker = DBNation.getOrCreate(f.getAttacker_id());
@@ -771,7 +777,9 @@ public class PlaceholdersMap {
                         return Collections.singleton(PWBindings.bounty(input));
                     }
                     Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
-                    Set<DBNation> nations = PWBindings.nations(null, guild, input);
+                    User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
+                    DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
+                    Set<DBNation> nations = PWBindings.nations(null, guild, input, author, me);
                     Map<Integer, List<DBBounty>> bounties = Locutus.imp().getWarDb().getBountiesByNation();
                     Set<DBBounty> bountySet = new LinkedHashSet<>();
                     for (DBNation nation : nations) {

@@ -10,6 +10,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.User;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -116,15 +117,15 @@ public class WarParser {
         this.end = end;
     }
 
-    public static WarParser of(Guild guild, String attackers, String defenders, long start) {
-        return of(guild, attackers, defenders, start, Long.MAX_VALUE);
+    public static WarParser of(Guild guild, User author, DBNation me, String attackers, String defenders, long start) {
+        return of(guild, author, me, attackers, defenders, start, Long.MAX_VALUE);
     }
 
-    public static WarParser of(Guild guild, String attackers, String defenders, long start, long end) {
+    public static WarParser of(Guild guild, User author, DBNation me, String attackers, String defenders, long start, long end) {
         Set<Integer> coal1Alliances = DiscordUtil.parseAllianceIds(guild, attackers);
-        Collection<DBNation> coal1Nations = coal1Alliances != null && !coal1Alliances.isEmpty() ? null : DiscordUtil.parseNations(guild, attackers);
+        Collection<DBNation> coal1Nations = coal1Alliances != null && !coal1Alliances.isEmpty() ? null : DiscordUtil.parseNations(guild, author, me, attackers, false, true);
         Set<Integer> coal2Alliances = DiscordUtil.parseAllianceIds(guild, defenders);
-        Collection<DBNation> coal2Nations = coal2Alliances != null && !coal2Alliances.isEmpty() ? null : DiscordUtil.parseNations(guild, defenders);
+        Collection<DBNation> coal2Nations = coal2Alliances != null && !coal2Alliances.isEmpty() ? null : DiscordUtil.parseNations(guild, author, me, defenders, false, true);
 
         return ofNatObj(coal1Alliances, coal1Nations, coal2Alliances, coal2Nations, start, end);
     }

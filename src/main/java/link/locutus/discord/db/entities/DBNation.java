@@ -1809,6 +1809,7 @@ public class DBNation implements NationOrAlliance {
         }
         if (update) {
             System.out.println("Update transactions");
+            new Exception().printStackTrace();
             return updateTransactions(priority);
         }
         return Locutus.imp().getBankDB().getTransactionsByNation(nation_id);

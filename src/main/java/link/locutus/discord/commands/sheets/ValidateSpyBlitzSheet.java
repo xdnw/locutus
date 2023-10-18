@@ -62,7 +62,7 @@ public class ValidateSpyBlitzSheet extends Command {
 
         Function<DBNation, Boolean> isValidTarget = f -> true;
         if (args.size() >= 3) {
-            Set<DBNation> filter = DiscordUtil.parseNations(guild, args.get(2));
+            Set<DBNation> filter = DiscordUtil.parseNations(guild, author, me, args.get(2), false, false);
             isValidTarget = n -> filter.contains(n);
         }
 

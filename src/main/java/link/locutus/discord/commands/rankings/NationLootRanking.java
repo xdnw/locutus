@@ -43,7 +43,7 @@ public class NationLootRanking extends Command {
         if (args.size() != 2) {
             return usage(args.size(), 2, channel);
         }
-        Collection<DBNation> nations = DiscordUtil.parseNations(guild, args.get(0));
+        Collection<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, true);
         if (nations == null || nations.isEmpty()) {
             return "Invalid alliance or coalition: `" + args.get(0) + "`";
         }

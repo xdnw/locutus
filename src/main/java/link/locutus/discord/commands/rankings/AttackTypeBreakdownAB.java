@@ -39,7 +39,7 @@ public class AttackTypeBreakdownAB extends Command {
             return usage("Coalition 1 and 2 are the same", channel);
         }
 
-        WarAttackParser parser = new WarAttackParser(Locutus.imp().getGuildDB(guild), args, flags);
+        WarAttackParser parser = new WarAttackParser(Locutus.imp().getGuildDB(guild), author, me, args, flags);
 
         AttackTypeBreakdown breakdown = new AttackTypeBreakdown(parser.getNameA(), parser.getNameB());
         breakdown.addAttacks(parser.getAttacks(), parser.getIsPrimary(), parser.getIsSecondary());

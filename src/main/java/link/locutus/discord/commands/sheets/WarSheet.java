@@ -49,8 +49,8 @@ public class WarSheet extends Command {
         if (args.size() < 2 || args.size() > 3) {
             return usage(args.size(), 2, 3, channel);
         }
-        Set<DBNation> allies = DiscordUtil.parseNations(guild, args.get(0));
-        Set<DBNation> enemies = DiscordUtil.parseNations(guild, args.get(1));
+        Set<DBNation> allies = DiscordUtil.parseNations(guild, author, me, args.get(0), false, true);
+        Set<DBNation> enemies = DiscordUtil.parseNations(guild, author, me, args.get(1), false, true);
 
         long now = System.currentTimeMillis();
         long cutoff = now - TimeUnit.DAYS.toMillis(5);
