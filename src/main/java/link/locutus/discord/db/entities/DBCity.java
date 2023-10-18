@@ -14,6 +14,7 @@ import link.locutus.discord.event.Event;
 import link.locutus.discord.event.city.*;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 
@@ -75,10 +76,6 @@ public class DBCity {
         buildings3 = half;
     }
 
-    public static void main(String[] args) {
-        System.out.println();
-    }
-
     public byte[] toFull() {
         if (this.buildings3.length == Buildings.size()) {
             return buildings3;
@@ -118,7 +115,7 @@ public class DBCity {
         } else {
             int byteIndex = ordinal >> 1;
             byte pair = buildings3[byteIndex];
-            if ((byteIndex & 1) == 0) {
+            if ((ordinal & 1) == 0) {
                 return pair & 0x0F;
             } else {
                 return (pair >> 4) & 0x0F;
