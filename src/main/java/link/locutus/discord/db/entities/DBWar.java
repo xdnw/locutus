@@ -311,14 +311,7 @@ public class DBWar {
         if (getClass() != o.getClass()) return false;
 
         DBWar dbWar = (DBWar) o;
-
-        if (warId != dbWar.warId) return false;
-        if (getAttacker_id() != dbWar.getAttacker_id()) return false;
-        if (getDefender_id() != dbWar.getDefender_id()) return false;
-        if (getAttacker_aa() != dbWar.getAttacker_aa()) return false;
-        if (getDefender_aa() != dbWar.getDefender_aa()) return false;
-        if (getWarType() != dbWar.getWarType()) return false;
-        return getStatus() == dbWar.getStatus();
+        return dbWar.warId == warId;
     }
 
     @Override
