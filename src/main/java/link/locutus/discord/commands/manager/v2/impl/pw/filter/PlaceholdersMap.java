@@ -20,6 +20,7 @@ import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.AllowDeleted;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
@@ -148,6 +149,26 @@ public class PlaceholdersMap {
                 });
     }
 
+    private Set<NationOrAlliance> nationOrAlliancesSingle(ValueStore store, String input) {
+        Integer aaId = PnwUtil.parseAllianceId(input);
+        if (aaId != null) {
+            return Collections.singleton(DBAlliance.getOrCreate(aaId));
+        }
+        Integer nationId = DiscordUtil.parseNationId(input);
+        if (nationId != null) {
+            return Collections.singleton(DBNation.getOrCreate(nationId));
+        }
+        GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
+
+        if (input.charAt(0) == '~') input = input.substring(1);
+        if (input.startsWith("coalition:")) input = input.substring("coalition:".length());
+        Set<Integer> coalition = db.getCoalition(input);
+        if (!coalition.isEmpty()) {
+            return coalition.stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet());
+        }
+        throw new IllegalArgumentException("Invalid nation or alliance: `" + input + "`");
+    }
+
     private Placeholders<NationOrAlliance> createNationOrAlliances() {
         NationPlaceholders nationPlaceholders = (NationPlaceholders) get(DBNation.class);
         return new Placeholders<NationOrAlliance>(NationOrAlliance.class, store, validators, permisser) {
@@ -161,17 +182,32 @@ public class PlaceholdersMap {
                 if (input.contains("#")) {
                     return (Set) nationPlaceholders.parseSet(store2, input);
                 }
+                return super.parseSet(store2, input);
             }
 
             @Override
             protected Set<NationOrAlliance> parseSingleElem(ValueStore store, String input) {
-                // handling for a sheet or tax_id
-                return Collections.singleton(PWBindings.nationOrAlliance(input));
+                if (SpreadSheet.isSheet(input)) {
+                    return SpreadSheet.parseSheet(input, List.of("nation", "alliance"), true, (type, str) -> PWBindings.nationOrAlliance(str));
+                }
+                return nationOrAlliancesSingle(store, input);
             }
 
             @Override
             protected Predicate<NationOrAlliance> parseSingleFilter(ValueStore store, String input) {
-                // nationFilter
+                if (input.equalsIgnoreCase("*")) {
+                    return f -> true;
+                }
+                Predicate<DBNation> predicate = nationPlaceholders.parseSingleFilter(store, input);
+                return new Predicate<NationOrAlliance>() {
+                    @Override
+                    public boolean test(NationOrAlliance nationOrAlliance) {
+                        if (nationOrAlliance.isNation()) {
+                            return predicate.test(nationOrAlliance.asNation());
+                        }
+                        return false;
+                    }
+                };
             }
         };
     }
