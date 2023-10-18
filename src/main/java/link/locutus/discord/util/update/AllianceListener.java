@@ -98,18 +98,18 @@ public class AllianceListener {
                 Set<DBNation> nations = aaList.getNations(DBNation::isTaxable);
                 if (nations.isEmpty()) continue;
 
-                Map<NationFilter, TaxRate> internal = GuildKey.REQUIRED_INTERNAL_TAXRATE.getOrNull(db, false);
-                Map<NationFilter, Integer> taxrate = GuildKey.REQUIRED_TAX_BRACKET.getOrNull(db, false);
-                if ((internal == null || internal.isEmpty())
-//                        && (taxrate == null || taxrate.isEmpty())
-                ) {
-                    continue;
-                }
-
-                MessageChannel output = db.getResourceChannel(0);
-                if (output == null) output = GuildKey.ADDBALANCE_ALERT_CHANNEL.getOrNull(db, false);
-
                 try {
+                    Map<NationFilter, TaxRate> internal = GuildKey.REQUIRED_INTERNAL_TAXRATE.getOrNull(db, false);
+                    Map<NationFilter, Integer> taxrate = GuildKey.REQUIRED_TAX_BRACKET.getOrNull(db, false);
+                    if ((internal == null || taxrate.isEmpty())
+    //                        && (taxrate == null || taxrate.isEmpty())
+                    ) {
+                        continue;
+                    }
+
+                    MessageChannel output = db.getResourceChannel(0);
+                    if (output == null) output = GuildKey.ADDBALANCE_ALERT_CHANNEL.getOrNull(db, false);
+
                     List<String> messages = new ArrayList<>();
                     db.getHandler().setNationInternalTaxRate(nations, messages::add);
 //                    db.getHandler().setNationTaxBrackets(nations, messages::add);

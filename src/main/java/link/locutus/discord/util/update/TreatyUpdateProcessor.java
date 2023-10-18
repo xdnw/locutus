@@ -64,11 +64,23 @@ public class TreatyUpdateProcessor {
             title += " " + current.getType();
         }
 
+        int maxRank = Integer.MAX_VALUE;
         StringBuilder body = new StringBuilder();
-        body.append("From: " + PnwUtil.getMarkdownUrl(existing.getFromId(), true)).append("\n");
-        body.append("To: " + PnwUtil.getMarkdownUrl(existing.getToId(), true)).append("\n");
+        body.append("From: " + PnwUtil.getMarkdownUrl(existing.getFromId(), true));
+        if (fromAA != null) {
+            maxRank = fromAA.getRank();
+            body.append(" - #" + maxRank + " (" + fromAA.getNations(true, 7200, true).size() + " nations)");
+        }
+        body.append("\n");
+        body.append("To: " + PnwUtil.getMarkdownUrl(existing.getToId(), true));
+        if (toAA != null) {
+            int rank = toAA.getRank();
+            maxRank = Math.min(maxRank, rank);
+            body.append(" - #" + rank + " (" + toAA.getNations(true, 7200, true).size() + " nations)");
+        }
+        body.append("\n");
 
-        String finalTitle = title;
+        String finalTitle = title + (maxRank == Integer.MAX_VALUE ? "" : " | rank #: " + maxRank);
         AlertUtil.forEachChannel(f -> true, GuildKey.TREATY_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB guildDB) {

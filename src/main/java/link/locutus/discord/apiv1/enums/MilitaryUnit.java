@@ -173,6 +173,12 @@ public enum MilitaryUnit {
         return getCap(() -> nation.getCityMap(update).values(), nation::hasProject);
     }
 
+    /**
+     * Maximum units that can be held for a given city count and projects
+     * @param numCities
+     * @param hasProject
+     * @return
+     */
     public int getMaxMMRCap(int numCities, Predicate<Project> hasProject) {
         switch (this) {
             case MONEY,INFRASTRUCTURE:

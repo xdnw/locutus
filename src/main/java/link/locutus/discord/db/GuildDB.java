@@ -2526,6 +2526,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
     }
 
     public Function<DBNation, Boolean> getCanRaid(int topX, boolean checkTreaties) {
+        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
+        if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getCanRaid(topX, checkTreaties);
+        loadCoalitions();
         Set<Integer> dnr = new HashSet<>(getCoalition(Coalition.ALLIES));
         dnr.addAll(getCoalition("dnr"));
         Set<Integer> dnr_active = new HashSet<>(getCoalition("dnr_active"));

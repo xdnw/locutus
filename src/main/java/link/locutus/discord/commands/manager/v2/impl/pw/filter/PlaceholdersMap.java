@@ -24,6 +24,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.BankDB;
@@ -63,6 +64,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -81,6 +83,7 @@ public class PlaceholdersMap {
 
         this.placeholders.put(DBNation.class, new NationPlaceholders(store, validators, permisser));
         this.placeholders.put(DBAlliance.class, new AlliancePlaceholders(store, validators, permisser));
+        this.placeholders.put(NationOrAlliance.class, createNationOrAlliances());
         this.placeholders.put(Continent.class, createContinents());
         this.placeholders.put(GuildDB.class, createGuildDB());
         //- Projects
@@ -143,6 +146,34 @@ public class PlaceholdersMap {
                     }
                     return emumSet(Continent.class, input);
                 });
+    }
+
+    private Placeholders<NationOrAlliance> createNationOrAlliances() {
+        NationPlaceholders nationPlaceholders = (NationPlaceholders) get(DBNation.class);
+        return new Placeholders<NationOrAlliance>(NationOrAlliance.class, store, validators, permisser) {
+            @Override
+            public String getCommandMention() {
+                return "TODO";
+            }
+
+            @Override
+            public Set<NationOrAlliance> parseSet(ValueStore store2, String input) {
+                if (input.contains("#")) {
+                    return (Set) nationPlaceholders.parseSet(store2, input);
+                }
+            }
+
+            @Override
+            protected Set<NationOrAlliance> parseSingleElem(ValueStore store, String input) {
+                // handling for a sheet or tax_id
+                return Collections.singleton(PWBindings.nationOrAlliance(input));
+            }
+
+            @Override
+            protected Predicate<NationOrAlliance> parseSingleFilter(ValueStore store, String input) {
+                // nationFilter
+            }
+        };
     }
 
     private Placeholders<GuildDB> createGuildDB() {

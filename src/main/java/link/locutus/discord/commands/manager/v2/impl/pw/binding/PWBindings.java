@@ -305,7 +305,7 @@ public class PWBindings extends BindingHelper {
             examples = """
             #cities<10:100/100
             #cities>=10:25/25""")
-    public Map<NationFilter, TaxRate> taxRateMap(@Me User author, @Me DBNation nation, @Me GuildDB db, String input) {
+    public Map<NationFilter, TaxRate> taxRateMap(@Me GuildDB db, String input, @Default @Me User author, @Default @Me DBNation nation) {
         Map<NationFilter, TaxRate> filterToTaxRate = new LinkedHashMap<>();
         for (String line : input.split("\n")) {
             String[] split = line.split("[:]");
@@ -336,7 +336,7 @@ public class PWBindings extends BindingHelper {
     examples = """
             #cities<10:1
             #cities>=10:2""")
-    public Map<NationFilter, Integer> taxIdMap(@Me User author, @Me DBNation nation, @Me GuildDB db, String input) {
+    public Map<NationFilter, Integer> taxIdMap(@Me GuildDB db, String input, @Default @Me User author, @Default @Me DBNation nation) {
         Map<NationFilter, Integer> filterToBracket = new LinkedHashMap<>();
         for (String line : input.split("[\n|;]")) {
             String[] split = line.split("[:]");

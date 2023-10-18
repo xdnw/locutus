@@ -1576,6 +1576,7 @@ public class GuildKey {
             return "The #channel to receive alerts when a raid target leaves beige.\n" + CM.role.setAlias.cmd.create(Roles.BEIGE_ALERT.name(), null, null, null) + " must also be set and have members in range";
         }
     }.setupRequirements(f -> f.requireValidAlliance().requires(ALLIANCE_ID).requiresWhitelisted().requireActiveGuild());
+
     public static GuildSetting<MessageChannel> ENEMY_BEIGED_ALERT = new GuildChannelSetting(GuildSettingCategory.BEIGE_ALERTS) {
         @NoFormat
         @Command(descMethod = "help")
@@ -1666,6 +1667,22 @@ public class GuildKey {
             return response.toString();
         }
     }.setupRequirements(f -> f.requires(ENEMY_BEIGED_ALERT_VIOLATIONS).requireValidAlliance());
+
+    public static GuildSetting<Boolean> BEIGE_VIOLATION_MAIL = new GuildBooleanSetting(GuildSettingCategory.BEIGE_ALERTS) {
+
+        @NoFormat
+        @Command(descMethod = "help")
+        @RolePermission(Roles.ADMIN)
+        public String BEIGE_VIOLATION_MAIL(@Me GuildDB db, @Me User user, boolean value) {
+            return BEIGE_VIOLATION_MAIL.setAndValidate(db, user, value);
+        }
+
+        @Override
+        public String help() {
+            return "Whether to send a mail to the nation when a beige violation occurs\n" +
+                    "Default: True";
+        }
+    }.setupRequirements(f -> f.requires(ENEMY_BEIGED_ALERT_VIOLATIONS).requireValidAlliance().requires(ALLOWED_BEIGE_REASONS));
 
     public static GuildSetting<Map<NationFilter, Role>> CONDITIONAL_ROLES = new GuildSetting<Map<NationFilter, Role>>(GuildSettingCategory.ROLE, Map.class, NationFilter.class, Role.class) {
         @NoFormat

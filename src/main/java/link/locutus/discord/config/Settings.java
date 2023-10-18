@@ -244,6 +244,9 @@ public class Settings extends Config {
         @Comment("Fetches discord ids (default: 15 minutes)")
         public int NATION_DISCORD_SECONDS = 15 * 60;
 
+        @Comment("Fetches alliance treaties (default: 60 minutes)")
+        public int TREATY_UPDATE_SECONDS = 60 * 60;
+
         @Comment({"Fetches all bank records at invterval (default: disabled)",
                 "If disabled, bank records will be fetched when needed"})
         public int BANK_RECORDS_INTERVAL_SECONDS = 0;

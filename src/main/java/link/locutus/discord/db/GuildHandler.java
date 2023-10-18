@@ -2185,6 +2185,8 @@ public class GuildHandler {
 
         Role milcom = Roles.ENEMY_BEIGE_ALERT_AUDITOR.toRole(db.getGuild());
         if (!allowed) {
+            boolean sendMail = GuildKey.BEIGE_VIOLATION_MAIL.getOrNull(db) != Boolean.FALSE;
+
             String ping = "";
             if (milcom != null) ping += milcom.getAsMention();
             if (user != null) ping += user.getAsMention();
@@ -2196,14 +2198,16 @@ public class GuildHandler {
                 DiscordUtil.sendMessage(channel, explanation.toString());
             }
 
-            DBNation nation = DBNation.getById(root.getAttacker_id());
-            if (nation != null && db.getGuild().getMember(user) != null) {
-                ApiKeyPool keys = db.getMailKey();
-                if (keys != null) {
-                    try {
-                        nation.sendMail(keys, "Beige Cycle Violation", explanation, false);
-                    } catch (IOException e) {
-                        e.printStackTrace();
+            if (sendMail) {
+                DBNation nation = DBNation.getById(root.getAttacker_id());
+                if (nation != null) {
+                    ApiKeyPool keys = db.getMailKey();
+                    if (keys != null) {
+                        try {
+                            nation.sendMail(keys, "Beige Cycle Violation", explanation, false);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
             }
