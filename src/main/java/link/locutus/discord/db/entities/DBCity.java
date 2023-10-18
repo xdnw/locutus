@@ -116,9 +116,9 @@ public class DBCity {
             int byteIndex = ordinal >> 1;
             byte pair = buildings3[byteIndex];
             if ((ordinal & 1) == 0) {
-                return pair & 0x0F;
-            } else {
                 return (pair >> 4) & 0x0F;
+            } else {
+                return pair & 0x0F;
             }
         }
     }
