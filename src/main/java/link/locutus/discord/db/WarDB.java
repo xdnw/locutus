@@ -43,6 +43,7 @@ import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.SWarContainer;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import org.sqlite.core.DB;
 
 import java.io.IOException;
 import java.sql.PreparedStatement;
@@ -1652,6 +1653,7 @@ public class WarDB extends DBMainV2 {
     public boolean updateWars(List<DBWar> dbWars, Collection<Integer> expectedIds, Consumer<Event> eventConsumer) {
         List<DBWar> prevWars = new ArrayList<>();
         List<DBWar> newWars = new ArrayList<>();
+        Set<Integer> expectedIdsSet = expectedIds == null ? null : expectedIds instanceof Set ? (Set<Integer>) expectedIds : new ObjectOpenHashSet<>(expectedIds);
         Set<Integer> idsFetched = dbWars.stream().map(DBWar::getWarId).collect(Collectors.toSet());
         Set<Integer> newWarIds = new LinkedHashSet<>();
 
@@ -1660,7 +1662,7 @@ public class WarDB extends DBMainV2 {
 
             if ((existing == null && !war.isActive()) || (existing != null && (war.getStatus() == existing.getStatus() || !existing.isActive()))) continue;
 
-            prevWars.add(existing);
+            prevWars.add(existing == null ? null : new DBWar(existing));
             newWars.add(war);
             newWarIds.add(war.getWarId());
 
@@ -1673,48 +1675,20 @@ public class WarDB extends DBMainV2 {
                     if (eventConsumer != null) eventConsumer.accept(new NationChangeColorEvent(copy, attacker));
                 }
             }
-
-            DBNation attacker = Locutus.imp().getNationDB().getNation(war.getAttacker_id());
-            DBNation defender = Locutus.imp().getNationDB().getNation(war.getDefender_id());
-            if (war.getAttacker_aa() == 0 && attacker != null) {
-                war.setAttacker_aa(attacker.getAlliance_id());
-            }
-            if (war.getDefender_aa() == 0 && defender != null) {
-                war.setDefender_aa(defender.getAlliance_id());
+            if (existing != null && existing.getStatus() != war.getStatus()) {
+                existing.setStatus(war.getStatus());
             }
         }
 
         long currentTurn = TimeUtil.getTurn();
         for (DBWar war : activeWars.getActiveWars()) {
             // Handle deleted wars
-            if (expectedIds != null && expectedIds.contains(war.getWarId()) && !idsFetched.contains(war.getWarId())) {
+            if (expectedIdsSet != null && expectedIdsSet.contains(war.getWarId()) && !idsFetched.contains(war.getWarId())) {
                 prevWars.add(new DBWar(war));
                 war.setStatus(WarStatus.EXPIRED);
                 newWars.add(war);
                 continue;
             }
-
-//            // Expire other wars
-//            if (!newWarIds.add(war.getWarId())) continue;
-//
-//            long warTurn = TimeUtil.getTurn(war.date);
-//
-//            if (currentTurn - warTurn >= 60 && false) { // TODO disable
-//                prevWars.add(new DBWar(war));
-//                war.status = WarStatus.EXPIRED;
-//                newWars.add(war);
-//
-////            } else
-////                if (war.status != WarStatus.EXPIRED){
-////                DBNation attacker = Locutus.imp().getNationDB().getNation(war.attacker_id);
-////                DBNation defender = Locutus.imp().getNationDB().getNation(war.defender_id);
-////                if ((attacker == null || defender == null) && war.date < System.currentTimeMillis() - TimeUnit.HOURS.toMillis(2)) {
-////
-////                    prevWars.add(new DBWar(war));
-////                    war.status = WarStatus.EXPIRED;
-////                    newWars.add(war);
-////                }
-//            }
         }
 
         saveWars(newWars);
