@@ -1658,15 +1658,7 @@ public class WarDB extends DBMainV2 {
 
         for (DBWar war : dbWars) {
             DBWar existing = warsById.get(war);
-            if (war.warId == 1828876) {
-                System.out.println("Found war 1828876 " + war + " | " + existing + " | ");
-            }
-
             if ((existing == null && !war.isActive()) || (existing != null && (war.getStatus() == existing.getStatus() || !existing.isActive()))) continue;
-
-            if (war.warId == 1828876) {
-                System.out.println("Found 2 war 1828876 " + war + " | " + existing + " | " + war.getStatus() + " | " + (existing != null ? existing.getStatus() : "null"));
-            }
 
             prevWars.add(existing == null ? null : new DBWar(existing));
             newWars.add(war);

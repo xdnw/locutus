@@ -188,7 +188,15 @@ public class PlaceholdersMap {
             @Override
             protected Set<NationOrAlliance> parseSingleElem(ValueStore store, String input) {
                 if (SpreadSheet.isSheet(input)) {
-                    return SpreadSheet.parseSheet(input, List.of("nation", "alliance"), true, (type, str) -> PWBindings.nationOrAlliance(str));
+                    return SpreadSheet.parseSheet(input, List.of("nation", "alliance"), true, (type, str) -> {
+                        switch (type) {
+                            case 0:
+                                return PWBindings.nation(null, str);
+                            case 1:
+                                return PWBindings.alliance(str);
+                        }
+                        return null;
+                    });
                 }
                 return nationOrAlliancesSingle(store, input);
             }

@@ -10,6 +10,7 @@ import link.locutus.discord.event.treaty.*;
 import link.locutus.discord.util.AlertUtil;
 import link.locutus.discord.util.PnwUtil;
 import com.google.common.eventbus.Subscribe;
+import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.util.Set;
@@ -66,6 +67,7 @@ public class TreatyUpdateProcessor {
 
         int maxRank = Integer.MAX_VALUE;
         StringBuilder body = new StringBuilder();
+        body.append("Time remaining: " + DiscordUtil.timestamp(existing.getEndTime(), null) + " (" + existing.getTurnsRemaining() + " turns)\n");
         body.append("From: " + PnwUtil.getMarkdownUrl(existing.getFromId(), true));
         if (fromAA != null) {
             maxRank = fromAA.getRank();
@@ -80,7 +82,7 @@ public class TreatyUpdateProcessor {
         }
         body.append("\n");
 
-        String finalTitle = title + (maxRank == Integer.MAX_VALUE ? "" : " | rank #: " + maxRank);
+        String finalTitle = title + (maxRank == Integer.MAX_VALUE ? "" : " | rank #" + maxRank);
         AlertUtil.forEachChannel(f -> true, GuildKey.TREATY_ALERTS, new BiConsumer<MessageChannel, GuildDB>() {
             @Override
             public void accept(MessageChannel channel, GuildDB guildDB) {

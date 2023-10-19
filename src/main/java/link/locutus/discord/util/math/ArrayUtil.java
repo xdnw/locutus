@@ -1212,7 +1212,12 @@ public class ArrayUtil {
         if ((parseSet2 != null) == (parseElemPredicate != null)) {
             throw new IllegalArgumentException("Only one of parseSet2 and parseElemPredicate can be null");
         }
+
+        System.out.println("Input `" + input + "`");
+
         List<String> splitAnd = StringMan.split(input, ',');
+
+        System.out.println("Split " + splitAnd);
 
         List<ParseResult<T>> andResults = new ArrayList<>();
 

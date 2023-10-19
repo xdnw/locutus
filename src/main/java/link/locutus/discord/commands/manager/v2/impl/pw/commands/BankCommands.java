@@ -3329,7 +3329,7 @@ public class BankCommands {
             if (offshore == null) {
                 if (otherDb2 == db) {
                     if (!Roles.ECON.has(author, otherDb2.getGuild())) {
-                        return "You do not have permisssion to check another alliance's deposits";
+                        return "You do not have permisssion to check another alliance's deposits (1)";
                     }
                     Map<ResourceType, Double> stock = alliance.getStockpile();
                     accountDeposits.put(DepositType.DEPOSIT, PnwUtil.resourcesToArray(stock));
@@ -3337,10 +3337,10 @@ public class BankCommands {
                     return "No offshore is set. In this server, use " + CM.coalition.add.cmd.create("AA:" + alliance.getAlliance_id(), Coalition.OFFSHORE.name()) + " and from the offshore server use " + CM.coalition.add.cmd.create("AA:" + alliance.getAlliance_id(), Coalition.OFFSHORING.name()) + "";
                 }
             } else if (otherDb2 != db && offshore.getGuildDB() != db) {
-                return "You do not have permisssion to check another alliance's deposits";
+                return "You do not have permisssion to check another alliance's deposits (2)";
             } else {
                 if ((otherDb2 == null || !Roles.ECON.has(author, otherDb2.getGuild())) && (!Roles.ECON.has(author, offshore.getGuildDB().getGuild()))) {
-                    return "You do not have permisssion to check another alliance's deposits";
+                    return "You do not have permisssion to check another alliance's deposits (3)";
                 }
                 double[] deposits = PnwUtil.resourcesToArray(offshore.getDeposits(alliance.getAlliance_id(), true));
                 accountDeposits.put(DepositType.DEPOSIT, deposits);
