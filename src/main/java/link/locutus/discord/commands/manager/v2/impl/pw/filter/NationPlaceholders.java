@@ -16,8 +16,10 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.DefaultPlacehold
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -154,6 +156,12 @@ public class NationPlaceholders extends Placeholders<DBNation> {
             if (alliances == null) throw new IllegalArgumentException("Invalid alliance: `" + name + "`");
             Set<DBNation> allianceMembers = Locutus.imp().getNationDB().getNations(alliances);
             return allianceMembers;
+        } else if (MathMan.isInteger(nameLower)) {
+            int id = Integer.parseInt(nameLower);
+            DBNation nation = DBNation.getById(id);
+            if (nation != null) return Set.of(nation);
+            DBAlliance alliance = DBAlliance.get(id);
+            if (alliance != null) return alliance.getNations();
         }
 
         Set<DBNation> nations = new LinkedHashSet<>();
@@ -222,6 +230,9 @@ public class NationPlaceholders extends Placeholders<DBNation> {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name.split(":", 2)[1].trim());
             if (alliances == null) throw new IllegalArgumentException("Invalid alliance: `" + name + "`");
             return f -> alliances.contains(f.getAlliance_id());
+        } else if (MathMan.isInteger(nameLower)) {
+            int id = Integer.parseInt(nameLower);
+            return f -> f.getId() == id || f.getAlliance_id() == id;
         }
 
         boolean containsAA = nameLower.contains("/alliance/");
