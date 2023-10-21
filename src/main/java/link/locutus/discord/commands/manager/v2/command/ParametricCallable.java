@@ -444,7 +444,7 @@ public class ParametricCallable implements ICommand {
                         }
                         int originalRemaining = stack.remaining();
                         List<String> remaining = new ArrayList<>(stack.getRemainingArgs());
-                        System.out.println("Key " + parameter.getBinding().getKey() + " | " + parameter.getName() + " | " + method.getName());
+                        System.out.println("Key " + parameter.getBinding().getKey() + " | " + parameter.getName() + " | " + method.getName() + " input " + originalRemaining + " | " + remaining);
                         value = locals.get(parameter.getBinding().getKey()).apply(stack);
                         int numConsumed = originalRemaining - stack.remaining();
                         unparsed = String.join(" ", remaining.subList(0, numConsumed));

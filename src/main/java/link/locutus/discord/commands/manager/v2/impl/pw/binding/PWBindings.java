@@ -767,7 +767,15 @@ public class PWBindings extends BindingHelper {
 
     @Binding(examples = "borg,AA:Cataclysm", value = "A comma separated list of nations and alliances")
     public static Set<NationOrAlliance> nationOrAlliance(ParameterData data, @Default @Me Guild guild, String input, @Default @Me User author, @Default @Me DBNation me) {
-        return nationOrAlliance(data, guild, input, false, author, me);
+        Set<NationOrAlliance> result = nationOrAlliance(data, guild, input, false, author, me);
+        boolean allowDeleted = data != null && data.getAnnotation(AllowDeleted.class) != null;
+        if (!allowDeleted) {
+            result.removeIf(n -> n.getName() == null || n.getName().isEmpty());
+        }
+        if (result.isEmpty()) {
+            throw new IllegalArgumentException("No nations or alliances found matching: `" + input + "`");
+        }
+        return result;
     }
 
     public static Set<NationOrAlliance> nationOrAlliance(ParameterData data, @Default @Me Guild guild, String input, boolean forceAllowDeleted, @Default @Me User author, @Default @Me DBNation me) {

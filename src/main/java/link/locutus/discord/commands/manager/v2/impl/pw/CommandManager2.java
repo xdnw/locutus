@@ -468,7 +468,7 @@ public class CommandManager2 {
                     }
                 }
 
-                List<String> args = StringMan.split(remaining.toString(), ' ');
+                List<String> args = remaining.isEmpty() ? new ArrayList<>() : StringMan.split(remaining.toString(), ' ');
 
                 LocalValueStore locals = createLocals(existingLocals, null, null, null, null, io, null);
 
