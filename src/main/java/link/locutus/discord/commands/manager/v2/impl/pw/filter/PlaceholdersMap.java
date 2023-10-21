@@ -150,13 +150,23 @@ public class PlaceholdersMap {
     }
 
     private Set<NationOrAlliance> nationOrAlliancesSingle(ValueStore store, String input) {
+        if (MathMan.isInteger(input)) {
+            long id = Long.parseLong(input);
+            if (id < Integer.MAX_VALUE) {
+                int idInt = (int) id;
+                DBAlliance alliance = DBAlliance.get(idInt);
+                if (alliance != null) return Set.of(alliance);
+                DBNation nation = DBNation.getById(idInt);
+                if (nation != null) return Set.of(nation);
+            }
+        }
         Integer aaId = PnwUtil.parseAllianceId(input);
         if (aaId != null) {
-            return Collections.singleton(DBAlliance.getOrCreate(aaId));
+            return Set.of(DBAlliance.getOrCreate(aaId));
         }
         Integer nationId = DiscordUtil.parseNationId(input);
         if (nationId != null) {
-            return Collections.singleton(DBNation.getOrCreate(nationId));
+            return Set.of(DBNation.getOrCreate(nationId));
         }
         GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
 
@@ -249,7 +259,7 @@ public class PlaceholdersMap {
                     if (!admin && guild.getGuild().getMember(user) == null) {
                         throw new IllegalArgumentException("You (" + user + ") are not in the guild with id: `" + id + "`");
                     }
-                    return Collections.singleton(guild);
+                    return Set.of(guild);
                 }, (store, input) -> {
                     if (input.equalsIgnoreCase("*")) {
                         return f -> true;
@@ -274,7 +284,7 @@ public class PlaceholdersMap {
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("bans"), true, (type, str) -> PWBindings.ban(str));
                     }
-                    return Collections.singleton(PWBindings.ban(input));
+                    return Set.of(PWBindings.ban(input));
                 }, (store, input) -> {
                     if (input.equalsIgnoreCase("*")) return f -> true;
                     if (SpreadSheet.isSheet(input)) {
@@ -376,7 +386,7 @@ public class PlaceholdersMap {
 
     private Set<DBCity> parseCitiesSingle(ValueStore store, String input) {
         if (MathMan.isInteger(input) || input.contains("/city/id=")) {
-            return Collections.singleton(PWBindings.cityUrl(input));
+            return Set.of(PWBindings.cityUrl(input));
         }
         NationPlaceholders nationPlaceholders = (NationPlaceholders) get(DBNation.class);
         Set<DBNation> nations = nationPlaceholders.parseSingleElem(store, input);
@@ -469,7 +479,7 @@ public class PlaceholdersMap {
     private Set<TaxBracket> bracketSingle(ValueStore store, GuildDB db, String input) {
         if (input.contains("tx_id=") || MathMan.isInteger(input)) {
             TaxBracket bracket = PWBindings.bracket(db, input);
-            return Collections.singleton(bracket);
+            return Set.of(bracket);
         }
         NationPlaceholders natFormat = (NationPlaceholders) get(DBNation.class);
         Set<DBNation> nations = natFormat.parseSingleElem(store, input);
@@ -735,7 +745,7 @@ public class PlaceholdersMap {
                     }
                     if (MathMan.isInteger(input)) {
                         int id = Integer.parseInt(input);
-                        return Collections.singleton(Locutus.imp().getTradeManager().getTradeDb().getTradeById(id));
+                        return Set.of(Locutus.imp().getTradeManager().getTradeDb().getTradeById(id));
                     }
                     throw new IllegalArgumentException("Only trade ids are supported, not `" + input + "`");
                 }, (store, input) -> {
@@ -781,7 +791,7 @@ public class PlaceholdersMap {
                     }
                     if (MathMan.isInteger(input)) {
                         List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsbyId(
-                                Collections.singleton(Integer.parseInt(input)));
+                                Set.of(Integer.parseInt(input)));
                         return filterTransactions(nation, user, db, transactions);
                     }
                     throw new IllegalArgumentException("Invalid transaction id: " + input);
@@ -818,7 +828,7 @@ public class PlaceholdersMap {
                         return SpreadSheet.parseSheet(input, List.of("bounty"), true, (type, str) -> PWBindings.bounty(str));
                     }
                     if (MathMan.isInteger(input)) {
-                        return Collections.singleton(PWBindings.bounty(input));
+                        return Set.of(PWBindings.bounty(input));
                     }
                     Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
                     User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
@@ -960,7 +970,7 @@ public class PlaceholdersMap {
             if (SpreadSheet.isSheet(input)) {
                 return SpreadSheet.parseSheet(input, List.of("resource"), true, (type, str) -> PWBindings.resource(str));
             }
-            return Collections.singleton(PWBindings.resource(input));
+            return Set.of(PWBindings.resource(input));
         });
     }
 
@@ -972,7 +982,7 @@ public class PlaceholdersMap {
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("attack_type"), true, (type, str) -> PWBindings.attackType(str));
                     }
-                    return Collections.singleton(PWBindings.attackType(input));
+                    return Set.of(PWBindings.attackType(input));
                 });
     }
 
@@ -984,7 +994,7 @@ public class PlaceholdersMap {
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("unit"), true, (type, str) -> PWBindings.unit(str));
                     }
-                    return Collections.singleton(PWBindings.unit(input));
+                    return Set.of(PWBindings.unit(input));
                 });
     }
 
@@ -996,7 +1006,7 @@ public class PlaceholdersMap {
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("treaty_type"), true, (type, str) -> PWBindings.TreatyType(str));
                     }
-                    return Collections.singleton(PWBindings.TreatyType(input));
+                    return Set.of(PWBindings.TreatyType(input));
                 });
     }
 
@@ -1008,7 +1018,7 @@ public class PlaceholdersMap {
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("audit"), true, (type, str) -> PWBindings.auditType(str));
                     }
-                    return Collections.singleton(PWBindings.auditType(input));
+                    return Set.of(PWBindings.auditType(input));
                 });
     }
 
@@ -1020,7 +1030,7 @@ public class PlaceholdersMap {
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("color"), true, (type, str) -> PWBindings.NationColor(str));
                     }
-                    return Collections.singleton(PWBindings.NationColor(input));
+                    return Set.of(PWBindings.NationColor(input));
                 });
     }
 
@@ -1032,7 +1042,7 @@ public class PlaceholdersMap {
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("attack_type"), true, (type, str) -> PWBindings.getBuilding(str));
                     }
-                    return Collections.singleton(PWBindings.getBuilding(input));
+                    return Set.of(PWBindings.getBuilding(input));
                 });
     }
 
