@@ -511,6 +511,11 @@ public class DBNation implements NationOrAlliance {
         return (this.projects & (1L << project.ordinal())) != 0;
     }
 
+    @Override
+    public boolean isValid() {
+        return getById(nation_id) != null;
+    }
+
     @Command(desc = "If the nation has all of the specified projects")
     public boolean hasProjects(Set<Project> projects, @Default boolean any) {
         if (any) {

@@ -770,7 +770,7 @@ public class PWBindings extends BindingHelper {
         Set<NationOrAlliance> result = nationOrAlliance(data, guild, input, false, author, me);
         boolean allowDeleted = data != null && data.getAnnotation(AllowDeleted.class) != null;
         if (!allowDeleted) {
-            result.removeIf(n -> n.getName() == null || n.getName().isEmpty());
+            result.removeIf(n -> !n.isValid());
         }
         if (result.isEmpty()) {
             throw new IllegalArgumentException("No nations or alliances found matching: `" + input + "`");

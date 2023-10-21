@@ -94,6 +94,11 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     @Override
+    public boolean isValid() {
+        return get(allianceId) != null;
+    }
+
+    @Override
     public String getFilter() {
         return getTypePrefix() + ":" + allianceId;
     }

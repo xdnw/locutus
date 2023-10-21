@@ -42,4 +42,7 @@ public interface NationOrAlliance extends NationOrAllianceOrGuild {
     default String getSheetUrl() {
         return MarkupUtil.sheetUrl(getName(), getUrl());
     }
+
+    @Command(desc = "If this exists in game")
+    boolean isValid();
 }
