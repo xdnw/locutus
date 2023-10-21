@@ -58,6 +58,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class TradeCommands {
@@ -1369,21 +1370,21 @@ public class TradeCommands {
 
     @Command(desc = "Generate a graph of average trade buy and sell volume by day")
     @RolePermission(value = Roles.MEMBER)
-    public String tradevolumebyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int numDays, @Switch("j") boolean attachJson) throws IOException, GeneralSecurityException {
+    public String tradevolumebyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int numDays, @Switch("j") boolean attachJson, @Switch("r") List<ResourceType> resources) throws IOException, GeneralSecurityException {
         String title = "volume by day";
-        rssTradeByDay(title, channel, numDays, offers -> manager.volumeByResource(offers), attachJson);
+        rssTradeByDay(title, channel, numDays, offers -> manager.volumeByResource(offers), attachJson, resources);
         return null;
     }
 
     @Command(desc = "Generate a graph of average trade buy and sell total by day")
     @RolePermission(value = Roles.MEMBER)
-    public String tradetotalbyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int numDays, @Switch("j") boolean attachJson) throws IOException, GeneralSecurityException {
+    public String tradetotalbyday(@Me IMessageIO channel, TradeManager manager, link.locutus.discord.db.TradeDB tradeDB, @Range(min=1, max=300) int numDays, @Switch("j") boolean attachJson, @Switch("r") List<ResourceType> resources) throws IOException, GeneralSecurityException {
         String title = "total by day";
-        rssTradeByDay(title, channel, numDays, offers -> manager.totalByResource(offers), attachJson);
+        rssTradeByDay(title, channel, numDays, offers -> manager.totalByResource(offers), attachJson, resources);
         return null;
     }
 
-    public void rssTradeByDay(String title, IMessageIO channel, int days, Function<Collection<DBTrade>, long[]> rssFunction, boolean attachJson) throws IOException {
+    public void rssTradeByDay(String title, IMessageIO channel, int days, Function<Collection<DBTrade>, long[]> rssFunction, boolean attachJson, List<ResourceType> resources) throws IOException {
         TradeManager manager = Locutus.imp().getTradeManager();
         link.locutus.discord.db.TradeDB tradeDb = manager.getTradeDb();
 
@@ -1412,7 +1413,8 @@ public class TradeCommands {
             }
         }
 
-        for (ResourceType type : ResourceType.values) {
+        if (resources == null) resources = Arrays.asList(ResourceType.values);
+        for (ResourceType type : resources) {
             if (type == ResourceType.CREDITS || type == ResourceType.MONEY) continue;
             String finalTital = type + " " + title;
             TimeNumericTable<Map.Entry<Long, Long>> table = new TimeNumericTable<>(finalTital, "day", "volume", "low", "high") {
