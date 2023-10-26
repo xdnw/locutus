@@ -517,19 +517,19 @@ public class OffshoreInstance {
             DBNation nation = receiver.asNation();
             if (nation.getVm_turns() > 0) {
 //                return Map.entry(TransferStatus.VACATION_MODE, TransferStatus.VACATION_MODE.msg + " (set the `force` parameter to bypass)");
-                return new TransferResult(TransferStatus.VACATION_MODE, receiver, amount, depositType.toString()).addMessage(TransferStatus.VACATION_MODE.msg + " (set the `force` parameter to bypass)");
+                return new TransferResult(TransferStatus.VACATION_MODE, receiver, amount, depositType.toString()).addMessage(TransferStatus.VACATION_MODE.msg + " (set the `bypassChecks` parameter to bypass)");
             }
             if (nation.isGray()) {
 //                return Map.entry(TransferStatus.GRAY, TransferStatus.GRAY.msg + " (set the `force` parameter to bypass)");
-                return new TransferResult(TransferStatus.GRAY, receiver, amount, depositType.toString()).addMessage(TransferStatus.GRAY.msg + " (set the `force` parameter to bypass)");
+                return new TransferResult(TransferStatus.GRAY, receiver, amount, depositType.toString()).addMessage(TransferStatus.GRAY.msg + " (set the `bypassChecks` parameter to bypass)");
             }
             if (!allowEscrow && nation.getNumWars() > 0 && nation.isBlockaded()) {
 //                return Map.entry(TransferStatus.BLOCKADE, TransferStatus.BLOCKADE.msg + " (set the `force` parameter to bypass. set `escrow_mode` to escrow)");
-                return new TransferResult(TransferStatus.BLOCKADE, receiver, amount, depositType.toString()).addMessage(TransferStatus.BLOCKADE.msg + " (set the `force` parameter to bypass. set `escrow_mode` to escrow)");
+                return new TransferResult(TransferStatus.BLOCKADE, receiver, amount, depositType.toString()).addMessage(TransferStatus.BLOCKADE.msg + " (set the `bypassChecks` parameter to bypass. set `escrow_mode` to escrow)");
             }
             if (nation.getActive_m() > 11520) {
 //                return Map.entry(TransferStatus.INACTIVE, TransferStatus.INACTIVE.msg + " (set the `force` parameter to bypass)");
-                return new TransferResult(TransferStatus.INACTIVE, receiver, amount, depositType.toString()).addMessage(TransferStatus.INACTIVE.msg + " (set the `force` parameter to bypass)");
+                return new TransferResult(TransferStatus.INACTIVE, receiver, amount, depositType.toString()).addMessage(TransferStatus.INACTIVE.msg + " (set the `bypassChecks` parameter to bypass)");
             }
         }
 
@@ -567,7 +567,7 @@ public class OffshoreInstance {
             }
             if (!bypassChecks) {
 //                return Map.entry(TransferStatus.GRANT_REQUIREMENT, reqMsg + "\n(set the `force` parameter to bypass)");
-                return new TransferResult(TransferStatus.GRANT_REQUIREMENT, receiver, amount, depositType.toString()).addMessage(reqMsg.toString()).addMessage("(set the `force` parameter to bypass)");
+                return new TransferResult(TransferStatus.GRANT_REQUIREMENT, receiver, amount, depositType.toString()).addMessage(reqMsg.toString()).addMessage("(set the `bypassChecks` parameter to bypass)");
             }
         }
 

@@ -1552,7 +1552,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
                                 if (defaultChannel == null) {
                                     throw new IllegalArgumentException("Please set a default resource channel with " + CM.settings_bank_access.addResourceChannel.cmd.toSlashMention() + footer);
                                 } else if (messageChannelIdOrNull != null && messageChannelIdOrNull != defaultChannel.getIdLong()) {
-                                    throw new IllegalArgumentException("Please use the resource channel: " + defaultChannel.getAsMention() + footer);
+                                    throw new IllegalArgumentException("Please use the resource channel (1): " + defaultChannel.getAsMention() + footer);
                                 }
                             }
                             if (getResourceChannel(aaId) == null) {

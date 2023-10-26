@@ -548,6 +548,29 @@ public class WarDB extends DBMainV2 {
             String whereClause;
             if (warIdsFetch.size() == 1) {
                 whereClause = " WHERE `war_id` = " + warIdsFetch.get(0);
+            } else if (warIdsFetch.size() > 100000) {
+                Set<Integer> warIdsSet = new ObjectOpenHashSet<>(warIdsFetch);
+                String query = "SELECT * FROM `attacks3` ORDER BY `id` ASC";
+                try (PreparedStatement stmt = prepareQuery(query)) {
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        while (rs.next()) {
+                            int warId = rs.getInt("war_id");
+                            if (!warIdsSet.contains(warId)) continue;
+                            DBWar war = getWar(warId);
+                            if (war == null) {
+                                continue;
+                            }
+                            byte[] data = rs.getBytes("data");
+                            AbstractCursor cursor = loader.apply(war, data);
+                            if (cursor != null) {
+                                forEachAttack.accept(cursor);
+                            }
+                        }
+                    }
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+                return;
             } else {
                 Collections.sort(warIdsFetch);
                 whereClause = " WHERE `war_id` IN " + StringMan.getString(warIdsFetch);

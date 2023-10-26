@@ -150,6 +150,9 @@ public class PlaceholdersMap {
     }
 
     private Set<NationOrAlliance> nationOrAlliancesSingle(ValueStore store, String input) {
+        if (input.equalsIgnoreCase("*")) {
+            return new ObjectOpenHashSet<>(Locutus.imp().getNationDB().getNations().values());
+        }
         if (MathMan.isInteger(input)) {
             long id = Long.parseLong(input);
             if (id < Integer.MAX_VALUE) {

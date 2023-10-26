@@ -107,7 +107,7 @@ public class Disperse extends Command {
             nations.removeIf(n -> n.isBeige() && n.getCities() <= 4);
         }
         if (nations.isEmpty()) {
-            return "No nations found (add `-f` to force send)";
+            return "No nations found (add `-b` to force send)";
         }
         return BankCommands.disburse(
                 author,

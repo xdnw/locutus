@@ -5993,7 +5993,8 @@ public class DBNation implements NationOrAlliance {
         };
     }
 
-    public boolean isInWarRange(DBNation target) {
+    @Command(desc = "If this nation is in war declare range of the current attacking nation")
+    public boolean isInWarRange(@Default @Me DBNation target) {
         return target.getScore() > getScore() * 0.75 && target.getScore() < getScore() * 1.25;
     }
 

@@ -231,7 +231,9 @@ public class RaidCommand extends Command {
                 } else if (aa.equalsIgnoreCase("*")) {
                     nations = new LinkedHashSet<>(allNations);
                 } else {
-                    String arg = "#warrange=" + score + "," + aa;
+                    double min = PnwUtil.getAttackRange(true, true, true, score);
+                    double max = PnwUtil.getAttackRange(true, true, false, score);
+                    String arg = "#score>" + min + ",#score<" + max + "," + aa;
                     if (!beige) arg = "#isbeige=0," + arg;
                     if (slots == -1) arg = "#def<3," + arg;
                     nations = DiscordUtil.parseNations(guild, user, me, arg, false, false);
