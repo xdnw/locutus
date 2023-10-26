@@ -476,7 +476,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
     }
 
     public void deleteTreaties(Set<Treaty> treaties, Consumer<Event> eventConsumer) {
-        long turn = TimeUtil.getTurn();
+        long turn = TimeUtil.getTurn(System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(2));
         for (Treaty treaty : treaties) {
             boolean removed = false;
             synchronized (treatiesByAlliance) {

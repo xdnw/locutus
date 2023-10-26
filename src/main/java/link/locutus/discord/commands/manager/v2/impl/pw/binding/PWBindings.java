@@ -9,6 +9,7 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
@@ -766,44 +767,55 @@ public class PWBindings extends BindingHelper {
 
     @Binding(examples = "borg,AA:Cataclysm", value = "A comma separated list of nations and alliances")
     public static Set<NationOrAlliance> nationOrAlliance(ParameterData data, @Default @Me Guild guild, String input, @Default @Me User author, @Default @Me DBNation me) {
-        return nationOrAlliance(data, guild, input, false, author, me);
+        Set<NationOrAlliance> result = nationOrAlliance(data, guild, input, false, author, me);
+        boolean allowDeleted = data != null && data.getAnnotation(AllowDeleted.class) != null;
+        if (!allowDeleted) {
+            result.removeIf(n -> !n.isValid());
+        }
+        if (result.isEmpty()) {
+            throw new IllegalArgumentException("No nations or alliances found matching: `" + input + "`");
+        }
+        return result;
     }
 
     public static Set<NationOrAlliance> nationOrAlliance(ParameterData data, @Default @Me Guild guild, String input, boolean forceAllowDeleted, @Default @Me User author, @Default @Me DBNation me) {
-        Set<NationOrAlliance> result = new LinkedHashSet<>();
-
-        for (String group : input.split("\\|+")) {
-            List<String> remainder = new ArrayList<>();
-            if (!group.contains("#")) {
-                List<String> args = StringMan.split(group, ',');
-
-                GuildDB db = Locutus.imp().getGuildDB(guild);
-                for (String arg : args) {
-                    try {
-                        DBAlliance aa = alliance(data, arg);
-                        if (forceAllowDeleted || (data != null && data.getAnnotation(AllowDeleted.class) != null) || aa.exists()) {
-                            result.add(aa);
-                            continue;
-                        }
-                    } catch (IllegalArgumentException ignore) {
-                    }
-                    if (db != null) {
-                        if (arg.charAt(0) == '~') arg = arg.substring(1);
-                        Set<Integer> coalition = db.getCoalition(arg);
-                        if (!coalition.isEmpty()) {
-                            result.addAll(coalition.stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet()));
-                            continue;
-                        }
-                    }
-                    remainder.add(arg);
-                }
-            } else {
-                remainder.add(group);
-            }
-            result.addAll(nations(data, guild, StringMan.join(remainder, ","), forceAllowDeleted, author, me));
-        }
-        if (result.isEmpty()) throw new IllegalArgumentException("Invalid nations or alliances: `" + input + "`");
-        return result;
+        Placeholders<NationOrAlliance> placeholders = Locutus.cmd().getV2().getPlaceholders().get(NationOrAlliance.class);
+        return placeholders.parseSet(guild, author, me, input);
+//        Set<NationOrAlliance> result = new LinkedHashSet<>();
+//        for (String group : input.split("\\|+")) {
+//            List<String> remainder = new ArrayList<>();
+//            if (!group.contains("#")) {
+//                List<String> args = StringMan.split(group, ',');
+//
+//                GuildDB db = Locutus.imp().getGuildDB(guild);
+//                for (String arg : args) {
+//                    try {
+//                        DBAlliance aa = alliance(data, arg);
+//                        if (forceAllowDeleted || (data != null && data.getAnnotation(AllowDeleted.class) != null) || aa.exists()) {
+//                            result.add(aa);
+//                            continue;
+//                        }
+//                    } catch (IllegalArgumentException ignore) {
+//                    }
+//                    if (db != null) {
+//                        if (arg.charAt(0) == '~') arg = arg.substring(1);
+//                        Set<Integer> coalition = db.getCoalition(arg);
+//                        if (!coalition.isEmpty()) {
+//                            result.addAll(coalition.stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet()));
+//                            continue;
+//                        }
+//                    }
+//                    remainder.add(arg);
+//                }
+//            } else {
+//                remainder.add(group);
+//            }
+//            if (!remainder.isEmpty()) {
+//                result.addAll(nations(data, guild, StringMan.join(remainder, ","), forceAllowDeleted, author, me));
+//            }
+//        }
+//        if (result.isEmpty()) throw new IllegalArgumentException("Invalid nations or alliances: `" + input + "`");
+//        return result;
     }
 
     @Binding(examples = "borg,AA:Cataclysm,647252780817448972", value = "A comma separated list of nations, alliances and guild ids")
@@ -869,7 +881,9 @@ public class PWBindings extends BindingHelper {
             }
             remainder.add(arg);
         }
-        result.addAll(nations(data, guild, StringMan.join(remainder, ","), author, me));
+        if (!remainder.isEmpty()) {
+            result.addAll(nations(data, guild, StringMan.join(remainder, ","), author, me));
+        }
         if (result.isEmpty()) throw new IllegalArgumentException("Invalid nations or alliances: " + input);
         return result;
     }

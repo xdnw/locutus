@@ -16,6 +16,7 @@ import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
+import rocker.guild.ia.message;
 
 import java.io.IOException;
 import java.text.ParseException;
@@ -159,21 +160,14 @@ public class AllianceList {
         return result;
     }
 
-    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, Map<DBNation, Map<ResourceType, Double>> cachedStockpilesorNull, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean allowBeige, boolean noDailyCash, boolean noCash, boolean force) throws IOException, ExecutionException, InterruptedException {
+    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, Map<DBNation, Map<ResourceType, Double>> cachedStockpilesorNull, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean allowBeige, boolean noDailyCash, boolean noCash, boolean bypassChecks, boolean force) throws IOException {
         Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> result = new LinkedHashMap<>();
+        if (force) {
+            Set<Integer> nationIds = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
+            Locutus.imp().getNationDB().updateCitiesOfNations(nationIds, true, true, Event::post);
+        }
         for (DBAlliance alliance : getAlliances()) {
-            try {
-                alliance.updateCities(nations::contains);
-            } catch (ParseException e) {
-                for (DBNation nation : nations) {
-                    if (nation.getAlliance_id() == alliance.getAlliance_id()) {
-                        result.put(nation, Map.entry(OffshoreInstance.TransferStatus.INVALID_API_KEY, ResourceType.getBuffer()));
-                    }
-                }
-
-                continue;
-            }
-            result.putAll(alliance.calculateDisburse(nations, cachedStockpilesorNull, daysDefault, useExisting, ignoreInactives, allowBeige, noDailyCash, noCash, force));
+            result.putAll(alliance.calculateDisburse(nations, cachedStockpilesorNull, daysDefault, useExisting, ignoreInactives, allowBeige, noDailyCash, noCash, bypassChecks, false));
         }
         return result;
     }

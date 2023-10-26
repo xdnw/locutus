@@ -996,7 +996,7 @@ public class DiscordUtil {
         LocalValueStore store = placeholders.createLocals(guild, user, nation);
         Set<DBNation> set = placeholders.parseSet(store, input);
         if (!allowDeleted) {
-            set.removeIf(f -> f.getName() == null);
+            set.removeIf(f -> !f.isValid());
         }
         if (set.isEmpty() && !ignoreErrors) {
             throw new IllegalArgumentException("No nations found for input: `" + input + "`");

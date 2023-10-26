@@ -22,12 +22,14 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class WarCostRanking extends Command {
@@ -128,6 +130,7 @@ public class WarCostRanking extends Command {
         if (args.size() == 0 || args.size() > 3) return usage(args.size(), 1, 2, channel);
 
         Set<DBNation> nations = DiscordUtil.parseNations(guild, author, me, args.get(0), false, true);
+        System.out.println("Nations " + nations.size());
         Map<Integer, DBNation> nationMap = nations.stream().collect(Collectors.toMap(DBNation::getNation_id, e -> e));
         boolean isAA = flags.contains('a'); // args.get(0).equalsIgnoreCase("*") ||
 
@@ -145,8 +148,6 @@ public class WarCostRanking extends Command {
         boolean damage = flags.contains('d');
         boolean net = !damage || flags.contains('n');
 
-        int limit = 25;
-
         int sign = profit ? -1 : 1;
         long diff = TimeUtil.timeToSec(args.get(1)) * 1000L;
         long start = System.currentTimeMillis() - diff;
@@ -159,16 +160,19 @@ public class WarCostRanking extends Command {
             diffStr = TimeUtil.secToTime(TimeUnit.MILLISECONDS, end - start);
         }
 
-        String title = (damage && net ? "Net " : "Total ") + (typeName == null ? "" : typeName + " ") + (profit ? damage ? "damage" : "profit" : (unitKill != null ? "kills" : unitLoss != null ? "deaths" : "losses")) + " " + (average ? "per" : "of") + " war (%s)";
+        String title = (damage && net ? "Net " : "Total ") + (typeName == null ? "" : typeName + " ") + (profit ? damage ? "damage" : "profit" : (unitKill != null ? "kills" : unitLoss != null ? "deaths" : (attType != null) ? "attacks" : "losses")) + " " + (average ? "per" : "of") + " war (%s)";
         title = String.format(title, diffStr);
 
         List<AbstractCursor> attacks = Locutus.imp().getWarDb().getAttacksEither(nationMap.keySet(), start, end);
 
         GroupedRankBuilder<Integer, AbstractCursor> attackGroup = new RankBuilder<>(attacks)
                 .group((attack, map) -> {
-                    // Group attacks into attacker and defender
-                    map.put(attack.getAttacker_id(), attack);
-                    map.put(attack.getDefender_id(), attack);
+                    if (nationMap.containsKey(attack.getAttacker_id())) {
+                        map.put(attack.getAttacker_id(), attack);
+                    }
+                    if (nationMap.containsKey(attack.getDefender_id())) {
+                        map.put(attack.getDefender_id(), attack);
+                    }
                 });
 
         BiFunction<Boolean, AbstractCursor, Double> valueFunc;
@@ -241,9 +245,14 @@ public class WarCostRanking extends Command {
         }
 
         SummedMapRankBuilder<Integer, Number> byNation;
+        Map<Integer, Integer> numWarsPerAA;
         if (average) {
+            numWarsPerAA = byNationMap.get().values().stream()
+                    .flatMap(map -> map.keySet().stream())
+                    .collect(Collectors.toMap(Function.identity(), i -> 1, Integer::sum));
             byNation = byNationMap.average();
         } else {
+            numWarsPerAA = null;
             byNation = byNationMap.sum();
         }
 
@@ -256,9 +265,16 @@ public class WarCostRanking extends Command {
                     builder.put(nation.getAlliance_id(), entry.getValue());
                 }
             });
-            SummedMapRankBuilder<Integer, Number> byAA = average ? byAAMap.average() : byAAMap.sum();
-
-            // Sort descending
+            SummedMapRankBuilder<Integer, Number> byAA = byAAMap.sum();
+            if (average) {
+                byAA.adapt(new BiFunction<Integer, Number, Number>() {
+                    @Override
+                    public Number apply(Integer aaId, Number number) {
+                        int numWars = numWarsPerAA.getOrDefault(aaId, 1);
+                        return number.doubleValue() / numWars;
+                    }
+                });
+            }
             ranks = byAA.sort()
                     // Change key to alliance name
                     .nameKeys(allianceId -> PnwUtil.getName(allianceId, true));

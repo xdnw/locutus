@@ -94,6 +94,11 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     @Override
+    public boolean isValid() {
+        return get(allianceId) != null;
+    }
+
+    @Override
     public String getFilter() {
         return getTypePrefix() + ":" + allianceId;
     }
@@ -1151,7 +1156,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
         updateCities(f -> true);
     }
 
-    public void updateCities(Predicate<DBNation> fetchNation) throws IOException, ParseException {
+    public void updateCities(Predicate<DBNation> fetchNation) throws IOException {
         Set<Integer> nationIds = getNations(false, 0, true).stream().filter(fetchNation).map(DBNation::getId).collect(Collectors.toSet());
         if (nationIds.isEmpty()) return;
         Locutus.imp().getNationDB().updateCitiesOfNations(nationIds, true, true, Event::post);
@@ -1384,7 +1389,10 @@ public class DBAlliance implements NationList, NationOrAlliance {
     public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> getResourcesNeeded(Collection<DBNation> nations, Map<DBNation, Map<ResourceType, Double>> existing, double daysDefault, boolean useExisting, boolean force) throws IOException {
         if (useExisting) {
             if (existing == null) {
-                existing = getMemberStockpile(f -> nations.contains(f));
+                existing = getMemberStockpile(nations::contains);
+            }
+            if (force) {
+                updateCities(nations::contains);
             }
         } else {
             existing = new HashMap<>();
@@ -1399,7 +1407,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
                 result.put(nation, Map.entry(OffshoreInstance.TransferStatus.ALLIANCE_ACCESS, ResourceType.getBuffer()));
                 continue;
             }
-            Map<ResourceType, Double> needed = nation.getResourcesNeeded(stockpile, daysDefault, force);
+            Map<ResourceType, Double> needed = nation.getResourcesNeeded(stockpile, daysDefault, false);
             if (!needed.isEmpty()) {
                 result.put(nation, Map.entry(OffshoreInstance.TransferStatus.SUCCESS, PnwUtil.resourcesToArray(needed)));
             } else {
@@ -1464,7 +1472,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
         return count;
     }
 
-    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, Map<DBNation, Map<ResourceType, Double>> cachedStockpilesorNull, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean allowBeige, boolean noDailyCash, boolean noCash, boolean force) throws IOException, ExecutionException, InterruptedException {
+    public Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> calculateDisburse(Collection<DBNation> nations, Map<DBNation, Map<ResourceType, Double>> cachedStockpilesorNull, double daysDefault, boolean useExisting, boolean ignoreInactives, boolean allowBeige, boolean noDailyCash, boolean noCash, boolean bypassChecks, boolean force) throws IOException {
         Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> nationResourcesNeed;
         nationResourcesNeed = getResourcesNeeded(nations, cachedStockpilesorNull, daysDefault, useExisting, force);
 
@@ -1491,14 +1499,14 @@ public class DBAlliance implements NationList, NationOrAlliance {
             if (nation.getVm_turns() > 0) {
                 toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.VACATION_MODE, ResourceType.getBuffer()));
             }
-            if (nation.isGray() && !ignoreInactives && !force) {
+            if (nation.isGray() && !ignoreInactives && !bypassChecks) {
                 toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.GRAY, ResourceType.getBuffer()));
                 continue;
             }
-            if (nation.active_m() > TimeUnit.DAYS.toMinutes(4) && !ignoreInactives && !force) {
+            if (nation.active_m() > TimeUnit.DAYS.toMinutes(4) && !ignoreInactives && !bypassChecks) {
                 toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.INACTIVE, ResourceType.getBuffer()));
             }
-            if (nation.isBeige() && !allowBeige && !force) {
+            if (nation.isBeige() && !allowBeige && !bypassChecks) {
                 toSend.put(nation, Map.entry(OffshoreInstance.TransferStatus.BEIGE, ResourceType.getBuffer()));
             }
             if (value.getKey() != OffshoreInstance.TransferStatus.SUCCESS) {

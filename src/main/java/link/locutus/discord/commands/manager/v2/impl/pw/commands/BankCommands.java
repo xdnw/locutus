@@ -250,7 +250,7 @@ public class BankCommands {
                 throw new IllegalArgumentException("rawsDays must be > 1 turns (1/12 days)");
             }
             allianceList.updateCities();
-            Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> funds = allianceList.calculateDisburse(nations, null, rawsDays, false, false, true, rawsNoDailyCash, rawsNoCash, false);
+            Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> funds = allianceList.calculateDisburse(nations, null, rawsDays, false, false, true, rawsNoDailyCash, rawsNoCash, true, false);
             for (Map.Entry<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> entry : funds.entrySet()) {
                 DBNation nation = entry.getKey();
                 OffshoreInstance.TransferStatus status = entry.getValue().getKey();
@@ -1266,7 +1266,6 @@ public class BankCommands {
                                   @Arg("The transfer note\nUse `#IGNORE` to not deduct from deposits") @Default("#tax") DepositType.DepositTypeInfo depositType,
                                   @Arg("Do not send money below the daily login bonus") @Switch("d") boolean noDailyCash,
                                   @Arg("Do not send ANY money") @Switch("c") boolean noCash,
-
                            @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
                            @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,
                            @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
@@ -1305,14 +1304,14 @@ public class BankCommands {
                 if (nation.getPosition() <= 1) status = OffshoreInstance.TransferStatus.APPLICANT;
                 else if (nation.getVm_turns() > 0) status = OffshoreInstance.TransferStatus.VACATION_MODE;
                 else if (!db.isAllianceId(nation.getAlliance_id())) status = OffshoreInstance.TransferStatus.NOT_MEMBER;
-                else if (!force) {
+                else if (!bypassChecks) {
                     if (nation.active_m() > 2880) {
                         status = OffshoreInstance.TransferStatus.INACTIVE;
                         debug += " (2+ days)";
                     }
                     if (nation.isGray()) status = OffshoreInstance.TransferStatus.GRAY;
                     if (nation.isBeige() && nation.getCities() <= 4) status = OffshoreInstance.TransferStatus.BEIGE;
-                    if (!status.isSuccess()) debug += " (use the `force` parameter to override)";
+                    if (!status.isSuccess()) debug += " (use the `bypasschecks` parameter to override)";
                 }
                 if (!status.isSuccess()) {
                     iter.remove();
@@ -1336,7 +1335,7 @@ public class BankCommands {
             return null;
         }
 
-        Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> funds = allianceList.calculateDisburse(nations, null, daysDefault, true, false, true, noDailyCash, noCash, force);
+        Map<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> funds = allianceList.calculateDisburse(nations, null, daysDefault, true, bypassChecks, true, noDailyCash, noCash, bypassChecks, force);
         Map<DBNation, Map<ResourceType, Double>> fundsToSendNations = new LinkedHashMap<>();
         for (Map.Entry<DBNation, Map.Entry<OffshoreInstance.TransferStatus, double[]>> entry : funds.entrySet()) {
             DBNation nation = entry.getKey();
@@ -3329,7 +3328,7 @@ public class BankCommands {
             if (offshore == null) {
                 if (otherDb2 == db) {
                     if (!Roles.ECON.has(author, otherDb2.getGuild())) {
-                        return "You do not have permisssion to check another alliance's deposits";
+                        return "You do not have permisssion to check another alliance's deposits (1)";
                     }
                     Map<ResourceType, Double> stock = alliance.getStockpile();
                     accountDeposits.put(DepositType.DEPOSIT, PnwUtil.resourcesToArray(stock));
@@ -3337,10 +3336,10 @@ public class BankCommands {
                     return "No offshore is set. In this server, use " + CM.coalition.add.cmd.create("AA:" + alliance.getAlliance_id(), Coalition.OFFSHORE.name()) + " and from the offshore server use " + CM.coalition.add.cmd.create("AA:" + alliance.getAlliance_id(), Coalition.OFFSHORING.name()) + "";
                 }
             } else if (otherDb2 != db && offshore.getGuildDB() != db) {
-                return "You do not have permisssion to check another alliance's deposits";
+                return "You do not have permisssion to check another alliance's deposits (2)";
             } else {
                 if ((otherDb2 == null || !Roles.ECON.has(author, otherDb2.getGuild())) && (!Roles.ECON.has(author, offshore.getGuildDB().getGuild()))) {
-                    return "You do not have permisssion to check another alliance's deposits";
+                    return "You do not have permisssion to check another alliance's deposits (3)";
                 }
                 double[] deposits = PnwUtil.resourcesToArray(offshore.getDeposits(alliance.getAlliance_id(), true));
                 accountDeposits.put(DepositType.DEPOSIT, deposits);

@@ -511,6 +511,11 @@ public class DBNation implements NationOrAlliance {
         return (this.projects & (1L << project.ordinal())) != 0;
     }
 
+    @Override
+    public boolean isValid() {
+        return getById(nation_id) != null;
+    }
+
     @Command(desc = "If the nation has all of the specified projects")
     public boolean hasProjects(Set<Project> projects, @Default boolean any) {
         if (any) {
@@ -6002,7 +6007,8 @@ public class DBNation implements NationOrAlliance {
         };
     }
 
-    public boolean isInWarRange(DBNation target) {
+    @Command(desc = "If this nation is in war declare range of the current attacking nation")
+    public boolean isInWarRange(@Default @Me DBNation target) {
         return target.getScore() > getScore() * 0.75 && target.getScore() < getScore() * 1.25;
     }
 

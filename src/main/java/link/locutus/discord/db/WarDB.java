@@ -548,6 +548,29 @@ public class WarDB extends DBMainV2 {
             String whereClause;
             if (warIdsFetch.size() == 1) {
                 whereClause = " WHERE `war_id` = " + warIdsFetch.get(0);
+            } else if (warIdsFetch.size() > 100000) {
+                Set<Integer> warIdsSet = new ObjectOpenHashSet<>(warIdsFetch);
+                String query = "SELECT * FROM `attacks3` ORDER BY `id` ASC";
+                try (PreparedStatement stmt = prepareQuery(query)) {
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        while (rs.next()) {
+                            int warId = rs.getInt("war_id");
+                            if (!warIdsSet.contains(warId)) continue;
+                            DBWar war = getWar(warId);
+                            if (war == null) {
+                                continue;
+                            }
+                            byte[] data = rs.getBytes("data");
+                            AbstractCursor cursor = loader.apply(war, data);
+                            if (cursor != null) {
+                                forEachAttack.accept(cursor);
+                            }
+                        }
+                    }
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+                return;
             } else {
                 Collections.sort(warIdsFetch);
                 whereClause = " WHERE `war_id` IN " + StringMan.getString(warIdsFetch);
@@ -1658,15 +1681,7 @@ public class WarDB extends DBMainV2 {
 
         for (DBWar war : dbWars) {
             DBWar existing = warsById.get(war);
-            if (war.warId == 1828876) {
-                System.out.println("Found war 1828876 " + war + " | " + existing + " | ");
-            }
-
             if ((existing == null && !war.isActive()) || (existing != null && (war.getStatus() == existing.getStatus() || !existing.isActive()))) continue;
-
-            if (war.warId == 1828876) {
-                System.out.println("Found 2 war 1828876 " + war + " | " + existing + " | " + war.getStatus() + " | " + (existing != null ? existing.getStatus() : "null"));
-            }
 
             prevWars.add(existing == null ? null : new DBWar(existing));
             newWars.add(war);

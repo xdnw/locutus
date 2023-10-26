@@ -1552,7 +1552,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
                                 if (defaultChannel == null) {
                                     throw new IllegalArgumentException("Please set a default resource channel with " + CM.settings_bank_access.addResourceChannel.cmd.toSlashMention() + footer);
                                 } else if (messageChannelIdOrNull != null && messageChannelIdOrNull != defaultChannel.getIdLong()) {
-                                    throw new IllegalArgumentException("Please use the resource channel: " + defaultChannel.getAsMention() + footer);
+                                    throw new IllegalArgumentException("Please use the resource channel (1): " + defaultChannel.getAsMention() + footer);
                                 }
                             }
                             if (getResourceChannel(aaId) == null) {
@@ -2395,17 +2395,31 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
     }
 
     public Map.Entry<GuildDB, Integer> getOffshoreDB() {
+        return getOffshoreDB(false);
+    }
+
+    public Map.Entry<GuildDB, Integer> getOffshoreDB(boolean throwError) {
         Set<Integer> aaIds = getAllianceIds();
 
         Set<Long> offshores = getCoalitionRaw(OFFSHORE);
+        Map<Long, String> errors = new LinkedHashMap<>();
         for (long offshoreIdLong : offshores) {
-            if (offshoreIdLong > Integer.MAX_VALUE) continue;
+            if (offshoreIdLong > Integer.MAX_VALUE) {
+                errors.put(offshoreIdLong, "Guild ID, Not an Alliance");
+                continue;
+            }
             int offshoreId = (int) offshoreIdLong;
             DBAlliance aa = DBAlliance.get(offshoreId);
-            if (aa == null) continue;
+            if (aa == null) {
+                errors.put(offshoreIdLong, "Alliance not found");
+                continue;
+            }
 
             GuildDB otherDb = aa.getGuildDB();
-            if (otherDb == null) continue;
+            if (otherDb == null) {
+
+                continue;
+            }
             Set<Long> offshoring = otherDb.getCoalitionRaw(OFFSHORING);
             if (!offshoring.contains((long) offshoreId)) {
                 continue;
@@ -2422,6 +2436,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
                     }
                 }
             }
+        }
+        if (throwError) {
+
         }
         return null;
     }
