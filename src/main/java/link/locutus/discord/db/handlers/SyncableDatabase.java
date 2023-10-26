@@ -33,6 +33,8 @@ public interface SyncableDatabase {
 
     Set<String> getTablesAllowingDeletion();
 
+    long getLastModified();
+
     default List<String> getTableColumns(String tableName) {
         List<String> columnNames = new ArrayList<>();
 
@@ -51,9 +53,15 @@ public interface SyncableDatabase {
     }
 
     default void createDeletionsTables() {
-        if (Settings.INSTANCE.DATABASE.SYNC.ENABLED) {
+        if (Settings.INSTANCE.DATABASE.SYNC.isEnabled()) {
             for (String table : getTablesAllowingDeletion()) {
                 createDeletionsTable(table);
+            }
+            String stmt = "CREATE TABLE IF NOT EXISTS `LAST_SYNC_DATE` (id INT NOT NULL PRIMARY KEY, date_updated BIG INT NOT NULL)";
+            try (Statement statement = getConnection().createStatement()) {
+                statement.executeUpdate(stmt);
+            } catch (SQLException e) {
+                e.printStackTrace();
             }
         }
     }
@@ -98,7 +106,7 @@ public interface SyncableDatabase {
     }
 
     default void logDeletions(String tableName, long date, String[] primaryKeys, List<Object[]> primaryKeyValues) {
-        if (Settings.INSTANCE.DATABASE.SYNC.ENABLED) {
+        if (Settings.INSTANCE.DATABASE.SYNC.isEnabled()) {
             if (primaryKeyValues.isEmpty()) return;
             String deletionTable = tableName + "_deletions";
             StringBuilder query = new StringBuilder("INSERT OR REPLACE INTO " + deletionTable + " (");
@@ -125,7 +133,7 @@ public interface SyncableDatabase {
         }
     }
     default void logDeletion(String nationMeta, long date, String condition, String... columns) {
-        if (Settings.INSTANCE.DATABASE.SYNC.ENABLED) {
+        if (Settings.INSTANCE.DATABASE.SYNC.isEnabled()) {
             String select = "SELECT " + String.join(", ", columns) + " FROM " + nationMeta + " WHERE " + condition;
             try (PreparedStatement stmt = getConnection().prepareStatement(select)) {
                 ResultSet resultSet = stmt.executeQuery();

@@ -568,9 +568,16 @@ public class Settings extends Config {
         }
 
         public static class SYNC {
-            public long BOT_ID = 0;
-            public String WEB_ENDPOINT = "";
-            public boolean ENABLED = false;
+            // id of other discord bot
+            public long OTHER_BOT_ID = 0;
+
+            // must have message send/delete perms in the channel
+            // channel to send sync data in
+            public long SYNC_CHANNEL_ID = 0;
+
+            public boolean isEnabled() {
+                return OTHER_BOT_ID != 0 && SYNC_CHANNEL_ID != 0;
+            }
         }
 //
 //        @Comment("TODO: MySQL support is not fully implemented. Request this to be finished if important")

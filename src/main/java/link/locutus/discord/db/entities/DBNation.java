@@ -4025,11 +4025,13 @@ public class DBNation implements NationOrAlliance {
         Supplier<Set<Auth.TradeResult>> tradeSupplier = new Supplier<>() {
             @Override
             public Set<Auth.TradeResult> get() {
+                List<String> responses = new ArrayList<>();
                 for (Map.Entry<ResourceType, Integer> entry : amountMap.entrySet()) {
                     String trade = auth.createDepositTrade(senderNation, entry.getKey(), entry.getValue());
+                    responses.add(trade);
                 }
-                return senderNation.acceptTrades(getNation_id(), true);
-
+                List<Auth.TradeResult> result = senderNation.acceptTrades(getNation_id(), amountMap, true);
+                return result;
             }
         };
         return createAndOffshoreDeposit(currentDB, senderNation, tradeSupplier);
@@ -4039,22 +4041,22 @@ public class DBNation implements NationOrAlliance {
         int expectedNationId = senderNation.getNation_id();
         PoliticsAndWarV3 api = getApi(true);
 
-        Supplier<Set<Auth.TradeResult>> tradeSupplier = new Supplier<>() {
+        Supplier<List<Auth.TradeResult>> tradeSupplier = new Supplier<>() {
             @Override
-            public Set<Auth.TradeResult> get() {
+            public List<Auth.TradeResult> get() {
                 return acceptTrades(senderNation.getNation_id(), false);
             }
         };
         return createAndOffshoreDeposit(currentDB, senderNation, tradeSupplier);
     }
 
-    public Set<Auth.TradeResult> acceptTrades(int expectedNationId, boolean reverse) {
+    public List<Auth.TradeResult> acceptTrades(int expectedNationId, Map<ResourceType, Double> amount, boolean reverse) {
         if (expectedNationId == nation_id) throw new IllegalArgumentException("Buyer and seller cannot be the same");
-        if (!TimeUtil.checkTurnChange()) return Collections.singleton(new Auth.TradeResult("cannot accept during turn change", Auth.TradeResultType.BLOCKADED));
-        if (isBlockaded()) return Collections.singleton(new Auth.TradeResult("receiver is blockaded", Auth.TradeResultType.BLOCKADED));
+        if (!TimeUtil.checkTurnChange()) return List.of(new Auth.TradeResult("cannot accept during turn change", Auth.TradeResultType.BLOCKADED));
+        if (isBlockaded()) return List.of(new Auth.TradeResult("receiver is blockaded", Auth.TradeResultType.BLOCKADED));
 
         PoliticsAndWarV3 api = this.getApi(true);
-        Set<Auth.TradeResult> responses = new LinkedHashSet<>();
+        List<Auth.TradeResult> responses = new ArrayList<>();
 
         Map<Trade, Map.Entry<String, Auth.TradeResultType>> errors = new LinkedHashMap<>();
 
@@ -4063,8 +4065,11 @@ public class DBNation implements NationOrAlliance {
 
         List<Trade> tradesV3 = new ArrayList<>(api.fetchPrivateTrades(nation_id));
         if (tradesV3.isEmpty()) {
-            return Collections.singleton(new Auth.TradeResult("no trades to accept", Auth.TradeResultType.NO_TRADES));
+            return List.of(new Auth.TradeResult("no trades to accept", Auth.TradeResultType.NO_TRADES));
         }
+
+        double[] amountArr = PnwUtil.resourcesToArray(amount);
+
         tradesV3.removeIf(f -> f.getSender_id() == null || f.getSender_id() != expectedNationId);
         tradesV3.removeIf((Predicate<Trade>) f -> {
             ResourceType resource = ResourceType.parse(f.getOffer_resource());
@@ -4085,6 +4090,11 @@ public class DBNation implements NationOrAlliance {
                     errors.put(f, Map.entry("Sender id is not expected nation id (" + f.getSender_id() + " != " + expectedNationId + ")", Auth.TradeResultType.NOT_A_BUY_OFFER));
                     return true;
                 }
+                double cost = f.getOffer_amount() * f.getPrice();
+                if (amountArr[0] + 100000 <= cost) {
+                    errors.put(f, Map.entry("Found trade for $" + MathMan.format(cost) + " but user only specified amount of $" + MathMan.format(amountArr[0]), Auth.TradeResultType.INSUFFICIENT_RESOURCES));
+                    return true;
+                }
                 return false;
             } else if (f.getBuy_or_sell().equalsIgnoreCase(rssBuyOrSell)) {
                 if (resource == ResourceType.CREDITS) {
@@ -4101,6 +4111,10 @@ public class DBNation implements NationOrAlliance {
                 }
                 if (f.getSender_id() != expectedNationId) {
                     errors.put(f, Map.entry("Sender id is not expected nation id (" + f.getSender_id() + " != " + expectedNationId + ")", Auth.TradeResultType.NOT_A_SELL_OFFER));
+                    return true;
+                }
+                if (amountArr[resource.ordinal()] < f.getOffer_amount()) {
+                    errors.put(f, Map.entry("Found trade for " + MathMan.format(f.getOffer_amount()) + " " + resource + " but user only specified amount of " + MathMan.format(amountArr[resource.ordinal()]), Auth.TradeResultType.INSUFFICIENT_RESOURCES));
                     return true;
                 }
                 return false;

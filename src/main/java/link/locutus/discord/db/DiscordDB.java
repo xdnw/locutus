@@ -29,6 +29,7 @@ import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.codec.binary.Hex;
 import org.jooq.meta.derby.sys.Sys;
 
+import java.io.File;
 import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;

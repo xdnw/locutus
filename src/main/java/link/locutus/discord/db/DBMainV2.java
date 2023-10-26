@@ -18,15 +18,17 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class DBMainV2 implements Closeable {
+    private final File file;
     private boolean isDelegate;
     private final Database db;
+
     public DBMainV2(String name) throws SQLException {
         this(Settings.INSTANCE.DATABASE, name);
     }
 
     public DBMainV2(Settings.DATABASE config, String name) throws SQLException {
         if (config.SQLITE.USE) {
-            File file = new File(config.SQLITE.DIRECTORY + File.separator + name + ".db");
+            this.file = new File(config.SQLITE.DIRECTORY + File.separator + name + ".db");
             // create file directory if not exist
             if (!file.getParentFile().exists()) {
                 file.getParentFile().mkdirs();
@@ -44,17 +46,28 @@ public class DBMainV2 implements Closeable {
         init();
     }
 
+    public File getFile() {
+        return file;
+    }
+
+    public long getLastModified() {
+        File file = this.getFile();
+        return file == null ? 0 : file.lastModified();
+    }
+
     public DBMainV2(File file) throws SQLException {
+        this.file = file;
         this.db = Database.connect(file);
         init();
     }
 
-    public DBMainV2(String host, int port, String name, String username, String password) throws SQLException {
-        this.db = Database.connect(host, port, name, username, password);
-        init();
-    }
+//    public DBMainV2(String host, int port, String name, String username, String password) throws SQLException {
+//        this.db = Database.connect(host, port, name, username, password);
+//        init();
+//    }
 
     public DBMainV2(Database other) {
+        this.file = null;
         this.db = other;
         this.isDelegate = true;
         init();
