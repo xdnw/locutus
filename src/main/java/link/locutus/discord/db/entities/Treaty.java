@@ -125,6 +125,6 @@ public class Treaty {
 
     @Command(desc = "Timestamp the treaty ends")
     public long getEndTime() {
-        return TimeUtil.getTimeFromTurn(Math.max(System.currentTimeMillis(), getTurnEnds() - 1));
+        return Math.max(System.currentTimeMillis(), TimeUtil.getTimeFromTurn(getTurnEnds() - 1));
     }
 }

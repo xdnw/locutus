@@ -2248,7 +2248,7 @@ public class BankCommands {
     ) throws GeneralSecurityException, IOException {
         CompletableFuture<IMessageBuilder> msgFuture = channel.send("Please wait...");
 
-        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.DEPOSITS_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.OFFSHORE_DEPOSITS);
 
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "nation",

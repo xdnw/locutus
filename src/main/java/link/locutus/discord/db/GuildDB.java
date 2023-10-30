@@ -3099,10 +3099,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
                 Set<Long> set = coalitions2.get(hash);
                 if (set != null) {
                     set.remove(allianceId);
-                    update("INSERT OR IGNORE INTO `COALITIONS`(`alliance_id`, `coalition`, `date_updated`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+                    update("DELETE FROM `COALITIONS` WHERE `alliance_id` = ? AND LOWER(coalition) = LOWER(?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
                         stmt.setLong(1, allianceId);
-                        stmt.setString(2, coalition);
-                        stmt.setLong(3, System.currentTimeMillis());
+                        stmt.setString(2, coalition.toLowerCase());
                     });
                 }
             }

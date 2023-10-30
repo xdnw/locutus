@@ -24,7 +24,6 @@ public enum SheetKeys {
     COUNTER_SHEET,
     MMR_SHEET,
     SPYOP_SHEET,
-    DEPOSITS_SHEET,
     TAX_BRACKET_SHEET,
     STOCKPILE_SHEET,
     WAR_COST_SHEET,
@@ -53,4 +52,5 @@ public enum SheetKeys {
     REPORTS_SHEET,
     LOANS_SHEET,
     RENAME_CHANNELS,
+    OFFSHORE_DEPOSITS
 }
