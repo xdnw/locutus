@@ -800,6 +800,13 @@ public class NationCommands {
                 return createArgs();
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getOnlineStatus")
+        public static class getOnlineStatus extends CommandRef {
+            public static final getOnlineStatus cmd = new getOnlineStatus();
+            public getOnlineStatus create() {
+                return createArgs();
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getPopulation")
         public static class getPopulation extends CommandRef {
             public static final getPopulation cmd = new getPopulation();
@@ -950,8 +957,8 @@ public class NationCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getStrength")
         public static class getStrength extends CommandRef {
             public static final getStrength cmd = new getStrength();
-            public getStrength create() {
-                return createArgs();
+            public getStrength create(String mmr) {
+                return createArgs("mmr", mmr);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getStrongestEnemy")
@@ -1031,6 +1038,20 @@ public class NationCommands {
                 return createArgs("unit", unit, "date", date);
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getUserAgeDays")
+        public static class getUserAgeDays extends CommandRef {
+            public static final getUserAgeDays cmd = new getUserAgeDays();
+            public getUserAgeDays create() {
+                return createArgs();
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getUserAgeMs")
+        public static class getUserAgeMs extends CommandRef {
+            public static final getUserAgeMs cmd = new getUserAgeMs();
+            public getUserAgeMs create() {
+                return createArgs();
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getUserDiscriminator")
         public static class getUserDiscriminator extends CommandRef {
             public static final getUserDiscriminator cmd = new getUserDiscriminator();
@@ -1042,6 +1063,13 @@ public class NationCommands {
         public static class getUserId extends CommandRef {
             public static final getUserId cmd = new getUserId();
             public getUserId create() {
+                return createArgs();
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getUserMention")
+        public static class getUserMention extends CommandRef {
+            public static final getUserMention cmd = new getUserMention();
+            public getUserMention create() {
                 return createArgs();
             }
         }
@@ -1379,6 +1407,13 @@ public class NationCommands {
             public static final isInSpyRange cmd = new isInSpyRange();
             public isInSpyRange create(String other) {
                 return createArgs("other", other);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="isInWarRange")
+        public static class isInWarRange extends CommandRef {
+            public static final isInWarRange cmd = new isInWarRange();
+            public isInWarRange create() {
+                return createArgs();
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="isOnline")
