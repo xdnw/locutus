@@ -100,8 +100,8 @@ public class AllianceListener {
 
                 try {
                     Map<NationFilter, TaxRate> internal = GuildKey.REQUIRED_INTERNAL_TAXRATE.getOrNull(db, false);
-                    Map<NationFilter, Integer> taxrate = GuildKey.REQUIRED_TAX_BRACKET.getOrNull(db, false);
-                    if ((internal == null || taxrate.isEmpty())
+//                    Map<NationFilter, Integer> taxrate = GuildKey.REQUIRED_TAX_BRACKET.getOrNull(db, false);
+                    if ((internal == null || internal.isEmpty())
     //                        && (taxrate == null || taxrate.isEmpty())
                     ) {
                         continue;

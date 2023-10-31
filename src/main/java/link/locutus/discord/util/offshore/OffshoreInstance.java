@@ -1608,7 +1608,7 @@ public class OffshoreInstance {
                     continue;
                 }
                 allowedAny = true;
-                double[] rss = PnwUtil.resourcesToArray(getDepositsAA(ids, update));
+                double[] rss = PnwUtil.resourcesToArray(getDepositsAA(Set.of(id), update));
                 update = false;
                 result.put(DBAlliance.getOrCreate(id), rss);
             }

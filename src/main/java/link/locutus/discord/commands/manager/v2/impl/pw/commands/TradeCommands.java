@@ -33,6 +33,7 @@ import link.locutus.discord.db.entities.Transfer;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.event.Event;
+import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -1062,9 +1063,12 @@ public class TradeCommands {
     @Command(desc = "Compare the stockpile in the offshore alliance in-game bank to the total account balances of all offshoring alliances/guilds")
     @RolePermission(Roles.ECON)
     @IsAlliance
-    public String compareOffshoreStockpile(@Me IMessageIO channel, @Me GuildDB db) throws IOException {
+    public String compareOffshoreStockpile(@Me IMessageIO channel, @Me GuildDB db, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         Map.Entry<GuildDB, Integer> offshoreDb = db.getOffshoreDB();
         if (offshoreDb == null || offshoreDb.getKey() != db) throw new IllegalArgumentException("This command must be run in the offshore server");
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKeys.OFFSHORE_DEPOSITS);
+        }
 
         channel.send("Please wait...");
 
@@ -1090,9 +1094,19 @@ public class TradeCommands {
         List<String> errors = new ArrayList<>();
         Set<Long> testedIds = new HashSet<>();
 
-        Map<ResourceType, Double> allDeposits = new HashMap<>();
+        List<String> header = new ArrayList<>(Arrays.asList(
+                "name",
+                "id",
+                "amount",
+                "value"
+        ));
+        for (ResourceType type : ResourceType.values) {
+            if (type != ResourceType.CREDITS) header.add(type.name().toLowerCase());
+        }
+        sheet.addRow(header);
+
+        double[] allDeposits = ResourceType.getBuffer();
         for (Long coalition : coalitions) {
-            Map<ResourceType, Double> deposits;
             GuildDB otherDb;
             if (coalition > Integer.MAX_VALUE) {
                 otherDb = Locutus.imp().getGuildDB(coalition);
@@ -1115,11 +1129,30 @@ public class TradeCommands {
                     errors.add("Duplicate guild: " + otherDb.getGuild());
                     continue;
                 }
-                deposits = PnwUtil.resourcesToMap(offshore.getDeposits(otherDb, false));
+                Map<NationOrAllianceOrGuild, double[]> byAA = offshore.getDepositsByAA(otherDb, f -> true, false);
+                double[] deposits = ResourceType.getBuffer();
+                byAA.forEach((a, b) -> ResourceType.add(deposits, b));
                 allDeposits = PnwUtil.add(allDeposits, deposits);
+
+                for (Map.Entry<NationOrAllianceOrGuild, double[]> entry : byAA.entrySet()) {
+                    NationOrAllianceOrGuild account = entry.getKey();
+                    double[] amount = entry.getValue();
+                    if (ResourceType.isZero(amount)) continue;
+
+                    header.set(0, MarkupUtil.sheetUrl(account.getQualifiedName(), account.getUrl()));
+                    header.set(1, account.getId() + "");
+                    header.set(2, PnwUtil.resourcesToString(amount));
+                    header.set(3, MathMan.format(PnwUtil.convertedTotal(amount)));
+                    int i = 4;
+                    for (ResourceType type : ResourceType.values) {
+                        if (type != ResourceType.CREDITS) header.set(i++, MathMan.format(amount[type.ordinal()]));
+                    }
+                    sheet.addRow(header);
+                }
+
             }
         }
-        Map<ResourceType, Double> diff = PnwUtil.subResourcesToA(new HashMap<>(allDeposits), stockpile);
+        double[] diff = ResourceType.subtract(allDeposits.clone(), PnwUtil.resourcesToArray(stockpile));
 
         body.append("Offshored Deposits: `" + PnwUtil.resourcesToString(allDeposits) + "`\n");
         body.append("- worth: ~$" + MathMan.format(PnwUtil.convertedTotal(allDeposits))).append("\n");
@@ -1137,6 +1170,7 @@ public class TradeCommands {
         IMessageBuilder msg = channel.create().embed(title, body.toString())
                 .commandButton(cmd, "Show Graph (200d)")
                 .append("Done!");
+        sheet.attach(msg, "balances");
         if (!errors.isEmpty()) {
             msg.append("\n- " + StringMan.join(errors, "\n- "));
         }

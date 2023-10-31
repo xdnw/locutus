@@ -1730,17 +1730,17 @@ public class UnsortedCommands {
                     // use merge
                     failedCount.merge(audit, 1, Integer::sum);
                     failedBySeverity.merge(audit.severity, 1, Integer::sum);
-                    if (verbose) {
-                        header.set(i, value.getValue());
-                    } else {
-                        header.set(i, StringMan.getString(value.getKey()));
-                    }
-                }
-                if (highest != null) {
-                    nationBySeverity.merge(highest, 1, Integer::sum);
+                    String valueStr = verbose ? value.getValue() : StringMan.getString(value.getKey());
+                    String escaped = "=\"" + valueStr.replace("\"", "\"\"") + "\"";
+                    header.set(i, escaped);
                 }
                 i++;
             }
+            if (highest != null) {
+                nationBySeverity.merge(highest, 1, Integer::sum);
+            }
+
+            sheet.addRow(header);
         }
         sheet.clearAll();
         sheet.set(0, 0);
