@@ -3935,7 +3935,7 @@ public class DBNation implements NationOrAlliance {
 
             StringBuilder response = new StringBuilder("Checking trades...");
 
-            Set<Auth.TradeResult> trades = tradeSupplier.get();
+            List<Auth.TradeResult> trades = tradeSupplier.get();
 
             double[] toDeposit = ResourceType.getBuffer();
             for (Auth.TradeResult trade : trades) {
