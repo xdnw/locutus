@@ -784,9 +784,10 @@ public class GrantCommands {
                                      @Arg("Do not include grants in member balances by default\n" +
                                              "Defaults to false")
                                          @Switch("ignore") boolean allowIgnore,
-                                     @Arg("If the template can be sent to the same receiver multiple times")
-                                         @Switch("repeat") boolean repeatable,
+                                     @Arg("If the template can only sent to the same receiver once")
+                                         @Switch("repeat") boolean nonRepeatable,
                                      @Switch("f") boolean force) {
+        boolean repeatable = !nonRepeatable;
         if (overdrawPercent == null) overdrawPercent = 20L;
         name = name.toUpperCase(Locale.ROOT).trim();
         // Ensure name is alphanumericalund
