@@ -760,10 +760,7 @@ public class GrantCommands {
             }
         }
 
-        Object parsed = null;
-        if (customValue != null) {
-            parsed = template.parse(receiver, customValue);
-        }
+        Object parsed = template.parse(receiver, customValue);
 
         DepositType.DepositTypeInfo note = template.getDepositType(receiver, parsed);
         if (ignore) {
