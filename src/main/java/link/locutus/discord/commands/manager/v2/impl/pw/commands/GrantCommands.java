@@ -175,18 +175,47 @@ public class GrantCommands {
     @Command(desc = "Create a new project grant template")
     @RolePermission(Roles.ECON)
     public String templateCreateProject(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
-                                        String name,
+                                        @Arg("The name of the template\n" +
+                                                "Alphanumerical") String name,
+                                        @Arg("A filter for nations allowed to receive this grant\n" +
+                                                "Use your alliance link for all nations\n" +
+                                                "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
                                         NationFilter allowedRecipients,
+                                        @Arg("The project to grant")
                                         Project project,
+                                        @Arg("The role that can grant this template to others\n" +
+                                                "Defaults to the ECON role (see `{prefix}role setalias`)")
                                         @Switch("e") Role econRole,
+                                        @Arg("The role that can grant this template to itself\n" +
+                                                "Defaults to disabled")
                                         @Switch("s") Role selfRole,
+                                        @Arg("The tax bracket account to use for withdrawals\n" +
+                                                "e.g. For a growth circle\n" +
+                                                "Defaults to None\n" +
+                                                "See: <https://github.com/xdnw/locutus/wiki/tax_automation#tax-bracket-accounts>")
                                         @Switch("b")TaxBracket bracket,
+                                        @Arg("If the receiver's tax bracket is used as the tax bracket account\n" +
+                                                "Defaults to false\n" +
+                                                "Alternative to `bracket`")
                                         @Switch("r") boolean useReceiverBracket,
+                                        @Arg("Global grants allowed for this template\n" +
+                                                "Defaults to unlimited")
                                         @Switch("mt") Integer maxTotal,
+                                        @Arg("Grants allowed for this template per day\n" +
+                                                "Defaults to unlimited")
                                         @Switch("md") Integer maxDay,
+                                        @Arg("Grants allowed for this template per day by the same sender\n" +
+                                                "Defaults to unlimited")
                                         @Switch("mgd") Integer maxGranterDay,
+                                        @Arg("Grants allowed for this template by the same sender\n" +
+                                                "Defaults to unlimited")
                                         @Switch("mgt") Integer maxGranterTotal,
+                                        @Arg("Add a default expiry time to grants sent via this template\n" +
+                                                "e.g. 60d\n" +
+                                                "The granter can specify an expiry shorter than this value")
                                         @Switch("expire") @Timediff Long allowExpire,
+                                        @Arg("Do not include grants in member balances by default\n" +
+                                                "Defaults to false")
                                         @Switch("ignore") boolean allowIgnore,
                                         @Switch("f") boolean force) {
         System.out.println(1);
@@ -256,26 +285,69 @@ public class GrantCommands {
     @Command(desc = "Create a new build grant template")
     @RolePermission(Roles.ECON)
     public String templateCreateBuild(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
-                                      String name,
-                                      NationFilter allowedRecipients,
+                                      @Arg("The name of the template\n" +
+                                              "Alphanumerical") String name,
+                                      @Arg("A filter for nations allowed to receive this grant\n" +
+                                              "Use your alliance link for all nations\n" +
+                                              "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
+                                          NationFilter allowedRecipients,
+                                      @Arg("Only grant this specific city build\n" +
+                                              "Defaults to allow any city build")
                                       @Switch("c") CityBuild build,
+                                      @Arg("The MMR required for grants via this template")
                                       @Switch("m") MMRInt mmr,
+                                      @Arg("Only allow granting builds for new cities\n" +
+                                              "(Past 10 days)")
                                       @Switch("o") boolean only_new_cities,
+                                      @Arg("Allow grants to cities that have not received a build in the past X days\n" +
+                                              "Defaults to no limit")
                                       @Switch("t") Integer allow_after_days,
+                                      @Arg("Allow sending to cities after the receiver has had an offensive war\n" +
+                                              "e.g. For for switching builds after a counter\n" +
+                                              "Defaults to False")
                                       @Switch("a") boolean allow_after_offensive,
+                                      @Arg("Allow sending to cities where infrastructure has been damaged\n" +
+                                              "Defaults to False")
                                       @Switch("i") boolean allow_after_infra,
+                                      @Arg("Always allow granting (even if they have received another city build grant)")
                                       @Switch("aa") boolean allow_all,
+                                      @Arg("Allow granting after purchasing land or a project\n" +
+                                              "Defaults to False")
                                       @Switch("lp") boolean allow_after_land_or_project,
-                                      @Switch("e") Role econRole,
-                                      @Switch("s") Role selfRole,
-                                      @Switch("b")TaxBracket bracket,
-                                      @Switch("r") boolean useReceiverBracket,
-                                      @Switch("mt") Integer maxTotal,
-                                      @Switch("md") Integer maxDay,
-                                      @Switch("mgd") Integer maxGranterDay,
-                                      @Switch("mgt") Integer maxGranterTotal,
-                                      @Switch("expire") @Timediff Long allowExpire,
-                                      @Switch("ignore") boolean allowIgnore,
+                                      @Arg("The role that can grant this template to others\n" +
+                                              "Defaults to the ECON role (see `{prefix}role setalias`)")
+                                          @Switch("e") Role econRole,
+                                      @Arg("The role that can grant this template to itself\n" +
+                                              "Defaults to disabled")
+                                          @Switch("s") Role selfRole,
+                                      @Arg("The tax bracket account to use for withdrawals\n" +
+                                              "e.g. For a growth circle\n" +
+                                              "Defaults to None\n" +
+                                              "See: <https://github.com/xdnw/locutus/wiki/tax_automation#tax-bracket-accounts>")
+                                          @Switch("b")TaxBracket bracket,
+                                      @Arg("If the receiver's tax bracket is used as the tax bracket account\n" +
+                                              "Defaults to false\n" +
+                                              "Alternative to `bracket`")
+                                          @Switch("r") boolean useReceiverBracket,
+                                      @Arg("Global grants allowed for this template\n" +
+                                              "Defaults to unlimited")
+                                          @Switch("mt") Integer maxTotal,
+                                      @Arg("Grants allowed for this template per day\n" +
+                                              "Defaults to unlimited")
+                                          @Switch("md") Integer maxDay,
+                                      @Arg("Grants allowed for this template per day by the same sender\n" +
+                                              "Defaults to unlimited")
+                                          @Switch("mgd") Integer maxGranterDay,
+                                      @Arg("Grants allowed for this template by the same sender\n" +
+                                              "Defaults to unlimited")
+                                          @Switch("mgt") Integer maxGranterTotal,
+                                      @Arg("Add a default expiry time to grants sent via this template\n" +
+                                              "e.g. 60d\n" +
+                                              "The granter can specify an expiry shorter than this value")
+                                          @Switch("expire") @Timediff Long allowExpire,
+                                      @Arg("Do not include grants in member balances by default\n" +
+                                              "Defaults to false")
+                                          @Switch("ignore") boolean allowIgnore,
                                       @Switch("f") boolean force) {
 
         name = name.toUpperCase(Locale.ROOT).trim();
@@ -337,20 +409,50 @@ public class GrantCommands {
     @Command(desc = "Create a new city grant template")
     @RolePermission(Roles.ECON)
     public String templateCreateCity(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
-                                     String name,
-                                     NationFilter allowedRecipients,
+                                     @Arg("The name of the template\n" +
+                                             "Alphanumerical") String name,
+                                     @Arg("A filter for nations allowed to receive this grant\n" +
+                                             "Use your alliance link for all nations\n" +
+                                             "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
+                                         NationFilter allowedRecipients,
+                                     @Arg("The minimum city range allowed to receive grants")
                                      Integer minCity,
+                                     @Arg("The maximum city allowed to grant up to")
                                      Integer maxCity,
-                                     @Switch("e") Role econRole,
-                                     @Switch("s") Role selfRole,
-                                     @Switch("b")TaxBracket bracket,
-                                     @Switch("r") boolean useReceiverBracket,
-                                     @Switch("mt") Integer maxTotal,
-                                     @Switch("md") Integer maxDay,
-                                     @Switch("mgd") Integer maxGranterDay,
-                                     @Switch("mgt") Integer maxGranterTotal,
-                                     @Switch("expire") @Timediff Long allowExpire,
-                                     @Switch("ignore") boolean allowIgnore,
+                                     @Arg("The role that can grant this template to others\n" +
+                                             "Defaults to the ECON role (see `{prefix}role setalias`)")
+                                         @Switch("e") Role econRole,
+                                     @Arg("The role that can grant this template to itself\n" +
+                                             "Defaults to disabled")
+                                         @Switch("s") Role selfRole,
+                                     @Arg("The tax bracket account to use for withdrawals\n" +
+                                             "e.g. For a growth circle\n" +
+                                             "Defaults to None\n" +
+                                             "See: <https://github.com/xdnw/locutus/wiki/tax_automation#tax-bracket-accounts>")
+                                         @Switch("b")TaxBracket bracket,
+                                     @Arg("If the receiver's tax bracket is used as the tax bracket account\n" +
+                                             "Defaults to false\n" +
+                                             "Alternative to `bracket`")
+                                         @Switch("r") boolean useReceiverBracket,
+                                     @Arg("Global grants allowed for this template\n" +
+                                             "Defaults to unlimited")
+                                         @Switch("mt") Integer maxTotal,
+                                     @Arg("Grants allowed for this template per day\n" +
+                                             "Defaults to unlimited")
+                                         @Switch("md") Integer maxDay,
+                                     @Arg("Grants allowed for this template per day by the same sender\n" +
+                                             "Defaults to unlimited")
+                                         @Switch("mgd") Integer maxGranterDay,
+                                     @Arg("Grants allowed for this template by the same sender\n" +
+                                             "Defaults to unlimited")
+                                         @Switch("mgt") Integer maxGranterTotal,
+                                     @Arg("Add a default expiry time to grants sent via this template\n" +
+                                             "e.g. 60d\n" +
+                                             "The granter can specify an expiry shorter than this value")
+                                         @Switch("expire") @Timediff Long allowExpire,
+                                     @Arg("Do not include grants in member balances by default\n" +
+                                             "Defaults to false")
+                                         @Switch("ignore") boolean allowIgnore,
                                      @Switch("f") boolean force) {
         name = name.toUpperCase(Locale.ROOT).trim();
         // Ensure name is alphanumericalund
@@ -408,23 +510,55 @@ public class GrantCommands {
     @Command(desc = "Create a new infra grant template")
     @RolePermission(Roles.ECON)
     public String templateCreateInfra(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
-                                      String name,
-                                      NationFilter allowedRecipients,
+                                      @Arg("The name of the template\n" +
+                                              "Alphanumerical") String name,
+                                      @Arg("A filter for nations allowed to receive this grant\n" +
+                                              "Use your alliance link for all nations\n" +
+                                              "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
+                                          NationFilter allowedRecipients,
+                                      @Arg("The infra level allowed to grant to")
                                       Integer level,
+                                      @Arg("Only allow grants to new cities (past 10 days)\n" +
+                                              "Defaults to false")
                                       @Switch("n") boolean onlyNewCities,
+                                      @Arg("Require N offensive wars before allowing infra grants")
                                       @Switch("o") Integer requireNOffensives,
+                                      @Arg("Allow granting infra to cities that have received a grant in the past provided it has received damage")
                                       @Switch("a") boolean allowRebuild,
-
-                                      @Switch("e") Role econRole,
-                                      @Switch("s") Role selfRole,
-                                      @Switch("b")TaxBracket bracket,
-                                      @Switch("r") boolean useReceiverBracket,
-                                      @Switch("mt") Integer maxTotal,
-                                      @Switch("md") Integer maxDay,
-                                      @Switch("mgd") Integer maxGranterDay,
-                                      @Switch("mgt") Integer maxGranterTotal,
-                                      @Switch("expire") @Timediff Long allowExpire,
-                                      @Switch("ignore") boolean allowIgnore,
+                                      @Arg("The role that can grant this template to others\n" +
+                                              "Defaults to the ECON role (see `{prefix}role setalias`)")
+                                          @Switch("e") Role econRole,
+                                      @Arg("The role that can grant this template to itself\n" +
+                                              "Defaults to disabled")
+                                          @Switch("s") Role selfRole,
+                                      @Arg("The tax bracket account to use for withdrawals\n" +
+                                              "e.g. For a growth circle\n" +
+                                              "Defaults to None\n" +
+                                              "See: <https://github.com/xdnw/locutus/wiki/tax_automation#tax-bracket-accounts>")
+                                          @Switch("b")TaxBracket bracket,
+                                      @Arg("If the receiver's tax bracket is used as the tax bracket account\n" +
+                                              "Defaults to false\n" +
+                                              "Alternative to `bracket`")
+                                          @Switch("r") boolean useReceiverBracket,
+                                      @Arg("Global grants allowed for this template\n" +
+                                              "Defaults to unlimited")
+                                          @Switch("mt") Integer maxTotal,
+                                      @Arg("Grants allowed for this template per day\n" +
+                                              "Defaults to unlimited")
+                                          @Switch("md") Integer maxDay,
+                                      @Arg("Grants allowed for this template per day by the same sender\n" +
+                                              "Defaults to unlimited")
+                                          @Switch("mgd") Integer maxGranterDay,
+                                      @Arg("Grants allowed for this template by the same sender\n" +
+                                              "Defaults to unlimited")
+                                          @Switch("mgt") Integer maxGranterTotal,
+                                      @Arg("Add a default expiry time to grants sent via this template\n" +
+                                              "e.g. 60d\n" +
+                                              "The granter can specify an expiry shorter than this value")
+                                          @Switch("expire") @Timediff Long allowExpire,
+                                      @Arg("Do not include grants in member balances by default\n" +
+                                              "Defaults to false")
+                                          @Switch("ignore") boolean allowIgnore,
                                       @Switch("f") boolean force) {
         name = name.toUpperCase(Locale.ROOT).trim();
         // Ensure name is alphanumericalund
@@ -498,21 +632,50 @@ public class GrantCommands {
     @Command(desc = "Create a new land grant template")
     @RolePermission(Roles.ECON)
     public String templateCreateLand(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
-                                     String name,
-                                     NationFilter allowedRecipients,
+                                     @Arg("The name of the template\n" +
+                                             "Alphanumerical") String name,
+                                     @Arg("A filter for nations allowed to receive this grant\n" +
+                                             "Use your alliance link for all nations\n" +
+                                             "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
+                                         NationFilter allowedRecipients,
+                                     @Arg("The land level to grant up to (inclusive)")
                                      Integer level,
+                                     @Arg("Only allow grants to new cities (past 10 days)")
                                      @Switch("n") boolean onlyNewCities,
-
-                                     @Switch("e") Role econRole,
-                                     @Switch("s") Role selfRole,
-                                     @Switch("b")TaxBracket bracket,
-                                     @Switch("r") boolean useReceiverBracket,
-                                     @Switch("mt") Integer maxTotal,
-                                     @Switch("md") Integer maxDay,
-                                     @Switch("mgd") Integer maxGranterDay,
-                                     @Switch("mgt") Integer maxGranterTotal,
-                                     @Switch("expire") @Timediff Long allowExpire,
-                                     @Switch("ignore") boolean allowIgnore,
+                                     @Arg("The role that can grant this template to others\n" +
+                                             "Defaults to the ECON role (see `{prefix}role setalias`)")
+                                         @Switch("e") Role econRole,
+                                     @Arg("The role that can grant this template to itself\n" +
+                                             "Defaults to disabled")
+                                         @Switch("s") Role selfRole,
+                                     @Arg("The tax bracket account to use for withdrawals\n" +
+                                             "e.g. For a growth circle\n" +
+                                             "Defaults to None\n" +
+                                             "See: <https://github.com/xdnw/locutus/wiki/tax_automation#tax-bracket-accounts>")
+                                         @Switch("b")TaxBracket bracket,
+                                     @Arg("If the receiver's tax bracket is used as the tax bracket account\n" +
+                                             "Defaults to false\n" +
+                                             "Alternative to `bracket`")
+                                         @Switch("r") boolean useReceiverBracket,
+                                     @Arg("Global grants allowed for this template\n" +
+                                             "Defaults to unlimited")
+                                         @Switch("mt") Integer maxTotal,
+                                     @Arg("Grants allowed for this template per day\n" +
+                                             "Defaults to unlimited")
+                                         @Switch("md") Integer maxDay,
+                                     @Arg("Grants allowed for this template per day by the same sender\n" +
+                                             "Defaults to unlimited")
+                                         @Switch("mgd") Integer maxGranterDay,
+                                     @Arg("Grants allowed for this template by the same sender\n" +
+                                             "Defaults to unlimited")
+                                         @Switch("mgt") Integer maxGranterTotal,
+                                     @Arg("Add a default expiry time to grants sent via this template\n" +
+                                             "e.g. 60d\n" +
+                                             "The granter can specify an expiry shorter than this value")
+                                         @Switch("expire") @Timediff Long allowExpire,
+                                     @Arg("Do not include grants in member balances by default\n" +
+                                             "Defaults to false")
+                                         @Switch("ignore") boolean allowIgnore,
                                      @Switch("f") boolean force) {
         name = name.toUpperCase(Locale.ROOT).trim();
         // Ensure name is alphanumericalund
@@ -570,21 +733,51 @@ public class GrantCommands {
     @Command(desc = "Create a new raws grant template")
     @RolePermission(Roles.ECON)
     public String templateCreateRaws(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
-                                     String name,
-                                     NationFilter allowedRecipients,
+                                     @Arg("The name of the template\n" +
+                                             "Alphanumerical") String name,
+                                     @Arg("A filter for nations allowed to receive this grant\n" +
+                                             "Use your alliance link for all nations\n" +
+                                             "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
+                                         NationFilter allowedRecipients,
+                                     @Arg("Allow disbursing raw resources to run cities for up to a number of days")
                                      long days,
+                                     @Arg("Allow oversupply of resources by a certain percent\n" +
+                                             "Defaults to: 20 (percent)")
                                      @Switch("o") Long overdrawPercent,
-
-                                     @Switch("e") Role econRole,
-                                     @Switch("s") Role selfRole,
-                                     @Switch("b")TaxBracket bracket,
-                                     @Switch("r") boolean useReceiverBracket,
-                                     @Switch("mt") Integer maxTotal,
-                                     @Switch("md") Integer maxDay,
-                                     @Switch("mgd") Integer maxGranterDay,
-                                     @Switch("mgt") Integer maxGranterTotal,
-                                     @Switch("expire") @Timediff Long allowExpire,
-                                     @Switch("ignore") boolean allowIgnore,
+                                     @Arg("The role that can grant this template to others\n" +
+                                             "Defaults to the ECON role (see `{prefix}role setalias`)")
+                                         @Switch("e") Role econRole,
+                                     @Arg("The role that can grant this template to itself\n" +
+                                             "Defaults to disabled")
+                                         @Switch("s") Role selfRole,
+                                     @Arg("The tax bracket account to use for withdrawals\n" +
+                                             "e.g. For a growth circle\n" +
+                                             "Defaults to None\n" +
+                                             "See: <https://github.com/xdnw/locutus/wiki/tax_automation#tax-bracket-accounts>")
+                                         @Switch("b")TaxBracket bracket,
+                                     @Arg("If the receiver's tax bracket is used as the tax bracket account\n" +
+                                             "Defaults to false\n" +
+                                             "Alternative to `bracket`")
+                                         @Switch("r") boolean useReceiverBracket,
+                                     @Arg("Global grants allowed for this template\n" +
+                                             "Defaults to unlimited")
+                                         @Switch("mt") Integer maxTotal,
+                                     @Arg("Grants allowed for this template per day\n" +
+                                             "Defaults to unlimited")
+                                         @Switch("md") Integer maxDay,
+                                     @Arg("Grants allowed for this template per day by the same sender\n" +
+                                             "Defaults to unlimited")
+                                         @Switch("mgd") Integer maxGranterDay,
+                                     @Arg("Grants allowed for this template by the same sender\n" +
+                                             "Defaults to unlimited")
+                                         @Switch("mgt") Integer maxGranterTotal,
+                                     @Arg("Add a default expiry time to grants sent via this template\n" +
+                                             "e.g. 60d\n" +
+                                             "The granter can specify an expiry shorter than this value")
+                                         @Switch("expire") @Timediff Long allowExpire,
+                                     @Arg("Do not include grants in member balances by default\n" +
+                                             "Defaults to false")
+                                         @Switch("ignore") boolean allowIgnore,
                                      @Switch("f") boolean force) {
         if (overdrawPercent == null) overdrawPercent = 20L;
         name = name.toUpperCase(Locale.ROOT).trim();
@@ -643,23 +836,58 @@ public class GrantCommands {
     @Command(desc = "Create a new warchest grant template")
     @RolePermission(Roles.ECON)
     public String templateCreateWarchest(@Me GuildDB db, @Me DBNation me, @Me IMessageIO io, @Me JSONObject command,
-                                         String name,
-                                         NationFilter allowedRecipients,
+                                         @Arg("The name of the template\n" +
+                                                 "Alphanumerical") String name,
+                                         @Arg("A filter for nations allowed to receive this grant\n" +
+                                                 "Use your alliance link for all nations\n" +
+                                                 "See: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
+                                             NationFilter allowedRecipients,
+                                         @Arg("The warchest allowed to grant (per city)\n" +
+                                                 "Defaults to the guild setting: `WARCHEST_PER_CITY`")
                                          @Switch("a") Map<ResourceType, Double> allowancePerCity,
+                                         @Arg("Allow granting warchest if they have not received it in the past number of days")
                                          @Switch("t") long trackDays,
+                                         @Arg("Allow granting warchest that has been consumed in war")
                                          @Switch("c") boolean subtractExpenditure,
-                                         @Switch("o") long overdrawPercentCents,
-                                         @Switch("e") Role econRole,
-                                         @Switch("s") Role selfRole,
-                                         @Switch("b") TaxBracket bracket,
-                                         @Switch("r") boolean useReceiverBracket,
-                                         @Switch("mt") Integer maxTotal,
-                                         @Switch("md") Integer maxDay,
-                                         @Switch("mgd") Integer maxGranterDay,
-                                         @Switch("mgt") Integer maxGranterTotal,
-                                         @Switch("expire") @Timediff Long allowExpire,
-                                         @Switch("ignore") boolean allowIgnore,
+                                         @Arg("Allow granting a certain percent above the allowance to account for unintended losses (e.g. looting)\n" +
+                                                 "Defaults to 0 (percent)")
+                                         @Switch("o") long overdrawPercent,
+                                         @Arg("The role that can grant this template to others\n" +
+                                                 "Defaults to the ECON role (see `{prefix}role setalias`)")
+                                             @Switch("e") Role econRole,
+                                         @Arg("The role that can grant this template to itself\n" +
+                                                 "Defaults to disabled")
+                                             @Switch("s") Role selfRole,
+                                         @Arg("The tax bracket account to use for withdrawals\n" +
+                                                 "e.g. For a growth circle\n" +
+                                                 "Defaults to None\n" +
+                                                 "See: <https://github.com/xdnw/locutus/wiki/tax_automation#tax-bracket-accounts>")
+                                             @Switch("b")TaxBracket bracket,
+                                         @Arg("If the receiver's tax bracket is used as the tax bracket account\n" +
+                                                 "Defaults to false\n" +
+                                                 "Alternative to `bracket`")
+                                             @Switch("r") boolean useReceiverBracket,
+                                         @Arg("Global grants allowed for this template\n" +
+                                                 "Defaults to unlimited")
+                                             @Switch("mt") Integer maxTotal,
+                                         @Arg("Grants allowed for this template per day\n" +
+                                                 "Defaults to unlimited")
+                                             @Switch("md") Integer maxDay,
+                                         @Arg("Grants allowed for this template per day by the same sender\n" +
+                                                 "Defaults to unlimited")
+                                             @Switch("mgd") Integer maxGranterDay,
+                                         @Arg("Grants allowed for this template by the same sender\n" +
+                                                 "Defaults to unlimited")
+                                             @Switch("mgt") Integer maxGranterTotal,
+                                         @Arg("Add a default expiry time to grants sent via this template\n" +
+                                                 "e.g. 60d\n" +
+                                                 "The granter can specify an expiry shorter than this value")
+                                             @Switch("expire") @Timediff Long allowExpire,
+                                         @Arg("Do not include grants in member balances by default\n" +
+                                                 "Defaults to false")
+                                             @Switch("ignore") boolean allowIgnore,
                                          @Switch("f") boolean force) {
+        long overdrawPercentCents = overdrawPercent * 100;
         name = name.toUpperCase(Locale.ROOT).trim();
         // Ensure name is alphanumericalund
         if (!name.matches("[A-Z0-9_-]+")) {

@@ -625,6 +625,13 @@ public class CM {
                     return createArgs("nationList", nationList, "audits", audits, "pingUser", pingUser, "mailResults", mailResults, "postInInterviewChannels", postInInterviewChannels, "skipUpdate", skipUpdate);
                 }
             }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="auditSheet")
+            public static class sheet extends CommandRef {
+                public static final sheet cmd = new sheet();
+                public sheet create(String nations, String includeAudits, String excludeAudits, String forceUpdate, String verbose, String sheet) {
+                    return createArgs("nations", nations, "includeAudits", includeAudits, "excludeAudits", excludeAudits, "forceUpdate", forceUpdate, "verbose", verbose, "sheet", sheet);
+                }
+            }
         }
         public static class bank{
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="depositResources")
@@ -1998,8 +2005,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="compareOffshoreStockpile")
             public static class compareStockpile extends CommandRef {
                 public static final compareStockpile cmd = new compareStockpile();
-                public compareStockpile create() {
-                    return createArgs();
+                public compareStockpile create(String sheet) {
+                    return createArgs("sheet", sheet);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="findOffshores")
@@ -2609,6 +2616,13 @@ public class CM {
                 public static final BEIGE_ALERT_CHANNEL cmd = new BEIGE_ALERT_CHANNEL();
                 public BEIGE_ALERT_CHANNEL create(String channel) {
                     return createArgs("channel", channel);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="BEIGE_VIOLATION_MAIL", field="BEIGE_VIOLATION_MAIL")
+            public static class BEIGE_VIOLATION_MAIL extends CommandRef {
+                public static final BEIGE_VIOLATION_MAIL cmd = new BEIGE_VIOLATION_MAIL();
+                public BEIGE_VIOLATION_MAIL create(String value) {
+                    return createArgs("value", value);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="ENEMY_ALERT_CHANNEL", field="ENEMY_ALERT_CHANNEL")
@@ -3786,6 +3800,13 @@ public class CM {
                     return createArgs();
                 }
             }
+            @AutoRegister(clazz=link.locutus.discord.web.test.TestCommands.class,method="testImage")
+            public static class test_image extends CommandRef {
+                public static final test_image cmd = new test_image();
+                public test_image create(String alliance1, String alliance2) {
+                    return createArgs("alliance1", alliance1, "alliance2", alliance2);
+                }
+            }
         }
         public static class trade{
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="acceptTrades")
@@ -3933,8 +3954,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="tradetotalbyday")
             public static class totalByDay extends CommandRef {
                 public static final totalByDay cmd = new totalByDay();
-                public totalByDay create(String numDays, String attachJson) {
-                    return createArgs("numDays", numDays, "attachJson", attachJson);
+                public totalByDay create(String numDays, String attachJson, String resources) {
+                    return createArgs("numDays", numDays, "attachJson", attachJson, "resources", resources);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="trending")
@@ -3961,8 +3982,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="tradevolumebyday")
             public static class volumebyday extends CommandRef {
                 public static final volumebyday cmd = new volumebyday();
-                public volumebyday create(String numDays, String attachJson) {
-                    return createArgs("numDays", numDays, "attachJson", attachJson);
+                public volumebyday create(String numDays, String attachJson, String resources) {
+                    return createArgs("numDays", numDays, "attachJson", attachJson, "resources", resources);
                 }
             }
         }

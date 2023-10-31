@@ -22,6 +22,7 @@ import com.locutus.wiki.pages.WikiDepositsPage;
 import com.locutus.wiki.pages.WikiEmbassyPage;
 import com.locutus.wiki.pages.WikiEscrowPage;
 import com.locutus.wiki.pages.WikiFindingTargetsPage;
+import com.locutus.wiki.pages.WikiGrantTemplate;
 import com.locutus.wiki.pages.WikiHelpPage;
 import com.locutus.wiki.pages.WikiHostingLocutus;
 import com.locutus.wiki.pages.WikiInterviewPage;
@@ -85,6 +86,8 @@ public class WikiGenHandler {
         pages.add(new WikiBankFlows(manager));
 //        //Setup an offshore or bank
         pages.add(new WikiBankPage(manager));
+        // Grant templates
+        pages.add(new WikiGrantTemplate(manager));
 //        //Interview System
         pages.add(new WikiInterviewPage(manager)); // <--- 1
         //Recruitment System

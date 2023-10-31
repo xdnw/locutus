@@ -150,6 +150,8 @@ public class WikiBankPage extends BotWikiGen {
                 "### Check deposits of alliances or guilds",
                 "In the offshore server, as above, use the deposits command with the alliance or guild id you wish to check",
                 CM.deposits.check.cmd.create("", null, null, null, null, null, null, null, null, null, null).toString(),
+                "Or get a spreadsheet and breakdown",
+                commandMarkdownSpoiler(CM.offshore.compareStockpile.cmd),
                 "### Adjust the balance of any alliance or corporation",
                 """
                     Deposits are automatically tracked, but you may need to adjust balances if funds are sent from another source, using the wrong note, or to set initial amounts.
