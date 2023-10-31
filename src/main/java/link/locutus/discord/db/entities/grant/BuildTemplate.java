@@ -47,7 +47,8 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                 rs.getBoolean("allow_switch_after_land_or_project"),
                 rs.getBoolean("allow_all"),
                 rs.getLong("expire"),
-                rs.getBoolean("allow_ignore")
+                rs.getBoolean("allow_ignore"),
+                rs.getBoolean("repeatable")
         );
     }
 
@@ -57,9 +58,10 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                          boolean allow_switch_after_offensive,
                          boolean allow_switch_after_infra,
                          boolean allow_switch_after_land_or_project,
-                         boolean allow_all, long expiryOrZero, boolean allowIgnore
+                         boolean allow_all, long expiryOrZero, boolean allowIgnore,
+                         boolean repeatable
     ) {
-        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore);
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore, repeatable);
         this.build = build == null || build.length == 0 ? null : build;
         this.onlyNewCities = onlyNewCities;
         this.mmr = mmr <= 0 ? null : MMRInt.fromString(String.format("%04d", mmr));
@@ -142,14 +144,14 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setBytes(15, build == null ? new byte[0] : build);
-        stmt.setBoolean(16, onlyNewCities);
-        stmt.setLong(17, mmr == null ? -1 : mmr.toNumber());
-        stmt.setLong(18, allow_switch_after_days);
-        stmt.setBoolean(19, allow_switch_after_offensive);
-        stmt.setBoolean(20, allow_switch_after_infra);
-        stmt.setBoolean(21, allow_switch_after_land_or_project);
-        stmt.setBoolean(22, allow_all);
+        stmt.setBytes(16, build == null ? new byte[0] : build);
+        stmt.setBoolean(17, onlyNewCities);
+        stmt.setLong(18, mmr == null ? -1 : mmr.toNumber());
+        stmt.setLong(19, allow_switch_after_days);
+        stmt.setBoolean(20, allow_switch_after_offensive);
+        stmt.setBoolean(21, allow_switch_after_infra);
+        stmt.setBoolean(22, allow_switch_after_land_or_project);
+        stmt.setBoolean(23, allow_all);
     }
 
     @Override

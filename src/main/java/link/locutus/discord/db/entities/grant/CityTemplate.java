@@ -31,7 +31,7 @@ public class CityTemplate extends AGrantTemplate<Integer> {
 
     // create new constructor  with typed parameters instead of resultset
     public CityTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, int min_city, int max_city, long expiryOrZero, boolean allowIgnore) {
-        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore);
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore, false);
         this.min_city = min_city;
         this.max_city = max_city;
     }
@@ -56,8 +56,8 @@ public class CityTemplate extends AGrantTemplate<Integer> {
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setInt(15, min_city);
-        stmt.setInt(16, max_city);
+        stmt.setInt(16, min_city);
+        stmt.setInt(17, max_city);
     }
 
     @Override

@@ -51,8 +51,9 @@ public abstract class AGrantTemplate<T> {
     private int maxGranterTotal;
     private int maxGranterDay;
     private long dateCreated;
+    private boolean repeatable;
 
-    public AGrantTemplate(GuildDB db, boolean enabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long expiryOrZero, boolean allowIgnore) {
+    public AGrantTemplate(GuildDB db, boolean enabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long expiryOrZero, boolean allowIgnore, boolean repeatable) {
         this.db = db;
         this.enabled = enabled;
         this.name = name;
@@ -68,6 +69,7 @@ public abstract class AGrantTemplate<T> {
         this.dateCreated = dateCreated;
         this.expiryOrZero = expiryOrZero;
         this.allowIgnore = allowIgnore;
+        this.repeatable = repeatable;
     }
 
     public boolean isEnabled() {
@@ -384,13 +386,15 @@ public abstract class AGrantTemplate<T> {
             }));
         }
 
-        // check nation not received grant already
-        list.add(new Grant.Requirement("Nation has already received this grant", false, new Function<DBNation, Boolean>() {
-            @Override
-            public Boolean apply(DBNation nation) {
-                return db.getGrantTemplateManager().getRecordsByReceiver(nation.getId(), getName()).isEmpty();
-            }
-        }));
+        if (!repeatable) {
+            // check nation not received grant already
+            list.add(new Grant.Requirement("Nation has already received this grant", false, new Function<DBNation, Boolean>() {
+                @Override
+                public Boolean apply(DBNation nation) {
+                    return db.getGrantTemplateManager().getRecordsByReceiver(nation.getId(), getName()).isEmpty();
+                }
+            }));
+        }
 
        // errors.computeIfAbsent(nation, f -> new ArrayList<>()).add("Nation was not found in guild");
         list.add(new Grant.Requirement("Nation is not verified: " + CM.register.cmd.toSlashMention(), false, new Function<DBNation, Boolean>() {
@@ -508,6 +512,7 @@ public abstract class AGrantTemplate<T> {
         list.add("date_created");
         list.add("expire");
         list.add("allow_ignore");
+        list.add("repeatable");
         return list;
     }
 
@@ -570,6 +575,11 @@ public abstract class AGrantTemplate<T> {
         stmt.setLong(12, this.getDateCreated());
         stmt.setLong(13, this.getExpire());
         stmt.setBoolean(14, this.allowsExpire());
+        stmt.setBoolean(15, this.isRepeatable());
+    }
+
+    public boolean isRepeatable() {
+        return repeatable;
     }
 
     public long getDateCreated() {

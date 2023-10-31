@@ -28,12 +28,13 @@ public class LandTemplate extends AGrantTemplate<Double>{
     public LandTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
         this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), rs.getLong("level"), rs.getBoolean("only_new_cities"),
                 rs.getLong("expire"),
-                rs.getBoolean("allow_ignore"));
+                rs.getBoolean("allow_ignore"),
+                rs.getBoolean("repeatable"));
     }
 
     // create new constructor  with typed parameters instead of resultset
-    public LandTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long level, boolean onlyNewCities, long expiryOrZero, boolean allowIgnore) {
-        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore);
+    public LandTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long level, boolean onlyNewCities, long expiryOrZero, boolean allowIgnore, boolean repeatable) {
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore, repeatable);
         this.level = level;
         this.onlyNewCities = onlyNewCities;
     }
@@ -62,8 +63,8 @@ public class LandTemplate extends AGrantTemplate<Double>{
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setLong(15, level);
-        stmt.setBoolean(16, onlyNewCities);
+        stmt.setLong(16, level);
+        stmt.setBoolean(17, onlyNewCities);
     }
 
     @Override

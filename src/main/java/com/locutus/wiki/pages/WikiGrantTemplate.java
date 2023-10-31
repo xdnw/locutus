@@ -27,8 +27,9 @@ public class WikiGrantTemplate extends BotWikiGen {
                         Absolute and time based global and per template grant allowances.
                         Configurable grant expiry and tax account""",
                 "# Template Types",
-                MarkupUtil.list(TemplateTypes.values),
+                MarkupUtil.list((Object[]) TemplateTypes.values),
                 "# Creating a template",
+                commandMarkdownSpoiler(CM.grant_template.create.city.cmd),
                 // listing
                 // deleting
                 // info
