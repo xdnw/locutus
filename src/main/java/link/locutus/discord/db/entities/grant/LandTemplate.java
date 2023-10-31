@@ -70,8 +70,11 @@ public class LandTemplate extends AGrantTemplate<Double>{
     public String toInfoString(DBNation sender, DBNation receiver,  Double parsed) {
 
         StringBuilder message = new StringBuilder();
-        message.append("level: " + level);
-        message.append("Only New Cities: " + onlyNewCities);
+        message.append("level: `" + level + "`\n");
+        message.append("Only New Cities: `" + onlyNewCities + "`\n");
+        if (parsed != null && parsed.longValue() != (level)) {
+            message.append("Amount granted: `" + MathMan.format(parsed) + "`");
+        }
 
         return message.toString();
     }
@@ -132,6 +135,7 @@ public class LandTemplate extends AGrantTemplate<Double>{
     }
 
     public Double parse(DBNation receiver, String value) {
+        if (value == null) return (double) level;
         Double result = super.parse(receiver, value);
         if (result == null) result = (double) level;
         if (result > level) {
@@ -151,6 +155,13 @@ public class LandTemplate extends AGrantTemplate<Double>{
 
     public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Double parsed) {
         List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, parsed);
+
+        list.add(new Grant.Requirement("Land granted cannot be greater than: " + level, false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation nation) {
+                return parsed == null || parsed.longValue() <= level;
+            }
+        }));
 
         //nation does not have ALA
         list.add(new Grant.Requirement("Missing the project: " + Projects.ARABLE_LAND_AGENCY, true, new Function<DBNation, Boolean>() {

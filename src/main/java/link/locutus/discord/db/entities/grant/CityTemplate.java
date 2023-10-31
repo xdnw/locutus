@@ -67,10 +67,12 @@ public class CityTemplate extends AGrantTemplate<Integer> {
 
     @Override
     public String toInfoString(DBNation sender, DBNation receiver,  Integer parsed) {
-
         StringBuilder message = new StringBuilder();
         message.append("Min City: `" + min_city + "`\n");
-        message.append("Max City: `" + max_city + "`");
+        message.append("Max City: `" + max_city + "`\n");
+        if (parsed != null && parsed != 1) {
+            message.append("\nAmount: `" + parsed + "`");
+        }
 
         return message.toString();
     }
@@ -187,6 +189,8 @@ public class CityTemplate extends AGrantTemplate<Integer> {
 
     @Override
     public Integer parse(DBNation receiver, String value) {
+        if (value == null) return 1;
+
         Integer result = super.parse(receiver, value);
         if (result == null) result = 1;
         int currentCities = receiver.getCities();
@@ -205,6 +209,7 @@ public class CityTemplate extends AGrantTemplate<Integer> {
 
     @Override
     public double[] getCost(DBNation sender, DBNation receiver, Integer amount) {
+        if (amount == null) amount = 1;
         int cities = receiver.getCities();
         double cost = PnwUtil.nextCityCost(receiver, amount);
         return ResourceType.MONEY.toArray(cost);
@@ -212,6 +217,7 @@ public class CityTemplate extends AGrantTemplate<Integer> {
 
     @Override
     public DepositType.DepositTypeInfo getDepositType(DBNation receiver, Integer amount) {
+        if (amount == null) amount = 1;
         return DepositType.CITY.withAmount(receiver.getCities() + amount);
     }
 
@@ -222,6 +228,10 @@ public class CityTemplate extends AGrantTemplate<Integer> {
 
     @Override
     public String getInstructions(DBNation sender, DBNation receiver, Integer parsed) {
+        if (parsed != null && parsed > 1) {
+            return "Go to: https://politicsandwar.com/city/create/\n" +
+                    "And buy " + parsed + " cities";
+        }
         return "Go to: https://politicsandwar.com/city/create/\n" +
                 "And buy city your next city";
     }

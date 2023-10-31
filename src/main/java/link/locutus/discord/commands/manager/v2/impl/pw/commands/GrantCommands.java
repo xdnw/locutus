@@ -760,13 +760,18 @@ public class GrantCommands {
             }
         }
 
-        DepositType.DepositTypeInfo note = template.getDepositType(receiver, customValue);
+        Object parsed = null;
+        if (customValue != null) {
+            parsed = template.parse(receiver, customValue);
+        }
+
+        DepositType.DepositTypeInfo note = template.getDepositType(receiver, parsed);
         if (ignore) {
             note = note.ignore(true);
         }
-        double[] cost = template.getCost(me, receiver, customValue);
-        List<Grant.Requirement> requirements = template.getDefaultRequirements(me, receiver, customValue);
-        String instructions = template.getInstructions(me, receiver, customValue);
+        double[] cost = template.getCost(me, receiver, parsed);
+        List<Grant.Requirement> requirements = template.getDefaultRequirements(me, receiver, parsed);
+        String instructions = template.getInstructions(me, receiver, parsed);
 
         for (int i = 0; i < cost.length; i++) {
             if (cost[i] < 0)
@@ -776,11 +781,6 @@ public class GrantCommands {
         // TODO figure out how to handle partial
         // example:
         //
-
-        Object parsed = null;
-        if (customValue != null) {
-            parsed = template.parse(receiver, customValue);
-        }
 
         // confirmation
         if (!force) {

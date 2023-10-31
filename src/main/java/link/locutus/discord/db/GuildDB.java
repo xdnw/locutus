@@ -48,6 +48,7 @@ import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.Rank;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.TreatyType;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
@@ -702,11 +703,27 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
     }
 
     public String getUrl() {
-        List<Invite> invites = RateLimitUtil.complete(guild.retrieveInvites());
-        for (Invite invite : invites) {
-            if (invite.getMaxUses() == 0) {
-                return invite.getUrl();
+        AllianceList alliances = this.getAllianceList();
+        if (alliances != null) {
+            for (DBAlliance alliance : alliances.getAlliances()) {
+                if (alliance.getDiscord_link() != null && !alliance.getDiscord_link().isEmpty()) {
+                    return alliance.getDiscord_link();
+                }
             }
+        }
+        Role botRole = guild.getBotRole();
+        if (botRole == null || !botRole.hasPermission(Permission.MANAGE_SERVER)) {
+            return null;
+        }
+        try {
+            List<Invite> invites = RateLimitUtil.complete(guild.retrieveInvites());
+            for (Invite invite : invites) {
+                if (invite.getMaxUses() == 0) {
+                    return invite.getUrl();
+                }
+            }
+        } catch (RuntimeException ignore) {
+            ignore.printStackTrace();
         }
         return null;
     }

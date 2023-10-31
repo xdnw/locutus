@@ -246,13 +246,12 @@ public class GrantTemplateManager {
         db.executeStmt(raws);
         db.executeStmt(grants_sent);
 
-        for (TemplateTypes value : TemplateTypes.values()) {
-            String tableName = value.getTable();
-            db.executeStmt("ALTER TABLE `" + tableName + "` ADD COLUMN `expire` BIGINT NOT NULL DEFAULT 0");
-            db.executeStmt("ALTER TABLE `" + tableName + "` ADD COLUMN `allow_ignore` BOOLEAN NOT NULL DEFAULT 0");
-            db.executeStmt("ALTER TABLE `" + tableName + "` ADD COLUMN `max_granter_total` INT NOT NULL DEFAULT 0");
-        }
-
+//        for (TemplateTypes value : TemplateTypes.values()) {
+//            String tableName = value.getTable();
+//            db.executeStmt("ALTER TABLE `" + tableName + "` ADD COLUMN `expire` BIGINT NOT NULL DEFAULT 0");
+//            db.executeStmt("ALTER TABLE `" + tableName + "` ADD COLUMN `allow_ignore` BOOLEAN NOT NULL DEFAULT 0");
+//            db.executeStmt("ALTER TABLE `" + tableName + "` ADD COLUMN `max_granter_total` INT NOT NULL DEFAULT 0");
+//        }
     }
 
     public void deleteTemplate(AGrantTemplate template) {

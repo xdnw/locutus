@@ -85,10 +85,13 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     public String toInfoString(DBNation sender, DBNation receiver,  Double parsed) {
 
         StringBuilder message = new StringBuilder();
-        message.append("level: " + level);
-        message.append("Only New Cities: " + onlyNewCities);
-        message.append("Require No Offensives: " + require_n_offensives);
-        message.append("Allow Rebuild: " + allow_rebuild);
+        message.append("level: `" + level + "`\n");
+        message.append("Only New Cities: `" + onlyNewCities + "`\n");
+        message.append("Require No Offensives: `" + require_n_offensives + "`\n");
+        message.append("Allow Rebuild: `" + allow_rebuild + "`\n");
+        if (parsed != null && parsed.longValue() != level) {
+            message.append("Amount: `" + parsed + "`");
+        }
 
         return message.toString();
     }
@@ -103,12 +106,18 @@ public class InfraTemplate extends AGrantTemplate<Double>{
 
     @Override
     public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Double amount) {
-        if (amount == null) amount = (double) level;
         List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, amount);
 
         if (amount > level) {
             throw new IllegalArgumentException("Amount cannot be greater than the template level `" + amount + ">" + level + "`");
         }
+
+        list.add(new Grant.Requirement("Infra granted cannot be greater than: " + level, false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation nation) {
+                return amount == null || amount.longValue() <= level;
+            }
+        }));
 
         //if nation is fighting an active nation this is stronger or has nuclear research facility or missile launch pad
         list.add(new Grant.Requirement("Nation is fighting stronger nations or they have NRF/MLP", false, new Function<DBNation, Boolean>() {
@@ -193,6 +202,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
 
     @Override
     public Double parse(DBNation receiver, String value) {
+        if (value == null) return (double) level;
         Double result = super.parse(receiver, value);
         if (result == null) result = (double) level;
         if (result > level) {
@@ -206,7 +216,6 @@ public class InfraTemplate extends AGrantTemplate<Double>{
 
     @Override
     public double[] getCost(DBNation sender, DBNation receiver, Double parsed) {
-
         long latestAttackDate = getLatestAttackDate(receiver, require_n_offensives);
         long cutoff = onlyNewCities ? TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119) : 0;
         Map<Integer, Map<Long, Double>> topCity = getTopCityInfraGrant(receiver);
