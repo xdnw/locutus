@@ -3885,7 +3885,7 @@ public class DBNation implements NationOrAlliance {
         return new PoliticsAndWarV3(ApiKeyPool.create(apiKey));
     }
 
-    private Map.Entry<Boolean, String> createAndOffshoreDeposit(GuildDB currentDB, DBNation senderNation, Supplier<Set<Auth.TradeResult>> tradeSupplier) {
+    private Map.Entry<Boolean, String> createAndOffshoreDeposit(GuildDB currentDB, DBNation senderNation, Supplier<List<Auth.TradeResult>> tradeSupplier) {
         PoliticsAndWarV3 receiverApi = getApi(true);
 
         synchronized (OffshoreInstance.BANK_LOCK) {
@@ -4027,15 +4027,17 @@ public class DBNation implements NationOrAlliance {
             throw new IllegalArgumentException("Banker nation has no auth (" + getNationUrlMarkup(true) + "). See: " + CM.credentials.login.cmd.toSlashMention());
         }
 
-        Supplier<Set<Auth.TradeResult>> tradeSupplier = new Supplier<>() {
+        Map<ResourceType, Double> amountMapDbl = amountMap.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> (double) e.getValue()));
+
+        Supplier<List<Auth.TradeResult>> tradeSupplier = new Supplier<>() {
             @Override
-            public Set<Auth.TradeResult> get() {
+            public List<Auth.TradeResult> get() {
                 List<String> responses = new ArrayList<>();
                 for (Map.Entry<ResourceType, Integer> entry : amountMap.entrySet()) {
                     String trade = auth.createDepositTrade(senderNation, entry.getKey(), entry.getValue());
                     responses.add(trade);
                 }
-                List<Auth.TradeResult> result = senderNation.acceptTrades(getNation_id(), amountMap, true);
+                List<Auth.TradeResult> result = senderNation.acceptTrades(getNation_id(), amountMapDbl, true);
                 return result;
             }
         };
@@ -4049,7 +4051,7 @@ public class DBNation implements NationOrAlliance {
         Supplier<List<Auth.TradeResult>> tradeSupplier = new Supplier<>() {
             @Override
             public List<Auth.TradeResult> get() {
-                return acceptTrades(senderNation.getNation_id(), false);
+                return acceptTrades(senderNation.getNation_id(), null,false);
             }
         };
         return createAndOffshoreDeposit(currentDB, senderNation, tradeSupplier);
@@ -4073,7 +4075,7 @@ public class DBNation implements NationOrAlliance {
             return List.of(new Auth.TradeResult("no trades to accept", Auth.TradeResultType.NO_TRADES));
         }
 
-        double[] amountArr = PnwUtil.resourcesToArray(amount);
+        double[] amountArr = amount == null ? null : PnwUtil.resourcesToArray(amount);
 
         tradesV3.removeIf(f -> f.getSender_id() == null || f.getSender_id() != expectedNationId);
         tradesV3.removeIf((Predicate<Trade>) f -> {
@@ -4096,7 +4098,7 @@ public class DBNation implements NationOrAlliance {
                     return true;
                 }
                 double cost = f.getOffer_amount() * f.getPrice();
-                if (amountArr[0] + 100000 <= cost) {
+                if (amountArr != null && amountArr[0] + 100000 <= cost) {
                     errors.put(f, Map.entry("Found trade for $" + MathMan.format(cost) + " but user only specified amount of $" + MathMan.format(amountArr[0]), Auth.TradeResultType.INSUFFICIENT_RESOURCES));
                     return true;
                 }
@@ -4118,7 +4120,7 @@ public class DBNation implements NationOrAlliance {
                     errors.put(f, Map.entry("Sender id is not expected nation id (" + f.getSender_id() + " != " + expectedNationId + ")", Auth.TradeResultType.NOT_A_SELL_OFFER));
                     return true;
                 }
-                if (amountArr[resource.ordinal()] < f.getOffer_amount()) {
+                if (amountArr != null && amountArr[resource.ordinal()] < f.getOffer_amount()) {
                     errors.put(f, Map.entry("Found trade for " + MathMan.format(f.getOffer_amount()) + " " + resource + " but user only specified amount of " + MathMan.format(amountArr[resource.ordinal()]), Auth.TradeResultType.INSUFFICIENT_RESOURCES));
                     return true;
                 }
