@@ -76,16 +76,16 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         StringBuilder message = new StringBuilder();
 
         if(build != null)
-            message.append("build: " + new JavaCity().fromBytes(build).toJson());
+            message.append("build: ```json\n" + new JavaCity().fromBytes(build).toJson() + "\n```\n");
 
-        message.append("Only New Cities: " + onlyNewCities);
+        message.append("Only New Cities: `" + onlyNewCities + "`\n");
         if (mmr != null) {
-            message.append("MMR: " + String.format("%04d", mmr));
+            message.append("MMR: `" + String.format("%04d", mmr) + "`\n");
         }
-        message.append("Allow Switch After Days: " + allow_switch_after_days);
-        message.append("Allow Switch After Offensive: " + allow_switch_after_offensive);
-        message.append("Allow Switch After Infra: " + allow_switch_after_infra);
-        message.append("Allow All: " + allow_all);
+        message.append("Allow Switch After Days: `" + allow_switch_after_days + "`\n");
+        message.append("Allow Switch After Offensive: `" + allow_switch_after_offensive + "`\n");
+        message.append("Allow Switch After Infra: `" + allow_switch_after_infra + "`\n");
+        message.append("Allow All: `" + allow_all + "`\n");
 
         return message.toString();
     }
@@ -156,19 +156,28 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     public Map<Integer, CityBuild> parse(DBNation receiver, String value) {
         CityBuild build;
         if (value == null) {
-            // get infra in last city
-            Map<Integer, DBCity> cities = receiver._getCitiesV3();
-            // get city with largest id key
-            int lastCity = Collections.max(cities.keySet());
-            JavaCity city = cities.get(lastCity).toJavaCity(receiver);
-            // mmr
-            if (mmr != null) {
-                city.setMMR(mmr);
+            JavaCity city;
+            if (this.build != null) {
+                city = JavaCity.fromBytes(this.build);
+                if (mmr != null) {
+                    city.setMMR(mmr);
+                }
+                build = city.toCityBuild();
+            } else {
+                // get infra in last city
+                Map<Integer, DBCity> cities = receiver._getCitiesV3();
+                // get city with largest id key
+                int lastCity = Collections.max(cities.keySet());
+                city = cities.get(lastCity).toJavaCity(receiver);
+                // mmr
+                if (mmr != null) {
+                    city.setMMR(mmr);
+                }
+                city.zeroNonMilitary();
+                city.optimalBuild(receiver, 5000);
+                // generate
+                build = city.toCityBuild();
             }
-            city.zeroNonMilitary();
-            city.optimalBuild(receiver, 5000);
-            // generate
-            build = city.toCityBuild();
         } else {
             build = parse(getDb(), receiver, value, CityBuild.class);
         }
@@ -239,11 +248,23 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Map<Integer, CityBuild> build) {
         List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, build);
 
+        // cap at 4k infra worth of buildings
+        list.add(new Grant.Requirement("Too many buildings (max 4k infra)", true, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation receiver) {
+                for (CityBuild value : build.values()) {
+                    if (new JavaCity(value).getImpTotal() > 80) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }));
+
         if (onlyNewCities) {
             list.add(new Grant.Requirement("Nation hasn't bought a city in the past 10 days", true, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation receiver) {
-
                     return receiver.getCitiesSince(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119)) > 0;
                 }
             }));

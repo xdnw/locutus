@@ -1138,7 +1138,6 @@ public class TradeCommands {
                     NationOrAllianceOrGuild account = entry.getKey();
                     double[] amount = entry.getValue();
                     if (ResourceType.isZero(amount)) continue;
-
                     header.set(0, MarkupUtil.sheetUrl(account.getQualifiedName(), account.getUrl()));
                     header.set(1, account.getId() + "");
                     header.set(2, PnwUtil.resourcesToString(amount));
@@ -1152,6 +1151,10 @@ public class TradeCommands {
 
             }
         }
+
+        sheet.clearAll();
+        sheet.set(0, 0);
+
         double[] diff = ResourceType.subtract(allDeposits.clone(), PnwUtil.resourcesToArray(stockpile));
 
         body.append("Offshored Deposits: `" + PnwUtil.resourcesToString(allDeposits) + "`\n");

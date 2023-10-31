@@ -9,6 +9,8 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.offshore.Grant;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -16,6 +18,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 public class RawsTemplate extends AGrantTemplate<Integer>{
     //long days
@@ -53,11 +56,28 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
     }
 
     @Override
+    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Integer parsed) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, parsed);
+
+        list.add(new Grant.Requirement("Days granted cannot be greater than: " + days, false, new Function<DBNation, Boolean>() {
+            @Override
+            public Boolean apply(DBNation nation) {
+                return parsed == null || parsed.longValue() <= days;
+            }
+        }));
+
+        return list;
+    }
+
+    @Override
     public String toInfoString(DBNation sender, DBNation receiver,  Integer parsed) {
 
         StringBuilder message = new StringBuilder();
-        message.append("Days: " + days);
-        message.append("Overdraw Percentage: " + overdrawPercent);
+        message.append("Days: `" + days + "`\n");
+        message.append("Overdraw Percentage: `" + overdrawPercent + "`\n");
+        if (parsed != null && parsed.longValue() != days) {
+            message.append("Days Granted: `" + parsed + "`\n");
+        }
 
         return message.toString();
     }
@@ -136,6 +156,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
 
     @Override
     public Integer parse(DBNation receiver, String value) {
+        if (value == null) return (int) days;
         Integer result = super.parse(receiver, value);
         if (result == null) result = Math.toIntExact(days);
         if (result > days) {

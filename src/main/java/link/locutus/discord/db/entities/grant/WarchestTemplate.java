@@ -84,8 +84,11 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
 
     @Override
     public Map<ResourceType, Double> parse(DBNation receiver, String value) {
-        Map<ResourceType, Double> result = super.parse(receiver, value);
         Map<ResourceType, Double> perCityMax = getWarchestPerCity(receiver);
+        if (value == null) {
+            return perCityMax;
+        }
+        Map<ResourceType, Double> result = super.parse(receiver, value);
         if (result == null) {
             result = new LinkedHashMap<>(perCityMax);
         } else {

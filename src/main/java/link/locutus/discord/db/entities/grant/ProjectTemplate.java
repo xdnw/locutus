@@ -37,7 +37,7 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
     @Override
     public String toInfoString(DBNation sender, DBNation receiver,  Void parsed) {
         StringBuilder message = new StringBuilder();
-        message.append("Project: " + project);
+        message.append("Project: `" + project.name() + "`");
         return message.toString();
     }
 
