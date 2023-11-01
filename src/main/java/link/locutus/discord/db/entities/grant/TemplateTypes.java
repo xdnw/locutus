@@ -5,12 +5,16 @@ import link.locutus.discord.commands.manager.v2.command.CommandRef;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.NationFilterString;
+import link.locutus.discord.util.offshore.Grant;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 
 public enum TemplateTypes {
     CITY(DepositType.CITY, CityTemplate.class) {
@@ -18,11 +22,21 @@ public enum TemplateTypes {
         public CommandRef getCommandMention() {
             return CM.grant_template.create.city.cmd;
         }
+
+        @Override
+        public List<Grant.Requirement> getRequirements() {
+            return CityTemplate.getRequirements(null, null, null, null);
+        }
     },
     PROJECT(DepositType.PROJECT, ProjectTemplate.class) {
         @Override
         public CommandRef getCommandMention() {
             return CM.grant_template.create.project.cmd;
+        }
+
+        @Override
+        public List<Grant.Requirement> getRequirements() {
+            return ProjectTemplate.getRequirements(null, null, null, null);
         }
     },
     INFRA(DepositType.INFRA, InfraTemplate.class) {
@@ -30,11 +44,22 @@ public enum TemplateTypes {
         public CommandRef getCommandMention() {
             return CM.grant_template.create.infra.cmd;
         }
+
+        @Override
+        public List<Grant.Requirement> getRequirements() {
+            return InfraTemplate.getRequirements(null, null, null, null);
+        }
+
     },
     LAND(DepositType.LAND, LandTemplate.class) {
         @Override
         public CommandRef getCommandMention() {
             return CM.grant_template.create.land.cmd;
+        }
+
+        @Override
+        public List<Grant.Requirement> getRequirements() {
+            return LandTemplate.getRequirements(null, null, null, null);
         }
     },
     BUILD(DepositType.BUILD, BuildTemplate.class) {
@@ -42,17 +67,32 @@ public enum TemplateTypes {
         public CommandRef getCommandMention() {
             return CM.grant_template.create.build.cmd;
         }
+
+        @Override
+        public List<Grant.Requirement> getRequirements() {
+            return BuildTemplate.getRequirements(null, null, null, null);
+        }
     },
     WARCHEST(DepositType.WARCHEST, WarchestTemplate.class) {
         @Override
         public CommandRef getCommandMention() {
             return CM.grant_template.create.warchest.cmd;
         }
+
+        @Override
+        public List<Grant.Requirement> getRequirements() {
+            return WarchestTemplate.getRequirements(null, null, null, null);
+        }
     },
     RAWS(DepositType.RAWS, RawsTemplate.class) {
         @Override
         public CommandRef getCommandMention() {
             return CM.grant_template.create.raws.cmd;
+        }
+
+        @Override
+        public List<Grant.Requirement> getRequirements() {
+            return RawsTemplate.getRequirements(null, null, null, null);
         }
     },
 
@@ -113,6 +153,11 @@ public enum TemplateTypes {
         );
     }
 
-
     public abstract CommandRef getCommandMention();
+
+    public abstract List<Grant.Requirement> getRequirements();
+
+    public static List<Grant.Requirement> getDefaultRequirements() {
+        return AGrantTemplate.getRequirements(null, null, null);
+    }
 }

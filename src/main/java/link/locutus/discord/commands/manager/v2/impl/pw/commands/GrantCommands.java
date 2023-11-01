@@ -7,6 +7,7 @@ import link.locutus.discord.apiv1.enums.EscrowMode;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
@@ -53,23 +54,33 @@ public class GrantCommands {
 
     @Command(desc = "List all grant templates for the specified category")
     @RolePermission(Roles.MEMBER)
-    public void templateList(@Me GuildDB db, @Me Guild guild, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io, @Default TemplateTypes category, @Switch("d") boolean listDisabled) {
+    public void templateList(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io,
+                             @Arg("The category of templates to list\n" +
+                                     "Defaults to all categories")@Default TemplateTypes category,
+                             @Arg("List the disabled grant templates") @Switch("d") boolean listDisabled) {
         GrantTemplateManager manager = db.getGrantTemplateManager();
         Set<AGrantTemplate> templates = new HashSet<>(category == null ? manager.getTemplates() : manager.getTemplates(category));
         int numDisabled = templates.stream().mapToInt(t -> t.isEnabled() ? 0 : 1).sum();
-
+        if (!listDisabled) {
+            templates.removeIf(t -> !t.isEnabled());
+        }
         if (templates.isEmpty()) {
-            String msg;
+            String body;
             if (category == null) {
-                msg = "No templates found for all categories";
+                body = "No templates found for all categories";
             } else {
-                msg = "No templates found for category: " + category + "\n" +
+                body = "No templates found for category: " + category + "\n" +
                         "Create one with " + category.getCommandMention();
             }
-            if (!listDisabled) {
-                msg += "\nUse `-d listDisabled` to list disabled templates";
+            if (!listDisabled && numDisabled > 0) {
+                body += "\nUse `listDisabled` to list `" + numDisabled + "` disabled templates";
             }
-            io.send(msg);
+            IMessageBuilder msg = io.create().embed("No Templates Found", body);
+            if (!listDisabled && numDisabled > 0) {
+                command.put("listDisabled", "true");
+                msg = msg.commandButton(command, "View Disabled");
+            }
+            msg.send();
             return;
         }
 
@@ -123,7 +134,19 @@ public class GrantCommands {
 
     @Command(desc = "Full information about a grant template")
     @RolePermission(Roles.MEMBER)
-    public String templateInfo(@Me GuildDB db, @Me JSONObject command, @Me Guild guild, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io, AGrantTemplate template, @Default DBNation receiver, @Default String value, @Switch("e") boolean show_command) {
+    public String templateInfo(@Me GuildDB db, @Me JSONObject command, @Me Guild guild, @Me User author, @Me Member member, @Me DBNation me, @Me IMessageIO io, AGrantTemplate template,
+                               @Arg("View additional info related to granting the template to this nation\n" +
+                                       "Such as cost/eligability")
+                               @Default DBNation receiver,
+                               @Arg("The value to provide to the grant template\n" +
+                                       "Such as:\n" +
+                                       "- Number (infra, land, grant, city, raws)\n" +
+                                       "- City build json (build)\n" +
+                                       "- Resources (warchest)")
+                               @Default String value,
+                               @Arg("Show the command used to create this template\n" +
+                                       "i.e. If you want to copy or recreate the template")
+                               @Switch("e") boolean show_command) {
         if (receiver == null) receiver = me;
         if (show_command) {
             return "### Edit Command\n`" + template.getCommandString() + "`";

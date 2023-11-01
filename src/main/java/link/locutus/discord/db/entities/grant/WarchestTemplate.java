@@ -8,10 +8,13 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.offshore.Grant;
 
+import javax.annotation.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -109,7 +112,6 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
                 }
             }
         }
-
         return result;
     }
 
@@ -148,6 +150,18 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
         stmt.setBoolean(18, subtractExpenditure);
         stmt.setLong(19, overdrawPercentCents);
     }
+
+    @Override
+    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Map<ResourceType, Double> parsed) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, parsed);
+        list.addAll(getRequirements(sender, receiver, this, parsed));
+        return list;
+    }
+
+    public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, WarchestTemplate template, Map<ResourceType, Double> parsed) {
+        return new ArrayList<>();
+    }
+
     @Override
     public double[] getCost(DBNation sender, DBNation receiver, Map<ResourceType, Double> parsed) {
         throw new UnsupportedOperationException("Not implemented yet");

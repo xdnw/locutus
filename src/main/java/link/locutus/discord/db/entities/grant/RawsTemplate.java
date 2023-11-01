@@ -15,6 +15,7 @@ import org.jetbrains.annotations.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -59,14 +60,18 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
     @Override
     public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Integer parsed) {
         List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, parsed);
+        list.addAll(getRequirements(sender, receiver, this, parsed));
+        return list;
+    }
 
-        list.add(new Grant.Requirement("Days granted cannot be greater than: " + days, false, new Function<DBNation, Boolean>() {
+    public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, RawsTemplate template, Integer parsed) {
+        List<Grant.Requirement> list = new ArrayList<>();
+        list.add(new Grant.Requirement("Days granted cannot be greater than: " + (template == null ? "{days}" : template.days), false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                return parsed == null || parsed.longValue() <= days;
+                return parsed == null || parsed.longValue() <= template.days;
             }
         }));
-
         return list;
     }
 

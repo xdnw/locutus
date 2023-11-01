@@ -4675,7 +4675,6 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Turns left on the city timer")
     public long getCityTurns() {
-        if (cities < 20) return 0;
         return (cityTimer - TimeUtil.getTurn());
     }
 

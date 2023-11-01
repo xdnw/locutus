@@ -19,6 +19,7 @@ import javax.annotation.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -106,17 +107,23 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Double amount) {
-        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, amount);
+    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Double parsed) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, parsed);
+        list.addAll(getRequirements(sender, receiver, this, parsed));
+        return list;
+    }
 
-        if (amount > level) {
-            throw new IllegalArgumentException("Amount cannot be greater than the template level `" + amount + ">" + level + "`");
+    public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, InfraTemplate template, Double parsed) {
+        List<Grant.Requirement> list = new ArrayList<>();
+
+        if (template != null && parsed > template.level) {
+            throw new IllegalArgumentException("Amount cannot be greater than the template level `" + MathMan.format(parsed) + ">" + MathMan.format(template.level) + "`");
         }
 
-        list.add(new Grant.Requirement("Infra granted cannot be greater than: " + level, false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Infra granted cannot be greater than: " + (template == null ? "{level}" : MathMan.format(template.level)), false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                return amount == null || amount.longValue() <= level;
+                return parsed == null || parsed.longValue() <= template.level;
             }
         }));
 
@@ -182,7 +189,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
             @Override
             public Boolean apply(DBNation receiver) {
 
-                if(onlyNewCities)
+                if(template.onlyNewCities)
                     return receiver.getCitiesSince(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 120)) > 0;
                 else
                     return true;

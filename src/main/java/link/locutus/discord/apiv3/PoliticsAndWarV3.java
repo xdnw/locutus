@@ -96,7 +96,7 @@ public class PoliticsAndWarV3 {
         } else {
             validKeysStr = keys.stream().map(key -> PnwUtil.getMarkdownUrl(key.getNationId(), false)).collect(Collectors.joining(","));
         }
-        message = "Error accessing `" + alliancePermission.name() + "`" + (message == null || message.isEmpty() ? "" : " " + message) + ". " + validKeysStr;
+        message = "Error accessing `" + alliancePermission.name() + "`" + (message == null || message.isEmpty() ? "" : " " + message) + ". Using keys: " + validKeysStr;
         throw new IllegalArgumentException(message);
     }
 

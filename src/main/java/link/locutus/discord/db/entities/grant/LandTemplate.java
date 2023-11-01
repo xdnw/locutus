@@ -10,6 +10,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Transaction2;
+import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
@@ -18,6 +19,7 @@ import javax.annotation.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -154,13 +156,20 @@ public class LandTemplate extends AGrantTemplate<Double>{
 
     }
 
+    @Override
     public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Double parsed) {
         List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, parsed);
+        list.addAll(getRequirements(sender, receiver, this, parsed));
+        return list;
+    }
 
-        list.add(new Grant.Requirement("Land granted cannot be greater than: " + level, false, new Function<DBNation, Boolean>() {
+    public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, LandTemplate template, Double parsed) {
+        List<Grant.Requirement> list = new ArrayList<>();
+
+        list.add(new Grant.Requirement("Land granted cannot be greater than: " + (template == null ? "{level}" : template.level), false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                return parsed == null || parsed.longValue() <= level;
+                return parsed == null || parsed.longValue() <= template.level;
             }
         }));
 
@@ -186,7 +195,7 @@ public class LandTemplate extends AGrantTemplate<Double>{
             @Override
             public Boolean apply(DBNation receiver) {
 
-                if(onlyNewCities)
+                if(template.onlyNewCities)
                     return receiver.getCitiesSince(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 120)) > 0;
                 else
                     return true;

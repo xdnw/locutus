@@ -20,6 +20,7 @@ import javax.annotation.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -248,13 +249,19 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
 
     @Override
     public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Map<Integer, CityBuild> build) {
-        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, build);
+            List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, build);
+            list.addAll(getRequirements(sender, receiver, this, build));
+            return list;
+    }
+
+    public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, BuildTemplate template, Map<Integer, CityBuild> parsed) {
+        List<Grant.Requirement> list = new ArrayList<>();
 
         // cap at 4k infra worth of buildings
         list.add(new Grant.Requirement("Too many buildings (max 4k infra)", true, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
-                for (CityBuild value : build.values()) {
+                for (CityBuild value : parsed.values()) {
                     if (new JavaCity(value).getImpTotal() > 80) {
                         return false;
                     }
@@ -263,8 +270,8 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
             }
         }));
 
-        if (onlyNewCities) {
-            list.add(new Grant.Requirement("Nation hasn't bought a city in the past 10 days", true, new Function<DBNation, Boolean>() {
+        if (template == null || template.onlyNewCities) {
+            list.add(new Grant.Requirement("Nation hasn't bought a city in the past 10 days (as onlyNewCities=True)", true, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation receiver) {
                     return receiver.getCitiesSince(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119)) > 0;
@@ -276,7 +283,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
             @Override
             public Boolean apply(DBNation receiver) {
 
-                List<GrantTemplateManager.GrantSendRecord> records = getDb().getGrantTemplateManager().getRecordsByReceiver(receiver.getId());
+                List<GrantTemplateManager.GrantSendRecord> records = template.getDb().getGrantTemplateManager().getRecordsByReceiver(receiver.getId());
 
                 for(GrantTemplateManager.GrantSendRecord record : records) {
                     if (receiver.getCitiesSince(record.date) == 0) {

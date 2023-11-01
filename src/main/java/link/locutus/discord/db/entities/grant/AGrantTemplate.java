@@ -329,12 +329,17 @@ public abstract class AGrantTemplate<T> {
     public abstract TemplateTypes getType();
 
     public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, T parsed) {
+        return getRequirements(sender, receiver, this);
+    }
+
+    public static List<Grant.Requirement> getRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, @Nullable AGrantTemplate template) {
+        GuildDB db = template == null ? null : template.getDb();
         List<Grant.Requirement> list = new ArrayList<>();
 
-        NationFilter filter = getNationFilter();
-        if (filter != null && !"*".equals(filter.getFilter())) {
-            Predicate<DBNation> cached = filter.toCached(Long.MAX_VALUE);
-            list.add(new Grant.Requirement("Nation does not match: `" + filter.getFilter() + "`", false, new Function<DBNation, Boolean>() {
+        NationFilter filter = template == null ? null : template.getNationFilter();
+        if (template == null || (filter != null && !"*".equals(filter.getFilter()))) {
+            Predicate<DBNation> cached = template == null ? null : filter.toCached(Long.MAX_VALUE);
+            list.add(new Grant.Requirement("Nation does not match: `" + (template == null ? "{filter}" : filter.getFilter()) + "`", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
                     return cached.test(nation);
@@ -346,52 +351,57 @@ public abstract class AGrantTemplate<T> {
         list.add(new Grant.Requirement("Grant is disabled. See: " + CM.grant_template.enable.cmd.toSlashMention(), false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                return AGrantTemplate.this.isEnabled();
+                return template.isEnabled();
             }
         }));
 
         // check grant limits (limit total/day, limit granter total/day)
-        if (getMaxTotal() > 0) {
-            list.add(new Grant.Requirement("Grant limit reached: " + getMaxTotal() + " total grants", false, new Function<DBNation, Boolean>() {
+        int maxTotal = template == null ? Integer.MAX_VALUE : template.getMaxTotal();
+        int maxDay = template == null ? Integer.MAX_VALUE : template.getMaxDay();
+        int maxGranterTotal = template == null ? Integer.MAX_VALUE : template.getMaxGranterTotal();
+        int maxGranterDay = template == null ? Integer.MAX_VALUE : template.getMaxGranterDay();
+
+        if (template == null || maxTotal > 0) {
+            list.add(new Grant.Requirement("Grant limit reached: " + maxTotal + " total grants", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
-                    return getGrantedTotal().size() < getMaxTotal();
+                    return template.getGrantedTotal().size() < maxTotal;
                 }
             }));
         }
-        if (getMaxDay() > 0) {
-            list.add(new Grant.Requirement("Grant limit reached: " + getMaxDay() + " grants per day", false, new Function<DBNation, Boolean>() {
+        if (template == null || maxDay > 0) {
+            list.add(new Grant.Requirement("Grant limit reached: " + maxDay + " grants per day", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
                     long oneDayMs = TimeUnit.DAYS.toMillis(1);
-                    return getGranted(oneDayMs).size() < getMaxDay();
+                    return template.getGranted(oneDayMs).size() < maxDay;
                 }
             }));
         }
-        if (getMaxGranterTotal() > 0) {
-            list.add(new Grant.Requirement("Grant limit reached: " + getMaxGranterTotal() + " total grants send from " + (sender == null ? "sender" : sender.getName()), false, new Function<DBNation, Boolean>() {
+        if (template == null || maxGranterTotal > 0) {
+            list.add(new Grant.Requirement("Grant limit reached: " + maxGranterTotal + " total grants send from " + (sender == null ? "sender" : sender.getName()), false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
-                    return getGrantedTotal(sender).size() < getMaxGranterTotal();
+                    return template.getGrantedTotal(sender).size() < maxGranterTotal;
                 }
             }));
         }
-        if (getMaxGranterDay() > 0) {
-            list.add(new Grant.Requirement("Grant limit reached: " + getMaxGranterDay() + " grants per day send from " + (sender == null ? "sender" : sender.getName()), false, new Function<DBNation, Boolean>() {
+        if (template == null || maxGranterDay > 0) {
+            list.add(new Grant.Requirement("Grant limit reached: " + maxGranterDay + " grants per day send from " + (sender == null ? "sender" : sender.getName()), false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
                     long oneDayMs = TimeUnit.DAYS.toMillis(1);
-                    return getGranted(oneDayMs, sender).size() < getMaxGranterDay();
+                    return template.getGranted(oneDayMs, sender).size() < maxGranterDay;
                 }
             }));
         }
 
-        if (!repeatable) {
+        if (template == null || !template.repeatable) {
             // check nation not received grant already
             list.add(new Grant.Requirement("Nation has already received this grant", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
-                    return db.getGrantTemplateManager().getRecordsByReceiver(nation.getId(), getName()).isEmpty();
+                    return db.getGrantTemplateManager().getRecordsByReceiver(nation.getId(), template.getName()).isEmpty();
                 }
             }));
         }
@@ -432,14 +442,14 @@ public abstract class AGrantTemplate<T> {
             }
         }));
 //                grant.addRequirement(new Grant.Requirement("Nation is not in the alliance: " + alliance, econGov, f -> alliance != null && f.getAlliance_id() == alliance.getAlliance_id()));
-        list.add(new Grant.Requirement("Nation is not in the alliance id: " + db.getAllianceIds(), false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Nation is not in the alliance id: " + (db == null ? "{allianceids}" : db.getAllianceIds()), false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
                 return db.isAllianceId(nation.getAlliance_id());
             }
         }));
 
-        Set<Integer> blacklist = GuildKey.GRANT_TEMPLATE_BLACKLIST.getOrNull(db);
+        Set<Integer> blacklist = db == null ? null : GuildKey.GRANT_TEMPLATE_BLACKLIST.getOrNull(db);
 
         if(blacklist == null)
             blacklist = Collections.emptySet();
