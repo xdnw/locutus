@@ -17,6 +17,7 @@ import javax.annotation.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
@@ -30,7 +31,7 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
 
     // create new constructor  with typed parameters instead of resultset
     public ProjectTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, Project project, long expiryOrZero, boolean allowIgnore) {
-        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore);
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore, false);
         this.project = project;
     }
 
@@ -65,9 +66,15 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
     @Override
     public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Void parsed) {
         List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, parsed);
+        list.addAll(getRequirements(sender, receiver, this, parsed));
+        return list;
+    }
+
+    public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, ProjectTemplate template, Void parsed) {
+        List<Grant.Requirement> list = new ArrayList<>();
 
         // has a timer
-        list.add(new Grant.Requirement("Has a project timer", false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Must NOT have a project timer", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
                 return nation.getProjectTurns() <= 0;
@@ -75,11 +82,11 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
         }));
 
         // received project already
-        list.add(new Grant.Requirement("Received transfer for " + project + " already", false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Must not have received a transfer for " + (template == null ? "`{project}`" : template.project) + " already", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                String findNote = "#project=" + project.name().toLowerCase();
-                String findNotr2 = "#project=" + project.ordinal();
+                String findNote = "#project=" + template.project.name().toLowerCase();
+                String findNotr2 = "#project=" + template.project.ordinal();
                 for (Transaction2 transaction : nation.getTransactions(true)) {
                     if (transaction.note == null) continue;
                     String noteLower = transaction.note.toLowerCase();
@@ -90,10 +97,10 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
         }));
 
         // already got project grant in past 10 days
-        list.add(new Grant.Requirement("Has not received a project grant in the past 10 days", false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Has NOT received a project grant in the past 10 days", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                List<GrantTemplateManager.GrantSendRecord> received = getDb().getGrantTemplateManager().getRecordsByReceiver(nation.getId());
+                List<GrantTemplateManager.GrantSendRecord> received = template.getDb().getGrantTemplateManager().getRecordsByReceiver(nation.getId());
                 long cutoff = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119);
                 received.removeIf(f -> f.date <= cutoff || f.grant_type != TemplateTypes.PROJECT);
                 return received.size() == 0;
@@ -101,17 +108,17 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
         }));
 
         // already have project
-        list.add(new Grant.Requirement("Already has the project " + project.name(), false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Requires the project " + (template == null ? "`{project}`" : template.project.name()), false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                return !nation.hasProject(project);
+                return !nation.hasProject(template.project);
             }
         }));
         // required projects
-        list.add(new Grant.Requirement("Requires the projects: " + StringMan.getString(project.requiredProjects()), false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Requires the projects: " + (template == null ? "`{required_projects}`" : "`" + StringMan.getString(template.project.requiredProjects()) + "`"), false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                for (Project req : project.requiredProjects()) {
+                for (Project req : template.project.requiredProjects()) {
                     if (!nation.hasProject(req)) {
                         return false;
                     }
@@ -121,27 +128,27 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
         }));
 
         // max city
-        if (project.maxCities() != 0) {
-            list.add(new Grant.Requirement("Project requires at most " + project.maxCities() + " cities", false, new Function<DBNation, Boolean>() {
+        if (template == null || template.project.maxCities() != 0) {
+            list.add(new Grant.Requirement("Project requires at most " + (template == null ? "`{max_cities}`" : "`" + template.project.maxCities() + "`") + " cities", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
-                    return project.maxCities() <= 0 || nation.getCities() <= project.maxCities();
+                    return template.project.maxCities() <= 0 || nation.getCities() <= template.project.maxCities();
                 }
             }));
         }
 
         // min city
-        if (project.maxCities() != 0) {
-            list.add(new Grant.Requirement("Project requires at least " + project.requiredCities() + " cities", false, new Function<DBNation, Boolean>() {
+        if (template == null || template.project.maxCities() != 0) {
+            list.add(new Grant.Requirement("Project requires at least " + (template == null ? "`{min_cities}`" : "`" + template.project.requiredCities() + "`") + " cities", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
-                    return project.requiredCities() <= 0 || nation.getCities() >= project.requiredCities();
+                    return template.project.requiredCities() <= 0 || nation.getCities() >= template.project.requiredCities();
                 }
             }));
         }
 
         // domestic policy is technological advancement
-        list.add(new Grant.Requirement("Domestic policy must be technological advancement", true, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Domestic policy must be `" + DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT.name() + "`", true, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
                 return nation.getDomesticPolicy() == DomesticPolicy.TECHNOLOGICAL_ADVANCEMENT;
@@ -160,7 +167,7 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setInt(15, project.ordinal());
+        stmt.setInt(16, project.ordinal());
     }
 
     @Override

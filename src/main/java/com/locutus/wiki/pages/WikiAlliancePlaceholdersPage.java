@@ -16,6 +16,6 @@ public class WikiAlliancePlaceholdersPage extends BotWikiGen {
 
     @Override
     public String generateMarkdown() {
-        return CommandWikiPages.printPlaceholders(getManager().getNationPlaceholders(), getManager().getStore());
+        return CommandWikiPages.printPlaceholders(getManager().getAlliancePlaceholders(), getManager().getStore());
     }
 }

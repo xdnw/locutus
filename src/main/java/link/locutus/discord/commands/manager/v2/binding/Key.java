@@ -23,7 +23,7 @@ public class Key<T> {
     }
     private Key(Type type, List<Class<?>> annotationClasses) {
         this.type = type;
-        this.annotationTypes = new HashSet<>(annotationClasses);
+        this.annotationTypes = new LinkedHashSet<>(annotationClasses);
         if (!this.annotationTypes.isEmpty()) {
             Iterator<Class<?>> iter = this.annotationTypes.iterator();
             while (iter.hasNext()) {

@@ -38,6 +38,8 @@ public class WikiAuditingPage extends BotWikiGen {
         commandMarkdownSpoiler(CM.audit.run.cmd),
         commandMarkdownSpoiler(CM.settings_audit.DISABLED_MEMBER_AUDITS.cmd),
         commandMarkdownSpoiler(CM.settings_audit.MEMBER_REBUY_INFRA_ALERT.cmd),
+        "## Audit sheet",
+        commandMarkdownSpoiler(CM.audit.sheet.cmd),
         "# New applicant auditing",
         commandMarkdownSpoiler(CM.report.analyze.cmd),
         commandMarkdownSpoiler(CM.nation.departures.cmd),

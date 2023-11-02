@@ -614,8 +614,8 @@ public class NationCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getGroundStrength")
         public static class getGroundStrength extends CommandRef {
             public static final getGroundStrength cmd = new getGroundStrength();
-            public getGroundStrength create(String munitions, String enemyAc, String includeRebuy) {
-                return createArgs("munitions", munitions, "enemyAc", enemyAc, "includeRebuy", includeRebuy);
+            public getGroundStrength create(String munitions, String enemyAc) {
+                return createArgs("munitions", munitions, "enemyAc", enemyAc);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getId")

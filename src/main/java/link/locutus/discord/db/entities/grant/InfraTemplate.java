@@ -19,6 +19,7 @@ import javax.annotation.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,12 +34,13 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
         this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), rs.getLong("level"), rs.getBoolean("only_new_cities"), rs.getInt("require_n_offensives"), rs.getBoolean("allow_rebuild"),
                 rs.getLong("expire"),
-                rs.getBoolean("allow_ignore"));
+                rs.getBoolean("allow_ignore"),
+                rs.getBoolean("repeatable"));
     }
 
     // create new constructor  with typed parameters instead of resultset
-    public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long level, boolean onlyNewCities, int require_n_offensives, boolean allow_rebuild, long expiryOrZero, boolean allowIgnore) {
-        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore);
+    public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long level, boolean onlyNewCities, int require_n_offensives, boolean allow_rebuild, long expiryOrZero, boolean allowIgnore, boolean repeatable) {
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore, repeatable);
         this.level = level;
         this.onlyNewCities = onlyNewCities;
         this.require_n_offensives = require_n_offensives;
@@ -75,10 +77,10 @@ public class InfraTemplate extends AGrantTemplate<Double>{
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setLong(15, level);
-        stmt.setBoolean(16, onlyNewCities);
-        stmt.setLong(17, require_n_offensives);
-        stmt.setBoolean(18, allow_rebuild);
+        stmt.setLong(16, level);
+        stmt.setBoolean(17, onlyNewCities);
+        stmt.setLong(18, require_n_offensives);
+        stmt.setBoolean(19, allow_rebuild);
     }
 
     @Override
@@ -105,22 +107,28 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     }
 
     @Override
-    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Double amount) {
-        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, amount);
+    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Double parsed) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, parsed);
+        list.addAll(getRequirements(sender, receiver, this, parsed));
+        return list;
+    }
 
-        if (amount > level) {
-            throw new IllegalArgumentException("Amount cannot be greater than the template level `" + amount + ">" + level + "`");
+    public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, InfraTemplate template, Double parsed) {
+        List<Grant.Requirement> list = new ArrayList<>();
+
+        if (template != null && parsed > template.level) {
+            throw new IllegalArgumentException("Amount cannot be greater than the template level `" + MathMan.format(parsed) + ">" + MathMan.format(template.level) + "`");
         }
 
-        list.add(new Grant.Requirement("Infra granted cannot be greater than: " + level, false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Infra granted must NOT exceed: " + (template == null ? "`{level}`" : MathMan.format(template.level)), false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                return amount == null || amount.longValue() <= level;
+                return parsed == null || parsed.longValue() <= template.level;
             }
         }));
 
         //if nation is fighting an active nation this is stronger or has nuclear research facility or missile launch pad
-        list.add(new Grant.Requirement("Nation is fighting stronger nations or they have NRF/MLP", false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Requires 0 wars against nations stronger or with NRF/MLP", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
 
@@ -151,7 +159,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
         }));
 
         //nation does not have COCE
-        list.add(new Grant.Requirement("Missing the project: " + Projects.CENTER_FOR_CIVIL_ENGINEERING, true, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Requires the project: `" + Projects.CENTER_FOR_CIVIL_ENGINEERING.name() + "`", true, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
 
@@ -160,28 +168,27 @@ public class InfraTemplate extends AGrantTemplate<Double>{
         }));
 
         //nation does not have AEC
-        list.add(new Grant.Requirement("Missing the project: " + Projects.ADVANCED_ENGINEERING_CORPS, true, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Requires the project: `" + Projects.ADVANCED_ENGINEERING_CORPS + "`", true, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
-
                 return receiver.hasProject(Projects.ADVANCED_ENGINEERING_CORPS);
             }
         }));
 
 
         // require infra policy
-        list.add(new Grant.Requirement("Requires domestic policy to be " + DomesticPolicy.URBANIZATION, false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Requires domestic policy to be `" + DomesticPolicy.URBANIZATION + "`", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
                 return receiver.getDomesticPolicy() == DomesticPolicy.URBANIZATION;
             }
         }));
 
-        list.add(new Grant.Requirement("Nation hasn't bought a city in the past 10 days", true, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Nation must have purchased a city in the past 10 days (when `onlyNewCities: True`", true, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
 
-                if(onlyNewCities)
+                if(template.onlyNewCities)
                     return receiver.getCitiesSince(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 120)) > 0;
                 else
                     return true;

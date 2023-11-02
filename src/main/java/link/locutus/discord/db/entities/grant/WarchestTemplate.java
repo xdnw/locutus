@@ -8,10 +8,13 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.math.ArrayUtil;
+import link.locutus.discord.util.offshore.Grant;
 
+import javax.annotation.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,12 +27,13 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
     public WarchestTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
         this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), ArrayUtil.toDoubleArray(rs.getBytes("allowance_per_city")), rs.getLong("track_days"), rs.getBoolean("subtract_expenditure"), rs.getLong("overdraw_percent_cents"),
                 rs.getLong("expire"),
-                rs.getBoolean("allow_ignore"));
+                rs.getBoolean("allow_ignore"),
+                rs.getBoolean("repeatable"));
     }
 
     // create new constructor  with typed parameters instead of resultset
-    public WarchestTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, double[] allowancePerCity, long trackDays, boolean subtractExpenditure, long overdrawPercentCents, long expiryOrZero, boolean allowIgnore) {
-        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore);
+    public WarchestTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, double[] allowancePerCity, long trackDays, boolean subtractExpenditure, long overdrawPercentCents, long expiryOrZero, boolean allowIgnore, boolean repeatable) {
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore, repeatable);
         this.allowancePerCity = allowancePerCity;
         this.trackDays = trackDays;
         this.subtractExpenditure = subtractExpenditure;
@@ -108,7 +112,6 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
                 }
             }
         }
-
         return result;
     }
 
@@ -142,11 +145,23 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setBytes(15, ArrayUtil.toByteArray(allowancePerCity));
-        stmt.setLong(16, trackDays);
-        stmt.setBoolean(17, subtractExpenditure);
-        stmt.setLong(18, overdrawPercentCents);
+        stmt.setBytes(16, ArrayUtil.toByteArray(allowancePerCity));
+        stmt.setLong(17, trackDays);
+        stmt.setBoolean(18, subtractExpenditure);
+        stmt.setLong(19, overdrawPercentCents);
     }
+
+    @Override
+    public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Map<ResourceType, Double> parsed) {
+        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, parsed);
+        list.addAll(getRequirements(sender, receiver, this, parsed));
+        return list;
+    }
+
+    public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, WarchestTemplate template, Map<ResourceType, Double> parsed) {
+        return new ArrayList<>();
+    }
+
     @Override
     public double[] getCost(DBNation sender, DBNation receiver, Map<ResourceType, Double> parsed) {
         throw new UnsupportedOperationException("Not implemented yet");

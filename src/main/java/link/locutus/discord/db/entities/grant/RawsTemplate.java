@@ -15,6 +15,7 @@ import org.jetbrains.annotations.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -28,12 +29,13 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
     public RawsTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
         this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), rs.getLong("days"), rs.getLong("overdraw_percent_cents"),
                 rs.getLong("expire"),
-                rs.getBoolean("allow_ignore"));
+                rs.getBoolean("allow_ignore"),
+                rs.getBoolean("repeatable"));
     }
 
     // create new constructor  with typed parameters instead of resultset
-    public RawsTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long days, long overdrawPercentCents, long expiryOrZero, boolean allowIgnore) {
-        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore);
+    public RawsTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long days, long overdrawPercentCents, long expiryOrZero, boolean allowIgnore, boolean repeatable) {
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore, repeatable);
         this.days = days;
         this.overdrawPercent = overdrawPercentCents;
     }
@@ -58,14 +60,18 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
     @Override
     public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Integer parsed) {
         List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, parsed);
+        list.addAll(getRequirements(sender, receiver, this, parsed));
+        return list;
+    }
 
-        list.add(new Grant.Requirement("Days granted cannot be greater than: " + days, false, new Function<DBNation, Boolean>() {
+    public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, RawsTemplate template, Integer parsed) {
+        List<Grant.Requirement> list = new ArrayList<>();
+        list.add(new Grant.Requirement("Days granted cannot be greater than: " + (template == null ? "`{days}`" : template.days), false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                return parsed == null || parsed.longValue() <= days;
+                return parsed == null || parsed.longValue() <= template.days;
             }
         }));
-
         return list;
     }
 
@@ -102,8 +108,8 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setLong(15, days);
-        stmt.setLong(16, overdrawPercent);
+        stmt.setLong(16, days);
+        stmt.setLong(17, overdrawPercent);
     }
 
     @Override

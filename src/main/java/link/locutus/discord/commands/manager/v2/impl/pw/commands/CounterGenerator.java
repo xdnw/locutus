@@ -72,7 +72,7 @@ public class CounterGenerator {
 
         for (DBNation att : attackersSorted) {
             double activeFactor = att.isOnline() ? 1.2 : att.getActive_m() < 1440 ? 1 : (1 - (att.getActive_m() - 1440d) / 4880);
-            double groundFactor = Math.max(0.5, Math.min(3, att.getGroundStrength(true, false, 1.5) / enemy.getGroundStrength(true, false, 1)));
+            double groundFactor = Math.max(0.5, Math.min(3, att.getGroundStrength(true, false, 1.5) / enemy.getGroundStrength(true, false, 1d)));
             double cityFactor = (double) att.getCities() / enemy.getCities();
 
             double maxOffFactor = 1;

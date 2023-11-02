@@ -15,17 +15,20 @@ import link.locutus.discord.db.entities.MMRInt;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
+import org.jooq.meta.derby.sys.Sys;
 
 import javax.annotation.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
@@ -47,7 +50,8 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                 rs.getBoolean("allow_switch_after_land_or_project"),
                 rs.getBoolean("allow_all"),
                 rs.getLong("expire"),
-                rs.getBoolean("allow_ignore")
+                rs.getBoolean("allow_ignore"),
+                rs.getBoolean("repeatable")
         );
     }
 
@@ -57,9 +61,10 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                          boolean allow_switch_after_offensive,
                          boolean allow_switch_after_infra,
                          boolean allow_switch_after_land_or_project,
-                         boolean allow_all, long expiryOrZero, boolean allowIgnore
+                         boolean allow_all, long expiryOrZero, boolean allowIgnore,
+                         boolean repeatable
     ) {
-        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore);
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore, repeatable);
         this.build = build == null || build.length == 0 ? null : build;
         this.onlyNewCities = onlyNewCities;
         this.mmr = mmr <= 0 ? null : MMRInt.fromString(String.format("%04d", mmr));
@@ -142,14 +147,14 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setBytes(15, build == null ? new byte[0] : build);
-        stmt.setBoolean(16, onlyNewCities);
-        stmt.setLong(17, mmr == null ? -1 : mmr.toNumber());
-        stmt.setLong(18, allow_switch_after_days);
-        stmt.setBoolean(19, allow_switch_after_offensive);
-        stmt.setBoolean(20, allow_switch_after_infra);
-        stmt.setBoolean(21, allow_switch_after_land_or_project);
-        stmt.setBoolean(22, allow_all);
+        stmt.setBytes(16, build == null ? new byte[0] : build);
+        stmt.setBoolean(17, onlyNewCities);
+        stmt.setLong(18, mmr == null ? -1 : mmr.toNumber());
+        stmt.setLong(19, allow_switch_after_days);
+        stmt.setBoolean(20, allow_switch_after_offensive);
+        stmt.setBoolean(21, allow_switch_after_infra);
+        stmt.setBoolean(22, allow_switch_after_land_or_project);
+        stmt.setBoolean(23, allow_all);
     }
 
     @Override
@@ -246,13 +251,19 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
 
     @Override
     public List<Grant.Requirement> getDefaultRequirements(@Nullable DBNation sender, @Nullable DBNation receiver, Map<Integer, CityBuild> build) {
-        List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, build);
+            List<Grant.Requirement> list = super.getDefaultRequirements(sender, receiver, build);
+            list.addAll(getRequirements(sender, receiver, this, build));
+            return list;
+    }
+
+    public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, BuildTemplate template, Map<Integer, CityBuild> parsed) {
+        List<Grant.Requirement> list = new ArrayList<>();
 
         // cap at 4k infra worth of buildings
-        list.add(new Grant.Requirement("Too many buildings (max 4k infra)", true, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Build must NOT have more than 80 buildings (4k infra)", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
-                for (CityBuild value : build.values()) {
+                for (CityBuild value : parsed.values()) {
                     if (new JavaCity(value).getImpTotal() > 80) {
                         return false;
                     }
@@ -261,8 +272,8 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
             }
         }));
 
-        if (onlyNewCities) {
-            list.add(new Grant.Requirement("Nation hasn't bought a city in the past 10 days", true, new Function<DBNation, Boolean>() {
+        if (template == null || template.onlyNewCities) {
+            list.add(new Grant.Requirement("Must have purchased a city in the past 10 days (when `onlyNewCities: True`)", true, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation receiver) {
                     return receiver.getCitiesSince(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119)) > 0;
@@ -270,14 +281,19 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
             }));
         }
 
-        list.add(new Grant.Requirement("Nation has already received a new city build grant", true, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Nation must NOT have received a new city build grant (when `repeatable: False`)", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
+                if (template.isRepeatable()) return true;
+                if (template.allow_switch_after_offensive || template.allow_switch_after_infra || template.allow_switch_after_land_or_project) return true;
 
-                List<GrantTemplateManager.GrantSendRecord> records = getDb().getGrantTemplateManager().getRecordsByReceiver(receiver.getId());
+                List<GrantTemplateManager.GrantSendRecord> records = template.getDb().getGrantTemplateManager().getRecordsByReceiver(receiver.getId());
 
                 for(GrantTemplateManager.GrantSendRecord record : records) {
-                    if (receiver.getCitiesSince(record.date) == 0) {
+                    if (template.allow_switch_after_days > 0 && record.date < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(template.allow_switch_after_days)) {
+                        continue;
+                    }
+                    if (receiver.getCitiesSince(record.date) == 0 && record.grant_type == TemplateTypes.BUILD) {
                         return false;
                     }
                 }

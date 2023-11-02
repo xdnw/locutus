@@ -1,6 +1,7 @@
 package link.locutus.discord.util;
 
 import com.overzealous.remark.Remark;
+import link.locutus.discord.db.entities.grant.TemplateTypes;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.kefirsf.bb.BBProcessorFactory;
@@ -432,5 +433,9 @@ public class MarkupUtil {
         bbMap.put("\\[URL=(.+?)\\](.+?)\\[/URL\\]", "<A HREF=\"$1\">$2</A>");
         bbMap.put("\\[YOUTUBE\\](.+?)\\[/YOUTUBE\\]", "<OBJECT WIDTH=\"640\" HEIGHT=\"380\"><PARAM NAME=\"MOVIE\" VALUE=\"HTTP://WWW.YOUTUBE.COM/V/$1\"></PARAM><EMBED SRC=\"HTTP://WWW.YOUTUBE.COM/V/$1\" TYPE=\"APPLICATION/X-SHOCKWAVE-FLASH\" WIDTH=\"640\" HEIGHT=\"380\"></EMBED></OBJECT>");
         bbMap.put("\\[VIDEO\\](.+?)\\[/VIDEO\\]", "<VIDEO SRC=\"$1\" />");
+    }
+
+    public static String list(Object... values) {
+        return "- " + StringMan.join(values, "\n- ");
     }
 }

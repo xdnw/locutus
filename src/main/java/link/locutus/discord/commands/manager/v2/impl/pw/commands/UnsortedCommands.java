@@ -1604,7 +1604,7 @@ public class UnsortedCommands {
         return new OptimalBuild().onCommand(io, guild, author, me, cmd, flags);
     }
 
-    @Command(desc = "Run audits on member nations and generate a sheet of the results")
+    @Command(desc = "Run audits on member nations and generate a google sheet of the results")
     @IsAlliance
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MENTOR, Roles.INTERVIEWER}, any = true)
     public void auditSheet(@Me GuildDB db,
