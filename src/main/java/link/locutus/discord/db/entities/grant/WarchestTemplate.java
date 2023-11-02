@@ -1,11 +1,15 @@
 package link.locutus.discord.db.entities.grant;
 
+import com.google.gson.reflect.TypeToken;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.AttackCost;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Grant;
@@ -18,6 +22,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> {
     private final double[] allowancePerCity;
@@ -41,7 +47,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
     }
 
     @Override
-    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowIgnore) {
+    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowIgnore, String repeatable) {
         return CM.grant_template.create.warchest.cmd.create(name,
                 allowedRecipients,
                 allowancePerCity == null ? null : PnwUtil.resourcesToString(allowancePerCity),
@@ -56,6 +62,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
                 maxDay,
                 maxGranterDay,
                 maxGranterTotal, allowExpire, allowIgnore,
+                isRepeatable() ? null : "true",
                 null).toSlashCommand();
     }
 
@@ -159,25 +166,121 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
     }
 
     public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, WarchestTemplate template, Map<ResourceType, Double> parsed) {
-        return new ArrayList<>();
+        List<Grant.Requirement> list = new ArrayList<>();
+
+        if (template == null || parsed != null) {
+            list.add(new Grant.Requirement("Amount must not be negative: `" + (template == null ? "{amount}" : PnwUtil.resourcesToString(parsed)) + "`", false, new Function<DBNation, Boolean>() {
+                @Override
+                public Boolean apply(DBNation nation) {
+                    for (Map.Entry<ResourceType, Double> entry : parsed.entrySet()) {
+                        if (entry.getValue() < 0) {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+            }));
+
+            double[] allowance;
+            StringBuilder allowanceStr = new StringBuilder();
+            if (receiver != null) {
+                allowance = template.getCost(sender, receiver, parsed, allowanceStr);
+            } else {
+                allowance = null;
+            }
+            list.add(new Grant.Requirement("Amount cannot exceed remaining allowance: `" + (template == null ? "{amount}" : PnwUtil.resourcesToString(parsed)) + "` > `" + (allowance == null ? "{allowance_remaining}" : allowance) + "`\n" +
+                    allowanceStr, false, new Function<DBNation, Boolean>() {
+                @Override
+                public Boolean apply(DBNation nation) {
+                    for (Map.Entry<ResourceType, Double> entry : parsed.entrySet()) {
+                        if (entry.getValue() < 0) {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+            }));
+        }
+
+        return list;
     }
 
     @Override
     public double[] getCost(DBNation sender, DBNation receiver, Map<ResourceType, Double> parsed) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return getCost(sender, receiver, parsed, null);
+    }
+
+    public double[] getCost(DBNation sender, DBNation receiver, Map<ResourceType, Double> parsed, StringBuilder debugOutput) {
+        double[] allowance;
+        if (allowancePerCity != null) {
+            allowance = PnwUtil.multiply(allowancePerCity.clone(), receiver.getCities());
+        } else {
+            allowance = PnwUtil.resourcesToArray(getDb().getPerCityWarchest(receiver));
+        }
+
+        long cutoff = trackDays <= 0 ? 0 : System.currentTimeMillis() - TimeUnit.DAYS.toMillis(trackDays);
+        double[] spent = ResourceType.getBuffer();
+        if (this.subtractExpenditure) {
+            // get war cost
+            AttackCost cost = Locutus.imp().getWarDb().queryAttacks().withWarSet(db -> db.getWarsByNation(receiver.getId())).afterDate(cutoff).toCost(
+                    (war, attack) -> attack.getAttacker_id() == receiver.getId(),
+                    "",
+                    "",
+                    false,
+                    false,
+                    false,
+                    false,
+                    false
+            );
+            spent = ResourceType.add(spent, PnwUtil.resourcesToArray(cost.getNetCost(true)));
+            PnwUtil.max(spent, ResourceType.getBuffer());
+        }
+
+        // received #warchest
+        double[] received = ResourceType.getBuffer();
+
+        for (Transaction2 record : receiver.getTransactions(true)) {
+            if(record.tx_datetime > cutoff && record.note != null && record.sender_id == receiver.getId()) {
+                Map<String, String> notes = PnwUtil.parseTransferHashNotes(record.note);
+                if (notes.containsKey("#warchest")) {
+                    received = ResourceType.add(received, record.resources);
+                }
+            }
+        }
+        if (overdrawPercentCents > 0) {
+            double factor = overdrawPercentCents * 0.0001;
+            if (!ResourceType.isZero(received)) {
+                received = PnwUtil.multiply(received, 1 - factor);
+            }
+            if (!ResourceType.isZero(spent)) {
+                spent = PnwUtil.multiply(spent, 1 + factor);
+            }
+        }
+
+        if (debugOutput != null) {
+            debugOutput.append("[Allowance: `" + PnwUtil.resourcesToString(allowance) + "`, ");
+            debugOutput.append("Received: `" + PnwUtil.resourcesToString(received) + "`, ");
+            debugOutput.append("Spent: `" + PnwUtil.resourcesToString(spent) + "`]");
+        }
+
+        double[] canSend = ResourceType.builder(allowance).subtract(received).add(spent).min(allowance).build();
+        if (parsed != null) {
+            canSend = PnwUtil.min(canSend, PnwUtil.resourcesToArray(parsed));
+        }
+        return canSend;
     }
 
     @Override
     public DepositType.DepositTypeInfo getDepositType(DBNation receiver, Map<ResourceType, Double> parsed) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return DepositType.WARCHEST.withValue();
     }
 
     @Override
     public String getInstructions(DBNation sender, DBNation receiver, Map<ResourceType, Double> parsed) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return DepositType.WARCHEST.getDescription();
     }
     @Override
     public Class<Map<ResourceType, Double>> getParsedType() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return (Class<Map<ResourceType, Double>>) TypeToken.getParameterized(Map.class, ResourceType.class, Double.class).getRawType();
     }
 }

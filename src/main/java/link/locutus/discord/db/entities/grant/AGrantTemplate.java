@@ -139,10 +139,10 @@ public abstract class AGrantTemplate<T> {
                 maxTotal > 0 ? "" + maxTotal : null,
                 maxDay > 0 ? "" + maxDay : null,
                 maxGranterDay > 0 ? "" + maxGranterDay : null,
-                maxGranterTotal > 0 ? "" + maxGranterTotal : null, expiryOrZero == 0 ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expiryOrZero), allowIgnore ? "true" : null);
+                maxGranterTotal > 0 ? "" + maxGranterTotal : null, expiryOrZero == 0 ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expiryOrZero), allowIgnore ? "true" : null, repeatable ? "true" : null);
     }
 
-    public abstract String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowIgnore);
+    public abstract String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowIgnore, String repeatable);
 
     public String toFullString(DBNation sender, DBNation receiver, T parsed) {
         System.out.println(6.1);

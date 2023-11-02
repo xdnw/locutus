@@ -96,7 +96,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     }
 
     @Override
-    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowIgnore) {
+    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowIgnore, String repeatable) {
         return CM.grant_template.create.build.cmd.create(name, allowedRecipients,
                 build != null ? JavaCity.fromBytes(build).toJson() : null,
                 mmr == null ? null : mmr.toString(),
@@ -106,7 +106,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
                 allow_switch_after_infra ? "true" : null,
                 allow_all ? "true" : null,
                 allow_switch_after_land_or_project ? "true" : null,
-                econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, allowExpire, allowIgnore, null).toString();
+                econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, allowExpire, allowIgnore, repeatable, null).toString();
     }
 
     @Override
