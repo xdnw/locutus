@@ -28,9 +28,15 @@ public class WikiGrantTemplate extends BotWikiGen {
     }
 
     private String reqSpoilter(String title, List<Grant.Requirement> reqs) {
-        return MarkupUtil.spoiler(title, "- " +
-                reqs.stream().map(Grant.Requirement::getMessage).collect(Collectors.joining("\n- ")))
-                + "\n\n";
+        return MarkupUtil.spoiler(title, MarkupUtil.markdownToHTML("- " +
+                reqs.stream().map(f -> {
+                    String msg = f.getMessage();
+                    if (f.canOverride()) {
+                        msg = "**[Optional]** " + msg;
+                    }
+                    return msg;
+                }).collect(Collectors.joining("\n- ")))) +
+                "\n\n";
     }
 
     @Override
@@ -86,6 +92,10 @@ public class WikiGrantTemplate extends BotWikiGen {
                 "# Deleting a template",
                 commandMarkdownSpoiler(CM.grant_template.delete.cmd),
                 "# Requirements",
+                """
+                The following is a list of requirement messages for each grant type.
+                - Default requirements apply to all grant templates
+                - `[Optional]` Requirements act as warnings, and can be sent after confirmation""",
                 requirements.toString()
         );
     }

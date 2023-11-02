@@ -120,7 +120,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
             throw new IllegalArgumentException("Amount cannot be greater than the template level `" + MathMan.format(parsed) + ">" + MathMan.format(template.level) + "`");
         }
 
-        list.add(new Grant.Requirement("Infra granted cannot be greater than: " + (template == null ? "{level}" : MathMan.format(template.level)), false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Infra granted must NOT exceed: " + (template == null ? "`{level}`" : MathMan.format(template.level)), false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
                 return parsed == null || parsed.longValue() <= template.level;
@@ -128,7 +128,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
         }));
 
         //if nation is fighting an active nation this is stronger or has nuclear research facility or missile launch pad
-        list.add(new Grant.Requirement("Nation is fighting stronger nations or they have NRF/MLP", false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Requires 0 wars against nations stronger or with NRF/MLP", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
 
@@ -159,7 +159,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
         }));
 
         //nation does not have COCE
-        list.add(new Grant.Requirement("Missing the project: " + Projects.CENTER_FOR_CIVIL_ENGINEERING, true, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Requires the project: `" + Projects.CENTER_FOR_CIVIL_ENGINEERING.name() + "`", true, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
 
@@ -168,24 +168,23 @@ public class InfraTemplate extends AGrantTemplate<Double>{
         }));
 
         //nation does not have AEC
-        list.add(new Grant.Requirement("Missing the project: " + Projects.ADVANCED_ENGINEERING_CORPS, true, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Requires the project: `" + Projects.ADVANCED_ENGINEERING_CORPS + "`", true, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
-
                 return receiver.hasProject(Projects.ADVANCED_ENGINEERING_CORPS);
             }
         }));
 
 
         // require infra policy
-        list.add(new Grant.Requirement("Requires domestic policy to be " + DomesticPolicy.URBANIZATION, false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Requires domestic policy to be `" + DomesticPolicy.URBANIZATION + "`", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
                 return receiver.getDomesticPolicy() == DomesticPolicy.URBANIZATION;
             }
         }));
 
-        list.add(new Grant.Requirement("Nation hasn't bought a city in the past 10 days", true, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Nation must have purchased a city in the past 10 days (when `onlyNewCities: True`", true, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
 

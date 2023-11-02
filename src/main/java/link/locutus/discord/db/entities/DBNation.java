@@ -1075,7 +1075,7 @@ public class DBNation implements NationOrAlliance {
             TradeManager manager = Locutus.imp().getTradeManager();
             radIndex = manager.getGlobalRadiation() + manager.getGlobalRadiation(getContinent());
         }
-        return (1 + (radIndex / (-1000)));
+        return (1 + (Math.min(1000, radIndex) / (-1000)));
     }
 
     @Command(desc = "Raw positional value (0 = remove, 1 = app, 2 = member, 3 = officer 4 = heir, 5 = leader)")
@@ -1558,16 +1558,15 @@ public class DBNation implements NationOrAlliance {
         return t == null ? (Number) 0 : t;
     }
 
-    @Command(desc = "Effective ground strength with munitions and enemy air control")
     public double getGroundStrength(boolean munitions, boolean enemyAc) {
         return soldiers * (munitions ? 1.75 : 1) + (tanks * 40) * (enemyAc ? 0.66 : 1);
     }
 
     @Command(desc = "Effective ground strength with munitions, enemy air control, and daily rebuy")
-    public double getGroundStrength(boolean munitions, boolean enemyAc, double includeRebuy) {
+    public double getGroundStrength(boolean munitions, boolean enemyAc, @Default Double includeRebuy) {
         int soldiers = this.soldiers;
         int tanks = this.tanks;
-        if (includeRebuy > 0) {
+        if (includeRebuy != null && includeRebuy > 0) {
             int barracks = Buildings.BARRACKS.cap(this::hasProject) * cities;
             int soldierMax = Buildings.BARRACKS.max() * barracks;
             int soldPerDay = barracks * Buildings.BARRACKS.perDay();

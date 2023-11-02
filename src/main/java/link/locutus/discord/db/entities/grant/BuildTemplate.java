@@ -15,6 +15,7 @@ import link.locutus.discord.db.entities.MMRInt;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.offshore.Grant;
+import org.jooq.meta.derby.sys.Sys;
 
 import javax.annotation.Nullable;
 import java.sql.PreparedStatement;
@@ -27,6 +28,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
@@ -258,7 +260,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         List<Grant.Requirement> list = new ArrayList<>();
 
         // cap at 4k infra worth of buildings
-        list.add(new Grant.Requirement("Too many buildings (max 4k infra)", true, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Build must NOT have more than 80 buildings (4k infra)", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
                 for (CityBuild value : parsed.values()) {
@@ -271,7 +273,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         }));
 
         if (template == null || template.onlyNewCities) {
-            list.add(new Grant.Requirement("Nation hasn't bought a city in the past 10 days (as onlyNewCities=True)", true, new Function<DBNation, Boolean>() {
+            list.add(new Grant.Requirement("Must have purchased a city in the past 10 days (when `onlyNewCities: True`)", true, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation receiver) {
                     return receiver.getCitiesSince(TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119)) > 0;
@@ -279,14 +281,19 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
             }));
         }
 
-        list.add(new Grant.Requirement("Nation has already received a new city build grant", true, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Nation must NOT have received a new city build grant (when `repeatable: False`)", false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
+                if (template.isRepeatable()) return true;
+                if (template.allow_switch_after_offensive || template.allow_switch_after_infra || template.allow_switch_after_land_or_project) return true;
 
                 List<GrantTemplateManager.GrantSendRecord> records = template.getDb().getGrantTemplateManager().getRecordsByReceiver(receiver.getId());
 
                 for(GrantTemplateManager.GrantSendRecord record : records) {
-                    if (receiver.getCitiesSince(record.date) == 0) {
+                    if (template.allow_switch_after_days > 0 && record.date < System.currentTimeMillis() - TimeUnit.DAYS.toMillis(template.allow_switch_after_days)) {
+                        continue;
+                    }
+                    if (receiver.getCitiesSince(record.date) == 0 && record.grant_type == TemplateTypes.BUILD) {
                         return false;
                     }
                 }

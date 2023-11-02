@@ -140,7 +140,7 @@ Message: `$who Rose -l`
             return o1Str.compareTo(o2Str);
         });
 
-        for (Map.Entry<Key, Parser> entry : parsers.entrySet()) {
+        for (Map.Entry<Key, Parser> entry : parsersList) {
             Parser parser = entry.getValue();
             if (!parser.isConsumer(store)) continue;
             result.append("## " + parser.getNameDescriptionAndExamples(true, true,true, true));
