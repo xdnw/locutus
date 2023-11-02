@@ -41,7 +41,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
     }
 
     @Override
-    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowIgnore) {
+    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowIgnore, String repeatable) {
         return CM.grant_template.create.raws.cmd.create(name,
                 allowedRecipients,
                 days + "",
@@ -54,7 +54,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
                 maxDay,
                 maxGranterDay,
                 maxGranterTotal, allowExpire, allowIgnore,
-                null).toSlashCommand();
+                isRepeatable() ? null : "true", null).toSlashCommand();
     }
 
     @Override
@@ -114,7 +114,6 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
 
     @Override
     public double[] getCost(DBNation sender, DBNation receiver, Integer parsed) {
-
         long minDate = Long.MAX_VALUE;
         long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
         double[] revenue = receiver.getRevenue();

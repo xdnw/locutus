@@ -919,8 +919,9 @@ public class GrantCommands {
                                                  "Defaults to false")
                                              @Switch("ignore") boolean allowIgnore,
                                          @Arg("If the template can be sent to the same receiver multiple times")
-                                         @Switch("repeat") boolean repeatable,
+                                         @Switch("repeat") boolean nonRepeatable,
                                          @Switch("f") boolean force) {
+        boolean repeatable = !nonRepeatable;
         long overdrawPercentCents = overdrawPercent * 100;
         name = name.toUpperCase(Locale.ROOT).trim();
         // Ensure name is alphanumericalund
@@ -1037,11 +1038,6 @@ public class GrantCommands {
                 cost[i] = 0;
         }
 
-        // TODO figure out how to handle partial
-        // example:
-        //
-
-        // confirmation
         if (!force) {
             String title = "Send grant: " + template.getName();
             StringBuilder body = new StringBuilder();

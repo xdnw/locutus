@@ -614,8 +614,8 @@ public class NationCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getGroundStrength")
         public static class getGroundStrength extends CommandRef {
             public static final getGroundStrength cmd = new getGroundStrength();
-            public getGroundStrength create(String munitions, String enemyAc) {
-                return createArgs("munitions", munitions, "enemyAc", enemyAc);
+            public getGroundStrength create(String munitions, String enemyAc, String includeRebuy) {
+                return createArgs("munitions", munitions, "enemyAc", enemyAc, "includeRebuy", includeRebuy);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getId")
@@ -957,8 +957,8 @@ public class NationCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getStrength")
         public static class getStrength extends CommandRef {
             public static final getStrength cmd = new getStrength();
-            public getStrength create(String mmr) {
-                return createArgs("mmr", mmr);
+            public getStrength create() {
+                return createArgs();
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getStrongestEnemy")
@@ -1034,8 +1034,8 @@ public class NationCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getUnits")
         public static class getUnits extends CommandRef {
             public static final getUnits cmd = new getUnits();
-            public getUnits create(String unit, String date) {
-                return createArgs("unit", unit, "date", date);
+            public getUnits create(String unit) {
+                return createArgs("unit", unit);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getUserAgeDays")

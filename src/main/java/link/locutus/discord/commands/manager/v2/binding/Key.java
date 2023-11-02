@@ -57,7 +57,7 @@ public class Key<T> {
     private Key(Binding binding, Type type, Annotation... annotations) {
         this.binding = binding;
         this.type = type;
-        this.annotationTypes = new HashSet<>();
+        this.annotationTypes = new LinkedHashSet<>();
         this.annotations = annotations;
         for (Annotation annotation : annotations) {
             annotationTypes.add(annotation.annotationType());
