@@ -2003,9 +2003,9 @@ public class CM {
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="compareOffshoreStockpile")
-            public static class compareStockpile extends CommandRef {
-                public static final compareStockpile cmd = new compareStockpile();
-                public compareStockpile create(String sheet) {
+            public static class accountSheet extends CommandRef {
+                public static final accountSheet cmd = new accountSheet();
+                public accountSheet create(String sheet) {
                     return createArgs("sheet", sheet);
                 }
             }
