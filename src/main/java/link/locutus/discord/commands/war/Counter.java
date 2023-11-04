@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -51,7 +52,10 @@ public class Counter extends Command {
         return "Get a list of nations to counter\n" +
                 "Add `-o` to ignore nations with 5 offensive slots\n" +
                 "Add `-w` to filter out weak attackers\n" +
-                "Add `-a` to only list active nations (past hour)";
+                "Add `-a` to only list active nations (past hour)\n" +
+                "Add `-d` to require discord\n" +
+                "Add `-p` to mention added nations\n" +
+                "Add `-s` to allow same alliance countering";
     }
 
     @Override
@@ -67,6 +71,8 @@ public class Counter extends Command {
         if (me == null) {
             return "Please use " + CM.register.cmd.toSlashMention();
         }
+
+        GuildDB db = Locutus.imp().getGuildDB(guild);
         DBNation counter;
         int defenderId;
 
@@ -93,192 +99,30 @@ public class Counter extends Command {
             }
         }
 
-        double score = counter.getScore();
-        double scoreMin = score / 1.75;
-        double scoreMax = score / 0.75;
-
-        boolean filterApps = false;
-        Set<DBNation> pool;
-
-        if (args.size() == 2) {
+        Set<DBNation> counterWith = null;
+        if (args.size() >= 2) {
             if (args.get(1).equalsIgnoreCase("*")) {
                 Set<Integer> aaIds = Locutus.imp().getGuildDB(guild).getAllianceIds();
                 Set<Integer> allies = Locutus.imp().getGuildDB(guild).getCoalition("allies");
                 if (!aaIds.isEmpty()) allies.addAll(aaIds);
-                pool = Locutus.imp().getNationDB().getNations(allies);
+                counterWith = Locutus.imp().getNationDB().getNations(allies);
             } else {
                 try {
-                    pool = DiscordUtil.parseNations(guild, author, me, args.get(1), false, false);
+                    counterWith = DiscordUtil.parseNations(guild, author, me, args.get(1), false, false);
                 } catch (Throwable e) {
                     e.printStackTrace();
                     throw e;
                 }
             }
-        } else {
-            filterApps = true;
-            Set<Integer> aaIds = Locutus.imp().getGuildDB(guild).getAllianceIds();
-            if (aaIds.isEmpty()) {
-                Set<Integer> allies = Locutus.imp().getGuildDB(guild).getCoalition("allies");
-                pool = Locutus.imp().getNationDB().getNations(allies);
-            }
-            else {
-                pool = Locutus.imp().getNationDB().getNations(aaIds);
-            }
-        }
-        if (filterApps) {
-            pool.removeIf(f -> f.getPosition() <= 1);
-        }
-        if (flags.contains('a')) {
-            pool.removeIf(f -> !f.isOnline());
         }
 
-        if (pool.isEmpty()) {
-            return "Invalid nation or alliance.";
-        }
-
-        pool.removeIf(nation -> nation.getScore() < scoreMin || nation.getScore() > scoreMax);
-        pool.removeIf(nation -> nation.getOff() >= (nation.getMaxOff()) && !flags.contains('o'));
-        pool.removeIf(nation -> nation.getNation_id() == defenderId);
-        DBNation finalCounter = counter;
-        pool.removeIf(nation -> nation.getAlliance_id() == finalCounter.getAlliance_id());
-        pool.removeIf(nation -> nation.getAlliance_id() == 0);
-        pool.removeIf(nation -> nation.getActive_m() > TimeUnit.DAYS.toMinutes(2));
-        pool.removeIf(nation -> nation.getVm_turns() != 0);
-        pool.removeIf(f -> f.getAircraft() < finalCounter.getAircraft() * 0.6 && finalCounter.getAircraft() > 100);
-        if (flags.contains('w')) pool.removeIf(nation -> nation.getStrength() < finalCounter.getStrength());
-
-        Iterator<DBNation> iter = pool.iterator();
-        outer:
-        while (iter.hasNext()) {
-            DBNation nation = iter.next();
-            if (nation.getDef() == 0 && nation.getOff() == 0) {
-                continue;
-            } else {
-                double totalStr = 0;
-                int numWars = 0;
-
-                Set<DBWar> wars = nation.getActiveWars();
-                if (wars.isEmpty()) {
-                    continue;
-                }
-                for (DBWar war : wars) {
-                    DBNation other = war.getNation(!war.isAttacker(nation));
-                    if (other == null || other.hasUnsetMil()) continue;
-                    if (other.getAircraft() > nation.getAircraft() && counter.getAircraft() > nation.getAircraft()) {
-                        iter.remove();
-                        continue outer;
-                    }
-                }
-            }
-        }
-
-        if (pool.isEmpty()) {
-            return "No nations in range";
-        }
-
-        List<Map.Entry<DBNation, Double>> nationNetValues = new ArrayList<>();
-        long time = 5000 / pool.size();
-
-        long currentTurn = TimeUtil.getTurn();
-
-        for (DBNation nation : pool) {
-            if (nation.hasUnsetMil()) continue;
-            String type = counter.getAvg_infra() > 1500 ? "attrition" : counter.getAvg_infra() > 1000 ? "ordinary" : "raid";
-            SimulatedWarNode origin = SimulatedWarNode.of(nation, counter.getNation_id() + "", nation.getNation_id() + "", type);
-            double value;
-            SimulatedWarNode solution;
-            if (counter.getActive_m() > 10000) {
-                Function<SimulatedWarNode, Double> valueFunction = simulatedWarNode -> -simulatedWarNode.raidDistance(origin);
-                Function<SimulatedWarNode, SimulatedWarNode.WarGoal> goal = node -> {
-                    if (node.getAggressor().getResistance() <= 0 || node.getDefender().getResistance() <= 0 || node.getTurnsLeft() <= 0) {
-                        return SimulatedWarNode.WarGoal.SUCCESS;
-                    }
-                    return SimulatedWarNode.WarGoal.CONTINUE;
-                };
-                SimulatedWar warSim = new SimulatedWar(origin, valueFunction, goal);
-                solution = warSim.solve();
-            } else {
-                solution = origin.minimax(true, time);
-            }
-            if (solution != null) {
-                value = solution.warDistance(origin);
-            } else {
-                value = nation.getAircraft() * 100 + nation.getGroundStrength(true, false);
-            }
-            value *= Math.max(0.5, Math.min(5, nation.getRelativeStrength()));
-
-            Activity activity = nation.getActivity(14 * 12);
-            double loginChance = activity.loginChance((int) Math.max(1, (12 - (currentTurn % 12))), true);
-            User user = nation.getUser();
-            if (user != null) {
-                Member member = guild.getMember(user);
-                if (member != null) {
-                    OnlineStatus status = member.getOnlineStatus();
-                    switch (status) {
-                        case ONLINE:
-                            loginChance = Math.max(loginChance, 1);
-                            break;
-                        case IDLE:
-                            loginChance = Math.max(loginChance, 0.75);
-                            break;
-                        case DO_NOT_DISTURB:
-                            loginChance = Math.max(loginChance, 0.5);
-                            break;
-                    }
-                }
-            }
-            value += 0.5 * value * loginChance;
-
-            double infraRatio = 1 + (Math.max(0, nation.getAvg_infra() - 1000) / 2000d);
-            value += 0.25 * value * Math.sqrt(infraRatio);
-
-            value += 0.25 * value * nation.getPosition();
-
-            nationNetValues.add(new AbstractMap.SimpleEntry<>(nation, value));
-        }
-
-        nationNetValues.sort(Comparator.comparingDouble(Map.Entry::getValue));
-
-        StringBuilder response = new StringBuilder();
-        response.append("**Enemy: **").append(counter.toMarkdown()).append("\n**Counters**\n");
-
+        boolean allowMaxOff = flags.contains('o');
+        boolean onlyActive = flags.contains('a');
+        boolean filterWeak = flags.contains('w');
+        boolean requireDiscord = flags.contains('d');
         boolean ping = flags.contains('p');
+        boolean allowSameAA = flags.contains('s');
 
-        int count = 0;
-        int maxResults = 25;
-        for (Map.Entry<DBNation, Double> entry : nationNetValues) {
-            DBNation nation = entry.getKey();
-            if (count++ == maxResults) break;
-
-            PNWUser user = DiscordUtil.getUser(nation);
-            if (user != null) {
-                String statusStr = "";
-                if(guild != null) {
-                    Member member = guild.getMemberById(user.getDiscordId());
-                    if (member != null) {
-                        OnlineStatus status = member.getOnlineStatus();
-                        if (status != OnlineStatus.OFFLINE && status != OnlineStatus.UNKNOWN) {
-                            statusStr = status.name() +" | ";
-                        }
-                    }
-                }
-                response.append(statusStr);
-                response.append(user.getDiscordName() + " / ");
-                if (ping) response.append(user.getAsMention());
-                else response.append("`" + user.getAsMention() + "` ");
-            }
-            response.append(nation.toMarkdown()).append('\n');
-        }
-
-        if (count == 0) {
-            return "No results. Please ping a target advisor";
-        }
-
-        me.setMeta(NationMeta.INTERVIEW_COUNTER, (byte) 1);
-
-        if (!flags.contains('w')) response.append("\n- add `-w` to filter out weak attackers");
-        if (!flags.contains('o')) response.append("\n- add `-o` to include nations with 5 wars");
-
-        return response.toString().trim();
+        return WarCommands.counter(me, db, counter, counterWith, allowMaxOff, filterWeak, onlyActive, requireDiscord, ping, allowSameAA);
     }
 }

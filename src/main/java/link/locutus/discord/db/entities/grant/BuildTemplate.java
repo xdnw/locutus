@@ -14,6 +14,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.MMRInt;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Grant;
 import org.jooq.meta.derby.sys.Sys;
 
@@ -162,7 +163,16 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
         CityBuild build;
         if (value == null) {
             JavaCity city;
-            if (this.build != null) {
+            boolean isEmpty = this.build == null;
+            if (!isEmpty) {
+                for (byte b : this.build) {
+                    if (b != 0) {
+                        isEmpty = false;
+                        break;
+                    }
+                }
+            }
+            if (!isEmpty) {
                 city = JavaCity.fromBytes(this.build);
                 if (mmr != null) {
                     city.setMMR(mmr);
@@ -400,7 +410,10 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
             instructions.append("and import the build:\n");
         }
         instructions.append("```json\n");
-        instructions.append(parsed.toString());
+        if (!parsed.isEmpty()) {
+            CityBuild cityBuild = parsed.values().iterator().next();
+            instructions.append(cityBuild.toString());
+        }
         instructions.append("\n```");
         return instructions.toString();
     }

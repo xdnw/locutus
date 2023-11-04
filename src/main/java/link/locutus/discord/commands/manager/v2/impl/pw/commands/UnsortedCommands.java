@@ -1609,11 +1609,16 @@ public class UnsortedCommands {
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MENTOR, Roles.INTERVIEWER}, any = true)
     public void auditSheet(@Me GuildDB db,
                              @Me IMessageIO io,
-                             @Default Set<DBNation> nations,
-                             @Switch("i") Set<IACheckup.AuditType> includeAudits,
-                             @Switch("e") Set<IACheckup.AuditType> excludeAudits,
-                             @Switch("u") boolean forceUpdate,
-                             @Switch("v") boolean verbose,
+                             @Arg("The nations to audit\n" +
+                                     "Must be in your alliance") @Default Set<DBNation> nations,
+                             @Arg("The audits to include in the sheet\n" +
+                                     "Defaults to all audits")@Switch("i") Set<IACheckup.AuditType> includeAudits,
+                             @Arg("The audits to exclude from the sheet\n" +
+                                     "Defaults to none") @Switch("e") Set<IACheckup.AuditType> excludeAudits,
+                             @Arg("Update nation information before running the audit\n" +
+                                     "Otherwise the audit will be run on the last fetched info")@Switch("u") boolean forceUpdate,
+                             @Arg("Include full descriptions in the audit sheet results\n" +
+                                     "Otherwise only raw data will be included")@Switch("v") boolean verbose,
                              @Switch("s") SpreadSheet sheet) throws IOException, ExecutionException, InterruptedException, GeneralSecurityException {
         if (includeAudits == null) {
             includeAudits = new HashSet<>();

@@ -124,7 +124,6 @@ public class Grant {
 
     public static Map<Integer, Double> getLandGrantedByCity(DBNation nation, Collection<Transaction2> transactions) {
         Map<Integer, Double> result = new HashMap<>();
-
         for (Transaction2 transaction : transactions) {
             if (transaction.note == null) continue;
             if (!transaction.note.toLowerCase().contains("#land")) continue;
@@ -143,9 +142,8 @@ public class Grant {
                     }
                 } catch (NumberFormatException ignore) {}
             }
-            return result;
         }
-        return null;
+        return result;
     }
 
     public static Map<Integer, Map<Long, Double>> getInfraGrantsByCityByDate(DBNation nation, Collection<Transaction2> transactions) {
@@ -168,9 +166,8 @@ public class Grant {
                     }
                 } catch (NumberFormatException ignore) {}
             }
-            return result;
         }
-        return null;
+        return result;
     }
 
     public static boolean hasGrantedCity(DBNation nation, Collection<Transaction2> transactions, int city) {

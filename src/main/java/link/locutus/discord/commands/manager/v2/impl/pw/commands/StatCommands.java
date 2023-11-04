@@ -1650,7 +1650,7 @@ public class StatCommands {
 
     @Command(desc = "War cost (for each nation) broken down by war type")
     @RolePermission(Roles.MILCOM)
-    public String WarCostSheet(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders, @Timestamp long time,
+    public String WarCostSheet(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db, Set<NationOrAlliance> attackers, Set<NationOrAlliance> defenders, @Timestamp long time, @Default @Timestamp Long endTime,
                                @Switch("c") boolean excludeConsumption,
                                @Switch("i") boolean excludeInfra,
                                @Switch("l") boolean excludeLoot,
@@ -1662,7 +1662,7 @@ public class StatCommands {
             sheet = SpreadSheet.create(db, SheetKeys.WAR_COST_SHEET);
         }
 
-        WarParser parser1 = WarParser.of(attackers, defenders, time, Long.MAX_VALUE);
+        WarParser parser1 = WarParser.of(attackers, defenders, time, endTime == null ? Long.MAX_VALUE : endTime);
 
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "nation",

@@ -3949,7 +3949,7 @@ public class WarCommands {
             "Add `-o` to ignore nations with 5 offensive slots\n" +
             "Add `-w` to filter out weak attackers\n" +
             "Add `-a` to only list active nations (past hour)")
-    public String counter(@Me DBNation me, @Me GuildDB db, DBNation target,
+    public static String counter(@Me DBNation me, @Me GuildDB db, DBNation target,
                           @Arg("Nations to counter with\n" +
                                   "Default: This guild's alliance nations")
                           @Default Set<DBNation> counterWith,

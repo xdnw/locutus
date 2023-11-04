@@ -764,6 +764,20 @@ public class CM {
                 }
             }
         }
+        @AutoRegister(clazz=link.locutus.discord._test.command.CustomCommands.class,method="buyInfra")
+        public static class buyInfra extends CommandRef {
+            public static final buyInfra cmd = new buyInfra();
+            public buyInfra create(String upTo, String force) {
+                return createArgs("upTo", upTo, "force", force);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord._test.command.CustomCommands.class,method="buyLand")
+        public static class buyLand extends CommandRef {
+            public static final buyLand cmd = new buyLand();
+            public buyLand create(String upTo, String force) {
+                return createArgs("upTo", upTo, "force", force);
+            }
+        }
         public static class channel{
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="channelMembers")
             public static class channelMembers extends CommandRef {
@@ -1714,6 +1728,13 @@ public class CM {
                 }
             }
         }
+        @AutoRegister(clazz=link.locutus.discord._test.command.CustomCommands.class,method="loadAttacks")
+        public static class loadAttacks extends CommandRef {
+            public static final loadAttacks cmd = new loadAttacks();
+            public loadAttacks create(String naval, String nations, String allowMunitions, String allowGas, String attackAtPeace, String rebuy) {
+                return createArgs("naval", naval, "nations", nations, "allowMunitions", allowMunitions, "allowGas", allowGas, "attackAtPeace", attackAtPeace, "rebuy", rebuy);
+            }
+        }
         public static class mail{
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.IACommands.class,method="mailCommandOutput")
             public static class command extends CommandRef {
@@ -2323,6 +2344,13 @@ public class CM {
                 public unregister create(String locutusRole, String alliance) {
                     return createArgs("locutusRole", locutusRole, "alliance", alliance);
                 }
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord._test.command.CustomCommands.class,method="safekeep")
+        public static class safekeep extends CommandRef {
+            public static final safekeep cmd = new safekeep();
+            public safekeep create(String warchest) {
+                return createArgs("warchest", warchest);
             }
         }
         public static class self{
@@ -3985,6 +4013,13 @@ public class CM {
                 public volumebyday create(String numDays, String attachJson, String resources) {
                     return createArgs("numDays", numDays, "attachJson", attachJson, "resources", resources);
                 }
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord._test.command.CustomCommands.class,method="tradeAverageCodes")
+        public static class tradeAverageCodes extends CommandRef {
+            public static final tradeAverageCodes cmd = new tradeAverageCodes();
+            public tradeAverageCodes create() {
+                return createArgs();
             }
         }
         public static class transfer{

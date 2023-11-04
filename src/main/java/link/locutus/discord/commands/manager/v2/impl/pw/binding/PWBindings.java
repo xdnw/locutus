@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.enums.*;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.building.Building;
@@ -84,6 +85,7 @@ import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class PWBindings extends BindingHelper {
@@ -217,7 +219,11 @@ public class PWBindings extends BindingHelper {
 
     @Binding(value = "The name of a created grant template")
     public AGrantTemplate AGrantTemplate(GrantTemplateManager manager, @Me GuildDB db, String input) {
-        Set<AGrantTemplate> found = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(input));
+        if (input.contains("/")) {
+            input = input.substring(input.lastIndexOf('/') + 1);
+        }
+        String finalInput = input;
+        Set<AGrantTemplate> found = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalInput));
         if (found.isEmpty()) throw new IllegalArgumentException("No grant template found for `" + input + "` see: " + CM.grant_template.list.cmd.toSlashMention());
         if (found.size() > 1) throw new IllegalArgumentException("Multiple grant templates found for `" + input + "`");
         return found.iterator().next();
@@ -1501,5 +1507,17 @@ public class PWBindings extends BindingHelper {
 
     // public DoubleArray parse(Map<ResourceType, Double> input)
     // public Map<ResourceType, Double> parse(DoubleArray input)
+
+    @Binding
+    public Predicate<DBWar> warFilter(ValueStore store, String input) {
+        Placeholders<DBWar> placeholders = Locutus.cmd().getV2().getPlaceholders().get(DBWar.class);
+        return placeholders.parseFilter(store, input);
+    }
+
+    @Binding
+    public Predicate<IAttack> attackFilter(ValueStore store, String input) {
+        Placeholders<IAttack> placeholders = Locutus.cmd().getV2().getPlaceholders().get(IAttack.class);
+        return placeholders.parseFilter(store, input);
+    }
 
 }
