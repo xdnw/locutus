@@ -1,24 +1,20 @@
 package link.locutus.discord.db.entities.newsletter;
 
+import it.unimi.dsi.fastutil.ints.IntOpenCustomHashSet;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.ReportManager;
-import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.scheduler.ThrowingBiConsumer;
 import link.locutus.discord.util.scheduler.ThrowingConsumer;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Predicate;
 
 public class NewsletterManager {
     public static boolean isAllowed(long idLong) {
@@ -38,8 +34,8 @@ public class NewsletterManager {
         String createNewsletters = "CREATE TABLE NEWSLETTERS (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, date_created BIGINT NOT NULL, last_sent BIGINT NOT NULL, send_interval BIGINT NOT NULL, sendConfirmationChannel BIGINT, pingRole BIGINT)";
         // make (newsletter, channel_id combined primary)
         String createChannels = "CREATE TABLE NEWSLETTER_CHANNELS (newsletter INTEGER NOT NULL, channel_id BIGINT NOT NULL, date_created BIGINT NOT NULL, FOREIGN KEY(newsletter) REFERENCES NEWSLETTERS(id), PRIMARY KEY(newsletter, channel_id))";
-        // newsletter id, user id, long date
-        String subscriptions = "CREATE TABLE NEWSLETTER_SUBSCRIPTIONS (newsletter INTEGER NOT NULL, user_id BIGINT NOT NULL, date_created BIGINT NOT NULL, FOREIGN KEY(newsletter) REFERENCES NEWSLETTERS(id), PRIMARY KEY(newsletter, user_id))";
+        // newsletter id, nation id, long date
+        String subscriptions = "CREATE TABLE NEWSLETTER_SUBSCRIPTIONS (newsletter INTEGER NOT NULL, nation_id INTEGER NOT NULL, date_created BIGINT NOT NULL, FOREIGN KEY(newsletter) REFERENCES NEWSLETTERS(id), PRIMARY KEY(newsletter, nation_id))";
 
         db.executeStmt(createNewsletters);
         db.executeStmt(createChannels);
@@ -75,10 +71,10 @@ public class NewsletterManager {
         return map;
     }
 
-    public Set<Newsletter> getSubscriptions(long userId) {
+    public Set<Newsletter> getSubscriptions(int nationId) {
         Set<Newsletter> set = new ObjectOpenHashSet<>();
-        db.query("SELECT * FROM NEWSLETTER_SUBSCRIPTIONS WHERE user_id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setLong(1, userId);
+        db.query("SELECT * FROM NEWSLETTER_SUBSCRIPTIONS WHERE nation_id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setInt(1, nationId);
         }, (ThrowingConsumer<ResultSet>) rs -> {
             int newsletterId = rs.getInt("newsletter");
             Newsletter newsletter = newsletters.get(newsletterId);
@@ -89,19 +85,19 @@ public class NewsletterManager {
         return set;
     }
 
-    public Set<Long> getSubscribedUsers(int newsletterId) {
-        Set<Long> set = new ObjectOpenHashSet<>();
+    public Set<Integer> getSubscribedNations(int newsletterId) {
+        Set<Integer> set = new IntOpenHashSet();
         db.query("SELECT * FROM NEWSLETTER_SUBSCRIPTIONS WHERE newsletter = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, newsletterId);
         }, (ThrowingConsumer<ResultSet>) rs -> {
-            long userId = rs.getLong("user_id");
-            set.add(userId);
+            int nationId = rs.getInt("nation_id");
+            set.add(nationId);
         });
         return set;
     }
 
     public void subscribe(int nationId, int newsletterId) {
-        db.executeStmt("INSERT OR IGNORE INTO NEWSLETTER_SUBSCRIPTIONS (newsletter, user_id, date_created) VALUES (?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        db.executeStmt("INSERT OR IGNORE INTO NEWSLETTER_SUBSCRIPTIONS (newsletter, nation_id, date_created) VALUES (?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, newsletterId);
             stmt.setInt(2, nationId);
             stmt.setLong(3, System.currentTimeMillis());
@@ -109,14 +105,14 @@ public class NewsletterManager {
     }
 
     public void unsubscribe(int nationId, int newsletterId) {
-        db.executeStmt("DELETE FROM NEWSLETTER_SUBSCRIPTIONS WHERE newsletter = ? AND user_id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        db.executeStmt("DELETE FROM NEWSLETTER_SUBSCRIPTIONS WHERE newsletter = ? AND nation_id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, newsletterId);
             stmt.setInt(2, nationId);
         });
     }
 
     public void unsubscribeAllNation(int nationId) {
-        db.executeStmt("DELETE FROM NEWSLETTER_SUBSCRIPTIONS WHERE user_id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        db.executeStmt("DELETE FROM NEWSLETTER_SUBSCRIPTIONS WHERE nation_id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
         });
     }
