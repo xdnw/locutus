@@ -129,6 +129,11 @@ public class GrantCommands {
             }
         }
 
+        if (numDisabled > 0 && !listDisabled) {
+            result.append("\n`" + numDisabled + "` disabled templates\n" +
+            "Use `listDisabled: True` to list them");
+        }
+
         io.send(result.toString());
     }
 

@@ -149,7 +149,7 @@ public abstract class AGrantTemplate<T> {
         // sender or receiver may be null
         StringBuilder data = new StringBuilder();
         if (!enabled) {
-            data.append("`disabled: enable with `" + CM.grant_template.enable.cmd.toSlashMention());
+            data.append("Disabled: enable with " + CM.grant_template.enable.cmd.toSlashMention() + "\n");
         }
         System.out.println(6.2);
         data.append("Name: `").append(getName()).append("`\n");
@@ -538,24 +538,24 @@ public abstract class AGrantTemplate<T> {
         outer:
         for (int offensiveI = requireNOffensives; offensiveI < wars.size(); offensiveI++) {
             DBWar war = wars.get(offensiveI);
-            List<AbstractCursor> attacks = war.getAttacks2();
-            // reverse attacks
-            Collections.reverse(attacks);
+            long latest = 0;
+            List<AbstractCursor> attacks = new ArrayList<>(war.getAttacks2());
             for (AbstractCursor attack : attacks) {
                 if (attack.getAttacker_id() != receiver.getId()) {
-                    return attack.getDate();
+                    latest = Math.max(latest, attack.getDate());
                 }
             }
+            if (latest != 0) return latest;
         }
         return 0;
     }
 
     public abstract List<String> getQueryFields();
 
-    public String createQuery() {
+    public String createQuery(boolean replace) {
         List<String> fields = getQueryFields();
         StringBuilder sb = new StringBuilder();
-        sb.append("INSERT INTO `" + this.getType().getTable() + "` (");
+        sb.append("INSERT " + (replace ? "OR REPLACE " : "") + " INTO `" + this.getType().getTable() + "` (");
         for (int i = 0; i < fields.size(); i++) {
             sb.append("`" + fields.get(i) + "`");
             if (i < fields.size() - 1) sb.append(", ");

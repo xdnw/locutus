@@ -128,10 +128,10 @@ public class LandTemplate extends AGrantTemplate<Double>{
     @Override
     public String getInstructions(DBNation sender, DBNation receiver, Double parsed) {
         StringBuilder message = new StringBuilder();
-        message.append("**If you have VIP**");
+        message.append("**If you have VIP**: ");
         message.append("Go to: https://politicsandwar.com/cities/mass-land-purchase/\nAnd enter: " + parsed);
-        message.append("");
-        message.append("**If you don't have VIP**");
+        message.append("\n");
+        message.append("**If you don't have VIP**: ");
         message.append("Go to: https://politicsandwar.com/cities/\nAnd get each city to " + parsed + " land");
 
         return  message.toString();
@@ -164,12 +164,15 @@ public class LandTemplate extends AGrantTemplate<Double>{
     }
 
     public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, LandTemplate template, Double parsed) {
+        if (parsed == null && template != null) parsed = (double) template.level;
+
         List<Grant.Requirement> list = new ArrayList<>();
 
+        Double finalParsed = parsed;
         list.add(new Grant.Requirement("Land granted must NOT exceed: " + (template == null ? "`{level}`" : template.level), false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                return parsed == null || parsed.longValue() <= template.level;
+                return finalParsed == null || finalParsed.longValue() <= template.level;
             }
         }));
 

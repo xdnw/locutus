@@ -20,6 +20,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -71,7 +72,6 @@ public class InfraTemplate extends AGrantTemplate<Double>{
         list.add("only_new_cities");
         list.add("require_n_offensives");
         list.add("allow_rebuild");
-        list.add("allow_grant_damaged");
         return list;
     }
 
@@ -114,16 +114,14 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     }
 
     public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, InfraTemplate template, Double parsed) {
+        if (parsed == null && template != null) parsed = (double) template.level;
         List<Grant.Requirement> list = new ArrayList<>();
 
-        if (template != null && parsed > template.level) {
-            throw new IllegalArgumentException("Amount cannot be greater than the template level `" + MathMan.format(parsed) + ">" + MathMan.format(template.level) + "`");
-        }
-
+        Double finalParsed = parsed;
         list.add(new Grant.Requirement("Infra granted must NOT exceed: " + (template == null ? "`{level}`" : MathMan.format(template.level)), false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
-                return parsed == null || parsed.longValue() <= template.level;
+                return finalParsed == null || finalParsed.longValue() <= template.level;
             }
         }));
 
@@ -231,7 +229,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
         for (Map.Entry<Integer, DBCity> entry : receiver._getCitiesV3().entrySet()) {
             DBCity city = entry.getValue();
 
-            Map<Long, Double> cityGrantHistory = topCity.get(entry.getKey());
+            Map<Long, Double> cityGrantHistory = topCity.getOrDefault(entry.getKey(), new HashMap<>());
 
             if (allow_rebuild) {
                 cityGrantHistory.entrySet().removeIf(f -> f.getKey() < latestAttackDate);
@@ -262,10 +260,10 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     public String getInstructions(DBNation sender, DBNation receiver, Double parsed) {
 
         StringBuilder message = new StringBuilder();
-        message.append("**If you have VIP**");
+        message.append("**If you have VIP**: ");
         message.append("Go to: https://politicsandwar.com/cities/mass-infra-purchase/\nAnd enter: " + parsed);
-        message.append("");
-        message.append("**If you don't have VIP**");
+        message.append("\n");
+        message.append("**If you don't have VIP**: ");
         message.append("Go to: https://politicsandwar.com/cities/\nAnd get each city to " + parsed + " infra");
 
         return  message.toString();

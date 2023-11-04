@@ -5595,6 +5595,11 @@ public class DBNation implements NationOrAlliance {
         this.wars_lost = wars_lost;
     }
 
+    @Command(desc = "Number of wars matching a filter")
+    public int countWars(Predicate<DBWar> warFilter) {
+        return (int) getWars().stream().filter(warFilter).count();
+    }
+
     public AttackCost getWarCost(boolean buildings, boolean ids, boolean victories, boolean wars, boolean attacks) {
         AttackCost cost = new AttackCost(getName(), "*", buildings, ids, victories, wars, attacks);
         cost.addCost(Locutus.imp().getWarDb().getAttacks(nation_id, 0),
