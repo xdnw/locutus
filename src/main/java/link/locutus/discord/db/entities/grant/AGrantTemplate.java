@@ -362,7 +362,7 @@ public abstract class AGrantTemplate<T> {
         int maxGranterDay = template == null ? Integer.MAX_VALUE : template.getMaxGranterDay();
 
         if (template == null || maxTotal > 0) {
-            list.add(new Grant.Requirement("Must NOT exceed grant limit of: " + (template == null ? "`{max_total}`" : maxTotal) + " total grants", false, new Function<DBNation, Boolean>() {
+            list.add(new Grant.Requirement("Must NOT exceed grant limit of: " + (template == null ? "`{max_total}`" : maxTotal) + " total grants for this template", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
                     return template.getGrantedTotal().size() < maxTotal;
@@ -370,7 +370,7 @@ public abstract class AGrantTemplate<T> {
             }));
         }
         if (template == null || maxDay > 0) {
-            list.add(new Grant.Requirement("Must NOT exceed grant limit of: " + (template == null ? "`{max_day}`" : maxDay) + " grants per day", false, new Function<DBNation, Boolean>() {
+            list.add(new Grant.Requirement("Must NOT exceed grant limit of: " + (template == null ? "`{max_day}`" : maxDay) + " grants per day for this template", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
                     long oneDayMs = TimeUnit.DAYS.toMillis(1);
@@ -379,7 +379,7 @@ public abstract class AGrantTemplate<T> {
             }));
         }
         if (template == null || maxGranterTotal > 0) {
-            list.add(new Grant.Requirement("Must NOT exceed grant limit of: " + (template == null ? "`{max_granter_total}`" : maxGranterTotal) + " total grants send from " + (sender == null ? "sender" : sender.getName()), false, new Function<DBNation, Boolean>() {
+            list.add(new Grant.Requirement("Must NOT exceed grant limit of: " + (template == null ? "`{max_granter_total}`" : maxGranterTotal) + " total grants sent from " + (sender == null ? "sender" : sender.getName() + " for this template"), false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
                     return template.getGrantedTotal(sender).size() < maxGranterTotal;
@@ -387,7 +387,7 @@ public abstract class AGrantTemplate<T> {
             }));
         }
         if (template == null || maxGranterDay > 0) {
-            list.add(new Grant.Requirement("Must NOT exceed grant limit of: " + (template == null ? "`{max_granter_day}`" : maxGranterDay) + " grants per day send from " + (sender == null ? "sender" : sender.getName()), false, new Function<DBNation, Boolean>() {
+            list.add(new Grant.Requirement("Must NOT exceed grant limit of: " + (template == null ? "`{max_granter_day}`" : maxGranterDay) + " grants per day sent from " + (sender == null ? "sender" : sender.getName() + " for this template"), false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
                     long oneDayMs = TimeUnit.DAYS.toMillis(1);

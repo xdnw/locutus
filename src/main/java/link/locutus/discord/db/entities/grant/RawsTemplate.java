@@ -66,7 +66,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
 
     public static List<Grant.Requirement> getRequirements(DBNation sender, DBNation receiver, RawsTemplate template, Integer parsed) {
         List<Grant.Requirement> list = new ArrayList<>();
-        list.add(new Grant.Requirement("Days granted cannot be greater than: " + (template == null ? "`{days}`" : template.days), false, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Days granted must NOT exceed: " + (template == null ? "`{days}`" : template.days), false, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation nation) {
                 return parsed == null || parsed.longValue() <= template.days;

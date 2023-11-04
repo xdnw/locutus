@@ -19,6 +19,7 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
+import link.locutus.discord.db.entities.newsletter.NewsletterManager;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKeys;
@@ -140,6 +141,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
     private GuildHandler handler;
     private IACategory iaCat;
     private GrantTemplateManager grantTemplateManager;
+    private NewsletterManager newsletterManager;
     private volatile boolean cachedRoleAliases = false;
     private final Map<Roles, Map<Long, Long>> roleToAccountToDiscord;
 
@@ -203,6 +205,17 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
             }
         }
         return grantTemplateManager;
+    }
+
+    public NewsletterManager getNewsletterManager() {
+        if (newsletterManager == null && NewsletterManager.isAllowed(this.getIdLong())) {
+            synchronized (this) {
+                if (newsletterManager == null) {
+                    newsletterManager = new NewsletterManager(this);
+                }
+            }
+        }
+        return newsletterManager;
     }
 
     public long getLastModified() {

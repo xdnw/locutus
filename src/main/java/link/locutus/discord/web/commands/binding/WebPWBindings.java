@@ -38,6 +38,8 @@ import link.locutus.discord.db.ReportManager;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.grant.AGrantTemplate;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
+import link.locutus.discord.db.entities.newsletter.Newsletter;
+import link.locutus.discord.db.entities.newsletter.NewsletterManager;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.gpt.imps.ProviderType;
@@ -171,6 +173,13 @@ public class WebPWBindings extends WebBindingHelper {
             options.removeIf(f -> !f.hasPermission(me, author, db));
         }
         return multipleSelect(param, options, f -> Map.entry("#" + f.reportId + " " + f.getTitle(), f.reportId + ""));
+    }
+
+    @HtmlInput
+    @Binding(types = Newsletter.class)
+    public String newsletters(ParameterData param, NewsletterManager manager) {
+        List<Newsletter> options = new ArrayList<>(manager.getNewsletters().values());
+        return multipleSelect(param, options, f -> Map.entry(f.getName(), f.getId() + ""));
     }
 
     @HtmlInput

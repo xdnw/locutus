@@ -35,6 +35,8 @@ import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.grant.AGrantTemplate;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
+import link.locutus.discord.db.entities.newsletter.Newsletter;
+import link.locutus.discord.db.entities.newsletter.NewsletterManager;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.AllianceList;
@@ -152,6 +154,13 @@ public class PWCompleter extends BindingHelper {
         return reports(manager, me, author, db, input, true, OptionData.MAX_CHOICES);
     }
 
+    @Autocomplete
+    @Binding(types = {Newsletter.class})
+    public List<Map.Entry<String, String>> newsletters(NewsletterManager manager, String input) {
+        List<Newsletter> options = new ArrayList<>(manager.getNewsletters().values());
+        options = StringMan.getClosest(input, options, Newsletter::getName, OptionData.MAX_CHOICES, true, false);
+        return options.stream().map(f -> Map.entry(f.getName(), f.getId() + "")).collect(Collectors.toList());
+    }
 
     @Autocomplete
     @Binding(types={ReportManager.Report.class})

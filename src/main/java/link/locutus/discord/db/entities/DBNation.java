@@ -6074,4 +6074,24 @@ public class DBNation implements NationOrAlliance {
     public double attritionBountyValue() {
         return Locutus.imp().getWarDb().getBounties(nation_id).stream().filter(f -> f.getType() == WarType.ATT).mapToLong(DBBounty::getAmount).sum();
     }
+
+
+    public double getWarDamageValue(Predicate<DBWar> warFilter, Predicate<AttackType> typeFilter, Predicate<AbstractCursor> attackFilter) {
+        Set<DBWar> wars = new ObjectOpenHashSet<>();
+        for (DBWar war : getWars()) {
+            if (warFilter.test(war)) {
+                wars.add(war);
+            }
+        }
+
+        AttackCost cost = new AttackCost()
+
+        Locutus.imp().getWarDb().iterateAttacks(wars, typeFilter, attackFilter, new Consumer<AbstractCursor>() {
+            @Override
+            public void accept(AbstractCursor abstractCursor) {
+
+            }
+        });
+
+    }
 }

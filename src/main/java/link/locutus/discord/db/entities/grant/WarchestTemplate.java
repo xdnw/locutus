@@ -169,7 +169,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
         List<Grant.Requirement> list = new ArrayList<>();
 
         if (template == null || parsed != null) {
-            list.add(new Grant.Requirement("Amount must not be negative: `" + (template == null ? "{amount}" : PnwUtil.resourcesToString(parsed)) + "`", false, new Function<DBNation, Boolean>() {
+            list.add(new Grant.Requirement("Amount must NOT be negative: `" + (template == null ? "{amount}" : PnwUtil.resourcesToString(parsed)) + "`", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
                     for (Map.Entry<ResourceType, Double> entry : parsed.entrySet()) {
@@ -188,7 +188,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
             } else {
                 allowance = null;
             }
-            list.add(new Grant.Requirement("Amount cannot exceed remaining allowance: `" + (template == null ? "{amount}" : PnwUtil.resourcesToString(parsed)) + "` > `" + (allowance == null ? "{allowance_remaining}" : allowance) + "`\n" +
+            list.add(new Grant.Requirement("Amount must NOT exceed remaining allowance: `" + (template == null ? "{amount}" : PnwUtil.resourcesToString(parsed)) + "` > `" + (allowance == null ? "{allowance_remaining}" : allowance) + "`\n" +
                     allowanceStr, false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {

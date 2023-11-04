@@ -58,7 +58,6 @@ public class WikiGrantTemplate extends BotWikiGen {
                 - Absolute and time based global and per template grant allowances.
                 - Configurable grant expiry and tax account""",
                 "# Template Types",
-                "Note: warchest grants not implemented yet",
                 MarkupUtil.list((Object[]) TemplateTypes.values),
                 "# Creating a template",
                 """
@@ -67,6 +66,8 @@ public class WikiGrantTemplate extends BotWikiGen {
                 - <https://github.com/xdnw/locutus/wiki/nation_placeholders>
                 
                 Specify a role to choose who can grant this template
+                
+                Note: Grant limits are per template.
                 """,
                 commandMarkdownSpoiler(CM.grant_template.create.city.cmd),
                 commandMarkdownSpoiler(CM.grant_template.create.build.cmd),

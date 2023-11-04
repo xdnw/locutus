@@ -184,7 +184,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
             }
         }));
 
-        list.add(new Grant.Requirement("Nation must have purchased a city in the past 10 days (when `onlyNewCities: True`", true, new Function<DBNation, Boolean>() {
+        list.add(new Grant.Requirement("Nation must have purchased a city in the past 10 days (when `onlyNewCities: True`)", true, new Function<DBNation, Boolean>() {
             @Override
             public Boolean apply(DBNation receiver) {
 

@@ -45,6 +45,8 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.grant.AGrantTemplate;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
+import link.locutus.discord.db.entities.newsletter.Newsletter;
+import link.locutus.discord.db.entities.newsletter.NewsletterManager;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.AllianceList;
@@ -1463,6 +1465,32 @@ public class PWBindings extends BindingHelper {
         return report;
     }
 
+    @Binding
+    public NewsletterManager manager(@Me GuildDB db) {
+        NewsletterManager manager = db.getNewsletterManager();
+        if (manager == null) {
+            throw new IllegalArgumentException("Your guild is not whitelisted to use newsletters.");
+        }
+        return manager;
+    }
+
+    @Binding
+    @ReportPerms
+    public Newsletter getNewsletter(NewsletterManager manager, String nameOrId) {
+        if (MathMan.isInteger(nameOrId)) {
+            int id = Integer.parseInt(nameOrId);
+            Newsletter newsletter = manager.getNewsletters().get(id);
+            if (newsletter != null) return newsletter;
+        }
+
+        for (Newsletter value : manager.getNewsletters().values()) {
+            if (value.getName().equalsIgnoreCase(nameOrId)) return value;
+        }
+
+        List<String> options = manager.getNewsletters().values().stream().map(Newsletter::getName).collect(Collectors.toList());
+        throw new IllegalArgumentException("No newsletter found with name or id: `" + nameOrId + "`\n" +
+                "Options: " + StringMan.getString(options));
+    }
 
 //    @Binding(examples = "'Error 404' 'Arrgh' 45d")
 //    @Me

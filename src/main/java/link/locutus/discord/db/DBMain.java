@@ -186,6 +186,17 @@ public abstract class DBMain implements Closeable {
         }
     }
 
+    public synchronized void executeStmt(String query, Consumer<PreparedStatement> consumer) {
+        try (PreparedStatement stmt = getConnection().prepareStatement(query)) {
+            consumer.accept(stmt);
+            stmt.addBatch();
+            stmt.executeBatch();
+            stmt.clearBatch();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     public <T> int[] executeBatch(Collection<T> objects, String query, BiConsumer<T, PreparedStatement> consumer) {
         if (objects.isEmpty()) return new int[0];
         synchronized (this) {
@@ -219,7 +230,7 @@ public abstract class DBMain implements Closeable {
         }
     }
 
-    protected boolean query(String sql, Consumer<PreparedStatement> withStmt, Consumer<ResultSet> rsq) {
+    public boolean query(String sql, Consumer<PreparedStatement> withStmt, Consumer<ResultSet> rsq) {
         {
             try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
                 stmt.setFetchSize(10000);
