@@ -8,7 +8,7 @@ public class Newsletter {
     private int id;
     private final String name;
     private long date_created;
-    private final long lastSent;
+    private long lastSent;
     private long sendInterval;
     private final long sendConfirmationChannel;
     private long pingRole;
@@ -22,6 +22,10 @@ public class Newsletter {
         this.sendInterval = sendInterval;
         this.sendConfirmationChannel = sendConfirmationChannel;
         this.pingRole = pingRole;
+    }
+
+    public void setLastSent(long lastSent) {
+        this.lastSent = lastSent;
     }
 
     public int getId() {

@@ -1868,6 +1868,10 @@ public class UnsortedCommands {
 
         String subject = "Invite to: " + inviteTo.getName();
 
+        String replacementInfo = inviteTo.getId();
+        replacementInfo += "," + (expire == null ? 0 : expire);
+        replacementInfo += "," + (maxUsesEach == null ? 0 : maxUsesEach);
+
         for (DBNation nation : nations) {
             InviteAction create = defaultChannel.createInvite().setUnique(true);
             if (expire != null) {
@@ -1909,7 +1913,7 @@ public class UnsortedCommands {
             output.append("\nFailed Mail: " + StringMan.getString(failedToMail));
         }
 
-        int annId = db.addAnnouncement(author, subject, message, "", sendTo.getFilter());
+        int annId = db.addAnnouncement(author, subject, message, replacementInfo, sendTo.getFilter(), false);
         for (Map.Entry<DBNation, String> entry : sentMessages.entrySet()) {
             byte[] diff = StringMan.getDiffBytes(message, entry.getValue());
             db.addPlayerAnnouncement(entry.getKey(), annId, diff);
@@ -1940,7 +1944,7 @@ public class UnsortedCommands {
 
             msg = msg.embed("[#" + annId + "] " + subject, body.toString());
 
-            CM.announcement.view cmd = CM.announcement.view.cmd.create(annId + "");
+            CM.announcement.view cmd = CM.announcement.view.cmd.create(annId + "", null);
             msg.commandButton(CommandBehavior.EPHEMERAL, cmd, "view").send();
         }
 

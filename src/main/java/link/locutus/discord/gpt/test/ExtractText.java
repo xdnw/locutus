@@ -145,7 +145,7 @@ public class ExtractText {
         return sb.toString();
     }
 
-    public static String getDocumentMarkdown(String documentId) throws IOException, GeneralSecurityException {
+    public static String getDocumentHtml(String documentId) throws IOException, GeneralSecurityException {
         final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
         Docs service =
                 new Docs.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
@@ -157,7 +157,10 @@ public class ExtractText {
         request.getHeaders().setAuthorization("Bearer " + getCredentials(HTTP_TRANSPORT).getAccessToken());
         HttpResponse response = request.execute();
         String html = response.parseAsString();
-        System.out.println(html);
+        return html;
+    }
+    public static String getDocumentMarkdown(String documentId) throws IOException, GeneralSecurityException {
+        String html = getDocumentHtml(documentId);
         // convert to markdown
         String markdown = MarkupUtil.htmlToMarkdown(html);
         // remove images

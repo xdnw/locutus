@@ -161,6 +161,8 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        this.commands.registerMethod(new EmbedCommands(), List.of("announcement"), "announceDocument", "document");
+
         this.commands.registerMethod(new UnsortedCommands(), List.of("audit"), "auditSheet", "sheet");
         this.commands.registerMethod(new TestCommands(), List.of("test"), "testImage", "test_image");
 

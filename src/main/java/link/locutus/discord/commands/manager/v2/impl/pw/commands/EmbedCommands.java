@@ -26,14 +26,17 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.SpyCount;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.sheet.GoogleDoc;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
@@ -50,6 +53,7 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -1202,5 +1206,34 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         null,
                         null
                 ), "mail").send();
+    }
+
+    @Command(desc = "Create a document announcement")
+    @RolePermission(Roles.INTERNAL_AFFAIRS)
+    public void announceDocument(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me IMessageIO io,
+                                @Me User author,
+                                GoogleDoc original,
+                                NationList sendTo,
+                                @Arg("Lines of replacement words or phrases, separated by `|` for each variation\n" +
+                                        "Add multiple lines for each replacement you want") @TextArea String replacements) throws IOException, GeneralSecurityException {
+        String title = original.getTitle();
+        if (title == null) title = "Document";
+
+        String announcement = original.readHtml();
+        int annId = db.addAnnouncement(author, title, announcement, replacements, sendTo.getFilter(), true);
+
+        List<String> replacementLines = Announcement.getReplacements(replacements);
+        Collection<DBNation> nations = sendTo.getNations();
+        Set<String> results = StringMan.enumerateReplacements(announcement, replacementLines, nations.size() + 1000, 0, 0);
+
+        CM.announcement.view cmd = CM.announcement.view.cmd.create(annId + "", "true");
+
+        StringBuilder body = new StringBuilder();
+        body.append("Title: `" + title + "`\n");
+        body.append("Can View: `" + sendTo.getFilter() + "` (" + nations.size() + " nations)\n");
+        body.append("ID: `#" + annId + "`\n\n");
+        body.append("Press `view` to view the document");
+        io.create().embed(title, body.toString())
+                .commandButton(CommandBehavior.EPHEMERAL, cmd, "view").send();
     }
 }

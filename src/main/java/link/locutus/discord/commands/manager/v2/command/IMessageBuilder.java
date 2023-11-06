@@ -258,6 +258,11 @@ public interface IMessageBuilder {
     }
 
     @CheckReturnValue
+    default IMessageBuilder commandButton(CommandBehavior behavior, JSONObject command, String message) {
+        return commandButton(behavior, command.toString(), message);
+    }
+
+    @CheckReturnValue
     default IMessageBuilder confirmation(String title, String body, CommandRef command) {
         return confirmation(title, body, new JSONObject(command.toCommandArgs()));
     }

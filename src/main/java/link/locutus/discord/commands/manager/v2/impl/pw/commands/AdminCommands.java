@@ -27,6 +27,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.NationDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKeys;
@@ -502,7 +503,7 @@ public class AdminCommands {
             }
         }
 
-        List<String> replacementLines = Arrays.asList(replacements.split("(?<!\\\\\\\\)\\\\n|\\\\\\\\n"));
+        List<String> replacementLines = Announcement.getReplacements(replacements);
         Random random = seed == null ? new Random() : new Random(seed);
         Set<String> results = StringMan.enumerateReplacements(announcement, replacementLines, nations.size() + 1000, requiredVariation, requiredDepth);
 
@@ -568,7 +569,7 @@ public class AdminCommands {
             output.append("\nFailed Mail: " + StringMan.getString(failedToMail));
         }
 
-        int annId = db.addAnnouncement(author, subject, announcement, replacements, sendTo.getFilter());
+        int annId = db.addAnnouncement(author, subject, announcement, replacements, sendTo.getFilter(), false);
         for (Map.Entry<DBNation, String> entry : sentMessages.entrySet()) {
             byte[] diff = StringMan.getDiffBytes(announcement, entry.getValue());
             db.addPlayerAnnouncement(entry.getKey(), annId, diff);
@@ -594,7 +595,7 @@ public class AdminCommands {
                 msg = msg.append(bottomText);
             }
 
-            CM.announcement.view cmd = CM.announcement.view.cmd.create(annId + "");
+            CM.announcement.view cmd = CM.announcement.view.cmd.create(annId + "", null);
             msg.commandButton(CommandBehavior.EPHEMERAL, cmd, "view").send();
         }
 
