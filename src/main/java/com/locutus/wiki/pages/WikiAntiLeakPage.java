@@ -42,6 +42,22 @@ public class WikiAntiLeakPage extends BotWikiGen {
                 commandMarkdownSpoiler(CM.announcement.invite.cmd),
                 "# Sending unique documents",
                 commandMarkdownSpoiler(CM.announcement.document.cmd),
+                "# Sending unique polls",
+                """
+                 Create a new spreadsheet, then add the following google app script:
+                 - <https://gist.github.com/xdnw/10c64fb8f78c7676c581273f04ed5c1a>
+                 
+                 App-Script Tutorial: <https://www.benlcollins.com/apps-script/google-apps-script-beginner-guide/>
+                 
+                 How to use this script:
+                 - Edit the `title` and `replacements` in the your script file (typically `Code.gs`)
+                 - Add your nations to the `nations` tab
+                 - Add your questions to the `questions` tab. See the `Set Example Questions` from the `Poll` menu. Refresh the page if you dont see the menu.
+                 - Press the `Create Polls` button from the `Poll` menu
+                 - View the created polls in the `nations` tab
+                 
+                 Note: Polls will not be created if one already exists in the `nations` tab
+                 """,
                 "# Converting a screenshot to text",
                 commandMarkdownSpoiler(CM.announcement.ocr.cmd),
                 "# Finding a nation from a message or invite",

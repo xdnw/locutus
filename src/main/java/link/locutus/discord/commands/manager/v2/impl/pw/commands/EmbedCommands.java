@@ -1208,7 +1208,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                 ), "mail").send();
     }
 
-    @Command(desc = "Create a document announcement")
+    @Command(desc = "Create an embed to view a google document for multiple nations, with random variations for each receiver")
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public void announceDocument(@Me GuildDB db, @Me Guild guild, @Me JSONObject command, @Me IMessageIO io,
                                 @Me User author,

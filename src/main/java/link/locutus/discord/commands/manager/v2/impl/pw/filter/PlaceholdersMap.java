@@ -41,6 +41,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.Treaty;
+import link.locutus.discord.db.entities.UserWrapper;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -125,6 +126,8 @@ public class PlaceholdersMap {
         this.placeholders.put(TaxBracket.class, createBrackets());
         this.placeholders.put(IAttack.class, createAttacks());
         this.placeholders.put(BankDB.TaxDeposit.class, createTaxDeposit());
+
+        this.placeholders.put(UserWrapper.class, createUsers());
 
 //        //-GuildKey
 //        this.placeholders.put(GuildSetting.class, createGuildSetting());
@@ -398,6 +401,10 @@ public class PlaceholdersMap {
             cities.addAll(nation._getCitiesV3().values());
         }
         return cities;
+    }
+
+    private Placeholders<UserWrapper> createUsers() {
+        
     }
 
     private Placeholders<DBCity> createCities() {
