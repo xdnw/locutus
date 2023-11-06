@@ -40,6 +40,8 @@ public class WikiAntiLeakPage extends BotWikiGen {
                 commandMarkdownSpoiler(CM.announcement.create.cmd),
                 "# Sending unique invites",
                 commandMarkdownSpoiler(CM.announcement.invite.cmd),
+                "# Sending unique documents",
+                commandMarkdownSpoiler(CM.announcement.document.cmd),
                 "# Converting a screenshot to text",
                 commandMarkdownSpoiler(CM.announcement.ocr.cmd),
                 "# Finding a nation from a message or invite",

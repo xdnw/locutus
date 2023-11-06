@@ -1789,6 +1789,8 @@ public class UnsortedCommands {
                              @Switch("u") Integer maxUsesEach,
                              @Arg("Send the invite via discord direct message") @Switch("d") boolean sendDM,
                              @Switch("m") boolean sendMail,
+                             @Arg("If new invites are allowed to be made for new nations which match the filter")
+                             @Switch("c") boolean allowCreation,
                              @Switch("f") boolean force) throws IOException {
         DefaultGuildChannelUnion defaultChannel = inviteTo.getDefaultChannel();
         if (defaultChannel == null) {
@@ -1913,7 +1915,7 @@ public class UnsortedCommands {
             output.append("\nFailed Mail: " + StringMan.getString(failedToMail));
         }
 
-        int annId = db.addAnnouncement(author, subject, message, replacementInfo, sendTo.getFilter(), false);
+        int annId = db.addAnnouncement(author, subject, message, replacementInfo, sendTo.getFilter(), allowCreation);
         for (Map.Entry<DBNation, String> entry : sentMessages.entrySet()) {
             byte[] diff = StringMan.getDiffBytes(message, entry.getValue());
             db.addPlayerAnnouncement(entry.getKey(), annId, diff);

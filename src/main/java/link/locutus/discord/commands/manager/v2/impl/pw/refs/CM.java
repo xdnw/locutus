@@ -567,6 +567,13 @@ public class CM {
                     return createArgs("sendTo", sendTo, "subject", subject, "announcement", announcement, "replacements", replacements, "channel", channel, "bottomText", bottomText, "requiredVariation", requiredVariation, "requiredDepth", requiredDepth, "seed", seed, "sendMail", sendMail, "sendDM", sendDM, "force", force);
                 }
             }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="announceDocument")
+            public static class document extends CommandRef {
+                public static final document cmd = new document();
+                public document create(String original, String sendTo, String replacements) {
+                    return createArgs("original", original, "sendTo", sendTo, "replacements", replacements);
+                }
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="find_announcement")
             public static class find extends CommandRef {
                 public static final find cmd = new find();
@@ -3803,8 +3810,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.web.test.TestCommands.class,method="testImage")
             public static class test_image extends CommandRef {
                 public static final test_image cmd = new test_image();
-                public test_image create(String doc, String text) {
-                    return createArgs("doc", doc, "text", text);
+                public test_image create(String text) {
+                    return createArgs("text", text);
                 }
             }
         }
