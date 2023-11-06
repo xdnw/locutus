@@ -4210,7 +4210,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         List<DBCity> allCities = new ArrayList<>();
         synchronized (citiesByNation) {
             for (Map.Entry<Integer, Object> entry : citiesByNation.entrySet()) {
-                ArrayUtil.iterateElements(DBCity.class, entry.getKey(), allCities::add);
+                ArrayUtil.iterateElements(DBCity.class, entry.getValue(), allCities::add);
             }
         }
         saveCities(allCities);

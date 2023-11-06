@@ -534,6 +534,7 @@ public enum AllianceMetric {
     public static AllianceMetric[] values = AllianceMetric.values();
 
     public static synchronized void update(int topX) {
+        System.out.println("Updating metrics for top " + topX + " alliances");
         long turn = TimeUtil.getTurn();
         Set<DBAlliance> alliances = Locutus.imp().getNationDB().getAlliances(true, true, true, topX);
         for (DBAlliance alliance : alliances) {
