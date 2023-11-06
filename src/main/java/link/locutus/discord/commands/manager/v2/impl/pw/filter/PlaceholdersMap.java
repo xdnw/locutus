@@ -53,6 +53,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 
 import java.util.ArrayList;
@@ -150,6 +151,7 @@ public class PlaceholdersMap {
     }
 
     private Set<NationOrAlliance> nationOrAlliancesSingle(ValueStore store, String input) {
+        GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
         if (input.equalsIgnoreCase("*")) {
             return new ObjectOpenHashSet<>(Locutus.imp().getNationDB().getNations().values());
         }
@@ -161,6 +163,9 @@ public class PlaceholdersMap {
                 if (alliance != null) return Set.of(alliance);
                 DBNation nation = DBNation.getById(idInt);
                 if (nation != null) return Set.of(nation);
+            } else if (db != null){
+                Role role = db.getGuild().getRoleById(id);
+                return (Set) NationPlaceholders.getByRole(db.getGuild(), input, role);
             }
         }
         Integer aaId = PnwUtil.parseAllianceId(input);
@@ -171,13 +176,24 @@ public class PlaceholdersMap {
         if (nationId != null) {
             return Set.of(DBNation.getOrCreate(nationId));
         }
-        GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
 
         if (input.charAt(0) == '~') input = input.substring(1);
         if (input.startsWith("coalition:")) input = input.substring("coalition:".length());
+        if (input.startsWith("<@&") && db != null) {
+            Role role = db.getGuild().getRoleById(input.substring(3, input.length() - 1));
+            return (Set) NationPlaceholders.getByRole(db.getGuild(), input, role);
+        }
         Set<Integer> coalition = db.getCoalition(input);
         if (!coalition.isEmpty()) {
             return coalition.stream().map(DBAlliance::getOrCreate).collect(Collectors.toSet());
+        }
+        if (db != null) {
+            // get role by name
+            String finalInput = input;
+            Role role = db.getGuild().getRoles().stream().filter(f -> f.getName().equalsIgnoreCase(finalInput)).findFirst().orElse(null);
+            if (role != null) {
+                return (Set) NationPlaceholders.getByRole(db.getGuild(), input, role);
+            }
         }
         throw new IllegalArgumentException("Invalid nation or alliance: `" + input + "`");
     }

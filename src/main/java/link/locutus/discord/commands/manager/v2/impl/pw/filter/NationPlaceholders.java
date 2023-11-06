@@ -128,6 +128,17 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         return result;
     }
 
+    public static Set<DBNation> getByRole(Guild guild, String name, Role role) {
+        if (role == null) throw new IllegalArgumentException("Invalid role: `" + name + "`");
+        List<Member> members = guild.getMembersWithRoles(role);
+        Set<DBNation> nations = new LinkedHashSet<>();
+        for (Member member : members) {
+            DBNation nation = DBNation.getByUser(member.getUser());
+            if (nation != null) nations.add(nation);
+        }
+        return nations;
+    }
+
     @Override
     public Set<DBNation> parseSingleElem(ValueStore store, String name) {
         String nameLower = name.toLowerCase(Locale.ROOT);
@@ -156,11 +167,19 @@ public class NationPlaceholders extends Placeholders<DBNation> {
             if (alliances == null) throw new IllegalArgumentException("Invalid alliance: `" + name + "`");
             Set<DBNation> allianceMembers = Locutus.imp().getNationDB().getNations(alliances);
             return allianceMembers;
+            // role
+        } else if (nameLower.startsWith("<@&") && guild != null) {
+            Role role = DiscordUtil.getRole(guild, name);
+            return getByRole(guild, name, role);
         } else if (MathMan.isInteger(nameLower)) {
-            int id = Integer.parseInt(nameLower);
-            DBNation nation = DBNation.getById(id);
+            long id = Long.parseLong(nameLower);
+            if (id > Integer.MAX_VALUE && guild != null) {
+                Role role = DiscordUtil.getRole(guild, name);
+                return getByRole(guild, name, role);
+            }
+            DBNation nation = DBNation.getById((int) id);
             if (nation != null) return Set.of(nation);
-            DBAlliance alliance = DBAlliance.get(id);
+            DBAlliance alliance = DBAlliance.get((int) id);
             if (alliance != null) return alliance.getNations();
         }
 
@@ -172,14 +191,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
             if (alliances == null) {
                 Role role = guild != null ? DiscordUtil.getRole(guild, name) : null;
                 if (role != null) {
-                    List<Member> members = guild.getMembersWithRoles(role);
-                    for (Member member : members) {
-                        PNWUser user = Locutus.imp().getDiscordDB().getUserFromDiscordId(member.getIdLong());
-                        if (user == null) continue;
-                        nation = Locutus.imp().getNationDB().getNation(user.getNationId());
-                        if (nation != null) nations.add(nation);
-                    }
-
+                    return getByRole(guild, name, role);
                 } else if (name.contains("#")) {
                     String[] split = name.split("#");
                     PNWUser user = Locutus.imp().getDiscordDB().getUser(null, split[0], name);
