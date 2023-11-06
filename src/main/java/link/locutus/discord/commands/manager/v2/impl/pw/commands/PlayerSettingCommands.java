@@ -4,39 +4,45 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordHookIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.db.DiscordDB;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.Announcement;
+import link.locutus.discord.db.entities.announce.AnnounceType;
+import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DiscordMeta;
-import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.PnwUtil;
+import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.interactions.components.text.TextInput;
-import net.dv8tion.jda.api.interactions.components.text.TextInputStyle;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.io.IOException;
 
 public class PlayerSettingCommands {
 
     @Command(desc = "View an announcement you have access to")
     @RolePermission(Roles.MEMBER)
-    public String viewAnnouncement(@Me IMessageIO io, @Me GuildDB db, @Me DBNation nation, @Me User user, int ann_id) {
+    public String viewAnnouncement(@Me IMessageIO io, @Me GuildDB db, @Me DBNation me, @Me User user, int ann_id, @Switch("d") boolean document, @Switch("n") DBNation nation) throws IOException {
+        if (nation == null) nation = me;
+        if (nation.getId() != me.getId() && !Roles.INTERNAL_AFFAIRS.has(user, db.getGuild())) {
+            throw new IllegalArgumentException("Missing role: " + Roles.INTERNAL_AFFAIRS.toDiscordRoleNameElseInstructions(db.getGuild()));
+        }
         Announcement parent = db.getAnnouncement(ann_id);
-        Announcement.PlayerAnnouncement announcement = db.getPlayerAnnouncement(ann_id, nation.getNation_id());
+        boolean isInvite = StringMan.countWords(parent.replacements, ",") == 2 && !parent.replacements.contains("|") && !parent.replacements.contains("\n");
+
+        Announcement.PlayerAnnouncement announcement;
+        if (parent.allowCreation) {
+            announcement = db.getOrCreatePlayerAnnouncement(ann_id, nation, isInvite ? AnnounceType.INVITE : document ? AnnounceType.DOCUMENT : AnnounceType.MESSAGE);
+        } else {
+            announcement = db.getPlayerAnnouncement(ann_id, nation.getNation_id());
+        }
         String title;
         String message;
         if (announcement == null) {
@@ -54,6 +60,9 @@ public class PlayerSettingCommands {
                 body.append("`Archived`\n");
             }
             String content = announcement.getContent();
+            if (document && content.startsWith("https://docs.google.com/document/d/")) {
+                content = content.split("\n")[0];
+            }
             body.append(">>> " + content);
             body.append("\n\n- Sent by ").append("<@" + parent.sender + ">").append(" ").append(DiscordUtil.timestamp(parent.date, null)).append("\n");
             message = body.toString();

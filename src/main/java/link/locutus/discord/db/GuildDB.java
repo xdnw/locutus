@@ -17,6 +17,8 @@ import link.locutus.discord.commands.rankings.builder.RankBuilder;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
+import link.locutus.discord.db.entities.announce.AnnounceType;
+import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
 import link.locutus.discord.db.entities.newsletter.NewsletterManager;
@@ -83,7 +85,10 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -910,8 +915,9 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
             executeStmt(query.toString());
         }
         {
-            String query = "CREATE TABLE IF NOT EXISTS `ANNOUNCEMENTS2` (`ann_id` INTEGER PRIMARY KEY AUTOINCREMENT, `sender` BIGINT NOT NULL, `active` BOOLEAN NOT NULL, `title` VARCHAR NOT NULL, `content` VARCHAR NOT NULL, `replacements` VARCHAR NOT NULL, `filter` VARCHAR NOT NULL, `date` BIGINT NOT NULL)";
+            String query = "CREATE TABLE IF NOT EXISTS `ANNOUNCEMENTS2` (`ann_id` INTEGER PRIMARY KEY AUTOINCREMENT, `sender` BIGINT NOT NULL, `active` BOOLEAN NOT NULL, `title` VARCHAR NOT NULL, `content` VARCHAR NOT NULL, `replacements` VARCHAR NOT NULL, `filter` VARCHAR NOT NULL, `date` BIGINT NOT NULL, `allow_creation` BOOLEAN NOT NULL)";
             executeStmt(query);
+            executeStmt("ALTER TABLE ANNOUNCEMENTS2 ADD COLUMN allow_creation BOOLEAN NOT NULL DEFAULT 0");
 
             String query2 = "CREATE TABLE IF NOT EXISTS `ANNOUNCEMENTS_PLAYER2` (`receiver` INT NOT NULL, `ann_id` INT NOT NULL, `active` BOOLEAN NOT NULL, `diff` BLOB NOT NULL, PRIMARY KEY(receiver, ann_id), FOREIGN KEY(ann_id) REFERENCES ANNOUNCEMENTS2(ann_id))";
             executeStmt(query2);
@@ -1176,8 +1182,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
         return result;
     }
 
-    public int addAnnouncement(User sender, String title, String content, String replacements, String filter) {
-        String query = "INSERT INTO `ANNOUNCEMENTS2`(`sender`, `active`, `title`, `content`, `replacements`, `filter`, `date`) VALUES(?, ?, ?, ?, ?, ?, ?)";
+    public int addAnnouncement(User sender, String title, String content, String replacements, String filter, boolean allowCreation) {
+        String query = "INSERT INTO `ANNOUNCEMENTS2`(`sender`, `active`, `title`, `content`, `replacements`, `filter`, `date`, `allow_creation`) VALUES(?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = getConnection().prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setLong(1, sender.getIdLong());
             stmt.setBoolean(2, true);
@@ -1186,6 +1192,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
             stmt.setString(5, replacements);
             stmt.setString(6, filter);
             stmt.setLong(7, System.currentTimeMillis());
+            stmt.setBoolean(8, allowCreation);
             stmt.executeUpdate();
 
             try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
@@ -1202,7 +1209,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
     }
 
     public void addPlayerAnnouncement(DBNation receiver, int annId, byte[] diff) {
-        String query = "INSERT INTO ANNOUNCEMENTS_PLAYER2(`receiver`, `ann_id`, `active`, `diff`) VALUES(?, ?, ?, ?)";
+        String query = "INSERT OR REPLACE INTO ANNOUNCEMENTS_PLAYER2(`receiver`, `ann_id`, `active`, `diff`) VALUES(?, ?, ?, ?)";
         update(query , (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, receiver.getNation_id());
             stmt.setInt(2, annId);
@@ -1322,8 +1329,31 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
         return result;
     }
 
+    public Announcement.PlayerAnnouncement getOrCreatePlayerAnnouncement(int ann_id, DBNation nation, AnnounceType create) throws IOException {
+        Announcement.PlayerAnnouncement existing = getPlayerAnnouncement(ann_id, nation.getId());
+        if (existing != null && !AnnounceType.DOCUMENT.isValid(this, existing.getParent(), existing)) {
+            existing = null;
+        }
+        if (existing == null) {
+            Announcement announcement = getAnnouncement(ann_id);
+            if (announcement == null) return null;
+            Predicate<DBNation> filter = announcement.getFilter(this);
+            if (!filter.test(nation)) return null;
+
+            int currentAnnouncements = countAnnouncements(ann_id);
+            String message = create.create(this, announcement, currentAnnouncements);
+
+            byte[] diff = StringMan.getDiffBytes(announcement.body, message);
+            Announcement.PlayerAnnouncement newAnnouncement = new Announcement.PlayerAnnouncement(this, announcement, diff, nation.getId(), true);
+            addPlayerAnnouncement(nation, ann_id, diff);
+            return newAnnouncement;
+        } else {
+            return existing;
+        }
+    }
+
     public Announcement.PlayerAnnouncement getPlayerAnnouncement(int ann_id, int nationId) {
-            List<Announcement.PlayerAnnouncement> result = new ArrayList<>();
+        List<Announcement.PlayerAnnouncement> result = new ArrayList<>();
         query("select * FROM ANNOUNCEMENTS_PLAYER2 WHERE ann_id = ? AND receiver = ? ORDER BY ann_id desc",
                 (ThrowingConsumer<PreparedStatement>) stmt -> {
                     stmt.setInt(1, ann_id);
@@ -1335,6 +1365,18 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
                     }
                 });
         return result.isEmpty() ? null : result.get(0);
+    }
+
+    public int countAnnouncements(int announcementId) {
+        AtomicInteger result = new AtomicInteger();
+            query("select count(*) FROM ANNOUNCEMENTS_PLAYER2 WHERE ann_id = ?",
+                (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setInt(1, announcementId),
+                (ThrowingConsumer<ResultSet>) rs -> {
+                    if (rs.next()) {
+                        result.set(rs.getInt(1));
+                    }
+                });
+        return result.get();
     }
 
     public List<Announcement.PlayerAnnouncement> getPlayerAnnouncementsByNation(int nationId, boolean requireActive) {

@@ -24,7 +24,7 @@
 @import link.locutus.discord.apiv1.enums.AttackType
 @import link.locutus.discord.apiv1.enums.city.JavaCity
 @import link.locutus.discord.web.jooby.WebRoot
-@import link.locutus.discord.db.entities.Announcement
+@import link.locutus.discord.db.entities.announce.Announcement
 
 @args (Guild guild, GuildDB db, DBNation nation, User author, double[] deposits, Map<IACheckup.AuditType, Map.Entry<Object, String>> checkup, Collection<JavaCity> cities, boolean isFightingActives, Map<DBWar, DBNation> offensives, Map<DBWar, DBNation> defensives, Map<DBWar, WarCard> warCards, Map<DBWar, AttackType> recommendedAttacks, List<Announcement.PlayerAnnouncement> announcements)
 @rocker.main.template("Guild Alliance index") -> {

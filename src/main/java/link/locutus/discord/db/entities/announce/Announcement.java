@@ -1,10 +1,17 @@
-package link.locutus.discord.db.entities;
+package link.locutus.discord.db.entities.announce;
 
+import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.StringMan;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Predicate;
 
 public class Announcement {
     public final int id;
@@ -15,8 +22,9 @@ public class Announcement {
     public final String filter;
     public final long date;
     public boolean active;
+    public boolean allowCreation;
 
-    public Announcement(int id, long sender, long date, String title, String body, String replacements, String filter, boolean active) {
+    public Announcement(int id, long sender, long date, String title, String body, String replacements, String filter, boolean active, boolean allowCreation) {
         this.id = id;
         this.date = date;
         this.sender = sender;
@@ -25,6 +33,7 @@ public class Announcement {
         this.replacements = replacements;
         this.filter = filter;
         this.active = active;
+        this.allowCreation = allowCreation;
     }
 
     public Announcement(ResultSet rs) throws SQLException {
@@ -36,6 +45,21 @@ public class Announcement {
         replacements = rs.getString("replacements");
         filter = rs.getString("filter");
         date = rs.getLong("date");
+        allowCreation = rs.getBoolean("allow_creation");
+    }
+
+    public static List<String> getReplacements(String replacements) {
+        return Arrays.asList(replacements.split("(?<!\\\\\\\\)\\\\n|\\\\\\\\n"));
+    }
+
+    public List<String> getReplacements() {
+        return getReplacements(replacements);
+    }
+
+    public Predicate<DBNation> getFilter(GuildDB db) {
+        NationPlaceholders placeholders = Locutus.cmd().getV2().getNationPlaceholders();
+        LocalValueStore store = placeholders.createLocals(db.getGuild(), null, null);
+        return placeholders.parseFilter(store, filter);
     }
 
     public static class PlayerAnnouncement {

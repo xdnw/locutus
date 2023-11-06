@@ -15,7 +15,7 @@ import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.Announcement;
+import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.DBNation;

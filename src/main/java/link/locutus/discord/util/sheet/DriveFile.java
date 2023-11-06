@@ -6,6 +6,7 @@ import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.ByteArrayContent;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
@@ -90,6 +91,21 @@ public class DriveFile {
         READER,
         WRITER,
         ORGANIZER
+    }
+
+    public static File createFile(String title, String html) throws IOException, GeneralSecurityException {
+        File fileMetadata = new File();
+        fileMetadata.setName(title + ".html");
+        fileMetadata.setMimeType("application/vnd.google-apps.document");
+
+        // Convert the HTML string to a file content object.
+        ByteArrayContent content = ByteArrayContent.fromString("text/html", html);
+
+        // Upload the file to Google Drive.
+        File file = createService().files().create(fileMetadata, content)
+                .setFields("id")
+                .execute();
+        return file;
     }
 
     public void shareWithAnyone(DriveRole role) throws IOException {

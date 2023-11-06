@@ -1,6 +1,7 @@
 package link.locutus.discord.web.test;
 
 import cn.easyproject.easyocr.ImageType;
+import com.google.api.services.drive.model.File;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.FlowType;
 import link.locutus.discord.apiv1.enums.ResourceType;
@@ -35,6 +36,8 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.sheet.DriveFile;
+import link.locutus.discord.util.sheet.GoogleDoc;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
@@ -43,6 +46,7 @@ import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -205,23 +209,14 @@ public class TestCommands {
     }
 
     @Command
-    public String testImage(@Me IMessageIO io, DBAlliance alliance1, DBAlliance alliance2) throws IOException {
-//        new EmbedBuilder().setImage()
-//        new MessageCreateBuilder().addEmbeds();
-//        channel.sendMessage()
-        List<AllianceMetric> metrics = new ArrayList<>(Arrays.asList(AllianceMetric.MEMBERS));
-        long endTurn = TimeUtil.getTurn();
-        long startTurn = endTurn - 120;
-        String coalitionName = "Departures";
-        List<String> coalitions = Arrays.asList("col1", "col1");
-        List<Set<DBAlliance>> alliances = Arrays.asList(Collections.singleton(alliance1), Collections.singleton(alliance2));
-        TimeNumericTable table = AllianceMetric.generateTable(AllianceMetric.MEMBERS, startTurn, endTurn, coalitions, alliances.toArray(new Set[0]));
-        byte[] data = table.write(TimeFormat.TURN_TO_DATE, AllianceMetric.getFormat(metrics));
-        StringBuilder body = new StringBuilder();
-        body.append("Hello World\n");
-        body.append("attachment://output.png");
-        io.create().image("output.png", data).embed("title", body.toString()).send();
-        return null;
+    public String testImage(@Me IMessageIO io, String text) throws IOException, GeneralSecurityException {
+        String title = "Title test";
+
+        File file = DriveFile.createFile(title, "<b>hello world</b>");
+        String id = file.getId();
+        String googleDocUrl = "https://docs.google.com/document/d/" + id + "/edit";
+
+        return googleDocUrl;
     }
 
 //    public String test(NationPlaceholders placeholders, ValueStore store, String input, @Me DBNation me, @Me User user) {

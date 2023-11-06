@@ -100,6 +100,13 @@ public class NationCommands {
                 return createArgs();
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="countWars")
+        public static class countWars extends CommandRef {
+            public static final countWars cmd = new countWars();
+            public countWars create(String warFilter) {
+                return createArgs("warFilter", warFilter);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="daysSince3ConsecutiveLogins")
         public static class daysSince3ConsecutiveLogins extends CommandRef {
             public static final daysSince3ConsecutiveLogins cmd = new daysSince3ConsecutiveLogins();

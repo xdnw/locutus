@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -210,11 +211,7 @@ public class StringMan {
         return out.toString();
     }
 
-    public static Set<String> enumerateReplacements(String announcement, List<String> replacements, int requiredResults, int requiredDiff, int requiredDepth) {
-        if (requiredDepth >= replacements.size()) {
-            throw new IllegalArgumentException("Depth is too high");
-        }
-
+    private static List<String[]> getReplacementString(String announcement, List<String> replacements) {
         List<String[]> replacementsSplit = new ArrayList<>();
 
         for (int i = 0; i < replacements.size(); i++) {
@@ -228,22 +225,41 @@ public class StringMan {
             replacementsSplit.add(split);
         }
 
+        return replacementsSplit;
+    }
+
+    public static String getReplacementIndex(String announcement, List<String> replacements, int requiredResults, int requiredDiff, int requiredDepth, int index) {
+        if (requiredDepth >= replacements.size()) {
+            throw new IllegalArgumentException("Depth is too high");
+        }
+        List<String[]> replacementsSplit = getReplacementString(announcement, replacements);
         Set<String> results = new LinkedHashSet<>();
-        replace(announcement, replacementsSplit, 0, 0, 0, -2, 0, requiredDiff, requiredDepth, requiredResults, results);
+        replace(announcement, replacementsSplit, 0, 0, 0, -2, 0, requiredDiff, requiredDepth, requiredResults, results, 0, i -> i == index);
+        if (results.isEmpty()) return null;
+        return results.iterator().next();
+    }
+
+    public static Set<String> enumerateReplacements(String announcement, List<String> replacements, int requiredResults, int requiredDiff, int requiredDepth) {
+        if (requiredDepth >= replacements.size()) {
+            throw new IllegalArgumentException("Depth is too high");
+        }
+        List<String[]> replacementsSplit = getReplacementString(announcement, replacements);
+        Set<String> results = new LinkedHashSet<>();
+        replace(announcement, replacementsSplit, 0, 0, 0, -2, 0, requiredDiff, requiredDepth, requiredResults, results, 0, f -> true);
         return results;
     }
 
-    private static void replace(String announcement, List<String[]> replacements, int lastIndexAdded, int globalIndex, int replacementsIndex, int foundIndex, int depth, int requiredDiff, int requiredDepth, int requiredResults, Set<String> results) {
+    private static void replace(String announcement, List<String[]> replacements, int lastIndexAdded, int globalIndex, int replacementsIndex, int foundIndex, int depth, int requiredDiff, int requiredDepth, int requiredResults, Set<String> results, int currentIndex, Predicate<Integer> allowIndex) {
         if (replacementsIndex >= replacements.size()) return;
         String[] currentReplacements = replacements.get(replacementsIndex);
         String search = currentReplacements[0];
 
         foundIndex = announcement.indexOf(search, foundIndex + 1);
         if (foundIndex < 0) {
-            if (requiredDiff <= 0 && requiredDepth <= depth) {
+            if (requiredDiff <= 0 && requiredDepth <= depth && allowIndex.test(currentIndex)) {
                 results.add(announcement);
             }
-            replace(announcement, replacements, lastIndexAdded, globalIndex, replacementsIndex + 1, -1, depth + 1, requiredDiff, requiredDepth, requiredResults, results);
+            replace(announcement, replacements, lastIndexAdded, globalIndex, replacementsIndex + 1, -1, depth + 1, requiredDiff, requiredDepth, requiredResults, results, currentIndex + 1, allowIndex);
             return;
         }
 
@@ -251,10 +267,11 @@ public class StringMan {
             String replacement = currentReplacements[k];
 
             String replaced = announcement;
-            if (k > 0) {
+            if (k > 0 && allowIndex.test(currentIndex)) {
                 replaced = announcement.substring(0, foundIndex) + replacement + announcement.substring(foundIndex + search.length());
 
                 if (requiredDepth >= depth && (requiredDiff <= 1 || globalIndex - lastIndexAdded >= requiredDiff)) {
+                    currentIndex++;
                     lastIndexAdded = globalIndex;
                     results.add(replaced);
 
@@ -262,7 +279,7 @@ public class StringMan {
                 }
             }
 
-            replace(replaced, replacements, lastIndexAdded, globalIndex + (k > 0 ? 1 : 0), replacementsIndex, foundIndex + replacement.length(), depth, requiredDiff, requiredDepth, requiredResults, results);
+            replace(replaced, replacements, lastIndexAdded, globalIndex + (k > 0 ? 1 : 0), replacementsIndex, foundIndex + replacement.length(), depth, requiredDiff, requiredDepth, requiredResults, results, currentIndex + 1, allowIndex);
         }
     }
 
