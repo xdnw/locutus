@@ -870,6 +870,38 @@ public class DiscordUtil {
         return null;
     }
 
+    public static Long parseUserId(Guild guild, String arg) {
+        if (arg.charAt(0) == '<' && arg.charAt(arg.length() - 1) == '>') {
+            arg = arg.substring(1, arg.length() - 1);
+        }
+        if (arg.charAt(0) == '@') {
+            arg = arg.substring(1);
+        }
+        if (arg.charAt(0) == '!') {
+            arg = arg.substring(1);
+        }
+        if (MathMan.isInteger(arg)) {
+            return Long.parseLong(arg);
+        }
+        if (arg.contains("#")) {
+            String[] split = arg.split("#");
+            if (split.length != 2) {
+                return null;
+            }
+            User user = Locutus.imp().getDiscordApi().getUserByTag(split[0], split[1]);
+            return user != null ? user.getIdLong() : null;
+        }
+        User user = Locutus.imp().getDiscordApi().getUserByTag(arg, "");
+        if (user != null) {
+            return user.getIdLong();
+        }
+        DBNation nation = parseNation(arg);
+        if (nation != null) {
+            return nation.getUserId();
+        }
+        return null;
+    }
+
     public static User getUser(String arg) {
         if (arg.charAt(0) == '<' && arg.charAt(arg.length() - 1) == '>') {
             arg = arg.substring(1, arg.length() - 1);

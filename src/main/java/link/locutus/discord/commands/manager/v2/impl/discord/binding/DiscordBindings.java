@@ -61,7 +61,9 @@ public class DiscordBindings extends BindingHelper {
         if (guild == null) throw new IllegalArgumentException("Event did not happen inside a guild.");
         User user = user(selfUser, name);
         Member member = guild.getMember(user);
-        if (member == null) throw new IllegalArgumentException("No such member: " + user.getName());
+        if (member == null) {
+            throw new IllegalArgumentException("No such member: " + user.getName());
+        }
         return member;
     }
 

@@ -28,6 +28,7 @@ import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
@@ -67,6 +68,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
@@ -421,34 +423,141 @@ public class PlaceholdersMap {
         return cities;
     }
 
+    private Set<UserWrapper> parseUserSingle(Guild guild, String input) {
+        // *
+        if (input.equalsIgnoreCase("*")) {
+            return guild.getMembers().stream().map(UserWrapper::new).collect(Collectors.toSet());
+        }
+        // username
+        List<Member> members = guild.getMembersByName(input, true);
+        if (!members.isEmpty()) {
+            return members.stream().map(UserWrapper::new).collect(Collectors.toSet());
+        }
+        // user id / mention
+        User user = DiscordUtil.getUser(input);
+        if (user != null) {
+            return new LinkedHashSet<>(List.of(new UserWrapper(guild, user)));
+        }
+        // Role
+        Role role = DiscordUtil.getRole(guild, input);
+        if (role != null) {
+            return guild.getMembersWithRoles(role).stream().map(UserWrapper::new).collect(Collectors.toSet());
+        }
+        NationOrAlliance natOrAA = PWBindings.nationOrAlliance(input);
+        if (natOrAA.isNation()) {
+            user = natOrAA.asNation().getUser();
+            if (user == null) {
+                throw new IllegalArgumentException("Nation " + natOrAA.getMarkdownUrl() + " is not registered. See: " + CM.register.cmd.toSlashMention());
+            }
+            return new LinkedHashSet<>(List.of(new UserWrapper(guild, user)));
+        }
+        return natOrAA.asAlliance().getNations().stream().map(f -> {
+            Long id = f.getUserId();
+            return id != null ? guild.getMemberById(id) : null;
+        }).filter(Objects::nonNull).map(UserWrapper::new).collect(Collectors.toSet());
+    }
+
+    private Predicate<UserWrapper> parseUserPredicate(Guild guild, String input) {
+        boolean canRole;
+        boolean canUser;
+        if (input.startsWith("<@&")) {
+            canRole = true;
+            canUser = false;
+            input = input.substring(3, input.length() - 1);
+        } else {
+            canUser = true;
+            if (input.startsWith("<@!") || input.startsWith("<@")) {
+                canRole = false;
+                input = input.replace("!", "");
+                input = input.substring(2, input.length() - 1);
+            } else {
+                canRole = true;
+            }
+        }
+        if (MathMan.isInteger(input)) {
+            long id = Long.parseLong(input);
+            if (id > Integer.MAX_VALUE) {
+                return f -> {
+                    if (canUser && f.getUserId() == id) return true;
+                    if (canRole) {
+                        Member member = f.getMember();
+                        if (member != null) {
+                            for (Role role : member.getRoles()) {
+                                if (role.getIdLong() == id) return true;
+                            }
+                        }
+                    }
+                    return false;
+                };
+            }
+            int intId = (int) id;
+            return f -> {
+                DBNation nation = f.getNation();
+                if (nation != null) {
+                    return nation.getId() == intId || nation.getAlliance_id() == intId;
+                }
+                return false;
+            };
+        }
+        Long id = DiscordUtil.parseUserId(guild, input);
+        if (id != null) {
+            return f -> f.getUserId() == id;
+        }
+        Integer nationId = DiscordUtil.parseNationId(input);
+        if (nationId != null) {
+            return f -> {
+                DBNation nation = f.getNation();
+                if (nation != null) {
+                    return nation.getId() == nationId;
+                }
+                return false;
+            };
+        }
+        Set<Integer> allianceId = DiscordUtil.parseAllianceIds(guild, input);
+        if (allianceId != null && !allianceId.isEmpty()) {
+            return f -> {
+                DBNation nation = f.getNation();
+                if (nation != null) {
+                    return allianceId.contains(nation.getAlliance_id());
+                }
+                return false;
+            };
+        }
+        String finalInput = input;
+        return f -> {
+            Member member = f.getMember();
+            if (member != null) {
+                for (Role role : member.getRoles()) {
+                    if (role.getName().equalsIgnoreCase(finalInput)) return true;
+                }
+            }
+            return false;
+        };
+    }
+
     private Placeholders<UserWrapper> createUsers() {
         return Placeholders.create(UserWrapper.class, store, validators, permisser,
                 "TODO CM REF",
                 (store, input) -> {
                     GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
                     Guild guild = db.getGuild();
-                    if (input.equalsIgnoreCase("*")) {
-                        return guild.getMembers().stream().map(UserWrapper::new).collect(Collectors.toSet());
-                    }
                     if (SpreadSheet.isSheet(input)) {
-                        return SpreadSheet.parseSheet(input, List.of("user"), true, (type, str) -> DiscordBindings.member(guild, null, str));
+                        Set<Member> member = SpreadSheet.parseSheet(input, List.of("user"), true, (type, str) -> DiscordBindings.member(guild, null, str));
+                        return member.stream().map(UserWrapper::new).collect(Collectors.toSet());
                     }
-                    Member member = DiscordBindings.member(guild, null, input);
-                    Set<UserWrapper> result = new ObjectOpenHashSet<>();
-                    result.add(new UserWrapper(member));
-                    return result;
+                    return parseUserSingle(guild, input);
                 }, (store, input) -> {
                     if (input.equalsIgnoreCase("*")) return f -> true;
+
+                    GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
+                    Guild guild = db.getGuild();
+
                     if (SpreadSheet.isSheet(input)) {
-                        Set<Long> sheet = SpreadSheet.parseSheet(input, List.of("users"), true,
-                                (type, str) -> DiscordUtil.parseUserId(str));
-                        return f -> sheet.contains(f.getDiscord_id());
+                        Set<Long> sheet = SpreadSheet.parseSheet(input, List.of("user"), true,
+                                (type, str) -> DiscordUtil.parseUserId(guild, str));
+                        return f -> sheet.contains(f.getUserId());
                     }
-                    if (MathMan.isInteger(input)) {
-                        long id = Long.parseLong(input);
-                        return f -> f.getDiscord_id() == id;
-                    }
-                    return f -> f.getDiscord_id() == DiscordUtil.parseUserId(input);
+                    return parseUserPredicate(guild, input);
                 });
         
     }
