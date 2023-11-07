@@ -231,7 +231,7 @@ public abstract class Placeholders<T> {
                     part2 = "0";
                     op = Operation.GREATER;
                 }
-                double val2 = MathMan.parseDouble(part2);
+                double val2 = PrimitiveBindings.Number(part2).doubleValue();
                 adapter = op.getNumberPredicate(val2);
             } else {
                 throw new IllegalArgumentException("Only the following filter types are supported: String, Number, Boolean, not: `" + ((Class<?>) type).getSimpleName() + "`");
