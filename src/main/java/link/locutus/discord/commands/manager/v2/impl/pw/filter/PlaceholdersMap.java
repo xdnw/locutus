@@ -25,6 +25,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
+import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
@@ -54,6 +55,7 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 
@@ -420,6 +422,34 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<UserWrapper> createUsers() {
+        return Placeholders.create(UserWrapper.class, store, validators, permisser,
+                "TODO CM REF",
+                (store, input) -> {
+                    GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
+                    Guild guild = db.getGuild();
+                    if (input.equalsIgnoreCase("*")) {
+                        return guild.getMembers().stream().map(UserWrapper::new).collect(Collectors.toSet());
+                    }
+                    if (SpreadSheet.isSheet(input)) {
+                        return SpreadSheet.parseSheet(input, List.of("user"), true, (type, str) -> DiscordBindings.member(guild, null, str));
+                    }
+                    Member member = DiscordBindings.member(guild, null, input);
+                    Set<UserWrapper> result = new ObjectOpenHashSet<>();
+                    result.add(new UserWrapper(member));
+                    return result;
+                }, (store, input) -> {
+                    if (input.equalsIgnoreCase("*")) return f -> true;
+                    if (SpreadSheet.isSheet(input)) {
+                        Set<Long> sheet = SpreadSheet.parseSheet(input, List.of("users"), true,
+                                (type, str) -> DiscordUtil.parseUserId(str));
+                        return f -> sheet.contains(f.getDiscord_id());
+                    }
+                    if (MathMan.isInteger(input)) {
+                        long id = Long.parseLong(input);
+                        return f -> f.getDiscord_id() == id;
+                    }
+                    return f -> f.getDiscord_id() == DiscordUtil.parseUserId(input);
+                });
         
     }
 
