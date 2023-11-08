@@ -40,6 +40,7 @@ import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.DBAlliancePosition;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBTrade;
+import link.locutus.discord.db.entities.DBTreasure;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.TaxBracket;
@@ -814,10 +815,23 @@ public class UnsortedCommands {
         double[] cityProfit = new double[ResourceType.values.length];
         double[] milUp = new double[ResourceType.values.length];
         int tradeBonusTotal = 0;
+        Map<Integer, Integer> treasureByAA = new HashMap<>();
         for (DBNation nation : filtered) {
-            ResourceType.add(cityProfit, nation.getRevenue(12, true, false, false, !excludeNationBonus, false, false, false));
-            ResourceType.add(milUp, nation.getRevenue(12, false, true, false, false, false, false, false));
-            tradeBonusTotal += nation.getColor().getTurnBonus() * 12;
+            if (nation.getAlliance_id() == 0) continue;
+            for (DBTreasure treasure : nation.getTreasures()) {
+                treasureByAA.merge(nation.getAlliance_id(), 1, Integer::sum);
+            }
+        }
+        for (DBNation nation : filtered) {
+            int treasures = treasureByAA.getOrDefault(nation.getAlliance_id(), 0);
+            Set<DBTreasure> natTreasures = nation.getTreasures();
+            double treasureBonus = ((treasures == 0 ? 0 : Math.sqrt(treasures * 4)) + natTreasures.stream().mapToDouble(DBTreasure::getBonus).sum()) * 0.01;
+
+            ResourceType.add(cityProfit, nation.getRevenue(12, true, false, false, !excludeNationBonus, false, false, treasureBonus, false));
+            ResourceType.add(milUp, nation.getRevenue(12, false, true, false, false, false, false, treasureBonus, false));
+            long nationColorBonus = Math.round(nation.getColor().getTurnBonus() * 12 * me.getGrossModifier());
+            tradeBonusTotal += nationColorBonus;
+
         }
         double[] total = ResourceType.builder().add(cityProfit).add(milUp).addMoney(tradeBonusTotal).build();
 
@@ -866,7 +880,7 @@ public class UnsortedCommands {
         if (nation == null) return "Please use " + CM.register.cmd.toSlashMention();
         JavaCity jCity = new JavaCity(city);
 
-        double[] revenue = PnwUtil.getRevenue(null, 12, nation, Collections.singleton(jCity), false, false, !excludeNationBonus, false, false);
+        double[] revenue = PnwUtil.getRevenue(null, 12, nation, Collections.singleton(jCity), false, false, !excludeNationBonus, false, false, nation.getTreasureBonusPct());
 
         JavaCity.Metrics metrics = jCity.getMetrics(nation::hasProject);
         IMessageBuilder msg = channel.create()
@@ -1015,14 +1029,24 @@ public class UnsortedCommands {
         Map<Integer, Map<Integer, DBCity>> allCities = Locutus.imp().getNationDB().getCitiesV3(nationIds);
         double[] profitBuffer = ResourceType.getBuffer();
 
+        Map<Integer, Integer> treasureByAA = new HashMap<>();
+        for (DBNation nation : nations) {
+            if (nation.getAlliance_id() == 0) continue;
+            for (DBTreasure treasure : nation.getTreasures()) {
+                treasureByAA.merge(nation.getAlliance_id(), 1, Integer::sum);
+            }
+        }
+
         for (DBNation nation : nations) {
             Map<Integer, DBCity> v3Cities = allCities.get(nation.getNation_id());
             if (v3Cities == null || v3Cities.isEmpty()) continue;
 
-//            Map<Integer, JavaCity> cities = Locutus.imp().getNationDB().toJavaCity(v3Cities);
+            int treasures = treasureByAA.getOrDefault(nation.getAlliance_id(), 0);
+            Set<DBTreasure> natTreasures = nation.getTreasures();
+            double treasureBonus = ((treasures == 0 ? 0 : Math.sqrt(treasures * 4)) + natTreasures.stream().mapToDouble(DBTreasure::getBonus).sum()) * 0.01;
 
             Arrays.fill(profitBuffer, 0);
-            double[] profit = nation.getRevenue(12, true, !ignoreMilitaryUpkeep, !ignoreTradeBonus, !ignoreNationBonus, false, false, false);
+            double[] profit = nation.getRevenue(12, true, !ignoreMilitaryUpkeep, !ignoreTradeBonus, !ignoreNationBonus, false, false, treasureBonus, false);
             double value;
             if (resources.size() == 1) {
                 value = profit[resources.get(0).ordinal()];

@@ -28,6 +28,7 @@ import com.locutus.wiki.pages.WikiHostingLocutus;
 import com.locutus.wiki.pages.WikiInterviewPage;
 import com.locutus.wiki.pages.WikiLoanPage;
 import com.locutus.wiki.pages.WikiNationPlaceholdersPage;
+import com.locutus.wiki.pages.WikiPlaceholderPage;
 import com.locutus.wiki.pages.WikiRecruitmentPage;
 import com.locutus.wiki.pages.WikiReportPage;
 import com.locutus.wiki.pages.WikiSelfRoles;
@@ -39,13 +40,17 @@ import com.locutus.wiki.pages.WikiTaxBracketPage;
 import com.locutus.wiki.pages.WikiTradePage;
 import com.locutus.wiki.pages.WikiWarAlertsPage;
 import com.locutus.wiki.pages.WikiWarRoomPage;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class WikiGenHandler {
@@ -70,10 +75,6 @@ public class WikiGenHandler {
         pages.add(new WikiCommandsPage(manager));
         // arguments
         pages.add(new WikiArgumentsPage(manager));
-        // nation_placeholders
-        pages.add(new WikiNationPlaceholdersPage(manager));
-        // alliance_placeholders
-        pages.add(new WikiAlliancePlaceholdersPage(manager));
         //War Alerts
         pages.add(new WikiWarAlertsPage(manager));
 //        //Auto masking
@@ -150,10 +151,24 @@ public class WikiGenHandler {
         // add role to all members
         // mask command?
 
-        WikiHelpPage help = new WikiHelpPage(manager, pages);
+        // Placeholders
+
+        List<BotWikiGen> placeholderPages = new ArrayList<>();
+        PlaceholdersMap placeholderMap = Locutus.cmd().getV2().getPlaceholders();
+        List<Class> types = new ArrayList<>(placeholderMap.getTypes());
+        Collections.sort(types, Comparator.comparing(Class::getSimpleName));
+        for (Class type : types) {
+            placeholderPages.add(new WikiPlaceholderPage(manager, placeholderMap, type));
+        }
+        System.out.println("Types " + types.size());
+
+        WikiHelpPage help = new WikiHelpPage(manager, pages, placeholderPages);
         pages.add(help);
 
-        for (BotWikiGen page : pages) {
+        ArrayList<BotWikiGen> allPages = new ArrayList<>();
+        allPages.addAll(placeholderPages);
+        allPages.addAll(pages);
+        for (BotWikiGen page : allPages) {
             writePage(page);
         }
     }

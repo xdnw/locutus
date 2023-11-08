@@ -183,7 +183,7 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
     }
 
     @Override
-    public String getCommandMention() {
+    public String getDescription() {
         // TODO cm ref
         return "<https://github.com/xdnw/locutus/wiki/alliance_placeholders>";
     }

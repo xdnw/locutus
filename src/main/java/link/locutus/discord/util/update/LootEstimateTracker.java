@@ -478,6 +478,13 @@ public class LootEstimateTracker {
 
         long date = event.getTimeCreated();
         long turn = TimeUtil.getTurn();
+        Map<Integer, Integer> treasureByAA = new HashMap<>();
+        for (DBTreasure treasure : Locutus.imp().getNationDB().getTreasuresByName().values()) {
+            DBNation nation = treasure.getNation();
+            if (nation != null && nation.getAlliance_id() != 0) {
+                treasureByAA.merge(nation.getAlliance_id(), 1, Integer::sum);
+            }
+        }
 
         for (DBNation nation : Locutus.imp().getNationDB().getNationsMatching(f -> true)) {
             if (nation.getVm_turns() > 0) {
@@ -492,12 +499,16 @@ public class LootEstimateTracker {
             LootEstimate estimate = getOrCreate(nation.getNation_id());
             if (estimate == null) continue;
 
+            int treasures = treasureByAA.getOrDefault(nation.getAlliance_id(), 0);
+            Set<DBTreasure> natTreasures = nation.getTreasures();
+            double treasureBonus = ((treasures == 0 ? 0 : Math.sqrt(treasures * 4)) + natTreasures.stream().mapToDouble(DBTreasure::getBonus).sum()) * 0.01;
+
             System.arraycopy(estimate.max, 0, existingBuffer, 0, estimate.max.length);
 
             int turnDiff = (int) (turn - estimate.lastTurnRevenue);
             boolean noFood = estimate.max[ResourceType.FOOD.ordinal()] <= 0;
 
-            double[] revenue = nation.getRevenue(turnDiff, true, true, true, true, noFood, false, false);
+            double[] revenue = nation.getRevenue(turnDiff, true, true, true, true, noFood, false, treasureBonus, false);
             for (ResourceType type : ResourceType.values) {
                 if (type.isManufactured()) {
                     double min = 0;

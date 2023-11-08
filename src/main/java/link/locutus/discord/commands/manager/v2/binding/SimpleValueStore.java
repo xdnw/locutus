@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.binding;
 
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
+import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 
 import java.lang.reflect.Type;
 import java.util.*;

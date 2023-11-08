@@ -21,11 +21,20 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.AllowDeleted;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
+import link.locutus.discord.commands.manager.v2.binding.bindings.SimplePlaceholders;
+import link.locutus.discord.commands.manager.v2.binding.bindings.StaticPlaceholders;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -44,6 +53,7 @@ import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.UserWrapper;
+import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -60,6 +70,8 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -82,6 +94,10 @@ public class PlaceholdersMap {
     private final ValueStore store;
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
+
+    public Set<Class<?>> getTypes() {
+        return placeholders.keySet();
+    }
 
     public PlaceholdersMap(ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
         this.store = store;
@@ -146,7 +162,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<Continent> createContinents() {
-        return Placeholders.createStatic(Continent.class, store, validators, permisser,
+        return new StaticPlaceholders<Continent>(Continent.class, store, validators, permisser,
                 "TODO CM REF",
                 (store, input) -> {
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Continent.values()));
@@ -154,7 +170,85 @@ public class PlaceholdersMap {
                         return SpreadSheet.parseSheet(input, List.of("continent"), true, (type, str) -> PWBindings.continent(str));
                     }
                     return emumSet(Continent.class, input);
-                });
+                }) {
+            @NoFormat
+            @Command(descMethod = "help")
+            @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+            public String continentSheet(@Me GuildDB db, @Me IMessageIO io, @Me User author, Set<Continent> continents, @Switch("s") SpreadSheet sheet,
+                                         TypedFunction<Continent, String> column1,
+                                            @Default TypedFunction<Continent, String> column2,
+                                            @Default TypedFunction<Continent, String> column3,
+                                            @Default TypedFunction<Continent, String> column4,
+                                            @Default TypedFunction<Continent, String> column5,
+                                            @Default TypedFunction<Continent, String> column6,
+                                            @Default TypedFunction<Continent, String> column7,
+                                            @Default TypedFunction<Continent, String> column8,
+                                            @Default TypedFunction<Continent, String> column9,
+                                            @Default TypedFunction<Continent, String> column10,
+                                            @Default TypedFunction<Continent, String> column11,
+                                            @Default TypedFunction<Continent, String> column12,
+                                            @Default TypedFunction<Continent, String> column13,
+                                            @Default TypedFunction<Continent, String> column14,
+                                            @Default TypedFunction<Continent, String> column15,
+                                            @Default TypedFunction<Continent, String> column16,
+                                            @Default TypedFunction<Continent, String> column17,
+                                            @Default TypedFunction<Continent, String> column18,
+                                            @Default TypedFunction<Continent, String> column19,
+                                            @Default TypedFunction<Continent, String> column20,
+                                            @Default TypedFunction<Continent, String> column21,
+                                            @Default TypedFunction<Continent, String> column22,
+                                            @Default TypedFunction<Continent, String> column23) throws GeneralSecurityException, IOException {
+                if (sheet == null) {
+                    sheet = SpreadSheet.create(db, SheetKeys.CONTINENT_SHEET);
+                }
+                List<TypedFunction<Continent, String>> columns = new ArrayList<>();
+                columns.add(column1);
+                if (column2 != null) columns.add(column2);
+                if (column3 != null) columns.add(column3);
+                if (column4 != null) columns.add(column4);
+                if (column5 != null) columns.add(column5);
+                if (column6 != null) columns.add(column6);
+                if (column7 != null) columns.add(column7);
+                if (column8 != null) columns.add(column8);
+                if (column9 != null) columns.add(column9);
+                if (column10 != null) columns.add(column10);
+                if (column11 != null) columns.add(column11);
+                if (column12 != null) columns.add(column12);
+                if (column13 != null) columns.add(column13);
+                if (column14 != null) columns.add(column14);
+                if (column15 != null) columns.add(column15);
+                if (column16 != null) columns.add(column16);
+                if (column17 != null) columns.add(column17);
+                if (column18 != null) columns.add(column18);
+                if (column19 != null) columns.add(column19);
+                if (column20 != null) columns.add(column20);
+                if (column21 != null) columns.add(column21);
+                if (column22 != null) columns.add(column22);
+                if (column23 != null) columns.add(column23);
+
+                List<String> header = new ArrayList<>();
+                for (TypedFunction<Continent, String> column : columns) {
+                    header.add(column.getName());
+                }
+
+                sheet.addRow(header);
+
+                for (Continent continent : continents) {
+                    List<String> row = new ArrayList<>();
+                    for (TypedFunction<Continent, String> column : columns) {
+                        row.add(column.apply(continent));
+                    }
+                    sheet.addRow(row);
+                }
+
+                sheet.clearAll();
+                sheet.set(0, 0);
+
+                sheet.attach(io.create(), "continent").send();
+                return null;
+            }
+
+        };
     }
 
     private Set<NationOrAlliance> nationOrAlliancesSingle(ValueStore store, String input) {
@@ -209,7 +303,7 @@ public class PlaceholdersMap {
         NationPlaceholders nationPlaceholders = (NationPlaceholders) get(DBNation.class);
         return new Placeholders<NationOrAlliance>(NationOrAlliance.class, store, validators, permisser) {
             @Override
-            public String getCommandMention() {
+            public String getDescription() {
                 return "TODO";
             }
 
@@ -257,7 +351,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<GuildDB> createGuildDB() {
-        return Placeholders.create(GuildDB.class, store, validators, permisser,
+        return new SimplePlaceholders<GuildDB>(GuildDB.class,  store, validators, permisser,
                 "TODO CM Ref",
                 (store, input) -> {
                     User user = (User) store.getProvided(Key.of(User.class, Me.class), true);
@@ -301,7 +395,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<DBBan> createBans() {
-        return Placeholders.create(DBBan.class, store, validators, permisser,
+        return new SimplePlaceholders<DBBan>(DBBan.class,  store, validators, permisser,
                 "TODO CM REF",
                 (store, input) -> {
                     if (input.equalsIgnoreCase("*")) {
@@ -343,7 +437,7 @@ public class PlaceholdersMap {
 //    }
 
     private Placeholders<NationList> createNationList() {
-        return Placeholders.create(NationList.class, store, validators, permisser,
+        return new SimplePlaceholders<NationList>(NationList.class,  store, validators, permisser,
                 "TODO CM REF",
                 (store, input) -> {
                     Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
@@ -536,7 +630,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<UserWrapper> createUsers() {
-        return Placeholders.create(UserWrapper.class, store, validators, permisser,
+        return new SimplePlaceholders<UserWrapper>(UserWrapper.class,  store, validators, permisser,
                 "TODO CM REF",
                 (store, input) -> {
                     GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
@@ -559,11 +653,11 @@ public class PlaceholdersMap {
                     }
                     return parseUserPredicate(guild, input);
                 });
-        
+
     }
 
     private Placeholders<DBCity> createCities() {
-        return Placeholders.create(DBCity.class, store, validators, permisser,
+        return new SimplePlaceholders<DBCity>(DBCity.class,  store, validators, permisser,
                 "TODO CM REF",
                 (store, input) -> {
                     if (input.equalsIgnoreCase("*")) {
@@ -693,7 +787,7 @@ public class PlaceholdersMap {
     }
 
     public Placeholders<BankDB.TaxDeposit> createTaxDeposit() {
-        return Placeholders.create(BankDB.TaxDeposit.class, store, validators, permisser,
+        return new SimplePlaceholders<>(BankDB.TaxDeposit.class, store, validators, permisser,
                 "TODO CM REF",
                 (store, input) -> {
                     Predicate<BankDB.TaxDeposit> canView = getCanView(store);
@@ -777,7 +871,7 @@ public class PlaceholdersMap {
     }
 
     public Placeholders<IAttack> createAttacks() {
-        return Placeholders.create(IAttack.class, store, validators, permisser,
+        return new SimplePlaceholders<IAttack>(IAttack.class,  store, validators, permisser,
                 "TODO CM REF",
                 (store, input) -> {
                     if (SpreadSheet.isSheet(input)) {
@@ -850,7 +944,7 @@ public class PlaceholdersMap {
     }
 
     public Placeholders<TaxBracket> createBrackets() {
-        return Placeholders.create(TaxBracket.class, store, validators, permisser,
+        return new SimplePlaceholders<TaxBracket>(TaxBracket.class,  store, validators, permisser,
                 "TODO CM REF",
                 (store2, input) -> {
                     GuildDB db = (GuildDB) store2.getProvided(Key.of(GuildDB.class, Me.class), false);
@@ -898,7 +992,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<DBTrade> createTrades() {
-        return Placeholders.create(DBTrade.class, store, validators, permisser,
+        return new SimplePlaceholders<DBTrade>(DBTrade.class,  store, validators, permisser,
                 "TODO CM REF",
                 (store, input) -> {
                     if (input.equalsIgnoreCase("*")) {
@@ -939,7 +1033,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<Transaction2> createTransactions() {
-        return Placeholders.create(Transaction2.class, store, validators, permisser,
+        return new SimplePlaceholders<Transaction2>(Transaction2.class,  store, validators, permisser,
                 "TODO CM REF",
                 (store, input) -> {
                     GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
@@ -981,7 +1075,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<DBBounty> createBounties() {
-        return Placeholders.create(DBBounty.class, store, validators, permisser,
+        return new SimplePlaceholders<DBBounty>(DBBounty.class,  store, validators, permisser,
                 "TODO CM REF",
                 (store, input) -> {
                     if (input.equalsIgnoreCase("*")) {
@@ -1030,7 +1124,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<Treaty> createTreaty() {
-        return Placeholders.create(Treaty.class, store, validators, permisser,
+        return new SimplePlaceholders<Treaty>(Treaty.class,  store, validators, permisser,
         "TODO CM REF",
         (store, input) -> {
             if (input.equalsIgnoreCase("*")) {
@@ -1110,7 +1204,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<Project> createProjects() {
-        return Placeholders.createStatic(Project.class, store, validators, permisser,
+        return new StaticPlaceholders<Project>(Project.class, store, validators, permisser,
                 "TODO CM REF",
                 (store, input) -> {
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Projects.values));
@@ -1128,7 +1222,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<ResourceType> createResourceType() {
-        return Placeholders.createStatic(ResourceType.class, store, validators, permisser,
+        return new StaticPlaceholders<ResourceType>(ResourceType.class, store, validators, permisser,
         "TODO CM REF",
         (store, input) -> {
             if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(ResourceType.values));
@@ -1140,7 +1234,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<AttackType> createAttackTypes() {
-        return Placeholders.createStatic(AttackType.class, store, validators, permisser,
+        return new StaticPlaceholders<AttackType>(AttackType.class, store, validators, permisser,
                 "TODO CM REF",
                 (store, input) -> {
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(AttackType.values));
@@ -1152,7 +1246,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<MilitaryUnit> createMilitaryUnit() {
-        return Placeholders.createStatic(MilitaryUnit.class, store, validators, permisser,
+        return new StaticPlaceholders<MilitaryUnit>(MilitaryUnit.class, store, validators, permisser,
                 "TODO CM REF",
                 (store, input) -> {
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(MilitaryUnit.values));
@@ -1164,7 +1258,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<TreatyType> createTreatyType() {
-        return Placeholders.createStatic(TreatyType.class, store, validators, permisser,
+        return new StaticPlaceholders<TreatyType>(TreatyType.class, store, validators, permisser,
                 "TODO CM REF",
                 (store, input) -> {
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(TreatyType.values));
@@ -1176,7 +1270,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<IACheckup.AuditType> createAuditType() {
-        return Placeholders.createStatic(IACheckup.AuditType.class, store, validators, permisser,
+        return new StaticPlaceholders<IACheckup.AuditType>(IACheckup.AuditType.class, store, validators, permisser,
                 "TODO CM REF",
                 (store, input) -> {
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(IACheckup.AuditType.values()));
@@ -1188,7 +1282,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<NationColor> createNationColor() {
-        return Placeholders.createStatic(NationColor.class, store, validators, permisser,
+        return new StaticPlaceholders<NationColor>(NationColor.class, store, validators, permisser,
                 "TODO CM REF",
                 (store, input) -> {
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(NationColor.values()));
@@ -1200,7 +1294,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<Building> createBuilding() {
-        return Placeholders.createStatic(Building.class, store, validators, permisser,
+        return new StaticPlaceholders<Building>(Building.class, store, validators, permisser,
                 "TODO CM REF",
                 (store, input) -> {
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Buildings.values()));

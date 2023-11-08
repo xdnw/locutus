@@ -84,6 +84,12 @@ public class CommandManager2 {
 
         this.placeholders = new PlaceholdersMap(store, validators, permisser);
 
+        for (Class<?> type : placeholders.getTypes()) {
+            Placeholders<?> ph = placeholders.get(type);
+            ph.register(store);
+        }
+
+
         this.commands = CommandGroup.createRoot(store, validators);
 
         if (!Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY.isEmpty()) {

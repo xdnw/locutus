@@ -12,10 +12,12 @@ import java.util.List;
 public class WikiHelpPage extends BotWikiGen {
     private final List<BotWikiGen> pages;
     private final String urlPrefix;
+    private final List<BotWikiGen> placeholders;
 
-    public WikiHelpPage(CommandManager2 manager, List<BotWikiGen>pages) {
+    public WikiHelpPage(CommandManager2 manager, List<BotWikiGen> pages, List<BotWikiGen> placeholders) {
         super(manager, "home");
         this.pages = new ArrayList<>(pages);
+        this.placeholders = placeholders;
         this.urlPrefix = "../wiki/";
     }
 
@@ -28,6 +30,13 @@ public class WikiHelpPage extends BotWikiGen {
             pageList.append("### " + MarkupUtil.markdownUrl(page.getPageName(), url)).append("\n");
             pageList.append("> " + page.getDescription().replace("\n", "\n> ")).append("\n");
         }
+
+        StringBuilder placeholderList = new StringBuilder();
+        for (BotWikiGen page : placeholders) {
+            String url = urlPrefix + page.getPageName().replace(" ", "_");
+            placeholderList.append("- " + MarkupUtil.markdownUrl(page.getPageName(), url)).append("\n");
+        }
+
         return build(
                 "# Command Syntax",
                 """
@@ -62,7 +71,10 @@ public class WikiHelpPage extends BotWikiGen {
                 "For example, the `" + GuildKey.ALLIANCE_ID.name() + "` settings",
                 CM.settings.info.cmd.create(GuildKey.ALLIANCE_ID.name(), null, null).toSlashCommand(true),
             "# Overview of this Wiki",
-            pageList.toString()
+            pageList.toString(),
+            "# Placeholders & Filters",
+            "Used in commands to filter a selection, or as placeholders for sheets or messages",
+            placeholderList.toString()
         );
     }
 }

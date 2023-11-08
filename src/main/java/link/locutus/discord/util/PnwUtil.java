@@ -1160,18 +1160,18 @@ public class PnwUtil {
         return total;
     }
 
-    public static double[] getRevenue(double[] profitBuffer, int turns, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower) {
+    public static double[] getRevenue(double[] profitBuffer, int turns, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double treasureBonus) {
         double rads = nation.getRads();
         boolean atWar = nation.getNumWars() > 0;
         long date = -1L;
-        return getRevenue(profitBuffer, turns, date, nation, cities, militaryUpkeep, tradeBonus, bonus, noFood, noPower, rads, atWar);
+        return getRevenue(profitBuffer, turns, date, nation, cities, militaryUpkeep, tradeBonus, bonus, noFood, noPower, rads, atWar, treasureBonus);
     }
 
-    public static double[] getRevenue(double[] profitBuffer, int turns, long date, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double rads, boolean atWar) {
+    public static double[] getRevenue(double[] profitBuffer, int turns, long date, DBNation nation, Collection<JavaCity> cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double rads, boolean atWar, double treasureBonus) {
         if (profitBuffer == null) profitBuffer = new double[ResourceType.values.length];
 
         Continent continent = nation.getContinent();
-        double grossModifier = nation.getGrossModifier(noFood);
+        double grossModifier = nation.getGrossModifier(noFood) + treasureBonus;
         int numCities = bonus ? nation.getCities() : 10;
 
         // Project revenue

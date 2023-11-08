@@ -10,6 +10,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import org.jooq.meta.derby.sys.Sys;
 
@@ -144,7 +145,7 @@ public class UserWrapper {
         return member == null ? 0 : member.getColorRaw();
     }
     @Command(desc = "If this member has access to a channel")
-    public boolean hasAccess(GuildChannel channel) {
+    public boolean hasAccess(TextChannel channel) {
         Member member = getMember();
         return member != null && member.hasAccess(channel);
     }
@@ -154,7 +155,7 @@ public class UserWrapper {
         return member != null && member.hasPermission(permission);
     }
     @Command(desc = "If this member has a permission in a channel")
-    public boolean hasPermission(GuildChannel channel, Permission permission) {
+    public boolean hasPermission(TextChannel channel, Permission permission) {
         Member member = getMember();
         return member != null && member.hasPermission(channel, permission);
     }

@@ -1039,7 +1039,7 @@ public class UtilityCommands {
 
             revenueTurns = nation.getTurnsInactive(lootInfo);
             if (revenueTurns > 0) {
-                revenue = nation.getRevenue(revenueTurns + 24, true, true, false, true, false, false, false);
+                revenue = nation.getRevenue(revenueTurns + 24, true, true, false, true, false, false, 0d, false);
                 if (lootInfo != null) {
                     revenue = PnwUtil.capManuFromRaws(revenue, lootInfo.getTotal_rss());
                 }

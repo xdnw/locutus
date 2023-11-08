@@ -129,7 +129,7 @@ public class DBTreasure {
         return color;
     }
 
-    @Command(desc = "Revenue bonus of this treasure")
+    @Command(desc = "Revenue bonus of this treasure (1% = 1)")
     public int getBonus() {
         return bonus;
     }

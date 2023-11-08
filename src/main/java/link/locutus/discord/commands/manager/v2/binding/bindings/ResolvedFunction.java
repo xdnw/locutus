@@ -5,10 +5,17 @@ import java.lang.reflect.Type;
 public class ResolvedFunction<T, V> extends TypedFunction<T, V> {
     private final V object;
     private final Type type;
+    private final String name;
 
-    public ResolvedFunction(Type type, V object) {
+    public ResolvedFunction(Type type, V object, String name) {
         this.type = type;
         this.object = object;
+        this.name = name;
+    }
+
+    @Override
+    public String getName() {
+        return name;
     }
 
     @Override

@@ -351,7 +351,7 @@ public class RaidCommand extends Command {
                     int turnsInactive = (int) (turn - turnInactive);
 
                     if (turnsInactive > 0) {
-                        double[] revenue = enemy.getRevenue(turnsInactive + 24, true, true, false, true, false, false, false);
+                        double[] revenue = enemy.getRevenue(turnsInactive + 24, true, true, false, true, false, false, 0d, false);
                         if (loot != null) {
                             revenue = PnwUtil.capManuFromRaws(revenue, loot.getTotal_rss());
                         }

@@ -651,8 +651,12 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "A comma separated list of audit types")
-    public Set<IACheckup.AuditType> auditTypes(String input) {
-        return emumSet(IACheckup.AuditType.class, input);
+    public Set<IACheckup.AuditType> auditTypes(ValueStore store, String input) {
+        Set<IACheckup.AuditType> audits = Locutus.cmd().getV2().getPlaceholders().get(IACheckup.AuditType.class).parseSet(store, input);
+        if (audits == null || audits.isEmpty()) {
+            throw new IllegalArgumentException("No audit types found in: " + input + ". Options: " + StringMan.getString(IACheckup.AuditType.values()));
+        }
+        return audits;
     }
 
     @Binding(value = "An audit type")
@@ -671,12 +675,12 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "A comma separated list of continents, or `*`")
-    public static Set<Continent> continentTypes(String input) {
-            if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Continent.values()));
-            if (SpreadSheet.isSheet(input)) {
-                return SpreadSheet.parseSheet(input, List.of("continent"), true, (type, str) -> continent(str));
-            }
-            return emumSet(Continent.class, input);
+    public static Set<Continent> continentTypes(ValueStore store, String input) {
+        Set<Continent> result = Locutus.cmd().getV2().getPlaceholders().get(Continent.class).parseSet(store, input);
+        if (result == null || result.isEmpty()) {
+            throw new IllegalArgumentException("No projects found in: " + input + ". Options: " + StringMan.getString(Continent.values));
+        }
+        return result;
     }
 
     @Binding(value = "A comma separated list of spy operation types")
@@ -706,27 +710,19 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "A comma separated list of alliance projects")
-    public static Set<Project> projects(String input) {
-        if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Projects.values));
-        if (SpreadSheet.isSheet(input)) {
-            return SpreadSheet.parseSheet(input, List.of("project"), true, (type, str) -> project(str));
-        }
-        Set<Project> result = new HashSet<>();
-        for (String type : input.split(",")) {
-            Project project = Projects.get(type);
-            if (project == null) throw new IllegalArgumentException("Invalid project: `" + type + "`");
-            result.add(project);
+    public static Set<Project> projects(ValueStore store, String input) {
+        Set<Project> result = Locutus.cmd().getV2().getPlaceholders().get(Project.class).parseSet(store, input);
+        if (result == null || result.isEmpty()) {
+            throw new IllegalArgumentException("No projects found in: " + input + ". Options: " + StringMan.getString(Projects.values));
         }
         return result;
     }
 
     @Binding(value = "A comma separated list of building types")
-    public Set<Building> buildings(String input) {
-        Set<Building> result = new HashSet<>();
-        for (String type : input.split(",")) {
-            Building building = Buildings.get(type);
-            if (building == null) throw new IllegalArgumentException("Invalid building: `" + type + "`");
-            result.add(building);
+    public Set<Building> buildings(ValueStore store, String input) {
+        Set<Building> result = Locutus.cmd().getV2().getPlaceholders().get(Building.class).parseSet(store, input);
+        if (result == null || result.isEmpty()) {
+            throw new IllegalArgumentException("No projects found in: " + input + ". Options: " + StringMan.getString(Buildings.values()));
         }
         return result;
     }
@@ -939,14 +935,22 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(examples = "GROUND,VICTORY", value = "A comma separated list of attack types")
-    public static Set<AttackType> AttackTypes(String input) {
-        return emumSet(AttackType.class, input);
+    public static Set<AttackType> AttackTypes(ValueStore store, String input) {
+        Set<AttackType> result = Locutus.cmd().getV2().getPlaceholders().get(AttackType.class).parseSet(store, input);
+        if (result == null || result.isEmpty()) {
+            throw new IllegalArgumentException("No projects found in: " + input + ". Options: " + StringMan.getString(AttackType.values));
+        }
+        return result;
     }
 
 
     @Binding(examples = "SOLDIER,TANK,AIRCRAFT,SHIP,MISSILE,NUKE", value = "A comma separated list of military units")
-    public Set<MilitaryUnit> MilitaryUnits(String input) {
-        return emumSet(MilitaryUnit.class, input);
+    public Set<MilitaryUnit> MilitaryUnits(ValueStore store, String input) {
+        Set<MilitaryUnit> result = Locutus.cmd().getV2().getPlaceholders().get(MilitaryUnit.class).parseSet(store, input);
+        if (result == null || result.isEmpty()) {
+            throw new IllegalArgumentException("No projects found in: " + input + ". Options: " + StringMan.getString(MilitaryUnit.values));
+        }
+        return result;
     }
 
     @Binding(examples = {"aluminum", "money", "`*`", "manu", "raws", "!food"}, value = "A comma separated list of resource types")

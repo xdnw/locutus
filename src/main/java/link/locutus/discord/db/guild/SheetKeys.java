@@ -54,4 +54,5 @@ public enum SheetKeys {
     RENAME_CHANNELS,
     OFFSHORE_DEPOSITS,
     NEWSLETTER,
+    CONTINENT_SHEET,
 }

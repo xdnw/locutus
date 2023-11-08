@@ -1,13 +1,17 @@
 package link.locutus.discord.commands.manager.v2.binding.bindings;
 
+import com.google.gson.reflect.TypeToken;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
+import link.locutus.discord.commands.manager.v2.binding.MethodParser;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.*;
@@ -26,7 +30,8 @@ import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.tuple.Triple;
 
-import javax.annotation.Nullable;
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -37,12 +42,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-public abstract class Placeholders<T> {
+public abstract class Placeholders<T> extends BindingHelper {
     private final ValidatorStore validators;
     private final PermissionHandler permisser;
     private final CommandGroup commands;
@@ -61,7 +65,7 @@ public abstract class Placeholders<T> {
         this.commands = CommandGroup.createRoot(store, validators);
         this.store = store;
         this.commands.registerCommandsClass(type);
-        this.commands.registerCommands(this);
+//        this.commands.registerCommands(this);
 
         this.math2Type = new SimpleValueStore();
         this.type2Math = new SimpleValueStore();
@@ -70,33 +74,32 @@ public abstract class Placeholders<T> {
         new PWType2Math().register(type2Math);
     }
 
-    public static <T> Placeholders<T> createStatic(Class<T> type, ValueStore store, ValidatorStore validators, PermissionHandler permisser, String help, BiFunction<ValueStore, String, Set<T>> parse) {
-        return create(type, store, validators, permisser, help, parse, new BiFunction<ValueStore, String, Predicate<T>>() {
-            @Override
-            public Predicate<T> apply(ValueStore valueStore, String s) {
-                Set<T> parsed = parse.apply(valueStore, s);
-                return parsed::contains;
+    private void registerCustom(Method method, Type type) {
+        Binding binding = method.getAnnotation(Binding.class);
+        MethodParser parser = new MethodParser(this, method, this.getDescription(), binding, type);
+        Key key = parser.getKey();
+        Parser existing = store.get(key);
+        if (existing != null) {
+            if (existing instanceof MethodParser<?> mp) {
+                System.out.println("Existing: " + mp.getMethod().getDeclaringClass().getSimpleName() + " | " + mp.getMethod().getName());
+            } else {
+                System.out.println("Existing: " + key);
             }
-        });
+            return;
+        }
+        System.out.println("Registering: " + key);
+        store.addParser(key, parser);
     }
 
-    public static <T> Placeholders<T> create(Class<T> type, ValueStore store, ValidatorStore validators, PermissionHandler permisser, String help, BiFunction<ValueStore, String, Set<T>> parse, BiFunction<ValueStore, String, Predicate<T>> parsePredicate) {
-        return new Placeholders<T>(type, store, validators, permisser) {
-            @Override
-            public String getCommandMention() {
-                return help;
-            }
-
-            @Override
-            protected Set<T> parseSingleElem(ValueStore store, String input) {
-                return parse.apply(store, input);
-            }
-
-            @Override
-            protected Predicate<T> parseSingleFilter(ValueStore store, String input) {
-                return parsePredicate.apply(store, input);
-            }
-        };
+    public void register(ValueStore store) {
+        try {
+            Method methodSet = this.getClass().getMethod("parseSet", ValueStore.class, String.class);
+            Method methodPredicate = this.getClass().getMethod("parseFilter", ValueStore.class, String.class);
+            registerCustom(methodSet, TypeToken.getParameterized(Set.class, this.instanceType).getType());
+            registerCustom(methodPredicate, TypeToken.getParameterized(Predicate.class, this.instanceType).getType());
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public Placeholders<T> register(Object obj) {
@@ -175,7 +178,7 @@ public abstract class Placeholders<T> {
         return new ArrayList<>(result);
     }
 
-    public abstract String getCommandMention();
+    public abstract String getDescription();
     protected abstract Set<T> parseSingleElem(ValueStore store, String input);
     protected abstract Predicate<T> parseSingleFilter(ValueStore store, String input);
 
@@ -252,6 +255,7 @@ public abstract class Placeholders<T> {
         };
     }
 
+    @Binding(value = "A comma separated list of filters")
     public Predicate<T> parseFilter(ValueStore store2, String input) {
         Map<String, Map<T, Object>> cache = new Object2ObjectOpenHashMap<>();
         return ArrayUtil.parseFilter(input,
@@ -263,6 +267,7 @@ public abstract class Placeholders<T> {
         return parseSet(createLocals(guild, author, nation), input);
     }
 
+    @Binding(value = "A comma separated list of items")
     public Set<T> parseSet(ValueStore store2, String input) {
         Map<String, Map<T, Object>> cache = new Object2ObjectOpenHashMap<>();
         return ArrayUtil.resolveQuery(input,
@@ -335,7 +340,7 @@ public abstract class Placeholders<T> {
                             return function.andThen(o -> parseDoubleArray(o, param, true));
                         }
                     }
-                    return ResolvedFunction.create(ArrayUtil.DoubleArray.class, parseDoubleArray(s, param, true));
+                    return ResolvedFunction.create(ArrayUtil.DoubleArray.class, parseDoubleArray(s, param, true), s);
                 };
 
                 ArrayUtil.LazyMathArray<T> lazy = ArrayUtil.calculate(input, new Function<String, ArrayUtil.LazyMathArray<T>>() {
@@ -348,9 +353,9 @@ public abstract class Placeholders<T> {
                 ArrayUtil.DoubleArray array = lazy.getOrNull();
                 Type type = param == null ? Double.class : param.getType();
                 if (array != null) {
-                    return TypedFunction.create(type, toObject(array, param));
+                    return TypedFunction.create(type, toObject(array, param), input);
                 }
-                return TypedFunction.create(type, f -> toObject(lazy.resolve(f), param));
+                return TypedFunction.create(type, f -> toObject(lazy.resolve(f), param), input);
             } else if (hasCurlyBracket) {
                 if (throwError) {
                     throw new IllegalArgumentException("Invalid input: No functions found: `" + input + "`");
@@ -359,7 +364,7 @@ public abstract class Placeholders<T> {
                 }
             } else {
                 double val = PrimitiveBindings.Double(input);
-                return new ResolvedFunction<>(Double.class, val);
+                return new ResolvedFunction<>(Double.class, val, input);
             }
         }
         if (param != null) {
@@ -369,7 +374,7 @@ public abstract class Placeholders<T> {
                 LocalValueStore locals = new LocalValueStore<>(store);
                 locals.addProvider(param);
                 Object val = binding.apply(locals, input);
-                return new ResolvedFunction<>(param.getType(), val);
+                return new ResolvedFunction<>(param.getType(), val,input);
             }
         }
 
@@ -381,7 +386,7 @@ public abstract class Placeholders<T> {
             if (function != null) {
                 return function;
             }
-            return new ResolvedFunction<>(String.class, section);
+            return new ResolvedFunction<>(String.class, section, section);
         }
         boolean isResolved = functions.isEmpty() || functions.values().stream().allMatch(ResolvedFunction.class::isInstance);
         Function<T, Object> result = f -> {
@@ -397,9 +402,9 @@ public abstract class Placeholders<T> {
             return resultStr.toString();
         };
         if (isResolved) {
-            return new ResolvedFunction<>(String.class, result.apply(null));
+            return new ResolvedFunction<>(String.class, result.apply(null), input);
         }
-        return TypedFunction.create(String.class, result);
+        return TypedFunction.create(String.class, result, input);
     }
 
     private Object toObject(ArrayUtil.DoubleArray expr, ParameterData param) {
@@ -471,7 +476,7 @@ public abstract class Placeholders<T> {
         if (closest.size() > 5) closest = closest.subList(0, 5);
         return new IllegalArgumentException("Unknown command (4): " + command + "\n" +
                 "Did you mean:\n- " + StringMan.join(closest, "\n- ") +
-                "\n\nSee also: " + getCommandMention());
+                "\n\nSee also: " + getDescription());
     }
 
     // Helper method to evaluate a function and its arguments
@@ -548,12 +553,17 @@ public abstract class Placeholders<T> {
             }
             return command.parseArgumentMap2(resolvedArgs, store, validators, permisser, true);
         };
+        StringBuilder full = new StringBuilder(command.getPrimaryCommandId());
+        for (Map.Entry<String, TypedFunction<T, ?>> entry : arguments.entrySet()) {
+            full.append(" ").append(entry.getKey()).append(" ").append(entry.getValue());
+        }
+
         BiFunction<T, Object[], Object> format = (object, paramVals) -> command.call(object, store, paramVals);
         if (isResolved) {
             Object[] argArr = resolved.apply(null);
-            return TypedFunction.create(command.getReturnType(), f -> format.apply(f, argArr));
+            return TypedFunction.create(command.getReturnType(), f -> format.apply(f, argArr), full.toString());
         }
-        return TypedFunction.create(command.getReturnType(), f -> format.apply(f, resolved.apply(f)));
+        return TypedFunction.create(command.getReturnType(), f -> format.apply(f, resolved.apply(f)), full.toString());
     }
 
     public static class PlaceholderCache<T> {
@@ -677,7 +687,7 @@ public abstract class Placeholders<T> {
         return this.formatRecursively(store, arg, null, 0, throwError).andThen(f -> f + "");
     }
 
-    private static String[] prefixes = {"get", "is", "can"};
+    private static String[] prefixes = {"get", "is", "can", "has"};
 
 //    public Map.Entry<Type, Function<T, Object>> getTypeFunction(ValueStore<?> store, String id, boolean ignorePerms) {
 //        Map.Entry<Type, Function<T, Object>> typeFunction;

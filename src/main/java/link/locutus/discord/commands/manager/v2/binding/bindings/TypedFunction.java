@@ -9,15 +9,27 @@ public abstract class TypedFunction<T, V> implements Function<T, V> {
         return false;
     }
 
-    public static <T, V> TypedFunction<T, V> create(Type type, V value) {
-        return new ResolvedFunction<>(type, value);
+    public abstract String getName();
+
+    @Override
+    public String toString() {
+        return getName();
     }
 
-    public static <T, V> TypedFunction<T, V> create(Type type, Function<T, V> function) {
+    public static <T, V> TypedFunction<T, V> create(Type type, V value, String name) {
+        return new ResolvedFunction<>(type, value, name);
+    }
+
+    public static <T, V> TypedFunction<T, V> create(Type type, Function<T, V> function, String name) {
         return new TypedFunction<T, V>() {
             @Override
             public Type getType() {
                 return type;
+            }
+
+            @Override
+            public String getName() {
+                return name;
             }
 
             @Override

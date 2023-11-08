@@ -40,6 +40,7 @@ import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.task.deprecated.GetTaxesTask;
 import link.locutus.discord.util.task.EditAllianceTask;
+import org.hibernate.annotations.Comment;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.io.IOException;
@@ -91,6 +92,23 @@ public class DBAlliance implements NationList, NationOrAlliance {
                 other.dateCreated,
                 other.color,
                 other.metaCache);
+    }
+
+    @Command(desc = "Number of treasures in the alliance")
+    public int getNumTreasures() {
+        int num = 0;
+        for (DBNation nation : getNations()) {
+            if (nation.getVm_turns() == 0) {
+                num += nation.getTreasures().size();
+            }
+        }
+        return num;
+    }
+
+    @Command(desc = "Treasure bonus (decimal percent between 0-1)")
+    public double getTreasureBonus() {
+        int num = getNumTreasures();
+        return num == 0 ? 0 : (Math.sqrt(num * 4) * 0.01);
     }
 
     @Override

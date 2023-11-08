@@ -2311,9 +2311,9 @@ public class DBNation implements NationOrAlliance {
             citiesNoRaws.put(cityEntry.getKey(), city);
         }
 
-        double[] daily = PnwUtil.getRevenue(null, 12, this, cityMap.values(), true, true, true, false, false);
-        double[] turn = PnwUtil.getRevenue(null,  1, this, citiesNoRaws.values(), true, true, true, false, false);
-        double[] turn2 = PnwUtil.getRevenue(null,  1, this, citiesNoRaws.values(), true, true, true, true, false);
+        double[] daily = PnwUtil.getRevenue(null, 12, this, cityMap.values(), true, true, true, false, false, 0d);
+        double[] turn = PnwUtil.getRevenue(null,  1, this, citiesNoRaws.values(), true, true, true, false, false, 0d);
+        double[] turn2 = PnwUtil.getRevenue(null,  1, this, citiesNoRaws.values(), true, true, true, true, false, 0d);
         turn[ResourceType.MONEY.ordinal()] = Math.min(turn[ResourceType.MONEY.ordinal()], turn2[ResourceType.MONEY.ordinal()]);
         turn[ResourceType.FOOD.ordinal()] = Math.min(turn[ResourceType.FOOD.ordinal()], turn2[ResourceType.FOOD.ordinal()]);
 
@@ -3255,7 +3255,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public double equilibriumTaxRate(boolean updateNewCities, boolean force) {
-        double[] revenue = getRevenue(12, true, false, true, updateNewCities, false, false, force);
+        double[] revenue = getRevenue(12, true, false, true, updateNewCities, false, false, 0d, force);
         double consumeCost = 0;
         double taxable = 0;
         for (ResourceType type : ResourceType.values) {
@@ -3276,12 +3276,21 @@ public class DBNation implements NationOrAlliance {
         return getRevenue(12);
     }
     public double[] getRevenue(int turns) {
-        return getRevenue(turns, true, true, true, true, false, false, false);
+        return getRevenue(turns, true, true, true, true, false, false, getTreasureBonusPct(), false);
     }
 
-    public double[] getRevenue(int turns, boolean cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, boolean force) {
+    @Command(desc = "Treasure bonus decimal percent")
+    public double getTreasureBonusPct() {
+        if (alliance_id == 0 || getVm_turns() > 0) return 0;
+        DBAlliance aa = getAlliance();
+        int treasures = aa.getNumTreasures();
+        Set<DBTreasure> natTreasures = getTreasures();
+        return ((treasures == 0 ? 0 : Math.sqrt(treasures * 4)) + natTreasures.stream().mapToDouble(DBTreasure::getBonus).sum()) * 0.01;
+    }
+
+    public double[] getRevenue(int turns, boolean cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double treasureBonus, boolean force) {
         Map<Integer, JavaCity> cityMap = cities ? getCityMap(force, false) : new HashMap<>();
-        double[] revenue = PnwUtil.getRevenue(null, turns, this, cityMap.values(), militaryUpkeep, tradeBonus, bonus, noFood, noPower);
+        double[] revenue = PnwUtil.getRevenue(null, turns, this, cityMap.values(), militaryUpkeep, tradeBonus, bonus, noFood, noPower, treasureBonus);
         return revenue;
     }
 
@@ -3383,7 +3392,7 @@ public class DBNation implements NationOrAlliance {
                 if (food <= 0) {
                     turnsFed = 0;
                 } else {
-                    double[] revenue = getRevenue(1, true, true, false, true, false, false, false);
+                    double[] revenue = getRevenue(1, true, true, false, true, false, false, 0d, false);
                     if (revenue[ResourceType.FOOD.ordinal()] < 0) {
                         turnsFed = Math.max(0, (int) (food / Math.abs(revenue[ResourceType.FOOD.ordinal()])));
                     } else {
@@ -3398,10 +3407,10 @@ public class DBNation implements NationOrAlliance {
                 int turnsFedUnpowered = Math.max(0, Math.min(turnsFed - turnsPowered, turnsUnpowered));
                 int turnsUnfedUnpowered = turnsPowered - turnsFedUnpowered;
                 if (turnsFedUnpowered > 0) {
-                    revenue = getRevenue(turnsFedUnpowered, true, true, false, true, false, true, false);
+                    revenue = getRevenue(turnsFedUnpowered, true, true, false, true, false, true, 0d, false);
                 }
                 if (turnsUnfedUnpowered > 0) {
-                    revenue = getRevenue(turnsUnfedUnpowered, true, true, false, true, true, true, false);
+                    revenue = getRevenue(turnsUnfedUnpowered, true, true, false, true, true, true, 0d, false);
                 }
                 revenue = PnwUtil.capManuFromRaws(revenue, ResourceType.getBuffer());
             }
@@ -3409,10 +3418,10 @@ public class DBNation implements NationOrAlliance {
                 int turnsFedPowered = Math.min(turnsFed, turnsPowered);
                 int turnsUnfedPowered = turnsPowered - turnsFedPowered;
                 if (turnsFedPowered > 0) {
-                    revenue = PnwUtil.add(revenue, getRevenue(turnsFedPowered, true, true, false, true, false, false, false));
+                    revenue = PnwUtil.add(revenue, getRevenue(turnsFedPowered, true, true, false, true, false, false, 0d, false));
                 }
                 if (turnsUnfedPowered > 0) {
-                    revenue = PnwUtil.add(revenue, getRevenue(turnsUnfedPowered, true, true, false, true, true, false, false));
+                    revenue = PnwUtil.add(revenue, getRevenue(turnsUnfedPowered, true, true, false, true, true, false, 0d, false));
                 }
             }
             if (loot != null) {

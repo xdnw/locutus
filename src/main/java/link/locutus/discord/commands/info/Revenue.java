@@ -13,11 +13,13 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.db.entities.DBTreasure;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.math.ArrayUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -134,8 +136,20 @@ public class Revenue extends Command {
         double[] milUp = new double[ResourceType.values.length];
         long tradeBonus = 0;
 
+        Map<Integer, Integer> treasureByAA = new HashMap<>();
         for (Map.Entry<DBNation, Map<Integer, JavaCity>> entry : cities.entrySet()) {
             DBNation nation = entry.getKey();
+            if (nation.getAlliance_id() == 0) continue;
+            for (DBTreasure treasure : nation.getTreasures()) {
+                treasureByAA.merge(nation.getAlliance_id(), 1, Integer::sum);
+            }
+        }
+
+        for (Map.Entry<DBNation, Map<Integer, JavaCity>> entry : cities.entrySet()) {
+            DBNation nation = entry.getKey();
+            int treasures = treasureByAA.getOrDefault(nation.getAlliance_id(), 0);
+            Set<DBTreasure> natTreasures = nation.getTreasures();
+            double treasureBonus = ((treasures == 0 ? 0 : Math.sqrt(treasures * 4)) + natTreasures.stream().mapToDouble(DBTreasure::getBonus).sum()) * 0.01;
 
             Predicate<Project> hasProject = nation::hasProject;
 
@@ -146,24 +160,26 @@ public class Revenue extends Command {
             Collection<JavaCity> cityList = entry.getValue().values();
 
             for (JavaCity build : cityList) {
-                cityProfit = build.profit(me.getContinent(), rads, -1L, hasProject, cityProfit, numCities, me.getGrossModifier(), 12);
+                cityProfit = build.profit(me.getContinent(), rads, -1L, hasProject, cityProfit, numCities, me.getGrossModifier() + treasureBonus, 12);
             }
 
             NationColor color = nation.getColor();
-            tradeBonus = color.getTurnBonus() * 12L;
+            long nationTurnBonus = (long) (color.getTurnBonus() * 12L * me.getGrossModifier());
+            tradeBonus += nationTurnBonus;
 
             if (!nation.hasUnsetMil()) {
-                boolean war = nation.getOff() > 0 || nation.getDef() > 0;
+                double factor = nation.getMilitaryUpkeepFactor();
+                boolean atWar = nation.getNumWars() > 0;
 
                 for (MilitaryUnit unit : MilitaryUnit.values) {
                     int amt = nation.getUnits(unit);
                     if (amt == 0) continue;
 
-                    double[] upkeep = unit.getUpkeep(war);
+                    double[] upkeep = unit.getUpkeep(atWar);
                     for (int i = 0; i < upkeep.length; i++) {
                         double value = upkeep[i];
                         if (value != 0) {
-                            milUp[i] -= value * amt;
+                            milUp[i] -= value * amt * factor;
                         }
                     }
                 }
@@ -181,7 +197,7 @@ public class Revenue extends Command {
             response.append('\n').append("Military upkeep:")
                     .append("```").append(PnwUtil.resourcesToString(milUp)).append("```");
 
-            response.append('\n').append("Trade bonus: ```").append(tradeBonus).append("```");
+            response.append('\n').append("Color Bonus: ```").append(MathMan.format(tradeBonus)).append("```");
 
             Map<ResourceType, Double> total = PnwUtil.add(PnwUtil.resourcesToMap(cityProfit), PnwUtil.resourcesToMap(milUp));
             total.put(ResourceType.MONEY, total.getOrDefault(ResourceType.MONEY, 0d) + tradeBonus);

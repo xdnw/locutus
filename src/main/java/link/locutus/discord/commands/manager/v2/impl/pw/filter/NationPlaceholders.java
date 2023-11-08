@@ -53,7 +53,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     }
 
     @Override
-    public String getCommandMention() {
+    public String getDescription() {
         return CM.help.find_nation_placeholder.cmd.toSlashMention();
     }
 

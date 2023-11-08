@@ -87,7 +87,7 @@ public class FindProducer extends Command {
             nations.removeIf(n -> n.getAlliance_id() == 0 || n.getVm_turns() != 0 ||
                     n.getPosition() <= 1);
         }
-            if (!flags.contains('i')) {
+        if (!flags.contains('i')) {
             nations.removeIf(f -> !f.isTaxable());
         }
 
