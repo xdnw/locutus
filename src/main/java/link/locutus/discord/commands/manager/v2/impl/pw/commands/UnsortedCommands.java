@@ -1,6 +1,5 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
-import com.google.common.base.CaseFormat;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.politicsandwar.graphql.model.ApiKeyDetails;
@@ -82,7 +81,6 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.channel.unions.DefaultGuildChannelUnion;
 import net.dv8tion.jda.api.requests.restaction.InviteAction;
-import org.apache.commons.lang3.text.WordUtils;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -348,7 +346,7 @@ public class UnsortedCommands {
         }
         messages.add("The TAX column includes tax records not set to go into a member's personal deposits, or offsets using the `#tax` note");
 
-        sheet.clearAll();
+        sheet.clearFirstTab();
         sheet.set(0, 0);
 
         IMessageBuilder msg = io.create();
@@ -1771,7 +1769,7 @@ public class UnsortedCommands {
 
             sheet.addRow(header);
         }
-        sheet.clearAll();
+        sheet.clearFirstTab();
         sheet.set(0, 0);
         IMessageBuilder msg = sheet.attach(io.create(), "revenue");
 

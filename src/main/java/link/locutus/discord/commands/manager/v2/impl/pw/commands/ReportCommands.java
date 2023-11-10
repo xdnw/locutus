@@ -98,7 +98,7 @@ public class ReportCommands {
 
             sheet.addRow(column);
         }
-        sheet.clearAll();
+        sheet.clearFirstTab();
         sheet.set(0, 0);
         sheet.attach(io.create(), "reports").send();
         return null;
@@ -288,7 +288,7 @@ public class ReportCommands {
             sheet.addRow(header);
         }
 
-        sheet.clearAll();
+        sheet.clearFirstTab();
         sheet.set(0, 0);
         sheet.attach(io.create(), "loans")
                 .append("Total on loan: `" + PnwUtil.resourcesToString(total) + "` worth `$" + MathMan.format(PnwUtil.convertedTotal(total)) + "`")

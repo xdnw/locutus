@@ -73,6 +73,9 @@ public interface Parser<T> {
         }
         if (printExamples) {
             Binding binding = key.getBinding();
+            if (binding == null) {
+                System.out.println("No binding: " + key);
+            }
             if (binding.examples() != null && binding.examples().length > 0) {
                 result.append("Examples:\n");
                 for (String example : binding.examples()) {

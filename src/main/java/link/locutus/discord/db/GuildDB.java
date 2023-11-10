@@ -57,12 +57,14 @@ import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
+import rocker.guild.ia.message;
 
 import javax.annotation.Nullable;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -896,6 +898,10 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
     @Override
     public void createTables() {
         {
+            executeStmt("CREATE TABLE IF NOT EXISTS `CUSTOM_SHEETS` (`name` VARCHAR PRIMARY KEY, `type` VARCHAR NOT NULL, `columns` VARCHAR NOT NULL)");
+            executeStmt("CREATE TABLE IF NOT EXISTS `CUSTOM_SELECTION` (`name` VARCHAR PRIMARY KEY, `type` VARCHAR NOT NULL, `selection` VARCHAR NOT NULL)");
+        }
+        {
             StringBuilder query = new StringBuilder("CREATE TABLE IF NOT EXISTS `INTERNAL_TRANSACTIONS2` (" +
                     "`tx_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
                     "tx_datetime BIGINT NOT NULL, " +
@@ -1051,47 +1057,109 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
         createDeletionsTables();
     }
 
-//    public void unsubscribeAllBeige(User user) {
-//        update("DELETE FROM `BEIGE_TARGET_ALERTS` WHERE user = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-//            stmt.setLong(1, user.getIdLong());
-//        });
-//    }
-//
-//    public void unsubscribeBeige(User user, int nationId) {
-//        update("DELETE FROM `BEIGE_TARGET_ALERTS` WHERE user = ? AND target = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-//            stmt.setLong(1, user.getIdLong());
-//            stmt.setInt(2, nationId);
-//        });
-//    }
-//
-//    public void subscribeBeige(User user, int nationId) {
-//        update("INSERT OR IGNORE INTO `BEIGE_TARGET_ALERTS`(`user`, `target`) VALUES(?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-//            stmt.setLong(1, user.getIdLong());
-//            stmt.setInt(2, nationId);
-//        });
-//    }
-//
-//    public Set<DBNation> getBeigeSubscriptions(User user) {
-//            Set<DBNation> set = new LinkedHashSet<>();
-//        try (PreparedStatement stmt = prepareQuery("select * FROM BEIGE_TARGET_ALERTS WHERE user = ?")) {
-//            stmt.setLong(1, user.getIdLong());
-//            try (ResultSet rs = stmt.executeQuery()) {
-//                while (rs.next()) {
-//                    int target = rs.getInt("target");
-//                    DBNation nation = Locutus.imp().getNationDB().getNation(target);
-//                    if (nation != null) {
-//                        set.add(nation);
-//                    } else {
-//                        rs.deleteRow();
-//                    }
-//                }
-//            }
-//            return set;
-//        } catch (SQLException e) {
-//            e.printStackTrace();
-//            return null;
-//        }
-//    }
+    public Set<String> getCustomSheetNames() {
+        Set<String> names = new HashSet<>();
+        query("SELECT `name` FROM `CUSTOM_SHEETS`", stmt -> {}, (ThrowingConsumer<ResultSet>) rs -> {
+            names.add(rs.getString("name"));
+        });
+        return names;
+    }
+
+    public Map<String, CustomSheet> getCustomSheets(List<String> errors) {
+        Map<String, CustomSheet> sheets = new LinkedHashMap<>();
+        query("SELECT * FROM `CUSTOM_SHEETS`", stmt -> {}, (ThrowingConsumer<ResultSet>) rs -> {
+            try {
+                CustomSheet sheet = new CustomSheet(rs);
+                sheets.put(sheet.getName(), sheet);
+            } catch (IllegalArgumentException e) {
+                errors.add(e.getMessage());
+            }
+        });
+        return sheets;
+    }
+
+    public void addCustomSheet(CustomSheet sheet) {
+        String query = "CREATE TABLE IF NOT EXISTS `CUSTOM_SHEETS` (`name` VARCHAR PRIMARY KEY, `type` VARCHAR NOT NULL, `columns` VARCHAR NOT NULL)";
+        update("INSERT INTO `CUSTOM_SHEETS`(`name`, `type`, `selection`, `columns`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setString(1, sheet.getName());
+            stmt.setString(2, sheet.getType().getSimpleName());
+            stmt.setString(4, StringMan.join(sheet.getColumns(), "\n"));
+        });
+    }
+
+    public void deleteCustomSheet(String name) {
+        update("DELETE FROM `CUSTOM_SHEETS` WHERE name = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setString(1, name);
+        });
+    }
+
+    public void renameSheet(CustomSheet sheet, String name) {
+        update("UPDATE `CUSTOM_SHEETS` SET name = ? WHERE name = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setString(1, name);
+            stmt.setString(2, sheet.getName());
+        });
+        sheet.name = name;
+    }
+
+    private Map<Class, Map<String, String>> customSelections = null;
+
+    public Map<Class, Map<String, String>> getCustomSelections() {
+        if (customSelections == null) {
+            synchronized (this) {
+                if (customSelections == null) {
+                    customSelections = new ConcurrentHashMap<>();
+                    query("SELECT * from CUSTOM_SELECTION", stmt -> {}, (ThrowingConsumer<ResultSet>) rs -> {
+                        String name = rs.getString("name");
+                        String typeStr = rs.getString("type");
+                        Class typeFinal = null;
+                        for (Class<?> type : Locutus.cmd().getV2().getPlaceholders().getTypes()) {
+                            if (type.getSimpleName().equalsIgnoreCase(typeStr)) {
+                                typeFinal = type;
+                                break;
+                            }
+                        }
+                        if (typeFinal == null) {
+                            return;
+                        }
+                        String selection = rs.getString("selection");
+                        customSelections.computeIfAbsent(typeFinal, t -> new ConcurrentHashMap<>()).put(name, selection);
+                    });
+                }
+            }
+        }
+        return customSelections;
+    }
+
+    public <T> CustomSelection<T> getCustomSelection(String name, Class<T> type) {
+        // or null
+        // CustomSelection(String name, Class<T> type, String selection)
+        Map<String, String> selections = getCustomSelections().get(type);
+        if (selections == null) {
+            return null;
+        }
+        String selection = selections.get(name);
+        if (selection == null) {
+            return null;
+        }
+        return new CustomSelection<>(name, type, selection);
+    }
+
+    public void removeCustomSelection(String name) {
+        getCustomSelections().values().forEach(map -> map.remove(name));
+        update("DELETE FROM CUSTOM_SELECTION WHERE name = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setString(1, name);
+        });
+    }
+
+    public void addCustomSelection(String name, Class type, String selection) {
+        update("INSERT INTO CUSTOM_SELECTION(name, type, selection) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setString(1, name);
+            stmt.setString(2, type.getSimpleName());
+            stmt.setString(3, selection);
+        });
+        getCustomSelections().computeIfAbsent(type, t -> new ConcurrentHashMap<>()).put(name, selection);
+    }
+
 
     public void purgeOldInterviews(long cutoff) {
         update("DELETE FROM INTERVIEW_MESSAGES2 WHERE date_updated < ?", (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setLong(1, cutoff));
