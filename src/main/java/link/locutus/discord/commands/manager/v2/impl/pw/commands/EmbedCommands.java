@@ -336,7 +336,7 @@ Click :six: for **high infra** (attrition) targets
 Click :seven:  for standard war targets
 
 *ping a gov member if you'd like any help/advice
-Results are sorted best to last in #:robot:│war-bot" "#:robot:│war-bot ~!raid 10" "#:robot:│war-bot ~!raid * 25" "#:robot:│war-bot ~!raid * 25 -beige<24" "#:robot:│war-bot ~!raid #tank%<20,#soldier%<40,* 25 -a -w" "#:robot:│war-bot ~!raid #tank%<20,#soldier%<40,* 25 -2d -w" "#:robot:│war-bot ~!raid #def>0,#strength<1,* 25 -a -w" "#:robot:│war-bot ~!damage ~enemies" "#:robot:│war-bot ~!war ~enemies"
+Results are sorted best to last in #:robot:│war-bot" "#:robot:│war-bot ~!raid 10" "#:robot:│war-bot ~!raid * 25" "#:robot:│war-bot ~!raid * 25 -beige<24" "#:robot:│war-bot ~!raid #tankpct<20,#soldier%<40,* 25 -a -w" "#:robot:│war-bot ~!raid #tankpct<20,#soldier%<40,* 25 -2d -w" "#:robot:│war-bot ~!raid #def>0,#strength<1,* 25 -a -w" "#:robot:│war-bot ~!damage ~enemies" "#:robot:│war-bot ~!war ~enemies"
      */
 
     // TODO disburse to tax brackets
@@ -352,7 +352,7 @@ Click  to include actives losing their current wars
 Click  to find unprotected nations (be careful with this)
 
 *ping a gov member if you'd like any help/advice
-Results are sorted best to last in <#995168236213633024>" "<#995168236213633024> ~!raid 10" "<#995168236213633024> ~!raid * 25" "<#995168236213633024> ~!raid * 25 -beige<24" "<#995168236213633024> ~!raid #tank%<20,#soldier%<40,* 25 -a -w" "<#995168236213633024> ~!raid #tank%<20,#soldier%<40,* 25 -2d -w" "<#995168236213633024> ~!raid #def>0,#strength<1,* 25 -a -w" "<#995168236213633024> ~$unprotected * -a -c 90"
+Results are sorted best to last in <#995168236213633024>" "<#995168236213633024> ~!raid 10" "<#995168236213633024> ~!raid * 25" "<#995168236213633024> ~!raid * 25 -beige<24" "<#995168236213633024> ~!raid #tankpct<20,#soldier%<40,* 25 -a -w" "<#995168236213633024> ~!raid #tankpct<20,#soldier%<40,* 25 -2d -w" "<#995168236213633024> ~!raid #def>0,#strength<1,* 25 -a -w" "<#995168236213633024> ~$unprotected * -a -c 90"
      */
     @Command(desc="Makes a raid panel, which is a discord embed with buttons for different options for finding raid targets")
     @RolePermission(Roles.ADMIN)
@@ -380,9 +380,9 @@ Results are sorted best to last in <#995168236213633024>" "<#995168236213633024>
         CM.war.find.raid beige = CM.war.find.raid.cmd.create(
                 "*", "25", null, null, "24", null, null, null, null, null, null);
         CM.war.find.raid ground = CM.war.find.raid.cmd.create(
-                "#tank%<20,#soldier%<40,*", "25", "0d", "true", null, null, null, null, null, null, null);
+                "#tankpct<20,#soldier%<40,*", "25", "0d", "true", null, null, null, null, null, null, null);
         CM.war.find.raid ground_2d = CM.war.find.raid.cmd.create(
-                "#tank%<20,#soldier%<40,*", "25", "2d",  "true", null,null, null, null, null, null, null);
+                "#tankpct<20,#soldier%<40,*", "25", "2d",  "true", null,null, null, null, null, null, null);
         CM.war.find.raid losing = CM.war.find.raid.cmd.create(
                 "#def>0,#strength<1,*", "25", "0d", "true", null, null, null, null, null, null, null);
         CM.war.find.unprotected unprotected = CM.war.find.unprotected.cmd.create(

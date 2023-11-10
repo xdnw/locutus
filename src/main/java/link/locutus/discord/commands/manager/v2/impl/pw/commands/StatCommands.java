@@ -1076,7 +1076,7 @@ public class StatCommands {
         int min = Math.min(Collections.min(coalition1ByCity.keySet()), Collections.min(coalition2ByCity.keySet()));
         int max = Math.max(Collections.max(coalition1ByCity.keySet()), Collections.max(coalition2ByCity.keySet()));
 
-        List<Object> headers = new ArrayList<>(Arrays.asList("cities", "coalition", "num_nations", "soldier%", "tank%", "air%", "ship%", "avg%"));
+        List<Object> headers = new ArrayList<>(Arrays.asList("cities", "coalition", "num_nations", "soldier%", "tankpct", "air%", "ship%", "avg%"));
         if (sheet != null) sheet.setHeader(headers);
 
         {

@@ -2233,6 +2233,7 @@ public class WarCommands {
                 "\uD83C\uDFD9", // cities
                 "\uD83C\uDFD7", // avg_infra
                 "score",
+                "war_policy",
                 "\uD83D\uDD0D",
                 "\uD83D\uDC82",
                 "\u2699",
@@ -2268,6 +2269,7 @@ public class WarCommands {
             row.add(nation.getCities());
             row.add(nation.getAvg_infra());
             row.add(nation.getScore());
+            row.add(nation.getWarPolicy().name());
             row.add("" + nation.getSpies());
 
             row.add(nation.getSoldiers());
@@ -2744,7 +2746,7 @@ public class WarCommands {
                     "avg_infra",
                     "score",
                     "soldier%",
-                    "tank%",
+                    "tankpct",
                     "air%",
                     "sea%",
                     "off",

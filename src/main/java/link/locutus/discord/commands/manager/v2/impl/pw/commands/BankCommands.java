@@ -2010,7 +2010,7 @@ public class BankCommands {
 
         // transfer limit
         long userId = author.getIdLong();
-        if (PnwUtil.convertedTotal(transfer) > 1000000000L
+        if (PnwUtil.convertedTotal(transfer) > 5000000000L
                 && userId != Settings.INSTANCE.ADMIN_USER_ID
                 && !Settings.INSTANCE.LEGACY_SETTINGS.WHITELISTED_BANK_USERS.contains(userId)
                 && !isGrant && offshore.getAllianceId() == Settings.INSTANCE.ALLIANCE_ID()

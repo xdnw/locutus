@@ -749,7 +749,7 @@ public class JavaCity {
 
         double newPlayerBonus = numCities < 10 ? Math.max(1, (200d - ((numCities - 1) * 10d)) * 0.01) : 1;
 
-        double income = Math.max(0, (((commerce * 0.02) * 0.725) + 0.725) * metrics.population * newPlayerBonus) * grossModifier;;
+        double income = Math.max(0, (((commerce * 0.02) * 0.725) + 0.725) * getMetrics(hasProject).population * newPlayerBonus) * grossModifier;;
 
 
         profit += income;
