@@ -166,8 +166,26 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
-//        for (Class<?> type : placeholders.getTypes()) {
-//            Placeholders<?> ph = placeholders.get(type);
+        for (Class<?> type : placeholders.getTypes()) {
+            Placeholders<?> ph = placeholders.get(type);
+
+            Method methodAlias = null;
+            Method methodColumns = null;
+            try {
+                methodAlias = ph.getClass().getDeclaredMethod("addSelectionAlias");
+            } catch (Throwable e) {
+            }
+            try {
+                methodColumns = ph.getClass().getDeclaredMethod("addColumns");
+            } catch (Throwable e) {
+            }
+            if (methodAlias == null) {
+                throw new IllegalArgumentException("Missing method `addSelectionAlias` for " + ph.getType().getSimpleName());
+            }
+            if (methodColumns == null) {
+                throw new IllegalArgumentException("Missing method `addColumns` for " + ph.getType().getSimpleName());
+            }
+//
 //            for (Method method : ph.getClass().getDeclaredMethods()) {
 //                Command cmd = method.getAnnotation(Command.class);
 //                if (cmd != null) {
@@ -175,7 +193,7 @@ public class CommandManager2 {
 //                    this.commands.registerMethod(ph, List.of("sheets_ia", "custom"), method.getName(), name);
 //                }
 //            }
-//        }
+        }
         this.commands.registerMethod(new EmbedCommands(), List.of("announcement"), "announceDocument", "document");
 
         this.commands.registerMethod(new UnsortedCommands(), List.of("audit"), "auditSheet", "sheet");
