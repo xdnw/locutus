@@ -3,26 +3,38 @@ package link.locutus.discord.commands.manager.v2.impl.pw.filter;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.AllianceInstanceAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.AllianceInstanceAttributeDouble;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.DefaultPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.CustomSheet;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.User;
+import org.json.JSONObject;
 
+import java.io.IOException;
 import java.lang.reflect.Type;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -58,7 +70,47 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
 
     public AllianceInstanceAttributeDouble getMetricDouble(ValueStore store, String id) {
         return getMetricDouble(store, id, false);
+    }
 
+    @NoFormat
+    @Command(desc = "Add an alias for a selection of alliances")
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+    public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<DBAlliance> alliances) {
+        return _addSelectionAlias(command, db, name, alliances, "alliances");
+    }
+
+    @NoFormat
+    @Command(desc = "Add columns to a Alliance sheet")
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+    public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+                             @Default TypedFunction<DBAlliance, String> column1,
+                             @Default TypedFunction<DBAlliance, String> column2,
+                             @Default TypedFunction<DBAlliance, String> column3,
+                             @Default TypedFunction<DBAlliance, String> column4,
+                             @Default TypedFunction<DBAlliance, String> column5,
+                             @Default TypedFunction<DBAlliance, String> column6,
+                             @Default TypedFunction<DBAlliance, String> column7,
+                             @Default TypedFunction<DBAlliance, String> column8,
+                             @Default TypedFunction<DBAlliance, String> column9,
+                             @Default TypedFunction<DBAlliance, String> column10,
+                             @Default TypedFunction<DBAlliance, String> column11,
+                             @Default TypedFunction<DBAlliance, String> column12,
+                             @Default TypedFunction<DBAlliance, String> column13,
+                             @Default TypedFunction<DBAlliance, String> column14,
+                             @Default TypedFunction<DBAlliance, String> column15,
+                             @Default TypedFunction<DBAlliance, String> column16,
+                             @Default TypedFunction<DBAlliance, String> column17,
+                             @Default TypedFunction<DBAlliance, String> column18,
+                             @Default TypedFunction<DBAlliance, String> column19,
+                             @Default TypedFunction<DBAlliance, String> column20,
+                             @Default TypedFunction<DBAlliance, String> column21,
+                             @Default TypedFunction<DBAlliance, String> column22,
+                             @Default TypedFunction<DBAlliance, String> column23,
+                             @Default TypedFunction<DBAlliance, String> column24) throws GeneralSecurityException, IOException {
+        return _addColumns(this, command,db, io, author, sheet,
+                column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
+                column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
+                column21, column22, column23, column24);
     }
 
     public AllianceInstanceAttributeDouble getMetricDouble(ValueStore store, String id, boolean ignorePerms) {

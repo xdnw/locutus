@@ -4,6 +4,7 @@ import com.google.gson.reflect.TypeToken;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -14,6 +15,7 @@ import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
@@ -21,6 +23,8 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWMath2Type;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWType2Math;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.CustomSelection;
+import link.locutus.discord.db.entities.CustomSheet;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -31,6 +35,7 @@ import net.dv8tion.jda.api.entities.User;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.tuple.Triple;
+import org.json.JSONObject;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -78,6 +83,72 @@ public abstract class Placeholders<T> extends BindingHelper {
 
     public Class<T> getType() {
         return instanceType;
+    }
+
+    protected static <T> String _addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<T> elems, String argumentName) {
+        return _addSelectionAlias("", command, db, name, argumentName);
+    }
+
+    protected static <T> String _addSelectionAlias(String prefix, @Me JSONObject command, @Me GuildDB db, String name, String... argumentNames) {
+        if (argumentNames.length == 0) {
+            throw new IllegalArgumentException("No arguments provided");
+        }
+        // ensure name is alphanumeric_- and not too long
+        if (!name.matches("[a-zA-Z0-9_]+")) {
+            throw new IllegalArgumentException("Invalid name: `" + name + "` (must be alphanumeric_-)");
+        }
+        if (name.length() > 20) {
+            throw new IllegalArgumentException("Name too long: `" + name + "` (max 20 chars)");
+        }
+        CustomSelection<Continent> existing = db.getCustomSelection(name, Continent.class);
+        if (existing != null) {
+            throw new IllegalArgumentException("Selection already exists: " + existing.toString());
+        }
+        String selection;
+        if (argumentNames.length == 1) {
+            selection = command.getString(argumentNames[0]);
+        } else {
+            // copy of json object of only those keys
+            JSONObject obj = new JSONObject();
+            for (String arg : argumentNames) {
+                Object value = command.optString(arg, null);
+                if (value != null) {
+                    obj.put(arg, value);
+                }
+            }
+            selection = obj.toString();
+        }
+        db.addCustomSelection(name, Continent.class, selection);
+        return "Added selection `" + name + "`: " + selection + ". Use it with `!" + name + "`";
+    }
+
+    protected static <T> String _addColumns(Placeholders<T> placeholders, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet, TypedFunction<T, String>... columns) {
+        boolean created = false;
+        if (sheet == null) {
+            created = true;
+            Set<String> names = db.getCustomSheetNames();
+            for (int i = 0; ; i++) {
+                String name = placeholders.getType().getSimpleName() + (i == 0 ? "" : "_" + i);
+                if (!names.contains(name)) {
+                    sheet = new CustomSheet(name, placeholders.getType(), "*", new ArrayList<>());
+                    break;
+                }
+            }
+        } else if (!sheet.type.equals(placeholders.getType())) {
+            throw new IllegalArgumentException("Sheet type mismatch: `" + sheet.type.getSimpleName() + "` != `" + placeholders.getType() + "`");
+        }
+
+        List<TypedFunction<T, String>> columnsNonNull = new ArrayList<>();
+        for (TypedFunction<T, String> column : columns) {
+            if (column != null) {
+                columnsNonNull.add(column);
+            }
+        }
+        for (TypedFunction<T, String> column : columnsNonNull) {
+            sheet.columns.add(column.getName());
+        }
+        db.addCustomSheet(sheet);
+        return (created ? "Created" : "Updated") + " sheet template: " + sheet;
     }
 
     private void registerCustom(Method method, Type type) {
