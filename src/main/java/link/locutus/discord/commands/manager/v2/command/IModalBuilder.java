@@ -125,7 +125,7 @@ public interface IModalBuilder {
                 if (!placeholders.containsKey(key)) {
                     continue;
                 }
-                String label = "Placeholder in " + defEntry.getKey();
+                String label = "Placeholder " + key + " in " + defEntry.getKey();
                 TextInput.Builder builder = TextInput.create(key, label, TextInputStyle.PARAGRAPH);
                 TextInput input = builder.build();
 
