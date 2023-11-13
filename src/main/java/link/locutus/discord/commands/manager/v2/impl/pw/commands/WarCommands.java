@@ -2056,7 +2056,7 @@ public class WarCommands {
             }
         }
 
-        sheet.clearAll();
+        sheet.clearFirstTab();
         SpySheet.generateSpySheet(sheet, targets);
         sheet.set(0, 0);
 
@@ -2077,7 +2077,7 @@ public class WarCommands {
 
         generateSpySheet(output, spyOpsFiltered, groupByAttacker);
 
-        output.clearAll();
+        output.clearFirstTab();
         output.set(0, 0);
 
         output.send(io, null, author.getAsMention()).send();
@@ -2097,7 +2097,7 @@ public class WarCommands {
 
         generateSpySheet(output, spyOpsFiltered, groupByAttacker);
 
-        output.clearAll();
+        output.clearFirstTab();
         output.set(0, 0);
 
         output.send(io, null, author.getAsMention()).send();
@@ -2117,7 +2117,7 @@ public class WarCommands {
 
         generateSpySheet(output, spyOpsFiltered, groupByAttacker);
 
-        output.clearAll();
+        output.clearFirstTab();
         output.set(0, 0);
 
         output.send(io, null, author.getAsMention()).send();
@@ -2168,7 +2168,7 @@ public class WarCommands {
 
         generateSpySheet(output, spyOpsFiltered, groupByAttacker);
 
-        output.clearAll();
+        output.clearFirstTab();
         output.set(0, 0);
 
         output.send(io, null, author.getAsMention()).send();
@@ -2215,7 +2215,7 @@ public class WarCommands {
 
         generateSpySheet(sheet, targets);
 
-        sheet.clearAll();
+        sheet.clearFirstTab();
         sheet.set(0, 0);
 
         sheet.send(io, null, author.getAsMention()).send();
@@ -2378,7 +2378,7 @@ public class WarCommands {
             sheet.addRow(header);
         }
 
-        sheet.clearAll();
+        sheet.clearFirstTab();
         sheet.set(0, 0);
 
         sheet.attach(io.create(), "activity").send();
@@ -2540,7 +2540,7 @@ public class WarCommands {
             sheet.addRow(row);
         }
 
-        sheet.clearAll();
+        sheet.clearFirstTab();
         sheet.set(0, 0);
         String response = "";
         if (!forceUpdate) response += "\nNote: Results may be outdated, add `-f` to update.";
@@ -2691,7 +2691,7 @@ public class WarCommands {
             sheet.addRow(row);
         }
 
-        sheet.clearAll();
+        sheet.clearFirstTab();
         sheet.set(0, 0);
         sheet.attach(io.create(), "deserter").send();
         return null;
@@ -3835,7 +3835,7 @@ public class WarCommands {
             sheet.addRow(row);
         }
 
-        sheet.clearAll();
+        sheet.clearFirstTab();
 
         sheet.set(0, 0);
 

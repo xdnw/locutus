@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -18,6 +19,7 @@ import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.annotation.GuildCoalition;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasOffshore;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.IsAlliance;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
@@ -62,6 +64,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class EmbedCommands {
     @Command(desc = "Create a simple embed with a title and description")
@@ -221,7 +224,8 @@ public class EmbedCommands {
     @NoFormat
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public String addModal(@Me User user, @Me Guild guild, Message message, String label, CommandBehavior behavior, ICommand command,
-                           @Arg("A comma separated list of the command arguments to prompt for") String arguments,
+                           @Arg("A comma separated list of the command arguments to prompt for\n" +
+                                   "Arguments can be one of the named arguments for the command, or the name of any `{placeholder}` you have for `defaults`") String arguments,
                            @Arg("The default arguments and values you want to submit to the command\n" +
                                    "Example: `myarg1:myvalue1 myarg2:myvalue2`\n" +
                                    "For placeholders: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
@@ -249,6 +253,8 @@ public class EmbedCommands {
 
         for (String arg : promptedArguments) {
             String argLower = arg.toLowerCase(Locale.ROOT);
+            if (defaults.contains("{" + argLower)) continue;
+
             if (!validArguments.contains(arg) && !validArguments.contains(argLower)) {
                 throw new IllegalArgumentException("The command `" + command.getFullPath() + "` does not have an argument `" + arg + "`. Valid arguments: `" + StringMan.getString(validArguments) + "`");
             }
@@ -803,6 +809,119 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
             .send();
     }
 
+    @Command(desc = "Discord embed for Econ Staff to view deposits, stockpiles, revenue, tax brackets, tax income, warchest and offshore funds")
+    @RolePermission(Roles.ADMIN)
+    @IsAlliance
+    public void econPanel(@Me GuildDB db, @Me IMessageIO io, @Switch("c") MessageChannel outputChannel, @Switch("n") DepositType useFlowNote, @Arg("Include past depositors in deposits sheet") @Switch("p") Set<Integer> includePastDepositors) {
+        // useFlowNoteStr
+        String useFlowNoteStr = useFlowNote == null ? null : useFlowNote.toString();
+        // pastDepositorsStr
+        String pastDepositorsStr = includePastDepositors == null ? null : includePastDepositors.stream().map(Object::toString).collect(Collectors.joining(","));
+
+        String title = "Econ Panel 1";
+        String body = """
+                Press `deposits` to view member deposits sheet
+                Press `stockpile` to view member stockpile sheet
+                Press `revenue` to view member revenue sheet
+                Press `bracket` to view tax bracket sheet
+                Press `tax` to view tax revenue sheet
+                Press `warchest` to view warchest sheet
+                """;
+
+        boolean offshoreBalance = false;
+        boolean offshoreSend = false;
+        if (db.getOffshoreDB(false) != null) {
+            if (db.getOffshoreDB().getKey() == db) {
+                body = "Press `offshore` to view offshore account balances\n" + body;
+                offshoreBalance = true;
+            } else {
+                body = "Press `offshore` to offshore alliance funds\n" + body;
+                offshoreSend = true;
+            }
+        }
+
+        Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
+        if (channelId != null) {
+            body += "\n\n> Results in <#" + channelId + ">";
+        }
+
+        String allianceStr = db.getAllianceIds().stream().map(f -> "AA:" + f).collect(Collectors.joining(",")) + ",#position>1,#vm_turns=0";
+
+        CommandBehavior behavior = outputChannel == null ? CommandBehavior.EPHEMERAL : CommandBehavior.UNPRESS;
+
+        IMessageBuilder msg = io.create().embed(title, body);
+        if (offshoreBalance) {
+            msg = msg.commandButton(behavior, channelId, CM.offshore.accountSheet.cmd.create(null), "offshore");
+        }
+        if (offshoreSend) {
+            msg = msg.commandButton(behavior, channelId, CM.offshore.send.cmd.create(null, null, null), "offshore");
+        }
+        // deposits
+        msg = msg.commandButton(behavior, channelId, CM.deposits.sheet.cmd.create(null, null, null, null, null, null, null, null, pastDepositorsStr, null, useFlowNoteStr, null), "deposits");
+        // stockpile
+        msg = msg.commandButton(behavior, channelId, CM.sheets_econ.stockpileSheet.cmd.create(null, null, null, null), "stockpile");
+        // revenue
+        msg = msg.commandButton(behavior, channelId, CM.sheets_econ.revenueSheet.cmd.create(allianceStr, null), "revenue");
+        // bracket
+        msg = msg.commandButton(behavior, channelId, CM.sheets_econ.taxBracketSheet.cmd.create(null, null), "bracket");
+        // tax
+        msg = msg.commandButton(behavior, channelId, CM.sheets_econ.taxRevenue.cmd.create(null, null, null, null), "tax");
+        // warchest
+        msg = msg.commandButton(behavior, channelId, CM.sheets_econ.warchestSheet.cmd.create(allianceStr, null, null, null, null, null, null, null), "warchest");
+        msg.send();
+    }
+
+    // todo ia panel
+    // // Press `audit` to view member audit sheet /audit sheet
+    //        // Press `activity` to view member activity sheet /sheets_ia activitysheet
+    //        // Press `auto` to run role auto assign task /role autoassign
+    // Mail audit results (/audit run
+    // /sheets_ia daychange
+    // /audit hasNotBoughtSpies
+    // /sheets_milcom mmrsheet
+    @Command(desc = "Discord embed for Internal Affairs Staff to auto-assign roles and view member activity, audit results, daychange, spy purchase, mmr")
+    @RolePermission(Roles.ADMIN)
+    @IsAlliance
+    public void iaPanel(@Me GuildDB db, @Me IMessageIO io, @Switch("c") MessageChannel outputChannel) {
+        String title = "IA Panel";
+        String body = """
+                Press `audit` to view member audit sheet
+                Press `mail` to mail audit results
+                Press `activity` to view member activity sheet
+                Press `dc` to view member daychange sheet
+                Press `spies` to view nations who have not bought spies
+                Press `mmr` to view member mmr sheet
+                Press `auto` to run role auto assign task
+                """;
+
+        Long channelId = outputChannel == null ? null : outputChannel.getIdLong();
+        if (channelId != null) {
+            body += "\n\n> Results in <#" + channelId + ">";
+        }
+
+        CommandBehavior behavior = outputChannel == null ? CommandBehavior.EPHEMERAL : CommandBehavior.UNPRESS;
+
+        String allianceStr = db.getAllianceIds().stream().map(f -> "AA:" + f).collect(Collectors.joining(",")) + ",#position>1,#vm_turns=0";
+
+        IMessageBuilder msg = io.create().embed(title, body);
+        // audit
+        msg = msg.commandButton(behavior, channelId, CM.audit.sheet.cmd.create(null, null, null, null, null, null), "audit");
+        // mail
+        msg = msg.commandButton(behavior, channelId, CM.audit.run.cmd.create(allianceStr, null, null, "true", null, null), "mail");
+        // activity
+        msg = msg.commandButton(behavior, channelId, CM.sheets_ia.ActivitySheet.cmd.create(allianceStr, null, null), "activity");
+        // daychange
+        msg = msg.commandButton(behavior, channelId, CM.sheets_ia.daychange.cmd.create(allianceStr, null), "dc");
+        // spies
+        msg = msg.commandButton(behavior, channelId, CM.audit.hasNotBoughtSpies.cmd.create(allianceStr), "spies");
+        // mmr
+        msg = msg.commandButton(behavior, channelId, CM.sheets_milcom.MMRSheet.cmd.create(allianceStr, null, null, null), "mmr");
+        // auto
+        msg = msg.commandButton(behavior, channelId, CM.role.autoassign.cmd.create(null), "auto");
+
+        msg.send();
+    }
+
     @Command(desc = "Discord embed for checking deposits, withdrawing funds, viewing your stockpile, depositing resources and offshoring funds")
     @HasOffshore
     @RolePermission(Roles.ADMIN)
@@ -811,10 +930,6 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         if (bankerNation != null) {
             nationId = bankerNation.getId();
         }
-        // if corporation
-        // trade accept
-        // else
-        // Press `offshore` to send funds offshore
 
         // Add add credentials link to the panel, but not as a command button
         String title = "Member Deposits Panel";
@@ -1086,11 +1201,6 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
                         "sheet:" + underutilizedAlliesSheet.getSpreadsheetId()
 
                 ), "update").send();
-//
-//        UtilityCommands.NationSheet(store, placeholders, io, db, DiscordUtil.parseNations(db.getGuild(), allEnemies.getKey()), allEnemies.getValue(), false, allEnemiesSheet);
-//        UtilityCommands.NationSheet(store, placeholders, io, db, DiscordUtil.parseNations(db.getGuild(), allAllies.getKey()), allAllies.getValue(), false, allAlliesSheet);
-//        UtilityCommands.NationSheet(store, placeholders, io, db, DiscordUtil.parseNations(db.getGuild(), priorityEnemies.getKey()), priorityEnemies.getValue(), false, priorityEnemiesSheet);
-//        UtilityCommands.NationSheet(store, placeholders, io, db, DiscordUtil.parseNations(db.getGuild(), underutilizedAllies.getKey()), underutilizedAllies.getValue(), false, underutilizedAlliesSheet);
     }
 
     @Command(desc = "Discord embed for sheet to update ally and enemy spy counts, generate and send spy blitz targets")

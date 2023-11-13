@@ -12,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.*;
@@ -19,6 +20,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWMath2Type;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWType2Math;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
@@ -74,6 +76,10 @@ public abstract class Placeholders<T> extends BindingHelper {
         new PWType2Math().register(type2Math);
     }
 
+    public Class<T> getType() {
+        return instanceType;
+    }
+
     private void registerCustom(Method method, Type type) {
         Binding binding = method.getAnnotation(Binding.class);
         MethodParser parser = new MethodParser(this, method, this.getDescription(), binding, type);
@@ -95,8 +101,10 @@ public abstract class Placeholders<T> extends BindingHelper {
         try {
             Method methodSet = this.getClass().getMethod("parseSet", ValueStore.class, String.class);
             Method methodPredicate = this.getClass().getMethod("parseFilter", ValueStore.class, String.class);
+            Method methodFormat = this.getClass().getMethod("getFormatFunction", ValueStore.class, String.class);
             registerCustom(methodSet, TypeToken.getParameterized(Set.class, this.instanceType).getType());
             registerCustom(methodPredicate, TypeToken.getParameterized(Predicate.class, this.instanceType).getType());
+            registerCustom(methodFormat, TypeToken.getParameterized(TypedFunction.class, this.instanceType, String.class).getType());
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
@@ -181,6 +189,10 @@ public abstract class Placeholders<T> extends BindingHelper {
     public abstract String getDescription();
     protected abstract Set<T> parseSingleElem(ValueStore store, String input);
     protected abstract Predicate<T> parseSingleFilter(ValueStore store, String input);
+
+    public Set<T> deserializeSelection(ValueStore store, String input) {
+        return parseSet(store, input);
+    }
 
     private static Triple<String, Operation, String> opSplit(String input) {
         for (Operation op : Operation.values()) {
@@ -676,6 +688,11 @@ public abstract class Placeholders<T> extends BindingHelper {
         LocalValueStore locals = createLocals(callerGuild, callerUser, callerNation);
         locals.addProvider(cache);
         return getFormatFunction(locals, arg, throwError);
+    }
+
+    @Binding(value = "Format text containing placeholders")
+    public Function<T, String> getFormatFunction(ValueStore store, String arg) {
+        return getFormatFunction(store, arg, true);
     }
 
     public Function<T, String> getFormatFunction(ValueStore store, String arg, boolean throwError) {

@@ -1,61 +1,39 @@
 package link.locutus.discord.web.test;
 
-import cn.easyproject.easyocr.ImageType;
-import com.google.api.services.drive.model.File;
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.FlowType;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import link.locutus.discord.commands.manager.v2.binding.Key;
-import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
-import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.command.IModalBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
-import link.locutus.discord.commands.manager.v2.impl.pw.NationPlaceholder;
-import link.locutus.discord.commands.manager.v2.impl.pw.filter.NationPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
-import link.locutus.discord.commands.rankings.table.TimeFormat;
-import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.AllianceMetric;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.ImageUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.sheet.DriveFile;
-import link.locutus.discord.util.sheet.GoogleDoc;
-import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
-import net.dv8tion.jda.api.utils.messages.MessageCreateData;
+import link.locutus.discord.util.sheet.SpreadSheet;
 import org.json.JSONObject;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiConsumer;
 
 public class TestCommands {
 
@@ -209,14 +187,16 @@ public class TestCommands {
     }
 
     @Command
-    public String testImage(@Me IMessageIO io, String text) throws IOException, GeneralSecurityException {
-        String title = "Title test";
-
-        File file = DriveFile.createFile(title, "<b>hello world</b>");
-        String id = file.getId();
-        String googleDocUrl = "https://docs.google.com/document/d/" + id + "/edit";
-
-        return googleDocUrl;
+    public String testImage(@Me IMessageIO io, SpreadSheet sheet) throws IOException, GeneralSecurityException {
+        sheet.clearFirstTab();
+        sheet.addTab("tab1");
+        sheet.addRow(List.of("test", "test2", "test3"));
+        sheet.set("tab1", 0, 0);
+        sheet.clearFirstTab();
+        sheet.addTab("tab2");
+        sheet.addRow(List.of("test3", "test4", "hello"));
+        sheet.set("tab2", 0, 0);
+        return sheet.getURL();
     }
 
 //    public String test(NationPlaceholders placeholders, ValueStore store, String input, @Me DBNation me, @Me User user) {

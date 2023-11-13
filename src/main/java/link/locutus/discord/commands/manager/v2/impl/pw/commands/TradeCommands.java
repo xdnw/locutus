@@ -59,7 +59,6 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class TradeCommands {
@@ -1152,7 +1151,7 @@ public class TradeCommands {
             }
         }
 
-        sheet.clearAll();
+        sheet.clearFirstTab();
         sheet.set(0, 0);
 
         double[] diff = ResourceType.subtract(allDeposits.clone(), PnwUtil.resourcesToArray(stockpile));

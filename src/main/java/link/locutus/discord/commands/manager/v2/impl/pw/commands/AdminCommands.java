@@ -282,7 +282,7 @@ public class AdminCommands {
             }
         }
 
-        sheet.clearAll();
+        sheet.clearFirstTab();
         sheet.set(0, 0);
 
         sheet.attach(io.create(), "login_times").send();

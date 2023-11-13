@@ -89,7 +89,6 @@ public class CommandManager2 {
             ph.register(store);
         }
 
-
         this.commands = CommandGroup.createRoot(store, validators);
 
         if (!Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OPENAI.API_KEY.isEmpty()) {
@@ -167,6 +166,34 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        for (Class<?> type : placeholders.getTypes()) {
+            Placeholders<?> ph = placeholders.get(type);
+
+            Method methodAlias = null;
+            Method methodColumns = null;
+            try {
+                methodAlias = ph.getClass().getDeclaredMethod("addSelectionAlias");
+            } catch (Throwable e) {
+            }
+            try {
+                methodColumns = ph.getClass().getDeclaredMethod("addColumns");
+            } catch (Throwable e) {
+            }
+//            if (methodAlias == null) {
+//                throw new IllegalArgumentException("Missing method `addSelectionAlias` for " + ph.getType().getSimpleName());
+//            }
+//            if (methodColumns == null) {
+//                throw new IllegalArgumentException("Missing method `addColumns` for " + ph.getType().getSimpleName());
+//            }
+//
+//            for (Method method : ph.getClass().getDeclaredMethods()) {
+//                Command cmd = method.getAnnotation(Command.class);
+//                if (cmd != null) {
+//                    String name = cmd.aliases().length != 0 ? cmd.aliases()[0] : method.getName();
+//                    this.commands.registerMethod(ph, List.of("sheets_ia", "custom"), method.getName(), name);
+//                }
+//            }
+        }
         this.commands.registerMethod(new EmbedCommands(), List.of("announcement"), "announceDocument", "document");
 
         this.commands.registerMethod(new UnsortedCommands(), List.of("audit"), "auditSheet", "sheet");
@@ -190,6 +217,8 @@ public class CommandManager2 {
         this.commands.registerMethod(new AdminCommands(), List.of("admin", "sync"), "importLinkedBans", "multi_bans");
 
         this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "depositsPanel", "deposits");
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "econPanel", "econ_gov");
+        this.commands.registerMethod(new EmbedCommands(), List.of("embed", "template"), "iaPanel", "ia_gov");
 
         this.commands.registerMethod(new EmbedCommands(), List.of("embed"), "create", "create");
         this.commands.registerMethod(new EmbedCommands(), List.of("embed"), "title", "title");
@@ -574,6 +603,7 @@ public class CommandManager2 {
                     io.create().append(result.toString()).send();
                 }
             } catch (CommandUsageException e) {
+                System.out.println("Had usage exception");
                 Throwable root = e;
                 while (root.getCause() != null && root.getCause() != root) {
                     root = root.getCause();

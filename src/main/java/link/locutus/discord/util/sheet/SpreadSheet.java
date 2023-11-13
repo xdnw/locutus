@@ -2,24 +2,23 @@ package link.locutus.discord.util.sheet;
 
 import com.google.api.client.auth.oauth2.TokenResponseException;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
+import com.google.api.services.sheets.v4.model.AddSheetRequest;
 import com.google.api.services.sheets.v4.model.CellData;
+import com.google.api.services.sheets.v4.model.DeleteSheetRequest;
 import com.google.api.services.sheets.v4.model.ExtendedValue;
+import com.google.api.services.sheets.v4.model.Sheet;
+import com.google.api.services.sheets.v4.model.SheetProperties;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.SheetKeys;
-import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
-import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import com.google.api.client.auth.oauth2.Credential;
@@ -49,7 +48,6 @@ import com.google.api.services.sheets.v4.model.UpdateValuesResponse;
 import com.google.api.services.sheets.v4.model.ValueRange;
 import com.opencsv.CSVWriter;
 import link.locutus.discord.apiv1.enums.ResourceType;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 
 import java.io.*;
@@ -595,7 +593,41 @@ public class SpreadSheet {
         BatchUpdateSpreadsheetResponse result = service.spreadsheets().batchUpdate(spreadsheetId, batchRequests).execute();
     }
 
+    public void createTabIfNotExist(String tabName) throws IOException {
+        Spreadsheet sheet = service.spreadsheets().get(spreadsheetId).execute();
+        List<Sheet> sheets = sheet.getSheets();
+        for (Sheet sheet1 : sheets) {
+            if (sheet1.getProperties().getTitle().equals(tabName)) {
+                return;
+            }
+        }
+        addTab(tabName);
+    }
+
+    public void addTab(String tabName) {
+        if (service == null) {
+            return;
+        }
+        AddSheetRequest addSheetRequest = new AddSheetRequest();
+        SheetProperties sheetProperties = new SheetProperties();
+        sheetProperties.setTitle(tabName);
+        addSheetRequest.setProperties(sheetProperties);
+        List<Request> requests = new ArrayList<>();
+        requests.add(new Request().setAddSheet(addSheetRequest));
+        BatchUpdateSpreadsheetRequest batchUpdateSpreadsheetRequest = new BatchUpdateSpreadsheetRequest();
+        batchUpdateSpreadsheetRequest.setRequests(requests);
+        try {
+            service.spreadsheets().batchUpdate(spreadsheetId, batchUpdateSpreadsheetRequest).execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public void set(int x, int y) throws IOException {
+        set(null, x, y);
+    }
+
+    public void set(String tab, int x, int y) throws IOException {
         if (values == null || values.isEmpty()) {
             return;
         }
@@ -620,8 +652,9 @@ public class SpreadSheet {
 
             ValueRange body = new ValueRange()
                     .setValues(subList);
+
             UpdateValuesResponse result =
-                    service.spreadsheets().values().update(spreadsheetId, range, body)
+                    service.spreadsheets().values().update(spreadsheetId, (tab == null ? "" : tab + "!") + range, body)
                             .setValueInputOption("USER_ENTERED")
                             .execute();
         }
@@ -660,7 +693,7 @@ public class SpreadSheet {
         }
     }
 
-    public void clearAll() throws IOException {
+    public void clearFirstTab() throws IOException {
         if (service == null) {
             return;
         }
@@ -676,6 +709,76 @@ public class SpreadSheet {
         request.setRequests(List.of(clearAllDataRequest));
 
         BatchUpdateSpreadsheetResponse response = service.spreadsheets().batchUpdate(spreadsheetId, request).execute();
+    }
+
+    public void clearAllTabs() throws IOException {
+            if (service == null) {
+            return;
+        }
+        Spreadsheet spreadsheet = null;
+        try {
+            spreadsheet = service.spreadsheets().get(spreadsheetId).execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        List<Sheet> sheets = spreadsheet.getSheets();
+        List<Request> requests = new ArrayList<>();
+        for (Sheet sheet : sheets) {
+            ClearValuesRequest requestBody = new ClearValuesRequest();
+            Sheets.Spreadsheets.Values.Clear request =
+                    service.spreadsheets().values().clear(spreadsheetId, sheet.getProperties().getTitle(), requestBody);
+            try {
+                ClearValuesResponse response = request.execute();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void clearTab(String tab) throws IOException {
+            if (service == null) {
+            return;
+        }
+        ClearValuesRequest requestBody = new ClearValuesRequest();
+        Sheets.Spreadsheets.Values.Clear request =
+                service.spreadsheets().values().clear(spreadsheetId, tab, requestBody);
+
+        ClearValuesResponse response = request.execute();
+    }
+
+    public Map<Integer, String> getTabs() {
+            Spreadsheet spreadsheet = null;
+        try {
+            spreadsheet = service.spreadsheets().get(spreadsheetId).execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        List<Sheet> sheets = spreadsheet.getSheets();
+        Map<Integer, String> tabs = new LinkedHashMap<>();
+        for (Sheet sheet : sheets) {
+            SheetProperties prop = sheet.getProperties();
+            tabs.put(prop.getSheetId(), prop.getTitle());
+        }
+        return tabs;
+    }
+
+    public void deleteTab(int tabId) {
+        if (service == null) {
+            return;
+        }
+        List<Request> requests = new ArrayList<>();
+        DeleteSheetRequest deleteSheetRequest = new DeleteSheetRequest();
+        deleteSheetRequest.setSheetId(tabId);
+        Request request = new Request();
+        request.setDeleteSheet(deleteSheetRequest);
+        requests.add(request);
+        BatchUpdateSpreadsheetRequest requestBody = new BatchUpdateSpreadsheetRequest();
+        requestBody.setRequests(requests);
+        try {
+            BatchUpdateSpreadsheetResponse response = service.spreadsheets().batchUpdate(spreadsheetId, requestBody).execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public void clear(String range) throws IOException {

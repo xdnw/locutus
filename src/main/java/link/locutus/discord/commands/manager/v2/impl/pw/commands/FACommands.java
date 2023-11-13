@@ -74,7 +74,7 @@ public class FACommands {
             return "Admin is required to send a treaty with a message";
         }
         if (message == null) message = "";
-        Set<Treaty> result = sender.sendTreaty(receiver.getAlliance_id(), type, message, days);
+        Set<Treaty> result = sender.sendTreaty(receiver.getAlliance_id(), type, message, days * 12);
         return "Sent:\n- " + StringMan.join(result, "\n- ");
     }
 
