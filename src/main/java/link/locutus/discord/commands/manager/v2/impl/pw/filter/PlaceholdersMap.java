@@ -23,6 +23,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.bindings.SimplePlaceholders;
@@ -32,6 +33,7 @@ import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
@@ -55,6 +57,7 @@ import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
+import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -71,6 +74,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -176,52 +180,6 @@ public class PlaceholdersMap {
         return input;
     }
 
-    private static <T> String _addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<T> elems, String argumentName) {
-        // ensure name is alphanumeric_- and not too long
-        if (!name.matches("[a-zA-Z0-9_-]+")) {
-            throw new IllegalArgumentException("Invalid name: `" + name + "` (must be alphanumeric_-)");
-        }
-        if (name.length() > 20) {
-            throw new IllegalArgumentException("Name too long: `" + name + "` (max 20 chars)");
-        }
-        CustomSelection<Continent> existing = db.getCustomSelection(name, Continent.class);
-        if (existing != null) {
-            throw new IllegalArgumentException("Selection already exists: " + existing.toString());
-        }
-        String selection = command.getString(argumentName);
-        db.addCustomSelection(name, Continent.class, selection);
-        return "Added selection `" + name + "`: " + selection + ". Use it with `!" + name + "`";
-    }
-
-    private static <T> String _addColumns(Placeholders<T> placeholders, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet, TypedFunction<T, String>... columns) {
-        boolean created = false;
-        if (sheet == null) {
-            created = true;
-            Set<String> names = db.getCustomSheetNames();
-            for (int i = 0; ; i++) {
-                String name = placeholders.getType().getSimpleName() + (i == 0 ? "" : "_" + i);
-                if (!names.contains(name)) {
-                    sheet = new CustomSheet(name, placeholders.getType(), "*", new ArrayList<>());
-                    break;
-                }
-            }
-        } else if (!sheet.type.equals(placeholders.getType())) {
-            throw new IllegalArgumentException("Sheet type mismatch: `" + sheet.type.getSimpleName() + "` != `" + placeholders.getType() + "`");
-        }
-
-        List<TypedFunction<T, String>> columnsNonNull = new ArrayList<>();
-        for (TypedFunction<T, String> column : columns) {
-            if (column != null) {
-                columnsNonNull.add(column);
-            }
-        }
-        for (TypedFunction<T, String> column : columnsNonNull) {
-            sheet.columns.add(column.getName());
-        }
-        db.addCustomSheet(sheet);
-        return (created ? "Created" : "Updated") + " sheet template: " + sheet;
-    }
-
     private Placeholders<Continent> createContinents() {
         return new StaticPlaceholders<Continent>(Continent.class, store, validators, permisser,
                 "TODO CM REF",
@@ -268,7 +226,7 @@ public class PlaceholdersMap {
                                       @Default TypedFunction<Continent, String> column22,
                                       @Default TypedFunction<Continent, String> column23,
                                       @Default TypedFunction<Continent, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                                 column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                                 column21, column22, column23, column24);
@@ -408,7 +366,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<NationOrAlliance, String> column22,
                                      @Default TypedFunction<NationOrAlliance, String> column23,
                                      @Default TypedFunction<NationOrAlliance, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
@@ -495,7 +453,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<GuildDB, String> column22,
                                      @Default TypedFunction<GuildDB, String> column23,
                                      @Default TypedFunction<GuildDB, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
@@ -572,7 +530,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<DBBan, String> column22,
                                      @Default TypedFunction<DBBan, String> column23,
                                      @Default TypedFunction<DBBan, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
@@ -682,7 +640,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<NationList, String> column22,
                                      @Default TypedFunction<NationList, String> column23,
                                      @Default TypedFunction<NationList, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
@@ -875,7 +833,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<UserWrapper, String> column22,
                                      @Default TypedFunction<UserWrapper, String> column23,
                                      @Default TypedFunction<UserWrapper, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
@@ -960,7 +918,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<DBCity, String> column22,
                                      @Default TypedFunction<DBCity, String> column23,
                                      @Default TypedFunction<DBCity, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
@@ -1152,7 +1110,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<BankDB.TaxDeposit, String> column22,
                                      @Default TypedFunction<BankDB.TaxDeposit, String> column23,
                                      @Default TypedFunction<BankDB.TaxDeposit, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
@@ -1274,7 +1232,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<IAttack, String> column22,
                                      @Default TypedFunction<IAttack, String> column23,
                                      @Default TypedFunction<IAttack, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
@@ -1372,7 +1330,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<DBWar, String> column22,
                                      @Default TypedFunction<DBWar, String> column23,
                                      @Default TypedFunction<DBWar, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
@@ -1463,7 +1421,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<TaxBracket, String> column22,
                                      @Default TypedFunction<TaxBracket, String> column23,
                                      @Default TypedFunction<TaxBracket, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
@@ -1539,7 +1497,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<DBTrade, String> column22,
                                      @Default TypedFunction<DBTrade, String> column23,
                                      @Default TypedFunction<DBTrade, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
@@ -1588,6 +1546,81 @@ public class PlaceholdersMap {
                     }
                     throw new IllegalArgumentException("Invalid transaction id: " + input);
                 }) {
+
+            @Override
+            public Set<Transaction2> deserializeSelection(ValueStore store, String input) {
+                // index of {
+                String type = input.substring(0, input.indexOf("{"));
+                input = input.substring(input.indexOf("{"));
+
+                JSONObject json = new JSONObject(input);
+                Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
+                User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
+                DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
+
+
+                switch (type) {
+                    case "all" -> {
+                        try {
+                            String sendersStr = json.optString("sender", null);
+                            Set<NationOrAlliance> senders = sendersStr == null ? null : PWBindings.nationOrAlliance(null, guild, sendersStr, true, author, me);
+
+                            String receiversStr = json.optString("receiver", null);
+                            Set<NationOrAlliance> receivers = receiversStr == null ? null : PWBindings.nationOrAlliance(null, guild, receiversStr, true, author, me);
+
+                            String bankersStr = json.optString("banker", null);
+                            Set<NationOrAlliance> bankers = bankersStr == null ? null : PWBindings.nationOrAlliance(null, guild, bankersStr, true, author, me);
+
+                            Predicate<Transaction2> transactionFilter = json.has("transactionFilter") ? parseFilter(store, json.getString("transactionFilter")) : null;
+
+                            Long startTime = json.has("startTime") ? PrimitiveBindings.timestamp(json.getString("startTime")) : null;
+
+                            Long endTime = json.has("endTime") ? PrimitiveBindings.timestamp(json.getString("endTime")) : null;
+
+                            Boolean includeOffset = json.has("includeOffset") ? json.getBoolean("includeOffset") : null;
+
+                            Locutus.imp().getBankDB().getTransactionsByBySenderOrReceiver()
+                        } catch (ParseException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                    case "deposits" -> {
+
+                    }
+
+                }
+
+
+
+
+                throw new UnsupportedOperationException("Currently not supported");
+            }
+
+            @NoFormat
+            @Command(desc = "Add columns to a Transaction sheet")
+            @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+            public String bankRecordsAllAlias(@Me JSONObject command, @Me GuildDB db, String name,
+                                              @Default Set<NationOrAlliance> sender,
+                                              @Default Set<NationOrAlliance> receiver,
+                                              @Default Set<NationOrAlliance> senderOrReceiver,
+                                              @Default Set<NationOrAlliance> banker, @Default Predicate<Transaction2> transactionFilter, @Default @Timestamp Long startTime, @Default @Timestamp Long endTime, @Switch("o") Boolean includeOffsets) {
+                if (senderOrReceiver != null && (sender != null || receiver != null)) {
+                    throw new IllegalArgumentException("Cannot specify `sender` or `receiver` when `senderOrReceiver` is specified");
+                }
+                if (startTime != null && endTime != null && startTime > endTime) {
+                    throw new IllegalArgumentException("Start time cannot be after end time");
+                }
+                return _addSelectionAlias("all", command, db, name, "sender", "receiver", "banker", "transactionFilter", "startTime", "endTime", "includeOffset");
+            }
+
+            @NoFormat
+            @Command(desc = "Add columns to a Transaction sheet")
+            @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+            public String bankRecordsDeposits(@Me JSONObject command, @Me GuildDB db, String name,
+                                              NationOrAllianceOrGuild nationOrAllianceOrGuild, @Default Predicate<Transaction2> transactionFilter, @Default @Timestamp Long startTime, @Default @Timestamp Long endTime, @Switch("o") Boolean includeOffset, @Switch("o") Boolean includeTaxes) {
+                return _addSelectionAlias("deposits", command, db, name, "nationOrAllianceOrGuild", "transactionFilter", "startTime", "endTime", "startTime", "endTime", "includeOffset");
+            }
+
             @NoFormat
             @Command(desc = "Add columns to a Transaction sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -1616,7 +1649,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<Transaction2, String> column22,
                                      @Default TypedFunction<Transaction2, String> column23,
                                      @Default TypedFunction<Transaction2, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
@@ -1707,7 +1740,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<DBBounty, String> column22,
                                      @Default TypedFunction<DBBounty, String> column23,
                                      @Default TypedFunction<DBBounty, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
@@ -1829,7 +1862,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<Treaty, String> column22,
                                      @Default TypedFunction<Treaty, String> column23,
                                      @Default TypedFunction<Treaty, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
@@ -1889,7 +1922,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<Project, String> column22,
                                      @Default TypedFunction<Project, String> column23,
                                      @Default TypedFunction<Project, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
@@ -1943,7 +1976,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<ResourceType, String> column22,
                                      @Default TypedFunction<ResourceType, String> column23,
                                      @Default TypedFunction<ResourceType, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
@@ -1997,7 +2030,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<AttackType, String> column22,
                                      @Default TypedFunction<AttackType, String> column23,
                                      @Default TypedFunction<AttackType, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
@@ -2051,7 +2084,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<MilitaryUnit, String> column22,
                                      @Default TypedFunction<MilitaryUnit, String> column23,
                                      @Default TypedFunction<MilitaryUnit, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
@@ -2105,7 +2138,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<TreatyType, String> column22,
                                      @Default TypedFunction<TreatyType, String> column23,
                                      @Default TypedFunction<TreatyType, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
@@ -2159,7 +2192,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<IACheckup.AuditType, String> column22,
                                      @Default TypedFunction<IACheckup.AuditType, String> column23,
                                      @Default TypedFunction<IACheckup.AuditType, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
@@ -2213,7 +2246,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<NationColor, String> column22,
                                      @Default TypedFunction<NationColor, String> column23,
                                      @Default TypedFunction<NationColor, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
@@ -2267,7 +2300,7 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<Building, String> column22,
                                      @Default TypedFunction<Building, String> column23,
                                      @Default TypedFunction<Building, String> column24) throws GeneralSecurityException, IOException {
-                return PlaceholdersMap._addColumns(this, command,db, io, author, sheet,
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
                         column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);

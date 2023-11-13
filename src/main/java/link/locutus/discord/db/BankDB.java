@@ -60,6 +60,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import static org.example.jooq.bank.Tables.LOOT_DIFF_BY_TAX_ID;
 import static org.example.jooq.bank.Tables.SUBSCRIPTIONS;
@@ -283,17 +284,47 @@ public class BankDB extends DBMainV3 {
     }
 
     public List<Transaction2> getAllTransactions(NationOrAlliance sender, NationOrAlliance receiver, NationOrAlliance banker, Long startDate, Long endDate) {
+
+    }
+
+    public List<Transaction2> getAllTransactions(Set<NationOrAlliance> sender, Set<NationOrAlliance> receiver, Set<NationOrAlliance> banker, Long startDate, Long endDate) {
+        if (sender != null && sender.isEmpty()) sender = null;
+        if (receiver != null && receiver.isEmpty()) receiver = null;
+        if (banker != null && banker.isEmpty()) banker = null;
         if (sender == null && receiver == null && banker == null) throw new IllegalArgumentException("Please provide at least one of sender, receiver, or banker");
+
+        Predicate<Transaction2> filter = f -> true;
 
         Condition condition = null;
         if (sender != null) {
-            condition = and(condition, TRANSACTIONS_2.SENDER_ID.eq(sender.getIdLong()).and(TRANSACTIONS_2.SENDER_TYPE.eq(sender.getReceiverType())));
+            if (sender.size() == 1) {
+                NationOrAlliance sender1 = sender.iterator().next();
+                condition = and(condition, TRANSACTIONS_2.SENDER_ID.eq(sender1.getIdLong()).and(TRANSACTIONS_2.SENDER_TYPE.eq(sender1.getReceiverType())));
+            } else {
+                condition = and(condition, TRANSACTIONS_2.SENDER_ID.in(sender.stream().map(NationOrAlliance::getIdLong).collect(Collectors.toList())));
+                filter = filter.and(f -> {
+
+                });
+            }
         }
         if (receiver != null) {
-            condition = and(condition, TRANSACTIONS_2.RECEIVER_ID.eq(receiver.getIdLong()).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(receiver.getReceiverType())));
+            if (receiver.size() == 1) {
+                NationOrAlliance receiver1 = receiver.iterator().next();
+                condition = and(condition, TRANSACTIONS_2.RECEIVER_ID.eq(receiver1.getIdLong()).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(receiver1.getReceiverType())));
+            } else {
+                condition = and(condition, TRANSACTIONS_2.RECEIVER_ID.in(receiver.stream().map(NationOrAlliance::getIdLong).collect(Collectors.toList())));
+                filter = filter.and(f -> {
+
+                });
+            }
         }
         if (banker != null) {
-            condition = and(condition, TRANSACTIONS_2.BANKER_NATION_ID.eq(banker.getId()));
+            if (banker.size() == 1) {
+                NationOrAlliance banker1 = banker.iterator().next();
+                condition = and(condition, TRANSACTIONS_2.BANKER_NATION_ID.eq(banker1.getId()));
+            } else {
+                condition = and(condition, TRANSACTIONS_2.BANKER_NATION_ID.in(banker.stream().map(NationOrAlliance::getIdLong).collect(Collectors.toList())));
+            }
         }
         if (startDate != null) {
             condition = and(condition, TRANSACTIONS_2.TX_DATETIME.ge(startDate));
@@ -303,21 +334,51 @@ public class BankDB extends DBMainV3 {
         }
         List<Transaction2> results = getTransactions(condition);
         try {
-            boolean checkNation = (sender != null && sender.isNation()) || (receiver != null && receiver.isNation()) || (sender == null && receiver == null);
-            boolean checkAlliance = !checkNation || (sender == null && receiver == null);
+            boolean checkAlliance = false;
+            if (receiver != null) {
+                for (NationOrAlliance nationOrAlliance : receiver) {
+                    if (nationOrAlliance.isAlliance()) {
+                        checkAlliance = true;
+                        break;
+                    }
+                }
+            }
+            if (sender != null) {
+                for (NationOrAlliance nationOrAlliance : sender) {
+                    if (nationOrAlliance.isAlliance()) {
+                        checkAlliance = true;
+                        break;
+                    }
+                }
+            }
+//            boolean checkNation = (sender != null && sender.isNation()) || (receiver != null && receiver.isNation()) || (sender == null && receiver == null);
+//            boolean checkAlliance = !checkNation || (sender == null && receiver == null);
 
             if (checkAlliance && tableExists("TRANSACTIONS_ALLIANCE_2")) {
                 String query = "SELECT * FROM %table% WHERE tx_datetime > ? AND tx_datetime < ? ";
                 if (sender != null) {
-                    query += " AND sender_id = " + sender.getIdLong();
-                    query += " AND sender_type = " + sender.getReceiverType();
+                    if (sender.size() == 1) {
+                        NationOrAlliance sender1 = sender.iterator().next();
+                        query += " AND sender_id = " + sender1.getIdLong();
+                        query += " AND sender_type = " + sender1.getReceiverType();
+                    } else {
+                        query += " AND sender_id IN (" + sender.stream().map(NationOrAlliance::getIdLong).map(String::valueOf).collect(Collectors.joining(",")) + ")";
+                    }
                 }
                 if (receiver != null) {
-                    query += " AND receiver_id = " + receiver.getIdLong();
-                    query += " AND receiver_type = " + receiver.getReceiverType();
+                    if (receiver.size() == 1) {
+                        NationOrAlliance receiver1 = receiver.iterator().next();
+                        query += " AND receiver_id = " + receiver1.getIdLong();
+                        query += " AND receiver_type = " + receiver1.getReceiverType();
+                    } else {
+                        query += " AND receiver_id IN (" + receiver.stream().map(NationOrAlliance::getIdLong).map(String::valueOf).collect(Collectors.joining(",")) + ")";
+                    }
                 }
                 if (banker != null) {
-                    query += " AND banker_nation_id = " + banker.getId();
+                    if (banker.size() == 1)
+                        query += " AND banker_nation_id = " + banker.iterator().next().getId();
+                    else
+                        query += " AND banker_nation_id IN (" + banker.stream().map(NationOrAlliance::getIdLong).map(String::valueOf).collect(Collectors.joining(",")) + ")";
                 }
                 String queryAA = query.replaceFirst("%table%", "TRANSACTIONS_ALLIANCE_2");
                 queryLegacy(queryAA,
