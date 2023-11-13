@@ -224,7 +224,8 @@ public class EmbedCommands {
     @NoFormat
     @RolePermission(Roles.INTERNAL_AFFAIRS)
     public String addModal(@Me User user, @Me Guild guild, Message message, String label, CommandBehavior behavior, ICommand command,
-                           @Arg("A comma separated list of the command arguments to prompt for") String arguments,
+                           @Arg("A comma separated list of the command arguments to prompt for\n" +
+                                   "Arguments can be one of the named arguments for the command, or the name of any `{placeholder}` you have for `defaults`") String arguments,
                            @Arg("The default arguments and values you want to submit to the command\n" +
                                    "Example: `myarg1:myvalue1 myarg2:myvalue2`\n" +
                                    "For placeholders: <https://github.com/xdnw/locutus/wiki/nation_placeholders>")
@@ -252,6 +253,8 @@ public class EmbedCommands {
 
         for (String arg : promptedArguments) {
             String argLower = arg.toLowerCase(Locale.ROOT);
+            if (defaults.contains("{" + argLower)) continue;
+
             if (!validArguments.contains(arg) && !validArguments.contains(argLower)) {
                 throw new IllegalArgumentException("The command `" + command.getFullPath() + "` does not have an argument `" + arg + "`. Valid arguments: `" + StringMan.getString(validArguments) + "`");
             }
