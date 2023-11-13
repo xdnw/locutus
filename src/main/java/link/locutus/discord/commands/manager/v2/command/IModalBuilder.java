@@ -54,6 +54,7 @@ public interface IModalBuilder {
             String placeholderValue = matcher.group(2); // May be null
 
             placeholders.put(placeholderName, placeholderValue);
+            System.out.println("Add ph" + placeholderName + " " + placeholderValue);
         }
         return placeholders;
     }
@@ -125,8 +126,8 @@ public interface IModalBuilder {
                 TextInput.Builder builder = TextInput.create(key, label, TextInputStyle.PARAGRAPH);
 
                 if (defValue != null) {
-                    builder = builder.setPlaceholder("world");
-                    builder = builder.setValue("hello");
+                    builder = builder.setPlaceholder(defValue);
+                    builder = builder.setValue(defValue);
                 }
                 builder.setRequired(true);
                 addInput(builder.build());

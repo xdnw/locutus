@@ -50,9 +50,10 @@ public class WikiCustomEmbeds extends BotWikiGen {
                 commandMarkdownSpoiler(CM.embed.add.command.cmd),
                 "# Add a modal (prompt button) to an embed",
                 commandMarkdownSpoiler(CM.embed.add.modal.cmd),
-                "Examples:",
+                "Example with default:",
                 CM.embed.add.modal.cmd.create("<url>", "Who", CommandBehavior.EPHEMERAL.name(), CM.who.cmd.getPath(), "nationoralliances", "list: True", null).toString(),
-                CM.embed.add.modal.cmd.create("<url>", "Who Cities", CommandBehavior.EPHEMERAL.name(), CM.who.cmd.getPath(), "num_cities", "nationoralliances: Rose,#cities>{num_cities}", null).toString(),
+                "Example with placeholder, and default",
+                CM.embed.add.modal.cmd.create("<url>", "Who Cities", CommandBehavior.EPHEMERAL.name(), CM.who.cmd.getPath(), "num_cities,position", "nationoralliances: Rose,#cities>{num_cities},#position={position=1}", null).toString(),
                 "# Multiple commands in one button",
                 "Use `\\n` for newlines between commands",
                 commandMarkdownSpoiler(CM.embed.add.raw.cmd)
