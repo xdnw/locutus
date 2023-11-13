@@ -113,7 +113,7 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
     }
 
     @Override
-    public double[] getCost(DBNation sender, DBNation receiver, Integer parsed) {
+    public double[] getCost(GuildDB db, DBNation sender, DBNation receiver, Integer parsed) {
         long minDate = Long.MAX_VALUE;
         long cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days);
         double[] revenue = receiver.getRevenue();
@@ -121,6 +121,9 @@ public class RawsTemplate extends AGrantTemplate<Integer>{
             PnwUtil.multiply(revenue, 1 + (overdrawPercent / 100d));
         }
         ResourceType.ResourcesBuilder receivedBuilder = ResourceType.builder();
+        if (!db.isAllianceId(receiver.getAlliance_id())) {
+            throw new IllegalArgumentException("Receiver (" + receiver.getMarkdownUrl() + "/" + receiver.getAllianceUrlMarkup(true) + ") is not in an alliance registered to this guild. (currently: " + db.getAllianceIds() + ")");
+        }
         Map<ResourceType, Double> stockpile = receiver.getStockpile();
         Map<ResourceType, Double> needed = receiver.getResourcesNeeded(stockpile, parsed, false);
 

@@ -416,6 +416,9 @@ public class DiscordCommands {
             io.create().confirmation(title, body, command).send();
             return null;
         }
+        if (nation != null) {
+            Locutus.imp().getDiscordDB().deleteApiKeyPairByNation(nation.getNation_id());
+        }
         Locutus.imp().getDiscordDB().unregister(nation.getNation_id(), null);
         return "Unregistered user from " + nation.getNationUrl();
     }

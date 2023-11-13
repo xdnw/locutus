@@ -215,7 +215,7 @@ public class CityTemplate extends AGrantTemplate<Integer> {
     }
 
     @Override
-    public double[] getCost(DBNation sender, DBNation receiver, Integer amount) {
+    public double[] getCost(GuildDB db, DBNation sender, DBNation receiver, Integer amount) {
         if (amount == null) amount = 1;
         int cities = receiver.getCities();
         double cost = PnwUtil.nextCityCost(receiver, amount);

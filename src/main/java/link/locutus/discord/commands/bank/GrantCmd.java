@@ -399,6 +399,9 @@ public class GrantCmd extends Command {
         } else if (arg.equalsIgnoreCase("build")) {
             throw new IllegalArgumentException("Usage: " + Settings.commandPrefix(true) + "grant <nation> <json> 1");
         } else if (arg.equalsIgnoreCase("warchest")) {
+            if (!guildDb.isAllianceId(me.getAlliance_id())) {
+                throw new IllegalArgumentException("Cannot view stockpile for " + me.getMarkdownUrl() + " as their alliance is not registered to this guild (currently: " + guildDb.getAllianceIds() + ")");
+            }
             Map<ResourceType, Double> stockpile = me.getStockpile();
             if (stockpile == null) throw new IllegalArgumentException("Unable to fetch stockpile (are you sure they are a member?)");
             Map<ResourceType, Double> cityWc = guildDb.getPerCityWarchest(me);
@@ -496,6 +499,9 @@ public class GrantCmd extends Command {
         }
 
         if (existing) {
+            if (!guildDb.isAllianceId(me.getAlliance_id())) {
+                throw new IllegalArgumentException("Nation " + me.getMarkdownUrl() + " is not in an alliance registered to this guild (currently: " + guildDb.getAllianceIds() + ")");
+            }
             Map<ResourceType, Double> stockpile = me.getStockpile();
             for (Map.Entry<ResourceType, Double> entry : stockpile.entrySet()) {
                 if (entry.getValue() > 0) {

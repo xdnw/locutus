@@ -1034,7 +1034,7 @@ public class GrantCommands {
         if (ignore) {
             note = note.ignore(true);
         }
-        double[] cost = template.getCost(me, receiver, parsed);
+        double[] cost = template.getCost(db, me, receiver, parsed);
         List<Grant.Requirement> requirements = template.getDefaultRequirements(me, receiver, parsed);
         String instructions = template.getInstructions(me, receiver, parsed);
 

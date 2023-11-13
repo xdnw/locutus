@@ -3088,6 +3088,7 @@ public class WarCommands {
             sent++;
 
             StringBuilder mail = new StringBuilder();
+            header = header.replace("\\n", "\n");
             mail.append(header).append("\n");
 
             if (!myAttackOps.isEmpty()) {
@@ -3190,8 +3191,6 @@ public class WarCommands {
             StringBuilder body = new StringBuilder();
             body.append("subject: " + subject + "\n");
 
-            String confirmCommand = command.put("force", "true").toString();
-
             channel.create().confirmation(embedTitle, body.toString(), command)
                             .append(author.getAsMention())
                                     .send();
@@ -3210,12 +3209,16 @@ public class WarCommands {
                 attacker.sendMail(key, subject, body, true);
             } catch (Throwable e) {
                 mailErrors.put(attacker, (e.getMessage() + " ").split("\n")[0]);
-                continue;
             }
             if (dm) {
                 String markup = MarkupUtil.htmlToMarkdown(body);
                 try {
-                    attacker.sendDM("**" + subject + "**:\n" + markup);
+                    attacker.sendDM("**" + subject + "**:\n" + markup, new Consumer<String>() {
+                        @Override
+                        public void accept(String string) {
+                            dmErrors.put(attacker, string);
+                        }
+                    });
                 } catch (Throwable e) {
                     dmErrors.put(attacker, (e.getMessage() + " ").split("\n")[0]);
                 }
@@ -3261,7 +3264,7 @@ public class WarCommands {
         if (!errorMsg.isEmpty()) {
             msg = msg.file("Errors.txt", errorMsg.toString());
         }
-        msg.append("Done, sent " + sent + " messages").send();
+        msg.append("Done, sent " + sent + " messages" + (!errorMsg.isEmpty() ? "" : " (with errors)")).send();
         return null;
     }
 

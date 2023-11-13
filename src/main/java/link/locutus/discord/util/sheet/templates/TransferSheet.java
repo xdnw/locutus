@@ -122,7 +122,13 @@ public class TransferSheet {
                 if (amtStr == null || amtStr.toString().isEmpty()) continue;
                 try {
                     ResourceType type = ResourceType.parse(rssName.toString());
+                    if (type == null) {
+                        throw new IllegalArgumentException("Invalid resource type: `" + rssName + "`");
+                    }
                     Double amt = MathMan.parseDouble(amtStr.toString());
+                    if (amt == null) {
+                        throw new IllegalArgumentException("Invalid amount: `" + amtStr + "` for " + type);
+                    }
                     transfer.put(type, transfer.getOrDefault(type, 0d) + amt);
                     continue;
                 } catch (IllegalArgumentException ignore) {}

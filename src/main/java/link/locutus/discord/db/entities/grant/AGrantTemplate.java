@@ -208,7 +208,7 @@ public abstract class AGrantTemplate<T> {
         // receiver markdown
         if (sender != null && receiver != null) {
             System.out.println(6.8);
-            double[] cost = getCost(sender, receiver, parsed);
+            double[] cost = getCost(db, sender, receiver, parsed);
             if (cost != null) {
                 data.append("Cost: `").append(PnwUtil.resourcesToString(cost)).append("`\n");
             }
@@ -595,7 +595,7 @@ public abstract class AGrantTemplate<T> {
         return dateCreated;
     }
 
-    public abstract double[] getCost(DBNation sender, DBNation receiver, T parsed);
+    public abstract double[] getCost(GuildDB db, DBNation sender, DBNation receiver, T parsed);
     public abstract DepositType.DepositTypeInfo getDepositType(DBNation receiver, T parsed);
     public abstract String getInstructions(DBNation sender, DBNation receiver, T parsed);
 
@@ -630,7 +630,7 @@ public abstract class AGrantTemplate<T> {
 
     public Grant createGrant(DBNation sender, DBNation receiver, T customValue) {
         Grant grant = new Grant(receiver, getDepositType(receiver, customValue));
-        grant.setCost(f -> this.getCost(sender, receiver, customValue));
+        grant.setCost(f -> this.getCost(db, sender, receiver, customValue));
         grant.addRequirement(getDefaultRequirements(sender, receiver, customValue));
         // grant.addNote()
         grant.setInstructions(getInstructions(sender, receiver, customValue));

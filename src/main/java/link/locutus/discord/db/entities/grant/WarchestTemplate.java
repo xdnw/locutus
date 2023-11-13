@@ -184,7 +184,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
             double[] allowance;
             StringBuilder allowanceStr = new StringBuilder();
             if (receiver != null) {
-                allowance = template.getCost(sender, receiver, parsed, allowanceStr);
+                allowance = template.getCost(null, sender, receiver, parsed, allowanceStr);
             } else {
                 allowance = null;
             }
@@ -206,11 +206,11 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
     }
 
     @Override
-    public double[] getCost(DBNation sender, DBNation receiver, Map<ResourceType, Double> parsed) {
-        return getCost(sender, receiver, parsed, null);
+    public double[] getCost(GuildDB db, DBNation sender, DBNation receiver, Map<ResourceType, Double> parsed) {
+        return getCost(db, sender, receiver, parsed, null);
     }
 
-    public double[] getCost(DBNation sender, DBNation receiver, Map<ResourceType, Double> parsed, StringBuilder debugOutput) {
+    public double[] getCost(GuildDB db, DBNation sender, DBNation receiver, Map<ResourceType, Double> parsed, StringBuilder debugOutput) {
         double[] allowance;
         if (allowancePerCity != null) {
             allowance = PnwUtil.multiply(allowancePerCity.clone(), receiver.getCities());
@@ -222,7 +222,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
         double[] spent = ResourceType.getBuffer();
         if (this.subtractExpenditure) {
             // get war cost
-            AttackCost cost = Locutus.imp().getWarDb().queryAttacks().withWarSet(db -> db.getWarsByNation(receiver.getId())).afterDate(cutoff).toCost(
+            AttackCost cost = Locutus.imp().getWarDb().queryAttacks().withWarSet(f -> f.getWarsByNation(receiver.getId())).afterDate(cutoff).toCost(
                     (war, attack) -> attack.getAttacker_id() == receiver.getId(),
                     "",
                     "",

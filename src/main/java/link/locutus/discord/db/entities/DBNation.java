@@ -4931,10 +4931,6 @@ public class DBNation implements NationOrAlliance {
         return estimateScore(null, infra, null, null);
     }
 
-    public Map<ResourceType, Double> checkExcessResources(GuildDB db) throws IOException {
-        return checkExcessResources(db, getStockpile());
-    }
-
     public Map<ResourceType, Double> checkExcessResources(GuildDB db, Map<ResourceType, Double> stockpile) {
         return checkExcessResources(db, stockpile, true);
     }
@@ -5530,12 +5526,19 @@ public class DBNation implements NationOrAlliance {
     }
 
     public boolean sendDM(String msg) {
+        return sendDM(msg, null);
+    }
+
+    public boolean sendDM(String msg, Consumer<String> errors) {
         User user = getUser();
         if (user == null) return false;
 
         try {
             RateLimitUtil.queue(RateLimitUtil.complete(user.openPrivateChannel()).sendMessage(msg));
         } catch (Throwable e) {
+            if (errors != null) {
+                errors.accept(e.getMessage());
+            }
             e.printStackTrace();
             return false;
         }

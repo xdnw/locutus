@@ -1165,8 +1165,15 @@ public class UtilityCommands {
         }
 
         String body = "`note: Results may differ if settings or users change`\n" +
-                result.getSyncDbResult() + "\n------\n" + result.toString();
+                result.getSyncDbResult();
+        String resultStr = result.toString();
+        if (body.length() + resultStr.length() < 2000) {
+            body += "\n\n------------\n\n" + resultStr;
+        }
         IMessageBuilder msg = channel.create().confirmation("Auto role all", body, command);
+        if (body.length() + resultStr.length() < 2000) {
+            msg = msg.file("role_changes.txt", result.toString());
+        }
 
         if (db.hasAlliance()) {
             StringBuilder response = new StringBuilder();

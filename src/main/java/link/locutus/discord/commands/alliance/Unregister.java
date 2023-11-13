@@ -45,6 +45,7 @@ public class Unregister extends Command {
         }
         if (nation != null) {
             Locutus.imp().getDiscordDB().unregister(nation.getNation_id(), null);
+            Locutus.imp().getDiscordDB().deleteApiKeyPairByNation(nation.getNation_id());
         } else {
             User user = DiscordBindings.user(author, arg0);
             Locutus.imp().getDiscordDB().unregister(null, user.getIdLong());

@@ -98,7 +98,7 @@ public class LandTemplate extends AGrantTemplate<Double>{
     }
 
     @Override
-    public double[] getCost(DBNation sender, DBNation receiver, Double parsed) {
+    public double[] getCost(GuildDB db, DBNation sender, DBNation receiver, Double parsed) {
 
         long cutoff = TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119);
         Map<Integer, Double> topCity = getTopCityLandGrant(receiver);

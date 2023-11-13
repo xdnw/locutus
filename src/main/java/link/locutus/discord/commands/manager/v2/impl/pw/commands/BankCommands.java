@@ -2036,6 +2036,9 @@ public class BankCommands {
                     return "You can only access stockpile information for yourself";
                 }
             }
+            if (!guildDb.isAllianceId(receiver.getAlliance_id())) {
+                return "This guild is not registered to the alliance `" + receiver.getAlliance_id() + "`. See: " + CM.settings_default.registerAlliance.cmd.toSlashMention();
+            }
             Map<ResourceType, Double> existing = receiver.getStockpile();
             for (Map.Entry<ResourceType, Double> entry : transfer.entrySet()) {
                 double toSend = Math.max(0, entry.getValue() - existing.getOrDefault(entry.getKey(), 0d));

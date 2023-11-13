@@ -171,7 +171,7 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
     }
 
     @Override
-    public double[] getCost(DBNation sender, DBNation receiver, Void parsed) {
+    public double[] getCost(GuildDB db, DBNation sender, DBNation receiver, Void parsed) {
         return receiver.projectCost(project);
     }
 

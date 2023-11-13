@@ -368,7 +368,7 @@ public class BuildTemplate extends AGrantTemplate<Map<Integer, CityBuild>> {
     }
 
     @Override
-    public double[] getCost(DBNation sender, DBNation receiver, Map<Integer, CityBuild> builds) {
+    public double[] getCost(GuildDB db, DBNation sender, DBNation receiver, Map<Integer, CityBuild> builds) {
         double[] cost = ResourceType.getBuffer();
         Map<Integer, JavaCity> existing = receiver.getCityMap(true);
         for (Map.Entry<Integer, JavaCity> entry : existing.entrySet()) {

@@ -2562,6 +2562,8 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
     }
 
     public Set<String> getCoalitionNames() {
+        GuildDB faServer = getOrNull(GuildKey.FA_SERVER);
+        if (faServer != null && faServer.getIdLong() != getIdLong()) return faServer.getCoalitionNames();
         loadCoalitions();
         return new LinkedHashSet<>(coalitionName2Id.keySet());
     }

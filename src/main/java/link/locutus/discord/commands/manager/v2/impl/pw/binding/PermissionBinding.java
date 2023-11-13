@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class PermissionBinding extends BindingHelper {
 
@@ -219,7 +220,9 @@ public class PermissionBinding extends BindingHelper {
             }
         }
         if (!hasAny) {
-            throw new IllegalCallerException("You do not have any of " + Arrays.toString(perm.value()) + " on " + guild + " " + user.getAsMention() + " see: " + CM.role.setAlias.cmd.toSlashMention());
+            // join .name()
+            String rolesName = Arrays.asList(perm.value()).stream().map(Roles::name).collect(Collectors.joining(", "));
+            throw new IllegalCallerException("You do not have any of `" + rolesName + "` on `" + guild + "` `" + user.getAsMention() + "` see: " + CM.role.setAlias.cmd.toSlashMention());
         }
         return hasAny;
     }

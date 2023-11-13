@@ -709,7 +709,7 @@ public class PWBindings extends BindingHelper {
         return metrics;
     }
 
-    @Binding(value = "A comma separated list of alliance projects")
+    @Binding(value = "A comma separated list of nation projects")
     public static Set<Project> projects(ValueStore store, String input) {
         Set<Project> result = Locutus.cmd().getV2().getPlaceholders().get(Project.class).parseSet(store, input);
         if (result == null || result.isEmpty()) {

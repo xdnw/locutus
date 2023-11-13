@@ -220,7 +220,7 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     }
 
     @Override
-    public double[] getCost(DBNation sender, DBNation receiver, Double parsed) {
+    public double[] getCost(GuildDB db, DBNation sender, DBNation receiver, Double parsed) {
         long latestAttackDate = getLatestAttackDate(receiver, require_n_offensives);
         long cutoff = onlyNewCities ? TimeUtil.getTimeFromTurn(TimeUtil.getTurn() - 119) : 0;
         Map<Integer, Map<Long, Double>> topCity = getTopCityInfraGrant(receiver);
