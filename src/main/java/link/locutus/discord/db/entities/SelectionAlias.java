@@ -1,18 +1,11 @@
 package link.locutus.discord.db.entities;
 
-import link.locutus.discord.Locutus;
-
-import java.lang.reflect.Type;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.List;
-
-public class CustomSelection<T> {
+public class SelectionAlias<T> {
     private String name;
     private Class<T> type;
     private String selection;
 
-    public CustomSelection(String name, Class<T> type, String selection) {
+    public SelectionAlias(String name, Class<T> type, String selection) {
         this.name = name;
         this.selection = selection;
         this.type = (Class<T>) type;

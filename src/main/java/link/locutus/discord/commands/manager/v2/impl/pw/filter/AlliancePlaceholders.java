@@ -22,9 +22,8 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.DefaultPlacehold
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.CustomSheet;
+import link.locutus.discord.db.entities.SheetTemplate;
 import link.locutus.discord.db.entities.DBAlliance;
-import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -40,7 +39,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -82,7 +80,7 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
     @NoFormat
     @Command(desc = "Add columns to a Alliance sheet")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+    public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                              @Default TypedFunction<DBAlliance, String> column1,
                              @Default TypedFunction<DBAlliance, String> column2,
                              @Default TypedFunction<DBAlliance, String> column3,

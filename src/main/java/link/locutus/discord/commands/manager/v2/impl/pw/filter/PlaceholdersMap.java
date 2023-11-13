@@ -33,14 +33,13 @@ import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
-import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.CustomSelection;
-import link.locutus.discord.db.entities.CustomSheet;
+import link.locutus.discord.db.entities.SelectionAlias;
+import link.locutus.discord.db.entities.SheetTemplate;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBBan;
 import link.locutus.discord.db.entities.DBBounty;
@@ -53,7 +52,6 @@ import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.UserWrapper;
-import link.locutus.discord.db.guild.SheetKeys;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -167,11 +165,11 @@ public class PlaceholdersMap {
         return (Placeholders<T>) this.placeholders.get(type);
     }
 
-    private String getSelection(ValueStore store, Class type, String input) {
+    private <T> String getSelection(ValueStore store, Class<T> type, String input) {
         if (input.startsWith("!")) {
             GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
             if (db != null) {
-                CustomSelection<Continent> selection = db.getCustomSelection(input.substring(1), type);
+                SelectionAlias<T> selection = db.getSheetManager().getSelectionAlias(input.substring(1), type);
                 if (selection != null) {
                     return selection.getSelection();
                 }
@@ -201,7 +199,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a Continent sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                       @Default TypedFunction<Continent, String> column1,
                                       @Default TypedFunction<Continent, String> column2,
                                       @Default TypedFunction<Continent, String> column3,
@@ -341,7 +339,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a NationOrAlliance sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<NationOrAlliance, String> column1,
                                      @Default TypedFunction<NationOrAlliance, String> column2,
                                      @Default TypedFunction<NationOrAlliance, String> column3,
@@ -428,7 +426,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a Guild sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<GuildDB, String> column1,
                                      @Default TypedFunction<GuildDB, String> column2,
                                      @Default TypedFunction<GuildDB, String> column3,
@@ -505,7 +503,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a Ban sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<DBBan, String> column1,
                                      @Default TypedFunction<DBBan, String> column2,
                                      @Default TypedFunction<DBBan, String> column3,
@@ -615,7 +613,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a NationList sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<NationList, String> column1,
                                      @Default TypedFunction<NationList, String> column2,
                                      @Default TypedFunction<NationList, String> column3,
@@ -808,7 +806,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a User sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<UserWrapper, String> column1,
                                      @Default TypedFunction<UserWrapper, String> column2,
                                      @Default TypedFunction<UserWrapper, String> column3,
@@ -893,7 +891,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a City sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<DBCity, String> column1,
                                      @Default TypedFunction<DBCity, String> column2,
                                      @Default TypedFunction<DBCity, String> column3,
@@ -1085,7 +1083,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a Bank TaxDeposit sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<BankDB.TaxDeposit, String> column1,
                                      @Default TypedFunction<BankDB.TaxDeposit, String> column2,
                                      @Default TypedFunction<BankDB.TaxDeposit, String> column3,
@@ -1207,7 +1205,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to an Attack sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<IAttack, String> column1,
                                      @Default TypedFunction<IAttack, String> column2,
                                      @Default TypedFunction<IAttack, String> column3,
@@ -1305,7 +1303,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a War sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<DBWar, String> column1,
                                      @Default TypedFunction<DBWar, String> column2,
                                      @Default TypedFunction<DBWar, String> column3,
@@ -1396,7 +1394,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a TaxBracket sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<TaxBracket, String> column1,
                                      @Default TypedFunction<TaxBracket, String> column2,
                                      @Default TypedFunction<TaxBracket, String> column3,
@@ -1472,7 +1470,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a Trade sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<DBTrade, String> column1,
                                      @Default TypedFunction<DBTrade, String> column2,
                                      @Default TypedFunction<DBTrade, String> column3,
@@ -1579,7 +1577,8 @@ public class PlaceholdersMap {
 
                             Boolean includeOffset = json.has("includeOffset") ? json.getBoolean("includeOffset") : null;
 
-                            Locutus.imp().getBankDB().getTransactionsByBySenderOrReceiver()
+                            List<Transaction2> transfers = Locutus.imp().getBankDB().getAllTransactions(senders, receivers, bankers, startTime, endTime);
+                            return new ObjectLinkedOpenHashSet<>(transfers);
                         } catch (ParseException e) {
                             throw new RuntimeException(e);
                         }
@@ -1624,7 +1623,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a Transaction sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<Transaction2, String> column1,
                                      @Default TypedFunction<Transaction2, String> column2,
                                      @Default TypedFunction<Transaction2, String> column3,
@@ -1715,7 +1714,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a bounty sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<DBBounty, String> column1,
                                      @Default TypedFunction<DBBounty, String> column2,
                                      @Default TypedFunction<DBBounty, String> column3,
@@ -1837,7 +1836,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a Treaty sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<Treaty, String> column1,
                                      @Default TypedFunction<Treaty, String> column2,
                                      @Default TypedFunction<Treaty, String> column3,
@@ -1897,7 +1896,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a Project sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<Project, String> column1,
                                      @Default TypedFunction<Project, String> column2,
                                      @Default TypedFunction<Project, String> column3,
@@ -1951,7 +1950,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a Resource sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<ResourceType, String> column1,
                                      @Default TypedFunction<ResourceType, String> column2,
                                      @Default TypedFunction<ResourceType, String> column3,
@@ -2005,7 +2004,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a AttackType sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<AttackType, String> column1,
                                      @Default TypedFunction<AttackType, String> column2,
                                      @Default TypedFunction<AttackType, String> column3,
@@ -2059,7 +2058,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a Military Unit sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<MilitaryUnit, String> column1,
                                      @Default TypedFunction<MilitaryUnit, String> column2,
                                      @Default TypedFunction<MilitaryUnit, String> column3,
@@ -2113,7 +2112,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a TreatyType sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<TreatyType, String> column1,
                                      @Default TypedFunction<TreatyType, String> column2,
                                      @Default TypedFunction<TreatyType, String> column3,
@@ -2167,7 +2166,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a Audit Type sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<IACheckup.AuditType, String> column1,
                                      @Default TypedFunction<IACheckup.AuditType, String> column2,
                                      @Default TypedFunction<IACheckup.AuditType, String> column3,
@@ -2221,7 +2220,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a Nation Color sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<NationColor, String> column1,
                                      @Default TypedFunction<NationColor, String> column2,
                                      @Default TypedFunction<NationColor, String> column3,
@@ -2275,7 +2274,7 @@ public class PlaceholdersMap {
             @NoFormat
             @Command(desc = "Add columns to a Building sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet,
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
                                      @Default TypedFunction<Building, String> column1,
                                      @Default TypedFunction<Building, String> column2,
                                      @Default TypedFunction<Building, String> column3,

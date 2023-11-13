@@ -13,7 +13,6 @@ import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.SimpleValueStore;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
-import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
@@ -23,10 +22,9 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWMath2Type;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWType2Math;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.entities.CustomSelection;
-import link.locutus.discord.db.entities.CustomSheet;
+import link.locutus.discord.db.entities.SelectionAlias;
+import link.locutus.discord.db.entities.SheetTemplate;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.math.ReflectionUtil;
@@ -38,7 +36,6 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.json.JSONObject;
 
 import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -100,7 +97,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         if (name.length() > 20) {
             throw new IllegalArgumentException("Name too long: `" + name + "` (max 20 chars)");
         }
-        CustomSelection<Continent> existing = db.getCustomSelection(name, Continent.class);
+        SelectionAlias<Continent> existing = db.getSheetManager().getSelectionAlias(name, Continent.class);
         if (existing != null) {
             throw new IllegalArgumentException("Selection already exists: " + existing.toString());
         }
@@ -118,19 +115,19 @@ public abstract class Placeholders<T> extends BindingHelper {
             }
             selection = obj.toString();
         }
-        db.addCustomSelection(name, Continent.class, selection);
+        db.getSheetManager().addSelectionAlias(name, Continent.class, selection);
         return "Added selection `" + name + "`: " + selection + ". Use it with `!" + name + "`";
     }
 
-    protected static <T> String _addColumns(Placeholders<T> placeholders, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") CustomSheet sheet, TypedFunction<T, String>... columns) {
+    protected static <T> String _addColumns(Placeholders<T> placeholders, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet, TypedFunction<T, String>... columns) {
         boolean created = false;
         if (sheet == null) {
             created = true;
-            Set<String> names = db.getCustomSheetNames();
+            Set<String> names = db.getSheetManager().getSheetTemplateNames();
             for (int i = 0; ; i++) {
                 String name = placeholders.getType().getSimpleName() + (i == 0 ? "" : "_" + i);
                 if (!names.contains(name)) {
-                    sheet = new CustomSheet(name, placeholders.getType(), "*", new ArrayList<>());
+                    sheet = new SheetTemplate(name, placeholders.getType(), "*", new ArrayList<>());
                     break;
                 }
             }
@@ -147,7 +144,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         for (TypedFunction<T, String> column : columnsNonNull) {
             sheet.columns.add(column.getName());
         }
-        db.addCustomSheet(sheet);
+        db.getSheetManager().addSheetTemplate(sheet);
         return (created ? "Created" : "Updated") + " sheet template: " + sheet;
     }
 

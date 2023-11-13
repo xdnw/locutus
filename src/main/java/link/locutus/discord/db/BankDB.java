@@ -284,7 +284,7 @@ public class BankDB extends DBMainV3 {
     }
 
     public List<Transaction2> getAllTransactions(NationOrAlliance sender, NationOrAlliance receiver, NationOrAlliance banker, Long startDate, Long endDate) {
-
+        return getAllTransactions(sender == null ? null : Set.of(sender), receiver == null ? null : Set.of(receiver), banker == null ? null : Set.of(banker), startDate, endDate);
     }
 
     public List<Transaction2> getAllTransactions(Set<NationOrAlliance> sender, Set<NationOrAlliance> receiver, Set<NationOrAlliance> banker, Long startDate, Long endDate) {
@@ -302,8 +302,14 @@ public class BankDB extends DBMainV3 {
                 condition = and(condition, TRANSACTIONS_2.SENDER_ID.eq(sender1.getIdLong()).and(TRANSACTIONS_2.SENDER_TYPE.eq(sender1.getReceiverType())));
             } else {
                 condition = and(condition, TRANSACTIONS_2.SENDER_ID.in(sender.stream().map(NationOrAlliance::getIdLong).collect(Collectors.toList())));
+                Set<Integer> nationIds = sender.stream().filter(NationOrAlliance::isNation).map(NationOrAlliance::getId).collect(Collectors.toSet());
+                Set<Integer> aaIds = sender.stream().filter(NationOrAlliance::isAlliance).map(NationOrAlliance::getId).collect(Collectors.toSet());
                 filter = filter.and(f -> {
-
+                    if (f.isSenderNation()) {
+                        return nationIds.contains((int) f.sender_id);
+                    } else {
+                        return aaIds.contains((int) f.sender_id);
+                    }
                 });
             }
         }
@@ -313,8 +319,14 @@ public class BankDB extends DBMainV3 {
                 condition = and(condition, TRANSACTIONS_2.RECEIVER_ID.eq(receiver1.getIdLong()).and(TRANSACTIONS_2.RECEIVER_TYPE.eq(receiver1.getReceiverType())));
             } else {
                 condition = and(condition, TRANSACTIONS_2.RECEIVER_ID.in(receiver.stream().map(NationOrAlliance::getIdLong).collect(Collectors.toList())));
+                Set<Integer> nationIds = receiver.stream().filter(NationOrAlliance::isNation).map(NationOrAlliance::getId).collect(Collectors.toSet());
+                Set<Integer> aaIds = receiver.stream().filter(NationOrAlliance::isAlliance).map(NationOrAlliance::getId).collect(Collectors.toSet());
                 filter = filter.and(f -> {
-
+                    if (f.isReceiverNation()) {
+                        return nationIds.contains((int) f.receiver_id);
+                    } else {
+                        return aaIds.contains((int) f.receiver_id);
+                    }
                 });
             }
         }
@@ -381,6 +393,7 @@ public class BankDB extends DBMainV3 {
                         query += " AND banker_nation_id IN (" + banker.stream().map(NationOrAlliance::getIdLong).map(String::valueOf).collect(Collectors.joining(",")) + ")";
                 }
                 String queryAA = query.replaceFirst("%table%", "TRANSACTIONS_ALLIANCE_2");
+                Predicate<Transaction2> finalFilter = filter;
                 queryLegacy(queryAA,
                         (ThrowingConsumer<PreparedStatement>) elem -> {
                             elem.setLong(1, startDate == null ? 0 : startDate);
@@ -388,7 +401,10 @@ public class BankDB extends DBMainV3 {
                         },
                         (ThrowingConsumer<ResultSet>) elem -> {
                             while (elem.next()) {
-                                results.add(new Transaction2(elem));
+                                Transaction2 tx = new Transaction2(elem);
+                                if (finalFilter.test(tx)) {
+                                    results.add(tx);
+                                }
                             }
                         }
                 );
