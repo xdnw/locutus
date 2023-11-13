@@ -113,10 +113,6 @@ public interface IModalBuilder {
                 continue;
             }
 
-            // {key} with optional value {key=value}
-            // regex, to match the value
-            String placeholderRegex = "\\{" + key + "(=[^\\s]+)?}";
-
             // Compile the regex pattern
             for (Map.Entry<String, String> defEntry : defaultValues.entrySet()) {
                 String stringWithPh = defEntry.getValue();
@@ -127,13 +123,13 @@ public interface IModalBuilder {
                 }
                 String label = "Placeholder " + key + " in " + defEntry.getKey();
                 TextInput.Builder builder = TextInput.create(key, label, TextInputStyle.PARAGRAPH);
-                TextInput input = builder.build();
 
                 if (defValue != null) {
-                    builder.setValue(defValue);
+                    builder = builder.setPlaceholder("world");
+                    builder = builder.setValue("hello");
                 }
                 builder.setRequired(true);
-                addInput(input);
+                addInput(builder.build());
                 continue outer;
             }
             throw new IllegalArgumentException("Argument " + key + " is not a valid argument for command " + command.getFullPath(" ") + "\n" +
