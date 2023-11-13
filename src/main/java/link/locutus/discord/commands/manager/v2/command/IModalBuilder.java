@@ -12,6 +12,7 @@ import net.dv8tion.jda.api.interactions.components.text.TextInputStyle;
 import net.dv8tion.jda.api.interactions.modals.Modal;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,8 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public interface IModalBuilder {
     IModalBuilder addInput(TextInput input);
@@ -38,6 +41,23 @@ public interface IModalBuilder {
         }
     });
 
+    public static Map<String, String> getPlaceholders(Collection<String> allowedPlaceholderNames, String text) {
+        Map<String, String> placeholders = new HashMap<>();
+        // Build a regex pattern based on the allowed placeholder names
+        String regexPattern = "\\{(" + String.join("|", allowedPlaceholderNames) + ")(?:=(.*?))?\\}";
+        Pattern pattern = Pattern.compile(regexPattern);
+        Matcher matcher = pattern.matcher(text);
+
+        // Find all matches and populate the placeholders map
+        while (matcher.find()) {
+            String placeholderName = matcher.group(1);
+            String placeholderValue = matcher.group(2); // May be null
+
+            placeholders.put(placeholderName, placeholderValue);
+        }
+        return placeholders;
+    }
+
     default IModalBuilder create(ICommand command, Map<String, String> defaultValues, List<String> promptForArguments) {
         setTitle(command.getFullPath(" "));
         UUID id = getId();
@@ -52,46 +72,72 @@ public interface IModalBuilder {
         for (Map.Entry<String, String> entry : defaultValues.entrySet()) {
             String key = entry.getKey();
             if (!paramMap.containsKey(key)) {
-                throw new IllegalArgumentException("Argument " + key + " is not a valid argument for command " + command.getFullPath(" ") + "\n" +
+                throw new IllegalArgumentException("Argument `" + key + "` is not a valid argument for command " + command.getFullPath(" ") + "\n" +
                         "Options: " + paramMap.keySet().toString());
             }
         }
 
+        outer:
         for (String key : promptForArguments) {
             ParameterData param = paramMap.get(key);
-            if (param == null) {
-                throw new IllegalArgumentException("Argument " + key + " is not a valid argument for command " + command.getFullPath(" ") + "\n" +
-                        "Options: " + paramMap.keySet().toString());
-            }
-            String desc = param.getName() + ": " + param.getExpandedDescription(false, false, true);
-            if (desc.length() > 45) {
-                // 3 dots unicode char
-                desc = desc.substring(0, 44) + "\u2026";
+            if (param != null) {
+                String desc = param.getName() + ": " + param.getExpandedDescription(false, false, true);
+                if (desc.length() > 45) {
+                    // 3 dots unicode char
+                    desc = desc.substring(0, 44) + "\u2026";
+                }
+
+                String name = param.getName();
+                TextInput.Builder builder = TextInput.create(param.getName(), desc, TextInputStyle.PARAGRAPH);
+                String[] examples = param.getBinding().getKey().getBinding().examples();
+                if (examples != null && examples.length > 0) {
+                    builder.setPlaceholder(examples[0]);
+                }
+                Range range = param.getAnnotation(Range.class);
+                if (range != null) {
+                    builder.setRequiredRange((int) Math.round(Math.max(Integer.MAX_VALUE, range.min())), (int) Math.round(Math.min(range.max(), Integer.MAX_VALUE)));
+                }
+
+                String[] def = param.getDefaultValue();
+                if (def != null && def.length > 0) {
+                    builder.setValue(def[0]);
+                }
+                // parameter.isOptional() || parameter.isFlag()
+                boolean isOptional = param.isOptional() || param.isFlag() || defaultValues.containsKey(name);
+                if (!isOptional) {
+                    builder.setRequired(true);
+                }
+
+                TextInput input = builder.build();
+                addInput(input);
+                continue;
             }
 
-            String name = param.getName();
-            TextInput.Builder builder = TextInput.create(param.getName(), desc, TextInputStyle.PARAGRAPH);
-            String[] examples = param.getBinding().getKey().getBinding().examples();
-            if (examples != null && examples.length > 0) {
-                builder.setPlaceholder(examples[0]);
-            }
-            Range range = param.getAnnotation(Range.class);
-            if (range != null) {
-                builder.setRequiredRange((int) Math.round(Math.max(Integer.MAX_VALUE, range.min())), (int) Math.round(Math.min(range.max(), Integer.MAX_VALUE)));
-            }
+            // {key} with optional value {key=value}
+            // regex, to match the value
+            String placeholderRegex = "\\{" + key + "(=[^\\s]+)?}";
 
-            String[] def = param.getDefaultValue();
-            if (def != null && def.length > 0) {
-                builder.setValue(def[0]);
-            }
-            // parameter.isOptional() || parameter.isFlag()
-            boolean isOptional = param.isOptional() || param.isFlag() || defaultValues.containsKey(name);
-            if (!isOptional) {
+            // Compile the regex pattern
+            for (Map.Entry<String, String> defEntry : defaultValues.entrySet()) {
+                String stringWithPh = defEntry.getValue();
+                Map<String, String> placeholders = getPlaceholders(List.of(key), stringWithPh);
+                String defValue = placeholders.get(key);
+                if (!placeholders.containsKey(key)) {
+                    continue;
+                }
+                String label = "Placeholder in " + defEntry.getKey();
+                TextInput.Builder builder = TextInput.create(key, label, TextInputStyle.PARAGRAPH);
+                TextInput input = builder.build();
+
+                if (defValue != null) {
+                    builder.setValue(defValue);
+                }
                 builder.setRequired(true);
+                addInput(input);
+                continue outer;
             }
-
-            TextInput input = builder.build();
-            addInput(input);
+            throw new IllegalArgumentException("Argument " + key + " is not a valid argument for command " + command.getFullPath(" ") + "\n" +
+                    "Options: " + paramMap.keySet().toString());
 
         }
 

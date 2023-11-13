@@ -179,12 +179,12 @@ public class CommandManager2 {
                 methodColumns = ph.getClass().getDeclaredMethod("addColumns");
             } catch (Throwable e) {
             }
-            if (methodAlias == null) {
-                throw new IllegalArgumentException("Missing method `addSelectionAlias` for " + ph.getType().getSimpleName());
-            }
-            if (methodColumns == null) {
-                throw new IllegalArgumentException("Missing method `addColumns` for " + ph.getType().getSimpleName());
-            }
+//            if (methodAlias == null) {
+//                throw new IllegalArgumentException("Missing method `addSelectionAlias` for " + ph.getType().getSimpleName());
+//            }
+//            if (methodColumns == null) {
+//                throw new IllegalArgumentException("Missing method `addColumns` for " + ph.getType().getSimpleName());
+//            }
 //
 //            for (Method method : ph.getClass().getDeclaredMethods()) {
 //                Command cmd = method.getAnnotation(Command.class);
@@ -603,6 +603,7 @@ public class CommandManager2 {
                     io.create().append(result.toString()).send();
                 }
             } catch (CommandUsageException e) {
+                System.out.println("Had usage exception");
                 Throwable root = e;
                 while (root.getCause() != null && root.getCause() != root) {
                     root = root.getCause();

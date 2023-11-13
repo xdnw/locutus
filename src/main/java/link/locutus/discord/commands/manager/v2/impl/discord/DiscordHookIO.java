@@ -8,14 +8,15 @@ import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.Channel;
+import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.interactions.Interaction;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.callbacks.IModalCallback;
+import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.interactions.components.ActionRow;
 import net.dv8tion.jda.api.interactions.components.text.TextInput;
 import net.dv8tion.jda.api.interactions.modals.Modal;
-import net.dv8tion.jda.api.requests.restaction.interactions.ModalCallbackAction;
 import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import net.dv8tion.jda.api.utils.messages.MessageEditData;
@@ -31,6 +32,7 @@ public class DiscordHookIO implements IMessageIO {
     private final Map<Long, IMessageBuilder> messageCache = new HashMap<>();
     private final IModalCallback modalCallback;
     private boolean originalDeleted;
+    private IReplyCallback event;
 
     public DiscordHookIO(InteractionHook hook, IModalCallback modalCallback) {
         this.hook = hook;
@@ -68,6 +70,10 @@ public class DiscordHookIO implements IMessageIO {
 
     @Override
     public CompletableFuture<IMessageBuilder> send(IMessageBuilder builder) {
+        if (event != null) {
+            RateLimitUtil.queue(event.deferReply());
+            event = null;
+        }
         if (builder instanceof DiscordMessageBuilder discMsg) {
             if (builder.getId() > 0) {
                 CompletableFuture<Message> future = RateLimitUtil.queue(hook.editMessageById(builder.getId(), discMsg.buildEdit(true)));
@@ -110,6 +116,7 @@ public class DiscordHookIO implements IMessageIO {
             }
             return msgFuture;
         } else {
+            System.out.println("Unsupported message builder: " + builder.getClass().getName());
             throw new IllegalArgumentException("Only DiscordMessageBuilder is supported.");
         }
     }
@@ -160,5 +167,9 @@ public class DiscordHookIO implements IMessageIO {
 //        modalCallback.replyModal(modal).complete();
 //        return null;
         return RateLimitUtil.queue(modalCallback.replyModal(modal)).thenApply(f -> casted);
+    }
+
+    public void setIsModal(IReplyCallback event) {
+        this.event = event;
     }
 }

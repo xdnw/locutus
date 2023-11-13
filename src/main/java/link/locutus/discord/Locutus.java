@@ -1069,19 +1069,34 @@ public final class Locutus extends ListenerAdapter {
 
             Guild guild = event.isFromGuild() ? event.getGuild() : null;
 
-            try {
-                for (Map.Entry<String, String> entry : IModalBuilder.DEFAULT_VALUES.get(uuid).entrySet()) {
-                    args.putIfAbsent(entry.getKey(), entry.getValue());
+            Map<String, String> keyPairs = new LinkedHashMap<>();
+            for (ModalMapping value : values) {
+                keyPairs.put(value.getId(), value.getAsString());
+            }
+            Set<String> ignoreKeys = new HashSet<>();
+
+            Map<String, String> defaults = IModalBuilder.DEFAULT_VALUES.getIfPresent(uuid);
+            if (defaults == null) defaults = new HashMap<>();
+            for (Map.Entry<String, String> defEntry : defaults.entrySet()) {
+                String value = defEntry.getValue();
+                Map<String, String> placeholders = IModalBuilder.getPlaceholders(keyPairs.keySet(), value);
+                if (!placeholders.isEmpty()) {
+                    for (Map.Entry<String, String> phEntry : placeholders.entrySet()) {
+                        String phKey = phEntry.getKey();
+                        String userInput = keyPairs.get(phKey);
+                        String keyRegex = "\\{" + phKey + "(=[^}]+)?}";
+                        value = value.replaceAll(keyRegex, userInput);
+                        ignoreKeys.add(phKey);
+                    }
                 }
-            } catch (ExecutionException e) {
-                e.printStackTrace();
+                args.putIfAbsent(defEntry.getKey(), value);
             }
 
-            for (ModalMapping value : values) {
-                Component.Type type = value.getType();
-                String valueId = value.getId();
-                String input = value.getAsString();
-                args.put(valueId, input);
+            for (Map.Entry<String, String> entry : keyPairs.entrySet()) {
+                String key = entry.getKey();
+                if (ignoreKeys.contains(key)) continue;
+                String value = entry.getValue();
+                args.put(key, value);
             }
 
             DiscordHookIO io = new DiscordHookIO(hook, null);
@@ -1161,6 +1176,8 @@ public final class Locutus extends ListenerAdapter {
                         } else {
                             RateLimitUtil.queue(event.deferEdit());
                         }
+                        DiscordHookIO hookIO = (DiscordHookIO) io;
+                        hookIO.setIsModal(event);
                     }
 
                     if (!id.isEmpty() && (id.startsWith(Settings.commandPrefix(true)) || commandManager.isModernPrefix(id.charAt(0)))) {
