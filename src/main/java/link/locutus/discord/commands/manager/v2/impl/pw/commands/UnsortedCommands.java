@@ -1846,17 +1846,18 @@ public class UnsortedCommands {
 
         List<String> errors = new ArrayList<>();
         Collection<DBNation> nations = sendTo.getNations();
+        List<DBNation> nationsValid = new ArrayList<>();
         for (DBNation nation : nations) {
             User user = nation.getUser();
-            if (user.getMutualGuilds().contains(inviteTo)) {
-                errors.add("Already in the guild: `" + nation.getNation() + "`");
-                continue;
-            }
             if (user == null) {
                 errors.add("Cannot find user for `" + nation.getNation() + "`");
+                continue;
             } else if (db.getGuild().getMember(user) == null) {
                 errors.add("Cannot find member in guild for `" + nation.getNation() + "` | `" + user.getName() + "`");
-            } else {
+                continue;
+            }
+            if (user.getMutualGuilds().contains(inviteTo)) {
+                errors.add("Already in the guild: `" + nation.getNation() + "`");
                 continue;
             }
             if (!aaIds.isEmpty() && !aaIds.contains(nation.getAlliance_id())) {
@@ -1871,6 +1872,7 @@ public class UnsortedCommands {
                     return "The " + nations.size() + " receivers includes applicants. Use `" + sendTo.getFilter() + ",#position>1` or set `force` to confirm";
                 }
             }
+            nationsValid.add(nation);
         }
 
         if (!force) {
@@ -1878,10 +1880,19 @@ public class UnsortedCommands {
             if (!sendDM && !sendMail) confirmBody.append("**Warning: No ingame or direct message option has been specified**\n");
             confirmBody.append("Send DM (`-d`): " + sendDM).append("\n");
             confirmBody.append("Send Ingame (`-m`): " + sendMail).append("\n");
-            if (!errors.isEmpty()) {
+            if (!errors.isEmpty() && errors.size() < 15) {
                 confirmBody.append("\n**Errors**:\n- " + StringMan.join(errors, "\n- ")).append("\n");
             }
-            DiscordUtil.pending(currentChannel, command, "Send to " + nations.size() + " nations", confirmBody + "\nPress to confirm");
+            IMessageBuilder msg = currentChannel.create()
+                    .confirmation("Send to " + nationsValid.size() + " nations", confirmBody.toString(), command);
+
+            if (errors.size() >= 15) {
+                msg = msg.file("errors.txt", StringMan.join(errors, "\n"));
+
+            }
+
+            msg.send();
+
             return null;
         }
 
@@ -1900,34 +1911,36 @@ public class UnsortedCommands {
         replacementInfo += "," + (expire == null ? 0 : expire);
         replacementInfo += "," + (maxUsesEach == null ? 0 : maxUsesEach);
 
-        for (DBNation nation : nations) {
-            InviteAction create = defaultChannel.createInvite().setUnique(true);
-            if (expire != null) {
-                create = create.setMaxAge((int) (expire / 1000L));
-            }
-            if (maxUsesEach != null) {
-                create = create.setMaxUses(maxUsesEach);
-            }
-            Invite invite = RateLimitUtil.complete(create);
-
-            String replaced = message + "\n" + invite.getUrl();
-            String personal = replaced + "\n\n- " + author.getAsMention();
-
-            boolean result = sendDM && nation.sendDM(personal);
-            if (!result && sendDM) {
-                failedToDM.add(nation.getNation_id());
-            }
-            if ((!result && sendDM) || sendMail) {
-                try {
-                    nation.sendMail(keys, subject, personal, false);
-                } catch (IllegalArgumentException | IOException e) {
-                    failedToMail.add(nation.getNation_id());
+        if (!allowCreation || sendDM || sendMail) {
+            for (DBNation nation : nationsValid) {
+                InviteAction create = defaultChannel.createInvite().setUnique(true);
+                if (expire != null) {
+                    create = create.setMaxAge((int) (expire / 1000L));
                 }
+                if (maxUsesEach != null) {
+                    create = create.setMaxUses(maxUsesEach);
+                }
+                Invite invite = RateLimitUtil.complete(create);
+
+                String replaced = message + "\n" + invite.getUrl();
+                String personal = replaced + "\n\n- " + author.getAsMention();
+
+                boolean result = sendDM && nation.sendDM(personal);
+                if (!result && sendDM) {
+                    failedToDM.add(nation.getNation_id());
+                }
+                if ((!result && sendDM) || sendMail) {
+                    try {
+                        nation.sendMail(keys, subject, personal, false);
+                    } catch (IllegalArgumentException | IOException e) {
+                        failedToMail.add(nation.getNation_id());
+                    }
+                }
+
+                sentMessages.put(nation, replaced);
+
+                output.append("\n\n```" + replaced + "```" + "^ " + nation.getNation());
             }
-
-            sentMessages.put(nation, replaced);
-
-            output.append("\n\n```" + replaced + "```" + "^ " + nation.getNation());
         }
 
         output.append("\n\n------\n");

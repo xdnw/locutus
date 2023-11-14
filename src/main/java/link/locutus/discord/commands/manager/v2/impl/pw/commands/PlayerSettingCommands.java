@@ -22,6 +22,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
 
@@ -35,11 +36,27 @@ public class PlayerSettingCommands {
             throw new IllegalArgumentException("Missing role: " + Roles.INTERNAL_AFFAIRS.toDiscordRoleNameElseInstructions(db.getGuild()));
         }
         Announcement parent = db.getAnnouncement(ann_id);
-        boolean isInvite = StringMan.countWords(parent.replacements, ",") == 2 && !parent.replacements.contains("|") && !parent.replacements.contains("\n");
+        boolean isInvite = StringUtils.countMatches(parent.replacements, ",") == 2 && !parent.replacements.contains("|") && !parent.replacements.contains("\n");
+        AnnounceType type = isInvite ? AnnounceType.INVITE : document ? AnnounceType.DOCUMENT : AnnounceType.MESSAGE;
+        System.out.println("Type " + type + " | " + isInvite + " | `" + parent.replacements + "` | " + StringMan.countWords(parent.replacements, ",") + " | " + parent.replacements.contains("|") + " | " + parent.replacements.contains("\n"));
+        if (type == AnnounceType.INVITE) {
+            String[] split = parent.replacements.split(",");
+            if (!parent.replacements.isEmpty() && split.length > 0 && MathMan.isInteger(split[0])) {
+                long serverId = Long.parseLong(split[0]);
+                // check user is in guild
+                GuildDB otherDb = Locutus.imp().getGuildDB(serverId);
+                if (otherDb == null) {
+                    throw new IllegalArgumentException("Cannot find server with id: `" + serverId + "`");
+                }
+                if (otherDb.getGuild().getMember(user) != null) {
+                    return "You are already in the server: " + DiscordUtil.getGuildUrl(serverId);
+                }
+            }
+        }
 
         Announcement.PlayerAnnouncement announcement;
         if (parent.allowCreation) {
-            announcement = db.getOrCreatePlayerAnnouncement(ann_id, nation, isInvite ? AnnounceType.INVITE : document ? AnnounceType.DOCUMENT : AnnounceType.MESSAGE);
+            announcement = db.getOrCreatePlayerAnnouncement(ann_id, nation, type);
         } else {
             announcement = db.getPlayerAnnouncement(ann_id, nation.getNation_id());
         }

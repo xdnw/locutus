@@ -62,8 +62,8 @@ public class Borgomas extends Command {
         String message;
         boolean good = down < 2;
         if (good) {
-            message = "You open your present to find... 1,000,000 borg bucks! (Legal tender throughout Unicomplex, Orbis and all assimilated worlds).\nMerry Borgmas!\nhttps://dcassetcdn.com/w1k/submissions/160000/160404_d209.jpg";
-            resources = Collections.singletonMap(ResourceType.MONEY, 1000000d);
+            message = "You open your present to find... 1,000 borg bucks! (Legal tender throughout Unicomplex, Orbis and all assimilated worlds).\nMerry Borgmas!\nhttps://dcassetcdn.com/w1k/submissions/160000/160404_d209.jpg";
+            resources = Collections.singletonMap(ResourceType.MONEY, 1000d);
         } else {
             GuildDB dbAA = Locutus.imp().getGuildDBByAA(me.getAlliance_id());
             if (true) {
