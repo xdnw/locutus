@@ -40,6 +40,7 @@ import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.math.ReflectionUtil;
 import link.locutus.discord.web.test.TestCommands;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
@@ -171,13 +172,12 @@ public class CommandManager2 {
 
             Method methodAlias = null;
             Method methodColumns = null;
-            try {
-                methodAlias = ph.getClass().getDeclaredMethod("addSelectionAlias");
-            } catch (Throwable e) {
-            }
-            try {
-                methodColumns = ph.getClass().getDeclaredMethod("addColumns");
-            } catch (Throwable e) {
+            for (Method method : ph.getClass().getDeclaredMethods()) {
+                if (method.getName().equals("addSelectionAlias")) {
+                    methodAlias = method;
+                } else if (method.getName().equals("addColumns")) {
+                    methodColumns = method;
+                }
             }
 //            if (methodAlias == null) {
 //                throw new IllegalArgumentException("Missing method `addSelectionAlias` for " + ph.getType().getSimpleName());

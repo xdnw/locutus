@@ -4,21 +4,29 @@ import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.commands.manager.v2.binding.validator.ValidatorStore;
 import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
-import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
+import link.locutus.discord.commands.manager.v2.command.IMessageIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.DefaultPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttributeDouble;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
+import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.SheetTemplate;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.PNWUser;
+import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -27,19 +35,18 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -50,6 +57,47 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     public NationPlaceholders(ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
         super(DBNation.class, store, validators, permisser);
         this.getCommands().registerCommands(new DefaultPlaceholders());
+    }
+
+    @NoFormat
+    @Command(desc = "Add an alias for a selection of Nations")
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+    public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<DBNation> nations) {
+        return _addSelectionAlias(command, db, name, nations, "nations");
+    }
+
+    @NoFormat
+    @Command(desc = "Add columns to a Nation sheet")
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+    public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
+                             @Default TypedFunction<DBNation, String> column1,
+                             @Default TypedFunction<DBNation, String> column2,
+                             @Default TypedFunction<DBNation, String> column3,
+                             @Default TypedFunction<DBNation, String> column4,
+                             @Default TypedFunction<DBNation, String> column5,
+                             @Default TypedFunction<DBNation, String> column6,
+                             @Default TypedFunction<DBNation, String> column7,
+                             @Default TypedFunction<DBNation, String> column8,
+                             @Default TypedFunction<DBNation, String> column9,
+                             @Default TypedFunction<DBNation, String> column10,
+                             @Default TypedFunction<DBNation, String> column11,
+                             @Default TypedFunction<DBNation, String> column12,
+                             @Default TypedFunction<DBNation, String> column13,
+                             @Default TypedFunction<DBNation, String> column14,
+                             @Default TypedFunction<DBNation, String> column15,
+                             @Default TypedFunction<DBNation, String> column16,
+                             @Default TypedFunction<DBNation, String> column17,
+                             @Default TypedFunction<DBNation, String> column18,
+                             @Default TypedFunction<DBNation, String> column19,
+                             @Default TypedFunction<DBNation, String> column20,
+                             @Default TypedFunction<DBNation, String> column21,
+                             @Default TypedFunction<DBNation, String> column22,
+                             @Default TypedFunction<DBNation, String> column23,
+                             @Default TypedFunction<DBNation, String> column24) throws GeneralSecurityException, IOException {
+        return Placeholders._addColumns(this, command,db, io, author, sheet,
+                column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
+                column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
+                column21, column22, column23, column24);
     }
 
     @Override

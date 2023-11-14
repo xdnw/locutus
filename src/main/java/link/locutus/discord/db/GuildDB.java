@@ -22,6 +22,7 @@ import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.entities.grant.GrantTemplateManager;
 import link.locutus.discord.db.entities.grant.TemplateTypes;
 import link.locutus.discord.db.entities.newsletter.NewsletterManager;
+import link.locutus.discord.db.entities.sheet.CustomSheetManager;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.SheetKeys;
@@ -57,14 +58,12 @@ import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
-import rocker.guild.ia.message;
 
 import javax.annotation.Nullable;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -88,7 +87,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -149,6 +147,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
     private IACategory iaCat;
     private GrantTemplateManager grantTemplateManager;
     private NewsletterManager newsletterManager;
+    private CustomSheetManager sheetManager;
     private volatile boolean cachedRoleAliases = false;
     private final Map<Roles, Map<Long, Long>> roleToAccountToDiscord;
 
@@ -223,6 +222,17 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
             }
         }
         return newsletterManager;
+    }
+
+    public CustomSheetManager getSheetManager() {
+        if (sheetManager == null) {
+            synchronized (this) {
+                if (sheetManager == null) {
+                    sheetManager = new CustomSheetManager(this);
+                }
+            }
+        }
+        return sheetManager;
     }
 
     public long getLastModified() {
@@ -898,10 +908,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
     @Override
     public void createTables() {
         {
-            executeStmt("CREATE TABLE IF NOT EXISTS `CUSTOM_SHEETS` (`name` VARCHAR PRIMARY KEY, `type` VARCHAR NOT NULL, `columns` VARCHAR NOT NULL)");
-            executeStmt("CREATE TABLE IF NOT EXISTS `CUSTOM_SELECTION` (`name` VARCHAR PRIMARY KEY, `type` VARCHAR NOT NULL, `selection` VARCHAR NOT NULL)");
-        }
-        {
             StringBuilder query = new StringBuilder("CREATE TABLE IF NOT EXISTS `INTERNAL_TRANSACTIONS2` (" +
                     "`tx_id` INTEGER PRIMARY KEY AUTOINCREMENT, " +
                     "tx_datetime BIGINT NOT NULL, " +
@@ -1056,110 +1062,6 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
         };
         createDeletionsTables();
     }
-
-    public Set<String> getCustomSheetNames() {
-        Set<String> names = new HashSet<>();
-        query("SELECT `name` FROM `CUSTOM_SHEETS`", stmt -> {}, (ThrowingConsumer<ResultSet>) rs -> {
-            names.add(rs.getString("name"));
-        });
-        return names;
-    }
-
-    public Map<String, CustomSheet> getCustomSheets(List<String> errors) {
-        Map<String, CustomSheet> sheets = new LinkedHashMap<>();
-        query("SELECT * FROM `CUSTOM_SHEETS`", stmt -> {}, (ThrowingConsumer<ResultSet>) rs -> {
-            try {
-                CustomSheet sheet = new CustomSheet(rs);
-                sheets.put(sheet.getName(), sheet);
-            } catch (IllegalArgumentException e) {
-                errors.add(e.getMessage());
-            }
-        });
-        return sheets;
-    }
-
-    public void addCustomSheet(CustomSheet sheet) {
-        String query = "CREATE TABLE IF NOT EXISTS `CUSTOM_SHEETS` (`name` VARCHAR PRIMARY KEY, `type` VARCHAR NOT NULL, `columns` VARCHAR NOT NULL)";
-        update("INSERT INTO `CUSTOM_SHEETS`(`name`, `type`, `selection`, `columns`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, sheet.getName());
-            stmt.setString(2, sheet.getType().getSimpleName());
-            stmt.setString(4, StringMan.join(sheet.getColumns(), "\n"));
-        });
-    }
-
-    public void deleteCustomSheet(String name) {
-        update("DELETE FROM `CUSTOM_SHEETS` WHERE name = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, name);
-        });
-    }
-
-    public void renameSheet(CustomSheet sheet, String name) {
-        update("UPDATE `CUSTOM_SHEETS` SET name = ? WHERE name = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, name);
-            stmt.setString(2, sheet.getName());
-        });
-        sheet.name = name;
-    }
-
-    private Map<Class, Map<String, String>> customSelections = null;
-
-    public Map<Class, Map<String, String>> getCustomSelections() {
-        if (customSelections == null) {
-            synchronized (this) {
-                if (customSelections == null) {
-                    customSelections = new ConcurrentHashMap<>();
-                    query("SELECT * from CUSTOM_SELECTION", stmt -> {}, (ThrowingConsumer<ResultSet>) rs -> {
-                        String name = rs.getString("name");
-                        String typeStr = rs.getString("type");
-                        Class typeFinal = null;
-                        for (Class<?> type : Locutus.cmd().getV2().getPlaceholders().getTypes()) {
-                            if (type.getSimpleName().equalsIgnoreCase(typeStr)) {
-                                typeFinal = type;
-                                break;
-                            }
-                        }
-                        if (typeFinal == null) {
-                            return;
-                        }
-                        String selection = rs.getString("selection");
-                        customSelections.computeIfAbsent(typeFinal, t -> new ConcurrentHashMap<>()).put(name, selection);
-                    });
-                }
-            }
-        }
-        return customSelections;
-    }
-
-    public <T> CustomSelection<T> getCustomSelection(String name, Class<T> type) {
-        // or null
-        // CustomSelection(String name, Class<T> type, String selection)
-        Map<String, String> selections = getCustomSelections().get(type);
-        if (selections == null) {
-            return null;
-        }
-        String selection = selections.get(name);
-        if (selection == null) {
-            return null;
-        }
-        return new CustomSelection<>(name, type, selection);
-    }
-
-    public void removeCustomSelection(String name) {
-        getCustomSelections().values().forEach(map -> map.remove(name));
-        update("DELETE FROM CUSTOM_SELECTION WHERE name = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, name);
-        });
-    }
-
-    public void addCustomSelection(String name, Class type, String selection) {
-        update("INSERT INTO CUSTOM_SELECTION(name, type, selection) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, name);
-            stmt.setString(2, type.getSimpleName());
-            stmt.setString(3, selection);
-        });
-        getCustomSelections().computeIfAbsent(type, t -> new ConcurrentHashMap<>()).put(name, selection);
-    }
-
 
     public void purgeOldInterviews(long cutoff) {
         update("DELETE FROM INTERVIEW_MESSAGES2 WHERE date_updated < ?", (ThrowingConsumer<PreparedStatement>) stmt -> stmt.setLong(1, cutoff));

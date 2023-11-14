@@ -258,7 +258,7 @@ public abstract class DBMain implements Closeable {
         }
     }
 
-    protected int update(String sql, Consumer<PreparedStatement> withStmt) {
+    public int update(String sql, Consumer<PreparedStatement> withStmt) {
         synchronized (this) {
             try (PreparedStatement stmt = getConnection().prepareStatement(sql)) {
                 withStmt.accept(stmt);
