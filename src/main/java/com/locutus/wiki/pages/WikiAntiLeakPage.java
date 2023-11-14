@@ -39,6 +39,7 @@ public class WikiAntiLeakPage extends BotWikiGen {
                 "Supports sending dms, mail and clickable discord embeds",
                 commandMarkdownSpoiler(CM.announcement.create.cmd),
                 "# Sending unique invites",
+                "Note: Recommended to use `allowCreation`",
                 commandMarkdownSpoiler(CM.announcement.invite.cmd),
                 "# Sending unique documents",
                 commandMarkdownSpoiler(CM.announcement.document.cmd),

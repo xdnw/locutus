@@ -5,12 +5,15 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.annotation.PlaceholderType;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.CustomSheet;
 import link.locutus.discord.db.entities.SelectionAlias;
 import link.locutus.discord.db.entities.SheetTemplate;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -23,7 +26,7 @@ public class CustomSheetCommands {
     @NoFormat
     @Command(desc = "List custom sheets")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String listCustomSheets(@Me GuildDB db, @Default @PlaceholderType Class type) {
+    public String listSheetTemplates(@Me GuildDB db, @Default @PlaceholderType Class type) {
         List<String> errors = new ArrayList<>();
         Map<String, SheetTemplate> sheets = db.getSheetManager().getSheetTemplates(errors);
         if (type != null) {
@@ -82,7 +85,7 @@ public class CustomSheetCommands {
     @NoFormat
     @Command(desc = "View a custom sheet")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String viewSheet(SheetTemplate sheet) {
+    public String viewTemplate(SheetTemplate sheet) {
         return sheet.toString() + "\n\n" +
                 "See TODO CM REF (remove, move, delete)";
     }
@@ -90,7 +93,7 @@ public class CustomSheetCommands {
     @NoFormat
     @Command(desc = "Delete a custom spreadsheet")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String deleteSheet(@Me GuildDB db, SheetTemplate sheet) {
+    public String deleteTemplate(@Me GuildDB db, SheetTemplate sheet) {
         db.getSheetManager().deleteSheetTemplate(sheet.getName());
         return "Deleted sheet `" + sheet.getName() + "`";
     }
@@ -116,4 +119,27 @@ public class CustomSheetCommands {
                 "See: TODO CM REF VIEW";
 
     }
+
+    // Command List:
+    //- add_tab <tab-name> <selector> <template>
+    @NoFormat
+    @Command
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+    public String addTab(@Me JSONObject command, @Me GuildDB db, String name, SelectionAlias alias, SheetTemplate template, @Switch("f") boolean force) {
+        // ensure alias and template type match
+        if (!alias.getType().equals(template.getType())) {
+            throw new IllegalArgumentException("Alias type `" + alias.getType().getSimpleName() + "` does not match template type `" + template.getType().getSimpleName() + "`");
+        }
+        CustomSheet existing = db.getSheetManager().getCustomSheet(name);
+
+
+    }
+    //- Add command to update a combined sheet
+    //    - update [List<String> tabs]
+    //        - Makes note of any tabs which are present but aren’t linked
+    //- Delete tab
+    //    - Removes a tab
+    //- Info
+    //    - show the combined sheet and all its tabs
+    //    - TODO CM REF to the info for the selector and info for the template
 }
