@@ -1399,7 +1399,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
 
     public Announcement.PlayerAnnouncement getOrCreatePlayerAnnouncement(int ann_id, DBNation nation, AnnounceType create) throws IOException {
         Announcement.PlayerAnnouncement existing = getPlayerAnnouncement(ann_id, nation.getId());
-        if (existing != null && !AnnounceType.DOCUMENT.isValid(this, existing.getParent(), existing)) {
+        if (existing != null && !create.isValid(this, existing.getParent(), existing)) {
             existing = null;
         }
         if (existing == null) {
