@@ -32,7 +32,7 @@ public class CustomSheetManager {
         db.executeStmt("CREATE TABLE IF NOT EXISTS `SELECTION_ALIAS` (`name` VARCHAR PRIMARY KEY, `type` VARCHAR NOT NULL, `selection` VARCHAR NOT NULL)");
         db.executeStmt("CREATE TABLE IF NOT EXISTS `SHEET_TEMPLATE` (`name` VARCHAR PRIMARY KEY, `type` VARCHAR NOT NULL, `columns` VARCHAR NOT NULL)");
         db.executeStmt("CREATE TABLE IF NOT EXISTS `CUSTOM_SHEET` (`name` VARCHAR PRIMARY KEY, url VARCHAR NOT NULL)");
-        db.executeStmt("CREATE TABLE IF NOT EXISTS `CUSTOM_SHEET_TABS` (`name` VARCHAR PRIMARY KEY, `selector` VARCHAR NOT NULL, `template` VARCHAR NOT NULL)");
+        db.executeStmt("CREATE TABLE IF NOT EXISTS `CUSTOM_SHEET_TABS` (`sheet` VARCHAR NOT NULL, `tab` VARCHAR NOT NULL, `selector` VARCHAR NOT NULL, `template` VARCHAR NOT NULL, PRIMARY KEY (`sheet`, `tab`))");
     }
 
     public Set<String> getSheetTemplateNames() {
@@ -170,33 +170,39 @@ public class CustomSheetManager {
         });
     }
 
-    public void addCustomSheetTab(String name, String selector, String template) {
-        db.update("INSERT INTO CUSTOM_SHEET_TABS(name, selector, template) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, name);
-            stmt.setString(2, selector);
-            stmt.setString(3, template);
+    public void addCustomSheetTab(String sheet, String tab, String selector, String template) {
+        db.update("INSERT INTO CUSTOM_SHEET_TABS(sheet, tab, selector, template) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setString(1, sheet);
+            stmt.setString(2, tab);
+            stmt.setString(3, selector);
+            stmt.setString(4, template);
         });
     }
 
-    public void deleteCustomSheetTab(String name) {
-        db.update("DELETE FROM CUSTOM_SHEET_TABS WHERE name = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, name);
+    public void deleteCustomSheetTab(String sheet, String tab) {
+        db.update("DELETE FROM CUSTOM_SHEET_TABS WHERE sheet = ? AND tab = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setString(1, sheet);
+            stmt.setString(2, tab);
         });
     }
 
-    public void renameCustomSheetTab(String name, String newName) {
-        db.update("UPDATE CUSTOM_SHEET_TABS SET name = ? WHERE name = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+    public void renameCustomSheetTab(String sheet, String name, String newName) {
+        db.update("UPDATE CUSTOM_SHEET_TABS SET name = ? WHERE sheet = ? AND tab = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, newName);
-            stmt.setString(2, name);
+            stmt.setString(2, sheet);
+            stmt.setString(3, name);
         });
     }
 
-    public Set<String> getCustomSheetNames() {
-        Set<String> names = new HashSet<>();
-        db.query("SELECT `name` FROM `CUSTOM_SHEET`", stmt -> {}, (ThrowingConsumer<ResultSet>) rs -> {
-            names.add(rs.getString("name"));
+    /**
+     * @return Map of name -> url
+     */
+    public Map<String, String> getCustomSheets() {
+        Map<String, String> sheets = new HashMap<>();
+        db.query("SELECT `name`, `url` FROM `CUSTOM_SHEET`", stmt -> {}, (ThrowingConsumer<ResultSet>) rs -> {
+            sheets.put(rs.getString("name"), rs.getString("url"));
         });
-        return names;
+        return sheets;
     }
 
     public String getCustomSheetUrl(String name) {
@@ -215,16 +221,16 @@ public class CustomSheetManager {
             return null;
         }
         Map<String, Map.Entry<SelectionAlias, SheetTemplate>> tabs = new HashMap<>();
-        db.query("SELECT * FROM `CUSTOM_SHEET_TABS` WHERE `name` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        db.query("SELECT * FROM `CUSTOM_SHEET_TABS` WHERE `sheet` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, name);
         }, (ThrowingConsumer<ResultSet>) rs -> {
-            String tabName = rs.getString("name");
+            String tabName = rs.getString("tab");
             String selector = rs.getString("selector");
             String template = rs.getString("template");
             SelectionAlias selectionAlias = getSelectionAlias(selector, SelectionAlias.class);
             SheetTemplate sheetTemplate = getSheetTemplate(template);
             tabs.put(tabName, new AbstractMap.SimpleEntry<>(selectionAlias, sheetTemplate));
         });
-        return new CustomSheet(url, tabs);
+        return new CustomSheet(name, url, tabs);
     }
 }
