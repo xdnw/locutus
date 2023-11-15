@@ -10,9 +10,11 @@ import link.locutus.discord.apiv1.enums.city.project.Projects;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
@@ -206,6 +208,17 @@ public class Buildings {
                 BUILDINGS_MAP.put(key.replace(" ", "-"), entry.getValue());
                 BUILDINGS_MAP.put(key.replace(" ", ""), entry.getValue());
             }
+            Set<String> current = new LinkedHashSet<>(BUILDINGS_MAP.keySet());
+            for (String name : current) {
+                if (name.endsWith("s")) {
+                    continue;
+                }
+                String plural = name.endsWith("y") ? name.substring(0, name.length() - 1) + "ies" : name + "s";
+                if (!BUILDINGS_MAP.containsKey(plural)) {
+                    BUILDINGS_MAP.put(plural, BUILDINGS_MAP.get(name));
+                }
+            }
+
 
             BUILDINGS = buildingsList.toArray(new Building[0]);
 

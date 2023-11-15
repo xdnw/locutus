@@ -1593,6 +1593,27 @@ public class DBNation implements NationOrAlliance {
         return total / (double) cities.size();
     }
 
+    @Command(desc = "Get number of barracks\n" +
+            "Shorthand for getAvgBuilding(barracks)")
+    public double getAvgBarracks() {
+        return getAvgBuilding(Buildings.BARRACKS);
+    }
+    @Command(desc = "Get number of factories\n" +
+            "Shorthand for getAvgBuilding(factory)")
+    public double getAvgFactories() {
+        return getAvgBuilding(Buildings.FACTORY);
+    }
+    @Command(desc = "Get number of hangars\n" +
+            "Shorthand for getAvgBuilding(hangar)")
+    public double getAvgHangars() {
+        return getAvgBuilding(Buildings.HANGAR);
+    }
+    @Command(desc = "Get number of drydocks\n" +
+            "Shorthand for getAvgBuilding(drydock)")
+    public double getAvgDrydocks() {
+        return getAvgBuilding(Buildings.DRYDOCK);
+    }
+
     public void setMeta(NationMeta key, byte value) {
         setMeta(key, new byte[] {value});
     }
