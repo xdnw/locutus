@@ -463,7 +463,11 @@ public class PnwUtil {
                 return RESOURCE_GSON.fromJson(f, RESOURCE_TYPE);
             };
             if (allowBodmas) {
+                System.out.println("Input " + arg);
                 result = PnwUtil.resourcesToMap(ArrayUtil.calculate(arg, arg1 -> {
+                    if (!arg1.contains("{")) {
+                        return new ArrayUtil.DoubleArray(PrimitiveBindings.Double(arg1));
+                    }
                     Map<ResourceType, Double> map = parse.apply(arg1);
                     double[] arr = resourcesToArray(map);
                     return new ArrayUtil.DoubleArray(arr);
@@ -472,6 +476,7 @@ public class PnwUtil {
                 result = parse.apply(arg);
             }
         } catch (Exception e) {
+            e.printStackTrace();
             if (original.toUpperCase(Locale.ROOT).matches("[0-9]+[ASMGBILUOCF$]([ ][0-9]+[ASMGBILUOCF$])*")) {
                 String[] split = original.split(" ");
                 result = new LinkedHashMap<>();
