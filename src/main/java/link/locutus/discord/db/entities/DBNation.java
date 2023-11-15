@@ -1121,7 +1121,6 @@ public class DBNation implements NationOrAlliance {
             this.setNation_id(nation.getNationid());
             dirty = true;
         }
-
         if (nation.getNation() != null && (this.getNation() == null || !this.nation.equals(nation.getNation()))) {
             dirty = true;
             if (copyOriginal == null && eventConsumer != null) copyOriginal = new DBNation(this);
@@ -1180,7 +1179,7 @@ public class DBNation implements NationOrAlliance {
             dirty = true;
             if (copyOriginal == null && eventConsumer != null) copyOriginal = new DBNation(this);
             this.cities = nation.getCities();
-//            if (eventConsumer != null) eventConsumer.accept(new NationChangeCitiesEvent(copyOriginal, this));
+            if (eventConsumer != null) eventConsumer.accept(new NationChangeCitiesEvent(copyOriginal, this));
         }
         if (nation.getScore() != null && nation.getScore() != this.score) {
             this.score = nation.getScore();
@@ -1261,7 +1260,7 @@ public class DBNation implements NationOrAlliance {
         }
         if (nation.getNum_cities() != null && this.getCities() != (nation.getNum_cities())) {
             this.setCities(nation.getNum_cities());
-//            events.accept(new NationChangeCitiesEvent(copyOriginal, this)); // Not useful, call the event when DBCity is created instead
+            if (eventConsumer != null) eventConsumer.accept(new NationChangeCitiesEvent(copyOriginal, this)); // Not useful, call the event when DBCity is created instead
             dirty = true;
         }
         if (nation.getDomestic_policy() != null) {

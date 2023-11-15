@@ -1,29 +1,27 @@
 package link.locutus.discord.apiv1.enums.city.building;
 
-import link.locutus.discord.apiv1.domains.Nation;
+import com.google.common.base.CaseFormat;
 import link.locutus.discord.apiv1.enums.Continent;
-import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
-import link.locutus.discord.apiv1.enums.city.building.imp.ACommerceBuilding;
-import link.locutus.discord.apiv1.enums.city.building.imp.AMilitaryBuilding;
-import link.locutus.discord.apiv1.enums.city.building.imp.APowerBuilding;
-import link.locutus.discord.apiv1.enums.city.building.imp.AResourceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
-import rocker.grant.city;
 
 
 import java.util.Arrays;
-import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public interface Building {
 
     String name();
+
+    default String nameUpperUnd() {
+        String name = name();
+        if (name.startsWith("imp")) name = name.substring(3);
+        return CaseFormat.UPPER_CAMEL.to(CaseFormat.UPPER_UNDERSCORE, name);
+    }
 
     default String nameSnakeCase() {
         return name().replaceAll("([A-Z])", "_$1").toLowerCase();

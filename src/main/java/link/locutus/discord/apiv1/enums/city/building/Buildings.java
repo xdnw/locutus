@@ -11,6 +11,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
@@ -146,6 +147,41 @@ public class Buildings {
         RESOURCE_BUILDING.put(MUNITIONS, MUNITIONS_FACTORY);
     }
     public final static int[] HASHCODES;
+    private static final Map<String, Building> V3_MAP = Map.ofEntries(
+            Map.entry("oil power plant", OIL_POWER),
+            Map.entry("oil power", OIL_POWER),
+            Map.entry("wind power plant", WIND_POWER),
+            Map.entry("wind power", WIND_POWER),
+            Map.entry("coal power plant", COAL_POWER),
+            Map.entry("coal power", COAL_POWER),
+            Map.entry("nuclear power plant", NUCLEAR_POWER),
+            Map.entry("nuclear power", NUCLEAR_POWER),
+            Map.entry("coal mine", COAL_MINE),
+            Map.entry("lead mine", LEAD_MINE),
+            Map.entry("iron mine", IRON_MINE),
+            Map.entry("bauxite mine", BAUXITE_MINE),
+            Map.entry("oil well", OIL_WELL),
+            Map.entry("uranium mine", URANIUM_MINE),
+            Map.entry("farm", FARM),
+            Map.entry("police station", POLICE_STATION),
+            Map.entry("hospital", HOSPITAL),
+            Map.entry("recycling center", RECYCLING_CENTER),
+            Map.entry("subway", SUBWAY),
+            Map.entry("supermarket", SUPERMARKET),
+            Map.entry("bank", BANK),
+            Map.entry("shopping mall", MALL),
+            Map.entry("stadium", STADIUM),
+            Map.entry("gas refinery", GAS_REFINERY),
+            Map.entry("aluminumrefinery", ALUMINUM_REFINERY),
+            Map.entry("aluminum refinery", ALUMINUM_REFINERY),
+            Map.entry("oil refinery", GAS_REFINERY),
+            Map.entry("steel mill", STEEL_MILL),
+            Map.entry("munitions factory", MUNITIONS_FACTORY),
+            Map.entry("barracks", BARRACKS),
+            Map.entry("factory", FACTORY),
+            Map.entry("hangar", HANGAR),
+            Map.entry("drydock", DRYDOCK)
+    );
     private final static Map<String, Building> BUILDINGS_MAP = new HashMap<>();
 
     static {
@@ -157,9 +193,20 @@ public class Buildings {
                     Building building = (Building) value;
                     ((ABuilding) building).setOrdinal(buildingsList.size());
                     buildingsList.add(building);
-                    BUILDINGS_MAP.put(building.name(), building);
+                    BUILDINGS_MAP.put(building.name().toLowerCase(Locale.ROOT), building);
+                    BUILDINGS_MAP.put(building.nameUpperUnd().toLowerCase(Locale.ROOT), building);
+                    BUILDINGS_MAP.put(building.nameSnakeCase().toLowerCase(Locale.ROOT), building);
+                    BUILDINGS_MAP.put(field.getName().toLowerCase(Locale.ROOT), building);
                 }
             }
+            for (Map.Entry<String, Building> entry : V3_MAP.entrySet()) {
+                String key = entry.getKey();
+                BUILDINGS_MAP.put(key, entry.getValue());
+                BUILDINGS_MAP.put(key.replace(" ", "_"), entry.getValue());
+                BUILDINGS_MAP.put(key.replace(" ", "-"), entry.getValue());
+                BUILDINGS_MAP.put(key.replace(" ", ""), entry.getValue());
+            }
+
             BUILDINGS = buildingsList.toArray(new Building[0]);
 
             HASHCODES = new int[BUILDINGS.length];
@@ -219,46 +266,11 @@ public class Buildings {
     }
 
     public static Building fromV3(String v3Name) {
-        return switch (v3Name) {
-            case "oil power plant" -> OIL_POWER;
-            case "oil power" -> OIL_POWER;
-            case "wind power plant" -> WIND_POWER;
-            case "wind power" -> WIND_POWER;
-            case "coal power plant" -> COAL_POWER;
-            case "coal power" -> COAL_POWER;
-            case "nuclear power plant" -> NUCLEAR_POWER;
-            case "nuclear power" -> NUCLEAR_POWER;
-            case "coal mine" -> COAL_MINE;
-            case "lead mine" -> LEAD_MINE;
-            case "iron mine" -> IRON_MINE;
-            case "bauxite mine" -> BAUXITE_MINE;
-            case "oil well" -> OIL_WELL;
-            case "uranium mine" -> URANIUM_MINE;
-            case "farm" -> FARM;
-            case "police station" -> POLICE_STATION;
-            case "hospital" -> HOSPITAL;
-            case "recycling center" -> RECYCLING_CENTER;
-            case "subway" -> SUBWAY;
-            case "supermarket" -> SUPERMARKET;
-            case "bank" -> BANK;
-            case "shopping mall" -> MALL;
-            case "stadium" -> STADIUM;
-            case "gas refinery" -> GAS_REFINERY;
-            case "aluminumrefinery" -> ALUMINUM_REFINERY;
-            case "aluminum refinery" -> ALUMINUM_REFINERY;
-            case "oil refinery" -> GAS_REFINERY;
-            case "steel mill" -> STEEL_MILL;
-            case "munitions factory" -> MUNITIONS_FACTORY;
-            case "barracks" -> BARRACKS;
-            case "factory" -> FACTORY;
-            case "hangar" -> HANGAR;
-            case "drydock" -> DRYDOCK;
-            default -> throw new RuntimeException("Unknown building: " + v3Name);
-        };
+        return V3_MAP.get(v3Name.toLowerCase(Locale.ROOT));
     }
 
     public static Building get(String jsonId) {
-        return BUILDINGS_MAP.get(jsonId);
+        return BUILDINGS_MAP.get(jsonId.toLowerCase(Locale.ROOT));
     }
 
     public static Building get(int ordinal) {
