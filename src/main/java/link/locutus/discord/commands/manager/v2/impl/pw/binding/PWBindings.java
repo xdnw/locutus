@@ -18,7 +18,6 @@ import link.locutus.discord.commands.manager.v2.command.ICommand;
 import link.locutus.discord.commands.manager.v2.command.ICommandGroup;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.command.ParameterData;
-import link.locutus.discord.commands.manager.v2.command.StringMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
@@ -69,7 +68,6 @@ import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
-import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.apiv1.enums.city.project.Project;
@@ -78,13 +76,10 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
-import retrofit2.http.HEAD;
 
 import java.io.IOException;
-import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -237,7 +232,10 @@ public class PWBindings extends BindingHelper {
     @Binding(value = "A city building type")
     public static Building getBuilding(String input) {
         Building building = Buildings.get(input);
-        if (building == null) throw new IllegalArgumentException("No building found for `" + input + "`");
+        if (building == null) {
+            throw new IllegalArgumentException("No building found for `" + input + "`\n" +
+                    "Options: `" + Arrays.stream(Buildings.values()).map(Building::nameUpperUnd).collect(Collectors.joining("`, `")) + "`");
+        }
         return building;
     }
 
