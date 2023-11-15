@@ -411,11 +411,25 @@ public class GuildHandler {
         }
     }
 
+//    @Subscribe
+//    public void onCityCreate(CityCreateEvent event) {
+//        DBNation nation = event.getNation();
+//        if (nation != null) {
+//            // Auto role
+//            User user = nation.getUser();
+//            if (user != null) {
+//                Member member = guild.getMember(user);
+//                if (member != null) {
+//                    db.getAutoRoleTask().autoRoleCities(member, nation);
+//                }
+//            }
+//        }
+//    }
+
     @Subscribe
-    public void onCityCreate(CityCreateEvent event) {
-        DBNation nation = event.getNation();
-        if (nation != null) {
-            // Auto role
+    public void onNationChangeCities(NationChangeCitiesEvent event) {
+        DBNation nation = event.getCurrent();
+        if (nation.getPositionEnum().id > Rank.APPLICANT.id) {
             User user = nation.getUser();
             if (user != null) {
                 Member member = guild.getMember(user);
