@@ -73,8 +73,8 @@ public class WarCostByCitySheet extends Command {
             }
         }
 
-        sheet.clearFirstTab();
-        sheet.write();
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
         sheet.attach(channel.create(), "war_cost_city").send();
         return null;
     }

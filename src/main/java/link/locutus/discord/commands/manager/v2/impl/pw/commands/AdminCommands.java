@@ -282,8 +282,8 @@ public class AdminCommands {
             }
         }
 
-        sheet.clearFirstTab();
-        sheet.write();
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
 
         sheet.attach(io.create(), "login_times").send();
         return null;

@@ -127,7 +127,7 @@ public class OptimalTradeTask implements Callable<Long> {
                 sheet.addRow(trade.type.name(), trade.amount, trade.ppuBuy, trade.ppuSell);
             }
         }
-        sheet.write();
+        sheet.updateWrite();
 
         return profit;
     }

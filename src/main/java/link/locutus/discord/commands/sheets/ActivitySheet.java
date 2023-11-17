@@ -95,8 +95,8 @@ public class ActivitySheet extends Command {
             sheet.addRow(header);
         }
 
-        sheet.clearFirstTab();
-        sheet.write();
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
 
         sheet.attach(channel.create(), "activity").send();
         return null;

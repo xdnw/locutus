@@ -116,7 +116,7 @@ public class BlitzGenerator {
     }
 
     public static Map<DBNation, Set<DBNation>> getTargets(SpreadSheet sheet, int headerRow, Function<DBNation, Integer> maxWars, double minScoreMultiplier, double maxScoreMultiplier, boolean checkUpdeclare, boolean checkWarSlotted, boolean checkSpySlotted, Function<DBNation, Boolean> isValidTarget, BiConsumer<Map.Entry<DBNation, DBNation>, String> invalidOut) {
-        List<List<Object>> rows = sheet.getAll();
+        List<List<Object>> rows = sheet.fetchAll();
         List<Object> header = rows.get(headerRow);
 
         Integer targetI = null;

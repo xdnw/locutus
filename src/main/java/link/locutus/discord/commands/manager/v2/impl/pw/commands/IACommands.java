@@ -180,8 +180,8 @@ public class IACommands {
             sheet.addRow(header);
         }
 
-        sheet.clearFirstTab();
-        sheet.write();
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
 
         sheet.attach(io.create(), "day_change").append("Timezone is the UTC update timezone as displayed in-game on the account page").send();
     }
@@ -904,8 +904,8 @@ public class IACommands {
         for (Map.Entry<DBNation, Double> entry : sorted) {
             sheet.addRow(rows.get(entry.getKey()));
         }
-        sheet.clearFirstTab();
-        sheet.write();
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
 
         sheet.attach(io.create(), "loot").send();
         return null;
@@ -1380,8 +1380,8 @@ public class IACommands {
             }
         }
 
-        sheet.clearFirstTab();
-        sheet.write();
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
 
         List<String> errorMsgs = new ArrayList<>();
         if (!errors.isEmpty()) {

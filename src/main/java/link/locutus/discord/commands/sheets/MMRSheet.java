@@ -205,8 +205,8 @@ public class MMRSheet extends Command {
                 sheet.addRow(row);
             }
 
-            sheet.clearFirstTab();
-            sheet.write();
+            sheet.updateClearFirstTab();
+            sheet.updateWrite();
             String response = "";
             if (!flags.contains('f')) response += "\nNote: Results may be outdated, add `-f` to update.";
 

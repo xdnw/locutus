@@ -1270,8 +1270,8 @@ public class UtilityCommands {
             sheet.addRow(new ArrayList<>(header));
         }
 
-        sheet.clearFirstTab();
-        sheet.write();
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
 
         sheet.attach(channel.create(), "alliances").send();
         return null;
@@ -1318,8 +1318,8 @@ public class UtilityCommands {
             sheet.addRow(new ArrayList<>(header));
         }
 
-        sheet.clearCurrentTab();
-        sheet.write();
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
 
         sheet.attach(channel.create(), "nations").send();
     }
@@ -1735,8 +1735,8 @@ public class UtilityCommands {
 
             sheet.addRow(row);
         }
-        sheet.clearCurrentTab();
-        sheet.write();
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
 
         CM.deposits.addSheet cmd = CM.deposits.addSheet.cmd.create(sheet.getURL(), "#deposit", null, null);
 

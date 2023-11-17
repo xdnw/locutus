@@ -13,21 +13,18 @@ import link.locutus.discord.commands.manager.Command;
 import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
-import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.rankings.builder.SummedMapRankBuilder;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.CIEDE2000;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.web.WebUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
@@ -187,7 +184,7 @@ public class MilitaryRanking extends Command {
 
         IMessageBuilder msg = channel.create();
         {
-            List<List<Object>> values = sheet.getValues();
+            List<List<Object>> values = sheet.getCachedValues();
 
             DataTable data = new DataTable(Double.class, Double.class, String.class);
             Function<Number, Color> colorFunction = f -> Color.decode((String) values.get((f.intValue() / 4) + 1).get(1));
@@ -257,8 +254,8 @@ public class MilitaryRanking extends Command {
             msg.image("img.png", baos.toByteArray());
         }
 
-        sheet.clearCurrentTab();
-        sheet.write();
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
 
         msg.append("> Each bar is segmented into four sections, from bottom to top: (soldiers, tanks, planes, ships)\n" +
                 "> Each alliance is grouped by sphere and color coded");

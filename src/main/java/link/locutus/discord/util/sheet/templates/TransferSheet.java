@@ -96,7 +96,7 @@ public class TransferSheet {
      */
     public Set<String> read() {
         Set<String> invalidNationOrAlliance = new LinkedHashSet<>();
-        List<List<Object>> rows = parent.getAll();
+        List<List<Object>> rows = parent.loadValuesCurrentTab(true);
         List<Object> header = rows.get(0);
 
         boolean useLeader = false;
@@ -201,8 +201,8 @@ public class TransferSheet {
     }
 
     public TransferSheet build() throws IOException {
-        parent.clearCurrentTab();
-        parent.write();
+        parent.updateClearCurrentTab();
+        parent.updateWrite();
         return this;
     }
 

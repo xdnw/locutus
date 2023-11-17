@@ -117,8 +117,8 @@ public class TaxBracketSheet extends Command {
             sheet.addRow(header);
         }
 
-        sheet.clearFirstTab();
-        sheet.write();
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
 
         StringBuilder response = new StringBuilder();
         if (failedFetch) response.append("\nnote: Please set an api key with " + CM.credentials.addApiKey.cmd.toSlashMention() + " to view updated tax brackets");

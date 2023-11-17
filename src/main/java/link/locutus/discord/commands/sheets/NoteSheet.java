@@ -51,7 +51,7 @@ public class NoteSheet extends Command {
 
         Map<DBNation, List<Object>> rows = new HashMap<>();
 
-        List<List<Object>> existing = sheet.getAll();
+        List<List<Object>> existing = sheet.fetchAll();
         if (existing == null) existing = new ArrayList<>();
         for (int i = 1; i < existing.size(); i++) {
             List<Object> row = existing.get(i);
@@ -79,9 +79,9 @@ public class NoteSheet extends Command {
             sheet.addRow(row);
         }
 
-        sheet.clearFirstTab();
+        sheet.updateClearFirstTab();
 
-        sheet.write();
+        sheet.updateWrite();
 
         sheet.attach(channel.create(), "notes").send();
         return null;

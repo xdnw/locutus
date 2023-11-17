@@ -83,8 +83,8 @@ public class WarCitySheet extends Command {
             }
         }
 
-        sheet.clearFirstTab();
-        sheet.write();
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
         sheet.attach(channel.create(), "wars_tiering").send();
         return null;
     }

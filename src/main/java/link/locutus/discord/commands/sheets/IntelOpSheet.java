@@ -168,10 +168,10 @@ public class IntelOpSheet extends Command {
             sheet = SpreadSheet.create(db, SheetKeys.SPYOP_SHEET);
         }
 
-        sheet.clearFirstTab();
+        sheet.updateClearFirstTab();
         SpySheet.generateSpySheet(sheet, targets);
 
-        sheet.write();
+        sheet.updateWrite();
 
         sheet.attach(channel.create(), "spy_intel").send();
         return null;

@@ -354,8 +354,8 @@ public class GPTCommands {
             }
         });
 
-        sheet.clearCurrentTab();
-        sheet.write();
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
 
         sheet.attach(io.create(), "embeddings", null, false, 0).send();
         return null;
@@ -393,7 +393,7 @@ public class GPTCommands {
             }
         }
 
-        List<List<Object>> rows = sheet.getAll();
+        List<List<Object>> rows = sheet.fetchAll();
         if (rows.size() < 2){
             throw new IllegalArgumentException("Must have at least 2 rows, a header (`description`, `full_text`) and 1 row of data");
         }
@@ -848,8 +848,8 @@ public class GPTCommands {
                 ));
                 sheet.addRow(row);
             }
-            sheet.clearFirstTab();
-            sheet.write();
+            sheet.updateClearFirstTab();
+            sheet.updateWrite();
 
         }
 
@@ -857,7 +857,7 @@ public class GPTCommands {
         Map<Long, String> setDesc = new LinkedHashMap<>();
 
         // read the sheet
-        List<List<Object>> rows = sheet.getAll();
+        List<List<Object>> rows = sheet.fetchAll();
         if (rows.isEmpty()) {
             throw new IllegalArgumentException("No rows found in sheet");
         }

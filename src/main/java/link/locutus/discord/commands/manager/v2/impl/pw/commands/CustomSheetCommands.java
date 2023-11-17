@@ -1,5 +1,6 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -19,6 +20,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -191,8 +193,8 @@ public class CustomSheetCommands {
 
     @Command
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String updateSheet(@Me IMessageIO io, CustomSheet sheet) {
-        List<String> errors = sheet.update();
+    public String updateSheet(@Me IMessageIO io, CustomSheet sheet, ValueStore store) throws GeneralSecurityException, IOException {
+        List<String> errors = sheet.update(store);
 
         StringBuilder result = new StringBuilder();
         result.append("Updating sheet: `").append(sheet.getName()).append("` (").append(sheet.getTabs().size()).append(" tabs)\n");

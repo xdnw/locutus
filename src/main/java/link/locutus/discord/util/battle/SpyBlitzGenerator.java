@@ -29,7 +29,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -629,7 +628,7 @@ public class SpyBlitzGenerator {
     }
 
     public static Map<DBNation, Set<Spyop>> getTargets(SpreadSheet sheet, int headerRow, boolean groupByAttacker) {
-        List<List<Object>> rows = sheet.getAll();
+        List<List<Object>> rows = sheet.fetchAll();
         List<Object> header = rows.get(headerRow);
 
         Integer targetI = null;

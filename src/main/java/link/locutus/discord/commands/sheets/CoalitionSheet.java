@@ -50,8 +50,8 @@ public class CoalitionSheet extends Command {
             sheet.addRow(aaUrl, StringMan.join(entry.getValue(), ","));
         }
 
-        sheet.clearFirstTab();
-        sheet.write();
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
         sheet.attach(channel.create(), "coalition").send();
         return null;
     }

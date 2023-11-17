@@ -97,7 +97,7 @@ public class SpreadSheet {
             throw new RuntimeException(e);
         }
 
-        List<List<Object>> rows = sheet.getAll(null);
+        List<List<Object>> rows = sheet.fetchAll(null);
         if (rows == null || rows.isEmpty()) return Collections.emptySet();
 
         Set<T> toAdd = new LinkedHashSet<>();
@@ -206,9 +206,9 @@ public class SpreadSheet {
             this.addRow(null, header);
         }
 
-        this.clearTab(null);
+        this.updateClearTab(null);
         try {
-            this.write();
+            this.updateWrite();
             return attach(channel.create(), "transactions").send();
         } catch (Throwable e) {
             e.printStackTrace();
@@ -346,7 +346,7 @@ public class SpreadSheet {
 
     public Map<String, Boolean> parseTransfers(AddBalanceBuilder builder, boolean negative, String defaultNote) {
         Map<String, Boolean> result = new LinkedHashMap<String, Boolean>();
-        List<List<Object>> rows = getAll(null);
+        List<List<Object>> rows = fetchAll(null);
         List<Object> header = rows.get(0);
 
         Integer noteI = null;
@@ -557,7 +557,7 @@ public class SpreadSheet {
     }
 
     public void addRow(String tab, List<? extends Object> list) {
-        this.getValues(tab).add(processRow(tab, new ArrayList<>(list)));
+        this.getCachedValues(tab).add(formatRow(tab, new ArrayList<>(list)));
     }
 
     public String getDefaultTab() {
@@ -566,22 +566,26 @@ public class SpreadSheet {
 
     public String getDefaultTab(boolean useFirstTabIfNone) {
         if ((defaultTab == null || defaultTab.isEmpty()) && useFirstTabIfNone) {
-            defaultTab = getTabs().entrySet().iterator().next().getValue();
+            if (service == null) {
+                defaultTab = "";
+            } else {
+                defaultTab = fetchTabs().entrySet().iterator().next().getValue();
+            }
         }
         return defaultTab;
     }
 
-    public List<List<Object>> getValues(String tab) {
+    public List<List<Object>> getCachedValues(String tab) {
         if (tab == null) tab = getDefaultTab();
         else tab = tab.toLowerCase(Locale.ROOT);
         return valuesByTab.computeIfAbsent(tab, k -> new ArrayList<>());
     }
 
     public void addRow(Object... values) {
-        this.getValues(null).add(processRow(null, Arrays.asList(values)));
+        this.getCachedValues(null).add(formatRow(null, Arrays.asList(values)));
     }
 
-    private List<Object> processRow(String tab, List<Object> row) {
+    private List<Object> formatRow(String tab, List<Object> row) {
         List<Object> out = new ArrayList<>();
         for (int i = 0; i < row.size(); i++) {
             Object value = row.get(i);
@@ -590,8 +594,8 @@ public class SpreadSheet {
             } else {
                 String valueStr = value.toString();
                 if (valueStr.contains("{")) {
-                    valueStr = valueStr.replaceAll("\\{row}", (getValues(tab).size() + 1) + "");
-                    valueStr = valueStr.replaceAll("\\{column}", SheetUtil.getLetter(getValues(tab).size() + 1));
+                    valueStr = valueStr.replaceAll("\\{row}", (getCachedValues(tab).size() + 1) + "");
+                    valueStr = valueStr.replaceAll("\\{column}", SheetUtil.getLetter(getCachedValues(tab).size() + 1));
                     out.add(valueStr);
                 } else {
                     out.add(value);
@@ -601,7 +605,7 @@ public class SpreadSheet {
         return out;
     }
 
-    public void write(String tab, List<RowData> rowData) throws IOException {
+    public void updateWrite(String tab, List<RowData> rowData) throws IOException {
         if (tab == null) tab = getDefaultTab();
         if (service == null) {
             reset();
@@ -625,7 +629,7 @@ public class SpreadSheet {
         if (!tab.isEmpty()) {
             Integer id = getTabsByNameLower().get(tab.toLowerCase(Locale.ROOT));
             if (id == null) {
-                createTabIfNotExist(tab);
+                updateCreateTabIfAbsent(tab);
             }
             id = getTabsByNameLower().get(tab.toLowerCase(Locale.ROOT));
             if (id == null) {
@@ -642,7 +646,7 @@ public class SpreadSheet {
         BatchUpdateSpreadsheetResponse result = service.spreadsheets().batchUpdate(spreadsheetId, batchRequests).execute();
     }
 
-    public void createTabIfNotExist(String tabName) throws IOException {
+    public void updateCreateTabIfAbsent(String tabName) throws IOException {
         Spreadsheet sheet = service.spreadsheets().get(spreadsheetId).execute();
         List<Sheet> sheets = sheet.getSheets();
         for (Sheet sheet1 : sheets) {
@@ -650,10 +654,10 @@ public class SpreadSheet {
                 return;
             }
         }
-        addTab(tabName);
+        updateAddTab(tabName);
     }
 
-    public void addTab(String tabName) {
+    private void updateAddTab(String tabName) {
         if (service == null) {
             return;
         }
@@ -672,7 +676,7 @@ public class SpreadSheet {
         }
     }
 
-    public void write() throws IOException {
+    public void updateWrite() throws IOException {
         if (valuesByTab.isEmpty()) {
             return;
         }
@@ -709,13 +713,35 @@ public class SpreadSheet {
         }
     }
 
-    public List<List<Object>> get(String tab, int x1, int y1, int x2, int y2) {
-        return get2(SheetUtil.getRange(x1, y1, x2, y2));
+    public List<List<Object>> get(int x1, int y1, int x2, int y2) {
+        return fetchRange(this.getDefaultTab(), SheetUtil.getRange(x1, y1, x2, y2));
+    }
+
+    public List<List<Object>> loadValuesCurrentTab(boolean force) {
+        return loadValues(getDefaultTab(true), force);
+    }
+
+    public List<List<Object>> loadValues(String tabName, boolean force) {
+        if (tabName == null || tabName.isEmpty()) {
+            tabName = getDefaultTab(true);
+        }
+        if (service == null) {
+            return valuesByTab.getOrDefault(tabName, new ArrayList<>());
+        }
+        if (!force) {
+            List<List<Object>> values = this.valuesByTab.get(tabName);
+            if (values != null) {
+                return values;
+            }
+        }
+        List<List<Object>> result = fetchAll(tabName);
+        valuesByTab.put(tabName, result);
+        return result;
     }
 
     public Map<String, List<List<Object>>> loadValues(boolean force) {
         if (service != null && (force || this.valuesByTab.isEmpty())) {
-            this.valuesByTab.putAll(getAll());
+            this.valuesByTab.putAll(fetchAll());
             if (this.valuesByTab.isEmpty()) {
                 this.valuesByTab.put("", new ArrayList<>());
             }
@@ -723,10 +749,9 @@ public class SpreadSheet {
         return this.valuesByTab;
     }
 
-    public List<List<Object>> getAll(String tab) {
+    public List<List<Object>> fetchAll(String tab) {
         try {
-            if (tab == null) tab = getDefaultTab();
-            if (tab.isEmpty()) tab = getTabs().values().iterator().next();
+            if (tab == null || tab.isEmpty()) tab = getDefaultTab(true);
             if (service == null) return loadValues(false).get(tab);
             String range = tab; // Change this to the name of your sheet
             ValueRange response = service.spreadsheets().values()
@@ -742,14 +767,14 @@ public class SpreadSheet {
         }
     }
 
-    public Map<String, List<List<Object>>> getAll() {
+    public Map<String, List<List<Object>>> fetchAll() {
         try {
             if (service == null) return loadValues(false);
             Map<String, List<List<Object>>> map = new LinkedHashMap<>();
             Spreadsheet spreadsheet = service.spreadsheets().get(spreadsheetId).execute();
             for (Sheet sheet : spreadsheet.getSheets()) {
                 String title = sheet.getProperties().getTitle();
-                List<List<Object>> values = getAll(title);
+                List<List<Object>> values = fetchAll(title);
                 if (values != null) {
                     map.put(title, values);
                 }
@@ -760,11 +785,18 @@ public class SpreadSheet {
         }
     }
 
-    public List<List<Object>> get2(String range) {
-        return get2(range, null);
+    public List<List<Object>> fetchRange(String range) {
+        return fetchRange(getDefaultTab(), range);
     }
 
-    public List<List<Object>> get2(String range, Consumer<Sheets.Spreadsheets.Values.Get> onGet) {
+    public List<List<Object>> fetchRange(String tab, String range) {
+        return fetchRange(tab, range, null);
+    }
+
+    public List<List<Object>> fetchRange(String tab, String range, Consumer<Sheets.Spreadsheets.Values.Get> onGet) {
+        if (tab != null && !tab.isEmpty()) {
+            range = tab + "!" + range;
+        }
         try {
             System.out.println("Service " + service + " | " + spreadsheetId);
             Sheets.Spreadsheets.Values.Get query = service.spreadsheets().values().get(spreadsheetId, range);
@@ -776,15 +808,15 @@ public class SpreadSheet {
         }
     }
 
-    public void clearCurrentTab() throws IOException {
+    public void updateClearCurrentTab() throws IOException {
         if (this.defaultTab == null || this.defaultTab.isEmpty()) {
-            clearFirstTab();
+            updateClearFirstTab();
         } else {
-            clearTab(null);
+            updateClearTab(null);
         }
     }
 
-    public void clearFirstTab() throws IOException {
+    public void updateClearFirstTab() throws IOException {
         if (service == null) {
             return;
         }
@@ -802,7 +834,7 @@ public class SpreadSheet {
         BatchUpdateSpreadsheetResponse response = service.spreadsheets().batchUpdate(spreadsheetId, request).execute();
     }
 
-    public void clearAllTabs() throws IOException {
+    public void updateClearAll() throws IOException {
             if (service == null) {
             return;
         }
@@ -826,7 +858,7 @@ public class SpreadSheet {
         }
     }
 
-    public void clearTab(String tab) throws IOException {
+    public void updateClearTab(String tab) throws IOException {
         if (service == null) {
             return;
         }
@@ -838,7 +870,7 @@ public class SpreadSheet {
         ClearValuesResponse response = request.execute();
     }
 
-    public Map<Integer, String> getTabs() {
+    public Map<Integer, String> fetchTabs() {
             Spreadsheet spreadsheet = null;
         try {
             spreadsheet = service.spreadsheets().get(spreadsheetId).execute();
@@ -854,19 +886,19 @@ public class SpreadSheet {
         return tabs;
     }
 
-    public Map<String, Integer> getTabsByName() {
+    public Map<String, Integer> fetchTabsByName() {
         Map<String, Integer> tabsByName = new LinkedHashMap<>();
-        for (Map.Entry<Integer, String> entry : getTabs().entrySet()) {
+        for (Map.Entry<Integer, String> entry : fetchTabs().entrySet()) {
             tabsByName.put(entry.getValue(), entry.getKey());
         }
         return tabsByName;
     }
 
     public Map<String, Integer> getTabsByNameLower() {
-        return getTabsByName().entrySet().stream().collect(Collectors.toMap(e -> e.getKey().toLowerCase(), Map.Entry::getValue));
+        return fetchTabsByName().entrySet().stream().collect(Collectors.toMap(e -> e.getKey().toLowerCase(), Map.Entry::getValue));
     }
 
-    public void deleteTab(int tabId) {
+    public void updateDeleteTab(int tabId) {
         if (service == null) {
             return;
         }
@@ -885,7 +917,7 @@ public class SpreadSheet {
         }
     }
 
-    public void clear(String tab, String range) throws IOException {
+    public void updateClearRange(String tab, String range) throws IOException {
         if (service == null) {
             return;
         }
@@ -934,7 +966,7 @@ public class SpreadSheet {
         checkNotNull(arguments);
         checkArgument(arguments.length > 0);
         if (valuesByTab.isEmpty()) throw new IllegalArgumentException("No values found. Was `loadValues` called?");
-        List<List<Object>> values = getValues(getDefaultTab(true));
+        List<List<Object>> values = getCachedValues(getDefaultTab(true));
         if (values.isEmpty()) {
             return null;
         }
