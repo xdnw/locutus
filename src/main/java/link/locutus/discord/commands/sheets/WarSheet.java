@@ -161,8 +161,8 @@ public class WarSheet extends Command {
             sheet.addRow(headers);
         }
 
-        sheet.clear("A:Z");
-        sheet.set(0, 0);
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
 
         sheet.attach(channel.create(), "wars").send();
         return null;

@@ -891,7 +891,7 @@ public class TradeCommands {
             sheet.addRow(header);
         }
 
-        sheet.set(0, 0);
+        sheet.updateWrite();
 
         sheet.attach(channel.create(), "trending").send();
         return null;
@@ -1151,8 +1151,8 @@ public class TradeCommands {
             }
         }
 
-        sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
 
         double[] diff = ResourceType.subtract(allDeposits.clone(), PnwUtil.resourcesToArray(stockpile));
 

@@ -186,7 +186,7 @@ public class GrantCmd extends Command {
             if (!Roles.ECON.has(author, guild)) return "No permission (econ)";
 
             SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKeys.GRANT_SHEET);
-            sheet.clearFirstTab();
+            sheet.updateClearFirstTab();
             List<String> header = new ArrayList<>(Arrays.asList(
                     "nation",
                     "cities",
@@ -221,7 +221,7 @@ public class GrantCmd extends Command {
                 sheet.addRow(row);
             }
 
-            sheet.set(0, 0);
+            sheet.updateWrite();
 
             String totalStr = PnwUtil.resourcesToString(total) + " worth ~$" + MathMan.format(PnwUtil.convertedTotal(total));
             sheet.attach(channel.create().append(totalStr), "grant", null, false, 0).send();

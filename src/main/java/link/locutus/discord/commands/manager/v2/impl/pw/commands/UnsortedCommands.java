@@ -199,8 +199,8 @@ public class UnsortedCommands {
             sheet.addRow(new ArrayList<>(header));
         }
 
-        sheet.clear("A:ZZ");
-        sheet.set(0, 0);
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
 
         sheet.attach(channel.create(), "spy_free").send();
     }
@@ -346,8 +346,8 @@ public class UnsortedCommands {
         }
         messages.add("The TAX column includes tax records not set to go into a member's personal deposits, or offsets using the `#tax` note");
 
-        sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
 
         IMessageBuilder msg = io.create();
         msg.append("Notes:\n- " + StringMan.join(messages, "\n- "));
@@ -1769,8 +1769,8 @@ public class UnsortedCommands {
 
             sheet.addRow(header);
         }
-        sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
         IMessageBuilder msg = sheet.attach(io.create(), "revenue");
 
         // sum nationBySeverity
@@ -1797,7 +1797,9 @@ public class UnsortedCommands {
         msg.send();
     }
 
-    @Command(desc = "Get the invite for the linked milcom server")
+    @Command(desc = "Create, send and record unique invites to a set of nations\n" +
+            "The invite can be sent via discord direct message, mail, viewed from an embed, or command\n" +
+            "If `allowCreation` is not enabled, only a single invite will be created per nation; invites may expire and no new invites are permitted.")
     @RolePermission(Roles.ADMIN)
     public String sendInvite(@Me GuildDB db,
                              @Me User author,
@@ -1811,7 +1813,9 @@ public class UnsortedCommands {
                              @Switch("u") Integer maxUsesEach,
                              @Arg("Send the invite via discord direct message") @Switch("d") boolean sendDM,
                              @Switch("m") boolean sendMail,
-                             @Arg("If new invites are allowed to be made for new nations which match the filter")
+                             @Arg("Allow creating an invite when any nation matches `sendTo`, when they don't already have an invite, or theirs has expired\n" +
+                                     "Invites can be created by using viewing the announcement embed or running the announcement view command\n" +
+                                     "Defaults to false")
                              @Switch("c") boolean allowCreation,
                              @Switch("f") boolean force) throws IOException {
         DefaultGuildChannelUnion defaultChannel = inviteTo.getDefaultChannel();

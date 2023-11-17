@@ -457,8 +457,8 @@ public class BankCommands {
                         );
                         sheet.addRow(row);
                     }
-                    sheet.clearFirstTab();
-                    sheet.set(0, 0);
+                    sheet.updateClearFirstTab();
+                    sheet.updateWrite();
                 } else {
                     sheet = sheetAmounts.getSheet();
                 }
@@ -1531,8 +1531,8 @@ public class BankCommands {
             sheet.addRow(future.get());
         }
 
-        sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
 
         sheet.attach(io.create(), "revenue").send();
         return null;
@@ -1711,8 +1711,8 @@ public class BankCommands {
             sheet.addRow(header);
         }
 
-        sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
 
         StringBuilder response = new StringBuilder();
         response.append("Total Warchest: `" + PnwUtil.resourcesToString(totalWarchest) + "` worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalWarchest)) + "\n");
@@ -2119,8 +2119,8 @@ public class BankCommands {
             sheet.addRow(header);
         }
 
-        sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
 
         sheet.attach(io.create(), "projects").send();
         return null;
@@ -2166,8 +2166,8 @@ public class BankCommands {
         sheet = sheetPair.getKey();
         double[] totalEscrowed = sheetPair.getValue();
 
-        sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
         // appent resource string and worth
         sheet.attach(io.create(), "escrow").append("Total Escrowed: `" + PnwUtil.resourcesToString(totalEscrowed) + "` | worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalEscrowed))).send();
         return null;
@@ -2407,8 +2407,8 @@ public class BankCommands {
 
         StringBuilder footer = new StringBuilder();
 
-        sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
 
         IMessageBuilder msg = channel.create();
         sheet.attach(msg, "deposits");
@@ -2417,8 +2417,8 @@ public class BankCommands {
             Map.Entry<SpreadSheet, double[]> pair = escrowSheet(db, nations, null);
             SpreadSheet escrowSheet = pair.getKey();
             // attach sheet
-            escrowSheet.clearFirstTab();
-            escrowSheet.set(0, 0);
+            escrowSheet.updateClearFirstTab();
+            escrowSheet.updateWrite();
             escrowSheet.attach(msg, "escrow");
 
             double[] escrowTotal = pair.getValue();
@@ -3017,8 +3017,8 @@ public class BankCommands {
             sheet.addRow(header);
         }
 
-        sheet.clear("A:Z");
-        sheet.set(0, 0);
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
         sheet.attach(io.create(), "tax_rates").send();
         return null;
     }
@@ -3193,8 +3193,8 @@ public class BankCommands {
             }
             sheet.addRow(header);
         }
-        sheet.clear("A:Z");
-        sheet.set(0, 0);
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
         sheet.attach(io.create(), "tax_records").send();
         return null;
     }
@@ -3697,8 +3697,8 @@ public class BankCommands {
             sheet.addRow(row);
         }
 
-        sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
 
         String totalStr = PnwUtil.resourcesToFancyString(aaTotal);
         totalStr += "\n`note:total ignores nations with alliance info disabled`";
@@ -3775,8 +3775,8 @@ public class BankCommands {
             sheet.addRow(header);
         }
 
-        sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
 
         StringBuilder response = new StringBuilder();
         if (failedFetch) response.append("\nnote: Please set an api key with " + CM.credentials.addApiKey.cmd.toSlashMention() + " to view updated tax brackets");

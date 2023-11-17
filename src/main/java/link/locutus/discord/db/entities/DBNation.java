@@ -146,22 +146,6 @@ public class DBNation implements NationOrAlliance {
     private double gni;
     private transient  DBNationCache cache;
 
-    @Command
-//    @DenyPermission
-    public Map<ResourceType, Double> test() {
-        // ResourceType.FOOD = 10
-        // and some other example values
-        Map<ResourceType, Double> map = new HashMap<>();
-        map.put(ResourceType.FOOD, 10.0);
-        map.put(ResourceType.COAL, 20.0);
-        map.put(ResourceType.OIL, 30.0);
-        map.put(ResourceType.URANIUM, 40.0);
-        map.put(ResourceType.LEAD, 50.0);
-        map.put(ResourceType.IRON, 60.0);
-        map.put(ResourceType.BAUXITE, 70.0);
-        return map;
-    }
-
     public static DBNation getByUser(User user) {
         return DiscordUtil.getNation(user);
     }
@@ -3791,8 +3775,9 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Sheet lookup")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS})
-    public Object cellLookup(SpreadSheet sheet, String columnSearch, String columnOutput, String search) {
-        List<List<Object>> values = sheet.loadValues();
+    public Object cellLookup(SpreadSheet sheet, String tabName, String columnSearch, String columnOutput, String search) {
+        List<List<Object>> values = sheet.loadValues(tabName, false);
+        if (values == null) return null;
         int searchIndex = SheetUtil.getIndex(columnSearch) - 1;
         int outputIndex = SheetUtil.getIndex(columnOutput) - 1;
 

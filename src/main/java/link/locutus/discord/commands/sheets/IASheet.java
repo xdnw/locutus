@@ -123,7 +123,7 @@ public class IASheet extends Command {
             }
         }
 
-        sheet.clear("A:ZZ");
+        sheet.updateClearCurrentTab();
 
         ArrayList<String> header = new ArrayList<>();
         header.add("");
@@ -150,7 +150,7 @@ public class IASheet extends Command {
             sheet.addRow(row);
         }
 
-        sheet.set(0, 0);
+        sheet.updateWrite();
 
         sheet.attach(channel.create(), "ia").send();
         return null;

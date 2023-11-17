@@ -62,6 +62,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.scheduler.ThrowingBiFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
 import net.dv8tion.jda.api.entities.Guild;
@@ -181,7 +182,7 @@ public class PlaceholdersMap {
     private Placeholders<Continent> createContinents() {
         return new StaticPlaceholders<Continent>(Continent.class, store, validators, permisser,
                 "TODO CM REF",
-                (store, input) -> {
+                (ThrowingBiFunction<ValueStore, String, Set<Continent>>) (store, input) -> {
                     input = getSelection(store, Continent.class, input);
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Continent.values()));
                     if (SpreadSheet.isSheet(input)) {
@@ -376,7 +377,7 @@ public class PlaceholdersMap {
     private Placeholders<GuildDB> createGuildDB() {
         return new SimplePlaceholders<GuildDB>(GuildDB.class,  store, validators, permisser,
                 "TODO CM Ref",
-                (store, input) -> {
+                (ThrowingBiFunction<ValueStore, String, Set<GuildDB>>) (store, input) -> {
                     input = getSelection(store, GuildDB.class, input);
                     User user = (User) store.getProvided(Key.of(User.class, Me.class), true);
                     boolean admin = Roles.ADMIN.hasOnRoot(user);
@@ -404,7 +405,7 @@ public class PlaceholdersMap {
                         throw new IllegalArgumentException("You (" + user + ") are not in the guild with id: `" + id + "`");
                     }
                     return Set.of(guild);
-                }, (store, input) -> {
+                }, (ThrowingBiFunction<ValueStore, String, Predicate<GuildDB>>) (store, input) -> {
                     if (input.equalsIgnoreCase("*")) {
                         return f -> true;
                     }
@@ -462,7 +463,7 @@ public class PlaceholdersMap {
     private Placeholders<DBBan> createBans() {
         return new SimplePlaceholders<DBBan>(DBBan.class,  store, validators, permisser,
                 "TODO CM REF",
-                (store, input) -> {
+                (ThrowingBiFunction<ValueStore, String, Set<DBBan>>) (store, input) -> {
                     input = getSelection(store, DBBan.class, input);
                     if (input.equalsIgnoreCase("*")) {
                         return new HashSet<>(Locutus.imp().getNationDB().getBansByNation().values());
@@ -471,7 +472,7 @@ public class PlaceholdersMap {
                         return SpreadSheet.parseSheet(input, List.of("bans"), true, (type, str) -> PWBindings.ban(str));
                     }
                     return Set.of(PWBindings.ban(input));
-                }, (store, input) -> {
+                }, (ThrowingBiFunction<ValueStore, String, Predicate<DBBan>>) (store, input) -> {
                     if (input.equalsIgnoreCase("*")) return f -> true;
                     if (SpreadSheet.isSheet(input)) {
                         Set<Integer> sheet = SpreadSheet.parseSheet(input, List.of("treaty"), true,
@@ -539,7 +540,7 @@ public class PlaceholdersMap {
     private Placeholders<NationList> createNationList() {
         return new SimplePlaceholders<NationList>(NationList.class,  store, validators, permisser,
                 "TODO CM REF",
-                (store, input) -> {
+                (ThrowingBiFunction<ValueStore, String, Set<NationList>>) (store, input) -> {
                     input = getSelection(store, NationList.class, input);
                     Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
                     User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
@@ -599,7 +600,7 @@ public class PlaceholdersMap {
                         result.addAll(lists);
                     }
                     return result;
-                }, (store, input) -> {
+                }, (ThrowingBiFunction<ValueStore, String, Predicate<NationList>>) (store, input) -> {
                     if (input.equalsIgnoreCase("*")) return f -> true;
                     throw new IllegalArgumentException("NationList predicates other than `*` are unsupported. Please use DBNation instead");
                 }) {
@@ -774,7 +775,7 @@ public class PlaceholdersMap {
     private Placeholders<UserWrapper> createUsers() {
         return new SimplePlaceholders<UserWrapper>(UserWrapper.class,  store, validators, permisser,
                 "TODO CM REF",
-                (store, input) -> {
+                (ThrowingBiFunction<ValueStore, String, Set<UserWrapper>>) (store, input) -> {
                     input = getSelection(store, UserWrapper.class, input);
                     GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
                     Guild guild = db.getGuild();
@@ -783,7 +784,7 @@ public class PlaceholdersMap {
                         return member.stream().map(UserWrapper::new).collect(Collectors.toSet());
                     }
                     return parseUserSingle(guild, input);
-                }, (store, input) -> {
+                }, (ThrowingBiFunction<ValueStore, String, Predicate<UserWrapper>>) (store, input) -> {
                     if (input.equalsIgnoreCase("*")) return f -> true;
 
                     GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
@@ -843,7 +844,7 @@ public class PlaceholdersMap {
     private Placeholders<DBCity> createCities() {
         return new SimplePlaceholders<DBCity>(DBCity.class,  store, validators, permisser,
                 "TODO CM REF",
-                (store, input) -> {
+                (ThrowingBiFunction<ValueStore, String, Set<DBCity>>) (store, input) -> {
                     input = getSelection(store, DBCity.class, input);
                     if (input.equalsIgnoreCase("*")) {
                         Locutus.imp().getNationDB().getCities();
@@ -857,7 +858,7 @@ public class PlaceholdersMap {
                         return cities;
                     }
                     return parseCitiesSingle(store, input);
-                }, (store, input) -> {
+                }, (ThrowingBiFunction<ValueStore, String, Predicate<DBCity>>) (store, input) -> {
                     if (input.equalsIgnoreCase("*")) return f -> true;
                     if (MathMan.isInteger(input) || input.contains("/city/id=")) {
                         DBCity city = PWBindings.cityUrl(input);
@@ -1015,7 +1016,7 @@ public class PlaceholdersMap {
     public Placeholders<BankDB.TaxDeposit> createTaxDeposit() {
         return new SimplePlaceholders<BankDB.TaxDeposit>(BankDB.TaxDeposit.class, store, validators, permisser,
                 "TODO CM REF",
-                (store, input) -> {
+                (ThrowingBiFunction<ValueStore, String, Set<BankDB.TaxDeposit>>) (store, input) -> {
                     Predicate<BankDB.TaxDeposit> canView = getCanView(store);
                     if (SpreadSheet.isSheet(input)) {
                         Set<Integer> ids = new IntOpenHashSet();
@@ -1045,7 +1046,7 @@ public class PlaceholdersMap {
                     Set<Integer> ids = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
                     return getTaxes(store, null, null, ids);
 
-                }, (store, input) -> {
+                }, (ThrowingBiFunction<ValueStore, String, Predicate<BankDB.TaxDeposit>>) (store, input) -> {
                     if (input.equalsIgnoreCase("*")) return f -> true;
                     if (SpreadSheet.isSheet(input)) {
                         Set<Integer> ids = new IntOpenHashSet();
@@ -1133,7 +1134,7 @@ public class PlaceholdersMap {
     public Placeholders<IAttack> createAttacks() {
         return new SimplePlaceholders<IAttack>(IAttack.class,  store, validators, permisser,
                 "TODO CM REF",
-                (store, input) -> {
+                (ThrowingBiFunction<ValueStore, String, Set<IAttack>>) (store, input) -> {
                     input = getSelection(store, IAttack.class, input);
                     if (SpreadSheet.isSheet(input)) {
                         Set<Integer> attackIds = new ObjectOpenHashSet<>();
@@ -1157,7 +1158,7 @@ public class PlaceholdersMap {
                         return getAttacks(Set.of(), Set.of(warId));
                     }
                     throw new UnsupportedOperationException("Filters must begin with `#`. Please use the attack selector argument to specify participants.");
-                }, (store, input) -> {
+                }, (ThrowingBiFunction<ValueStore, String, Predicate<IAttack>>) (store, input) -> {
                     if (input.equalsIgnoreCase("*")) return f -> true;
                     if (SpreadSheet.isSheet(input)) {
                         Set<Integer> attackIds = new ObjectOpenHashSet<>();
@@ -1241,7 +1242,7 @@ public class PlaceholdersMap {
     public Placeholders<DBWar> createWars() {
         return new SimplePlaceholders<DBWar>(DBWar.class,  store, validators, permisser,
                 "TODO CM REF",
-                (store, input) -> {
+                (ThrowingBiFunction<ValueStore, String, Set<DBWar>>) (store, input) -> {
                     input = getSelection(store, DBWar.class, input);
                     if (SpreadSheet.isSheet(input)) {
                         Set<Integer> warIds = new ObjectOpenHashSet<>();
@@ -1262,7 +1263,7 @@ public class PlaceholdersMap {
                         return Locutus.imp().getWarDb().getWarsById(Set.of(warId));
                     }
                     throw new UnsupportedOperationException("Filters must begin with `#`. Please use the attack selector argument to specify participants.");
-                }, (store, input) -> {
+                }, (ThrowingBiFunction<ValueStore, String, Predicate<DBWar>>) (store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (SpreadSheet.isSheet(input)) {
                 Set<Integer> warIds = new ObjectOpenHashSet<>();
@@ -1339,7 +1340,7 @@ public class PlaceholdersMap {
     public Placeholders<TaxBracket> createBrackets() {
         return new SimplePlaceholders<TaxBracket>(TaxBracket.class,  store, validators, permisser,
                 "TODO CM REF",
-                (store2, input) -> {
+                (ThrowingBiFunction<ValueStore, String, Set<TaxBracket>>) (store2, input) -> {
                     input = getSelection(store, TaxBracket.class, input);
                     GuildDB db = (GuildDB) store2.getProvided(Key.of(GuildDB.class, Me.class), false);
                     if (input.equalsIgnoreCase("*")) {
@@ -1362,7 +1363,7 @@ public class PlaceholdersMap {
                         return brackets;
                     }
                     return bracketSingle(store2, db, input);
-                }, (store, input) -> {
+                }, (ThrowingBiFunction<ValueStore, String, Predicate<TaxBracket>>) (store, input) -> {
                     if (input.equalsIgnoreCase("*")) {
                         return f -> true;
                     }
@@ -1430,7 +1431,7 @@ public class PlaceholdersMap {
     private Placeholders<DBTrade> createTrades() {
         return new SimplePlaceholders<DBTrade>(DBTrade.class,  store, validators, permisser,
                 "TODO CM REF",
-                (store, input) -> {
+                (ThrowingBiFunction<ValueStore, String, Set<DBTrade>>) (store, input) -> {
                     input = getSelection(store, DBTreasure.class, input);
                     if (input.equalsIgnoreCase("*")) {
                         throw new UnsupportedOperationException("`*` is not supported. Only trade ids are supported");
@@ -1444,7 +1445,7 @@ public class PlaceholdersMap {
                         return Set.of(Locutus.imp().getTradeManager().getTradeDb().getTradeById(id));
                     }
                     throw new IllegalArgumentException("Only trade ids are supported, not `" + input + "`");
-                }, (store, input) -> {
+                }, (ThrowingBiFunction<ValueStore, String, Predicate<DBTrade>>) (store, input) -> {
                     if (input.equalsIgnoreCase("*")) {
                         return f -> true;
                     }
@@ -1506,7 +1507,7 @@ public class PlaceholdersMap {
     private Placeholders<Transaction2> createTransactions() {
         return new SimplePlaceholders<Transaction2>(Transaction2.class,  store, validators, permisser,
                 "TODO CM REF",
-                (store, input) -> {
+                (ThrowingBiFunction<ValueStore, String, Set<Transaction2>>) (store, input) -> {
                     input = getSelection(store, Transaction2.class, input);
                     GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
                     User user = (User) store.getProvided(Key.of(User.class, Me.class), false);
@@ -1526,7 +1527,7 @@ public class PlaceholdersMap {
                         return filterTransactions(nation, user, db, transactions);
                     }
                     throw new IllegalArgumentException("Invalid transaction id: " + input);
-                }, (store, input) -> {
+                }, (ThrowingBiFunction<ValueStore, String, Predicate<Transaction2>>) (store, input) -> {
                     GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
                     User user = (User) store.getProvided(Key.of(User.class, Me.class), false);
                     DBNation nation = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
@@ -1659,7 +1660,7 @@ public class PlaceholdersMap {
     private Placeholders<DBBounty> createBounties() {
         return new SimplePlaceholders<DBBounty>(DBBounty.class,  store, validators, permisser,
                 "TODO CM REF",
-                (store, input) -> {
+                (ThrowingBiFunction<ValueStore, String, Set<DBBounty>>) (store, input) -> {
                     input = getSelection(store, DBBounty.class, input);
                     if (input.equalsIgnoreCase("*")) {
                         Set<DBBounty> result = new HashSet<>();
@@ -1685,7 +1686,7 @@ public class PlaceholdersMap {
                         }
                     }
                     return bountySet;
-                }, (store, input) -> {
+                }, (ThrowingBiFunction<ValueStore, String, Predicate<DBBounty>>) (store, input) -> {
                     if (input.equalsIgnoreCase("*")) return f -> true;
                     if (SpreadSheet.isSheet(input)) {
                         Set<Integer> sheet = SpreadSheet.parseSheet(input, List.of("bounty"), true,
@@ -1750,7 +1751,7 @@ public class PlaceholdersMap {
     private Placeholders<Treaty> createTreaty() {
         return new SimplePlaceholders<Treaty>(Treaty.class,  store, validators, permisser,
         "TODO CM REF",
-        (store, input) -> {
+        (ThrowingBiFunction<ValueStore, String, Set<Treaty>>) (store, input) -> {
             input = getSelection(store, Treaty.class, input);
             if (input.equalsIgnoreCase("*")) {
                 return Locutus.imp().getNationDB().getTreaties();
@@ -1774,7 +1775,7 @@ public class PlaceholdersMap {
             return Locutus.imp().getNationDB().getTreatiesMatching(f -> {
                 return (aa1.contains(f.getFromId())) && (aa2.contains(f.getToId())) || (aa1.contains(f.getToId())) && (aa2.contains(f.getFromId()));
             });
-        }, (store, input) -> {
+        }, (ThrowingBiFunction<ValueStore, String, Predicate<Treaty>>) (store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (SpreadSheet.isSheet(input)) {
                 Set<Treaty> sheet = SpreadSheet.parseSheet(input, List.of("treaty"), true,
@@ -1872,7 +1873,7 @@ public class PlaceholdersMap {
     private Placeholders<Project> createProjects() {
         return new StaticPlaceholders<Project>(Project.class, store, validators, permisser,
                 "TODO CM REF",
-                (store, input) -> {
+                (ThrowingBiFunction<ValueStore, String, Set<Project>>) (store, input) -> {
                     input = getSelection(store, Project.class, input);
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Projects.values));
                     if (SpreadSheet.isSheet(input)) {
@@ -1932,7 +1933,7 @@ public class PlaceholdersMap {
     private Placeholders<ResourceType> createResourceType() {
         return new StaticPlaceholders<ResourceType>(ResourceType.class, store, validators, permisser,
         "TODO CM REF",
-        (store, input) -> {
+        (ThrowingBiFunction<ValueStore, String, Set<ResourceType>>) (store, input) -> {
             input = getSelection(store, ResourceType.class, input);
             if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(ResourceType.values));
             if (SpreadSheet.isSheet(input)) {
@@ -1986,7 +1987,7 @@ public class PlaceholdersMap {
     private Placeholders<AttackType> createAttackTypes() {
         return new StaticPlaceholders<AttackType>(AttackType.class, store, validators, permisser,
                 "TODO CM REF",
-                (store, input) -> {
+                (ThrowingBiFunction<ValueStore, String, Set<AttackType>>) (store, input) -> {
                     input = getSelection(store, AttackType.class, input);
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(AttackType.values));
                     if (SpreadSheet.isSheet(input)) {
@@ -2040,7 +2041,7 @@ public class PlaceholdersMap {
     private Placeholders<MilitaryUnit> createMilitaryUnit() {
         return new StaticPlaceholders<MilitaryUnit>(MilitaryUnit.class, store, validators, permisser,
                 "TODO CM REF",
-                (store, input) -> {
+                (ThrowingBiFunction<ValueStore, String, Set<MilitaryUnit>>) (store, input) -> {
                     input = getSelection(store, MilitaryUnit.class, input);
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(MilitaryUnit.values));
                     if (SpreadSheet.isSheet(input)) {
@@ -2094,7 +2095,7 @@ public class PlaceholdersMap {
     private Placeholders<TreatyType> createTreatyType() {
         return new StaticPlaceholders<TreatyType>(TreatyType.class, store, validators, permisser,
                 "TODO CM REF",
-                (store, input) -> {
+                (ThrowingBiFunction<ValueStore, String, Set<TreatyType>>) (store, input) -> {
                     input = getSelection(store, TreatyType.class, input);
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(TreatyType.values));
                     if (SpreadSheet.isSheet(input)) {
@@ -2148,7 +2149,7 @@ public class PlaceholdersMap {
     private Placeholders<IACheckup.AuditType> createAuditType() {
         return new StaticPlaceholders<IACheckup.AuditType>(IACheckup.AuditType.class, store, validators, permisser,
                 "TODO CM REF",
-                (store, input) -> {
+                (ThrowingBiFunction<ValueStore, String, Set<IACheckup.AuditType>>) (store, input) -> {
                     input = getSelection(store, IACheckup.AuditType.class, input);
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(IACheckup.AuditType.values()));
                     if (SpreadSheet.isSheet(input)) {
@@ -2202,7 +2203,7 @@ public class PlaceholdersMap {
     private Placeholders<NationColor> createNationColor() {
         return new StaticPlaceholders<NationColor>(NationColor.class, store, validators, permisser,
                 "TODO CM REF",
-                (store, input) -> {
+                (ThrowingBiFunction<ValueStore, String, Set<NationColor>>) (store, input) -> {
                     input = getSelection(store, NationColor.class, input);
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(NationColor.values()));
                     if (SpreadSheet.isSheet(input)) {
@@ -2256,7 +2257,7 @@ public class PlaceholdersMap {
     private Placeholders<Building> createBuilding() {
         return new StaticPlaceholders<Building>(Building.class, store, validators, permisser,
                 "TODO CM REF",
-                (store, input) -> {
+                (ThrowingBiFunction<ValueStore, String, Set<Building>>) (store, input) -> {
                     input = getSelection(store, Building.class, input);
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Buildings.values()));
                     if (SpreadSheet.isSheet(input)) {

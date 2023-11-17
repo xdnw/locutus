@@ -180,8 +180,8 @@ public class IACommands {
             sheet.addRow(header);
         }
 
-        sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
 
         sheet.attach(io.create(), "day_change").append("Timezone is the UTC update timezone as displayed in-game on the account page").send();
     }
@@ -904,8 +904,8 @@ public class IACommands {
         for (Map.Entry<DBNation, Double> entry : sorted) {
             sheet.addRow(rows.get(entry.getKey()));
         }
-        sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
 
         sheet.attach(io.create(), "loot").send();
         return null;
@@ -1380,8 +1380,8 @@ public class IACommands {
             }
         }
 
-        sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
 
         List<String> errorMsgs = new ArrayList<>();
         if (!errors.isEmpty()) {
@@ -1411,7 +1411,7 @@ public class IACommands {
     @HasApi
     @RolePermission(Roles.ADMIN)
     public String mailSheet(@Me GuildDB db, @Me JSONObject command, @Me IMessageIO io, @Me User author, SpreadSheet sheet, @Switch("f") boolean confirm) {
-        List<List<Object>> data = sheet.loadValues();
+        Map<String, List<List<Object>>> data = sheet.loadValues();
 
         List<Object> nationNames = sheet.findColumn(0, "nation", "id");
         List<Object> subjects = sheet.findColumn("subject");

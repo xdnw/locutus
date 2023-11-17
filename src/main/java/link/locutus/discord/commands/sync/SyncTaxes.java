@@ -17,15 +17,12 @@ import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -128,7 +125,7 @@ public class SyncTaxes extends Command {
             }
         }
         SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.TAX_SHEET);
-        if (db.getInfo(SheetKeys.TAX_SHEET, true) == null) sheet.set(0, 0);
+        if (db.getInfo(SheetKeys.TAX_SHEET, true) == null) sheet.updateWrite();
         return desc() + "\nEnter tax records here: " + sheet.getURL(false, false);
     }
 
@@ -265,7 +262,7 @@ public class SyncTaxes extends Command {
             sheet.addRow(header);
         }
 
-        sheet.set(0, 0);
+        sheet.updateWrite();
 
         return sheet.getURL(true, true);
     }

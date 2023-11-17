@@ -97,7 +97,7 @@ public class WarCostSheet extends Command {
             "ratio"
         ));
 
-        sheet.clear("A:Z");
+        sheet.updateClearCurrentTab();
 
         sheet.setHeader(header);
         long start = System.currentTimeMillis();
@@ -223,8 +223,8 @@ public class WarCostSheet extends Command {
             sheet.addRow(header);
         }
 
-        sheet.clear("A:Z");
-        sheet.set(0, 0);
+        sheet.updateClearCurrentTab();
+        sheet.updateWrite();
         try {
             IMessageBuilder msg = msgFuture.get();
             if (msg != null && msg.getId() > 0) channel.delete(msg.getId());

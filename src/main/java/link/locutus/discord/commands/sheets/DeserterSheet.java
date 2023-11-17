@@ -163,8 +163,8 @@ public class DeserterSheet extends Command {
             sheet.addRow(row);
         }
 
-        sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.updateClearFirstTab();
+        sheet.updateWrite();
 
 
         sheet.attach(channel.create(), "deserter").send();

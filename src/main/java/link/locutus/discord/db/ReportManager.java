@@ -695,7 +695,7 @@ public class ReportManager {
 
     public List<Report> getReports(SpreadSheet sheet) throws NoSuchFieldException, IllegalAccessException, GeneralSecurityException, IOException {
         List<Report> result = new ArrayList<>();
-        List<List<Object>> values = sheet.loadValues();
+        List<List<Object>> values = sheet.fetchAll(null);
 
         if (values.isEmpty()) return result;
 
@@ -716,7 +716,7 @@ public class ReportManager {
 
     public List<Comment> getComments(SpreadSheet sheet) throws GeneralSecurityException, IOException, NoSuchFieldException, IllegalAccessException {
         List<Comment> result = new ArrayList<>();
-        List<List<Object>> values = sheet.loadValues();
+        List<List<Object>> values = sheet.loadValuesCurrentTab(true);
 
         if (values.isEmpty()) return result;
 

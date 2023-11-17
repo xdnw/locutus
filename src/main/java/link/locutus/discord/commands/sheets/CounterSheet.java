@@ -162,7 +162,7 @@ public class CounterSheet extends Command {
         ));
 
         Map<Integer, String> notes = new HashMap<>();
-        List<List<Object>> rows = sheet.getAll();
+        List<List<Object>> rows = sheet.fetchAll();
 
         if (rows != null && !rows.isEmpty()) {
             for (int i = 1; i < rows.size(); i++) {
@@ -280,9 +280,9 @@ public class CounterSheet extends Command {
             sheet.addRow(row);
         }
 
-        sheet.clearFirstTab();
+        sheet.updateClearFirstTab();
 
-        sheet.set(0, 0);
+        sheet.updateWrite();
 
         sheet.attach(channel.create(), "counter").send();
         return null;
