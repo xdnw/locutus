@@ -257,8 +257,8 @@ public class MilitaryRanking extends Command {
             msg.image("img.png", baos.toByteArray());
         }
 
-        sheet.clear("A:Z");
-        sheet.set(0, 0);
+        sheet.clearCurrentTab();
+        sheet.write();
 
         msg.append("> Each bar is segmented into four sections, from bottom to top: (soldiers, tanks, planes, ships)\n" +
                 "> Each alliance is grouped by sphere and color coded");

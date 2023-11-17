@@ -87,7 +87,7 @@ public class NationMetaSheet extends Command {
         }
 
         sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.write();
 
         sheet.attach(channel.create(), "nation_meta").send();
         return null;

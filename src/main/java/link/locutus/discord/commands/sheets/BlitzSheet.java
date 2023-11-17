@@ -214,7 +214,7 @@ public class BlitzSheet extends Command {
             rowData.add(myRow);
         }
 
-        sheet.clear("A:Z");
+        sheet.clearCurrentTab();
         sheet.write(rowData);
 
         sheet.attach(channel.create(), "blitz").send();
@@ -351,7 +351,7 @@ public class BlitzSheet extends Command {
 //        }
 //
 //        sheet.clearAll();
-//        sheet.set(0, 0);
+//        sheet.write();
 //
 //        return sheet.getURL(true, true);
     }

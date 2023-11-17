@@ -199,8 +199,8 @@ public class UnsortedCommands {
             sheet.addRow(new ArrayList<>(header));
         }
 
-        sheet.clear("A:ZZ");
-        sheet.set(0, 0);
+        sheet.clearCurrentTab();
+        sheet.write();
 
         sheet.attach(channel.create(), "spy_free").send();
     }
@@ -347,7 +347,7 @@ public class UnsortedCommands {
         messages.add("The TAX column includes tax records not set to go into a member's personal deposits, or offsets using the `#tax` note");
 
         sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.write();
 
         IMessageBuilder msg = io.create();
         msg.append("Notes:\n- " + StringMan.join(messages, "\n- "));
@@ -1770,7 +1770,7 @@ public class UnsortedCommands {
             sheet.addRow(header);
         }
         sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.write();
         IMessageBuilder msg = sheet.attach(io.create(), "revenue");
 
         // sum nationBySeverity

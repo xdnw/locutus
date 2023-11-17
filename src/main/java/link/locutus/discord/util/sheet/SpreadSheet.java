@@ -61,6 +61,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static com.google.gson.internal.$Gson$Preconditions.checkArgument;
 import static com.google.gson.internal.$Gson$Preconditions.checkNotNull;
@@ -96,7 +97,7 @@ public class SpreadSheet {
             throw new RuntimeException(e);
         }
 
-        List<List<Object>> rows = sheet.getAll();
+        List<List<Object>> rows = sheet.getAll(null);
         if (rows == null || rows.isEmpty()) return Collections.emptySet();
 
         Set<T> toAdd = new LinkedHashSet<>();
@@ -174,7 +175,7 @@ public class SpreadSheet {
         }
 
         if (includeHeader) {
-            this.setHeader(header);
+            this.setHeader(null, header);
         }
 
         Collections.sort(transactions, Comparator.comparingLong(o -> o.tx_datetime));
@@ -202,18 +203,25 @@ public class SpreadSheet {
                 header.set(i++, record.resources[value.ordinal()]);
             }
 
-            this.addRow(header);
+            this.addRow(null, header);
         }
 
-        this.clear("A:Z");
+        this.clearTab(null);
         try {
-            this.set(0, 0);
+            this.write();
             return attach(channel.create(), "transactions").send();
         } catch (Throwable e) {
             e.printStackTrace();
-            return channel.create().file("transactions.csv", this.toCsv())
-                            .append(e.getMessage())
-                                    .send();
+            IMessageBuilder msg = channel.create();
+            Map<String, String> csv = this.toCsv();
+            if (csv.isEmpty()) {
+                msg.append("`No transactions to add`\n");
+            } else {
+                for (Map.Entry<String, String> entry : csv.entrySet()) {
+                    msg.file(entry.getKey() + ".csv", entry.getValue());
+                }
+            }
+            return msg.append(e.getMessage()).send();
         }
     }
 
@@ -227,28 +235,6 @@ public class SpreadSheet {
             field.set(instance, i);
         }
         return instance;
-    }
-
-    public static SpreadSheet createNew(String title) throws GeneralSecurityException, IOException {
-        Sheets api = null;
-        String sheetId = null;
-        if (credentialsExists()) {
-            Spreadsheet spreadsheet = new Spreadsheet()
-                    .setProperties(new SpreadsheetProperties()
-                            .setTitle(title)
-                    );
-            api = getServiceAPI();
-            spreadsheet = api.spreadsheets().create(spreadsheet)
-                    .setFields("spreadsheetId")
-                    .execute();
-            sheetId = spreadsheet.getSpreadsheetId();
-        } else {
-            sheetId = title;
-        }
-        SpreadSheet sheet = create(sheetId, api);
-
-        if (api != null) sheet.set(0, 0);
-        return sheet;
     }
 
     public static SpreadSheet create(GuildDB db, SheetKeys key) throws GeneralSecurityException, IOException {
@@ -284,8 +270,6 @@ public class SpreadSheet {
         }
 
         SpreadSheet sheet = create(sheetId, api);
-
-        if (api != null) sheet.set(0, 0);
         return sheet;
     }
 
@@ -317,8 +301,9 @@ public class SpreadSheet {
     private static final List<String> SCOPES = Collections.singletonList(SheetsScopes.SPREADSHEETS);
     private static final String CREDENTIALS_FILE_PATH = "config" + java.io.File.separator + "credentials-sheets.json";
     private Sheets service;
-    private List<List<Object>> values;
+    private final Map<String, List<List<Object>>> valuesByTab = new LinkedHashMap<>();
     private String spreadsheetId;
+    private String defaultTab = "";
 
     public static String parseId(String id) {
         if (id.startsWith("sheet:")) {
@@ -355,9 +340,13 @@ public class SpreadSheet {
         return service;
     }
 
+    public void setDefaultTab(String defaultTab) {
+        this.defaultTab = defaultTab;
+    }
+
     public Map<String, Boolean> parseTransfers(AddBalanceBuilder builder, boolean negative, String defaultNote) {
         Map<String, Boolean> result = new LinkedHashMap<String, Boolean>();
-        List<List<Object>> rows = getAll();
+        List<List<Object>> rows = getAll(null);
         List<Object> header = rows.get(0);
 
         Integer noteI = null;
@@ -435,13 +424,28 @@ public class SpreadSheet {
     public IMessageBuilder attach(IMessageBuilder msg, String name, StringBuilder output, boolean allowInline, int currentLength) {
         String append = null;
         if (service == null) {
-            String csv = toCsv();
-            if (csv.length() + currentLength + 9 < 2000 && allowInline) {
-                append = (name == null ? "" : name + "\n") + "```csv\n" + csv + "```";
-            } else {
-                append = "(`sheet:" + spreadsheetId + "`)";
-                msg.file((name == null ? "sheet" : name) + ".csv", csv);
+            Map<String, String> csvs = toCsv();
+            int length = csvs.values().stream().mapToInt(String::length).sum();
+            boolean willInline = length + currentLength + (9 * csvs.size()) < 2000 && allowInline;
+            for (Map.Entry<String, String> entry : csvs.entrySet()) {
+                String title;
+                if (name == null || name.isEmpty()) {
+                    title = entry.getKey();
+                } else if (csvs.size() > 1) {
+                    title = name + "." + entry.getKey();
+                } else {
+                    title = name;
+                }
+                String csv = entry.getValue();
+                if (willInline) {
+                    append = title + "```csv\n" + csv + "```";
+                } else {
+                    append = "(`sheet:" + spreadsheetId + "`)";
+                    msg.file(title + ".csv", csv);
+                }
             }
+
+
         } else {
             append = ("\n" + (name == null ? "" : name + ": " + getURL(false, true)));
         }
@@ -454,16 +458,23 @@ public class SpreadSheet {
         if (header == null) header = "";
         if (footer == null) footer = "";
         if (service == null) {
-            String csv = toCsv();
-            if (csv.length() + header.length() + footer.length() < 2000) {
-                return io.create().append(header + "```" + csv + "```" + footer);
-            } else {
-                return io.create()
-                        .append(header)
+            Map<String, String> csvs = toCsv();
+            int length = csvs.values().stream().mapToInt(String::length).sum();
+            boolean willInline = length + footer.length() + (9 * csvs.size()) < 2000;
+            IMessageBuilder msg = io.create();
+            for (Map.Entry<String, String> entry : csvs.entrySet()) {
+                String title = entry.getKey();
+                String csv = entry.getValue();
+                if (willInline) {
+                    msg.append(header + "```" + csv + "```" + footer);
+                } else {
+                    msg.append(header)
                         .append(header.isEmpty() ? "" : "\n")
                         .append(footer)
-                        .file("sheet.csv", csv);
+                        .file(title + ".csv", csv);
+                }
             }
+            return msg;
         } else {
             return io.create()
                     .append(header)
@@ -479,11 +490,25 @@ public class SpreadSheet {
                 throw new IllegalArgumentException(INSTRUCTIONS);
             }
             if (markdown) {
-                String csv = toCsv();
-                if (csv.length() < 2000) {
-                    return "```" + csv + "```";
+                Map<String, String> csvs = toCsv();
+                int length = csvs.values().stream().mapToInt(String::length).sum();
+                if (length < 2000) {
+                    StringBuilder output = new StringBuilder();
+                    for (Map.Entry<String, String> entry : csvs.entrySet()) {
+                        String title = entry.getKey();
+                        String csv = entry.getValue();
+                        output.append(title).append("\n```csv\n").append(csv).append("```\n");
+                    }
+                    return output.toString();
                 }
-                return csv;
+                // join by newline
+                StringBuilder output = new StringBuilder();
+                for (Map.Entry<String, String> entry : csvs.entrySet()) {
+                    String title = entry.getKey();
+                    String csv = entry.getValue();
+                    output.append(title).append("\n").append(csv).append("\n");
+                }
+                return output.toString();
             } else {
                 return "sheet:" + spreadsheetId;
             }
@@ -531,20 +556,32 @@ public class SpreadSheet {
         }
     }
 
-    public void addRow(List<? extends Object> list) {
-        this.getValues().add(processRow(new ArrayList<>(list)));
+    public void addRow(String tab, List<? extends Object> list) {
+        this.getValues(tab).add(processRow(tab, new ArrayList<>(list)));
     }
 
-    public List<List<Object>> getValues() {
-        if (values == null) values = new ArrayList<>();
-        return values;
+    public String getDefaultTab() {
+        return defaultTab;
+    }
+
+    public String getDefaultTab(boolean useFirstTabIfNone) {
+        if ((defaultTab == null || defaultTab.isEmpty()) && useFirstTabIfNone) {
+            defaultTab = getTabs().entrySet().iterator().next().getValue();
+        }
+        return defaultTab;
+    }
+
+    public List<List<Object>> getValues(String tab) {
+        if (tab == null) tab = getDefaultTab();
+        else tab = tab.toLowerCase(Locale.ROOT);
+        return valuesByTab.computeIfAbsent(tab, k -> new ArrayList<>());
     }
 
     public void addRow(Object... values) {
-        this.getValues().add(processRow(Arrays.asList(values)));
+        this.getValues(null).add(processRow(null, Arrays.asList(values)));
     }
 
-    private List<Object> processRow(List<Object> row) {
+    private List<Object> processRow(String tab, List<Object> row) {
         List<Object> out = new ArrayList<>();
         for (int i = 0; i < row.size(); i++) {
             Object value = row.get(i);
@@ -553,8 +590,8 @@ public class SpreadSheet {
             } else {
                 String valueStr = value.toString();
                 if (valueStr.contains("{")) {
-                    valueStr = valueStr.replaceAll("\\{row}", (getValues().size() + 1) + "");
-                    valueStr = valueStr.replaceAll("\\{column}", SheetUtil.getLetter(getValues().size() + 1));
+                    valueStr = valueStr.replaceAll("\\{row}", (getValues(tab).size() + 1) + "");
+                    valueStr = valueStr.replaceAll("\\{column}", SheetUtil.getLetter(getValues(tab).size() + 1));
                     out.add(valueStr);
                 } else {
                     out.add(value);
@@ -564,7 +601,8 @@ public class SpreadSheet {
         return out;
     }
 
-    public void write(List<RowData> rowData) throws IOException {
+    public void write(String tab, List<RowData> rowData) throws IOException {
+        if (tab == null) tab = getDefaultTab();
         if (service == null) {
             reset();
             for (RowData row : rowData) {
@@ -573,7 +611,7 @@ public class SpreadSheet {
                     ExtendedValue value = cell.getUserEnteredValue();
                     dataSimple.add(value.toString());
                 }
-                addRow(dataSimple);
+                addRow(tab, dataSimple);
             }
             return;
         }
@@ -583,8 +621,19 @@ public class SpreadSheet {
         GridCoordinate start = new GridCoordinate();
         start.setColumnIndex(0);
         start.setRowIndex(0);
-        appendCellReq.setStart(start);
 
+        if (!tab.isEmpty()) {
+            Integer id = getTabsByNameLower().get(tab.toLowerCase(Locale.ROOT));
+            if (id == null) {
+                createTabIfNotExist(tab);
+            }
+            id = getTabsByNameLower().get(tab.toLowerCase(Locale.ROOT));
+            if (id == null) {
+                throw new IllegalArgumentException("Tab not found: " + tab);
+            }
+            start.setSheetId(id);
+        }
+        appendCellReq.setStart(start);
         ArrayList<Request> requests = new ArrayList<Request>();
         requests.add( new Request().setUpdateCells(appendCellReq));
         BatchUpdateSpreadsheetRequest batchRequests = new BatchUpdateSpreadsheetRequest();
@@ -623,65 +672,99 @@ public class SpreadSheet {
         }
     }
 
-    public void set(int x, int y) throws IOException {
-        set(null, x, y);
-    }
-
-    public void set(String tab, int x, int y) throws IOException {
-        if (values == null || values.isEmpty()) {
+    public void write() throws IOException {
+        if (valuesByTab.isEmpty()) {
             return;
         }
-        if (x == 0 && y == 0 && service == null) {
+        if (service == null) {
             return;
         }
-        int width = getValues().isEmpty() ? 0 : getValues().get(0).size();
-        int size = getValues().size();
-
-        for (int i = 0; i < size; i += 10000) {
-            int height = Math.min(i + 9999, size);
-            List<List<Object>> subList = getValues().subList(i, height);
-            for (List<Object> objects : subList) {
-                width = Math.max(width, objects.size());
+        for (Map.Entry<String, List<List<Object>>> entry : valuesByTab.entrySet()) {
+            String tabName = entry.getKey();
+            List<List<Object>> values = entry.getValue();
+            if (values.isEmpty()) {
+                continue;
             }
+            int width = values.isEmpty() ? 0 : values.get(0).size();
+            int size = values.size();
+            for (int i = 0; i < size; i += 10000) {
+                int height = Math.min(i + 9999, size);
+                List<List<Object>> subList = values.subList(i, height);
+                for (List<Object> objects : subList) {
+                    width = Math.max(width, objects.size());
+                }
 
-            int y_off = y + i;
+                String pos1 = SheetUtil.getRange(0, i);
+                String pos2 = SheetUtil.getRange(width - 1, height - 1);
+                String range = pos1 + ":" + pos2;
 
-            String pos1 = SheetUtil.getRange(x, y_off);
-            String pos2 = SheetUtil.getRange(width - 1 + x, height + y_off - 1);
-            String range = pos1 + ":" + pos2;
+                ValueRange body = new ValueRange()
+                        .setValues(subList);
 
-            ValueRange body = new ValueRange()
-                    .setValues(subList);
-
-            UpdateValuesResponse result =
-                    service.spreadsheets().values().update(spreadsheetId, (tab == null ? "" : tab + "!") + range, body)
-                            .setValueInputOption("USER_ENTERED")
-                            .execute();
+                UpdateValuesResponse result =
+                        service.spreadsheets().values().update(spreadsheetId, (tabName.isEmpty() ? "" : tabName + "!") + range, body)
+                                .setValueInputOption("USER_ENTERED")
+                                .execute();
+            }
         }
-        values = null;
     }
 
-    public List<List<Object>> get(int x1, int y1, int x2, int y2) {
-        return get(SheetUtil.getRange(x1, y1, x2, y2));
+    public List<List<Object>> get(String tab, int x1, int y1, int x2, int y2) {
+        return get2(SheetUtil.getRange(x1, y1, x2, y2));
     }
 
-    public List<List<Object>> loadValues() {
-        if (values == null) {
-            this.values = get("A:ZZ");
+    public Map<String, List<List<Object>>> loadValues(boolean force) {
+        if (service != null && (force || this.valuesByTab.isEmpty())) {
+            this.valuesByTab.putAll(getAll());
+            if (this.valuesByTab.isEmpty()) {
+                this.valuesByTab.put("", new ArrayList<>());
+            }
         }
-        return this.values;
+        return this.valuesByTab;
     }
 
-    public List<List<Object>> getAll() {
-        if (service == null) return loadValues();
-        return get("A:ZZ");
+    public List<List<Object>> getAll(String tab) {
+        try {
+            if (tab == null) tab = getDefaultTab();
+            if (tab.isEmpty()) tab = getTabs().values().iterator().next();
+            if (service == null) return loadValues(false).get(tab);
+            String range = tab; // Change this to the name of your sheet
+            ValueRange response = service.spreadsheets().values()
+                    .get(spreadsheetId, range)
+                    .execute();
+            List<List<Object>> values = response.getValues();
+            if (values == null) {
+                return Collections.emptyList();
+            }
+            return values;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public List<List<Object>> get(String range) {
-        return get(range, null);
+    public Map<String, List<List<Object>>> getAll() {
+        try {
+            if (service == null) return loadValues(false);
+            Map<String, List<List<Object>>> map = new LinkedHashMap<>();
+            Spreadsheet spreadsheet = service.spreadsheets().get(spreadsheetId).execute();
+            for (Sheet sheet : spreadsheet.getSheets()) {
+                String title = sheet.getProperties().getTitle();
+                List<List<Object>> values = getAll(title);
+                if (values != null) {
+                    map.put(title, values);
+                }
+            }
+            return map;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public List<List<Object>> get(String range, Consumer<Sheets.Spreadsheets.Values.Get> onGet) {
+    public List<List<Object>> get2(String range) {
+        return get2(range, null);
+    }
+
+    public List<List<Object>> get2(String range, Consumer<Sheets.Spreadsheets.Values.Get> onGet) {
         try {
             System.out.println("Service " + service + " | " + spreadsheetId);
             Sheets.Spreadsheets.Values.Get query = service.spreadsheets().values().get(spreadsheetId, range);
@@ -690,6 +773,14 @@ public class SpreadSheet {
             return result.getValues();
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public void clearCurrentTab() throws IOException {
+        if (this.defaultTab == null || this.defaultTab.isEmpty()) {
+            clearFirstTab();
+        } else {
+            clearTab(null);
         }
     }
 
@@ -736,9 +827,10 @@ public class SpreadSheet {
     }
 
     public void clearTab(String tab) throws IOException {
-            if (service == null) {
+        if (service == null) {
             return;
         }
+        if (tab == null) tab = getDefaultTab(true);
         ClearValuesRequest requestBody = new ClearValuesRequest();
         Sheets.Spreadsheets.Values.Clear request =
                 service.spreadsheets().values().clear(spreadsheetId, tab, requestBody);
@@ -762,6 +854,18 @@ public class SpreadSheet {
         return tabs;
     }
 
+    public Map<String, Integer> getTabsByName() {
+        Map<String, Integer> tabsByName = new LinkedHashMap<>();
+        for (Map.Entry<Integer, String> entry : getTabs().entrySet()) {
+            tabsByName.put(entry.getValue(), entry.getKey());
+        }
+        return tabsByName;
+    }
+
+    public Map<String, Integer> getTabsByNameLower() {
+        return getTabsByName().entrySet().stream().collect(Collectors.toMap(e -> e.getKey().toLowerCase(), Map.Entry::getValue));
+    }
+
     public void deleteTab(int tabId) {
         if (service == null) {
             return;
@@ -781,35 +885,45 @@ public class SpreadSheet {
         }
     }
 
-    public void clear(String range) throws IOException {
+    public void clear(String tab, String range) throws IOException {
         if (service == null) {
             return;
         }
         ClearValuesRequest requestBody = new ClearValuesRequest();
         Sheets.Spreadsheets.Values.Clear request =
-                service.spreadsheets().values().clear(spreadsheetId, range, requestBody);
+                service.spreadsheets().values().clear(spreadsheetId, (tab == null || tab.isEmpty() ? "" : tab + "!") + range, requestBody);
 
         ClearValuesResponse response = request.execute();
     }
 
     public void reset() {
-        this.values = null;
+        this.valuesByTab.clear();
     }
 
-    public String toCsv() {
-        if (this.values == null || this.values.isEmpty()) return "";
-        StringWriter stringWriter = new StringWriter();
-        CSVWriter csvWriter = new CSVWriter(stringWriter, ',');
-
-        for (List<Object> rowObj : getValues()) {
-            String[] row = new String[rowObj.size()];
-            for (int i = 0; i < rowObj.size(); i++) {
-                Object value = rowObj.get(i);
-                row[i] = value != null ? "" + value : "";
+    public Map<String, String> toCsv() {
+        if (this.valuesByTab.isEmpty()) return Collections.emptyMap();
+        Map<String, String> results = new LinkedHashMap<>();
+        for (Map.Entry<String, List<List<Object>>> entry : valuesByTab.entrySet()) {
+            String tabName = entry.getKey();
+            List<List<Object>> rows = entry.getValue();
+            if (tabName.isEmpty() && rows.isEmpty()) continue;
+            try (StringWriter stringWriter = new StringWriter()) {
+                CSVWriter csvWriter = new CSVWriter(stringWriter, ',');
+                for (List<Object> rowObj : entry.getValue()) {
+                    String[] row = new String[rowObj.size()];
+                    for (int i = 0; i < rowObj.size(); i++) {
+                        Object value = rowObj.get(i);
+                        row[i] = value != null ? "" + value : "";
+                    }
+                    csvWriter.writeNext(row);
+                }
+                csvWriter.flush();
+                results.put(tabName, stringWriter.toString());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
-            csvWriter.writeNext(row);
         }
-        return stringWriter.toString();
+        return results;
     }
 
     public List<Object> findColumn(String... arguments) {
@@ -819,14 +933,17 @@ public class SpreadSheet {
     public List<Object> findColumn(int columnDefault, String... arguments) {
         checkNotNull(arguments);
         checkArgument(arguments.length > 0);
-        if (values == null || values.isEmpty()) throw new IllegalArgumentException("No values found. Was `loadValues` called?");
-        List<Object> header = this.values.get(0);
+        if (valuesByTab.isEmpty()) throw new IllegalArgumentException("No values found. Was `loadValues` called?");
+        List<List<Object>> values = getValues(getDefaultTab(true));
+        if (values.isEmpty()) {
+            return null;
+        }
+        List<Object> header = values.get(0);
         outer:
         for (int i = 0; i < header.size(); i++) {
             Object obj = header.get(i);
             if (obj == null) continue;
             String objStr = obj.toString().toLowerCase(Locale.ROOT);
-
             for (String argument : arguments) {
                 if (objStr.contains(argument.toLowerCase(Locale.ROOT))) {
                     columnDefault = i;
@@ -852,7 +969,7 @@ public class SpreadSheet {
     }
 
     public void setHeader(List<? extends Object> header) {
-        this.values = null;
+        this.valuesByTab.clear();
         this.addRow(header);
     }
 }

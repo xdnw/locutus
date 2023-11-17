@@ -176,7 +176,7 @@ public class KDRSheet extends Command {
 //        }
 //
 //        try {
-//            sheet.set(0, 0);
+//            sheet.write();
 //            IMessageBuilder msg = msgFuture.get();
 //            if (msg != null && msg.getId() > 0) channel.delete(msg.getId());
 //        } catch (Throwable e) {

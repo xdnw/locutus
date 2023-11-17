@@ -206,7 +206,7 @@ public class MMRSheet extends Command {
             }
 
             sheet.clearFirstTab();
-            sheet.set(0, 0);
+            sheet.write();
             String response = "";
             if (!flags.contains('f')) response += "\nNote: Results may be outdated, add `-f` to update.";
 

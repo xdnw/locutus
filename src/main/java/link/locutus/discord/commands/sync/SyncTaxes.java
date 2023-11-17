@@ -128,7 +128,7 @@ public class SyncTaxes extends Command {
             }
         }
         SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.TAX_SHEET);
-        if (db.getInfo(SheetKeys.TAX_SHEET, true) == null) sheet.set(0, 0);
+        if (db.getInfo(SheetKeys.TAX_SHEET, true) == null) sheet.write();
         return desc() + "\nEnter tax records here: " + sheet.getURL(false, false);
     }
 
@@ -265,7 +265,7 @@ public class SyncTaxes extends Command {
             sheet.addRow(header);
         }
 
-        sheet.set(0, 0);
+        sheet.write();
 
         return sheet.getURL(true, true);
     }

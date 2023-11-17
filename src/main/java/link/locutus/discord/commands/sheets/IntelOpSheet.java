@@ -171,7 +171,7 @@ public class IntelOpSheet extends Command {
         sheet.clearFirstTab();
         SpySheet.generateSpySheet(sheet, targets);
 
-        sheet.set(0, 0);
+        sheet.write();
 
         sheet.attach(channel.create(), "spy_intel").send();
         return null;

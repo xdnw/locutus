@@ -3775,8 +3775,9 @@ public class DBNation implements NationOrAlliance {
 
     @Command(desc = "Sheet lookup")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS})
-    public Object cellLookup(SpreadSheet sheet, String columnSearch, String columnOutput, String search) {
-        List<List<Object>> values = sheet.loadValues();
+    public Object cellLookup(SpreadSheet sheet, String tabName, String columnSearch, String columnOutput, String search) {
+        List<List<Object>> values = sheet.loadValues(false).get(tabName);
+        if (values == null) return null;
         int searchIndex = SheetUtil.getIndex(columnSearch) - 1;
         int outputIndex = SheetUtil.getIndex(columnOutput) - 1;
 

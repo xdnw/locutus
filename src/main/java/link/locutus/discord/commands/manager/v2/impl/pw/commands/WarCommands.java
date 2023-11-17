@@ -2058,7 +2058,7 @@ public class WarCommands {
 
         sheet.clearFirstTab();
         SpySheet.generateSpySheet(sheet, targets);
-        sheet.set(0, 0);
+        sheet.write();
 
         sheet.attach(io.create(), "spy_intel").send();
         return null;
@@ -2078,7 +2078,7 @@ public class WarCommands {
         generateSpySheet(output, spyOpsFiltered, groupByAttacker);
 
         output.clearFirstTab();
-        output.set(0, 0);
+        output.write();
 
         output.send(io, null, author.getAsMention()).send();
         return null;
@@ -2098,7 +2098,7 @@ public class WarCommands {
         generateSpySheet(output, spyOpsFiltered, groupByAttacker);
 
         output.clearFirstTab();
-        output.set(0, 0);
+        output.write();
 
         output.send(io, null, author.getAsMention()).send();
         return null;
@@ -2118,7 +2118,7 @@ public class WarCommands {
         generateSpySheet(output, spyOpsFiltered, groupByAttacker);
 
         output.clearFirstTab();
-        output.set(0, 0);
+        output.write();
 
         output.send(io, null, author.getAsMention()).send();
         return null;
@@ -2169,7 +2169,7 @@ public class WarCommands {
         generateSpySheet(output, spyOpsFiltered, groupByAttacker);
 
         output.clearFirstTab();
-        output.set(0, 0);
+        output.write();
 
         output.send(io, null, author.getAsMention()).send();
         return null;
@@ -2216,7 +2216,7 @@ public class WarCommands {
         generateSpySheet(sheet, targets);
 
         sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.write();
 
         sheet.send(io, null, author.getAsMention()).send();
         return null;
@@ -2379,7 +2379,7 @@ public class WarCommands {
         }
 
         sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.write();
 
         sheet.attach(io.create(), "activity").send();
         return null;
@@ -2541,7 +2541,7 @@ public class WarCommands {
         }
 
         sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.write();
         String response = "";
         if (!forceUpdate) response += "\nNote: Results may be outdated, add `-f` to update.";
         sheet.attach(io.create(), "mmr", response).send();
@@ -2692,7 +2692,7 @@ public class WarCommands {
         }
 
         sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.write();
         sheet.attach(io.create(), "deserter").send();
         return null;
     }
@@ -2821,7 +2821,7 @@ public class WarCommands {
                 sheet.addRow(header);
             }
 
-            sheet.set(0, 0);
+            sheet.write();
 
             sheet.attach(io.create(), "combatant").send();
             return null;
@@ -3443,7 +3443,7 @@ public class WarCommands {
             rowData.add(myRow);
         }
 
-        sheet.clear("A:Z");
+        sheet.clearCurrentTab();
         sheet.write(rowData);
 
         sheet.send(io, null, author.getAsMention()).send();
@@ -3581,8 +3581,8 @@ public class WarCommands {
             sheet.addRow(headers);
         }
 
-        sheet.clear("A:Z");
-        sheet.set(0, 0);
+        sheet.clearCurrentTab();
+        sheet.write();
 
         sheet.attach(io.create(), "wars").send();
         return null;
@@ -3837,7 +3837,7 @@ public class WarCommands {
 
         sheet.clearFirstTab();
 
-        sheet.set(0, 0);
+        sheet.write();
 
         sheet.attach(io.create(), "counter").send();
         return null;

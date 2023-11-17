@@ -136,7 +136,7 @@ public class Trending extends Command {
             sheet.addRow(header);
         }
 
-        sheet.set(0, 0);
+        sheet.write();
 
         sheet.attach(channel.create(), "trending").send();
         return null;

@@ -90,7 +90,7 @@ public class StockpileSheet extends Command {
         }
 
         sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.write();
 
         String totalStr = PnwUtil.resourcesToFancyString(aaTotal);
         totalStr += "\n`note:total ignores nations with alliance info disabled`";

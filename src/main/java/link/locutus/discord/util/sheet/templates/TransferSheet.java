@@ -201,8 +201,8 @@ public class TransferSheet {
     }
 
     public TransferSheet build() throws IOException {
-        parent.clear("A:Z");
-        parent.set(0, 0);
+        parent.clearCurrentTab();
+        parent.write();
         return this;
     }
 

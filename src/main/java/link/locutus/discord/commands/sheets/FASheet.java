@@ -94,7 +94,7 @@ public class FASheet extends Command {
             sheet.addRow(note, MarkupUtil.sheetUrl(aa.getName(), aa.getUrl()), aa.getRank(), aa.getScore(), last, iteration, nextStr, treatyStr);
         }
 
-        sheet.set(0, 0);
+        sheet.write();
 
         sheet.attach(channel.create(), "fa").send();
         return null;

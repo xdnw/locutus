@@ -51,7 +51,7 @@ public class CoalitionSheet extends Command {
         }
 
         sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.write();
         sheet.attach(channel.create(), "coalition").send();
         return null;
     }

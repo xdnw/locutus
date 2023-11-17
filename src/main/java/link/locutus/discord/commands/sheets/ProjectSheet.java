@@ -91,7 +91,7 @@ public class ProjectSheet extends Command {
         }
 
         sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.write();
 
         sheet.attach(channel.create(), "projects").send();
         return null;

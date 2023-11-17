@@ -198,17 +198,17 @@ public class NationPlaceholders extends Placeholders<DBNation> {
             return Locutus.imp().getNationDB().getNationsByBracket(taxId);
         } else if (SpreadSheet.isSheet(nameLower)) {
             Set<DBNation> nations = SpreadSheet.parseSheet(name, List.of("nation", "leader"), true,
-            s -> switch (s.toLowerCase(Locale.ROOT)) {
-                case "nation" -> 0;
-                case "leader" -> 1;
-                default -> null;
-            }, (type, input) -> {
-                return switch (type) {
-                    case 0 -> Locutus.imp().getNationDB().getNation(input);
-                    case 1 -> Locutus.imp().getNationDB().getNationByLeader(input);
-                    default -> null;
-                };
-            });
+                    s -> switch (s.toLowerCase(Locale.ROOT)) {
+                        case "nation" -> 0;
+                        case "leader" -> 1;
+                        default -> null;
+                    }, (type, input) -> {
+                        return switch (type) {
+                            case 0 -> Locutus.imp().getNationDB().getNation(input);
+                            case 1 -> Locutus.imp().getNationDB().getNationByLeader(input);
+                            default -> null;
+                        };
+                    });
             return nations;
         }  else if (nameLower.startsWith("aa:")) {
             Set<Integer> alliances = DiscordUtil.parseAllianceIds(guild, name.split(":", 2)[1].trim());

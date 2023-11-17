@@ -1198,8 +1198,8 @@ public class StatCommands {
             msg.image("img.png", baos.toByteArray());
 
             if (sheet != null) {
-                sheet.clear("A:Z");
-                sheet.set(0, 0);
+                sheet.clearCurrentTab();
+                sheet.write();
                 sheet.attach(msg, "mmr_tiering");
             }
 
@@ -1333,8 +1333,8 @@ public class StatCommands {
         }
 
 
-        sheet.clear("A:ZZ");
-        sheet.set(0, 0);
+        sheet.clearCurrentTab();
+        sheet.write();
 
         sheet.attach(channel.create(), "alliances").send();
         return null;
@@ -1414,7 +1414,7 @@ public class StatCommands {
         }
         header.add("convertedTotal");
 
-        sheet.clear("A:Z");
+        sheet.clearCurrentTab();
 
         sheet.setHeader(header);
 
@@ -1510,7 +1510,7 @@ public class StatCommands {
             sheet.addRow(header);
         }
 
-        sheet.set(0, 0);
+        sheet.write();
 
         sheet.attach(channel.create(), "war_cost_rss").send();
         return null;
@@ -1641,8 +1641,8 @@ public class StatCommands {
             sheet.addRow(row);
         }
 
-        sheet.clear("A:Z");
-        sheet.set(0, 0);
+        sheet.clearCurrentTab();
+        sheet.write();
 
         sheet.attach(channel.create(), "war_cost_aa").send();
         return null;
@@ -1686,7 +1686,7 @@ public class StatCommands {
                 "ratio"
         ));
 
-        sheet.clear("A:Z");
+        sheet.clearCurrentTab();
 
         sheet.setHeader(header);
         long start = System.currentTimeMillis();
@@ -1802,8 +1802,8 @@ public class StatCommands {
             sheet.addRow(header);
         }
 
-        sheet.clear("A:Z");
-        sheet.set(0, 0);
+        sheet.clearCurrentTab();
+        sheet.write();
 
         sheet.attach(channel.create(), "war_cost").send();
         return null;

@@ -78,7 +78,7 @@ public class MMRByScoreSheet extends Command {
         }
 
         sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.write();
         sheet.attach(channel.create(), "mmr_score").send();
         return null;
 

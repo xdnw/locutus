@@ -316,7 +316,7 @@ public class SpySheet extends Command {
 
         sheet.clearFirstTab();
         generateSpySheet(sheet, opsAgainstNations);
-        sheet.set(0, 0);
+        sheet.write();
 
         sheet.attach(channel.create(), "spy").send();
         return null;

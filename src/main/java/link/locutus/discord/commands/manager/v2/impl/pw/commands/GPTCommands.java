@@ -354,8 +354,8 @@ public class GPTCommands {
             }
         });
 
-        sheet.clear("A:Z");
-        sheet.set(0, 0);
+        sheet.clearCurrentTab();
+        sheet.write();
 
         sheet.attach(io.create(), "embeddings", null, false, 0).send();
         return null;
@@ -849,7 +849,7 @@ public class GPTCommands {
                 sheet.addRow(row);
             }
             sheet.clearFirstTab();
-            sheet.set(0, 0);
+            sheet.write();
 
         }
 

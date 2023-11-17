@@ -282,7 +282,7 @@ public class CounterSheet extends Command {
 
         sheet.clearFirstTab();
 
-        sheet.set(0, 0);
+        sheet.write();
 
         sheet.attach(channel.create(), "counter").send();
         return null;

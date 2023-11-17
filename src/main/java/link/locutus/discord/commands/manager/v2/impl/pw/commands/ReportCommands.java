@@ -99,7 +99,7 @@ public class ReportCommands {
             sheet.addRow(column);
         }
         sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.write();
         sheet.attach(io.create(), "reports").send();
         return null;
     }
@@ -289,7 +289,7 @@ public class ReportCommands {
         }
 
         sheet.clearFirstTab();
-        sheet.set(0, 0);
+        sheet.write();
         sheet.attach(io.create(), "loans")
                 .append("Total on loan: `" + PnwUtil.resourcesToString(total) + "` worth `$" + MathMan.format(PnwUtil.convertedTotal(total)) + "`")
                 .send();

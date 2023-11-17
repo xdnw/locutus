@@ -162,7 +162,7 @@ public class CombatantSheet extends Command {
             sheet.addRow(header);
         }
 
-        sheet.set(0, 0);
+        sheet.write();
 
             sheet.attach(channel.create(), "combatant").send();
             return null;

@@ -188,7 +188,7 @@ public class DepositsSheet extends Command {
 //        }
 //
 //        sheet.clearAll();
-//        sheet.set(0, 0);
+//        sheet.write();
 //
 //        StringBuilder footer = new StringBuilder();
 //        footer.append(PnwUtil.resourcesToFancyString(aaTotalPositive, "Nation Deposits (" + nations.size() + " nations)"));

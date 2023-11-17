@@ -314,8 +314,8 @@ public class ROI extends Command {
                 sheet.addRow(header);
             }
             try {
-                sheet.clear("A:Z");
-                sheet.set(0, 0);
+                sheet.clearCurrentTab();
+                sheet.write();
             } catch (Throwable e) {
                 e.printStackTrace();
             }
