@@ -327,11 +327,17 @@ public class IACategory {
 
         for (Category category : categories) {
             String name = category.getName().toLowerCase();
-            if (name.startsWith("interview-inactive")) inactiveCategories.add(category);
-            else if (name.startsWith("interview-passed")) passedCategories.add(category);
-            else if (name.startsWith("interview-archive")) passedCategories.add(category);
-            else if (name.startsWith("interview-entry")) activeCategories.add(0, category);
-            else activeCategories.add(category);
+            if (name.startsWith("interview")) {
+                if (name.contains("archive")) {
+                    passedCategories.add(category);
+                } else if (name.contains("inactive")) {
+                    inactiveCategories.add(category);
+                } else if (name.contains("entry") || name.contains("progress")) {
+                    activeCategories.add(0, category);
+                } else {
+                    activeCategories.add(category);
+                }
+            }
         }
     }
 
