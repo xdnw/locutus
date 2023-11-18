@@ -162,7 +162,7 @@ public class CounterSheet extends Command {
         ));
 
         Map<Integer, String> notes = new HashMap<>();
-        List<List<Object>> rows = sheet.fetchAll();
+        List<List<Object>> rows = sheet.fetchAll(null);
 
         if (rows != null && !rows.isEmpty()) {
             for (int i = 1; i < rows.size(); i++) {

@@ -211,7 +211,7 @@ public class BlitzSheet extends Command {
         }
 
         sheet.updateClearCurrentTab();
-        sheet.write(rowData);
+        sheet.updateWrite(null, rowData);
 
         sheet.attach(channel.create(), "blitz").send();
         return null;

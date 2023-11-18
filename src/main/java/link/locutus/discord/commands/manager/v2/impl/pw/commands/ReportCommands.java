@@ -108,7 +108,7 @@ public class ReportCommands {
             "Expects the columns: `Discord ID`, `Nation ID`, `Reason`, `Reporting Entity`")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.INTERNAL_AFFAIRS}, root = true, any = true)
     public String importLegacyBlacklist(ReportManager reportManager, @Me GuildDB db, @Me DBNation me, @Me User author, SpreadSheet sheet) {
-        List<List<Object>> rows = sheet.fetchAll();
+        List<List<Object>> rows = sheet.fetchAll(null);
         List<Object> header = rows.get(0);
 
         int discordIndex = header.indexOf("Discord ID");
@@ -583,7 +583,7 @@ public class ReportCommands {
             "This is not affect member balances and is solely for sharing information with the public")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.ECON}, any = true)
     public String importLoans(LoanManager loanManager, @Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @Me DBNation me, SpreadSheet sheet, @Default DBLoan.Status defaultStatus, @Switch("o") boolean overwriteLoans, @Switch("m") boolean overwriteSameNation, @Switch("a") boolean addLoans) throws ParseException {
-        List<List<Object>> rows = sheet.fetchAll();
+        List<List<Object>> rows = sheet.fetchAll(null);
         if (rows.isEmpty()) {
             return "No rows found: " + sheet.getURL();
         }

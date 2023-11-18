@@ -1411,7 +1411,7 @@ public class IACommands {
     @HasApi
     @RolePermission(Roles.ADMIN)
     public String mailSheet(@Me GuildDB db, @Me JSONObject command, @Me IMessageIO io, @Me User author, SpreadSheet sheet, @Switch("f") boolean confirm) {
-        Map<String, List<List<Object>>> data = sheet.loadValues();
+        List<List<Object>> data = sheet.fetchAll(null);
 
         List<Object> nationNames = sheet.findColumn(0, "nation", "id");
         List<Object> subjects = sheet.findColumn("subject");

@@ -41,7 +41,7 @@ public class FASheet extends Command {
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
         SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.FA_CONTACT_SHEET);
-        List<List<Object>> existing = sheet.fetchAll();
+        List<List<Object>> existing = sheet.fetchAll(null);
         if (existing == null) existing = new ArrayList<>();
         Map<Integer, String> notes = new HashMap<>();
         Map<Integer, String> lastContacted = new HashMap<>();
@@ -89,7 +89,7 @@ public class FASheet extends Command {
 
             String treatyStr = StringMan.join(aa.getTreatiedAllies(), ",");
 
-            int row = sheet.getCachedValues().size() + 1;
+            int row = sheet.getCachedValues(null).size() + 1;
             String nextStr = "=E" + row + "+POWER(2,F" + row + ")/2";
             sheet.addRow(note, MarkupUtil.sheetUrl(aa.getName(), aa.getUrl()), aa.getRank(), aa.getScore(), last, iteration, nextStr, treatyStr);
         }

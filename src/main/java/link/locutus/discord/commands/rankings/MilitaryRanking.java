@@ -184,7 +184,7 @@ public class MilitaryRanking extends Command {
 
         IMessageBuilder msg = channel.create();
         {
-            List<List<Object>> values = sheet.getCachedValues();
+            List<List<Object>> values = sheet.getCachedValues(null);
 
             DataTable data = new DataTable(Double.class, Double.class, String.class);
             Function<Number, Color> colorFunction = f -> Color.decode((String) values.get((f.intValue() / 4) + 1).get(1));

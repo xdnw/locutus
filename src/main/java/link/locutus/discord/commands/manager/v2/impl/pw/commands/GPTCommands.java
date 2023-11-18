@@ -393,7 +393,7 @@ public class GPTCommands {
             }
         }
 
-        List<List<Object>> rows = sheet.fetchAll();
+        List<List<Object>> rows = sheet.fetchAll(null);
         if (rows.size() < 2){
             throw new IllegalArgumentException("Must have at least 2 rows, a header (`description`, `full_text`) and 1 row of data");
         }
@@ -857,7 +857,7 @@ public class GPTCommands {
         Map<Long, String> setDesc = new LinkedHashMap<>();
 
         // read the sheet
-        List<List<Object>> rows = sheet.fetchAll();
+        List<List<Object>> rows = sheet.fetchAll(null);
         if (rows.isEmpty()) {
             throw new IllegalArgumentException("No rows found in sheet");
         }
