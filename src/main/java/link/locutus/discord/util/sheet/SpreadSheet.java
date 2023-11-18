@@ -798,7 +798,6 @@ public class SpreadSheet {
             range = tab + "!" + range;
         }
         try {
-            System.out.println("Service " + service + " | " + spreadsheetId);
             Sheets.Spreadsheets.Values.Get query = service.spreadsheets().values().get(spreadsheetId, range);
             if (onGet != null) onGet.accept(query);
             ValueRange result = query.execute();

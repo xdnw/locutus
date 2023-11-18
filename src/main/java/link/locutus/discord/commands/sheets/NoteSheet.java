@@ -51,7 +51,7 @@ public class NoteSheet extends Command {
 
         Map<DBNation, List<Object>> rows = new HashMap<>();
 
-        List<List<Object>> existing = sheet.fetchAll();
+        List<List<Object>> existing = sheet.fetchAll(null);
         if (existing == null) existing = new ArrayList<>();
         for (int i = 1; i < existing.size(); i++) {
             List<Object> row = existing.get(i);

@@ -133,7 +133,7 @@ public class SyncTaxes extends Command {
         if (sheet == null) {
             sheet = SpreadSheet.create(guildDb, SheetKeys.TAX_SHEET);
         }
-        List<List<Object>> rows = sheet.get("A1:Q");
+        List<List<Object>> rows = sheet.fetchRange(null, "A1:Q");
 
         ResourceType[] resources = {ResourceType.MONEY, ResourceType.FOOD, ResourceType.COAL, ResourceType.OIL, ResourceType.URANIUM, ResourceType.LEAD, ResourceType.IRON, ResourceType.BAUXITE, ResourceType.GASOLINE, ResourceType.MUNITIONS, ResourceType.STEEL, ResourceType.ALUMINUM};
 

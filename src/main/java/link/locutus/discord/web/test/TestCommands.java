@@ -188,15 +188,7 @@ public class TestCommands {
 
     @Command
     public String testImage(@Me IMessageIO io, SpreadSheet sheet) throws IOException, GeneralSecurityException {
-        sheet.updateClearFirstTab();
-        sheet.addTab("tab1");
-        sheet.addRow(List.of("test", "test2", "test3"));
-        sheet.set("tab1", 0, 0);
-        sheet.updateClearFirstTab();
-        sheet.addTab("tab2");
-        sheet.addRow(List.of("test3", "test4", "hello"));
-        sheet.set("tab2", 0, 0);
-        return sheet.getURL();
+        return "unsupported";
     }
 
 //    public String test(NationPlaceholders placeholders, ValueStore store, String input, @Me DBNation me, @Me User user) {

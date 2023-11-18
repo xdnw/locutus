@@ -96,7 +96,7 @@ public class IASheet extends Command {
         Map<DBNation, String> notes = new HashMap<>();
         auditTypeToNationMap.put("note", notes);
 
-        List<List<Object>> existing = sheet.get("A1:B");
+        List<List<Object>> existing = sheet.fetchRange(null, "A1:B");
         if (existing != null && existing.size() >= 2) {
             List<Object> nationNames = existing.get(0);
             List<Object> noteRow = existing.get(1);

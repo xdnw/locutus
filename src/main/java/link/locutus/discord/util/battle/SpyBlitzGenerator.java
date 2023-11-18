@@ -382,7 +382,7 @@ public class SpyBlitzGenerator {
     }
 
     public static Map<DBNation, List<Spyop>> getTargetsTKR(SpreadSheet sheet, boolean groupByAttacker, boolean forceUpdate) {
-        List<List<Object>> rows = sheet.get("A:Z", f -> f.setValueRenderOption("FORMULA"));
+        List<List<Object>> rows = sheet.fetchRange(null, "A:Z", f -> f.setValueRenderOption("FORMULA"));
 
         List<Spyop> allOps = new ArrayList<>();
         Set<DBNation> update = forceUpdate ? new HashSet<>() : null;
@@ -415,7 +415,7 @@ public class SpyBlitzGenerator {
     }
 
     public static Map<DBNation, List<Spyop>> getTargetsDTC(SpreadSheet sheet, boolean groupByAttacker, boolean forceUpdate) {
-        List<List<Object>> rows = sheet.get("A:Z", f -> f.setValueRenderOption("FORMULA"));
+        List<List<Object>> rows = sheet.fetchRange(null,"A:Z", f -> f.setValueRenderOption("FORMULA"));
 
         List<Spyop> allOps = new ArrayList<>();
         Set<DBNation> update = forceUpdate ? new HashSet<>() : null;
@@ -537,7 +537,7 @@ public class SpyBlitzGenerator {
 
     public static Map<DBNation, List<Spyop>> getTargetsHidude(SpreadSheet sheet, boolean groupByAttacker, boolean forceUpdate) {
 
-        List<List<Object>> rows = sheet.get("A:Z", f -> f.setValueRenderOption("FORMULA"));
+        List<List<Object>> rows = sheet.fetchRange(null,"A:Z", f -> f.setValueRenderOption("FORMULA"));
 
         List<Spyop> allOps = new ArrayList<>();
         Set<DBNation> update = forceUpdate ? new HashSet<>() : null;
@@ -628,7 +628,7 @@ public class SpyBlitzGenerator {
     }
 
     public static Map<DBNation, Set<Spyop>> getTargets(SpreadSheet sheet, int headerRow, boolean groupByAttacker) {
-        List<List<Object>> rows = sheet.fetchAll();
+        List<List<Object>> rows = sheet.fetchAll(null);
         List<Object> header = rows.get(headerRow);
 
         Integer targetI = null;
