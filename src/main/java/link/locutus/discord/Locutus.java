@@ -357,14 +357,19 @@ public final class Locutus extends ListenerAdapter {
 
             System.out.println("remove:|| building " + (((-start)) + (start = System.currentTimeMillis())));
             JDA jda = builder.build();
-            if (slashCommands != null) slashCommands.registerCommandData(jda);
+            try {
+                if (slashCommands != null) slashCommands.registerCommandData(jda);
+            } catch (Throwable e) {
+                // sometimes happen when discord api is spotty / timeout
+                e.printStackTrace();
+            }
             System.out.println(":||Remove build " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
             setSelfUser(jda);
             System.out.println(":||Remove Setup slash commands " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
             manager.put(jda);
             jda.awaitStatus(JDA.Status.LOADING_SUBSYSTEMS);
             System.out.println(":||Remove subsystems " + jda.getStatus() + " " + (((-start)) + (start = System.currentTimeMillis())));
-            manager.awaitReady();
+            jda.awaitReady();
             setSelfUser(jda);
             if (Settings.INSTANCE.ENABLED_COMPONENTS.CREATE_DATABASES_ON_STARTUP) {
                 initDBPartial(true);
@@ -542,7 +547,8 @@ public final class Locutus extends ListenerAdapter {
                 db = new GuildDB(guild);
                 guildDatabases.put(guild.getIdLong(), db);
                 return db;
-            } catch (SQLException | ClassNotFoundException e) {
+            } catch (Throwable e) {
+                System.out.println("Critical error creating GuildDB for " + guild);
                 e.printStackTrace();
                 throw new RuntimeException(e);
             }

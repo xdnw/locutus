@@ -689,6 +689,7 @@ public class AdminCommands {
                     for (String roleName : roleNameList.split(",")) {
                         roleName = roleName.trim();
                         if (parsed.contains(roleName)) continue;
+                        parsed.add(roleName);
                         try {
                             Role role = DiscordBindings.role(guild, roleName);
                             if (removeRoles == null) removeRoles = new LinkedHashSet<>();
