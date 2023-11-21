@@ -653,6 +653,8 @@ public class AdminCommands {
                             SpreadSheet sheet,
                             @Arg("Remove these roles from users not assigned the role in the sheet")
                                 @Switch("u") Set<Role> removeRoles,
+                            @Arg("Remove all roles mentioned in the sheet")
+                            @Switch("ra") boolean removeAll,
                             @Arg("List nations that are not assigned a role in the sheet")
                             @Switch("ln") Set<DBNation> listMissing,
                             @Switch("f") boolean force) {
@@ -669,6 +671,34 @@ public class AdminCommands {
         Map<String, List<Object>> roles = sheet.findColumn(-1, f -> f.startsWith("role"), true);
         if (roles == null || roles.isEmpty()) {
             throw new IllegalArgumentException("Expecting at least one column starting with `role`");
+        }
+        if (removeAll) {
+            Set<String> parsed = new LinkedHashSet<>();
+            for (Map.Entry<String, List<Object>> entry : roles.entrySet()) {
+                String columnName = entry.getKey();
+                List<Object> roleValues = entry.getValue();
+                if (roleValues == null || roleValues.isEmpty()) {
+                    continue;
+                }
+                for (int i = 0; i < roleValues.size()) {
+                    Object roleCell = roleValues.get(i);
+                    if (roleCell == null) {
+                        continue;
+                    }
+                    String roleNameList = roleCell.toString();
+                    for (String roleName : roleNameList.split(",")) {
+                        roleName = roleName.trim();
+                        if (parsed.contains(roleName)) continue;
+                        try {
+                            Role role = DiscordBindings.role(guild, roleName);
+                            if (removeRoles == null) removeRoles = new LinkedHashSet<>();
+                            removeRoles.add(role);
+                        } catch (IllegalArgumentException e) {
+                            continue;
+                        }
+                    }
+                }
+            }
         }
 
         List<String> errors = new ArrayList<>();
