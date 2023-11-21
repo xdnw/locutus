@@ -627,6 +627,7 @@ public class SpreadSheet {
         if ((defaultTab == null || defaultTab.isEmpty()) && useFirstTabIfNone) {
             if (service == null) {
                 defaultTab = "";
+                defaultTabId = null;
             } else {
                 Map.Entry<Integer, String> next = fetchTabs().entrySet().iterator().next();
                 defaultTab = next.getValue();
