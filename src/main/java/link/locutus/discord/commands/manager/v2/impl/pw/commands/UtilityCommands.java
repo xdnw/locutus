@@ -1288,7 +1288,6 @@ public class UtilityCommands {
                                    @TextArea List<String> columns,
                               @Switch("e") boolean updateSpies, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
-            System.out.println("Sheet is null");
             sheet = SpreadSheet.create(db, SheetKeys.NATION_SHEET);
         }
         List<String> header = new ArrayList<>(columns);
@@ -1821,11 +1820,9 @@ public class UtilityCommands {
 
         Map<DBAlliance, Integer> rankings = new HashMap<DBAlliance, Integer>();
 
-        System.out.println("Getting removes");
         Set<Integer> aaIds = alliances.stream().map(f -> f.getAlliance_id()).collect(Collectors.toSet());
         Map<Integer, Map<Integer, Map.Entry<Long, Rank>>> removesByNation = Locutus.imp().getNationDB().getRemovesByNationAlliance(aaIds, cutoff);
         Map<Integer, List<Map.Entry<Long, Map.Entry<Integer, Rank>>>> removes = Locutus.imp().getNationDB().getRemovesByAlliance(removesByNation);
-        System.out.println("Done fetching removes ");
 
         for (DBAlliance alliance : alliances) {
             Set<Integer> applied = new HashSet<>();

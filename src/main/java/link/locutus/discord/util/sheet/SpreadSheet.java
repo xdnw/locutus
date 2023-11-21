@@ -243,7 +243,6 @@ public class SpreadSheet {
 
         Sheets api = null;
 
-        System.out.println("Credentials " + credentialsExists());
         if (credentialsExists()) {
             if (sheetId == null) {
                 Spreadsheet spreadsheet = new Spreadsheet()
@@ -293,13 +292,10 @@ public class SpreadSheet {
             CACHE.put(id.id, cached);
         }
         if (id.tabId != null) {
-            System.out.println("Set tab id " + id.tabId);
             cached.setDefaultTab(id.tabId);
         } else if (id.tabName != null) {
-            System.out.println("Set tab name " + id.tabName);
             cached.setDefaultTab(id.tabName);
         } else {
-            System.out.println("Set tab name empty");
             cached.setDefaultTab("");
         }
         return cached;
@@ -750,8 +746,6 @@ public class SpreadSheet {
             int width = values.get(0).size();
             int size = values.size();
 
-            System.out.println("Tab " + tabName + " | " + width + " | " + size + " | " + values.get(0));
-
             for (int i = 0; i < size; i += 10000) {
                 int height = Math.min(i + 9999, size);
                 List<List<Object>> subList = values.subList(i, height);
@@ -765,8 +759,6 @@ public class SpreadSheet {
 
                 ValueRange body = new ValueRange()
                         .setValues(subList);
-
-                System.out.println("Range " + (tabName.isEmpty() ? "" : tabName + "!") + range);
 
                 UpdateValuesResponse result =
                         service.spreadsheets().values().update(spreadsheetId, (tabName.isEmpty() ? "" : tabName + "!") + range, body)
@@ -789,7 +781,6 @@ public class SpreadSheet {
             tabName = getDefaultTab(true);
         }
         if (service == null) {
-            System.out.println("Service is null");
             return valuesByTab.getOrDefault(tabName.toLowerCase(Locale.ROOT), new ArrayList<>());
         }
         if (!force) {
@@ -799,7 +790,6 @@ public class SpreadSheet {
             }
         }
         List<List<Object>> result = fetchAll(tabName);
-        System.out.println("Fetch all " + tabName + " | " + result.size());
         valuesByTab.put(tabName.toLowerCase(Locale.ROOT), result);
         return result;
     }
@@ -823,13 +813,10 @@ public class SpreadSheet {
             ValueRange response = service.spreadsheets().values()
                     .get(spreadsheetId, range)
                     .execute();
-            System.out.println("Get " + range);
             List<List<Object>> values = response.getValues();
             if (values == null) {
-                System.out.println("No data found.");
                 return Collections.emptyList();
             }
-            System.out.println("Values " + values.size());
             return values;
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -1051,7 +1038,6 @@ public class SpreadSheet {
         if (valuesByTab.isEmpty()) throw new IllegalArgumentException("No values found. Was `loadValues` called?");
         List<List<Object>> values = getCachedValues(getDefaultTab(true));
         if (values.isEmpty()) {
-            System.out.println("Values is empty " + getDefaultTab(true));
             return null;
         }
 
@@ -1059,7 +1045,6 @@ public class SpreadSheet {
         Map<String, List<Object>> result = new LinkedHashMap<>();
 
         List<Object> header = values.get(0);
-        System.out.println("Header " + header);
         outer:
         for (int i = 0; i < header.size(); i++) {
             Object obj = header.get(i);
