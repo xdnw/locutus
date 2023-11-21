@@ -1171,7 +1171,7 @@ public class UtilityCommands {
             body += "\n\n------------\n\n" + resultStr;
         }
         IMessageBuilder msg = channel.create().confirmation("Auto role all", body, command);
-        if (body.length() + resultStr.length() < 2000) {
+        if (body.length() + resultStr.length() >= 2000) {
             msg = msg.file("role_changes.txt", result.toString());
         }
 
@@ -1288,6 +1288,7 @@ public class UtilityCommands {
                                    @TextArea List<String> columns,
                               @Switch("e") boolean updateSpies, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
+            System.out.println("Sheet is null");
             sheet = SpreadSheet.create(db, SheetKeys.NATION_SHEET);
         }
         List<String> header = new ArrayList<>(columns);

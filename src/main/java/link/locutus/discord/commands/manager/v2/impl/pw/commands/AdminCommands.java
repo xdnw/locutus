@@ -17,8 +17,10 @@ import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
+import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.config.Messages;
@@ -51,6 +53,8 @@ import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.EditAllianceTask;
+import link.locutus.discord.util.task.roles.AutoRoleInfo;
+import link.locutus.discord.util.task.roles.AutoRoleTask;
 import link.locutus.discord.util.update.AllianceListener;
 import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -68,6 +72,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
+import rocker.guild.ia.message;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -85,7 +90,9 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -634,6 +641,203 @@ public class AdminCommands {
 //
 //        }
 //    }
+
+    @Command(desc = "Add or remove a role from a set of members on discord based on a spreadsheet\n" +
+            "By default only roles will be added, specify `removeRoles` to remove roles from users not assigned the role in the sheet\n" +
+            "Specify `listMissing` to list nations that are not assigned a role in the sheet\n" +
+            "Columns:\n" +
+            "- `nation`, `leader`, `user`, `member` (at least one)\n" +
+            "- `role`, `role1`, `roleN` (multiple, or use comma separated values in one cell)")
+    @RolePermission(value = Roles.ADMIN)
+    public String maskSheet(@Me IMessageIO io, @Me GuildDB db, @Me Guild guild, @Me JSONObject command,
+                            SpreadSheet sheet,
+                            @Arg("Remove these roles from users not assigned the role in the sheet")
+                                @Switch("u") Set<Role> removeRoles,
+                            @Arg("List nations that are not assigned a role in the sheet")
+                            @Switch("ln") Set<DBNation> listMissing,
+                            @Switch("f") boolean force) {
+        sheet.loadValues(null, true);
+        List<Object> nations = sheet.findColumn("nation");
+        List<Object> leaders = sheet.findColumn("leader");
+        List<Object> users = sheet.findColumn(-1, f -> {
+            String lower = f.toLowerCase(Locale.ROOT);
+            return lower.startsWith("user") || lower.startsWith("member");
+        });
+        if (nations == null && leaders == null && users == null) {
+            throw new IllegalArgumentException("Expecting column `nation` or `leader` or `user` or `member`");
+        }
+        Map<String, List<Object>> roles = sheet.findColumn(-1, f -> f.startsWith("role"), true);
+        if (roles == null || roles.isEmpty()) {
+            throw new IllegalArgumentException("Expecting at least one column starting with `role`");
+        }
+
+        List<String> errors = new ArrayList<>();
+        Map<Member, Set<Role>> existingRoles = new LinkedHashMap<>();
+        Map<Member, Set<Role>> rolesGranted = new LinkedHashMap<>();
+        Map<Member, Set<Role>> rolesRemoved = new LinkedHashMap<>();
+
+        Set<DBNation> nationsInSheet = new LinkedHashSet<>();
+
+        int max = Math.max(Math.max(nations == null ? 0 : nations.size(), leaders == null ? 0 : leaders.size()), users == null ? 0 : users.size());
+        for (int i = 0; i < max; i++) {
+            Object nationObj = nations == null || nations.size() < i ? null : nations.get(i);
+            String nationStr = nationObj == null ? null : nationObj.toString();
+
+            Object leaderObj = leaders == null || leaders.size() < i ? null : leaders.get(i);
+            String leaderStr = leaderObj == null ? null : leaderObj.toString();
+
+            Object userObj = users == null || users.size() < i ? null : users.get(i);
+            String userStr = userObj == null ? null : userObj.toString();
+
+            String input = nationStr == null ? leaderStr == null ? userStr : leaderStr : nationStr;
+
+            User user = null;
+            try {
+                if (userStr != null) {
+                    user = DiscordBindings.user(null, userStr);
+                } else if (nationStr != null) {
+                    DBNation nation = PWBindings.nation(null, nationStr);
+                    if (nation != null) {
+                        user = nation.getUser();
+                        if (user == null) {
+                            errors.add("[Row:" + (i + 2) + "] Nation has no user: " + nation.getMarkdownUrl());
+                        }
+                    } else {
+                        errors.add("[Row:" + (i + 2) + "] Nation not found: `" + nationStr + "`");
+                    }
+                } else if (leaderStr != null) {
+                    DBNation nation = Locutus.imp().getNationDB().getNationByLeader(leaderStr);
+                    if (nation != null) {
+                        user = nation.getUser();
+                        if (user == null) {
+                            errors.add("[Row:" + (i + 2) + "] Nation has no user: " + nation.getMarkdownUrl());
+                        }
+                    } else {
+                        errors.add("[Row:" + (i + 2) + "] Nation Leader not found: `" + leaderStr + "`");
+                    }
+                }
+            } catch (IllegalArgumentException e) {
+                errors.add("[Row:" + (i + 2) + "] " + e.getMessage());
+            }
+            if (user == null) continue;
+            if (listMissing != null) {
+                DBNation nation = DBNation.getByUser(user);
+                if (nation != null) {
+                    nationsInSheet.add(nation);
+                }
+            }
+            Member member = guild.getMember(user);
+            if (member == null) {
+                errors.add("[Row:" + (i + 2) + "] User `" + user.getName() + " not found ` in " + guild.toString());
+                continue;
+            }
+
+            for (Map.Entry<String, List<Object>> entry : roles.entrySet()) {
+                String columnName = entry.getKey();
+                List<Object> roleValues = entry.getValue();
+                if (roleValues == null || roleValues.isEmpty() || roleValues.size() < i) {
+                    continue;
+                }
+                Object roleCell = roleValues.get(i);
+                if (roleCell == null) {
+                    continue;
+                }
+                String roleNameList = roleCell.toString();
+                for (String roleName : roleNameList.split(",")) {
+                    roleName = roleName.trim();
+                    try {
+                        Role role = DiscordBindings.role(guild, roleName);
+                        if (existingRoles.computeIfAbsent(member, f -> new LinkedHashSet<>()).contains(role)) {
+                            continue;
+                        }
+                        rolesGranted.computeIfAbsent(member, f -> new LinkedHashSet<>()).add(role);
+                    } catch (IllegalArgumentException e) {
+                        errors.add("[Row:" + (i + 2) + ",Column:" + columnName + "] `" + input + "` -> `" + roleName + "`: " + e.getMessage());
+                        continue;
+                    }
+                }
+            }
+        }
+
+        if (removeRoles != null && !removeRoles.isEmpty()) {
+            for (Member member : guild.getMembers()) {
+                if (member.getUser().isBot()) continue;
+                Set<Role> granted = rolesGranted.getOrDefault(member, Collections.emptySet());
+                for (Role role : removeRoles) {
+                    if (!granted.contains(role)) {
+                        if (!existingRoles.computeIfAbsent(member, f -> new LinkedHashSet<>()).contains(role)) {
+                            continue;
+                        }
+                        rolesRemoved.computeIfAbsent(member, f -> new LinkedHashSet<>()).add(role);
+                    }
+                }
+            }
+        }
+
+        StringBuilder body = new StringBuilder();
+        body.append("**Sheet**: <" + sheet.getURL() + ">\n");
+        IMessageBuilder msg = io.create();
+
+        if (listMissing != null) {
+            StringBuilder listMissingMessage = new StringBuilder();
+            Set<DBNation> missingNations = listMissing.stream().filter(f -> !nationsInSheet.contains(f)).collect(Collectors.toSet());
+            if (!missingNations.isEmpty()) {
+                listMissingMessage.append("nation,leader,url,username,user_id\n");
+                for (DBNation nation : missingNations) {
+                    String name = nation.getName();
+                    String leader = nation.getLeader();
+                    String url = nation.getUrl();
+                    String user = nation.getUserDiscriminator();
+                    Long userId = nation.getUserId();
+                    listMissingMessage.append(name).append(",")
+                            .append(leader).append(",")
+                            .append(url).append(",")
+                            .append(user == null ? "" : user).append(",")
+                            .append(userId == null ? "" : userId).append("\n");
+                }
+                body.append("**listMissing**: `").append(missingNations.size() + "`\n");
+                msg = msg.file("missing_nations.csv", listMissingMessage.toString());
+            } else {
+                body.append("**listMissing**: No missing nations\n");
+            }
+        }
+
+        if (removeRoles != null) {
+            body.append("**removeRoles**: `").append(removeRoles.stream().map(Role::getName).collect(Collectors.joining(","))).append("`\n");
+        }
+
+        if (rolesRemoved.isEmpty() && rolesGranted.isEmpty()) {
+            msg.append("\n**Result**: No roles to add or remove").send();
+            return null;
+        }
+
+        AutoRoleInfo info = new AutoRoleInfo(db, body.toString());
+        for (Map.Entry<Member, Set<Role>> entry : rolesGranted.entrySet()) {
+            Member member = entry.getKey();
+            for (Role role : entry.getValue()) {
+                info.addRoleToMember(member, role);
+            }
+        }
+        for (Map.Entry<Member, Set<Role>> entry : rolesRemoved.entrySet()) {
+            Member member = entry.getKey();
+            for (Role role : entry.getValue()) {
+                info.removeRoleFromMember(member, role);
+            }
+        }
+        if (!force) {
+            String changeStr = info.toString();
+            if (body.length() + changeStr.length() >= 2000) {
+                msg = msg.file("role_changes.txt", changeStr);
+            } else {
+                body.append("\n\n------------\n\n" + changeStr);
+            }
+            msg.confirmation("Confirm bulk role change", body.toString(), command).send();
+            return null;
+        }
+        io.send("Please wait...");
+        info.execute();
+        return info.getChangesAndErrorMessage();
+    }
 
     @Command(desc = "Add or remove a role from a set of members on discord")
     @RolePermission(Roles.ADMIN)

@@ -59,6 +59,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -89,10 +90,10 @@ public class SpreadSheet {
     }
 
     public static <T> Set<T> parseSheet(String sheetId, List<String> expectedColumns, boolean defaultZero, Function<String, Integer> parseColumnType, BiFunction<Integer, String, T> parseCell) {
-        String key = SpreadSheet.parseId(sheetId);
+        SheetId keys = SpreadSheet.parseId(sheetId);
         SpreadSheet sheet = null;
         try {
-            sheet = SpreadSheet.create(key);
+            sheet = SpreadSheet.create(keys);
         } catch (GeneralSecurityException | IOException e) {
             throw new RuntimeException(e);
         }
@@ -278,16 +279,30 @@ public class SpreadSheet {
     }
 
     private static SpreadSheet create(String id, Sheets api) throws GeneralSecurityException, IOException {
-        id = parseId(id);
-        // check cache
-        {
-            SpreadSheet cached = CACHE.get(id);
-            if (cached != null) return cached;
+        return create(parseId(id), api);
+    }
+
+    private static SpreadSheet create(SheetId id) throws GeneralSecurityException, IOException {
+        return create(id, null);
+    }
+
+    private static SpreadSheet create(SheetId id, Sheets api) throws GeneralSecurityException, IOException {
+        SpreadSheet cached = CACHE.get(id.id);
+        if (cached == null) {
+            cached = new SpreadSheet(id.id, api);
+            CACHE.put(id.id, cached);
         }
-        SpreadSheet sheet = new SpreadSheet(id, api);
-        // add to cache (or update the timestamp)
-        CACHE.put(id, sheet);
-        return sheet;
+        if (id.tabId != null) {
+            System.out.println("Set tab id " + id.tabId);
+            cached.setDefaultTab(id.tabId);
+        } else if (id.tabName != null) {
+            System.out.println("Set tab name " + id.tabName);
+            cached.setDefaultTab(id.tabName);
+        } else {
+            System.out.println("Set tab name empty");
+            cached.setDefaultTab("");
+        }
+        return cached;
     }
 
     private static final String APPLICATION_NAME = "Spreadsheet";
@@ -305,28 +320,50 @@ public class SpreadSheet {
     private String spreadsheetId;
     private String defaultTab = "";
 
-    public static String parseId(String id) {
+    public record SheetId(String id, String tabName, Integer tabId) {
+    }
+
+    public static SheetId parseId(String id) {
+        String tabName = null;
+        Integer tabId = null;
         if (id.startsWith("sheet:")) {
             id = id.split(":")[1];
-        } else if (id.startsWith("https://docs.google.com/spreadsheets/")){
-            String regex = "([a-zA-Z0-9-_]{30,})";
-            Matcher m = Pattern.compile(regex).matcher(id);
+            if (id.contains(",")) {
+                String[] split = id.split(",");
+                id = split[0];
+                String tabStr = split[1];
+                if (MathMan.isInteger(tabStr)) {
+                    tabId = Integer.parseInt(tabStr);
+                } else {
+                    tabName = tabStr;
+                }
+            }
+        } else if (id.startsWith("https://docs.google.com/spreadsheets/")) {
+            String regex = "#gid=([0-9]{1,})";
+            Matcher m;
+            m = Pattern.compile(regex).matcher(id);
+            if (m.find()) {
+                tabId = Integer.parseInt(m.group(1));
+            }
+            regex = "#tab=([a-zA-Z0-9-_]{1,})";
+            m = Pattern.compile(regex).matcher(id);
+            if (m.find()) {
+                tabName = m.group(1);
+            }
+            regex = "([a-zA-Z0-9-_]{30,})";
+            m = Pattern.compile(regex).matcher(id);
             m.find();
-            id = m.group();
+            id = m.group().split("/")[0];
         }
-        return id.split("/")[0];
+        return new SheetId(id, tabName, tabId);
     }
 
     private SpreadSheet(String id, Sheets api) throws GeneralSecurityException, IOException {
         if (id != null) {
             if (api == null && credentialsExists()) api = getServiceAPI();
             this.service = api;
-            this.spreadsheetId = parseId(id);
+            this.spreadsheetId = id;
         }
-    }
-
-    protected SpreadSheet(String spreadsheetId) throws GeneralSecurityException, IOException {
-        this(spreadsheetId, null);
     }
 
     private static Sheets getServiceAPI() throws GeneralSecurityException, IOException {
@@ -338,6 +375,18 @@ public class SpreadSheet {
 
     public Sheets getService() {
         return service;
+    }
+
+    public void setDefaultTab(Integer id) {
+        if (service == null) {
+            throw new IllegalArgumentException("No google api server found, cannot select tab with id `" + id + "`");
+        }
+        Map<Integer, String> tabs = fetchTabs();
+        String tab = tabs.get(id);
+        if (tab == null) {
+            throw new IllegalArgumentException("No tab with id `" + id + "` found. Options: " + StringMan.getString(tabs));
+        }
+        setDefaultTab(tab);
     }
 
     public void setDefaultTab(String defaultTab) {
@@ -570,6 +619,12 @@ public class SpreadSheet {
                 defaultTab = "";
             } else {
                 defaultTab = fetchTabs().entrySet().iterator().next().getValue();
+                if (!defaultTab.isEmpty()) {
+                    List<List<Object>> existing = valuesByTab.remove("");
+                    if (existing != null && !existing.isEmpty()) {
+                        valuesByTab.computeIfAbsent(defaultTab.toLowerCase(Locale.ROOT), k -> new ArrayList<>()).addAll(existing);
+                    }
+                }
             }
         }
         return defaultTab;
@@ -577,15 +632,18 @@ public class SpreadSheet {
 
     public List<List<Object>> getCachedValues(String tab) {
         if (tab == null) tab = getDefaultTab();
-        else tab = tab.toLowerCase(Locale.ROOT);
-        return valuesByTab.computeIfAbsent(tab, k -> new ArrayList<>());
+        return valuesByTab.computeIfAbsent(tab.toLowerCase(Locale.ROOT), k -> new ArrayList<>());
+    }
+
+    public void addRow(List<? extends Object> row) {
+        this.getCachedValues(null).add(formatRow(null, row));
     }
 
     public void addRow(Object... values) {
         this.getCachedValues(null).add(formatRow(null, Arrays.asList(values)));
     }
 
-    private List<Object> formatRow(String tab, List<Object> row) {
+    private List<Object> formatRow(String tab, List<? extends Object> row) {
         List<Object> out = new ArrayList<>();
         for (int i = 0; i < row.size(); i++) {
             Object value = row.get(i);
@@ -689,8 +747,11 @@ public class SpreadSheet {
             if (values.isEmpty()) {
                 continue;
             }
-            int width = values.isEmpty() ? 0 : values.get(0).size();
+            int width = values.get(0).size();
             int size = values.size();
+
+            System.out.println("Tab " + tabName + " | " + width + " | " + size + " | " + values.get(0));
+
             for (int i = 0; i < size; i += 10000) {
                 int height = Math.min(i + 9999, size);
                 List<List<Object>> subList = values.subList(i, height);
@@ -704,6 +765,8 @@ public class SpreadSheet {
 
                 ValueRange body = new ValueRange()
                         .setValues(subList);
+
+                System.out.println("Range " + (tabName.isEmpty() ? "" : tabName + "!") + range);
 
                 UpdateValuesResponse result =
                         service.spreadsheets().values().update(spreadsheetId, (tabName.isEmpty() ? "" : tabName + "!") + range, body)
@@ -726,16 +789,18 @@ public class SpreadSheet {
             tabName = getDefaultTab(true);
         }
         if (service == null) {
-            return valuesByTab.getOrDefault(tabName, new ArrayList<>());
+            System.out.println("Service is null");
+            return valuesByTab.getOrDefault(tabName.toLowerCase(Locale.ROOT), new ArrayList<>());
         }
         if (!force) {
-            List<List<Object>> values = this.valuesByTab.get(tabName);
+            List<List<Object>> values = this.valuesByTab.get(tabName.toLowerCase(Locale.ROOT));
             if (values != null) {
                 return values;
             }
         }
         List<List<Object>> result = fetchAll(tabName);
-        valuesByTab.put(tabName, result);
+        System.out.println("Fetch all " + tabName + " | " + result.size());
+        valuesByTab.put(tabName.toLowerCase(Locale.ROOT), result);
         return result;
     }
 
@@ -753,14 +818,18 @@ public class SpreadSheet {
         try {
             if (tab == null || tab.isEmpty()) tab = getDefaultTab(true);
             if (service == null) return loadValues(false).get(tab);
+
             String range = tab; // Change this to the name of your sheet
             ValueRange response = service.spreadsheets().values()
                     .get(spreadsheetId, range)
                     .execute();
+            System.out.println("Get " + range);
             List<List<Object>> values = response.getValues();
             if (values == null) {
+                System.out.println("No data found.");
                 return Collections.emptyList();
             }
+            System.out.println("Values " + values.size());
             return values;
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -964,35 +1033,64 @@ public class SpreadSheet {
     public List<Object> findColumn(int columnDefault, String... arguments) {
         checkNotNull(arguments);
         checkArgument(arguments.length > 0);
+        return findColumn(columnDefault, s -> {
+            for (String arg : arguments) {
+                if (s.contains(arg.toLowerCase(Locale.ROOT))) return true;
+            }
+            return false;
+        });
+    }
+
+    public List<Object> findColumn(int columnDefault, Predicate<String> acceptName) {
+        Map<String, List<Object>> resultMap = findColumn(columnDefault, acceptName, false);
+        if (resultMap == null || resultMap.isEmpty()) return null;
+        return resultMap.values().iterator().next();
+    }
+
+    public Map<String, List<Object>> findColumn(int columnDefault2, Predicate<String> acceptName, boolean acceptMultiple) {
         if (valuesByTab.isEmpty()) throw new IllegalArgumentException("No values found. Was `loadValues` called?");
         List<List<Object>> values = getCachedValues(getDefaultTab(true));
         if (values.isEmpty()) {
+            System.out.println("Values is empty " + getDefaultTab(true));
             return null;
         }
+
+        Map<String, Integer> columnIds = new LinkedHashMap<>();
+        Map<String, List<Object>> result = new LinkedHashMap<>();
+
         List<Object> header = values.get(0);
+        System.out.println("Header " + header);
         outer:
         for (int i = 0; i < header.size(); i++) {
             Object obj = header.get(i);
             if (obj == null) continue;
             String objStr = obj.toString().toLowerCase(Locale.ROOT);
-            for (String argument : arguments) {
-                if (objStr.contains(argument.toLowerCase(Locale.ROOT))) {
-                    columnDefault = i;
-                    break outer;
+            if (!acceptName.test(objStr)) continue;
+            columnIds.put(objStr, i);
+            if (!acceptMultiple) {
+                break;
+            }
+        }
+        if (columnIds.isEmpty() && columnDefault2 >= 0 && columnDefault2 < header.size()) {
+            columnIds.put(header.get(columnDefault2).toString().toLowerCase(Locale.ROOT), columnDefault2);
+        }
+        if (columnIds.isEmpty()) return null;
+
+        for (Map.Entry<String, Integer> entry : columnIds.entrySet()) {
+            String name = entry.getKey();
+            int i = entry.getValue();
+            List<Object> column = new ArrayList<>(values.size());
+            for (int j = 0; j < values.size(); j++) {
+                List<Object> row = values.get(j);
+                if (row.size() <= i) {
+                    column.add(null);
+                } else {
+                    column.add(row.get(i));
                 }
             }
+            result.put(name, column);
         }
-        if (columnDefault < 0) return null;
-        List<Object> column = new ArrayList<>(values.size());
-        for (int i = 0; i < values.size(); i++) {
-            List<Object> row = values.get(i);
-            if (row.size() <= columnDefault) {
-                column.add(null);
-            } else {
-                column.add(row.get(columnDefault));
-            }
-        }
-        return column;
+        return result;
     }
 
     public void setHeader(Object... header) {
