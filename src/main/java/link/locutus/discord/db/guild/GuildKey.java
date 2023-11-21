@@ -2500,7 +2500,7 @@ public class GuildKey {
         public String help() {
             return "If true, all transfers from the offshore will send via the alliance bank";
         }
-    }.requireValidAlliance().requiresOffshore().requiresWhitelisted();
+    }.requireValidAlliance().requiresOffshore();
 
     private static final Map<String, GuildSetting> BY_NAME = new HashMap<>();
 
