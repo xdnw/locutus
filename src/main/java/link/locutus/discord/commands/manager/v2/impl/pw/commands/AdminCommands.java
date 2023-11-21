@@ -680,7 +680,7 @@ public class AdminCommands {
                 if (roleValues == null || roleValues.isEmpty()) {
                     continue;
                 }
-                for (int i = 0; i < roleValues.size()) {
+                for (int i = 0; i < roleValues.size(); i++) {
                     Object roleCell = roleValues.get(i);
                     if (roleCell == null) {
                         continue;
