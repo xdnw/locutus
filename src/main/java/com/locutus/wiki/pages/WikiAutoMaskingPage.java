@@ -90,6 +90,11 @@ public class WikiAutoMaskingPage extends BotWikiGen {
                 CM.settings_role.AUTOROLE_ALLY_GOV.cmd.create("true").toString(),
                 "Specify the roles",
                 commandMarkdownSpoiler(CM.settings_role.AUTOROLE_ALLY_ROLES.cmd),
+                "# Bulk role add/remove",
+                "Bulk add/remove a specific role",
+                commandMarkdownSpoiler(CM.role.mask.cmd),
+                "Bulk add/remove multiple roles via a sheet",
+                commandMarkdownSpoiler(CM.role.mask_sheet.cmd),
                 "# See also",
                 linkPage("self_roles")
         );

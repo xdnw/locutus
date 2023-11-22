@@ -602,7 +602,7 @@ public class AdminCommands {
                 msg = msg.append(bottomText);
             }
 
-            CM.announcement.view cmd = CM.announcement.view.cmd.create(annId + "", null);
+            CM.announcement.view cmd = CM.announcement.view.cmd.create(annId + "", null, null);
             msg.commandButton(CommandBehavior.EPHEMERAL, cmd, "view").send();
         }
 

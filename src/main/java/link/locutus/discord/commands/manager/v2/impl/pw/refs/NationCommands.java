@@ -75,8 +75,8 @@ public class NationCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="cellLookup")
         public static class cellLookup extends CommandRef {
             public static final cellLookup cmd = new cellLookup();
-            public cellLookup create(String sheet, String columnSearch, String columnOutput, String search) {
-                return createArgs("sheet", sheet, "columnSearch", columnSearch, "columnOutput", columnOutput, "search", search);
+            public cellLookup create(String sheet, String tabName, String columnSearch, String columnOutput, String search) {
+                return createArgs("sheet", sheet, "tabName", tabName, "columnSearch", columnSearch, "columnOutput", columnOutput, "search", search);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="city")
@@ -338,6 +338,13 @@ public class NationCommands {
                 return createArgs("nations", nations);
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getAvgBarracks")
+        public static class getAvgBarracks extends CommandRef {
+            public static final getAvgBarracks cmd = new getAvgBarracks();
+            public getAvgBarracks create() {
+                return createArgs();
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getAvgBuilding")
         public static class getAvgBuilding extends CommandRef {
             public static final getAvgBuilding cmd = new getAvgBuilding();
@@ -350,6 +357,27 @@ public class NationCommands {
             public static final getAvgBuildings cmd = new getAvgBuildings();
             public getAvgBuildings create(String buildings) {
                 return createArgs("buildings", buildings);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getAvgDrydocks")
+        public static class getAvgDrydocks extends CommandRef {
+            public static final getAvgDrydocks cmd = new getAvgDrydocks();
+            public getAvgDrydocks create() {
+                return createArgs();
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getAvgFactories")
+        public static class getAvgFactories extends CommandRef {
+            public static final getAvgFactories cmd = new getAvgFactories();
+            public getAvgFactories create() {
+                return createArgs();
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getAvgHangars")
+        public static class getAvgHangars extends CommandRef {
+            public static final getAvgHangars cmd = new getAvgHangars();
+            public getAvgHangars create() {
+                return createArgs();
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getAvgLand")
@@ -964,8 +992,8 @@ public class NationCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getStrength")
         public static class getStrength extends CommandRef {
             public static final getStrength cmd = new getStrength();
-            public getStrength create() {
-                return createArgs();
+            public getStrength create(String mmr) {
+                return createArgs("mmr", mmr);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getStrongestEnemy")
@@ -1021,6 +1049,13 @@ public class NationCommands {
         public static class getTotalLand extends CommandRef {
             public static final getTotalLand cmd = new getTotalLand();
             public getTotalLand create() {
+                return createArgs();
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getTreasureBonusPct")
+        public static class getTreasureBonusPct extends CommandRef {
+            public static final getTreasureBonusPct cmd = new getTreasureBonusPct();
+            public getTreasureBonusPct create() {
                 return createArgs();
             }
         }
@@ -1567,13 +1602,6 @@ public class NationCommands {
         public static class raidBountyValue extends CommandRef {
             public static final raidBountyValue cmd = new raidBountyValue();
             public raidBountyValue create() {
-                return createArgs();
-            }
-        }
-        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="test")
-        public static class test extends CommandRef {
-            public static final test cmd = new test();
-            public test create() {
                 return createArgs();
             }
         }

@@ -1493,7 +1493,7 @@ public class UtilityCommands {
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, militarization, "Military Graph");
                 // Tiering graph
                 CM.stats_tier.cityTierGraph tiering =
-                        CM.stats_tier.cityTierGraph.cmd.create(alliance.getQualifiedId(), "", null, null, null, null);
+                        CM.stats_tier.cityTierGraph.cmd.create(alliance.getQualifiedId(), "", null, null, null, null, null);
                 msg = msg.modal(CommandBehavior.EPHEMERAL, tiering, "City Tier Graph");
                 // strength graph
                 CM.stats_tier.strengthTierGraph strength =
@@ -1505,7 +1505,7 @@ public class UtilityCommands {
                 msg = msg.modal(CommandBehavior.EPHEMERAL, mmr, "MMR Tier Graph");
                 // spy tier
                 CM.stats_tier.spyTierGraph spy =
-                        CM.stats_tier.spyTierGraph.cmd.create(alliance.getQualifiedId(), "", null, null, null, null, null);
+                        CM.stats_tier.spyTierGraph.cmd.create(alliance.getQualifiedId(), "", null, null, null, null, null, null);
                 msg = msg.modal(CommandBehavior.EPHEMERAL, spy, "Spy Tier Graph");
 
                 //- /coalition create - add

@@ -468,14 +468,14 @@ public class CM {
                 public static class allianceMetricsAB extends CommandRef {
                     public static final allianceMetricsAB cmd = new allianceMetricsAB();
                     public allianceMetricsAB create(String metric, String coalition1, String coalition2, String time, String attachJson, String attachCsv) {
-                        return createArgs("metric", metric, "coalition1", coalition1, "coalition2", coalition2, "time", time, "attachJson", attachJson, attachCsv);
+                        return createArgs("metric", metric, "coalition1", coalition1, "coalition2", coalition2, "time", time, "attachJson", attachJson, "attachCsv", attachCsv);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="allianceMetricsCompareByTurn")
                 public static class allianceMetricsCompareByTurn extends CommandRef {
                     public static final allianceMetricsCompareByTurn cmd = new allianceMetricsCompareByTurn();
                     public allianceMetricsCompareByTurn create(String metric, String alliances, String time, String attachJson, String attachCsv) {
-                        return createArgs("metric", metric, "alliances", alliances, "time", time, "attachJson", attachJson, attachCsv);
+                        return createArgs("metric", metric, "alliances", alliances, "time", time, "attachJson", attachJson, "attachCsv", attachCsv);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="allianceNationsSheet")
@@ -496,7 +496,7 @@ public class CM {
                 public static class metricsByTurn extends CommandRef {
                     public static final metricsByTurn cmd = new metricsByTurn();
                     public metricsByTurn create(String metric, String coalition, String time, String attachJson, String attachCsv) {
-                        return createArgs("metric", metric, "coalition", coalition, "time", time, "attachJson", attachJson, attachCsv);
+                        return createArgs("metric", metric, "coalition", coalition, "time", time, "attachJson", attachJson, "attachCsv", attachCsv);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="allianceRanking")
@@ -591,8 +591,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="sendInvite")
             public static class invite extends CommandRef {
                 public static final invite cmd = new invite();
-                public invite create(String message, String inviteTo, String sendTo, String expire, String maxUsesEach, String sendDM, String sendMail, String force) {
-                    return createArgs("message", message, "inviteTo", inviteTo, "sendTo", sendTo, "expire", expire, "maxUsesEach", maxUsesEach, "sendDM", sendDM, "sendMail", sendMail, "force", force);
+                public invite create(String message, String inviteTo, String sendTo, String expire, String maxUsesEach, String sendDM, String sendMail, String allowCreation, String force) {
+                    return createArgs("message", message, "inviteTo", inviteTo, "sendTo", sendTo, "expire", expire, "maxUsesEach", maxUsesEach, "sendDM", sendDM, "sendMail", sendMail, "allowCreation", allowCreation, "force", force);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.web.test.TestCommands.class,method="ocr")
@@ -612,8 +612,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.PlayerSettingCommands.class,method="viewAnnouncement")
             public static class view extends CommandRef {
                 public static final view cmd = new view();
-                public view create(String ann_id, String document) {
-                    return createArgs("ann_id", ann_id, "document", document);
+                public view create(String ann_id, String document, String nation) {
+                    return createArgs("ann_id", ann_id, "document", document, "nation", nation);
                 }
             }
         }
@@ -1283,10 +1283,24 @@ public class CM {
                         return createArgs("bankerNation", bankerNation, "outputChannel", outputChannel);
                     }
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="econPanel")
+                public static class econ_gov extends CommandRef {
+                    public static final econ_gov cmd = new econ_gov();
+                    public econ_gov create(String outputChannel, String useFlowNote, String includePastDepositors) {
+                        return createArgs("outputChannel", outputChannel, "useFlowNote", useFlowNote, "includePastDepositors", includePastDepositors);
+                    }
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="warGuerilla")
                 public static class guerilla extends CommandRef {
                     public static final guerilla cmd = new guerilla();
                     public guerilla create(String outputChannel) {
+                        return createArgs("outputChannel", outputChannel);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.EmbedCommands.class,method="iaPanel")
+                public static class ia_gov extends CommandRef {
+                    public static final ia_gov cmd = new ia_gov();
+                    public ia_gov create(String outputChannel) {
                         return createArgs("outputChannel", outputChannel);
                     }
                 }
@@ -2303,6 +2317,13 @@ public class CM {
                     return createArgs("members", members, "role", role, "value", value, "toggleMaskFromOthers", toggleMaskFromOthers);
                 }
             }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="maskSheet")
+            public static class mask_sheet extends CommandRef {
+                public static final mask_sheet cmd = new mask_sheet();
+                public mask_sheet create(String sheet, String removeRoles, String removeAll, String listMissing, String force) {
+                    return createArgs("sheet", sheet, "removeRoles", removeRoles, "removeAll", removeAll, "listMissing", listMissing, "force", force);
+                }
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.PlayerSettingCommands.class,method="optOut")
             public static class optOut extends CommandRef {
                 public static final optOut cmd = new optOut();
@@ -2329,6 +2350,22 @@ public class CM {
                 public static final unregister cmd = new unregister();
                 public unregister create(String locutusRole, String alliance) {
                     return createArgs("locutusRole", locutusRole, "alliance", alliance);
+                }
+            }
+        }
+        public static class selection_alias{
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="listSelectionAliases")
+            public static class list extends CommandRef {
+                public static final list cmd = new list();
+                public list create(String type) {
+                    return createArgs("type", type);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="deleteSelectionAlias")
+            public static class remove extends CommandRef {
+                public static final remove cmd = new remove();
+                public remove create(String selection) {
+                    return createArgs("selection", selection);
                 }
             }
         }
@@ -3196,6 +3233,73 @@ public class CM {
                 }
             }
         }
+        public static class sheet_custom{
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="addTab")
+            public static class add_tab extends CommandRef {
+                public static final add_tab cmd = new add_tab();
+                public add_tab create(String sheet, String tabName, String alias, String template, String force) {
+                    return createArgs("sheet", sheet, "tabName", tabName, "alias", alias, "template", template, "force", force);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="listCustomSheets")
+            public static class list extends CommandRef {
+                public static final list cmd = new list();
+                public list create() {
+                    return createArgs();
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="deleteTab")
+            public static class remove_tab extends CommandRef {
+                public static final remove_tab cmd = new remove_tab();
+                public remove_tab create(String sheet, String tabName) {
+                    return createArgs("sheet", sheet, "tabName", tabName);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="updateSheet")
+            public static class update extends CommandRef {
+                public static final update cmd = new update();
+                public update create(String sheet) {
+                    return createArgs("sheet", sheet);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="info")
+            public static class view extends CommandRef {
+                public static final view cmd = new view();
+                public view create(String sheet) {
+                    return createArgs("sheet", sheet);
+                }
+            }
+        }
+        public static class sheet_template{
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="listSheetTemplates")
+            public static class list extends CommandRef {
+                public static final list cmd = new list();
+                public list create(String type) {
+                    return createArgs("type", type);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="deleteTemplate")
+            public static class remove extends CommandRef {
+                public static final remove cmd = new remove();
+                public remove create(String sheet) {
+                    return createArgs("sheet", sheet);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="deleteColumns")
+            public static class remove_column extends CommandRef {
+                public static final remove_column cmd = new remove_column();
+                public remove_column create(String sheet, String columns) {
+                    return createArgs("sheet", sheet, "columns", columns);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="viewTemplate")
+            public static class view extends CommandRef {
+                public static final view cmd = new view();
+                public view create(String sheet) {
+                    return createArgs("sheet", sheet);
+                }
+            }
+        }
         public static class sheets_econ{
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="IngameNationTransfersByReceiver")
             public static class IngameNationTransfersByReceiver extends CommandRef {
@@ -3576,8 +3680,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="spyTierGraph")
             public static class tierGraph extends CommandRef {
                 public static final tierGraph cmd = new tierGraph();
-                public tierGraph create(String coalition1, String coalition2, String includeInactives, String includeApplicants, String total, String attachJson, String attachCsv) {
-                    return createArgs("coalition1", coalition1, "coalition2", coalition2, "includeInactives", includeInactives, "includeApplicants", includeApplicants, "total", total, "attachJson", attachJson, attachCsv);
+                public tierGraph create(String coalition1, String coalition2, String includeInactives, String includeApplicants, String total, String barGraph, String attachJson, String attachCsv) {
+                    return createArgs("coalition1", coalition1, "coalition2", coalition2, "includeInactives", includeInactives, "includeApplicants", includeApplicants, "total", total, "barGraph", barGraph, "attachJson", attachJson, "attachCsv", attachCsv);
                 }
             }
         }
@@ -3586,14 +3690,14 @@ public class CM {
             public static class allianceMetricsAB extends CommandRef {
                 public static final allianceMetricsAB cmd = new allianceMetricsAB();
                 public allianceMetricsAB create(String metric, String coalition1, String coalition2, String time, String attachJson, String attachCsv) {
-                    return createArgs("metric", metric, "coalition1", coalition1, "coalition2", coalition2, "time", time, "attachJson", attachJson, attachCsv);
+                    return createArgs("metric", metric, "coalition1", coalition1, "coalition2", coalition2, "time", time, "attachJson", attachJson, "attachCsv", attachCsv);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="allianceMetricsCompareByTurn")
             public static class allianceMetricsCompareByTurn extends CommandRef {
                 public static final allianceMetricsCompareByTurn cmd = new allianceMetricsCompareByTurn();
                 public allianceMetricsCompareByTurn create(String metric, String alliances, String time, String attachJson, String attachCsv) {
-                    return createArgs("metric", metric, "alliances", alliances, "time", time, "attachJson", attachJson, attachCsv);
+                    return createArgs("metric", metric, "alliances", alliances, "time", time, "attachJson", attachJson, "attachCsv", attachCsv);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="allianceNationsSheet")
@@ -3628,7 +3732,7 @@ public class CM {
             public static class radiationByTurn extends CommandRef {
                 public static final radiationByTurn cmd = new radiationByTurn();
                 public radiationByTurn create(String continents, String time, String attachJson, String attachCsv) {
-                    return createArgs("continents", continents, "time", time, "attachJson", attachJson, attachCsv);
+                    return createArgs("continents", continents, "time", time, "attachJson", attachJson, "attachCsv", attachCsv);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="recruitmentRankings")
@@ -3642,7 +3746,7 @@ public class CM {
             public static class tradepricebyday extends CommandRef {
                 public static final tradepricebyday cmd = new tradepricebyday();
                 public tradepricebyday create(String resources, String numDays, String attachJson, String attachCsv) {
-                    return createArgs("resources", resources, "numDays", numDays, "attachJson", attachJson, attachCsv);
+                    return createArgs("resources", resources, "numDays", numDays, "attachJson", attachJson, "attachCsv", attachCsv);
                 }
             }
         }
@@ -3657,8 +3761,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="cityTierGraph")
             public static class cityTierGraph extends CommandRef {
                 public static final cityTierGraph cmd = new cityTierGraph();
-                public cityTierGraph create(String coalition1, String coalition2, String includeInactives, String includeApplicants, String attachJson, String attachCsv) {
-                    return createArgs("coalition1", coalition1, "coalition2", coalition2, "includeInactives", includeInactives, "includeApplicants", includeApplicants, "attachJson", attachJson, attachCsv);
+                public cityTierGraph create(String coalition1, String coalition2, String includeInactives, String barGraph, String includeApplicants, String attachJson, String attachCsv) {
+                    return createArgs("coalition1", coalition1, "coalition2", coalition2, "includeInactives", includeInactives, "barGraph", barGraph, "includeApplicants", includeApplicants, "attachJson", attachJson, "attachCsv", attachCsv);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="mmrTierGraph")
@@ -3672,21 +3776,21 @@ public class CM {
             public static class scoreTierGraph extends CommandRef {
                 public static final scoreTierGraph cmd = new scoreTierGraph();
                 public scoreTierGraph create(String coalition1, String coalition2, String includeInactives, String includeApplicants, String attachJson, String attachCsv) {
-                    return createArgs("coalition1", coalition1, "coalition2", coalition2, "includeInactives", includeInactives, "includeApplicants", includeApplicants, "attachJson", attachJson, attachCsv);
+                    return createArgs("coalition1", coalition1, "coalition2", coalition2, "includeInactives", includeInactives, "includeApplicants", includeApplicants, "attachJson", attachJson, "attachCsv", attachCsv);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="spyTierGraph")
             public static class spyTierGraph extends CommandRef {
                 public static final spyTierGraph cmd = new spyTierGraph();
-                public spyTierGraph create(String coalition1, String coalition2, String includeInactives, String includeApplicants, String total, String attachJson, String attachCsv) {
-                    return createArgs("coalition1", coalition1, "coalition2", coalition2, "includeInactives", includeInactives, "includeApplicants", includeApplicants, "total", total, "attachJson", attachJson, attachCsv);
+                public spyTierGraph create(String coalition1, String coalition2, String includeInactives, String includeApplicants, String total, String barGraph, String attachJson, String attachCsv) {
+                    return createArgs("coalition1", coalition1, "coalition2", coalition2, "includeInactives", includeInactives, "includeApplicants", includeApplicants, "total", total, "barGraph", barGraph, "attachJson", attachJson, "attachCsv", attachCsv);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.StatCommands.class,method="strengthTierGraph")
             public static class strengthTierGraph extends CommandRef {
                 public static final strengthTierGraph cmd = new strengthTierGraph();
                 public strengthTierGraph create(String coalition1, String coalition2, String includeInactives, String includeApplicants, String col1MMR, String col2MMR, String col1Infra, String col2Infra, String attachJson, String attachCsv) {
-                    return createArgs("coalition1", coalition1, "coalition2", coalition2, "includeInactives", includeInactives, "includeApplicants", includeApplicants, "col1MMR", col1MMR, "col2MMR", col2MMR, "col1Infra", col1Infra, "col2Infra", col2Infra, "attachJson", attachJson, attachCsv);
+                    return createArgs("coalition1", coalition1, "coalition2", coalition2, "includeInactives", includeInactives, "includeApplicants", includeApplicants, "col1MMR", col1MMR, "col2MMR", col2MMR, "col1Infra", col1Infra, "col2Infra", col2Infra, "attachJson", attachJson, "attachCsv", attachCsv);
                 }
             }
         }
@@ -3810,8 +3914,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.web.test.TestCommands.class,method="testImage")
             public static class test_image extends CommandRef {
                 public static final test_image cmd = new test_image();
-                public test_image create(String text) {
-                    return createArgs("text", text);
+                public test_image create(String sheet) {
+                    return createArgs("sheet", sheet);
                 }
             }
         }
@@ -3834,7 +3938,7 @@ public class CM {
             public static class compareStockpileValueByDay extends CommandRef {
                 public static final compareStockpileValueByDay cmd = new compareStockpileValueByDay();
                 public compareStockpileValueByDay create(String stockpile1, String stockpile2, String numDays, String attachJson, String attachCsv) {
-                    return createArgs("stockpile1", stockpile1, "stockpile2", stockpile2, "numDays", numDays, "attachJson", attachJson, attachCsv);
+                    return createArgs("stockpile1", stockpile1, "stockpile2", stockpile2, "numDays", numDays, "attachJson", attachJson, "attachCsv", attachCsv);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="findProducer")
@@ -3862,7 +3966,7 @@ public class CM {
             public static class marginByDay extends CommandRef {
                 public static final marginByDay cmd = new marginByDay();
                 public marginByDay create(String numDays, String percent, String attachJson, String attachCsv) {
-                    return createArgs("numDays", numDays, "percent", percent, "attachJson", attachJson, attachCsv);
+                    return createArgs("numDays", numDays, "percent", percent, "attachJson", attachJson, "attachCsv", attachCsv);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="moneyTrades")
@@ -3941,7 +4045,7 @@ public class CM {
             public static class priceByDay extends CommandRef {
                 public static final priceByDay cmd = new priceByDay();
                 public priceByDay create(String resources, String numDays, String attachJson, String attachCsv) {
-                    return createArgs("resources", resources, "numDays", numDays, "attachJson", attachJson, attachCsv);
+                    return createArgs("resources", resources, "numDays", numDays, "attachJson", attachJson, "attachCsv", attachCsv);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="tradeProfit")
@@ -3961,8 +4065,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="tradetotalbyday")
             public static class totalByDay extends CommandRef {
                 public static final totalByDay cmd = new totalByDay();
-                public totalByDay create(String numDays, String attachJson, String resources) {
-                    return createArgs("numDays", numDays, "attachJson", attachJson, "resources", resources);
+                public totalByDay create(String numDays, String attachJson, String attachCsv, String resources) {
+                    return createArgs("numDays", numDays, "attachJson", attachJson, "attachCsv", attachCsv, "resources", resources);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="trending")
@@ -3989,8 +4093,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="tradevolumebyday")
             public static class volumebyday extends CommandRef {
                 public static final volumebyday cmd = new volumebyday();
-                public volumebyday create(String numDays, String attachJson, String resources) {
-                    return createArgs("numDays", numDays, "attachJson", attachJson, "resources", resources);
+                public volumebyday create(String numDays, String attachJson, String attachCsv, String resources) {
+                    return createArgs("numDays", numDays, "attachJson", attachJson, "attachCsv", attachCsv, "resources", resources);
                 }
             }
         }

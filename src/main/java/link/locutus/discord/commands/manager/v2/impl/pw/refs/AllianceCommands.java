@@ -93,6 +93,13 @@ public class AllianceCommands {
                 return createArgs();
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getNumTreasures")
+        public static class getNumTreasures extends CommandRef {
+            public static final getNumTreasures cmd = new getNumTreasures();
+            public getNumTreasures create() {
+                return createArgs();
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getNumWarsSince")
         public static class getNumWarsSince extends CommandRef {
             public static final getNumWarsSince cmd = new getNumWarsSince();
@@ -140,6 +147,13 @@ public class AllianceCommands {
             public static final getTotal cmd = new getTotal();
             public getTotal create(String attribute, String filter) {
                 return createArgs("attribute", attribute, "filter", filter);
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getTreasureBonus")
+        public static class getTreasureBonus extends CommandRef {
+            public static final getTreasureBonus cmd = new getTreasureBonus();
+            public getTreasureBonus create() {
+                return createArgs();
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getTreatiedAllies")

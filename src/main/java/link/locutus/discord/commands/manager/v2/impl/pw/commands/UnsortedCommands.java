@@ -1985,7 +1985,7 @@ public class UnsortedCommands {
 
             msg = msg.embed("[#" + annId + "] " + subject, body.toString());
 
-            CM.announcement.view cmd = CM.announcement.view.cmd.create(annId + "", null);
+            CM.announcement.view cmd = CM.announcement.view.cmd.create(annId + "", null, null);
             msg.commandButton(CommandBehavior.EPHEMERAL, cmd, "view").send();
         }
 
