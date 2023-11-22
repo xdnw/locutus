@@ -19,6 +19,8 @@ import net.dv8tion.jda.api.entities.Guild;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -35,6 +37,21 @@ public class SheetBindings extends BindingHelper {
             }
         }
         throw new IllegalArgumentException("Invalid type: `" + input + "`. Options: " + StringMan.getString(types.stream().map(PlaceholdersMap::getClassName)));
+    }
+
+    @Binding(value = "A list of whole numbers (comma separated)")
+    public List<Integer> columns(String input) {
+        // newline, space or comma
+        String[] split = input.split("[\n ,]");
+        List<Integer> result = new ArrayList<>();
+        for (String s : split) {
+            try {
+                result.add(Integer.parseInt(s));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Invalid column number: `" + s + "`");
+            }
+        }
+        return result;
     }
 
     @Binding
