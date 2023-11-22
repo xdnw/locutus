@@ -36,7 +36,8 @@ public class WarsByTier extends Command {
         return "Graph of total wars between two coalitions by city count\n" +
                 "Add -o to only include offensives\n" +
                 "Add -d to only include defensives\n" +
-                "Add `-a` to only include active wars";
+                "Add `-a` to only include active wars\n" +
+                "Add `-j` to attach json/csv";
     }
 
     @Override
@@ -85,7 +86,9 @@ public class WarsByTier extends Command {
             table.add(cities, (Void) null);
         }
 
-        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, false);
+        boolean attachJson = flags.contains('j');
+        boolean attachCsv = flags.contains('j');
+        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, attachJson, attachCsv);
         return null;
     }
 }

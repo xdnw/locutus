@@ -2,6 +2,7 @@ package link.locutus.discord.commands.rankings.table;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.opencsv.CSVWriter;
 import de.erichseifert.gral.data.*;
 import de.erichseifert.gral.data.statistics.Statistics;
 import de.erichseifert.gral.graphics.Insets2D;
@@ -30,6 +31,7 @@ import link.locutus.discord.util.math.CIEDE2000;
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.util.List;
 import java.util.*;
 import java.util.function.Function;
@@ -304,6 +306,38 @@ public abstract class TimeNumericTable<T> {
         return obj;
     }
 
+    public List<List<String>> toSheetRows() {
+        List<List<String>> rows = new ArrayList<>();
+        List<String> header = new ArrayList<>();
+        header.add(labelX);
+        for (String label : labels) {
+            header.add(labelY + "(" + label + ")");
+        }
+        rows.add(header);
+
+        for (int i = 0; i < data.getRowCount(); i++) {
+            Row row = data.getRow(i);
+            List<String> sheetRow = new ArrayList<>();
+            for (int j = 0; j < row.size(); j++) {
+                Number val = (Number) row.get(j);
+                sheetRow.add(val == null ? "" : val.toString());
+            }
+            rows.add(sheetRow);
+        }
+        return rows;
+    }
+
+    public String toCsv() {
+        StringWriter stringWriter = new StringWriter();
+        CSVWriter csvWriter = new CSVWriter(stringWriter, ',');
+        List<List<String>> rows = toSheetRows();
+        for (List<String> row : rows) {
+            csvWriter.writeNext(row.toArray(new String[0]));
+        }
+        return stringWriter.toString();
+    }
+
+
     public TimeNumericTable<T> convertTurnsToEpochSeconds(long turnStart) {
         for (int i = 0; i < data.getRowCount(); i++) {
             Row row = data.getRow(i);
@@ -457,15 +491,19 @@ public abstract class TimeNumericTable<T> {
         writer.write(plot, baos, 1400, 600);
         return baos.toByteArray();
     }
-    public void write(IMessageIO channel, TimeFormat timeFormat, TableNumberFormat numberFormat, boolean attachJson) throws IOException {
-        IMessageBuilder msg = writeMsg(channel.create(), timeFormat, numberFormat, attachJson);
+    public void write(IMessageIO channel, TimeFormat timeFormat, TableNumberFormat numberFormat, boolean attachJson, boolean attachCsv) throws IOException {
+        IMessageBuilder msg = writeMsg(channel.create(), timeFormat, numberFormat, attachJson, attachCsv);
         msg.send();
     }
 
-    public IMessageBuilder writeMsg(IMessageBuilder msg, TimeFormat timeFormat, TableNumberFormat numberFormat, boolean attachJson) throws IOException {
+    public IMessageBuilder writeMsg(IMessageBuilder msg, TimeFormat timeFormat, TableNumberFormat numberFormat, boolean attachJson, boolean attachCsv) throws IOException {
         msg  = msg.file("img.png", write(timeFormat, numberFormat));
+        String name = this.name == null || this.name.isEmpty() ? "data" : this.name;
         if (attachJson) {
-            msg = msg.file("data.json", toHtmlJson().toString());
+            msg = msg.file(name + ".json", toHtmlJson().toString());
+        }
+        if (attachCsv) {
+            msg = msg.file(name + ".csv", toCsv());
         }
         return msg;
     }

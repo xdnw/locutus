@@ -696,7 +696,8 @@ public class StatCommands {
                                     @Arg("Use the score/strength of coalition 2 nations at specific military unit levels") @Switch("b") MMRDouble col2MMR,
                                     @Arg("Use the score of coalition 1 nations at specific average infrastructure levels") @Switch("c") Double col1Infra,
                                     @Arg("Use the score of coalition 2 nations at specific average infrastructure levels") @Switch("d") Double col2Infra,
-                                    @Switch("j") boolean attachJson) throws IOException {
+                                    @Switch("j") boolean attachJson,
+                                    @Switch("c") boolean attachCsv) throws IOException {
         Set<DBNation> allNations = new HashSet<>();
         coalition1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
         coalition2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
@@ -757,7 +758,7 @@ public class StatCommands {
         for (int score = (int) Math.max(10, minScore * 0.75 - 10); score < maxScore * 1.25 + 10; score++) {
             table.add(score, (Void) null);
         }
-        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, attachJson);
+        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, attachJson, attachCsv);
         return null;
     }
 
@@ -769,7 +770,8 @@ public class StatCommands {
                                @Arg("Graph the total spies instead of average per nation")
                                @Switch("t") boolean total,
                                @Switch("b") boolean barGraph,
-                               @Switch("j") boolean attachJson) throws IOException {
+                               @Switch("j") boolean attachJson,
+                               @Switch("c") boolean attachCsv) throws IOException {
         Set<DBNation> allNations = new HashSet<>();
         coalition1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 2880));
         coalition2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 2880));
@@ -811,12 +813,18 @@ public class StatCommands {
             table.add(cities, (Void) null);
         }
         if (barGraph) table.setBar(true);
-        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, attachJson);
+        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, attachJson, attachCsv);
         return null;
     }
 
     @Command(desc = "Generate a graph of nation counts by score between two coalitions", aliases = {"scoreTierGraph", "scoreTierSheet"})
-    public String scoreTierGraph(@Me GuildDB db, @Me IMessageIO channel, Set<DBNation> coalition1, Set<DBNation> coalition2, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("j") boolean attachJson) throws IOException {
+    public String scoreTierGraph(@Me GuildDB db, @Me IMessageIO channel,
+                                 Set<DBNation> coalition1,
+                                 Set<DBNation> coalition2,
+                                 @Switch("i") boolean includeInactives,
+                                 @Switch("a") boolean includeApplicants,
+                                 @Switch("j") boolean attachJson,
+                                 @Switch("c") boolean attachCsv) throws IOException {
         Set<DBNation> allNations = new HashSet<>();
         coalition1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
         coalition2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
@@ -871,7 +879,7 @@ public class StatCommands {
         for (int score = (int) Math.max(10, minScore * 0.75 - 10); score < maxScore * 1.25 + 10; score++) {
             table.add(score, (Void) null);
         }
-        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, attachJson);
+        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, attachJson, attachCsv);
         return null;
     }
 
@@ -1217,7 +1225,8 @@ public class StatCommands {
                                 @Switch("i") boolean includeInactives,
                                 @Switch("b") boolean barGraph,
                                 @Switch("a") boolean includeApplicants,
-                                @Switch("j") boolean attachJson) throws IOException {
+                                @Switch("j") boolean attachJson,
+                                @Switch("c") boolean attachCsv) throws IOException {
         Set<DBNation> allNations = new HashSet<>();
         coalition1.getNations().removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
         coalition2.getNations().removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
@@ -1243,29 +1252,31 @@ public class StatCommands {
             table.add(cities, (Void) null);
         }
         if (barGraph) table.setBar(true);
-        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, attachJson);
+        table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, attachJson, attachCsv);
         return null;
     }
 
     @Command(desc = "Compare the metric over time between multiple alliances")
     public String allianceMetricsCompareByTurn(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db, AllianceMetric metric, Set<DBAlliance> alliances,
                                                @Arg("Date to start from")
-                                               @Timestamp long time, @Switch("j") boolean attachJson) throws IOException {
+                                               @Timestamp long time, @Switch("j") boolean attachJson,
+                                               @Switch("c") boolean attachCsv) throws IOException {
         long turnStart = TimeUtil.getTurn(time);
         Set<DBAlliance>[] coalitions = alliances.stream().map(Collections::singleton).toList().toArray(new Set[0]);
         List<String> coalitionNames = alliances.stream().map(DBAlliance::getName).collect(Collectors.toList());
         TimeNumericTable table = AllianceMetric.generateTable(metric, turnStart, coalitionNames, coalitions);
-        table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), attachJson);
+        table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), attachJson, attachCsv);
         return "Done!";
     }
 
     @Command(desc = "Graph an alliance metric over time for two coalitions")
     public String allianceMetricsAB(@Me IMessageIO channel, @Me Guild guild, @Me GuildDB db, AllianceMetric metric, Set<DBAlliance> coalition1, Set<DBAlliance> coalition2,
                                     @Arg("Date to start from")
-                                    @Timestamp long time, @Switch("j") boolean attachJson) throws IOException {
+                                    @Timestamp long time, @Switch("j") boolean attachJson,
+                                    @Switch("c") boolean attachCsv) throws IOException {
         long turnStart = TimeUtil.getTurn(time);
         TimeNumericTable table = AllianceMetric.generateTable(metric, turnStart, null, coalition1, coalition2);
-        table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), attachJson);
+        table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), attachJson, attachCsv);
         return "Done!";
     }
 
@@ -1350,21 +1361,23 @@ public class StatCommands {
     @Command(desc = "Create a graph of the radiation by turn")
     public String radiationByTurn(@Me IMessageIO channel, Set<Continent> continents,
                                   @Arg("Date to start from")
-                                  @Timestamp long time, @Switch("j") boolean attachJson) throws IOException {
+                                  @Timestamp long time, @Switch("j") boolean attachJson,
+                                  @Switch("c") boolean attachCsv) throws IOException {
         TimeNumericTable<Void> table = TimeNumericTable.createForContinents(continents, time, Long.MAX_VALUE);
 
-        table.write(channel, TimeFormat.TURN_TO_DATE, TableNumberFormat.SI_UNIT, attachJson);
+        table.write(channel, TimeFormat.TURN_TO_DATE, TableNumberFormat.SI_UNIT, attachJson, attachCsv);
         return "Done!";
     }
 
     @Command(desc = "Graph the metric over time for a coalition")
     public String allianceMetricsByTurn(@Me IMessageIO channel, @Me User user, @Me Guild guild, @Me GuildDB db, AllianceMetric metric, Set<DBAlliance> coalition,
                                         @Arg("Date to start from")
-                                        @Timestamp long time, @Switch("j") boolean attachJson) throws IOException {
+                                        @Timestamp long time, @Switch("j") boolean attachJson,
+                                        @Switch("c") boolean attachCsv) throws IOException {
         long turnStart = TimeUtil.getTurn(time);
         List<String> coalitionNames = List.of(metric.name());
         TimeNumericTable table = AllianceMetric.generateTable(metric, turnStart, coalitionNames, coalition);
-        table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), attachJson);
+        table.write(channel, TimeFormat.TURN_TO_DATE, metric.getFormat(), attachJson, attachCsv);
         return "Done! " + user.getAsMention();
     }
 
