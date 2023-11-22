@@ -294,9 +294,9 @@ public class SpreadSheet {
         if (id.tabId != null) {
             cached.setDefaultTab(id.tabId);
         } else if (id.tabName != null) {
-            cached.setDefaultTab(id.tabName);
+            cached.setDefaultTab(id.tabName, id.tabId);
         } else {
-            cached.setDefaultTab("");
+            cached.setDefaultTab("", null);
         }
         return cached;
     }
@@ -314,6 +314,7 @@ public class SpreadSheet {
     private Sheets service;
     private final Map<String, List<List<Object>>> valuesByTab = new LinkedHashMap<>();
     private String spreadsheetId;
+    private Integer defaultTabId = null;
     private String defaultTab = "";
 
     public record SheetId(String id, String tabName, Integer tabId) {
@@ -382,11 +383,24 @@ public class SpreadSheet {
         if (tab == null) {
             throw new IllegalArgumentException("No tab with id `" + id + "` found. Options: " + StringMan.getString(tabs));
         }
-        setDefaultTab(tab);
+        setDefaultTab(tab, id);
     }
 
-    public void setDefaultTab(String defaultTab) {
+    public void setDefaultTab(String defaultTab, Integer id) {
+        if (defaultTab != null && !defaultTab.isEmpty() && !defaultTab.equals(this.defaultTab)) {
+            if (id == null && service != null) {
+                Map<String, Integer> tabs = getTabsByNameLower();
+                id = tabs.get(defaultTab.toLowerCase());
+                if (id == null) {
+                    throw new IllegalArgumentException("No tab found with name: `" + defaultTab + "`. Options: " + StringMan.getString(tabs));
+                }
+            }
+            this.defaultTabId = id;
+        }
         this.defaultTab = defaultTab;
+        if (defaultTab == null || defaultTab.isEmpty()) {
+            this.defaultTabId = null;
+        }
     }
 
     public Map<String, Boolean> parseTransfers(AddBalanceBuilder builder, boolean negative, String defaultNote) {
@@ -452,10 +466,14 @@ public class SpreadSheet {
     }
 
     public String getURL() {
+        return getURL(true);
+    }
+
+    public String getURL(boolean includeTab) {
         if (service == null) {
             return "sheet:" + spreadsheetId;
         }
-        return getURL(false, false);
+        return getURL(false, false) + (includeTab && defaultTabId != null ? "#    gid=" + defaultTabId : "");
     }
 
     public IMessageBuilder attach(IMessageBuilder msg, String name, String append) {
@@ -613,8 +631,11 @@ public class SpreadSheet {
         if ((defaultTab == null || defaultTab.isEmpty()) && useFirstTabIfNone) {
             if (service == null) {
                 defaultTab = "";
+                defaultTabId = null;
             } else {
-                defaultTab = fetchTabs().entrySet().iterator().next().getValue();
+                Map.Entry<Integer, String> next = fetchTabs().entrySet().iterator().next();
+                defaultTab = next.getValue();
+                defaultTabId = next.getKey();
                 if (!defaultTab.isEmpty()) {
                     List<List<Object>> existing = valuesByTab.remove("");
                     if (existing != null && !existing.isEmpty()) {

@@ -61,6 +61,7 @@ public class WarCostRankingByDay extends Command {
                 Add `-e` to show enemy stats instead of attacker
                 Add `-d` to show raw data (csv)
                 Add `-r` to show number buildings lost
+                Add `-j` to attach json/csv
                 """;
     }
 
@@ -246,8 +247,10 @@ public class WarCostRankingByDay extends Command {
             }
         }
 
+        boolean attachJson = flags.contains('j');
+        boolean attachCsv = flags.contains('j');
         for (TimeNumericTable<Map<String, WarAttackParser>> table : tables) {
-            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, false);
+            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, attachJson, attachCsv);
         }
         if (tables.isEmpty()) return "Please use one of the flag";
 

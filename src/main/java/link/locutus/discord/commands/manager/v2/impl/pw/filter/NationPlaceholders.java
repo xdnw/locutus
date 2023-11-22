@@ -59,6 +59,11 @@ public class NationPlaceholders extends Placeholders<DBNation> {
         this.getCommands().registerCommands(new DefaultPlaceholders());
     }
 
+    @Override
+    public String getName(DBNation o) {
+        return o.getName();
+    }
+
     @NoFormat
     @Command(desc = "Add an alias for a selection of Nations")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)

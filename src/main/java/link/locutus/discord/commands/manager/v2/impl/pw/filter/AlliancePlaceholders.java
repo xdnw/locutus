@@ -53,6 +53,11 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
         this.getCommands().registerCommands(new DefaultPlaceholders());
     }
 
+    @Override
+    public String getName(DBAlliance o) {
+        return o.getName();
+    }
+
     public List<AllianceInstanceAttribute> getMetrics(ValueStore store) {
         List<AllianceInstanceAttribute> result = new ArrayList<>();
         for (CommandCallable cmd : getFilterCallables()) {

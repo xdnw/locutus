@@ -2,14 +2,18 @@ package link.locutus.discord.commands.rankings.table;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.opencsv.CSVWriter;
 import de.erichseifert.gral.data.*;
 import de.erichseifert.gral.data.statistics.Statistics;
 import de.erichseifert.gral.graphics.Insets2D;
+import de.erichseifert.gral.graphics.Location;
 import de.erichseifert.gral.graphics.Orientation;
 import de.erichseifert.gral.io.plots.DrawableWriter;
 import de.erichseifert.gral.io.plots.DrawableWriterFactory;
+import de.erichseifert.gral.plots.BarPlot;
 import de.erichseifert.gral.plots.XYPlot;
 import de.erichseifert.gral.plots.axes.AxisRenderer;
+import de.erichseifert.gral.plots.colors.ColorMapper;
 import de.erichseifert.gral.plots.lines.DefaultLineRenderer2D;
 import de.erichseifert.gral.plots.lines.LineRenderer;
 import link.locutus.discord.Locutus;
@@ -27,6 +31,7 @@ import link.locutus.discord.util.math.CIEDE2000;
 import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.util.List;
 import java.util.*;
 import java.util.function.Function;
@@ -39,6 +44,7 @@ public abstract class TimeNumericTable<T> {
     private final int amt;
     private final String[] labels;
     private final String labelX, labelY;
+    private boolean isBar;
 
     public TimeNumericTable(String title, String labelX, String labelY, String... seriesLabels) {
         this.name = title;
@@ -51,6 +57,11 @@ public abstract class TimeNumericTable<T> {
         types.add(Long.class);
         for (int i = 0; i < amt; i++) types.add(Double.class);
         this.data = new DataTable(types.toArray(new Class[0]));
+    }
+
+    public TimeNumericTable<T> setBar(boolean bar) {
+        isBar = bar;
+        return this;
     }
 
     public static TimeNumericTable<Void> createForContinents(Set<Continent> continents, long start, long end) {
@@ -295,6 +306,38 @@ public abstract class TimeNumericTable<T> {
         return obj;
     }
 
+    public List<List<String>> toSheetRows() {
+        List<List<String>> rows = new ArrayList<>();
+        List<String> header = new ArrayList<>();
+        header.add(labelX);
+        for (String label : labels) {
+            header.add(labelY + "(" + label + ")");
+        }
+        rows.add(header);
+
+        for (int i = 0; i < data.getRowCount(); i++) {
+            Row row = data.getRow(i);
+            List<String> sheetRow = new ArrayList<>();
+            for (int j = 0; j < row.size(); j++) {
+                Number val = (Number) row.get(j);
+                sheetRow.add(val == null ? "" : val.toString());
+            }
+            rows.add(sheetRow);
+        }
+        return rows;
+    }
+
+    public String toCsv() {
+        StringWriter stringWriter = new StringWriter();
+        CSVWriter csvWriter = new CSVWriter(stringWriter, ',');
+        List<List<String>> rows = toSheetRows();
+        for (List<String> row : rows) {
+            csvWriter.writeNext(row.toArray(new String[0]));
+        }
+        return stringWriter.toString();
+    }
+
+
     public TimeNumericTable<T> convertTurnsToEpochSeconds(long turnStart) {
         for (int i = 0; i < data.getRowCount(); i++) {
             Row row = data.getRow(i);
@@ -313,7 +356,12 @@ public abstract class TimeNumericTable<T> {
         }
 
         // Create new xy-plot
-        XYPlot plot = new XYPlot(series);
+        XYPlot plot;
+        if (isBar) {
+            plot = new BarPlot(series);
+        } else {
+            plot = new XYPlot(series);
+        }
 
         Column col1 = data.getColumn(0);
         plot.getAxis(XYPlot.AXIS_X).setRange(
@@ -357,11 +405,6 @@ public abstract class TimeNumericTable<T> {
         axisRendererX.setMinorTicksCount(4);
         axisRendererX.setTickLabelFormat(MathMan.toFormat(timeFormat::toString));
 
-//        if (dateFormatX) {
-//            axisRendererX.setTickLabelFormat(new MathMan.RoundedMetricPrefixFormat());
-//        } else {
-//            axisRendererX.setTickLabelFormat(TimeUtil.DD_MM_YY);
-//        }
         AxisRenderer axisRendererY = plot.getAxisRenderer(XYPlot.AXIS_Y);
         axisRendererY.setTicksAutoSpaced(true);
         axisRendererY.setMinorTicksCount(4);
@@ -390,14 +433,52 @@ public abstract class TimeNumericTable<T> {
                 break;
         }
 
-        int i = 0;
-        for (Color color : colors) {
-            DataSource dataA = series[i++];
-            plot.setPointRenderers(dataA, null);
-            LineRenderer lineA = new DefaultLineRenderer2D();
-            lineA.setColor(color);
-            plot.setLineRenderers(dataA, lineA);
+        if (isBar) {
+            List<Color> colorList = new ArrayList<>(colors);
+            BarPlot barPlot = (BarPlot) plot;
+            barPlot.setBarWidth(1d / (amt + 1));
+            BarPlot.BarRenderer pointRenderer = (BarPlot.BarRenderer) plot.getPointRenderers(data).get(0);
+            pointRenderer.setColor(new ColorMapper() {
+                @Override
+                public Paint get(Number number) {
+                    int column = number.intValue();
+                    return colorList.get(column % colorList.size());
+                }
+
+                @Override
+                public ColorMapper.Mode getMode() {
+                    return null;
+                }
+            });
+            pointRenderer.setBorderStroke(new BasicStroke(1f));
+            pointRenderer.setBorderColor(Color.LIGHT_GRAY);
+            pointRenderer.setValueVisible(true);
+            pointRenderer.setValueColumn(2);
+            pointRenderer.setValueLocation(Location.NORTH);
+            pointRenderer.setValueRotation(90);
+            pointRenderer.setValueColor(new ColorMapper() {
+                @Override
+                public Paint get(Number number) {
+                    return Color.BLACK;
+                }
+
+                @Override
+                public ColorMapper.Mode getMode() {
+                    return null;
+                }
+            });
+            pointRenderer.setValueFont(Font.decode(null).deriveFont(10.0f));
+        } else {
+            int i = 0;
+            for (Color color : colors) {
+                DataSource dataA = series[i++];
+                plot.setPointRenderers(dataA, null);
+                LineRenderer lineA = new DefaultLineRenderer2D();
+                lineA.setColor(color);
+                plot.setLineRenderers(dataA, lineA);
+            }
         }
+
 
         return plot;
     }
@@ -410,15 +491,19 @@ public abstract class TimeNumericTable<T> {
         writer.write(plot, baos, 1400, 600);
         return baos.toByteArray();
     }
-    public void write(IMessageIO channel, TimeFormat timeFormat, TableNumberFormat numberFormat, boolean attachJson) throws IOException {
-        IMessageBuilder msg = writeMsg(channel.create(), timeFormat, numberFormat, attachJson);
+    public void write(IMessageIO channel, TimeFormat timeFormat, TableNumberFormat numberFormat, boolean attachJson, boolean attachCsv) throws IOException {
+        IMessageBuilder msg = writeMsg(channel.create(), timeFormat, numberFormat, attachJson, attachCsv);
         msg.send();
     }
 
-    public IMessageBuilder writeMsg(IMessageBuilder msg, TimeFormat timeFormat, TableNumberFormat numberFormat, boolean attachJson) throws IOException {
+    public IMessageBuilder writeMsg(IMessageBuilder msg, TimeFormat timeFormat, TableNumberFormat numberFormat, boolean attachJson, boolean attachCsv) throws IOException {
         msg  = msg.file("img.png", write(timeFormat, numberFormat));
+        String name = this.name == null || this.name.isEmpty() ? "data" : this.name;
         if (attachJson) {
-            msg = msg.file("data.json", toHtmlJson().toString());
+            msg = msg.file(name + ".json", toHtmlJson().toString());
+        }
+        if (attachCsv) {
+            msg = msg.file(name + ".csv", toCsv());
         }
         return msg;
     }

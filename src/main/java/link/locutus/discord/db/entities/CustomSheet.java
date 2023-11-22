@@ -1,9 +1,9 @@
 package link.locutus.discord.db.entities;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
-import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.util.sheet.SpreadSheet;
 
 import java.io.IOException;
@@ -12,7 +12,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Spliterator;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.function.Function;
 
 public class CustomSheet {
     private final String sheetId;
@@ -67,6 +69,11 @@ public class CustomSheet {
         SpreadSheet sheet = SpreadSheet.create(sheetId);
         List<String> errors = new ArrayList<>();
 
+        List<Future<?>> writeTasks = new ArrayList<>();
+        ExecutorService executor = Locutus.imp().getExecutor();
+
+        sheet.reset();
+
         for (Map.Entry<String, Map.Entry<SelectionAlias, SheetTemplate>> entry : this.tabs.entrySet()) {
             String tabName = entry.getKey();
             Map.Entry<SelectionAlias, SheetTemplate> value = entry.getValue();
@@ -80,18 +87,70 @@ public class CustomSheet {
                 continue;
             }
 
-            Placeholders<?> ph = Locutus.cmd().getV2().getPlaceholders().get(type);
+            Placeholders<Object> ph = Locutus.cmd().getV2().getPlaceholders().get(type);
             if (ph == null) {
                 errors.add("[Tab: `" + tabName + "`] Invalid type: `" + type.getSimpleName() + "`");
                 continue;
             }
 
-            Set<?> selection = ph.deserializeSelection(store, alias.getSelection());
-            List<String> columns = template.getColumns();
+            Future<?> future = executor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Set<Object> selection = ph.deserializeSelection(store, alias.getSelection());
+                        List<String> columns = template.getColumns();
+                        List<Object> header = new ArrayList<>(columns);
 
-            // TODO CM REF TODO FIXME
-//            sheet.set();
+                        // add header
+                        sheet.addRow(tabName, header);
+
+                        // get write cache
+                        Placeholders.PlaceholderCache<?> cache = new Placeholders.PlaceholderCache<>(selection);
+                        store.addProvider(Key.of(Placeholders.PlaceholderCache.class, ph.getType()), cache);
+
+                        List<Function<Object, String>> functions = new ArrayList<>();
+                        for (String column : columns) {
+                            try {
+                                Function<Object, String> function = ph.getFormatFunction(store, column, true);
+                                functions.add(function);
+                            } catch (IllegalArgumentException e) {
+                                errors.add("[Tab: `" + tabName + "`,Column:`" + column + "`] " + e.getMessage());
+                                functions.add(null);
+                            }
+                        }
+                        for (Object o : selection) {
+                            for (int i = 0; i < columns.size(); i++) {
+                                Function<Object, String> function = functions.get(i);
+                                if (function == null) {
+                                    header.set(i, "");
+                                    continue;
+                                }
+                                try {
+                                    String value = function.apply(o);
+                                    header.set(i, value);
+                                } catch (Exception e) {
+                                    String column = columns.get(i);
+                                    String elemStr = ph.getName(o);
+                                    errors.add("[Tab: `" + tabName + "`,Column:`" + column + "`,Elem:`" + elemStr + "`] " + e.getMessage());
+                                }
+                            }
+                            sheet.addRow(tabName, header);
+                        }
+                    } catch (Exception e) {
+                        errors.add("[Tab: `" + tabName + "`] " + e.getMessage());
+                    }
+                }
+            });
+            writeTasks.add(future);
         }
+        for (Future<?> writeTask : writeTasks) {
+            try {
+                writeTask.get();
+            } catch (Exception e) {
+                errors.add(e.getMessage());
+            }
+        }
+        sheet.updateWrite();
         return errors;
     }
 }

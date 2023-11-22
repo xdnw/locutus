@@ -81,6 +81,7 @@ public class CustomSheetCommands {
     }
 
     @NoFormat
+    @Command(desc = "List custom sheets")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String listCustomSheets(@Me GuildDB db) {
         Map<String, String> sheets = db.getSheetManager().getCustomSheets();
@@ -227,7 +228,7 @@ public class CustomSheetCommands {
 
     @Command
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String info(@Me CustomSheet sheet) {
+    public String info(CustomSheet sheet) {
         return sheet.toString();
     }
 }

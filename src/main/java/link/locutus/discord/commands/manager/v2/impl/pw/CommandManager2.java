@@ -167,24 +167,29 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
-        for (Class<?> type : placeholders.getTypes()) {
-            Placeholders<?> ph = placeholders.get(type);
-
-            Method methodAlias = null;
-            Method methodColumns = null;
-            for (Method method : ph.getClass().getDeclaredMethods()) {
-                if (method.getName().equals("addSelectionAlias")) {
-                    methodAlias = method;
-                } else if (method.getName().equals("addColumns")) {
-                    methodColumns = method;
-                }
-            }
+//        for (Class<?> type : placeholders.getTypes()) {
+//            Placeholders<?> ph = placeholders.get(type);
+//
+//            Method methodAlias = null;
+//            Method methodColumns = null;
+//            for (Method method : ph.getClass().getDeclaredMethods()) {
+//                if (method.getName().equals("addSelectionAlias")) {
+//                    methodAlias = method;
+//                } else if (method.getName().equals("addColumns")) {
+//                    methodColumns = method;
+//                }
+//            }
 //            if (methodAlias == null) {
 //                throw new IllegalArgumentException("Missing method `addSelectionAlias` for " + ph.getType().getSimpleName());
 //            }
 //            if (methodColumns == null) {
 //                throw new IllegalArgumentException("Missing method `addColumns` for " + ph.getType().getSimpleName());
 //            }
+////            selection_alias add_entity nations
+////            sheet_template add_entity nations
+//            String typeName = ph.getType().getSimpleName().replaceAll("DB", "").toLowerCase(Locale.ROOT);
+//            System.out.println("Registering " + typeName);
+//            this.commands.registerMethod(ph, List.of("selection_alias", "add"), methodAlias.getName(), typeName);
 //
 //            for (Method method : ph.getClass().getDeclaredMethods()) {
 //                Command cmd = method.getAnnotation(Command.class);
@@ -193,7 +198,42 @@ public class CommandManager2 {
 //                    this.commands.registerMethod(ph, List.of("sheets_ia", "custom"), method.getName(), name);
 //                }
 //            }
-        }
+//        }
+        ////listSheetTemplates
+        //sheet_template list
+        this.commands.registerMethod(new CustomSheetCommands(), List.of("sheet_template"), "listSheetTemplates", "list");
+        ////listSelectionAliases
+        //selection_alias list
+        this.commands.registerMethod(new CustomSheetCommands(), List.of("selection_alias"), "listSelectionAliases", "list");
+        ////listCustomSheets
+        //sheet_custom list
+        this.commands.registerMethod(new CustomSheetCommands(), List.of("sheet_custom"), "listCustomSheets", "list");
+        ////deleteSelectionAlias
+        //selection_alias remove
+        this.commands.registerMethod(new CustomSheetCommands(), List.of("selection_alias"), "deleteSelectionAlias", "remove");
+        ////viewTemplate
+        //sheet_template view
+        this.commands.registerMethod(new CustomSheetCommands(), List.of("sheet_template"), "viewTemplate", "view");
+        ////deleteTemplate
+        //sheet_template remove
+        this.commands.registerMethod(new CustomSheetCommands(), List.of("sheet_template"), "deleteTemplate", "remove");
+        ////deleteColumns
+        //sheet_template remove_column
+        this.commands.registerMethod(new CustomSheetCommands(), List.of("sheet_template"), "deleteColumns", "remove_column");
+        ////addTab
+        //sheet_custom add
+        this.commands.registerMethod(new CustomSheetCommands(), List.of("sheet_custom"), "addTab", "add_tab");
+        ////updateSheet
+        //sheet_custom update
+        this.commands.registerMethod(new CustomSheetCommands(), List.of("sheet_custom"), "updateSheet", "update");
+        ////deleteTab
+        //sheet_custom remove_tab
+        this.commands.registerMethod(new CustomSheetCommands(), List.of("sheet_custom"), "deleteTab", "remove_tab");
+        ////info
+        //sheet_custom view
+        this.commands.registerMethod(new CustomSheetCommands(), List.of("sheet_custom"), "info", "view");
+
+
         this.commands.registerMethod(new EmbedCommands(), List.of("announcement"), "announceDocument", "document");
         this.commands.registerMethod(new AdminCommands(), List.of("role"), "maskSheet", "mask_sheet");
 

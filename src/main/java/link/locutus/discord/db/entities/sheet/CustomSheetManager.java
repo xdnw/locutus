@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities.sheet;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CustomSheet;
 import link.locutus.discord.db.entities.SelectionAlias;
@@ -14,11 +15,13 @@ import java.util.AbstractMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 
 public class CustomSheetManager {
     private final GuildDB db;
@@ -119,8 +122,6 @@ public class CustomSheetManager {
     }
 
     public <T> SelectionAlias<T> getSelectionAlias(String name, Class<T> type) {
-        // or null
-        // CustomSelection(String name, Class<T> type, String selection)
         Map<String, String> selections = getSelectionAliases().get(type);
         if (selections == null) {
             return null;
@@ -130,6 +131,36 @@ public class CustomSheetManager {
             return null;
         }
         return new SelectionAlias<>(name, type, selection);
+    }
+
+    public Set<String> getSelectionAliasNames() {
+        Set<String> names = new LinkedHashSet<>();
+        for (Map.Entry<Class, Map<String, String>> entry : getSelectionAliases().entrySet()) {
+            String prefix = PlaceholdersMap.getClassName(entry.getKey()) + ":";
+            for (String name : entry.getValue().keySet()) {
+                names.add(prefix + name);
+            }
+        }
+        return names;
+    }
+
+    public <T> SelectionAlias<T> getSelectionAlias(String name) {
+        Predicate<Class> typePrefix = f -> true;
+        if (name.contains(":")) {
+            String[] split = name.split(":", 2);
+            name = split[1];
+            String prefix = split[0];
+            typePrefix = f -> PlaceholdersMap.getClassName(f).equalsIgnoreCase(prefix);
+        }
+        for (Map.Entry<Class, Map<String, String>> entry : getSelectionAliases().entrySet()) {
+            Map<String, String> selections = entry.getValue();
+            Class type = entry.getKey();
+            String selection = selections.get(name);
+            if (selection != null) {
+                return new SelectionAlias<>(name, type, selection);
+            }
+        }
+        return null;
     }
 
     public void removeSelectionAlias(String name) {

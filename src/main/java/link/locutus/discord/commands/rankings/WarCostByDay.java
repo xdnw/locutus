@@ -61,7 +61,8 @@ public class WarCostByDay extends Command {
                 Add `-t` to show Tank losses
                 Add `-s` to show Soldier losses
                 Add `-i` to show Infra losses
-                Add `-o` to graph a running total""";
+                Add `-o` to graph a running total,
+                Add `-j` to attach json/csv""";
     }
 
     @Override
@@ -76,6 +77,8 @@ public class WarCostByDay extends Command {
             return usage("Please specify a breakdown type flag", channel);
         }
 
+        boolean attachJson = flags.contains('j');
+        boolean attachCsv = flags.contains('j');
         String arg0 = args.get(0);
 
         List<AbstractCursor> attacks = new ArrayList<>();
@@ -327,7 +330,7 @@ public class WarCostByDay extends Command {
         }
 
         for (TimeDualNumericTable<AttackCost> table : tables) {
-            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, false);
+            table.write(channel, TimeFormat.DAYS_TO_DATE, TableNumberFormat.SI_UNIT, attachJson, attachCsv);
         }
 
         return null;

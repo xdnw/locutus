@@ -6,6 +6,7 @@ import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 
 import java.util.Set;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 public class StaticPlaceholders<T> extends SimplePlaceholders<T> {
@@ -15,6 +16,14 @@ public class StaticPlaceholders<T> extends SimplePlaceholders<T> {
             public Predicate<T> apply(ValueStore valueStore, String s) {
                 Set<T> parsed = parse.apply(valueStore, s);
                 return parsed::contains;
+            }
+        }, new Function<T, String>() {
+            @Override
+            public String apply(T t) {
+                if (t instanceof Enum) {
+                    return ((Enum<?>) t).name();
+                }
+                return t.toString();
             }
         });
     }

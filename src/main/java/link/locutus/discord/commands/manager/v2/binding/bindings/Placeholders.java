@@ -646,6 +646,8 @@ public abstract class Placeholders<T> extends BindingHelper {
         return TypedFunction.create(command.getReturnType(), f -> format.apply(f, resolved.apply(f)), full.toString());
     }
 
+    public abstract String getName(T o);
+
     public static class PlaceholderCache<T> {
         private final List<T> list;
         private boolean cached = false;
@@ -704,6 +706,10 @@ public abstract class Placeholders<T> extends BindingHelper {
     }
 
     public LocalValueStore createLocals(Guild guild, User user, DBNation nation) {
+        return createLocals(guild, user, nation, null);
+    }
+
+    public LocalValueStore createLocals(Guild guild, User user, DBNation nation, PlaceholderCache cache) {
         if (nation == null && user != null) {
             nation = DBNation.getByUser(user);
         }
@@ -719,6 +725,9 @@ public abstract class Placeholders<T> extends BindingHelper {
         }
         if (guild != null) {
             locals.addProvider(Key.of(Guild.class, Me.class), guild);
+        }
+        if (cache != null) {
+            locals.addProvider(Key.of(PlaceholderCache.class, getType()), cache);
         }
         return locals;
     }
@@ -753,8 +762,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         return getFormatFunction(callerGuild, callerNation, callerUser, arg, cache, true);
     }
     public Function<T, String> getFormatFunction(Guild callerGuild, DBNation callerNation, User callerUser, String arg, PlaceholderCache cache, boolean throwError) {
-        LocalValueStore locals = createLocals(callerGuild, callerUser, callerNation);
-        locals.addProvider(cache);
+        LocalValueStore locals = createLocals(callerGuild, callerUser, callerNation, cache);
         return getFormatFunction(locals, arg, throwError);
     }
 
