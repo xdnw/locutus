@@ -5,7 +5,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 
 public class WikiHostingLocutus extends BotWikiGen {
     public WikiHostingLocutus(CommandManager2 manager) {
-        super(manager, "hosting locutus");
+        super(manager, "hosting_locutus");
     }
 
     @Override

@@ -85,6 +85,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -290,6 +291,11 @@ public class PlaceholdersMap {
             }
 
             @Override
+            public String getName(NationOrAlliance o) {
+                return o.getName();
+            }
+
+            @Override
             public Set<NationOrAlliance> parseSet(ValueStore store2, String input) {
                 input = getSelection(store, NationOrAlliance.class, input);
                 if (input.contains("#")) {
@@ -375,7 +381,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<GuildDB> createGuildDB() {
-        return new SimplePlaceholders<GuildDB>(GuildDB.class,  store, validators, permisser,
+        return new SimplePlaceholders<GuildDB>(GuildDB.class, store, validators, permisser,
                 "TODO CM Ref",
                 (ThrowingBiFunction<ValueStore, String, Set<GuildDB>>) (store, input) -> {
                     input = getSelection(store, GuildDB.class, input);
@@ -406,17 +412,22 @@ public class PlaceholdersMap {
                     }
                     return Set.of(guild);
                 }, (ThrowingBiFunction<ValueStore, String, Predicate<GuildDB>>) (store, input) -> {
-                    if (input.equalsIgnoreCase("*")) {
-                        return f -> true;
-                    }
-                    if (SpreadSheet.isSheet(input)) {
-                        Set<Long> sheet = SpreadSheet.parseSheet(input, List.of("guild"), true,
-                                (type, str) -> PrimitiveBindings.Long(str));
-                        return f -> sheet.contains(f.getIdLong());
-                    }
-                    long id = PrimitiveBindings.Long(input);
-                    return f -> f.getIdLong() == id;
-                }) {
+            if (input.equalsIgnoreCase("*")) {
+                return f -> true;
+            }
+            if (SpreadSheet.isSheet(input)) {
+                Set<Long> sheet = SpreadSheet.parseSheet(input, List.of("guild"), true,
+                        (type, str) -> PrimitiveBindings.Long(str));
+                return f -> sheet.contains(f.getIdLong());
+            }
+            long id = PrimitiveBindings.Long(input);
+            return f -> f.getIdLong() == id;
+        }, new Function<GuildDB, String>() {
+            @Override
+            public String apply(GuildDB guildDB) {
+                return guildDB.getGuild().toString();
+            }
+        }) {
             @NoFormat
             @Command(desc = "Add an alias for a selection of guilds")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -493,6 +504,11 @@ public class PlaceholdersMap {
                         if (nation == null) return false;
                         return filter.test(nation);
                     };
+                }, new Function<DBBan, String>() {
+                    @Override
+                    public String apply(DBBan dbBan) {
+                        return dbBan.getNation_id() + "";
+                    }
                 }) {
             @NoFormat
             @Command(desc = "Add an alias for a selection of bans")
@@ -538,7 +554,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<NationList> createNationList() {
-        return new SimplePlaceholders<NationList>(NationList.class,  store, validators, permisser,
+        return new SimplePlaceholders<NationList>(NationList.class, store, validators, permisser,
                 "TODO CM REF",
                 (ThrowingBiFunction<ValueStore, String, Set<NationList>>) (store, input) -> {
                     input = getSelection(store, NationList.class, input);
@@ -601,9 +617,14 @@ public class PlaceholdersMap {
                     }
                     return result;
                 }, (ThrowingBiFunction<ValueStore, String, Predicate<NationList>>) (store, input) -> {
-                    if (input.equalsIgnoreCase("*")) return f -> true;
-                    throw new IllegalArgumentException("NationList predicates other than `*` are unsupported. Please use DBNation instead");
-                }) {
+            if (input.equalsIgnoreCase("*")) return f -> true;
+            throw new IllegalArgumentException("NationList predicates other than `*` are unsupported. Please use DBNation instead");
+        }, new Function<NationList, String>() {
+            @Override
+            public String apply(NationList nationList) {
+                return nationList.getFilter();
+            }
+        }) {
             @NoFormat
             @Command(desc = "Add an alias for a selection of nationlists")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -773,7 +794,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<UserWrapper> createUsers() {
-        return new SimplePlaceholders<UserWrapper>(UserWrapper.class,  store, validators, permisser,
+        return new SimplePlaceholders<UserWrapper>(UserWrapper.class, store, validators, permisser,
                 "TODO CM REF",
                 (ThrowingBiFunction<ValueStore, String, Set<UserWrapper>>) (store, input) -> {
                     input = getSelection(store, UserWrapper.class, input);
@@ -785,18 +806,23 @@ public class PlaceholdersMap {
                     }
                     return parseUserSingle(guild, input);
                 }, (ThrowingBiFunction<ValueStore, String, Predicate<UserWrapper>>) (store, input) -> {
-                    if (input.equalsIgnoreCase("*")) return f -> true;
+            if (input.equalsIgnoreCase("*")) return f -> true;
 
-                    GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
-                    Guild guild = db.getGuild();
+            GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
+            Guild guild = db.getGuild();
 
-                    if (SpreadSheet.isSheet(input)) {
-                        Set<Long> sheet = SpreadSheet.parseSheet(input, List.of("user"), true,
-                                (type, str) -> DiscordUtil.parseUserId(guild, str));
-                        return f -> sheet.contains(f.getUserId());
-                    }
-                    return parseUserPredicate(guild, input);
-                }) {
+            if (SpreadSheet.isSheet(input)) {
+                Set<Long> sheet = SpreadSheet.parseSheet(input, List.of("user"), true,
+                        (type, str) -> DiscordUtil.parseUserId(guild, str));
+                return f -> sheet.contains(f.getUserId());
+            }
+            return parseUserPredicate(guild, input);
+        }, new Function<UserWrapper, String>() {
+            @Override
+            public String apply(UserWrapper userWrapper) {
+                return userWrapper.getUserName();
+            }
+        }) {
             @NoFormat
             @Command(desc = "Add an alias for a selection of users")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -842,7 +868,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<DBCity> createCities() {
-        return new SimplePlaceholders<DBCity>(DBCity.class,  store, validators, permisser,
+        return new SimplePlaceholders<DBCity>(DBCity.class, store, validators, permisser,
                 "TODO CM REF",
                 (ThrowingBiFunction<ValueStore, String, Set<DBCity>>) (store, input) -> {
                     input = getSelection(store, DBCity.class, input);
@@ -859,29 +885,34 @@ public class PlaceholdersMap {
                     }
                     return parseCitiesSingle(store, input);
                 }, (ThrowingBiFunction<ValueStore, String, Predicate<DBCity>>) (store, input) -> {
-                    if (input.equalsIgnoreCase("*")) return f -> true;
-                    if (MathMan.isInteger(input) || input.contains("/city/id=")) {
-                        DBCity city = PWBindings.cityUrl(input);
-                        return f -> f.id == city.id;
+            if (input.equalsIgnoreCase("*")) return f -> true;
+            if (MathMan.isInteger(input) || input.contains("/city/id=")) {
+                DBCity city = PWBindings.cityUrl(input);
+                return f -> f.id == city.id;
+            }
+            if (SpreadSheet.isSheet(input)) {
+                Set<Set<DBCity>> result = SpreadSheet.parseSheet(input, List.of("cities"), true, (type, str) -> parseCitiesSingle(store, str));
+                Set<Integer> cityIds = new IntOpenHashSet();
+                for (Set<DBCity> set : result) {
+                    for (DBCity city : set) {
+                        cityIds.add(city.id);
                     }
-                    if (SpreadSheet.isSheet(input)) {
-                        Set<Set<DBCity>> result = SpreadSheet.parseSheet(input, List.of("cities"), true, (type, str) -> parseCitiesSingle(store, str));
-                        Set<Integer> cityIds = new IntOpenHashSet();
-                        for (Set<DBCity> set : result) {
-                            for (DBCity city : set) {
-                                cityIds.add(city.id);
-                            }
-                        }
-                        return f -> cityIds.contains(f.id);
-                    }
-                    NationPlaceholders nationPlaceholders = (NationPlaceholders) get(DBNation.class);
-                    Predicate<DBNation> filter = nationPlaceholders.parseSingleFilter(store, input);
-                    return f -> {
-                        DBNation nation = DBNation.getById(f.nation_id);
-                        if (nation == null) return false;
-                        return filter.test(nation);
-                    };
-                }) {
+                }
+                return f -> cityIds.contains(f.id);
+            }
+            NationPlaceholders nationPlaceholders = (NationPlaceholders) get(DBNation.class);
+            Predicate<DBNation> filter = nationPlaceholders.parseSingleFilter(store, input);
+            return f -> {
+                DBNation nation = DBNation.getById(f.nation_id);
+                if (nation == null) return false;
+                return filter.test(nation);
+            };
+        }, new Function<DBCity, String>() {
+            @Override
+            public String apply(DBCity dbCity) {
+                return dbCity.id + "";
+            }
+        }) {
             @NoFormat
             @Command(desc = "Add an alias for a selection of cities")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -1047,40 +1078,45 @@ public class PlaceholdersMap {
                     return getTaxes(store, null, null, ids);
 
                 }, (ThrowingBiFunction<ValueStore, String, Predicate<BankDB.TaxDeposit>>) (store, input) -> {
-                    if (input.equalsIgnoreCase("*")) return f -> true;
-                    if (SpreadSheet.isSheet(input)) {
-                        Set<Integer> ids = new IntOpenHashSet();
-                        Set<Integer> taxIds = new IntOpenHashSet();
-                        Set<Integer> nations = new IntOpenHashSet();
-                        SpreadSheet.parseSheet(input, List.of("id", "tax_id", "nation"), true, (type, str) -> {
-                            switch (type) {
-                                case 0 -> ids.add(Integer.parseInt(str));
-                                case 1 -> taxIds.add(Integer.parseInt(str));
-                                case 2 -> nations.add(DiscordUtil.parseNationId(str));
-                            }
-                            return null;
-                        });
-                        return f -> {
-                            if (ids.contains(f.index)) return true;
-                            if (taxIds.contains(f.tax_id)) return true;
-                            return nations.contains(f.nationId);
-                        };
+            if (input.equalsIgnoreCase("*")) return f -> true;
+            if (SpreadSheet.isSheet(input)) {
+                Set<Integer> ids = new IntOpenHashSet();
+                Set<Integer> taxIds = new IntOpenHashSet();
+                Set<Integer> nations = new IntOpenHashSet();
+                SpreadSheet.parseSheet(input, List.of("id", "tax_id", "nation"), true, (type, str) -> {
+                    switch (type) {
+                        case 0 -> ids.add(Integer.parseInt(str));
+                        case 1 -> taxIds.add(Integer.parseInt(str));
+                        case 2 -> nations.add(DiscordUtil.parseNationId(str));
                     }
-                    if (MathMan.isInteger(input)) {
-                        int id = Integer.parseInt(input);
-                        return f -> f.tax_id == id;
-                    }
-                    if (input.contains("tax_id=")) {
-                        int id = Integer.parseInt(input.substring(input.indexOf('=') + 1));
-                        return f -> f.tax_id == id;
-                    }
-                    NationPlaceholders nationPlaceholders = (NationPlaceholders) get(DBNation.class);
-                    Predicate<DBNation> nationFilter = nationPlaceholders.parseSingleFilter(store, input);
-                    return f -> {
-                        DBNation nation = DBNation.getOrCreate(f.nationId);
-                        return nationFilter.test(nation);
-                    };
-                }) {
+                    return null;
+                });
+                return f -> {
+                    if (ids.contains(f.index)) return true;
+                    if (taxIds.contains(f.tax_id)) return true;
+                    return nations.contains(f.nationId);
+                };
+            }
+            if (MathMan.isInteger(input)) {
+                int id = Integer.parseInt(input);
+                return f -> f.tax_id == id;
+            }
+            if (input.contains("tax_id=")) {
+                int id = Integer.parseInt(input.substring(input.indexOf('=') + 1));
+                return f -> f.tax_id == id;
+            }
+            NationPlaceholders nationPlaceholders = (NationPlaceholders) get(DBNation.class);
+            Predicate<DBNation> nationFilter = nationPlaceholders.parseSingleFilter(store, input);
+            return f -> {
+                DBNation nation = DBNation.getOrCreate(f.nationId);
+                return nationFilter.test(nation);
+            };
+        }, new Function<BankDB.TaxDeposit, String>() {
+            @Override
+            public String apply(BankDB.TaxDeposit taxDeposit) {
+                return taxDeposit.toString();
+            }
+        }) {
             @NoFormat
             @Command(desc = "Add columns to a Bank TaxDeposit sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -1132,7 +1168,7 @@ public class PlaceholdersMap {
     }
 
     public Placeholders<IAttack> createAttacks() {
-        return new SimplePlaceholders<IAttack>(IAttack.class,  store, validators, permisser,
+        return new SimplePlaceholders<IAttack>(IAttack.class, store, validators, permisser,
                 "TODO CM REF",
                 (ThrowingBiFunction<ValueStore, String, Set<IAttack>>) (store, input) -> {
                     input = getSelection(store, IAttack.class, input);
@@ -1159,49 +1195,54 @@ public class PlaceholdersMap {
                     }
                     throw new UnsupportedOperationException("Filters must begin with `#`. Please use the attack selector argument to specify participants.");
                 }, (ThrowingBiFunction<ValueStore, String, Predicate<IAttack>>) (store, input) -> {
-                    if (input.equalsIgnoreCase("*")) return f -> true;
-                    if (SpreadSheet.isSheet(input)) {
-                        Set<Integer> attackIds = new ObjectOpenHashSet<>();
-                        Set<Integer> warIds = new ObjectOpenHashSet<>();
-                        SpreadSheet.parseSheet(input, List.of("id", "war_id"), true, (type, str) -> {
-                            switch (type) {
-                                case 0 -> attackIds.add(Integer.parseInt(str));
-                                case 1 -> warIds.add(Integer.parseInt(str));
-                            }
-                            return null;
-                        });
-                        if (!attackIds.isEmpty() || !warIds.isEmpty()) {
-                            return f -> {
-                                if (attackIds.contains(f.getWar_attack_id())) return true;
-                                return warIds.contains(f.getWar_id());
-                            };
-                        }
+            if (input.equalsIgnoreCase("*")) return f -> true;
+            if (SpreadSheet.isSheet(input)) {
+                Set<Integer> attackIds = new ObjectOpenHashSet<>();
+                Set<Integer> warIds = new ObjectOpenHashSet<>();
+                SpreadSheet.parseSheet(input, List.of("id", "war_id"), true, (type, str) -> {
+                    switch (type) {
+                        case 0 -> attackIds.add(Integer.parseInt(str));
+                        case 1 -> warIds.add(Integer.parseInt(str));
                     }
-                    if (input.contains("/war/id=")) {
-                        int id = Integer.parseInt(input.substring(input.indexOf('=') + 1));
-                        return f -> f.getWar_id() == id;
-                    }
-                    if (MathMan.isInteger(input)) {
-                        int id = Integer.parseInt(input);
-                        return f -> f.getWar_attack_id() == id;
-                    }
-                    Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
-                    User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
-                    DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
-                    Set<NationOrAlliance> allowed = PWBindings.nationOrAlliance(null, guild, input, true, author, me);
+                    return null;
+                });
+                if (!attackIds.isEmpty() || !warIds.isEmpty()) {
                     return f -> {
-                        DBWar war = f.getWar();
-                        DBNation attacker = DBNation.getOrCreate(f.getAttacker_id());
-                        DBNation defender = DBNation.getOrCreate(f.getDefender_id());
-                        if (allowed.contains(attacker) || allowed.contains(defender)) return true;
-                        if (war == null) return false;
-                        DBAlliance attackerAA = war.getAttacker_aa() != 0 ? DBAlliance.getOrCreate(war.getAttacker_aa()) : null;
-                        if (attackerAA != null && allowed.contains(attackerAA)) return true;
-                        DBAlliance defenderAA = war.getDefender_aa() != 0 ? DBAlliance.getOrCreate(war.getDefender_aa()) : null;
-                        if (defenderAA != null && allowed.contains(defenderAA)) return true;
-                        return false;
+                        if (attackIds.contains(f.getWar_attack_id())) return true;
+                        return warIds.contains(f.getWar_id());
                     };
                 }
+            }
+            if (input.contains("/war/id=")) {
+                int id = Integer.parseInt(input.substring(input.indexOf('=') + 1));
+                return f -> f.getWar_id() == id;
+            }
+            if (MathMan.isInteger(input)) {
+                int id = Integer.parseInt(input);
+                return f -> f.getWar_attack_id() == id;
+            }
+            Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
+            User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
+            DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
+            Set<NationOrAlliance> allowed = PWBindings.nationOrAlliance(null, guild, input, true, author, me);
+            return f -> {
+                DBWar war = f.getWar();
+                DBNation attacker = DBNation.getOrCreate(f.getAttacker_id());
+                DBNation defender = DBNation.getOrCreate(f.getDefender_id());
+                if (allowed.contains(attacker) || allowed.contains(defender)) return true;
+                if (war == null) return false;
+                DBAlliance attackerAA = war.getAttacker_aa() != 0 ? DBAlliance.getOrCreate(war.getAttacker_aa()) : null;
+                if (attackerAA != null && allowed.contains(attackerAA)) return true;
+                DBAlliance defenderAA = war.getDefender_aa() != 0 ? DBAlliance.getOrCreate(war.getDefender_aa()) : null;
+                if (defenderAA != null && allowed.contains(defenderAA)) return true;
+                return false;
+            };
+        }, new Function<IAttack, String>() {
+            @Override
+            public String apply(IAttack iAttack) {
+                return iAttack.getWar_attack_id() + "";
+            }
+        }
         ) {
             @NoFormat
             @Command(desc = "Add columns to an Attack sheet")
@@ -1240,7 +1281,7 @@ public class PlaceholdersMap {
     }
 
     public Placeholders<DBWar> createWars() {
-        return new SimplePlaceholders<DBWar>(DBWar.class,  store, validators, permisser,
+        return new SimplePlaceholders<DBWar>(DBWar.class, store, validators, permisser,
                 "TODO CM REF",
                 (ThrowingBiFunction<ValueStore, String, Set<DBWar>>) (store, input) -> {
                     input = getSelection(store, DBWar.class, input);
@@ -1248,7 +1289,7 @@ public class PlaceholdersMap {
                         Set<Integer> warIds = new ObjectOpenHashSet<>();
                         SpreadSheet.parseSheet(input, List.of("id", "war_id"), true, (type, str) -> {
                             switch (type) {
-                                case 0,1 -> warIds.add(Integer.parseInt(str));
+                                case 0, 1 -> warIds.add(Integer.parseInt(str));
                             }
                             return null;
                         });
@@ -1269,7 +1310,7 @@ public class PlaceholdersMap {
                 Set<Integer> warIds = new ObjectOpenHashSet<>();
                 SpreadSheet.parseSheet(input, List.of("id", "war_id"), true, (type, str) -> {
                     switch (type) {
-                        case 0,1 -> warIds.add(Integer.parseInt(str));
+                        case 0, 1 -> warIds.add(Integer.parseInt(str));
                     }
                     return null;
                 });
@@ -1299,8 +1340,12 @@ public class PlaceholdersMap {
                 if (defenderAA != null && allowed.contains(defenderAA)) return true;
                 return false;
             };
-        }
-        ) {
+        }, new Function<DBWar, String>() {
+            @Override
+            public String apply(DBWar dbWar) {
+                return dbWar.getWarId() + "";
+            }
+        }) {
             @NoFormat
             @Command(desc = "Add columns to a War sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -1338,7 +1383,7 @@ public class PlaceholdersMap {
     }
 
     public Placeholders<TaxBracket> createBrackets() {
-        return new SimplePlaceholders<TaxBracket>(TaxBracket.class,  store, validators, permisser,
+        return new SimplePlaceholders<TaxBracket>(TaxBracket.class, store, validators, permisser,
                 "TODO CM REF",
                 (ThrowingBiFunction<ValueStore, String, Set<TaxBracket>>) (store2, input) -> {
                     input = getSelection(store, TaxBracket.class, input);
@@ -1364,26 +1409,31 @@ public class PlaceholdersMap {
                     }
                     return bracketSingle(store2, db, input);
                 }, (ThrowingBiFunction<ValueStore, String, Predicate<TaxBracket>>) (store, input) -> {
-                    if (input.equalsIgnoreCase("*")) {
-                        return f -> true;
-                    }
-                    if (SpreadSheet.isSheet(input)) {
-                        Set<Integer> ids = SpreadSheet.parseSheet(input, List.of("id"), true, (type, str) -> Integer.parseInt(str));
-                        return f -> ids.contains(f.getId());
-                    }
-                    if (input.contains("tx_id=") || MathMan.isInteger(input)) {
-                        int id = PnwUtil.parseTaxId(input);
-                        return f -> f.getId() == id;
-                    }
-                    AlliancePlaceholders aaPlaceholders = (AlliancePlaceholders) get(DBAlliance.class);
-                    Predicate<DBAlliance> filter = aaPlaceholders.parseSingleFilter(store, input);
-                    return f -> {
-                        if (f.getId() == 0) return false;
-                        DBAlliance aa = f.getAlliance();
-                        if (aa == null) return false;
-                        return filter.test(aa);
-                    };
-                }
+            if (input.equalsIgnoreCase("*")) {
+                return f -> true;
+            }
+            if (SpreadSheet.isSheet(input)) {
+                Set<Integer> ids = SpreadSheet.parseSheet(input, List.of("id"), true, (type, str) -> Integer.parseInt(str));
+                return f -> ids.contains(f.getId());
+            }
+            if (input.contains("tx_id=") || MathMan.isInteger(input)) {
+                int id = PnwUtil.parseTaxId(input);
+                return f -> f.getId() == id;
+            }
+            AlliancePlaceholders aaPlaceholders = (AlliancePlaceholders) get(DBAlliance.class);
+            Predicate<DBAlliance> filter = aaPlaceholders.parseSingleFilter(store, input);
+            return f -> {
+                if (f.getId() == 0) return false;
+                DBAlliance aa = f.getAlliance();
+                if (aa == null) return false;
+                return filter.test(aa);
+            };
+        }, new Function<TaxBracket, String>() {
+            @Override
+            public String apply(TaxBracket taxBracket) {
+                return taxBracket.toString();
+            }
+        }
         ) {
             @NoFormat
             @Command(desc = "Add an alias for a selection of tax brackets")
@@ -1429,7 +1479,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<DBTrade> createTrades() {
-        return new SimplePlaceholders<DBTrade>(DBTrade.class,  store, validators, permisser,
+        return new SimplePlaceholders<DBTrade>(DBTrade.class, store, validators, permisser,
                 "TODO CM REF",
                 (ThrowingBiFunction<ValueStore, String, Set<DBTrade>>) (store, input) -> {
                     input = getSelection(store, DBTreasure.class, input);
@@ -1446,27 +1496,32 @@ public class PlaceholdersMap {
                     }
                     throw new IllegalArgumentException("Only trade ids are supported, not `" + input + "`");
                 }, (ThrowingBiFunction<ValueStore, String, Predicate<DBTrade>>) (store, input) -> {
-                    if (input.equalsIgnoreCase("*")) {
-                        return f -> true;
-                    }
-                    if (SpreadSheet.isSheet(input)) {
-                        Set<Integer> ids = SpreadSheet.parseSheet(input, List.of("id"), true, (type, str) -> Integer.parseInt(str));
-                        return f -> ids.contains(f.getTradeId());
-                    }
-                    if (MathMan.isInteger(input)) {
-                        int id = Integer.parseInt(input);
-                        return f -> f.getTradeId() == id;
-                    }
-                    NationPlaceholders nationPlaceholders = (NationPlaceholders) get(DBNation.class);
-                    Predicate<DBNation> filter = nationPlaceholders.parseSingleFilter(store, input);
-                    return f -> {
-                        DBNation sender = DBNation.getById(f.getSeller());
-                        DBNation receiver = DBNation.getById(f.getBuyer());
-                        if (sender != null && filter.test(sender)) return true;
-                        if (receiver != null && filter.test(receiver)) return true;
-                        return false;
-                    };
-                }
+            if (input.equalsIgnoreCase("*")) {
+                return f -> true;
+            }
+            if (SpreadSheet.isSheet(input)) {
+                Set<Integer> ids = SpreadSheet.parseSheet(input, List.of("id"), true, (type, str) -> Integer.parseInt(str));
+                return f -> ids.contains(f.getTradeId());
+            }
+            if (MathMan.isInteger(input)) {
+                int id = Integer.parseInt(input);
+                return f -> f.getTradeId() == id;
+            }
+            NationPlaceholders nationPlaceholders = (NationPlaceholders) get(DBNation.class);
+            Predicate<DBNation> filter = nationPlaceholders.parseSingleFilter(store, input);
+            return f -> {
+                DBNation sender = DBNation.getById(f.getSeller());
+                DBNation receiver = DBNation.getById(f.getBuyer());
+                if (sender != null && filter.test(sender)) return true;
+                if (receiver != null && filter.test(receiver)) return true;
+                return false;
+            };
+        }, new Function<DBTrade, String>() {
+            @Override
+            public String apply(DBTrade dbTrade) {
+                return dbTrade.getTradeId() + "";
+            }
+        }
         ){
             @NoFormat
             @Command(desc = "Add columns to a Trade sheet")
@@ -1505,7 +1560,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<Transaction2> createTransactions() {
-        return new SimplePlaceholders<Transaction2>(Transaction2.class,  store, validators, permisser,
+        return new SimplePlaceholders<Transaction2>(Transaction2.class, store, validators, permisser,
                 "TODO CM REF",
                 (ThrowingBiFunction<ValueStore, String, Set<Transaction2>>) (store, input) -> {
                     input = getSelection(store, Transaction2.class, input);
@@ -1528,23 +1583,28 @@ public class PlaceholdersMap {
                     }
                     throw new IllegalArgumentException("Invalid transaction id: " + input);
                 }, (ThrowingBiFunction<ValueStore, String, Predicate<Transaction2>>) (store, input) -> {
-                    GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
-                    User user = (User) store.getProvided(Key.of(User.class, Me.class), false);
-                    DBNation nation = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
+            GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
+            User user = (User) store.getProvided(Key.of(User.class, Me.class), false);
+            DBNation nation = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
 
-                    Predicate<Transaction2> filter = getAllowed(nation, user, db);
+            Predicate<Transaction2> filter = getAllowed(nation, user, db);
 
-                    if (input.equalsIgnoreCase("*")) return filter;
-                    if (SpreadSheet.isSheet(input)) {
-                        Set<Integer> ids = SpreadSheet.parseSheet(input, List.of("id"), true, (type, str) -> Integer.parseInt(str));
-                        return filter.and(f -> ids.contains(f.tx_id));
-                    }
-                    if (MathMan.isInteger(input)) {
-                        int id = Integer.parseInt(input);
-                        return filter.and(f -> f.tx_id == id);
-                    }
-                    throw new IllegalArgumentException("Invalid transaction id: " + input);
-                }) {
+            if (input.equalsIgnoreCase("*")) return filter;
+            if (SpreadSheet.isSheet(input)) {
+                Set<Integer> ids = SpreadSheet.parseSheet(input, List.of("id"), true, (type, str) -> Integer.parseInt(str));
+                return filter.and(f -> ids.contains(f.tx_id));
+            }
+            if (MathMan.isInteger(input)) {
+                int id = Integer.parseInt(input);
+                return filter.and(f -> f.tx_id == id);
+            }
+            throw new IllegalArgumentException("Invalid transaction id: " + input);
+        }, new Function<Transaction2, String>() {
+            @Override
+            public String apply(Transaction2 transaction2) {
+                return transaction2.toString();
+            }
+        }) {
 
             @Override
             public Set<Transaction2> deserializeSelection(ValueStore store, String input) {
@@ -1658,7 +1718,7 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<DBBounty> createBounties() {
-        return new SimplePlaceholders<DBBounty>(DBBounty.class,  store, validators, permisser,
+        return new SimplePlaceholders<DBBounty>(DBBounty.class, store, validators, permisser,
                 "TODO CM REF",
                 (ThrowingBiFunction<ValueStore, String, Set<DBBounty>>) (store, input) -> {
                     input = getSelection(store, DBBounty.class, input);
@@ -1687,24 +1747,29 @@ public class PlaceholdersMap {
                     }
                     return bountySet;
                 }, (ThrowingBiFunction<ValueStore, String, Predicate<DBBounty>>) (store, input) -> {
-                    if (input.equalsIgnoreCase("*")) return f -> true;
-                    if (SpreadSheet.isSheet(input)) {
-                        Set<Integer> sheet = SpreadSheet.parseSheet(input, List.of("bounty"), true,
-                                (type, str) -> PrimitiveBindings.Integer(str));
-                        return f -> sheet.contains(f.getId());
-                    }
-                    if (MathMan.isInteger(input)) {
-                        int id = Integer.parseInt(input);
-                        return f -> f.getId() == id;
-                    }
-                    NationPlaceholders natPlac = (NationPlaceholders) get(DBNation.class);
-                    Predicate<DBNation> filter = natPlac.parseSingleFilter(store, input);
-                    return f -> {
-                        DBNation nation = DBNation.getById(f.getNationId());
-                        if (nation == null) return false;
-                        return filter.test(nation);
-                    };
-                }) {
+            if (input.equalsIgnoreCase("*")) return f -> true;
+            if (SpreadSheet.isSheet(input)) {
+                Set<Integer> sheet = SpreadSheet.parseSheet(input, List.of("bounty"), true,
+                        (type, str) -> PrimitiveBindings.Integer(str));
+                return f -> sheet.contains(f.getId());
+            }
+            if (MathMan.isInteger(input)) {
+                int id = Integer.parseInt(input);
+                return f -> f.getId() == id;
+            }
+            NationPlaceholders natPlac = (NationPlaceholders) get(DBNation.class);
+            Predicate<DBNation> filter = natPlac.parseSingleFilter(store, input);
+            return f -> {
+                DBNation nation = DBNation.getById(f.getNationId());
+                if (nation == null) return false;
+                return filter.test(nation);
+            };
+        }, new Function<DBBounty, String>() {
+            @Override
+            public String apply(DBBounty dbBounty) {
+                return dbBounty.toString() + "";
+            }
+        }) {
             @NoFormat
             @Command(desc = "Add an alias for a selection of bounties")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -1749,33 +1814,35 @@ public class PlaceholdersMap {
     }
 
     private Placeholders<Treaty> createTreaty() {
-        return new SimplePlaceholders<Treaty>(Treaty.class,  store, validators, permisser,
-        "TODO CM REF",
-        (ThrowingBiFunction<ValueStore, String, Set<Treaty>>) (store, input) -> {
-            input = getSelection(store, Treaty.class, input);
-            if (input.equalsIgnoreCase("*")) {
-                return Locutus.imp().getNationDB().getTreaties();
-            }
-            if (SpreadSheet.isSheet(input)) {
-                return SpreadSheet.parseSheet(input, List.of("treaty"), true, (type, str) -> PWBindings.treaty(str));
-            }
-            Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
-            GuildDB db = guild == null ? null : Locutus.imp().getGuildDB(guild);
-            List<String> split = StringMan.split(input, (s, index) -> switch (s.charAt(index)) {
-                case ':', '>', '<' -> 1;
-                default -> null;
-            }, 2);
-            if (split.size() != 2) {
-                throw new IllegalArgumentException("Invalid treaty format: `" + input + "`");
-            }
-            Set<Integer> aa1 = DiscordUtil.parseAllianceIds(guild, split.get(0), true);
-            Set<Integer> aa2 = DiscordUtil.parseAllianceIds(guild, split.get(1), true);
-            if (aa1 == null) throw new IllegalArgumentException("Invalid alliance or coalition: `" + split.get(0) + "`");
-            if (aa2 == null) throw new IllegalArgumentException("Invalid alliance or coalition: `" + split.get(1) + "`");
-            return Locutus.imp().getNationDB().getTreatiesMatching(f -> {
-                return (aa1.contains(f.getFromId())) && (aa2.contains(f.getToId())) || (aa1.contains(f.getToId())) && (aa2.contains(f.getFromId()));
-            });
-        }, (ThrowingBiFunction<ValueStore, String, Predicate<Treaty>>) (store, input) -> {
+        return new SimplePlaceholders<Treaty>(Treaty.class, store, validators, permisser,
+                "TODO CM REF",
+                (ThrowingBiFunction<ValueStore, String, Set<Treaty>>) (store, input) -> {
+                    input = getSelection(store, Treaty.class, input);
+                    if (input.equalsIgnoreCase("*")) {
+                        return Locutus.imp().getNationDB().getTreaties();
+                    }
+                    if (SpreadSheet.isSheet(input)) {
+                        return SpreadSheet.parseSheet(input, List.of("treaty"), true, (type, str) -> PWBindings.treaty(str));
+                    }
+                    Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
+                    GuildDB db = guild == null ? null : Locutus.imp().getGuildDB(guild);
+                    List<String> split = StringMan.split(input, (s, index) -> switch (s.charAt(index)) {
+                        case ':', '>', '<' -> 1;
+                        default -> null;
+                    }, 2);
+                    if (split.size() != 2) {
+                        throw new IllegalArgumentException("Invalid treaty format: `" + input + "`");
+                    }
+                    Set<Integer> aa1 = DiscordUtil.parseAllianceIds(guild, split.get(0), true);
+                    Set<Integer> aa2 = DiscordUtil.parseAllianceIds(guild, split.get(1), true);
+                    if (aa1 == null)
+                        throw new IllegalArgumentException("Invalid alliance or coalition: `" + split.get(0) + "`");
+                    if (aa2 == null)
+                        throw new IllegalArgumentException("Invalid alliance or coalition: `" + split.get(1) + "`");
+                    return Locutus.imp().getNationDB().getTreatiesMatching(f -> {
+                        return (aa1.contains(f.getFromId())) && (aa2.contains(f.getToId())) || (aa1.contains(f.getToId())) && (aa2.contains(f.getFromId()));
+                    });
+                }, (ThrowingBiFunction<ValueStore, String, Predicate<Treaty>>) (store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (SpreadSheet.isSheet(input)) {
                 Set<Treaty> sheet = SpreadSheet.parseSheet(input, List.of("treaty"), true,
@@ -1826,6 +1893,11 @@ public class PlaceholdersMap {
             };
             return f -> (contains1.test(f.getFromId()) && contains2.test(f.getToId()))
                     || (contains1.test(f.getToId()) && contains2.test(f.getFromId()));
+        }, new Function<Treaty, String>() {
+            @Override
+            public String apply(Treaty treaty) {
+                return treaty.toString();
+            }
         }) {
             @NoFormat
             @Command(desc = "Add an alias for a selection of treaties")

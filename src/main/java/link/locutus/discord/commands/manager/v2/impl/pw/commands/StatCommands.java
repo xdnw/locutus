@@ -768,6 +768,7 @@ public class StatCommands {
                                @Switch("a") boolean includeApplicants,
                                @Arg("Graph the total spies instead of average per nation")
                                @Switch("t") boolean total,
+                               @Switch("b") boolean barGraph,
                                @Switch("j") boolean attachJson) throws IOException {
         Set<DBNation> allNations = new HashSet<>();
         coalition1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 2880));
@@ -809,6 +810,7 @@ public class StatCommands {
         for (int cities = min; cities <= max; cities++) {
             table.add(cities, (Void) null);
         }
+        if (barGraph) table.setBar(true);
         table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, attachJson);
         return null;
     }
@@ -1211,7 +1213,11 @@ public class StatCommands {
     }
 
     @Command(desc = "Generate a bar char comparing the nation at each city count (tiering) between two coalitions")
-    public String cityTierGraph(@Me GuildDB db, @Me IMessageIO channel, NationList coalition1, NationList coalition2, @Switch("i") boolean includeInactives, @Switch("a") boolean includeApplicants, @Switch("j") boolean attachJson) throws IOException {
+    public String cityTierGraph(@Me GuildDB db, @Me IMessageIO channel, NationList coalition1, NationList coalition2,
+                                @Switch("i") boolean includeInactives,
+                                @Switch("b") boolean barGraph,
+                                @Switch("a") boolean includeApplicants,
+                                @Switch("j") boolean attachJson) throws IOException {
         Set<DBNation> allNations = new HashSet<>();
         coalition1.getNations().removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
         coalition2.getNations().removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
@@ -1236,6 +1242,7 @@ public class StatCommands {
         for (int cities = min; cities <= max; cities++) {
             table.add(cities, (Void) null);
         }
+        if (barGraph) table.setBar(true);
         table.write(channel, TimeFormat.DECIMAL_ROUNDED, TableNumberFormat.SI_UNIT, attachJson);
         return null;
     }

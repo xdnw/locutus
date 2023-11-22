@@ -466,10 +466,14 @@ public class SpreadSheet {
     }
 
     public String getURL() {
+        return getURL(true);
+    }
+
+    public String getURL(boolean includeTab) {
         if (service == null) {
             return "sheet:" + spreadsheetId;
         }
-        return getURL(false, false) + (defaultTabId != null ? "#    gid=" + defaultTabId : "");
+        return getURL(false, false) + (includeTab && defaultTabId != null ? "#    gid=" + defaultTabId : "");
     }
 
     public IMessageBuilder attach(IMessageBuilder msg, String name, String append) {
