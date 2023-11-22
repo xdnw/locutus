@@ -704,7 +704,8 @@ public class AdminCommands {
 
         List<String> errors = new ArrayList<>();
         Map<Member, Set<Role>> existingRoles = new LinkedHashMap<>();
-        Map<Member, Set<Role>> rolesGranted = new LinkedHashMap<>();
+        Map<Member, Set<Role>> rolesAllowed = new LinkedHashMap<>();
+        Map<Member, Set<Role>> rolesAdded = new LinkedHashMap<>();
         Map<Member, Set<Role>> rolesRemoved = new LinkedHashMap<>();
 
         Set<DBNation> nationsInSheet = new LinkedHashSet<>();
@@ -778,10 +779,11 @@ public class AdminCommands {
                     roleName = roleName.trim();
                     try {
                         Role role = DiscordBindings.role(guild, roleName);
-                        if (existingRoles.computeIfAbsent(member, f -> new LinkedHashSet<>()).contains(role)) {
+                        rolesAllowed.computeIfAbsent(member, f -> new LinkedHashSet<>()).add(role);
+                        if (existingRoles.computeIfAbsent(member, f -> new HashSet<>(f.getRoles())).contains(role)) {
                             continue;
                         }
-                        rolesGranted.computeIfAbsent(member, f -> new LinkedHashSet<>()).add(role);
+                        rolesAdded.computeIfAbsent(member, f -> new LinkedHashSet<>()).add(role);
                     } catch (IllegalArgumentException e) {
                         errors.add("[Row:" + (i + 2) + ",Column:" + columnName + "] `" + input + "` -> `" + roleName + "`: " + e.getMessage());
                         continue;
@@ -793,13 +795,12 @@ public class AdminCommands {
         if (removeRoles != null && !removeRoles.isEmpty()) {
             for (Member member : guild.getMembers()) {
                 if (member.getUser().isBot()) continue;
-                Set<Role> granted = rolesGranted.getOrDefault(member, Collections.emptySet());
+                Set<Role> granted = rolesAllowed.getOrDefault(member, Collections.emptySet());
                 for (Role role : removeRoles) {
                     if (!granted.contains(role)) {
-                        if (!existingRoles.computeIfAbsent(member, f -> new LinkedHashSet<>()).contains(role)) {
-                            continue;
+                        if (existingRoles.computeIfAbsent(member, f -> new HashSet<>(f.getRoles())).contains(role)) {
+                            rolesRemoved.computeIfAbsent(member, f -> new LinkedHashSet<>()).add(role);
                         }
-                        rolesRemoved.computeIfAbsent(member, f -> new LinkedHashSet<>()).add(role);
                     }
                 }
             }
@@ -837,13 +838,13 @@ public class AdminCommands {
             body.append("**removeRoles**: `").append(removeRoles.stream().map(Role::getName).collect(Collectors.joining(","))).append("`\n");
         }
 
-        if (rolesRemoved.isEmpty() && rolesGranted.isEmpty()) {
+        if (rolesRemoved.isEmpty() && rolesAdded.isEmpty()) {
             msg.append("\n**Result**: No roles to add or remove").send();
             return null;
         }
 
         AutoRoleInfo info = new AutoRoleInfo(db, body.toString());
-        for (Map.Entry<Member, Set<Role>> entry : rolesGranted.entrySet()) {
+        for (Map.Entry<Member, Set<Role>> entry : rolesAdded.entrySet()) {
             Member member = entry.getKey();
             for (Role role : entry.getValue()) {
                 info.addRoleToMember(member, role);
