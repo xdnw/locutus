@@ -1724,7 +1724,7 @@ public class WarDB extends DBMainV2 {
                 if (previous != null && previous.isActive() && (newWar.getStatus() == WarStatus.DEFENDER_VICTORY || newWar.getStatus() == WarStatus.ATTACKER_VICTORY)) {
                     boolean isAttacker = newWar.getStatus() == WarStatus.ATTACKER_VICTORY;
                     DBNation defender = newWar.getNation(!isAttacker);
-                    if (defender.getColor() != NationColor.BEIGE) {
+                    if (defender != null && defender.getColor() != NationColor.BEIGE) {
                         DBNation copyOriginal = new DBNation(defender);
                         defender.setColor(NationColor.BEIGE);
                         defender.setBeigeTimer(TimeUtil.getTurn() + 24);
