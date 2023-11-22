@@ -697,7 +697,7 @@ public class StatCommands {
                                     @Arg("Use the score of coalition 1 nations at specific average infrastructure levels") @Switch("c") Double col1Infra,
                                     @Arg("Use the score of coalition 2 nations at specific average infrastructure levels") @Switch("d") Double col2Infra,
                                     @Switch("j") boolean attachJson,
-                                    @Switch("c") boolean attachCsv) throws IOException {
+                                    @Switch("v") boolean attachCsv) throws IOException {
         Set<DBNation> allNations = new HashSet<>();
         coalition1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
         coalition2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
