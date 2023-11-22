@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities.sheet;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CustomSheet;
 import link.locutus.discord.db.entities.SelectionAlias;
@@ -135,7 +136,7 @@ public class CustomSheetManager {
     public Set<String> getSelectionAliasNames() {
         Set<String> names = new LinkedHashSet<>();
         for (Map.Entry<Class, Map<String, String>> entry : getSelectionAliases().entrySet()) {
-            String prefix = entry.getKey().getSimpleName().replace("DB", "") + ":";
+            String prefix = PlaceholdersMap.getClassName(entry.getKey()) + ":";
             for (String name : entry.getValue().keySet()) {
                 names.add(prefix + name);
             }
@@ -149,7 +150,7 @@ public class CustomSheetManager {
             String[] split = name.split(":", 2);
             name = split[1];
             String prefix = split[0];
-            typePrefix = f -> f.getSimpleName().replace("DB", "").equalsIgnoreCase(prefix);
+            typePrefix = f -> PlaceholdersMap.getClassName(f).equalsIgnoreCase(prefix);
         }
         for (Map.Entry<Class, Map<String, String>> entry : getSelectionAliases().entrySet()) {
             Map<String, String> selections = entry.getValue();

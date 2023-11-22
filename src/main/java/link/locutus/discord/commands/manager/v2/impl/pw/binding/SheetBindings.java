@@ -1,8 +1,11 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
+import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.PlaceholderType;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CustomSheet;
 import link.locutus.discord.db.entities.SelectionAlias;
@@ -21,6 +24,18 @@ import java.util.Set;
 
 public class SheetBindings extends BindingHelper {
 
+    @PlaceholderType
+    @Binding(value = "An entity type for a placeholder\n" +
+            "Used for sheets or formatted messages", examples = {"nation", "city", "alliance", "war"})
+    public Class type(String input) {
+        Set<Class<?>> types = Locutus.cmd().getV2().getPlaceholders().getTypes();
+        for (Class<?> type : types) {
+            if (PlaceholdersMap.getClassName(type).equalsIgnoreCase(input)) {
+                return type;
+            }
+        }
+        throw new IllegalArgumentException("Invalid type: `" + input + "`. Options: " + StringMan.getString(types.stream().map(PlaceholdersMap::getClassName)));
+    }
 
     @Binding
     public CustomSheetManager manager(@Me GuildDB db) {

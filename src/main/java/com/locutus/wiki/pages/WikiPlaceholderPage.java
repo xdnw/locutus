@@ -15,8 +15,7 @@ public class WikiPlaceholderPage extends BotWikiGen {
     private final Placeholders placeholders;
 
     public WikiPlaceholderPage(CommandManager2 manager, PlaceholdersMap placeholderMap, Class type) {
-        super(manager, (type.getSimpleName().replaceAll("DB", "") + "_placeholders").toLowerCase(Locale.ROOT));
-        System.out.println(type.getSimpleName().replaceAll("DB", ""));
+        super(manager, (PlaceholdersMap.getClassName(type) + "_placeholders").toLowerCase(Locale.ROOT));
         this.placeholderMap = placeholderMap;
         this.type = type;
         this.placeholders = this.placeholderMap.get(type);

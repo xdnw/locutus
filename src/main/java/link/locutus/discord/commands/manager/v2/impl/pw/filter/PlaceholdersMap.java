@@ -81,6 +81,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -99,6 +100,10 @@ public class PlaceholdersMap {
 
     public Set<Class<?>> getTypes() {
         return placeholders.keySet();
+    }
+
+    public static String getClassName(Class clazz) {
+        return clazz.getSimpleName().replace("DB", "").replace("Wrapper", "").toLowerCase(Locale.ROOT);
     }
 
     public PlaceholdersMap(ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
