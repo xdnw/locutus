@@ -167,38 +167,38 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
-        for (Class<?> type : placeholders.getTypes()) {
-            Placeholders<?> ph = placeholders.get(type);
-
-            Method methodAlias = null;
-            Method methodColumns = null;
-            for (Method method : ph.getClass().getDeclaredMethods()) {
-                if (method.getName().equals("addSelectionAlias")) {
-                    methodAlias = method;
-                } else if (method.getName().equals("addColumns")) {
-                    methodColumns = method;
-                }
-            }
-            if (methodAlias == null) {
-                throw new IllegalArgumentException("Missing method `addSelectionAlias` for " + ph.getType().getSimpleName());
-            }
-            if (methodColumns == null) {
-                throw new IllegalArgumentException("Missing method `addColumns` for " + ph.getType().getSimpleName());
-            }
-//            selection_alias add_entity nations
-//            sheet_template add_entity nations
-            String typeName = ph.getType().getSimpleName().replaceAll("DB", "").toLowerCase(Locale.ROOT);
-            System.out.println("Registering " + typeName);
-            this.commands.registerMethod(ph, List.of("selection_alias", "add"), methodAlias.getName(), typeName);
-
-            for (Method method : ph.getClass().getDeclaredMethods()) {
-                Command cmd = method.getAnnotation(Command.class);
-                if (cmd != null) {
-                    String name = cmd.aliases().length != 0 ? cmd.aliases()[0] : method.getName();
-                    this.commands.registerMethod(ph, List.of("sheets_ia", "custom"), method.getName(), name);
-                }
-            }
-        }
+//        for (Class<?> type : placeholders.getTypes()) {
+//            Placeholders<?> ph = placeholders.get(type);
+//
+//            Method methodAlias = null;
+//            Method methodColumns = null;
+//            for (Method method : ph.getClass().getDeclaredMethods()) {
+//                if (method.getName().equals("addSelectionAlias")) {
+//                    methodAlias = method;
+//                } else if (method.getName().equals("addColumns")) {
+//                    methodColumns = method;
+//                }
+//            }
+//            if (methodAlias == null) {
+//                throw new IllegalArgumentException("Missing method `addSelectionAlias` for " + ph.getType().getSimpleName());
+//            }
+//            if (methodColumns == null) {
+//                throw new IllegalArgumentException("Missing method `addColumns` for " + ph.getType().getSimpleName());
+//            }
+////            selection_alias add_entity nations
+////            sheet_template add_entity nations
+//            String typeName = ph.getType().getSimpleName().replaceAll("DB", "").toLowerCase(Locale.ROOT);
+//            System.out.println("Registering " + typeName);
+//            this.commands.registerMethod(ph, List.of("selection_alias", "add"), methodAlias.getName(), typeName);
+//
+//            for (Method method : ph.getClass().getDeclaredMethods()) {
+//                Command cmd = method.getAnnotation(Command.class);
+//                if (cmd != null) {
+//                    String name = cmd.aliases().length != 0 ? cmd.aliases()[0] : method.getName();
+//                    this.commands.registerMethod(ph, List.of("sheets_ia", "custom"), method.getName(), name);
+//                }
+//            }
+//        }
         ////listSheetTemplates
         //sheet_template list
         this.commands.registerMethod(new CustomSheetCommands(), List.of("sheet_template"), "listSheetTemplates", "list");
