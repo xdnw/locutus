@@ -2427,6 +2427,10 @@ public class DBNation implements NationOrAlliance {
     }
 
     public List<Map.Entry<Integer, Transaction2>> getTransactions(GuildDB db, Set<Long> tracked, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean priority) {
+        return getTransactions(db, tracked, true, useTaxBase, offset, updateThreshold, cutOff, priority);
+    }
+
+    public List<Map.Entry<Integer, Transaction2>> getTransactions(GuildDB db, Set<Long> tracked, boolean includeTaxes, boolean useTaxBase, boolean offset, long updateThreshold, long cutOff, boolean priority) {
         long start = System.currentTimeMillis();
         if (tracked == null) {
             tracked = db.getTrackedBanks();
@@ -2440,7 +2444,7 @@ public class DBNation implements NationOrAlliance {
             transactions.addAll(offsets);
         }
 
-        List<BankDB.TaxDeposit> taxes = Locutus.imp().getBankDB().getTaxesPaid(getNation_id());
+        List<BankDB.TaxDeposit> taxes = includeTaxes ? Locutus.imp().getBankDB().getTaxesPaid(getNation_id()) : new ArrayList<>();
 
         Set<Long> finalTracked = tracked;
         taxes.removeIf(f -> !finalTracked.contains((long) f.allianceId));

@@ -62,6 +62,7 @@ import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
+import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.scheduler.ThrowingBiFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
@@ -1561,6 +1562,8 @@ public class PlaceholdersMap {
                         column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
                         column21, column22, column23, column24);
             }
+
+
         };
     }
 
@@ -1650,14 +1653,75 @@ public class PlaceholdersMap {
                         }
                     }
                     case "deposits" -> {
+                        try {
+                            GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
+                            // "nationOrAllianceOrGuild", "transactionFilter", "startTime", "endTime", "startTime", "endTime", "includeOffset"
+                            String nationOrAllianceOrGuildStr = json.optString("nationOrAllianceOrGuild", null);
+                            NationOrAllianceOrGuild nationOrAllianceOrGuild = nationOrAllianceOrGuildStr == null ? null :
+                                    PWBindings.nationOrAllianceOrGuild(nationOrAllianceOrGuildStr);
 
+                            Predicate<Transaction2> transactionFilter = json.has("transactionFilter") ? parseFilter(store, json.getString("transactionFilter")) : f -> true;
+
+                            long startTime = json.has("startTime") ? PrimitiveBindings.timestamp(json.getString("startTime")) : 0;
+
+                            long endTime = json.has("endTime") ? PrimitiveBindings.timestamp(json.getString("endTime")) : Long.MAX_VALUE;
+
+                            boolean excludeOffset = json.has("excludeOffset") ? json.getBoolean("excludeOffset") : false;
+                            boolean excludeTaxes = json.has("excludeTaxes") ? json.getBoolean("excludeTaxes") : false;
+                            boolean includeFullTaxes = json.has("includeFullTaxes") ? json.getBoolean("includeFullTaxes") : false;
+
+                            Predicate<Transaction2> combinedFilter = transactionFilter;
+                            if (startTime > 0) {
+                                combinedFilter = combinedFilter.and(f -> f.getDate() >= startTime);
+                            }
+                            if (endTime < Long.MAX_VALUE) {
+                                combinedFilter = combinedFilter.and(f -> f.getDate() <= endTime);
+                            }
+                            Predicate<Transaction2> filterFinal = combinedFilter;
+                            // get guild db
+                            if (nationOrAllianceOrGuild.isNation()) {
+                                DBNation nation = nationOrAllianceOrGuild.asNation();
+                                List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, !excludeTaxes, !includeFullTaxes, !excludeOffset, -1, startTime, false);
+                                return transactions.stream()
+                                        .filter(f -> filterFinal.test(f.getValue()))
+                                        .map(Map.Entry::getValue)
+                                        .collect(Collectors.toCollection(ObjectLinkedOpenHashSet::new));
+                            } else {
+                                OffshoreInstance offshore = db.getOffshore();
+                                if (offshore == null) {
+                                    throw new IllegalArgumentException("This guild does not have an offshore. See: " + CM.offshore.add.cmd.toSlashMention());
+                                }
+                                List<Transaction2> transfers;
+                                if (db.isOffshore()) {
+                                    if (nationOrAllianceOrGuild.isAlliance()) {
+                                        transfers = offshore.getTransactionsAA(nationOrAllianceOrGuild.getId(), false);
+                                    } else {
+                                        transfers = offshore.getTransactionsGuild(nationOrAllianceOrGuild.getIdLong(), false);
+                                    }
+                                } else {
+                                    if (nationOrAllianceOrGuild.isAlliance()) {
+                                        DBAlliance aa = nationOrAllianceOrGuild.asAlliance();
+                                        if (!db.isAllianceId(aa.getId())) {
+                                            throw new IllegalArgumentException("The alliance " + aa.getMarkdownUrl() + " is not registered to this guild " + guild.toString());
+                                        }
+                                        transfers = offshore.getTransactionsAA(aa.getId(), false);
+                                    } else {
+                                        GuildDB account = nationOrAllianceOrGuild.asGuild();
+                                        if (account != db) {
+                                            throw new IllegalArgumentException("You cannot check the balance of " + account.getGuild() + " from this guild " + guild.toString());
+                                        }
+                                        transfers = offshore.getTransactionsGuild(account.getIdLong(), false);
+                                    }
+                                }
+                                return transfers.stream()
+                                        .filter(f -> filterFinal.test(f))
+                                        .collect(Collectors.toCollection(ObjectLinkedOpenHashSet::new));
+                            }
+                        } catch (ParseException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
-
                 }
-
-
-
-
                 throw new UnsupportedOperationException("Currently not supported");
             }
 
@@ -1682,8 +1746,8 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a Transaction sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String bankRecordsDeposits(@Me JSONObject command, @Me GuildDB db, String name,
-                                              NationOrAllianceOrGuild nationOrAllianceOrGuild, @Default Predicate<Transaction2> transactionFilter, @Default @Timestamp Long startTime, @Default @Timestamp Long endTime, @Switch("o") Boolean includeOffset, @Switch("o") Boolean includeTaxes) {
-                return _addSelectionAlias("deposits", command, db, name, "nationOrAllianceOrGuild", "transactionFilter", "startTime", "endTime", "startTime", "endTime", "includeOffset");
+                                              NationOrAllianceOrGuild nationOrAllianceOrGuild, @Default Predicate<Transaction2> transactionFilter, @Default @Timestamp Long startTime, @Default @Timestamp Long endTime, @Switch("o") Boolean excludeOffset, @Switch("t") Boolean excludeTaxes, @Switch("i") Boolean includeFullTaxes) {
+                return _addSelectionAlias("deposits", command, db, name, "nationOrAllianceOrGuild", "transactionFilter", "startTime", "endTime", "startTime", "endTime", "excludeOffset", "excludeTaxes", "includeFullTaxes");
             }
 
             @NoFormat
