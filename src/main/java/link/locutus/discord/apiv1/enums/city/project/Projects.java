@@ -332,7 +332,7 @@ public class Projects {
     //$200,000,000, 20,000 Oil, 20,000 Aluminum, 20,000 Munitions, 20,000 Steel, 20,000 Gasoline, 20,000 Uranium
     //Requires Space Program and Moon Landing.
     //Similar to Moon Landing, provides a unique achievement to the first player to build it as well as one to every other player who builds it. All players who complete it will be tracked on a leaderboard like the Moon Landing project. Nations will also gain a daily boost to their approval rating.
-    public static final Project MARS_LANDING = new Builder("mars_landing", 36)
+    public static final Project MARS_LANDING = new Builder("mars_landing", 35)
             .cost(MONEY, 200_000_000)
             .cost(OIL, 20_000)
             .cost(ALUMINUM, 20_000)
@@ -348,7 +348,7 @@ public class Projects {
     //$300,000,000, 20,000 Aluminum, 20,000 Steel, 10,000 Uranium
     //Requires Intelligence Agency and Advanced Urban Planning.
     //Spy attacks against your nation are 10% less likely to succeed and the attacker is 10% more likely to be identified.
-    public static final Project SURVEILLANCE_NETWORK = new Builder("surveillance_network", 35)
+    public static final Project SURVEILLANCE_NETWORK = new Builder("surveillance_network", 36)
             .cost(MONEY, 300_000_000)
             .cost(ALUMINUM, 20_000)
             .cost(STEEL, 20_000)
