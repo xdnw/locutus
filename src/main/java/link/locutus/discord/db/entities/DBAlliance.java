@@ -743,9 +743,14 @@ public class DBAlliance implements NationList, NationOrAlliance {
     public Set<DBAlliance> getTreatiedAllies() {
         return getTreatiedAllies(true);
     }
+
     public Set<DBAlliance> getTreatiedAllies(boolean checkOffshore) {
+        return getTreatiedAllies(TreatyType::isDefensive, checkOffshore);
+    }
+
+    public Set<DBAlliance> getTreatiedAllies(Predicate<TreatyType> allowedType, boolean checkOffshore) {
         Set<DBAlliance> allies = new HashSet<>();
-        for (Map.Entry<Integer, Treaty> treatyEntry : getDefenseTreaties().entrySet()) {
+        for (Map.Entry<Integer, Treaty> treatyEntry : getTreaties(allowedType, false).entrySet()) {
             Treaty treaty = treatyEntry.getValue();
             int other = treaty.getFromId() == allianceId ? treaty.getToId() : treaty.getFromId();
             allies.add(DBAlliance.getOrCreate(other));
@@ -754,7 +759,7 @@ public class DBAlliance implements NationList, NationOrAlliance {
             DBAlliance parent = getCachedParentOfThisOffshore();
             if (parent != null) {
                 allies.add(parent);
-                allies.addAll(parent.getTreatiedAllies(false));
+                allies.addAll(parent.getTreatiedAllies(allowedType, false));
             }
         }
         return allies;
@@ -762,14 +767,19 @@ public class DBAlliance implements NationList, NationOrAlliance {
 
     public Map<Integer, Treaty> getDefenseTreaties() {
         HashMap<Integer, Treaty> defTreaties = new HashMap<>(getTreaties());
-        defTreaties.entrySet().removeIf(f -> f.getValue().getType() == TreatyType.NAP || f.getValue().getType() == TreatyType.PIAT);
+        defTreaties.entrySet().removeIf(f -> f.getValue().getType() == TreatyType.NAP || f.getValue().getType() == TreatyType.PIAT || f.getValue().getType() == TreatyType.NPT);
         return defTreaties;
     }
 
     public Map<Integer, Treaty> getTreaties() {
         return getTreaties(false);
     }
+
     public Map<Integer, Treaty> getTreaties(boolean update) {
+        return getTreaties(null, update);
+    }
+
+    public Map<Integer, Treaty> getTreaties(Predicate<TreatyType> allowedType, boolean update) {
         if (update) {
             PoliticsAndWarV3 api = getApi(AlliancePermission.MANAGE_TREATIES);
             if (api != null) {
@@ -780,12 +790,18 @@ public class DBAlliance implements NationList, NationOrAlliance {
                 Map<Integer, Treaty> result = new HashMap<>();
                 for (com.politicsandwar.graphql.model.Treaty v3 : treaties) {
                     Treaty treaty = new Treaty(v3);
-                    result.put(treaty.getFromId() == allianceId ? treaty.getToId() : treaty.getFromId(), treaty);
+                    if (allowedType == null || allowedType.test(treaty.getType())) {
+                        result.put(treaty.getFromId() == allianceId ? treaty.getToId() : treaty.getFromId(), treaty);
+                    }
                 }
                 return result;
             }
         }
-        return Locutus.imp().getNationDB().getTreaties(allianceId);
+        Map<Integer, Treaty> result = Locutus.imp().getNationDB().getTreaties(allianceId);
+        if (allowedType != null) {
+            result = result.entrySet().stream().filter(f -> allowedType.test(f.getValue().getType())).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        }
+        return result;
     }
 
     public Set<DBAlliance> getSphere() {

@@ -77,6 +77,7 @@ public class SpyTracker {
                 f.aircraft();
                 f.ships();
                 f.missiles();
+                f.nukes();
                 f.aircraft();
                 f.spies();
 
@@ -174,7 +175,7 @@ public class SpyTracker {
 
                 checkActiveFlag.set(true);
             } else {
-                System.out.println("Ignore activity loss " + nationId + " | " + unit + " | " + change + " | " + timestamp + " | " + score);
+                System.out.println("Ignore activity loss " + nationId + " | " + unit + " | " + change + " | " + timestamp + " | " + score + "| " + previousLosses + " | " + losses);
             }
         }
 

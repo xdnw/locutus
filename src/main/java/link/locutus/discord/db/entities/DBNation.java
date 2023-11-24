@@ -4376,7 +4376,7 @@ public class DBNation implements NationOrAlliance {
         Map<WarType, String> bounties = getBountySums().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> MathMan.format(e.getValue())));
         //(optional) Bounties: {}
         if (!bounties.isEmpty()) {
-            body.append("Bounties: `").append(bounties.toString()).append("\n");
+            body.append("Bounties: `").append(bounties.toString()).append("`\n");
         }
         return body.toString();
     }
