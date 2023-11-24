@@ -828,7 +828,11 @@ public class WarCommands {
                                                                      @Switch("s") @Default("1.2") Double maxRelativeTargetStrength,
                                                                      @Switch("c") @Default("1.2") Double maxRelativeCounterStrength,
                                                                      @Switch("w") boolean withinAllAttackersRange,
+                                                                     @Switch("o") boolean ignoreODP,
                                                                      @Switch("f") boolean force) {
+        if (ignoreODP && !includeAllies) {
+            throw new IllegalArgumentException("Cannot use `ignoreODP` when `includeAllies` is false");
+        }
         if (nationsToBlitzWith.stream().anyMatch(f -> f.active_m() > 7200 || f.getVm_turns() > 0) && !force) {
             throw new IllegalArgumentException("You can't blitz with nations that are inactive or VM. Add `force: True` to bypass");
         }
@@ -877,7 +881,13 @@ public class WarCommands {
             DBAlliance alliance = DBAlliance.getOrCreate(aaId);
             Set<DBAlliance> alliances = new HashSet<>(Arrays.asList(alliance));
             if (includeAllies) {
-                alliances.addAll(alliance.getTreatiedAllies());
+                Set<DBAlliance> allies;
+                if (ignoreODP) {
+                    allies = alliance.getTreatiedAllies(f -> f != TreatyType.ODP && f.isDefensive(), false);
+                } else {
+                    allies = alliance.getTreatiedAllies();
+                }
+                alliances.addAll(allies);
             }
             System.out.println(aaId + " | allies=" + includeAllies + " | " + StringMan.getString(alliances));
             for (DBAlliance ally : alliances) {
@@ -1010,12 +1020,13 @@ public class WarCommands {
                               @Switch("c") @Default("1.2") Double maxRelativeCounterStrength,
                               @Arg("Only list targets within range of ALL attackers")
                               @Switch("w") boolean withinAllAttackersRange,
+                              @Switch("o") boolean ignoreODP,
                               @Switch("f") boolean force
     ) {
 
         if (nationsToBlitzWith == null) nationsToBlitzWith = Collections.singleton(me);
 
-        List<Map.Entry<DBNation, Double>> counterChance = getCounterChance(db, targets, numResults, ignoreDNR, includeAllies, nationsToBlitzWith, maxRelativeTargetStrength, maxRelativeCounterStrength, withinAllAttackersRange, force);
+        List<Map.Entry<DBNation, Double>> counterChance = getCounterChance(db, targets, numResults, ignoreDNR, includeAllies, nationsToBlitzWith, maxRelativeTargetStrength, maxRelativeCounterStrength, withinAllAttackersRange, ignoreODP, force);
 
         boolean whitelisted = db.isWhitelisted();
         long currentTurn = TimeUtil.getTurn();
