@@ -28,14 +28,13 @@ public class WikiCustomSheetsPage extends BotWikiGen {
                 "# Premade sheet templates/selections",
                 "To be added. Cannot be used alongside custom sheet templates. See the various disunified sheet commands below",
                 MarkupUtil.spoiler("Internal Affairs Sheets",
-                        StringMan.join(Arrays.asList(
+                        MarkupUtil.markdownToHTML(StringMan.join(Arrays.asList(
                 CM.audit.sheet.cmd.toString(),
                 CM.sheets_ia.daychange.cmd.toString(),
                 CM.sheets_ia.ActivitySheet.cmd.toString(),
-                CM.sheets_ia.ActivitySheetFromId.cmd.toString()), "\n")),
-                "## For milcom",
+                CM.sheets_ia.ActivitySheetFromId.cmd.toString()), "\n"))),
                         MarkupUtil.spoiler("Milcom Sheets",
-                                StringMan.join(Arrays.asList(
+                                MarkupUtil.markdownToHTML(StringMan.join(Arrays.asList(
                 CM.sheets_milcom.MMRSheet.cmd.toString(),
                 CM.sheets_milcom.warchestSheet.cmd.toString(),
                 CM.sheets_milcom.warSheet.cmd.toString(),
@@ -54,10 +53,9 @@ public class WikiCustomSheetsPage extends BotWikiGen {
                 CM.sheets_milcom.WarCostByResourceSheet.cmd.toString(),
                 CM.sheets_milcom.WarCostSheet.cmd.toString(),
                 CM.sheets_milcom.lootValueSheet.cmd.toString(),
-                CM.sheets_milcom.DeserterSheet.cmd.toString()), "\n")),
+                CM.sheets_milcom.DeserterSheet.cmd.toString()), "\n"))),
                 MarkupUtil.spoiler("Econ Sheets",
-                        StringMan.join(Arrays.asList(
-                CM.tax.deposits.cmd.toString(),
+                        MarkupUtil.markdownToHTML(StringMan.join(Arrays.asList(
                 CM.escrow.view_sheet.cmd.toString(),
                 CM.sheets_econ.warchestSheet.cmd.toString(),
                 CM.sheets_econ.stockpileSheet.cmd.toString(),
@@ -65,6 +63,7 @@ public class WikiCustomSheetsPage extends BotWikiGen {
                 CM.sheets_econ.taxBracketSheet.cmd.toString(),
                 CM.sheets_econ.taxRevenue.cmd.toString(),
                 CM.sheets_econ.taxRecords.cmd.toString(),
+                CM.tax.deposits.cmd.toString(),
                 CM.sheets_econ.ProjectSheet.cmd.toString(),
                 CM.sheets_econ.projectCostCsv.cmd.toString(),
                 CM.bank.records.cmd.toString(),
@@ -73,14 +72,14 @@ public class WikiCustomSheetsPage extends BotWikiGen {
                 CM.sheets_econ.IngameNationTransfersByReceiver.cmd.toString(),
                 CM.sheets_econ.IngameNationTransfersBySender.cmd.toString(),
 
-                CM.sheets_econ.warReimburseByNationCsv.cmd.toString()), "\n")),
+                CM.sheets_econ.warReimburseByNationCsv.cmd.toString()), "\n"))),
                 MarkupUtil.spoiler("General sheets",
-                        StringMan.join(Arrays.asList(
+                        MarkupUtil.markdownToHTML(StringMan.join(Arrays.asList(
                 CM.nation.sheet.NationSheet.cmd.toString(),
                 CM.sheets_ia.AllianceSheet.cmd.toString(),
                 CM.alliance.stats.allianceNationsSheet.cmd.toString(),
                 CM.report.sheet.generate.cmd.toString(),
-                CM.report.loan.sheet.cmd.toString()), "\n")),
+                CM.report.loan.sheet.cmd.toString()), "\n"))),
 
                 //////listSheetTemplates
 ////sheet_template list

@@ -241,8 +241,6 @@ public class CommandManager2 {
         this.commands.registerMethod(new AdminCommands(), List.of("role"), "maskSheet", "mask_sheet");
 
         this.commands.registerMethod(new UnsortedCommands(), List.of("audit"), "auditSheet", "sheet");
-        this.commands.registerMethod(new TestCommands(), List.of("test"), "testImage", "test_image");
-
         this.commands.registerMethod(new TestCommands(), List.of("deposits"), "viewFlow", "flows");
         this.commands.registerMethod(new TestCommands(), List.of("deposits"), "shiftFlow", "shiftFlow");
 
