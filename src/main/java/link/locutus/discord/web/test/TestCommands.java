@@ -186,11 +186,6 @@ public class TestCommands {
         return response.toString();
     }
 
-    @Command
-    public String testImage(@Me IMessageIO io, SpreadSheet sheet) throws IOException, GeneralSecurityException {
-        return "unsupported";
-    }
-
 //    public String test(NationPlaceholders placeholders, ValueStore store, String input, @Me DBNation me, @Me User user) {
 //        return placeholders.format2(store, input, me);
 //        if (me != null) {

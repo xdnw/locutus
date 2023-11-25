@@ -190,15 +190,14 @@ public class CommandManager2 {
             }
             String typeName = ph.getType().getSimpleName().replaceAll("DB", "").toLowerCase(Locale.ROOT);
             System.out.println("Registering " + typeName);
-//            this.commands.registerMethod(ph, List.of("selection_alias", "add"), methodAlias.getName(), typeName);
-//
-//            for (Method method : ph.getClass().getDeclaredMethods()) {
-//                Command cmd = method.getAnnotation(Command.class);
-//                if (cmd != null) {
-//                    String name = cmd.aliases().length != 0 ? cmd.aliases()[0] : method.getName();
-//                    this.commands.registerMethod(ph, List.of("sheets_ia", "custom"), method.getName(), name);
-//                }
-//            }
+            this.commands.registerMethod(ph, List.of("selection_alias", "add"), methodAlias.getName(), typeName);
+            for (Method method : ph.getClass().getDeclaredMethods()) {
+                Command cmd = method.getAnnotation(Command.class);
+                if (cmd != null) {
+                    String name = cmd.aliases().length != 0 ? cmd.aliases()[0] : method.getName();
+                    this.commands.registerMethod(ph, List.of("sheets_ia", "custom"), method.getName(), name);
+                }
+            }
         }
         if (!missing.isEmpty()) {
             System.out.println("Missing methods for placeholders:\n- " + String.join("\n- ", missing));

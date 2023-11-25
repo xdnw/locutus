@@ -3280,8 +3280,11 @@ public class WarCommands {
     }
 
     @RolePermission(Roles.MILCOM)
-    @Command(desc="Run checks on a blitz sheet\n" +
-            "Check that all nations are in range of their blitz targets, are still in the alliance and have no more than the provided number of offensive wars")
+    @Command(desc="Run checks on nations in a blitz sheet\n" +
+            "- In range of their blitz targets" +
+            "- Still in the alliance" +
+            "- Have no more than the provided number of offensive wars\n" +
+            "Sheet columns: `nation`, `att1`, `att1`, `att3`")
     public String ValidateBlitzSheet(SpreadSheet sheet,
                                      @Arg("Max wars per attacker")
                                      @Default("3") int maxWars,

@@ -3911,13 +3911,6 @@ public class CM {
                     return createArgs();
                 }
             }
-            @AutoRegister(clazz=link.locutus.discord.web.test.TestCommands.class,method="testImage")
-            public static class test_image extends CommandRef {
-                public static final test_image cmd = new test_image();
-                public test_image create(String sheet) {
-                    return createArgs("sheet", sheet);
-                }
-            }
         }
         public static class trade{
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="acceptTrades")

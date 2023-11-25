@@ -341,6 +341,7 @@ public class SpreadSheet {
             m = Pattern.compile(regex).matcher(id);
             if (m.find()) {
                 tabId = Integer.parseInt(m.group(1));
+                if (tabId == 0) tabId = null;
             }
             regex = "#tab=([a-zA-Z0-9-_]{1,})";
             m = Pattern.compile(regex).matcher(id);
