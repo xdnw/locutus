@@ -19,6 +19,7 @@ import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.binding.DiscordBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.GPTBindings;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.NewsletterBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PermissionBinding;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.SheetBindings;
@@ -76,6 +77,7 @@ public class CommandManager2 {
         new GPTBindings().register(store);
         new SheetBindings().register(store);
 //        new StockBinding().register(store);
+        new NewsletterBindings().register(store);
 
         this.validators = new ValidatorStore();
         new PrimitiveValidators().register(validators);
@@ -167,41 +169,18 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
-        List<String> missing = new ArrayList<>();
-        for (Class<?> type : placeholders.getTypes()) {
-            Placeholders<?> ph = placeholders.get(type);
 
-            Method methodAlias = null;
-            Method methodColumns = null;
-            for (Method method : ph.getClass().getDeclaredMethods()) {
-                if (method.getName().equals("addSelectionAlias")) {
-                    methodAlias = method;
-                } else if (method.getName().equals("addColumns")) {
-                    methodColumns = method;
-                }
-            }
-            if (methodAlias == null) {
-                missing.add("Missing method `addSelectionAlias` for " + ph.getType().getSimpleName());
-                continue;
-            }
-            if (methodColumns == null) {
-                missing.add("Missing method `addColumns` for " + ph.getType().getSimpleName());
-                continue;
-            }
-            String typeName = ph.getType().getSimpleName().replaceAll("DB", "").toLowerCase(Locale.ROOT);
-            System.out.println("Registering " + typeName);
-            this.commands.registerMethod(ph, List.of("selection_alias", "add"), methodAlias.getName(), typeName);
-            for (Method method : ph.getClass().getDeclaredMethods()) {
-                Command cmd = method.getAnnotation(Command.class);
-                if (cmd != null) {
-                    String name = cmd.aliases().length != 0 ? cmd.aliases()[0] : method.getName();
-                    this.commands.registerMethod(ph, List.of("sheets_ia", "custom"), method.getName(), name);
-                }
-            }
-        }
-        if (!missing.isEmpty()) {
-            System.out.println("Missing methods for placeholders:\n- " + String.join("\n- ", missing));
-        }
+        NewsletterCommands newsletter = new NewsletterCommands();
+        getCommands().registerMethod(newsletter, List.of("newsletter"), "create", "create");
+        getCommands().registerMethod(newsletter, List.of("newsletter", "channel"), "channelAdd", "add");
+        getCommands().registerMethod(newsletter, List.of("newsletter", "channel"), "channelRemove", "remove");
+        getCommands().registerMethod(newsletter, List.of("newsletter"), "info", "info");
+        getCommands().registerMethod(newsletter, List.of("newsletter"), "autosend", "auto");
+        getCommands().registerMethod(newsletter, List.of("newsletter"), "send", "send");
+        getCommands().registerMethod(newsletter, List.of("newsletter"), "list", "list");
+        getCommands().registerMethod(newsletter, List.of("newsletter"), "subscribe", "subscribe");
+        getCommands().registerMethod(newsletter, List.of("newsletter"), "unsubscribe", "unsubscribe");
+
         ////listSheetTemplates
         //sheet_template list
         this.commands.registerMethod(new CustomSheetCommands(), List.of("sheet_template"), "listSheetTemplates", "list");
@@ -364,7 +343,42 @@ public class CommandManager2 {
         }
 
 
-        StringBuilder output = new StringBuilder();
+        List<String> missing = new ArrayList<>();
+        for (Class<?> type : placeholders.getTypes()) {
+            Placeholders<?> ph = placeholders.get(type);
+
+            Method methodAlias = null;
+            Method methodColumns = null;
+            for (Method method : ph.getClass().getDeclaredMethods()) {
+                if (method.getName().equals("addSelectionAlias")) {
+                    methodAlias = method;
+                } else if (method.getName().equals("addColumns")) {
+                    methodColumns = method;
+                }
+            }
+            if (methodAlias == null) {
+                missing.add("Missing method `addSelectionAlias` for " + ph.getType().getSimpleName());
+                continue;
+            }
+            if (methodColumns == null) {
+                missing.add("Missing method `addColumns` for " + ph.getType().getSimpleName());
+                continue;
+            }
+            String typeName = PlaceholdersMap.getClassName(ph.getType());
+            System.out.println("Registering " + typeName);
+            this.commands.registerMethod(ph, List.of("selection_alias", "add"), methodAlias.getName(), typeName);
+            this.commands.registerMethod(ph, List.of("sheet_template", "add"), methodColumns.getName(), typeName);
+//            for (Method method : ph.getClass().getDeclaredMethods()) {
+//                Command cmd = method.getAnnotation(Command.class);
+//                if (cmd != null) {
+//                    String name = cmd.aliases().length != 0 ? cmd.aliases()[0] : method.getName();
+//                    this.commands.registerMethod(ph, List.of("sheets_ia", "custom"), method.getName(), name);
+//                }
+//            }
+        }
+        if (!missing.isEmpty()) {
+            System.out.println("Missing methods for placeholders:\n- " + String.join("\n- ", missing));
+        }
 
         return this;
     }

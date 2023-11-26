@@ -194,6 +194,7 @@ public interface CommandCallable {
                         if (!Modifier.isStatic(field.getModifiers())) {
                             continue;
                         }
+                        field.setAccessible(true);
                         Object instance = instance = field.get(null);
                         if (instance == callable.getObject()) {
                             fieldExt = ", field=\"" + field.getName() + "\"";

@@ -4,6 +4,8 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 import java.util.Set;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 public class Newsletter {
     private int id;
     private final String name;
@@ -15,6 +17,7 @@ public class Newsletter {
     private Set<Long> channelIds = new ObjectOpenHashSet<>();
 
     public Newsletter(int id, String name, long date_created, long lastSent, long sendInterval, long sendConfirmationChannel, long pingRole) {
+        checkNotNull(name, "name");
         this.id = id;
         this.name = name;
         this.date_created = date_created;

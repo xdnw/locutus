@@ -46,7 +46,7 @@ public enum ResourceType {
                     rads = Math.max(0, rads);
                 }
 
-                double season = date <= 0 ? continent.getSeasonModifier() : continent.getSeasonModifier(date);
+                double season = date <= 0 ? continent.getSeasonModifier() : continent.getSeasonModifierDate(date);
 
                 return Math.max(0, (land / factor) * 12 * season * rads);
             }

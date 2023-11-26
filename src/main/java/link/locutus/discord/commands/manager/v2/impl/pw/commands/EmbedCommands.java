@@ -392,7 +392,7 @@ Results are sorted best to last in <#995168236213633024>" "<#995168236213633024>
         CM.war.find.raid losing = CM.war.find.raid.cmd.create(
                 "#def>0,#strength<1,*", "25", "0d", "true", null, null, null, null, null, null, null);
         CM.war.find.unprotected unprotected = CM.war.find.unprotected.cmd.create(
-                "*", "25", null, "true", null,  null, "90", null, null);
+                "*", "25", null, "true", null,  null, "90", null, null, null);
 
         CommandBehavior behavior = CommandBehavior.UNPRESS;
         io.create().embed(title, body)

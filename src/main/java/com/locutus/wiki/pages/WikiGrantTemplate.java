@@ -51,6 +51,7 @@ public class WikiGrantTemplate extends BotWikiGen {
 
         return build(
         """
+                <bold style="color:red">NOT PUBLICLY AVAILABLE. The documentation below applies to a feature currently in development, and not yet available for public use</bold>
                 - Create grant templates for specified changes to a nation.
                 - Set which nations can receive a grant for a template, using any nation filter
                 - Default restrictions to prevent repeated or unnecessary grants

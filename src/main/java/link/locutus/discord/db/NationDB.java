@@ -2480,13 +2480,13 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
             String name = newTreasure.getName();
             DBTreasure existing;
             synchronized (treasuresByName) {
-                existing = treasuresByName.get(name);
+                existing = treasuresByName.get(name.toLowerCase(Locale.ROOT));
             }
             if (existing == null) {
                 existing = new DBTreasure().set(newTreasure);
                 treasuresToCreate.add(existing);
                 synchronized (treasuresByName) {
-                    treasuresByName.put(existing.getName(), existing);
+                    treasuresByName.put(existing.getName().toLowerCase(Locale.ROOT), existing);
                 }
                 if (existing.getNation_id() > 0) {
                     synchronized (treasuresByNation) {
@@ -2630,7 +2630,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
                 int nation_id = rs.getInt("nation_id");
                 long respawnAlert = rs.getLong("respawn_alert");
                 DBTreasure treasure = new DBTreasure(id, name, color, bonus, continent, nation_id, spawnDate, respawnAlert);
-                treasuresByName.put(treasure.getName(), treasure);
+                treasuresByName.put(treasure.getName().toLowerCase(Locale.ROOT), treasure);
                 if (nation_id > 0) {
                     synchronized (treasuresByNation) {
                         treasuresByNation.computeIfAbsent(nation_id, k -> new ObjectOpenHashSet<>()).add(treasure);

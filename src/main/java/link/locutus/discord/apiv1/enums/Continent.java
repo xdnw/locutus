@@ -169,7 +169,7 @@ public enum Continent {
     }
 
     @Command(desc = "Returns the season modifier for this continent at the given date")
-    public double getSeasonModifier(@Timestamp long date) {
+    public double getSeasonModifierDate(@Timestamp long date) {
         return getSeasonModifier(Instant.ofEpochMilli(date));
     }
 

@@ -73,6 +73,9 @@ import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -94,6 +97,43 @@ import java.util.stream.Collectors;
 import static link.locutus.discord.commands.manager.v2.binding.BindingHelper.emumSet;
 
 public class PlaceholdersMap {
+
+    private static PlaceholdersMap INSTANCE;
+
+    public static String getClassName(Class clazz) {
+        return clazz.getSimpleName().replace("DB", "").replace("Wrapper", "").toLowerCase(Locale.ROOT);
+    }
+
+    public static Placeholders<DBNation> NATIONS = null;
+    public static Placeholders<DBAlliance> ALLIANCES = null;
+    public static Placeholders<NationOrAlliance> NATION_OR_ALLIANCE = null;
+    public static Placeholders<Continent> CONTINENTS = null;
+    public static Placeholders<GuildDB> GUILDS = null;
+    public static Placeholders<Project> PROJECTS = null;
+    public static Placeholders<Treaty> TREATIES = null;
+    public static Placeholders<DBBan> BANS = null;
+    public static Placeholders<ResourceType> RESOURCE_TYPES = null;
+    public static Placeholders<AttackType> ATTACK_TYPES = null;
+    public static Placeholders<MilitaryUnit> MILITARY_UNITS = null;
+    public static Placeholders<TreatyType> TREATY_TYPES = null;
+    public static Placeholders<DBTreasure> TREASURES = null;
+    public static Placeholders<NationColor> NATION_COLORS = null;
+    public static Placeholders<Building> BUILDINGS = null;
+    public static Placeholders<IACheckup.AuditType> AUDIT_TYPES = null;
+    public static Placeholders<NationList> NATION_LIST = null;
+    public static Placeholders<DBBounty> BOUNTIES = null;
+    public static Placeholders<DBCity> CITIES = null;
+    public static Placeholders<TaxBracket> TAX_BRACKETS = null;
+    public static Placeholders<UserWrapper> USERS = null;
+    public static Placeholders<Transaction2> TRANSACTIONS = null;
+    public static Placeholders<DBTrade> TRADES = null;
+    public static Placeholders<IAttack> ATTACKS = null;
+    public static Placeholders<DBWar> WARS = null;
+    public static Placeholders<BankDB.TaxDeposit> TAX_DEPOSITS = null;
+
+    // --------------------------------------------------------------------
+
+
     private final Map<Class<?>, Placeholders<?>> placeholders = new ConcurrentHashMap<>();
     private final ValueStore store;
     private final ValidatorStore validators;
@@ -103,11 +143,12 @@ public class PlaceholdersMap {
         return placeholders.keySet();
     }
 
-    public static String getClassName(Class clazz) {
-        return clazz.getSimpleName().replace("DB", "").replace("Wrapper", "").toLowerCase(Locale.ROOT);
-    }
-
     public PlaceholdersMap(ValueStore store, ValidatorStore validators, PermissionHandler permisser) {
+        if (INSTANCE != null) {
+            throw new IllegalStateException("Already initialized");
+        }
+        INSTANCE = this;
+        
         this.store = store;
         this.validators = validators;
         this.permisser = permisser;
@@ -117,50 +158,53 @@ public class PlaceholdersMap {
         this.placeholders.put(NationOrAlliance.class, createNationOrAlliances());
         this.placeholders.put(Continent.class, createContinents());
         this.placeholders.put(GuildDB.class, createGuildDB());
-        //- Projects
         this.placeholders.put(Project.class, createProjects());
-        //- Treaty
-        // - *, alliances
         this.placeholders.put(Treaty.class, createTreaty());
-        //- Bans
-        // - *, nation, user mention
         this.placeholders.put(DBBan.class, createBans());
-        //- resource type
         this.placeholders.put(ResourceType.class, createResourceType());
-        //- attack type
         this.placeholders.put(AttackType.class, createAttackTypes());
-        //- military unit
         this.placeholders.put(MilitaryUnit.class, createMilitaryUnit());
-        //- treaty type
         this.placeholders.put(TreatyType.class, createTreatyType());
-        //- Treasure
-        this.placeholders.put(DBTreasure.class, createAuditType());
-        //- Color bloc
+        this.placeholders.put(DBTreasure.class, createTreasure());
         this.placeholders.put(NationColor.class, createNationColor());
-        //- building
         this.placeholders.put(Building.class, createBuilding());
-        //-AuditType
         this.placeholders.put(IACheckup.AuditType.class, createAuditType());
-        // NationList
-        // uses square brackets ?? [*,#position>1] or coalitions ~odoo or ~allies
         this.placeholders.put(NationList.class, createNationList());
-        //- Bounties
         this.placeholders.put(DBBounty.class, createBounties());
-        //- Cities
-        // - *, nations
         this.placeholders.put(DBCity.class, createCities());
         this.placeholders.put(TaxBracket.class, createBrackets());
-
         this.placeholders.put(UserWrapper.class, createUsers());
-
-        // special
-        // input = getSelection(store, Transaction2.class, input);
-        // deserializeSelection
         this.placeholders.put(Transaction2.class, createTransactions());
         this.placeholders.put(DBTrade.class, createTrades());
         this.placeholders.put(IAttack.class, createAttacks());
         this.placeholders.put(DBWar.class, createWars());
         this.placeholders.put(BankDB.TaxDeposit.class, createTaxDeposit());
+
+        Map<Class, Field> fields = new HashMap<>();
+        for (Field field : PlaceholdersMap.class.getDeclaredFields()) {
+            if (!Modifier.isStatic(field.getModifiers())) {
+                continue;
+            }
+            if (!Placeholders.class.isAssignableFrom(field.getType())) {
+                continue;
+            }
+            field.setAccessible(true);
+            Class enclosedType = (Class) ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[0];
+            fields.put(enclosedType, field);
+        }
+
+        for (Map.Entry<Class<?>, Placeholders<?>> entry : this.placeholders.entrySet()) {
+            Class<?> enclosedType = entry.getKey();
+            Field field = fields.get(enclosedType);
+            if (field == null) {
+                throw new IllegalStateException("Missing field for `" + enclosedType + "`. Options:\n- " + StringMan.join(fields.keySet(), "\n- "));
+            }
+            try {
+                field.set(null, entry.getValue());
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
 
 //        //-GuildKey
 //        this.placeholders.put(GuildSetting.class, createGuildSetting());
@@ -174,10 +218,25 @@ public class PlaceholdersMap {
     }
 
     private <T> String getSelection(ValueStore store, Class<T> type, String input) {
-        if (input.startsWith("!")) {
+        boolean isSelection = false;
+        String inputAlias = input;
+        if (input.startsWith("$")) {
+            isSelection = true;
+            inputAlias = input.substring(1);
+        } else if (input.startsWith("select:")) {
+            isSelection = true;
+            inputAlias = input.substring("select:".length());
+        } else if (input.startsWith("selection:")) {
+            isSelection = true;
+            inputAlias = input.substring("selection:".length());
+        } else if (input.startsWith("alias:")) {
+            isSelection = true;
+            inputAlias = input.substring("alias:".length());
+        }
+        if (isSelection) {
             GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
             if (db != null) {
-                SelectionAlias<T> selection = db.getSheetManager().getSelectionAlias(input.substring(1), type);
+                SelectionAlias<T> selection = db.getSheetManager().getSelectionAlias(inputAlias, type);
                 if (selection != null) {
                     return selection.getSelection();
                 }
@@ -208,34 +267,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a Continent sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                      @Default TypedFunction<Continent, String> column1,
-                                      @Default TypedFunction<Continent, String> column2,
-                                      @Default TypedFunction<Continent, String> column3,
-                                      @Default TypedFunction<Continent, String> column4,
-                                      @Default TypedFunction<Continent, String> column5,
-                                      @Default TypedFunction<Continent, String> column6,
-                                      @Default TypedFunction<Continent, String> column7,
-                                      @Default TypedFunction<Continent, String> column8,
-                                      @Default TypedFunction<Continent, String> column9,
-                                      @Default TypedFunction<Continent, String> column10,
-                                      @Default TypedFunction<Continent, String> column11,
-                                      @Default TypedFunction<Continent, String> column12,
-                                      @Default TypedFunction<Continent, String> column13,
-                                      @Default TypedFunction<Continent, String> column14,
-                                      @Default TypedFunction<Continent, String> column15,
-                                      @Default TypedFunction<Continent, String> column16,
-                                      @Default TypedFunction<Continent, String> column17,
-                                      @Default TypedFunction<Continent, String> column18,
-                                      @Default TypedFunction<Continent, String> column19,
-                                      @Default TypedFunction<Continent, String> column20,
-                                      @Default TypedFunction<Continent, String> column21,
-                                      @Default TypedFunction<Continent, String> column22,
-                                      @Default TypedFunction<Continent, String> column23,
-                                      @Default TypedFunction<Continent, String> column24) throws GeneralSecurityException, IOException {
+                                      @Default TypedFunction<Continent, String> a,
+                                      @Default TypedFunction<Continent, String> b,
+                                      @Default TypedFunction<Continent, String> c,
+                                      @Default TypedFunction<Continent, String> d,
+                                      @Default TypedFunction<Continent, String> e,
+                                      @Default TypedFunction<Continent, String> f,
+                                      @Default TypedFunction<Continent, String> g,
+                                      @Default TypedFunction<Continent, String> h,
+                                      @Default TypedFunction<Continent, String> i,
+                                      @Default TypedFunction<Continent, String> j,
+                                      @Default TypedFunction<Continent, String> k,
+                                      @Default TypedFunction<Continent, String> l,
+                                      @Default TypedFunction<Continent, String> m,
+                                      @Default TypedFunction<Continent, String> n,
+                                      @Default TypedFunction<Continent, String> o,
+                                      @Default TypedFunction<Continent, String> p,
+                                      @Default TypedFunction<Continent, String> q,
+                                      @Default TypedFunction<Continent, String> r,
+                                      @Default TypedFunction<Continent, String> s,
+                                      @Default TypedFunction<Continent, String> t,
+                                      @Default TypedFunction<Continent, String> u,
+                                      @Default TypedFunction<Continent, String> v,
+                                      @Default TypedFunction<Continent, String> w,
+                                      @Default TypedFunction<Continent, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                                column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                                column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                                k, l, m, n, o, p, q, r, s, t,
+                                u, v, w, x);
             }
         };
     }
@@ -353,34 +412,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a NationOrAlliance sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<NationOrAlliance, String> column1,
-                                     @Default TypedFunction<NationOrAlliance, String> column2,
-                                     @Default TypedFunction<NationOrAlliance, String> column3,
-                                     @Default TypedFunction<NationOrAlliance, String> column4,
-                                     @Default TypedFunction<NationOrAlliance, String> column5,
-                                     @Default TypedFunction<NationOrAlliance, String> column6,
-                                     @Default TypedFunction<NationOrAlliance, String> column7,
-                                     @Default TypedFunction<NationOrAlliance, String> column8,
-                                     @Default TypedFunction<NationOrAlliance, String> column9,
-                                     @Default TypedFunction<NationOrAlliance, String> column10,
-                                     @Default TypedFunction<NationOrAlliance, String> column11,
-                                     @Default TypedFunction<NationOrAlliance, String> column12,
-                                     @Default TypedFunction<NationOrAlliance, String> column13,
-                                     @Default TypedFunction<NationOrAlliance, String> column14,
-                                     @Default TypedFunction<NationOrAlliance, String> column15,
-                                     @Default TypedFunction<NationOrAlliance, String> column16,
-                                     @Default TypedFunction<NationOrAlliance, String> column17,
-                                     @Default TypedFunction<NationOrAlliance, String> column18,
-                                     @Default TypedFunction<NationOrAlliance, String> column19,
-                                     @Default TypedFunction<NationOrAlliance, String> column20,
-                                     @Default TypedFunction<NationOrAlliance, String> column21,
-                                     @Default TypedFunction<NationOrAlliance, String> column22,
-                                     @Default TypedFunction<NationOrAlliance, String> column23,
-                                     @Default TypedFunction<NationOrAlliance, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<NationOrAlliance, String> a,
+                                     @Default TypedFunction<NationOrAlliance, String> b,
+                                     @Default TypedFunction<NationOrAlliance, String> c,
+                                     @Default TypedFunction<NationOrAlliance, String> d,
+                                     @Default TypedFunction<NationOrAlliance, String> e,
+                                     @Default TypedFunction<NationOrAlliance, String> f,
+                                     @Default TypedFunction<NationOrAlliance, String> g,
+                                     @Default TypedFunction<NationOrAlliance, String> h,
+                                     @Default TypedFunction<NationOrAlliance, String> i,
+                                     @Default TypedFunction<NationOrAlliance, String> j,
+                                     @Default TypedFunction<NationOrAlliance, String> k,
+                                     @Default TypedFunction<NationOrAlliance, String> l,
+                                     @Default TypedFunction<NationOrAlliance, String> m,
+                                     @Default TypedFunction<NationOrAlliance, String> n,
+                                     @Default TypedFunction<NationOrAlliance, String> o,
+                                     @Default TypedFunction<NationOrAlliance, String> p,
+                                     @Default TypedFunction<NationOrAlliance, String> q,
+                                     @Default TypedFunction<NationOrAlliance, String> r,
+                                     @Default TypedFunction<NationOrAlliance, String> s,
+                                     @Default TypedFunction<NationOrAlliance, String> t,
+                                     @Default TypedFunction<NationOrAlliance, String> u,
+                                     @Default TypedFunction<NationOrAlliance, String> v,
+                                     @Default TypedFunction<NationOrAlliance, String> w,
+                                     @Default TypedFunction<NationOrAlliance, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
 
         };
@@ -445,34 +504,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a Guild sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<GuildDB, String> column1,
-                                     @Default TypedFunction<GuildDB, String> column2,
-                                     @Default TypedFunction<GuildDB, String> column3,
-                                     @Default TypedFunction<GuildDB, String> column4,
-                                     @Default TypedFunction<GuildDB, String> column5,
-                                     @Default TypedFunction<GuildDB, String> column6,
-                                     @Default TypedFunction<GuildDB, String> column7,
-                                     @Default TypedFunction<GuildDB, String> column8,
-                                     @Default TypedFunction<GuildDB, String> column9,
-                                     @Default TypedFunction<GuildDB, String> column10,
-                                     @Default TypedFunction<GuildDB, String> column11,
-                                     @Default TypedFunction<GuildDB, String> column12,
-                                     @Default TypedFunction<GuildDB, String> column13,
-                                     @Default TypedFunction<GuildDB, String> column14,
-                                     @Default TypedFunction<GuildDB, String> column15,
-                                     @Default TypedFunction<GuildDB, String> column16,
-                                     @Default TypedFunction<GuildDB, String> column17,
-                                     @Default TypedFunction<GuildDB, String> column18,
-                                     @Default TypedFunction<GuildDB, String> column19,
-                                     @Default TypedFunction<GuildDB, String> column20,
-                                     @Default TypedFunction<GuildDB, String> column21,
-                                     @Default TypedFunction<GuildDB, String> column22,
-                                     @Default TypedFunction<GuildDB, String> column23,
-                                     @Default TypedFunction<GuildDB, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<GuildDB, String> a,
+                                     @Default TypedFunction<GuildDB, String> b,
+                                     @Default TypedFunction<GuildDB, String> c,
+                                     @Default TypedFunction<GuildDB, String> d,
+                                     @Default TypedFunction<GuildDB, String> e,
+                                     @Default TypedFunction<GuildDB, String> f,
+                                     @Default TypedFunction<GuildDB, String> g,
+                                     @Default TypedFunction<GuildDB, String> h,
+                                     @Default TypedFunction<GuildDB, String> i,
+                                     @Default TypedFunction<GuildDB, String> j,
+                                     @Default TypedFunction<GuildDB, String> k,
+                                     @Default TypedFunction<GuildDB, String> l,
+                                     @Default TypedFunction<GuildDB, String> m,
+                                     @Default TypedFunction<GuildDB, String> n,
+                                     @Default TypedFunction<GuildDB, String> o,
+                                     @Default TypedFunction<GuildDB, String> p,
+                                     @Default TypedFunction<GuildDB, String> q,
+                                     @Default TypedFunction<GuildDB, String> r,
+                                     @Default TypedFunction<GuildDB, String> s,
+                                     @Default TypedFunction<GuildDB, String> t,
+                                     @Default TypedFunction<GuildDB, String> u,
+                                     @Default TypedFunction<GuildDB, String> v,
+                                     @Default TypedFunction<GuildDB, String> w,
+                                     @Default TypedFunction<GuildDB, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
         };
     }
@@ -527,34 +586,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a Ban sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<DBBan, String> column1,
-                                     @Default TypedFunction<DBBan, String> column2,
-                                     @Default TypedFunction<DBBan, String> column3,
-                                     @Default TypedFunction<DBBan, String> column4,
-                                     @Default TypedFunction<DBBan, String> column5,
-                                     @Default TypedFunction<DBBan, String> column6,
-                                     @Default TypedFunction<DBBan, String> column7,
-                                     @Default TypedFunction<DBBan, String> column8,
-                                     @Default TypedFunction<DBBan, String> column9,
-                                     @Default TypedFunction<DBBan, String> column10,
-                                     @Default TypedFunction<DBBan, String> column11,
-                                     @Default TypedFunction<DBBan, String> column12,
-                                     @Default TypedFunction<DBBan, String> column13,
-                                     @Default TypedFunction<DBBan, String> column14,
-                                     @Default TypedFunction<DBBan, String> column15,
-                                     @Default TypedFunction<DBBan, String> column16,
-                                     @Default TypedFunction<DBBan, String> column17,
-                                     @Default TypedFunction<DBBan, String> column18,
-                                     @Default TypedFunction<DBBan, String> column19,
-                                     @Default TypedFunction<DBBan, String> column20,
-                                     @Default TypedFunction<DBBan, String> column21,
-                                     @Default TypedFunction<DBBan, String> column22,
-                                     @Default TypedFunction<DBBan, String> column23,
-                                     @Default TypedFunction<DBBan, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<DBBan, String> a,
+                                     @Default TypedFunction<DBBan, String> b,
+                                     @Default TypedFunction<DBBan, String> c,
+                                     @Default TypedFunction<DBBan, String> d,
+                                     @Default TypedFunction<DBBan, String> e,
+                                     @Default TypedFunction<DBBan, String> f,
+                                     @Default TypedFunction<DBBan, String> g,
+                                     @Default TypedFunction<DBBan, String> h,
+                                     @Default TypedFunction<DBBan, String> i,
+                                     @Default TypedFunction<DBBan, String> j,
+                                     @Default TypedFunction<DBBan, String> k,
+                                     @Default TypedFunction<DBBan, String> l,
+                                     @Default TypedFunction<DBBan, String> m,
+                                     @Default TypedFunction<DBBan, String> n,
+                                     @Default TypedFunction<DBBan, String> o,
+                                     @Default TypedFunction<DBBan, String> p,
+                                     @Default TypedFunction<DBBan, String> q,
+                                     @Default TypedFunction<DBBan, String> r,
+                                     @Default TypedFunction<DBBan, String> s,
+                                     @Default TypedFunction<DBBan, String> t,
+                                     @Default TypedFunction<DBBan, String> u,
+                                     @Default TypedFunction<DBBan, String> v,
+                                     @Default TypedFunction<DBBan, String> w,
+                                     @Default TypedFunction<DBBan, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
         };
     }
@@ -642,34 +701,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a NationList sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<NationList, String> column1,
-                                     @Default TypedFunction<NationList, String> column2,
-                                     @Default TypedFunction<NationList, String> column3,
-                                     @Default TypedFunction<NationList, String> column4,
-                                     @Default TypedFunction<NationList, String> column5,
-                                     @Default TypedFunction<NationList, String> column6,
-                                     @Default TypedFunction<NationList, String> column7,
-                                     @Default TypedFunction<NationList, String> column8,
-                                     @Default TypedFunction<NationList, String> column9,
-                                     @Default TypedFunction<NationList, String> column10,
-                                     @Default TypedFunction<NationList, String> column11,
-                                     @Default TypedFunction<NationList, String> column12,
-                                     @Default TypedFunction<NationList, String> column13,
-                                     @Default TypedFunction<NationList, String> column14,
-                                     @Default TypedFunction<NationList, String> column15,
-                                     @Default TypedFunction<NationList, String> column16,
-                                     @Default TypedFunction<NationList, String> column17,
-                                     @Default TypedFunction<NationList, String> column18,
-                                     @Default TypedFunction<NationList, String> column19,
-                                     @Default TypedFunction<NationList, String> column20,
-                                     @Default TypedFunction<NationList, String> column21,
-                                     @Default TypedFunction<NationList, String> column22,
-                                     @Default TypedFunction<NationList, String> column23,
-                                     @Default TypedFunction<NationList, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<NationList, String> a,
+                                     @Default TypedFunction<NationList, String> b,
+                                     @Default TypedFunction<NationList, String> c,
+                                     @Default TypedFunction<NationList, String> d,
+                                     @Default TypedFunction<NationList, String> e,
+                                     @Default TypedFunction<NationList, String> f,
+                                     @Default TypedFunction<NationList, String> g,
+                                     @Default TypedFunction<NationList, String> h,
+                                     @Default TypedFunction<NationList, String> i,
+                                     @Default TypedFunction<NationList, String> j,
+                                     @Default TypedFunction<NationList, String> k,
+                                     @Default TypedFunction<NationList, String> l,
+                                     @Default TypedFunction<NationList, String> m,
+                                     @Default TypedFunction<NationList, String> n,
+                                     @Default TypedFunction<NationList, String> o,
+                                     @Default TypedFunction<NationList, String> p,
+                                     @Default TypedFunction<NationList, String> q,
+                                     @Default TypedFunction<NationList, String> r,
+                                     @Default TypedFunction<NationList, String> s,
+                                     @Default TypedFunction<NationList, String> t,
+                                     @Default TypedFunction<NationList, String> u,
+                                     @Default TypedFunction<NationList, String> v,
+                                     @Default TypedFunction<NationList, String> w,
+                                     @Default TypedFunction<NationList, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
         };
     }
@@ -840,34 +899,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a User sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<UserWrapper, String> column1,
-                                     @Default TypedFunction<UserWrapper, String> column2,
-                                     @Default TypedFunction<UserWrapper, String> column3,
-                                     @Default TypedFunction<UserWrapper, String> column4,
-                                     @Default TypedFunction<UserWrapper, String> column5,
-                                     @Default TypedFunction<UserWrapper, String> column6,
-                                     @Default TypedFunction<UserWrapper, String> column7,
-                                     @Default TypedFunction<UserWrapper, String> column8,
-                                     @Default TypedFunction<UserWrapper, String> column9,
-                                     @Default TypedFunction<UserWrapper, String> column10,
-                                     @Default TypedFunction<UserWrapper, String> column11,
-                                     @Default TypedFunction<UserWrapper, String> column12,
-                                     @Default TypedFunction<UserWrapper, String> column13,
-                                     @Default TypedFunction<UserWrapper, String> column14,
-                                     @Default TypedFunction<UserWrapper, String> column15,
-                                     @Default TypedFunction<UserWrapper, String> column16,
-                                     @Default TypedFunction<UserWrapper, String> column17,
-                                     @Default TypedFunction<UserWrapper, String> column18,
-                                     @Default TypedFunction<UserWrapper, String> column19,
-                                     @Default TypedFunction<UserWrapper, String> column20,
-                                     @Default TypedFunction<UserWrapper, String> column21,
-                                     @Default TypedFunction<UserWrapper, String> column22,
-                                     @Default TypedFunction<UserWrapper, String> column23,
-                                     @Default TypedFunction<UserWrapper, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<UserWrapper, String> a,
+                                     @Default TypedFunction<UserWrapper, String> b,
+                                     @Default TypedFunction<UserWrapper, String> c,
+                                     @Default TypedFunction<UserWrapper, String> d,
+                                     @Default TypedFunction<UserWrapper, String> e,
+                                     @Default TypedFunction<UserWrapper, String> f,
+                                     @Default TypedFunction<UserWrapper, String> g,
+                                     @Default TypedFunction<UserWrapper, String> h,
+                                     @Default TypedFunction<UserWrapper, String> i,
+                                     @Default TypedFunction<UserWrapper, String> j,
+                                     @Default TypedFunction<UserWrapper, String> k,
+                                     @Default TypedFunction<UserWrapper, String> l,
+                                     @Default TypedFunction<UserWrapper, String> m,
+                                     @Default TypedFunction<UserWrapper, String> n,
+                                     @Default TypedFunction<UserWrapper, String> o,
+                                     @Default TypedFunction<UserWrapper, String> p,
+                                     @Default TypedFunction<UserWrapper, String> q,
+                                     @Default TypedFunction<UserWrapper, String> r,
+                                     @Default TypedFunction<UserWrapper, String> s,
+                                     @Default TypedFunction<UserWrapper, String> t,
+                                     @Default TypedFunction<UserWrapper, String> u,
+                                     @Default TypedFunction<UserWrapper, String> v,
+                                     @Default TypedFunction<UserWrapper, String> w,
+                                     @Default TypedFunction<UserWrapper, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
         };
 
@@ -930,34 +989,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a City sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<DBCity, String> column1,
-                                     @Default TypedFunction<DBCity, String> column2,
-                                     @Default TypedFunction<DBCity, String> column3,
-                                     @Default TypedFunction<DBCity, String> column4,
-                                     @Default TypedFunction<DBCity, String> column5,
-                                     @Default TypedFunction<DBCity, String> column6,
-                                     @Default TypedFunction<DBCity, String> column7,
-                                     @Default TypedFunction<DBCity, String> column8,
-                                     @Default TypedFunction<DBCity, String> column9,
-                                     @Default TypedFunction<DBCity, String> column10,
-                                     @Default TypedFunction<DBCity, String> column11,
-                                     @Default TypedFunction<DBCity, String> column12,
-                                     @Default TypedFunction<DBCity, String> column13,
-                                     @Default TypedFunction<DBCity, String> column14,
-                                     @Default TypedFunction<DBCity, String> column15,
-                                     @Default TypedFunction<DBCity, String> column16,
-                                     @Default TypedFunction<DBCity, String> column17,
-                                     @Default TypedFunction<DBCity, String> column18,
-                                     @Default TypedFunction<DBCity, String> column19,
-                                     @Default TypedFunction<DBCity, String> column20,
-                                     @Default TypedFunction<DBCity, String> column21,
-                                     @Default TypedFunction<DBCity, String> column22,
-                                     @Default TypedFunction<DBCity, String> column23,
-                                     @Default TypedFunction<DBCity, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<DBCity, String> a,
+                                     @Default TypedFunction<DBCity, String> b,
+                                     @Default TypedFunction<DBCity, String> c,
+                                     @Default TypedFunction<DBCity, String> d,
+                                     @Default TypedFunction<DBCity, String> e,
+                                     @Default TypedFunction<DBCity, String> f,
+                                     @Default TypedFunction<DBCity, String> g,
+                                     @Default TypedFunction<DBCity, String> h,
+                                     @Default TypedFunction<DBCity, String> i,
+                                     @Default TypedFunction<DBCity, String> j,
+                                     @Default TypedFunction<DBCity, String> k,
+                                     @Default TypedFunction<DBCity, String> l,
+                                     @Default TypedFunction<DBCity, String> m,
+                                     @Default TypedFunction<DBCity, String> n,
+                                     @Default TypedFunction<DBCity, String> o,
+                                     @Default TypedFunction<DBCity, String> p,
+                                     @Default TypedFunction<DBCity, String> q,
+                                     @Default TypedFunction<DBCity, String> r,
+                                     @Default TypedFunction<DBCity, String> s,
+                                     @Default TypedFunction<DBCity, String> t,
+                                     @Default TypedFunction<DBCity, String> u,
+                                     @Default TypedFunction<DBCity, String> v,
+                                     @Default TypedFunction<DBCity, String> w,
+                                     @Default TypedFunction<DBCity, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
         };
     }
@@ -1127,34 +1186,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a Bank TaxDeposit sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column1,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column2,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column3,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column4,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column5,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column6,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column7,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column8,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column9,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column10,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column11,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column12,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column13,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column14,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column15,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column16,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column17,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column18,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column19,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column20,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column21,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column22,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column23,
-                                     @Default TypedFunction<BankDB.TaxDeposit, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> a,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> b,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> c,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> d,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> e,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> f,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> g,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> h,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> i,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> j,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> k,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> l,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> m,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> n,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> o,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> p,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> q,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> r,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> s,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> t,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> u,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> v,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> w,
+                                     @Default TypedFunction<BankDB.TaxDeposit, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
         };
     }
@@ -1254,34 +1313,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to an Attack sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<IAttack, String> column1,
-                                     @Default TypedFunction<IAttack, String> column2,
-                                     @Default TypedFunction<IAttack, String> column3,
-                                     @Default TypedFunction<IAttack, String> column4,
-                                     @Default TypedFunction<IAttack, String> column5,
-                                     @Default TypedFunction<IAttack, String> column6,
-                                     @Default TypedFunction<IAttack, String> column7,
-                                     @Default TypedFunction<IAttack, String> column8,
-                                     @Default TypedFunction<IAttack, String> column9,
-                                     @Default TypedFunction<IAttack, String> column10,
-                                     @Default TypedFunction<IAttack, String> column11,
-                                     @Default TypedFunction<IAttack, String> column12,
-                                     @Default TypedFunction<IAttack, String> column13,
-                                     @Default TypedFunction<IAttack, String> column14,
-                                     @Default TypedFunction<IAttack, String> column15,
-                                     @Default TypedFunction<IAttack, String> column16,
-                                     @Default TypedFunction<IAttack, String> column17,
-                                     @Default TypedFunction<IAttack, String> column18,
-                                     @Default TypedFunction<IAttack, String> column19,
-                                     @Default TypedFunction<IAttack, String> column20,
-                                     @Default TypedFunction<IAttack, String> column21,
-                                     @Default TypedFunction<IAttack, String> column22,
-                                     @Default TypedFunction<IAttack, String> column23,
-                                     @Default TypedFunction<IAttack, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<IAttack, String> a,
+                                     @Default TypedFunction<IAttack, String> b,
+                                     @Default TypedFunction<IAttack, String> c,
+                                     @Default TypedFunction<IAttack, String> d,
+                                     @Default TypedFunction<IAttack, String> e,
+                                     @Default TypedFunction<IAttack, String> f,
+                                     @Default TypedFunction<IAttack, String> g,
+                                     @Default TypedFunction<IAttack, String> h,
+                                     @Default TypedFunction<IAttack, String> i,
+                                     @Default TypedFunction<IAttack, String> j,
+                                     @Default TypedFunction<IAttack, String> k,
+                                     @Default TypedFunction<IAttack, String> l,
+                                     @Default TypedFunction<IAttack, String> m,
+                                     @Default TypedFunction<IAttack, String> n,
+                                     @Default TypedFunction<IAttack, String> o,
+                                     @Default TypedFunction<IAttack, String> p,
+                                     @Default TypedFunction<IAttack, String> q,
+                                     @Default TypedFunction<IAttack, String> r,
+                                     @Default TypedFunction<IAttack, String> s,
+                                     @Default TypedFunction<IAttack, String> t,
+                                     @Default TypedFunction<IAttack, String> u,
+                                     @Default TypedFunction<IAttack, String> v,
+                                     @Default TypedFunction<IAttack, String> w,
+                                     @Default TypedFunction<IAttack, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
         };
     }
@@ -1356,34 +1415,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a War sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<DBWar, String> column1,
-                                     @Default TypedFunction<DBWar, String> column2,
-                                     @Default TypedFunction<DBWar, String> column3,
-                                     @Default TypedFunction<DBWar, String> column4,
-                                     @Default TypedFunction<DBWar, String> column5,
-                                     @Default TypedFunction<DBWar, String> column6,
-                                     @Default TypedFunction<DBWar, String> column7,
-                                     @Default TypedFunction<DBWar, String> column8,
-                                     @Default TypedFunction<DBWar, String> column9,
-                                     @Default TypedFunction<DBWar, String> column10,
-                                     @Default TypedFunction<DBWar, String> column11,
-                                     @Default TypedFunction<DBWar, String> column12,
-                                     @Default TypedFunction<DBWar, String> column13,
-                                     @Default TypedFunction<DBWar, String> column14,
-                                     @Default TypedFunction<DBWar, String> column15,
-                                     @Default TypedFunction<DBWar, String> column16,
-                                     @Default TypedFunction<DBWar, String> column17,
-                                     @Default TypedFunction<DBWar, String> column18,
-                                     @Default TypedFunction<DBWar, String> column19,
-                                     @Default TypedFunction<DBWar, String> column20,
-                                     @Default TypedFunction<DBWar, String> column21,
-                                     @Default TypedFunction<DBWar, String> column22,
-                                     @Default TypedFunction<DBWar, String> column23,
-                                     @Default TypedFunction<DBWar, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<DBWar, String> a,
+                                     @Default TypedFunction<DBWar, String> b,
+                                     @Default TypedFunction<DBWar, String> c,
+                                     @Default TypedFunction<DBWar, String> d,
+                                     @Default TypedFunction<DBWar, String> e,
+                                     @Default TypedFunction<DBWar, String> f,
+                                     @Default TypedFunction<DBWar, String> g,
+                                     @Default TypedFunction<DBWar, String> h,
+                                     @Default TypedFunction<DBWar, String> i,
+                                     @Default TypedFunction<DBWar, String> j,
+                                     @Default TypedFunction<DBWar, String> k,
+                                     @Default TypedFunction<DBWar, String> l,
+                                     @Default TypedFunction<DBWar, String> m,
+                                     @Default TypedFunction<DBWar, String> n,
+                                     @Default TypedFunction<DBWar, String> o,
+                                     @Default TypedFunction<DBWar, String> p,
+                                     @Default TypedFunction<DBWar, String> q,
+                                     @Default TypedFunction<DBWar, String> r,
+                                     @Default TypedFunction<DBWar, String> s,
+                                     @Default TypedFunction<DBWar, String> t,
+                                     @Default TypedFunction<DBWar, String> u,
+                                     @Default TypedFunction<DBWar, String> v,
+                                     @Default TypedFunction<DBWar, String> w,
+                                     @Default TypedFunction<DBWar, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
         };
     }
@@ -1452,34 +1511,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a TaxBracket sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<TaxBracket, String> column1,
-                                     @Default TypedFunction<TaxBracket, String> column2,
-                                     @Default TypedFunction<TaxBracket, String> column3,
-                                     @Default TypedFunction<TaxBracket, String> column4,
-                                     @Default TypedFunction<TaxBracket, String> column5,
-                                     @Default TypedFunction<TaxBracket, String> column6,
-                                     @Default TypedFunction<TaxBracket, String> column7,
-                                     @Default TypedFunction<TaxBracket, String> column8,
-                                     @Default TypedFunction<TaxBracket, String> column9,
-                                     @Default TypedFunction<TaxBracket, String> column10,
-                                     @Default TypedFunction<TaxBracket, String> column11,
-                                     @Default TypedFunction<TaxBracket, String> column12,
-                                     @Default TypedFunction<TaxBracket, String> column13,
-                                     @Default TypedFunction<TaxBracket, String> column14,
-                                     @Default TypedFunction<TaxBracket, String> column15,
-                                     @Default TypedFunction<TaxBracket, String> column16,
-                                     @Default TypedFunction<TaxBracket, String> column17,
-                                     @Default TypedFunction<TaxBracket, String> column18,
-                                     @Default TypedFunction<TaxBracket, String> column19,
-                                     @Default TypedFunction<TaxBracket, String> column20,
-                                     @Default TypedFunction<TaxBracket, String> column21,
-                                     @Default TypedFunction<TaxBracket, String> column22,
-                                     @Default TypedFunction<TaxBracket, String> column23,
-                                     @Default TypedFunction<TaxBracket, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<TaxBracket, String> a,
+                                     @Default TypedFunction<TaxBracket, String> b,
+                                     @Default TypedFunction<TaxBracket, String> c,
+                                     @Default TypedFunction<TaxBracket, String> d,
+                                     @Default TypedFunction<TaxBracket, String> e,
+                                     @Default TypedFunction<TaxBracket, String> f,
+                                     @Default TypedFunction<TaxBracket, String> g,
+                                     @Default TypedFunction<TaxBracket, String> h,
+                                     @Default TypedFunction<TaxBracket, String> i,
+                                     @Default TypedFunction<TaxBracket, String> j,
+                                     @Default TypedFunction<TaxBracket, String> k,
+                                     @Default TypedFunction<TaxBracket, String> l,
+                                     @Default TypedFunction<TaxBracket, String> m,
+                                     @Default TypedFunction<TaxBracket, String> n,
+                                     @Default TypedFunction<TaxBracket, String> o,
+                                     @Default TypedFunction<TaxBracket, String> p,
+                                     @Default TypedFunction<TaxBracket, String> q,
+                                     @Default TypedFunction<TaxBracket, String> r,
+                                     @Default TypedFunction<TaxBracket, String> s,
+                                     @Default TypedFunction<TaxBracket, String> t,
+                                     @Default TypedFunction<TaxBracket, String> u,
+                                     @Default TypedFunction<TaxBracket, String> v,
+                                     @Default TypedFunction<TaxBracket, String> w,
+                                     @Default TypedFunction<TaxBracket, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
         };
     }
@@ -1488,7 +1547,7 @@ public class PlaceholdersMap {
         return new SimplePlaceholders<DBTrade>(DBTrade.class, store, validators, permisser,
                 "TODO CM REF",
                 (ThrowingBiFunction<ValueStore, String, Set<DBTrade>>) (store, input) -> {
-                    input = getSelection(store, DBTreasure.class, input);
+                    input = getSelection(store, DBTrade.class, input);
                     if (input.equalsIgnoreCase("*")) {
                         throw new UnsupportedOperationException("`*` is not supported. Only trade ids are supported");
                     }
@@ -1533,34 +1592,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a Trade sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<DBTrade, String> column1,
-                                     @Default TypedFunction<DBTrade, String> column2,
-                                     @Default TypedFunction<DBTrade, String> column3,
-                                     @Default TypedFunction<DBTrade, String> column4,
-                                     @Default TypedFunction<DBTrade, String> column5,
-                                     @Default TypedFunction<DBTrade, String> column6,
-                                     @Default TypedFunction<DBTrade, String> column7,
-                                     @Default TypedFunction<DBTrade, String> column8,
-                                     @Default TypedFunction<DBTrade, String> column9,
-                                     @Default TypedFunction<DBTrade, String> column10,
-                                     @Default TypedFunction<DBTrade, String> column11,
-                                     @Default TypedFunction<DBTrade, String> column12,
-                                     @Default TypedFunction<DBTrade, String> column13,
-                                     @Default TypedFunction<DBTrade, String> column14,
-                                     @Default TypedFunction<DBTrade, String> column15,
-                                     @Default TypedFunction<DBTrade, String> column16,
-                                     @Default TypedFunction<DBTrade, String> column17,
-                                     @Default TypedFunction<DBTrade, String> column18,
-                                     @Default TypedFunction<DBTrade, String> column19,
-                                     @Default TypedFunction<DBTrade, String> column20,
-                                     @Default TypedFunction<DBTrade, String> column21,
-                                     @Default TypedFunction<DBTrade, String> column22,
-                                     @Default TypedFunction<DBTrade, String> column23,
-                                     @Default TypedFunction<DBTrade, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<DBTrade, String> a,
+                                     @Default TypedFunction<DBTrade, String> b,
+                                     @Default TypedFunction<DBTrade, String> c,
+                                     @Default TypedFunction<DBTrade, String> d,
+                                     @Default TypedFunction<DBTrade, String> e,
+                                     @Default TypedFunction<DBTrade, String> f,
+                                     @Default TypedFunction<DBTrade, String> g,
+                                     @Default TypedFunction<DBTrade, String> h,
+                                     @Default TypedFunction<DBTrade, String> i,
+                                     @Default TypedFunction<DBTrade, String> j,
+                                     @Default TypedFunction<DBTrade, String> k,
+                                     @Default TypedFunction<DBTrade, String> l,
+                                     @Default TypedFunction<DBTrade, String> m,
+                                     @Default TypedFunction<DBTrade, String> n,
+                                     @Default TypedFunction<DBTrade, String> o,
+                                     @Default TypedFunction<DBTrade, String> p,
+                                     @Default TypedFunction<DBTrade, String> q,
+                                     @Default TypedFunction<DBTrade, String> r,
+                                     @Default TypedFunction<DBTrade, String> s,
+                                     @Default TypedFunction<DBTrade, String> t,
+                                     @Default TypedFunction<DBTrade, String> u,
+                                     @Default TypedFunction<DBTrade, String> v,
+                                     @Default TypedFunction<DBTrade, String> w,
+                                     @Default TypedFunction<DBTrade, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
 
 
@@ -1754,34 +1813,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a Transaction sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<Transaction2, String> column1,
-                                     @Default TypedFunction<Transaction2, String> column2,
-                                     @Default TypedFunction<Transaction2, String> column3,
-                                     @Default TypedFunction<Transaction2, String> column4,
-                                     @Default TypedFunction<Transaction2, String> column5,
-                                     @Default TypedFunction<Transaction2, String> column6,
-                                     @Default TypedFunction<Transaction2, String> column7,
-                                     @Default TypedFunction<Transaction2, String> column8,
-                                     @Default TypedFunction<Transaction2, String> column9,
-                                     @Default TypedFunction<Transaction2, String> column10,
-                                     @Default TypedFunction<Transaction2, String> column11,
-                                     @Default TypedFunction<Transaction2, String> column12,
-                                     @Default TypedFunction<Transaction2, String> column13,
-                                     @Default TypedFunction<Transaction2, String> column14,
-                                     @Default TypedFunction<Transaction2, String> column15,
-                                     @Default TypedFunction<Transaction2, String> column16,
-                                     @Default TypedFunction<Transaction2, String> column17,
-                                     @Default TypedFunction<Transaction2, String> column18,
-                                     @Default TypedFunction<Transaction2, String> column19,
-                                     @Default TypedFunction<Transaction2, String> column20,
-                                     @Default TypedFunction<Transaction2, String> column21,
-                                     @Default TypedFunction<Transaction2, String> column22,
-                                     @Default TypedFunction<Transaction2, String> column23,
-                                     @Default TypedFunction<Transaction2, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<Transaction2, String> a,
+                                     @Default TypedFunction<Transaction2, String> b,
+                                     @Default TypedFunction<Transaction2, String> c,
+                                     @Default TypedFunction<Transaction2, String> d,
+                                     @Default TypedFunction<Transaction2, String> e,
+                                     @Default TypedFunction<Transaction2, String> f,
+                                     @Default TypedFunction<Transaction2, String> g,
+                                     @Default TypedFunction<Transaction2, String> h,
+                                     @Default TypedFunction<Transaction2, String> i,
+                                     @Default TypedFunction<Transaction2, String> j,
+                                     @Default TypedFunction<Transaction2, String> k,
+                                     @Default TypedFunction<Transaction2, String> l,
+                                     @Default TypedFunction<Transaction2, String> m,
+                                     @Default TypedFunction<Transaction2, String> n,
+                                     @Default TypedFunction<Transaction2, String> o,
+                                     @Default TypedFunction<Transaction2, String> p,
+                                     @Default TypedFunction<Transaction2, String> q,
+                                     @Default TypedFunction<Transaction2, String> r,
+                                     @Default TypedFunction<Transaction2, String> s,
+                                     @Default TypedFunction<Transaction2, String> t,
+                                     @Default TypedFunction<Transaction2, String> u,
+                                     @Default TypedFunction<Transaction2, String> v,
+                                     @Default TypedFunction<Transaction2, String> w,
+                                     @Default TypedFunction<Transaction2, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
         };
     }
@@ -1850,34 +1909,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a bounty sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<DBBounty, String> column1,
-                                     @Default TypedFunction<DBBounty, String> column2,
-                                     @Default TypedFunction<DBBounty, String> column3,
-                                     @Default TypedFunction<DBBounty, String> column4,
-                                     @Default TypedFunction<DBBounty, String> column5,
-                                     @Default TypedFunction<DBBounty, String> column6,
-                                     @Default TypedFunction<DBBounty, String> column7,
-                                     @Default TypedFunction<DBBounty, String> column8,
-                                     @Default TypedFunction<DBBounty, String> column9,
-                                     @Default TypedFunction<DBBounty, String> column10,
-                                     @Default TypedFunction<DBBounty, String> column11,
-                                     @Default TypedFunction<DBBounty, String> column12,
-                                     @Default TypedFunction<DBBounty, String> column13,
-                                     @Default TypedFunction<DBBounty, String> column14,
-                                     @Default TypedFunction<DBBounty, String> column15,
-                                     @Default TypedFunction<DBBounty, String> column16,
-                                     @Default TypedFunction<DBBounty, String> column17,
-                                     @Default TypedFunction<DBBounty, String> column18,
-                                     @Default TypedFunction<DBBounty, String> column19,
-                                     @Default TypedFunction<DBBounty, String> column20,
-                                     @Default TypedFunction<DBBounty, String> column21,
-                                     @Default TypedFunction<DBBounty, String> column22,
-                                     @Default TypedFunction<DBBounty, String> column23,
-                                     @Default TypedFunction<DBBounty, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<DBBounty, String> a,
+                                     @Default TypedFunction<DBBounty, String> b,
+                                     @Default TypedFunction<DBBounty, String> c,
+                                     @Default TypedFunction<DBBounty, String> d,
+                                     @Default TypedFunction<DBBounty, String> e,
+                                     @Default TypedFunction<DBBounty, String> f,
+                                     @Default TypedFunction<DBBounty, String> g,
+                                     @Default TypedFunction<DBBounty, String> h,
+                                     @Default TypedFunction<DBBounty, String> i,
+                                     @Default TypedFunction<DBBounty, String> j,
+                                     @Default TypedFunction<DBBounty, String> k,
+                                     @Default TypedFunction<DBBounty, String> l,
+                                     @Default TypedFunction<DBBounty, String> m,
+                                     @Default TypedFunction<DBBounty, String> n,
+                                     @Default TypedFunction<DBBounty, String> o,
+                                     @Default TypedFunction<DBBounty, String> p,
+                                     @Default TypedFunction<DBBounty, String> q,
+                                     @Default TypedFunction<DBBounty, String> r,
+                                     @Default TypedFunction<DBBounty, String> s,
+                                     @Default TypedFunction<DBBounty, String> t,
+                                     @Default TypedFunction<DBBounty, String> u,
+                                     @Default TypedFunction<DBBounty, String> v,
+                                     @Default TypedFunction<DBBounty, String> w,
+                                     @Default TypedFunction<DBBounty, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
         };
     }
@@ -1979,34 +2038,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a Treaty sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<Treaty, String> column1,
-                                     @Default TypedFunction<Treaty, String> column2,
-                                     @Default TypedFunction<Treaty, String> column3,
-                                     @Default TypedFunction<Treaty, String> column4,
-                                     @Default TypedFunction<Treaty, String> column5,
-                                     @Default TypedFunction<Treaty, String> column6,
-                                     @Default TypedFunction<Treaty, String> column7,
-                                     @Default TypedFunction<Treaty, String> column8,
-                                     @Default TypedFunction<Treaty, String> column9,
-                                     @Default TypedFunction<Treaty, String> column10,
-                                     @Default TypedFunction<Treaty, String> column11,
-                                     @Default TypedFunction<Treaty, String> column12,
-                                     @Default TypedFunction<Treaty, String> column13,
-                                     @Default TypedFunction<Treaty, String> column14,
-                                     @Default TypedFunction<Treaty, String> column15,
-                                     @Default TypedFunction<Treaty, String> column16,
-                                     @Default TypedFunction<Treaty, String> column17,
-                                     @Default TypedFunction<Treaty, String> column18,
-                                     @Default TypedFunction<Treaty, String> column19,
-                                     @Default TypedFunction<Treaty, String> column20,
-                                     @Default TypedFunction<Treaty, String> column21,
-                                     @Default TypedFunction<Treaty, String> column22,
-                                     @Default TypedFunction<Treaty, String> column23,
-                                     @Default TypedFunction<Treaty, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<Treaty, String> a,
+                                     @Default TypedFunction<Treaty, String> b,
+                                     @Default TypedFunction<Treaty, String> c,
+                                     @Default TypedFunction<Treaty, String> d,
+                                     @Default TypedFunction<Treaty, String> e,
+                                     @Default TypedFunction<Treaty, String> f,
+                                     @Default TypedFunction<Treaty, String> g,
+                                     @Default TypedFunction<Treaty, String> h,
+                                     @Default TypedFunction<Treaty, String> i,
+                                     @Default TypedFunction<Treaty, String> j,
+                                     @Default TypedFunction<Treaty, String> k,
+                                     @Default TypedFunction<Treaty, String> l,
+                                     @Default TypedFunction<Treaty, String> m,
+                                     @Default TypedFunction<Treaty, String> n,
+                                     @Default TypedFunction<Treaty, String> o,
+                                     @Default TypedFunction<Treaty, String> p,
+                                     @Default TypedFunction<Treaty, String> q,
+                                     @Default TypedFunction<Treaty, String> r,
+                                     @Default TypedFunction<Treaty, String> s,
+                                     @Default TypedFunction<Treaty, String> t,
+                                     @Default TypedFunction<Treaty, String> u,
+                                     @Default TypedFunction<Treaty, String> v,
+                                     @Default TypedFunction<Treaty, String> w,
+                                     @Default TypedFunction<Treaty, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
         };
     }
@@ -2039,34 +2098,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a Project sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<Project, String> column1,
-                                     @Default TypedFunction<Project, String> column2,
-                                     @Default TypedFunction<Project, String> column3,
-                                     @Default TypedFunction<Project, String> column4,
-                                     @Default TypedFunction<Project, String> column5,
-                                     @Default TypedFunction<Project, String> column6,
-                                     @Default TypedFunction<Project, String> column7,
-                                     @Default TypedFunction<Project, String> column8,
-                                     @Default TypedFunction<Project, String> column9,
-                                     @Default TypedFunction<Project, String> column10,
-                                     @Default TypedFunction<Project, String> column11,
-                                     @Default TypedFunction<Project, String> column12,
-                                     @Default TypedFunction<Project, String> column13,
-                                     @Default TypedFunction<Project, String> column14,
-                                     @Default TypedFunction<Project, String> column15,
-                                     @Default TypedFunction<Project, String> column16,
-                                     @Default TypedFunction<Project, String> column17,
-                                     @Default TypedFunction<Project, String> column18,
-                                     @Default TypedFunction<Project, String> column19,
-                                     @Default TypedFunction<Project, String> column20,
-                                     @Default TypedFunction<Project, String> column21,
-                                     @Default TypedFunction<Project, String> column22,
-                                     @Default TypedFunction<Project, String> column23,
-                                     @Default TypedFunction<Project, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<Project, String> a,
+                                     @Default TypedFunction<Project, String> b,
+                                     @Default TypedFunction<Project, String> c,
+                                     @Default TypedFunction<Project, String> d,
+                                     @Default TypedFunction<Project, String> e,
+                                     @Default TypedFunction<Project, String> f,
+                                     @Default TypedFunction<Project, String> g,
+                                     @Default TypedFunction<Project, String> h,
+                                     @Default TypedFunction<Project, String> i,
+                                     @Default TypedFunction<Project, String> j,
+                                     @Default TypedFunction<Project, String> k,
+                                     @Default TypedFunction<Project, String> l,
+                                     @Default TypedFunction<Project, String> m,
+                                     @Default TypedFunction<Project, String> n,
+                                     @Default TypedFunction<Project, String> o,
+                                     @Default TypedFunction<Project, String> p,
+                                     @Default TypedFunction<Project, String> q,
+                                     @Default TypedFunction<Project, String> r,
+                                     @Default TypedFunction<Project, String> s,
+                                     @Default TypedFunction<Project, String> t,
+                                     @Default TypedFunction<Project, String> u,
+                                     @Default TypedFunction<Project, String> v,
+                                     @Default TypedFunction<Project, String> w,
+                                     @Default TypedFunction<Project, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
         };
     }
@@ -2093,34 +2152,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a Resource sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<ResourceType, String> column1,
-                                     @Default TypedFunction<ResourceType, String> column2,
-                                     @Default TypedFunction<ResourceType, String> column3,
-                                     @Default TypedFunction<ResourceType, String> column4,
-                                     @Default TypedFunction<ResourceType, String> column5,
-                                     @Default TypedFunction<ResourceType, String> column6,
-                                     @Default TypedFunction<ResourceType, String> column7,
-                                     @Default TypedFunction<ResourceType, String> column8,
-                                     @Default TypedFunction<ResourceType, String> column9,
-                                     @Default TypedFunction<ResourceType, String> column10,
-                                     @Default TypedFunction<ResourceType, String> column11,
-                                     @Default TypedFunction<ResourceType, String> column12,
-                                     @Default TypedFunction<ResourceType, String> column13,
-                                     @Default TypedFunction<ResourceType, String> column14,
-                                     @Default TypedFunction<ResourceType, String> column15,
-                                     @Default TypedFunction<ResourceType, String> column16,
-                                     @Default TypedFunction<ResourceType, String> column17,
-                                     @Default TypedFunction<ResourceType, String> column18,
-                                     @Default TypedFunction<ResourceType, String> column19,
-                                     @Default TypedFunction<ResourceType, String> column20,
-                                     @Default TypedFunction<ResourceType, String> column21,
-                                     @Default TypedFunction<ResourceType, String> column22,
-                                     @Default TypedFunction<ResourceType, String> column23,
-                                     @Default TypedFunction<ResourceType, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<ResourceType, String> a,
+                                     @Default TypedFunction<ResourceType, String> b,
+                                     @Default TypedFunction<ResourceType, String> c,
+                                     @Default TypedFunction<ResourceType, String> d,
+                                     @Default TypedFunction<ResourceType, String> e,
+                                     @Default TypedFunction<ResourceType, String> f,
+                                     @Default TypedFunction<ResourceType, String> g,
+                                     @Default TypedFunction<ResourceType, String> h,
+                                     @Default TypedFunction<ResourceType, String> i,
+                                     @Default TypedFunction<ResourceType, String> j,
+                                     @Default TypedFunction<ResourceType, String> k,
+                                     @Default TypedFunction<ResourceType, String> l,
+                                     @Default TypedFunction<ResourceType, String> m,
+                                     @Default TypedFunction<ResourceType, String> n,
+                                     @Default TypedFunction<ResourceType, String> o,
+                                     @Default TypedFunction<ResourceType, String> p,
+                                     @Default TypedFunction<ResourceType, String> q,
+                                     @Default TypedFunction<ResourceType, String> r,
+                                     @Default TypedFunction<ResourceType, String> s,
+                                     @Default TypedFunction<ResourceType, String> t,
+                                     @Default TypedFunction<ResourceType, String> u,
+                                     @Default TypedFunction<ResourceType, String> v,
+                                     @Default TypedFunction<ResourceType, String> w,
+                                     @Default TypedFunction<ResourceType, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
         };
     }
@@ -2147,34 +2206,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a AttackType sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<AttackType, String> column1,
-                                     @Default TypedFunction<AttackType, String> column2,
-                                     @Default TypedFunction<AttackType, String> column3,
-                                     @Default TypedFunction<AttackType, String> column4,
-                                     @Default TypedFunction<AttackType, String> column5,
-                                     @Default TypedFunction<AttackType, String> column6,
-                                     @Default TypedFunction<AttackType, String> column7,
-                                     @Default TypedFunction<AttackType, String> column8,
-                                     @Default TypedFunction<AttackType, String> column9,
-                                     @Default TypedFunction<AttackType, String> column10,
-                                     @Default TypedFunction<AttackType, String> column11,
-                                     @Default TypedFunction<AttackType, String> column12,
-                                     @Default TypedFunction<AttackType, String> column13,
-                                     @Default TypedFunction<AttackType, String> column14,
-                                     @Default TypedFunction<AttackType, String> column15,
-                                     @Default TypedFunction<AttackType, String> column16,
-                                     @Default TypedFunction<AttackType, String> column17,
-                                     @Default TypedFunction<AttackType, String> column18,
-                                     @Default TypedFunction<AttackType, String> column19,
-                                     @Default TypedFunction<AttackType, String> column20,
-                                     @Default TypedFunction<AttackType, String> column21,
-                                     @Default TypedFunction<AttackType, String> column22,
-                                     @Default TypedFunction<AttackType, String> column23,
-                                     @Default TypedFunction<AttackType, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<AttackType, String> a,
+                                     @Default TypedFunction<AttackType, String> b,
+                                     @Default TypedFunction<AttackType, String> c,
+                                     @Default TypedFunction<AttackType, String> d,
+                                     @Default TypedFunction<AttackType, String> e,
+                                     @Default TypedFunction<AttackType, String> f,
+                                     @Default TypedFunction<AttackType, String> g,
+                                     @Default TypedFunction<AttackType, String> h,
+                                     @Default TypedFunction<AttackType, String> i,
+                                     @Default TypedFunction<AttackType, String> j,
+                                     @Default TypedFunction<AttackType, String> k,
+                                     @Default TypedFunction<AttackType, String> l,
+                                     @Default TypedFunction<AttackType, String> m,
+                                     @Default TypedFunction<AttackType, String> n,
+                                     @Default TypedFunction<AttackType, String> o,
+                                     @Default TypedFunction<AttackType, String> p,
+                                     @Default TypedFunction<AttackType, String> q,
+                                     @Default TypedFunction<AttackType, String> r,
+                                     @Default TypedFunction<AttackType, String> s,
+                                     @Default TypedFunction<AttackType, String> t,
+                                     @Default TypedFunction<AttackType, String> u,
+                                     @Default TypedFunction<AttackType, String> v,
+                                     @Default TypedFunction<AttackType, String> w,
+                                     @Default TypedFunction<AttackType, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
         };
     }
@@ -2201,34 +2260,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a Military Unit sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<MilitaryUnit, String> column1,
-                                     @Default TypedFunction<MilitaryUnit, String> column2,
-                                     @Default TypedFunction<MilitaryUnit, String> column3,
-                                     @Default TypedFunction<MilitaryUnit, String> column4,
-                                     @Default TypedFunction<MilitaryUnit, String> column5,
-                                     @Default TypedFunction<MilitaryUnit, String> column6,
-                                     @Default TypedFunction<MilitaryUnit, String> column7,
-                                     @Default TypedFunction<MilitaryUnit, String> column8,
-                                     @Default TypedFunction<MilitaryUnit, String> column9,
-                                     @Default TypedFunction<MilitaryUnit, String> column10,
-                                     @Default TypedFunction<MilitaryUnit, String> column11,
-                                     @Default TypedFunction<MilitaryUnit, String> column12,
-                                     @Default TypedFunction<MilitaryUnit, String> column13,
-                                     @Default TypedFunction<MilitaryUnit, String> column14,
-                                     @Default TypedFunction<MilitaryUnit, String> column15,
-                                     @Default TypedFunction<MilitaryUnit, String> column16,
-                                     @Default TypedFunction<MilitaryUnit, String> column17,
-                                     @Default TypedFunction<MilitaryUnit, String> column18,
-                                     @Default TypedFunction<MilitaryUnit, String> column19,
-                                     @Default TypedFunction<MilitaryUnit, String> column20,
-                                     @Default TypedFunction<MilitaryUnit, String> column21,
-                                     @Default TypedFunction<MilitaryUnit, String> column22,
-                                     @Default TypedFunction<MilitaryUnit, String> column23,
-                                     @Default TypedFunction<MilitaryUnit, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<MilitaryUnit, String> a,
+                                     @Default TypedFunction<MilitaryUnit, String> b,
+                                     @Default TypedFunction<MilitaryUnit, String> c,
+                                     @Default TypedFunction<MilitaryUnit, String> d,
+                                     @Default TypedFunction<MilitaryUnit, String> e,
+                                     @Default TypedFunction<MilitaryUnit, String> f,
+                                     @Default TypedFunction<MilitaryUnit, String> g,
+                                     @Default TypedFunction<MilitaryUnit, String> h,
+                                     @Default TypedFunction<MilitaryUnit, String> i,
+                                     @Default TypedFunction<MilitaryUnit, String> j,
+                                     @Default TypedFunction<MilitaryUnit, String> k,
+                                     @Default TypedFunction<MilitaryUnit, String> l,
+                                     @Default TypedFunction<MilitaryUnit, String> m,
+                                     @Default TypedFunction<MilitaryUnit, String> n,
+                                     @Default TypedFunction<MilitaryUnit, String> o,
+                                     @Default TypedFunction<MilitaryUnit, String> p,
+                                     @Default TypedFunction<MilitaryUnit, String> q,
+                                     @Default TypedFunction<MilitaryUnit, String> r,
+                                     @Default TypedFunction<MilitaryUnit, String> s,
+                                     @Default TypedFunction<MilitaryUnit, String> t,
+                                     @Default TypedFunction<MilitaryUnit, String> u,
+                                     @Default TypedFunction<MilitaryUnit, String> v,
+                                     @Default TypedFunction<MilitaryUnit, String> w,
+                                     @Default TypedFunction<MilitaryUnit, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
         };
     }
@@ -2255,34 +2314,88 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a TreatyType sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<TreatyType, String> column1,
-                                     @Default TypedFunction<TreatyType, String> column2,
-                                     @Default TypedFunction<TreatyType, String> column3,
-                                     @Default TypedFunction<TreatyType, String> column4,
-                                     @Default TypedFunction<TreatyType, String> column5,
-                                     @Default TypedFunction<TreatyType, String> column6,
-                                     @Default TypedFunction<TreatyType, String> column7,
-                                     @Default TypedFunction<TreatyType, String> column8,
-                                     @Default TypedFunction<TreatyType, String> column9,
-                                     @Default TypedFunction<TreatyType, String> column10,
-                                     @Default TypedFunction<TreatyType, String> column11,
-                                     @Default TypedFunction<TreatyType, String> column12,
-                                     @Default TypedFunction<TreatyType, String> column13,
-                                     @Default TypedFunction<TreatyType, String> column14,
-                                     @Default TypedFunction<TreatyType, String> column15,
-                                     @Default TypedFunction<TreatyType, String> column16,
-                                     @Default TypedFunction<TreatyType, String> column17,
-                                     @Default TypedFunction<TreatyType, String> column18,
-                                     @Default TypedFunction<TreatyType, String> column19,
-                                     @Default TypedFunction<TreatyType, String> column20,
-                                     @Default TypedFunction<TreatyType, String> column21,
-                                     @Default TypedFunction<TreatyType, String> column22,
-                                     @Default TypedFunction<TreatyType, String> column23,
-                                     @Default TypedFunction<TreatyType, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<TreatyType, String> a,
+                                     @Default TypedFunction<TreatyType, String> b,
+                                     @Default TypedFunction<TreatyType, String> c,
+                                     @Default TypedFunction<TreatyType, String> d,
+                                     @Default TypedFunction<TreatyType, String> e,
+                                     @Default TypedFunction<TreatyType, String> f,
+                                     @Default TypedFunction<TreatyType, String> g,
+                                     @Default TypedFunction<TreatyType, String> h,
+                                     @Default TypedFunction<TreatyType, String> i,
+                                     @Default TypedFunction<TreatyType, String> j,
+                                     @Default TypedFunction<TreatyType, String> k,
+                                     @Default TypedFunction<TreatyType, String> l,
+                                     @Default TypedFunction<TreatyType, String> m,
+                                     @Default TypedFunction<TreatyType, String> n,
+                                     @Default TypedFunction<TreatyType, String> o,
+                                     @Default TypedFunction<TreatyType, String> p,
+                                     @Default TypedFunction<TreatyType, String> q,
+                                     @Default TypedFunction<TreatyType, String> r,
+                                     @Default TypedFunction<TreatyType, String> s,
+                                     @Default TypedFunction<TreatyType, String> t,
+                                     @Default TypedFunction<TreatyType, String> u,
+                                     @Default TypedFunction<TreatyType, String> v,
+                                     @Default TypedFunction<TreatyType, String> w,
+                                     @Default TypedFunction<TreatyType, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
+            }
+        };
+    }
+
+    private Placeholders<DBTreasure> createTreasure() {
+        return new StaticPlaceholders<DBTreasure>(DBTreasure.class, store, validators, permisser,
+                "TODO CM REF",
+                (ThrowingBiFunction<ValueStore, String, Set<DBTreasure>>) (store, input) -> {
+                    input = getSelection(store, DBTreasure.class, input);
+                    if (input.equalsIgnoreCase("*")) return new HashSet<>(Locutus.imp().getNationDB().getTreasuresByName().values());
+                    if (SpreadSheet.isSheet(input)) {
+                        return SpreadSheet.parseSheet(input, List.of("treasure"), true, (type, str) -> PWBindings.treasure(str));
+                    }
+                    return Set.of(PWBindings.treasure(input));
+                }) {
+            @NoFormat
+            @Command(desc = "Add an alias for a selection of Treasures")
+            @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+            public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<DBTreasure> treasures) {
+                return _addSelectionAlias(command, db, name, treasures, "treasures");
+            }
+
+            @NoFormat
+            @Command(desc = "Add columns to a treasure sheet")
+            @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
+                                     @Default TypedFunction<DBTreasure, String> a,
+                                     @Default TypedFunction<DBTreasure, String> b,
+                                     @Default TypedFunction<DBTreasure, String> c,
+                                     @Default TypedFunction<DBTreasure, String> d,
+                                     @Default TypedFunction<DBTreasure, String> e,
+                                     @Default TypedFunction<DBTreasure, String> f,
+                                     @Default TypedFunction<DBTreasure, String> g,
+                                     @Default TypedFunction<DBTreasure, String> h,
+                                     @Default TypedFunction<DBTreasure, String> i,
+                                     @Default TypedFunction<DBTreasure, String> j,
+                                     @Default TypedFunction<DBTreasure, String> k,
+                                     @Default TypedFunction<DBTreasure, String> l,
+                                     @Default TypedFunction<DBTreasure, String> m,
+                                     @Default TypedFunction<DBTreasure, String> n,
+                                     @Default TypedFunction<DBTreasure, String> o,
+                                     @Default TypedFunction<DBTreasure, String> p,
+                                     @Default TypedFunction<DBTreasure, String> q,
+                                     @Default TypedFunction<DBTreasure, String> r,
+                                     @Default TypedFunction<DBTreasure, String> s,
+                                     @Default TypedFunction<DBTreasure, String> t,
+                                     @Default TypedFunction<DBTreasure, String> u,
+                                     @Default TypedFunction<DBTreasure, String> v,
+                                     @Default TypedFunction<DBTreasure, String> w,
+                                     @Default TypedFunction<DBTreasure, String> x) throws GeneralSecurityException, IOException {
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
         };
     }
@@ -2309,34 +2422,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a Audit Type sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column1,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column2,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column3,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column4,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column5,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column6,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column7,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column8,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column9,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column10,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column11,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column12,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column13,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column14,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column15,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column16,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column17,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column18,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column19,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column20,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column21,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column22,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column23,
-                                     @Default TypedFunction<IACheckup.AuditType, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<IACheckup.AuditType, String> a,
+                                     @Default TypedFunction<IACheckup.AuditType, String> b,
+                                     @Default TypedFunction<IACheckup.AuditType, String> c,
+                                     @Default TypedFunction<IACheckup.AuditType, String> d,
+                                     @Default TypedFunction<IACheckup.AuditType, String> e,
+                                     @Default TypedFunction<IACheckup.AuditType, String> f,
+                                     @Default TypedFunction<IACheckup.AuditType, String> g,
+                                     @Default TypedFunction<IACheckup.AuditType, String> h,
+                                     @Default TypedFunction<IACheckup.AuditType, String> i,
+                                     @Default TypedFunction<IACheckup.AuditType, String> j,
+                                     @Default TypedFunction<IACheckup.AuditType, String> k,
+                                     @Default TypedFunction<IACheckup.AuditType, String> l,
+                                     @Default TypedFunction<IACheckup.AuditType, String> m,
+                                     @Default TypedFunction<IACheckup.AuditType, String> n,
+                                     @Default TypedFunction<IACheckup.AuditType, String> o,
+                                     @Default TypedFunction<IACheckup.AuditType, String> p,
+                                     @Default TypedFunction<IACheckup.AuditType, String> q,
+                                     @Default TypedFunction<IACheckup.AuditType, String> r,
+                                     @Default TypedFunction<IACheckup.AuditType, String> s,
+                                     @Default TypedFunction<IACheckup.AuditType, String> t,
+                                     @Default TypedFunction<IACheckup.AuditType, String> u,
+                                     @Default TypedFunction<IACheckup.AuditType, String> v,
+                                     @Default TypedFunction<IACheckup.AuditType, String> w,
+                                     @Default TypedFunction<IACheckup.AuditType, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
         };
     }
@@ -2363,34 +2476,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a Nation Color sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<NationColor, String> column1,
-                                     @Default TypedFunction<NationColor, String> column2,
-                                     @Default TypedFunction<NationColor, String> column3,
-                                     @Default TypedFunction<NationColor, String> column4,
-                                     @Default TypedFunction<NationColor, String> column5,
-                                     @Default TypedFunction<NationColor, String> column6,
-                                     @Default TypedFunction<NationColor, String> column7,
-                                     @Default TypedFunction<NationColor, String> column8,
-                                     @Default TypedFunction<NationColor, String> column9,
-                                     @Default TypedFunction<NationColor, String> column10,
-                                     @Default TypedFunction<NationColor, String> column11,
-                                     @Default TypedFunction<NationColor, String> column12,
-                                     @Default TypedFunction<NationColor, String> column13,
-                                     @Default TypedFunction<NationColor, String> column14,
-                                     @Default TypedFunction<NationColor, String> column15,
-                                     @Default TypedFunction<NationColor, String> column16,
-                                     @Default TypedFunction<NationColor, String> column17,
-                                     @Default TypedFunction<NationColor, String> column18,
-                                     @Default TypedFunction<NationColor, String> column19,
-                                     @Default TypedFunction<NationColor, String> column20,
-                                     @Default TypedFunction<NationColor, String> column21,
-                                     @Default TypedFunction<NationColor, String> column22,
-                                     @Default TypedFunction<NationColor, String> column23,
-                                     @Default TypedFunction<NationColor, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<NationColor, String> a,
+                                     @Default TypedFunction<NationColor, String> b,
+                                     @Default TypedFunction<NationColor, String> c,
+                                     @Default TypedFunction<NationColor, String> d,
+                                     @Default TypedFunction<NationColor, String> e,
+                                     @Default TypedFunction<NationColor, String> f,
+                                     @Default TypedFunction<NationColor, String> g,
+                                     @Default TypedFunction<NationColor, String> h,
+                                     @Default TypedFunction<NationColor, String> i,
+                                     @Default TypedFunction<NationColor, String> j,
+                                     @Default TypedFunction<NationColor, String> k,
+                                     @Default TypedFunction<NationColor, String> l,
+                                     @Default TypedFunction<NationColor, String> m,
+                                     @Default TypedFunction<NationColor, String> n,
+                                     @Default TypedFunction<NationColor, String> o,
+                                     @Default TypedFunction<NationColor, String> p,
+                                     @Default TypedFunction<NationColor, String> q,
+                                     @Default TypedFunction<NationColor, String> r,
+                                     @Default TypedFunction<NationColor, String> s,
+                                     @Default TypedFunction<NationColor, String> t,
+                                     @Default TypedFunction<NationColor, String> u,
+                                     @Default TypedFunction<NationColor, String> v,
+                                     @Default TypedFunction<NationColor, String> w,
+                                     @Default TypedFunction<NationColor, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
         };
     }
@@ -2417,34 +2530,34 @@ public class PlaceholdersMap {
             @Command(desc = "Add columns to a Building sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
-                                     @Default TypedFunction<Building, String> column1,
-                                     @Default TypedFunction<Building, String> column2,
-                                     @Default TypedFunction<Building, String> column3,
-                                     @Default TypedFunction<Building, String> column4,
-                                     @Default TypedFunction<Building, String> column5,
-                                     @Default TypedFunction<Building, String> column6,
-                                     @Default TypedFunction<Building, String> column7,
-                                     @Default TypedFunction<Building, String> column8,
-                                     @Default TypedFunction<Building, String> column9,
-                                     @Default TypedFunction<Building, String> column10,
-                                     @Default TypedFunction<Building, String> column11,
-                                     @Default TypedFunction<Building, String> column12,
-                                     @Default TypedFunction<Building, String> column13,
-                                     @Default TypedFunction<Building, String> column14,
-                                     @Default TypedFunction<Building, String> column15,
-                                     @Default TypedFunction<Building, String> column16,
-                                     @Default TypedFunction<Building, String> column17,
-                                     @Default TypedFunction<Building, String> column18,
-                                     @Default TypedFunction<Building, String> column19,
-                                     @Default TypedFunction<Building, String> column20,
-                                     @Default TypedFunction<Building, String> column21,
-                                     @Default TypedFunction<Building, String> column22,
-                                     @Default TypedFunction<Building, String> column23,
-                                     @Default TypedFunction<Building, String> column24) throws GeneralSecurityException, IOException {
+                                     @Default TypedFunction<Building, String> a,
+                                     @Default TypedFunction<Building, String> b,
+                                     @Default TypedFunction<Building, String> c,
+                                     @Default TypedFunction<Building, String> d,
+                                     @Default TypedFunction<Building, String> e,
+                                     @Default TypedFunction<Building, String> f,
+                                     @Default TypedFunction<Building, String> g,
+                                     @Default TypedFunction<Building, String> h,
+                                     @Default TypedFunction<Building, String> i,
+                                     @Default TypedFunction<Building, String> j,
+                                     @Default TypedFunction<Building, String> k,
+                                     @Default TypedFunction<Building, String> l,
+                                     @Default TypedFunction<Building, String> m,
+                                     @Default TypedFunction<Building, String> n,
+                                     @Default TypedFunction<Building, String> o,
+                                     @Default TypedFunction<Building, String> p,
+                                     @Default TypedFunction<Building, String> q,
+                                     @Default TypedFunction<Building, String> r,
+                                     @Default TypedFunction<Building, String> s,
+                                     @Default TypedFunction<Building, String> t,
+                                     @Default TypedFunction<Building, String> u,
+                                     @Default TypedFunction<Building, String> v,
+                                     @Default TypedFunction<Building, String> w,
+                                     @Default TypedFunction<Building, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
-                        column1, column2, column3, column4, column5, column6, column7, column8, column9, column10,
-                        column11, column12, column13, column14, column15, column16, column17, column18, column19, column20,
-                        column21, column22, column23, column24);
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
             }
         };
     }

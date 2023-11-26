@@ -65,15 +65,15 @@ public class CustomSheetCommands {
     @NoFormat
     @Command(desc = "List custom selections")
     public String listSelectionAliases(@Me GuildDB db, @Default @PlaceholderType Class type) {
-        Map<Class, Map<String, String>> selections = new LinkedHashMap<>(db.getSheetManager().getSelectionAliases());
+        Map<Class, Map<String, SelectionAlias>> selections = new LinkedHashMap<>(db.getSheetManager().getSelectionAliases());
         if (type != null) {
             selections.entrySet().removeIf(entry -> !entry.getKey().equals(type));
         }
         StringBuilder sb = new StringBuilder();
-        for (Map.Entry<Class, Map<String, String>> entry : selections.entrySet()) {
+        for (Map.Entry<Class, Map<String, SelectionAlias>> entry : selections.entrySet()) {
             sb.append("**").append(entry.getKey().getSimpleName()).append("**\n");
-            for (Map.Entry<String, String> selection : entry.getValue().entrySet()) {
-                sb.append("- `").append(selection.getKey()).append("` -> `").append(selection.getValue()).append("`\n");
+            for (Map.Entry<String, SelectionAlias> selection : entry.getValue().entrySet()) {
+                sb.append("- `").append(selection.getKey()).append("` -> `").append(selection.getValue().getSelection()).append("`\n");
             }
             sb.append("\n");
         }
