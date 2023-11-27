@@ -2046,6 +2046,13 @@ public class CM {
                     return createArgs("name", name);
                 }
             }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.NewsletterCommands.class,method="delete")
+            public static class delete extends CommandRef {
+                public static final delete cmd = new delete();
+                public delete create(String newsletter, String force) {
+                    return createArgs("newsletter", newsletter, "force", force);
+                }
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.NewsletterCommands.class,method="info")
             public static class info extends CommandRef {
                 public static final info cmd = new info();

@@ -65,11 +65,11 @@ public class NewsletterCommands {
         manager.addNewsletter(newsletter);
 
         return "Newsletter `" + name + "` created with id: `#" + newsletter.getId() + "`. See:\n" +
-                "- Add channel TODO CM REF\n" +
-                "- View TODO CM REF\n" +
-                "- Send TODO CM REF\n" +
-                "- Subscribe TODO CM REF\n" +
-                "- Delete TODO CM REF";
+                "- Add channel " + CM.newsletter.channel.add.cmd.toSlashMention() + "\n" +
+                "- View " + CM.newsletter.info.cmd.toSlashMention() + "\n" +
+                "- Send " + CM.newsletter.send.cmd.toSlashMention() + "\n" +
+                "- Subscribe " + CM.newsletter.subscribe.cmd.toSlashMention() + "\n" +
+                "- Delete " + CM.newsletter.delete.cmd.toSlashMention();
     }
 
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS})
@@ -88,7 +88,7 @@ public class NewsletterCommands {
         newsletter.addChannelId(channel.getIdLong());
         manager.addChannel(newsletter.getId(), channel.getIdLong());
         return "Channel " + channel.getAsMention() + " added to newsletter `" + newsletter.getName() + "`\n" +
-                "See VIEW TODO CM REF";
+                "See " + CM.newsletter.info.cmd.toSlashMention();
     }
 
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS})
@@ -101,7 +101,21 @@ public class NewsletterCommands {
         newsletter.removeChannelId(channel.getIdLong());
         manager.removeChannel(newsletter.getId(), channel.getIdLong());
         return "Channel " + channel.getAsMention() + " removed from newsletter `" + newsletter.getName() + "`\n" +
-                "See VIEW TODO CM REF";
+                "See " + CM.newsletter.info.cmd.toSlashMention();
+    }
+
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS})
+    @Command
+    @IsGuild(value = {672217848311054346L, 672217848311054346L})
+    public String delete(@Me IMessageIO io, @Me JSONObject command, NewsletterManager manager, Newsletter newsletter, @Switch("f") boolean force) {
+        if (!force) {
+            String title = "Delete newsletter `" + newsletter.getName() + "`";
+            String body = "**DELETE**:\n" + newsletter.toString();
+            io.create().confirmation(title, body, command).send();
+            return null;
+        }
+        manager.delete(newsletter.getId());
+        return "Newsletter `" + newsletter.getName() + "` deleted";
     }
 
     @Command()
@@ -110,29 +124,8 @@ public class NewsletterCommands {
         if (listNations && !Roles.INTERNAL_AFFAIRS.has(user, guild)) {
             throw new IllegalArgumentException("You do not have permission to list nations");
         }
-        TextChannel sendConfirmChannel = newsletter.getSendConfirmationChannel() == 0 ? null : guild.getTextChannelById(newsletter.getSendConfirmationChannel());
-
         String title = "Newsletter " + newsletter.getName();
-        StringBuilder body = new StringBuilder();
-        body.append("ID: `#").append(newsletter.getId()).append("`\n");
-        body.append("Created: ").append(DiscordUtil.timestamp(newsletter.getDateCreated(), null)).append("\n");
-        if (newsletter.getLastSent() == 0) {
-            body.append("Last sent: Never\n");
-        } else {
-            body.append("Last sent: ").append(DiscordUtil.timestamp(newsletter.getLastSent(), null)).append("\n");
-        }
-        if (sendConfirmChannel == null) {
-            body.append("Send interval: Disabled\n");
-        } else {
-            body.append("Send interval: ").append(DiscordUtil.timestamp(newsletter.getSendInterval(), null)).append("\n");
-            body.append("Confirmation channel: <#").append(newsletter.getSendConfirmationChannel()).append(">\n");
-            body.append("Ping role: <@&").append(newsletter.getPingRole()).append(">\n");
-        }
-        body.append("Channels: ").append(newsletter.getChannelIds().size()).append("\n");
-        for (Long channelId : newsletter.getChannelIds()) {
-            body.append("- <#").append(channelId).append(">\n");
-        }
-
+        String body = newsletter.toString();
         IMessageBuilder msg = io.create().embed(title, body.toString());
 
         if (listNations) {
@@ -178,7 +171,7 @@ public class NewsletterCommands {
         return "Autosend enabled. You will be notified every `" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, interval) + "` since the last send in this channel\n" +
                 "- The role: `" + pingRole.getName() + "` will be mentioned\n" +
                 "- Autosend task will check every turn\n" +
-                "- Disable with TODO CM REF";
+                "- Disable with " + CM.newsletter.auto.cmd.create(newsletter.getName(), "0", null);
     }
 
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS, Roles.MAIL})
@@ -197,7 +190,7 @@ public class NewsletterCommands {
             Set<DBNation> nations = subscribed.stream().map(f -> DBNation.getById(f)).filter(Objects::nonNull).collect(Collectors.toSet());
             if (nations.isEmpty()) {
                 throw new IllegalArgumentException("No nations subscribed to newsletter: `" + newsletter.getName() + "`\n" +
-                        "Subscribe with TODO CM REF");
+                        "Subscribe with " + CM.newsletter.subscribe.cmd.create(newsletter.getName(), null));
             }
 
             String title = "newsletter:" + newsletter.getName() + " " + fromStr + " to " + toStr;
@@ -211,7 +204,7 @@ public class NewsletterCommands {
 
         List<TextChannel> channels = newsletter.getChannelIds().stream().map(guild::getTextChannelById).filter(Objects::nonNull).toList();
         if (channels.isEmpty()) {
-            throw new IllegalArgumentException("No channels added to newsletter: `" + newsletter.getName() + "`. Add one using TODO CM REF");
+            throw new IllegalArgumentException("No channels added to newsletter: `" + newsletter.getName() + "`. Add one using " + CM.newsletter.channel.add.cmd.toSlashMention());
         }
 
         String mention = "<@[!]+" + Settings.INSTANCE.APPLICATION_ID + ">";
@@ -259,7 +252,7 @@ public class NewsletterCommands {
 
         if (messages.isEmpty()) {
             throw new IllegalArgumentException("No new messages found for newsletter: `" + newsletter.getName() + "` since " + DiscordUtil.timestamp(sendSince, null) + "\n" +
-                    "See: TODO CM REF to view channels\n" +
+                    "See: " + CM.newsletter.info.cmd.toSlashMention() + " to view channels\n" +
                     "Note: Only messages mentioning this bot are included");
         }
 
@@ -323,10 +316,10 @@ public class NewsletterCommands {
         }
         body.append("\n");
         if (!subs.isEmpty()) {
-            body.append("Unsubscribe with TODO CM REF\n");
+            body.append("Unsubscribe with " + CM.newsletter.unsubscribe.cmd.toSlashMention() + "\n");
         }
         if (subs.size() != newsletters.size()) {
-            body.append("Subscribe with TODO CM REF\n");
+            body.append("Subscribe with " + CM.newsletter.subscribe.cmd.toSlashMention() + "\n");
         }
 
         return body.toString();
@@ -346,7 +339,7 @@ public class NewsletterCommands {
         }
 
         return "Successfully subscribed " + (nations.size() == 1 ? nations.iterator().next().getMarkdownUrl() : nations.size() + " nations") + " to " + newsletter.getName()
-                + "\n- Unsubscribe with TODO CM REF\n";
+                + "\n- Unsubscribe with " + CM.newsletter.unsubscribe.cmd.create(newsletter.getName(), null);
     }
 
     @Command

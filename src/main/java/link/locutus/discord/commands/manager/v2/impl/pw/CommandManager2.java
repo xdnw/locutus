@@ -180,6 +180,7 @@ public class CommandManager2 {
         getCommands().registerMethod(newsletter, List.of("newsletter"), "list", "list");
         getCommands().registerMethod(newsletter, List.of("newsletter"), "subscribe", "subscribe");
         getCommands().registerMethod(newsletter, List.of("newsletter"), "unsubscribe", "unsubscribe");
+        getCommands().registerMethod(newsletter, List.of("newsletter"), "delete", "delete");
 
         ////listSheetTemplates
         //sheet_template list
