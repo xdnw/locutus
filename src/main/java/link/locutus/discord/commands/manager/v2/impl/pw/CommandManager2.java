@@ -169,6 +169,7 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        getCommands().registerMethod(new TestCommands(), List.of("test"), "filters", "filters");
 
         NewsletterCommands newsletter = new NewsletterCommands();
         getCommands().registerMethod(newsletter, List.of("newsletter"), "create", "create");
@@ -184,6 +185,7 @@ public class CommandManager2 {
 
         ////listSheetTemplates
         //sheet_template list
+        this.commands.registerMethod(new CustomSheetCommands(), List.of("sheet_template"), "renameTemplate", "rename");
         this.commands.registerMethod(new CustomSheetCommands(), List.of("sheet_template"), "listSheetTemplates", "list");
         ////listSelectionAliases
         //selection_alias list

@@ -136,6 +136,7 @@ public class CustomSheet {
                             }
                             sheet.addRow(tabName, header);
                         }
+                        sheet.updateWrite(tabName);
                     } catch (Exception e) {
                         errors.add("[Tab: `" + tabName + "`] " + e.getMessage());
                     }
@@ -150,7 +151,6 @@ public class CustomSheet {
                 errors.add(e.getMessage());
             }
         }
-        sheet.updateWrite();
         return errors;
     }
 }

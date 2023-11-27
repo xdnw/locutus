@@ -15,7 +15,6 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PrimitiveBindings;
 import link.locutus.discord.commands.manager.v2.binding.bindings.ResolvedFunction;
-import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.db.entities.DBCity;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.util.IOUtil;

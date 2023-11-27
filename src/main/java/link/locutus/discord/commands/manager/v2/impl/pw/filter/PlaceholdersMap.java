@@ -100,8 +100,13 @@ public class PlaceholdersMap {
 
     private static PlaceholdersMap INSTANCE;
 
+    public static String getClassName(String simpleName) {
+        return simpleName.replace("DB", "").replace("Wrapper", "")
+                .replaceAll("[0-9]", "")
+                .toLowerCase(Locale.ROOT);
+    }
     public static String getClassName(Class clazz) {
-        return clazz.getSimpleName().replace("DB", "").replace("Wrapper", "").toLowerCase(Locale.ROOT);
+        return getClassName(clazz.getSimpleName());
     }
 
     public static Placeholders<DBNation> NATIONS = null;

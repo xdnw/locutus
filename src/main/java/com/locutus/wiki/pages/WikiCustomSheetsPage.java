@@ -94,12 +94,12 @@ public class WikiCustomSheetsPage extends BotWikiGen {
                 "## Selection types",
                 "- " + Locutus.cmd().getV2().getPlaceholders().getTypes().stream()
                         .map(f -> MarkupUtil.markdownUrl(PlaceholdersMap.getClassName(f), "../wiki/" + PlaceholdersMap.getClassName(f).toLowerCase(Locale.ROOT) + "_placeholders"))
+                        .sorted()
                         .collect(Collectors.joining("\n- ")),
                 "## Selection alias",
                 "A name you set for a selection",
                 "To reference your named selection, use e.g. `$myAlias` or `select:myAlias`",
                 "### Add an alias",
-                //public static Placeholders<DBNation> NATIONS = null;
                 commandMarkdownSpoiler(CM.selection_alias.add.nation.cmd, false) +
                 commandMarkdownSpoiler(CM.selection_alias.add.alliance.cmd, false) +
                 commandMarkdownSpoiler(CM.selection_alias.add.nationoralliance.cmd, false) +
@@ -168,6 +168,7 @@ public class WikiCustomSheetsPage extends BotWikiGen {
                 commandMarkdownSpoiler(CM.sheet_template.list.cmd),
                 commandMarkdownSpoiler(CM.sheet_template.remove.cmd),
                 commandMarkdownSpoiler(CM.sheet_template.remove_column.cmd),
+//                commandMarkdownSpoiler(CM.sheet_template.rename.cmd),
                 "# Creating tabbed sheet",
                 commandMarkdownSpoiler(CM.sheet_custom.add_tab.cmd),
                 commandMarkdownSpoiler(CM.sheet_custom.update.cmd),

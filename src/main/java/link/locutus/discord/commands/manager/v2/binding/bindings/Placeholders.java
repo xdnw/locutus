@@ -20,6 +20,7 @@ import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWMath2Type;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWType2Math;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.SelectionAlias;
@@ -123,7 +124,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         boolean created = false;
         if (sheet == null) {
             created = true;
-            Set<String> names = db.getSheetManager().getSheetTemplateNames();
+            Set<String> names = db.getSheetManager().getSheetTemplateNames(false);
             for (int i = 0; ; i++) {
                 String name = placeholders.getType().getSimpleName() + (i == 0 ? "" : "_" + i);
                 if (!names.contains(name)) {
@@ -142,10 +143,11 @@ public abstract class Placeholders<T> extends BindingHelper {
             }
         }
         for (TypedFunction<T, String> column : columnsNonNull) {
+            System.out.println("Add `" + column.getName() + "` | " + column.toString());
             sheet.columns.add(column.getName());
         }
         db.getSheetManager().addSheetTemplate(sheet);
-        return (created ? "Created" : "Updated") + " sheet template: " + sheet;
+        return (created ? "Created" : "Updated") + " sheet template named: " + sheet + "\n\nRename via TODO CM REF";
     }
 
     private void registerCustom(Method method, Type type) {
@@ -634,16 +636,24 @@ public abstract class Placeholders<T> extends BindingHelper {
             return command.parseArgumentMap2(resolvedArgs, store, validators, permisser, true);
         };
         StringBuilder full = new StringBuilder(command.getPrimaryCommandId());
-        for (Map.Entry<String, TypedFunction<T, ?>> entry : arguments.entrySet()) {
-            full.append(" ").append(entry.getKey()).append(" ").append(entry.getValue());
+        if (!arguments.isEmpty()) {
+            full.append("(");
+            boolean first = true;
+            for (Map.Entry<String, TypedFunction<T, ?>> entry : arguments.entrySet()) {
+                if (!first) {
+                    full.append(" ");
+                }
+                first = false;
+                full.append(entry.getKey()).append(": ").append(entry.getValue().getName());
+            }
+            full.append(")");
         }
-
         BiFunction<T, Object[], Object> format = (object, paramVals) -> command.call(object, store, paramVals);
         if (isResolved) {
             Object[] argArr = resolved.apply(null);
-            return TypedFunction.create(command.getReturnType(), f -> format.apply(f, argArr), full.toString());
+            return TypedFunction.create(command.getReturnType(), f -> format.apply(f, argArr), "{" + full.toString() + "}");
         }
-        return TypedFunction.create(command.getReturnType(), f -> format.apply(f, resolved.apply(f)), full.toString());
+        return TypedFunction.create(command.getReturnType(), f -> format.apply(f, resolved.apply(f)), "{" + full.toString() + "}");
     }
 
     public abstract String getName(T o);
@@ -767,17 +777,27 @@ public abstract class Placeholders<T> extends BindingHelper {
     }
 
     @Binding(value = "Format text containing placeholders")
-    public Function<T, String> getFormatFunction(ValueStore store, String arg) {
+    public TypedFunction<T, String> getFormatFunction(ValueStore store, String arg) {
         return getFormatFunction(store, arg, true);
     }
 
-    public Function<T, String> getFormatFunction(ValueStore store, String arg, boolean throwError) {
+    public TypedFunction<T, String> getFormatFunction(ValueStore store, String arg, boolean throwError) {
         return getFormatFunction(store, arg, null, throwError);
     }
 
-    public Function<T, String> getFormatFunction(ValueStore store, String arg, PlaceholderCache cache, boolean throwError) {
+    public TypedFunction<T, String> getFormatFunction(ValueStore store, String arg, PlaceholderCache cache, boolean throwError) {
         if (cache != null) store.addProvider(cache);
-        return this.formatRecursively(store, arg, null, 0, throwError).andThen(f -> f + "");
+        TypedFunction<T, ?> result = this.formatRecursively(store, arg, null, 0, throwError);
+        if (result.isResolved()) {
+            Object value = result.apply(null);
+            String valueStr = value == null ? null : value.toString();
+            return TypedFunction.create(String.class, valueStr, result.getName());
+        } else {
+            return TypedFunction.create(String.class, f -> {
+                Object value = result.apply((T) f);
+                return value == null ? null : value.toString();
+            }, result.getName());
+        }
     }
 
     private static String[] prefixes = {"get", "is", "can", "has"};

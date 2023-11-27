@@ -39,11 +39,16 @@ public class CustomSheetManager {
         db.executeStmt("CREATE TABLE IF NOT EXISTS `CUSTOM_SHEET_TABS` (`sheet` VARCHAR NOT NULL, `tab` VARCHAR NOT NULL, `selector` VARCHAR NOT NULL, `template` VARCHAR NOT NULL, PRIMARY KEY (`sheet`, `tab`))");
     }
 
-    public Set<String> getSheetTemplateNames() {
+    public Set<String> getSheetTemplateNames(boolean addPrefix) {
         Set<String> names = new HashSet<>();
-        db.query("SELECT `name` FROM `SHEET_TEMPLATE`", stmt -> {}, (ThrowingConsumer<ResultSet>) rs -> {
+        db.query("SELECT `type`, `name` FROM `SHEET_TEMPLATE`", stmt -> {}, (ThrowingConsumer<ResultSet>) rs -> {
             while (rs.next()) {
-                names.add(rs.getString("name"));
+                String nameFull = rs.getString("name");
+                if (addPrefix) {
+                    String type = rs.getString("type");
+                    nameFull = PlaceholdersMap.getClassName(type) + ":" + nameFull;
+                }
+                names.add(nameFull);
             }
         });
         return names;
@@ -65,9 +70,11 @@ public class CustomSheetManager {
     }
 
     public SheetTemplate getSheetTemplate(String name) {
+        if (name.contains(":")) name = name.substring(name.indexOf(":") + 1);
         AtomicReference<SheetTemplate> sheet = new AtomicReference<>();
+        String finalName = name;
         db.query("SELECT * FROM `SHEET_TEMPLATE` WHERE name = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, name);
+            stmt.setString(1, finalName);
         }, (ThrowingConsumer<ResultSet>) rs -> {
             while (rs.next()) {
                 sheet.set(new SheetTemplate(rs));
@@ -78,16 +85,18 @@ public class CustomSheetManager {
 
     public void addSheetTemplate(SheetTemplate sheet) {
         String query = "CREATE TABLE IF NOT EXISTS `SHEET_TEMPLATE` (`name` VARCHAR PRIMARY KEY, `type` VARCHAR NOT NULL, `columns` VARCHAR NOT NULL)";
-        db.update("INSERT INTO `SHEET_TEMPLATE`(`name`, `type`, `selection`, `columns`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        db.update("INSERT INTO `SHEET_TEMPLATE`(`name`, `type`, `columns`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, sheet.getName());
             stmt.setString(2, sheet.getType().getSimpleName());
-            stmt.setString(4, StringMan.join(sheet.getColumns(), "\n"));
+            stmt.setString(3, StringMan.join(sheet.getColumns(), "\n"));
         });
     }
 
     public void deleteSheetTemplate(String name) {
+        if (name.contains(":")) name = name.substring(name.indexOf(":") + 1);
+        String finalName = name;
         db.update("DELETE FROM `SHEET_TEMPLATE` WHERE name = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, name);
+            stmt.setString(1, finalName);
         });
     }
 

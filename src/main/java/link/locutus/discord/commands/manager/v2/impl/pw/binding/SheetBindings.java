@@ -67,7 +67,7 @@ public class SheetBindings extends BindingHelper {
     public SheetTemplate template(@Me GuildDB db, CustomSheetManager manager, String name) {
         SheetTemplate template = manager.getSheetTemplate(name);
         if (template == null) {
-            Set<String> options = manager.getSheetTemplateNames();
+            Set<String> options = manager.getSheetTemplateNames(true);
             throw new IllegalArgumentException("No template found with name `" + name + "`. Options: " + StringMan.getString(options));
         }
         return template;

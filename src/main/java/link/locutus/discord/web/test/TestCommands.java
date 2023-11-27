@@ -2,6 +2,7 @@ package link.locutus.discord.web.test;
 
 import link.locutus.discord.apiv1.enums.DepositType;
 import link.locutus.discord.apiv1.enums.FlowType;
+import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
@@ -34,6 +35,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 
 public class TestCommands {
 
@@ -184,6 +186,16 @@ public class TestCommands {
         response.append("**" + FlowType.DEPOSIT + "**: worth `$" + MathMan.format(PnwUtil.convertedTotal(deposited)) + "`\n");
         response.append("```json\n" + ResourceType.toString(deposited) + "\n```\n");
         return response.toString();
+    }
+
+    @Command
+    public String filters(Set<NationColor> colors, Predicate<NationColor> filter) {
+        System.out.println("Colors " + colors);
+        for (NationColor color : colors) {
+            System.out.println("Color " + color);
+            System.out.println("Filter " + filter.test(color));
+        }
+        return "";
     }
 
 //    public String test(NationPlaceholders placeholders, ValueStore store, String input, @Me DBNation me, @Me User user) {

@@ -761,32 +761,42 @@ public class SpreadSheet {
         }
         for (Map.Entry<String, List<List<Object>>> entry : valuesByTab.entrySet()) {
             String tabName = entry.getKey();
-            List<List<Object>> values = entry.getValue();
-            if (values.isEmpty()) {
-                continue;
+            updateWrite(tabName);
+        }
+    }
+
+    public void updateWrite(String tabName) throws IOException {
+        if (valuesByTab.isEmpty()) {
+            return;
+        }
+        if (service == null) {
+            return;
+        }
+        List<List<Object>> values = valuesByTab.get(tabName);
+        if (values.isEmpty()) {
+            return;
+        }
+        int width = values.get(0).size();
+        int size = values.size();
+
+        for (int i = 0; i < size; i += 10000) {
+            int height = Math.min(i + 9999, size);
+            List<List<Object>> subList = values.subList(i, height);
+            for (List<Object> objects : subList) {
+                width = Math.max(width, objects.size());
             }
-            int width = values.get(0).size();
-            int size = values.size();
 
-            for (int i = 0; i < size; i += 10000) {
-                int height = Math.min(i + 9999, size);
-                List<List<Object>> subList = values.subList(i, height);
-                for (List<Object> objects : subList) {
-                    width = Math.max(width, objects.size());
-                }
+            String pos1 = SheetUtil.getRange(0, i);
+            String pos2 = SheetUtil.getRange(width - 1, height - 1);
+            String range = pos1 + ":" + pos2;
 
-                String pos1 = SheetUtil.getRange(0, i);
-                String pos2 = SheetUtil.getRange(width - 1, height - 1);
-                String range = pos1 + ":" + pos2;
+            ValueRange body = new ValueRange()
+                    .setValues(subList);
 
-                ValueRange body = new ValueRange()
-                        .setValues(subList);
-
-                UpdateValuesResponse result =
-                        service.spreadsheets().values().update(spreadsheetId, (tabName.isEmpty() ? "" : tabName + "!") + range, body)
-                                .setValueInputOption("USER_ENTERED")
-                                .execute();
-            }
+            UpdateValuesResponse result =
+                    service.spreadsheets().values().update(spreadsheetId, (tabName.isEmpty() ? "" : tabName + "!") + range, body)
+                            .setValueInputOption("USER_ENTERED")
+                            .execute();
         }
     }
 
