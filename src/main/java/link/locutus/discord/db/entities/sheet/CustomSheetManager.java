@@ -188,15 +188,19 @@ public class CustomSheetManager {
     }
 
     public void removeSelectionAlias(String name) {
-        getSelectionAliases().values().forEach(map -> map.remove(name.toLowerCase(Locale.ROOT)));
+        name = name.toLowerCase(Locale.ROOT);
+        String finalName = name;
+        getSelectionAliases().values().forEach(map -> map.remove(finalName.toLowerCase(Locale.ROOT)));
         db.update("DELETE FROM SELECTION_ALIAS WHERE name = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, name);
+            stmt.setString(1, finalName);
         });
     }
 
     public void addSelectionAlias(String name, Class type, String selection) {
+        name = name.toLowerCase(Locale.ROOT);
+        String finalName = name;
         db.update("INSERT INTO SELECTION_ALIAS(name, type, selection) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, name);
+            stmt.setString(1, finalName);
             stmt.setString(2, type.getSimpleName());
             stmt.setString(3, selection);
         });
@@ -227,9 +231,9 @@ public class CustomSheetManager {
     }
 
     public void addCustomSheetTab(String sheet, String tab, String selector, String template) {
-        db.update("INSERT INTO CUSTOM_SHEET_TABS(sheet, tab, selector, template) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        db.update("INSERT INTO CUSTOM_SHEET_TABS(sheet, tab, selector, template) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, sheet);
-            stmt.setString(2, tab);
+            stmt.setString(2, tab.toLowerCase(Locale.ROOT));
             stmt.setString(3, selector);
             stmt.setString(4, template);
         });
@@ -280,7 +284,7 @@ public class CustomSheetManager {
         if (url == null) {
             return null;
         }
-        Map<String, Map.Entry<SelectionAlias, SheetTemplate>> tabs = new HashMap<>();
+        Map<String, Map.Entry<SelectionAlias, SheetTemplate>> tabs = new LinkedHashMap<>();
         db.query("SELECT * FROM `CUSTOM_SHEET_TABS` WHERE `sheet` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, name);
         }, (ThrowingConsumer<ResultSet>) rs -> {
@@ -288,7 +292,7 @@ public class CustomSheetManager {
                 String tabName = rs.getString("tab");
                 String selector = rs.getString("selector");
                 String template = rs.getString("template");
-                SelectionAlias selectionAlias = getSelectionAlias(selector, SelectionAlias.class);
+                SelectionAlias selectionAlias = getSelectionAlias(selector);
                 SheetTemplate sheetTemplate = getSheetTemplate(template);
                 tabs.put(tabName, new AbstractMap.SimpleEntry<>(selectionAlias, sheetTemplate));
             }

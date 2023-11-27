@@ -1,7 +1,9 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.github.javaparser.printer.lexicalpreservation.Added;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.CreateSheet;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
@@ -9,6 +11,7 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.PlaceholderTy
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CustomSheet;
@@ -89,7 +92,10 @@ public class CustomSheetCommands {
         if (type != null) {
             selections.entrySet().removeIf(entry -> !entry.getKey().equals(type));
         }
-        StringBuilder sb = new StringBuilder();
+        if (selections.isEmpty()) {
+            return "No selection aliases found" + (type == null ? "" : " of type `" + PlaceholdersMap.getClassName(type) + "`");
+        }
+        StringBuilder sb = new StringBuilder("__**" + selections.size() + " selection aliases found:**__\n");
         for (Map.Entry<Class, Map<String, SelectionAlias>> entry : selections.entrySet()) {
             sb.append("**").append(entry.getKey().getSimpleName()).append("**\n");
             for (Map.Entry<String, SelectionAlias> selection : entry.getValue().entrySet()) {
@@ -137,7 +143,7 @@ public class CustomSheetCommands {
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String deleteTemplate(@Me GuildDB db, SheetTemplate sheet) {
         db.getSheetManager().deleteSheetTemplate(sheet.getName());
-        return "Deleted sheet `" + sheet.getName() + "`";
+        return "Deleted sheet template `" + sheet.getName() + "`";
     }
 
     @NoFormat
@@ -169,7 +175,7 @@ public class CustomSheetCommands {
             "You must create a selection alias and sheet template first\n" +
             "Sheets must be generated/updated with the update command")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String addTab(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, CustomSheet sheet, String tabName, SelectionAlias alias, SheetTemplate template, @Switch("f") boolean force) {
+    public String addTab(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @CreateSheet CustomSheet sheet, String tabName, SelectionAlias alias, SheetTemplate template, @Switch("f") boolean force) {
         tabName = tabName.toLowerCase(Locale.ROOT);
         // ensure name is alphanumeric _
         if (!tabName.matches("[a-z0-9_]+")) {
@@ -182,18 +188,26 @@ public class CustomSheetCommands {
         // tabs
         Map.Entry<SelectionAlias, SheetTemplate> existingTab = sheet.getTab(tabName);
         if (!force) {
-            String title = "Replace existing tab: `" + tabName + "`";
+            String title = (existingTab == null ? "Add" : "Replace existing") + " tab: `" + tabName + "`";
             StringBuilder body = new StringBuilder();
-            SelectionAlias previousAlias = existingTab.getKey();
-            SheetTemplate previousTemplate = existingTab.getValue();
-            if (alias.getName().equals(previousAlias)) {
+            SelectionAlias previousAlias = existingTab == null ? null : existingTab.getKey();
+            SheetTemplate previousTemplate = existingTab == null ? null : existingTab.getValue();
+            if (previousAlias == null) {
+                body.append("**Selection:** `").append(alias.getName()).append("`\n");
+                body.append("- Type: `").append(alias.getType().getSimpleName()).append("`\n");
+                body.append("- Selection: `").append(alias.getSelection()).append("`\n");
+            } else if (alias.getName().equalsIgnoreCase(previousAlias.getName())) {
                 body.append("**Selection:** `" + alias.getName() + "` (no change)\n");
             } else {
                 body.append("**Selection:** `").append(previousAlias.getName()).append("` -> `").append(alias.getName()).append("`\n");
                 body.append("- Type: `").append(previousAlias.getType().getSimpleName()).append("` -> `").append(alias.getType().getSimpleName()).append("`\n");
                 body.append("- Selection: `").append(previousAlias.getSelection()).append("` -> `").append(alias.getSelection()).append("`\n");
             }
-            if (template.getName().equals(previousTemplate)) {
+            if (previousTemplate == null) {
+                body.append("**Template:** `").append(template.getName()).append("`\n");
+                body.append("- Type: `").append(template.getType().getSimpleName()).append("`\n");
+                body.append("- Columns: `").append(template.getColumns().size()).append("`\n");
+            } else if (template.getName().equalsIgnoreCase(previousTemplate.getName())) {
                 body.append("**Template:** `" + template.getName() + "` (no change)\n");
             } else {
                 body.append("**Template:** `").append(previousTemplate.getName()).append("` -> `").append(template.getName()).append("`\n");
@@ -207,10 +221,10 @@ public class CustomSheetCommands {
 
         db.getSheetManager().addCustomSheetTab(sheet.getName(), tabName, alias.getName(), template.getName());
 
-        return (existingTab == null ? "Added" : "Updated") + " tab `" + tabName + "`\n" +
+        return "**__sheet:" + sheet.getName() + "__**\n" + (existingTab == null ? " Added " : "Updated") + " tab `" + tabName + "`\n" +
                 "- Selection: `" + alias.getName() + "`\n" +
                 "- Template: `" + template.getName() + "`\n" +
-                "- Url: <" + sheet.getUrl() + ">" +
+                "- Url: <" + sheet.getUrl() + ">\n" +
                 CM.sheet_custom.update.cmd.toSlashMention() + " to update the sheet\n" +
                 "See: " + CM.sheet_custom.view.cmd.toSlashMention() + " | " + CM.sheet_custom.remove_tab.cmd.toSlashMention() + " | " + CM.sheet_custom.update.cmd.toSlashMention();
     }
@@ -228,7 +242,7 @@ public class CustomSheetCommands {
         if (errors.isEmpty()) {
             result.append("- No errors");
         } else {
-            result.append("Errors:\n");
+            result.append("Update Info:\n");
             for (String error : errors) {
                 result.append("- ").append(error).append("\n");
             }

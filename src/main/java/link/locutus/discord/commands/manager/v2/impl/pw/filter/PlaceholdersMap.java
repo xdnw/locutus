@@ -63,7 +63,7 @@ import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.offshore.OffshoreInstance;
-import link.locutus.discord.util.scheduler.ThrowingBiFunction;
+import link.locutus.discord.util.scheduler.ThrowingTriFunction;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.ia.IACheckup;
 import net.dv8tion.jda.api.entities.Guild;
@@ -71,6 +71,7 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
+import org.tensorflow.op.core.Placeholder;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -222,7 +223,8 @@ public class PlaceholdersMap {
         return (Placeholders<T>) this.placeholders.get(type);
     }
 
-    private <T> String getSelection(ValueStore store, Class<T> type, String input) {
+    public static <T> Set<T> getSelection(Placeholders<T> instance, ValueStore store, String input) {
+        Class<T> type = instance.getType();
         boolean isSelection = false;
         String inputAlias = input;
         if (input.startsWith("$")) {
@@ -243,18 +245,20 @@ public class PlaceholdersMap {
             if (db != null) {
                 SelectionAlias<T> selection = db.getSheetManager().getSelectionAlias(inputAlias, type);
                 if (selection != null) {
-                    return selection.getSelection();
+                    String query = selection.getSelection();
+                    return instance.parseSet(store, query);
                 }
             }
         }
-        return input;
+        return null;
     }
 
     private Placeholders<Continent> createContinents() {
         return new StaticPlaceholders<Continent>(Continent.class, store, validators, permisser,
                 "TODO CM REF",
-                (ThrowingBiFunction<ValueStore, String, Set<Continent>>) (store, input) -> {
-                    input = getSelection(store, Continent.class, input);
+                (ThrowingTriFunction<Placeholders<Continent>, ValueStore, String, Set<Continent>>) (inst, store, input) -> {
+                    Set<Continent> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Continent.values()));
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("continent"), true, (type, str) -> PWBindings.continent(str));
@@ -265,7 +269,7 @@ public class PlaceholdersMap {
             @Command(desc = "Add an alias for a selection of continents")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<Continent> continents) {
-                return _addSelectionAlias(command, db, name, continents, "continents");
+                return _addSelectionAlias(this, command, db, name, continents, "continents");
             }
 
             @NoFormat
@@ -367,7 +371,8 @@ public class PlaceholdersMap {
 
             @Override
             public Set<NationOrAlliance> parseSet(ValueStore store2, String input) {
-                input = getSelection(store, NationOrAlliance.class, input);
+                Set<NationOrAlliance> selection = getSelection(this, store, input);
+                    if (selection != null) return selection;
                 if (input.contains("#")) {
                     return (Set) nationPlaceholders.parseSet(store2, input);
                 }
@@ -410,7 +415,7 @@ public class PlaceholdersMap {
             @Command(desc = "Add an alias for a selection of NationOrAlliances")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<NationOrAlliance> nationoralliances) {
-                return _addSelectionAlias(command, db, name, nationoralliances, "nationoralliances");
+                return _addSelectionAlias(this, command, db, name, nationoralliances, "nationoralliances");
             }
 
             @NoFormat
@@ -453,8 +458,9 @@ public class PlaceholdersMap {
     private Placeholders<GuildDB> createGuildDB() {
         return new SimplePlaceholders<GuildDB>(GuildDB.class, store, validators, permisser,
                 "TODO CM Ref",
-                (ThrowingBiFunction<ValueStore, String, Set<GuildDB>>) (store, input) -> {
-                    input = getSelection(store, GuildDB.class, input);
+                (ThrowingTriFunction<Placeholders<GuildDB>, ValueStore, String, Set<GuildDB>>) (inst, store, input) -> {
+                    Set<GuildDB> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     User user = (User) store.getProvided(Key.of(User.class, Me.class), true);
                     boolean admin = Roles.ADMIN.hasOnRoot(user);
                     if (input.equalsIgnoreCase("*")) {
@@ -481,7 +487,7 @@ public class PlaceholdersMap {
                         throw new IllegalArgumentException("You (" + user + ") are not in the guild with id: `" + id + "`");
                     }
                     return Set.of(guild);
-                }, (ThrowingBiFunction<ValueStore, String, Predicate<GuildDB>>) (store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<GuildDB>, ValueStore, String, Predicate<GuildDB>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) {
                 return f -> true;
             }
@@ -502,7 +508,7 @@ public class PlaceholdersMap {
             @Command(desc = "Add an alias for a selection of guilds")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<GuildDB> guilds) {
-                return _addSelectionAlias(command, db, name, guilds, "guilds");
+                return _addSelectionAlias(this, command, db, name, guilds, "guilds");
             }
 
             @NoFormat
@@ -544,8 +550,9 @@ public class PlaceholdersMap {
     private Placeholders<DBBan> createBans() {
         return new SimplePlaceholders<DBBan>(DBBan.class,  store, validators, permisser,
                 "TODO CM REF",
-                (ThrowingBiFunction<ValueStore, String, Set<DBBan>>) (store, input) -> {
-                    input = getSelection(store, DBBan.class, input);
+                (ThrowingTriFunction<Placeholders<DBBan>, ValueStore, String, Set<DBBan>>) (inst, store, input) -> {
+                    Set<DBBan> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) {
                         return new HashSet<>(Locutus.imp().getNationDB().getBansByNation().values());
                     }
@@ -553,7 +560,7 @@ public class PlaceholdersMap {
                         return SpreadSheet.parseSheet(input, List.of("bans"), true, (type, str) -> PWBindings.ban(str));
                     }
                     return Set.of(PWBindings.ban(input));
-                }, (ThrowingBiFunction<ValueStore, String, Predicate<DBBan>>) (store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<DBBan>, ValueStore, String, Predicate<DBBan>>) (inst, store, input) -> {
                     if (input.equalsIgnoreCase("*")) return f -> true;
                     if (SpreadSheet.isSheet(input)) {
                         Set<Integer> sheet = SpreadSheet.parseSheet(input, List.of("treaty"), true,
@@ -584,7 +591,7 @@ public class PlaceholdersMap {
             @Command(desc = "Add an alias for a selection of bans")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<DBBan> bans) {
-                return _addSelectionAlias(command, db, name, bans, "bans");
+                return _addSelectionAlias(this, command, db, name, bans, "bans");
             }
 
             @NoFormat
@@ -626,8 +633,9 @@ public class PlaceholdersMap {
     private Placeholders<NationList> createNationList() {
         return new SimplePlaceholders<NationList>(NationList.class, store, validators, permisser,
                 "TODO CM REF",
-                (ThrowingBiFunction<ValueStore, String, Set<NationList>>) (store, input) -> {
-                    input = getSelection(store, NationList.class, input);
+                (ThrowingTriFunction<Placeholders<NationList>, ValueStore, String, Set<NationList>>) (inst, store, input) -> {
+                    Set<NationList> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
                     User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
                     DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
@@ -686,7 +694,7 @@ public class PlaceholdersMap {
                         result.addAll(lists);
                     }
                     return result;
-                }, (ThrowingBiFunction<ValueStore, String, Predicate<NationList>>) (store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<NationList>, ValueStore, String, Predicate<NationList>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             throw new IllegalArgumentException("NationList predicates other than `*` are unsupported. Please use DBNation instead");
         }, new Function<NationList, String>() {
@@ -699,7 +707,7 @@ public class PlaceholdersMap {
             @Command(desc = "Add an alias for a selection of nationlists")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<NationList> nationlists) {
-                return _addSelectionAlias(command, db, name, nationlists, "nationlists");
+                return _addSelectionAlias(this, command, db, name, nationlists, "nationlists");
             }
 
             @NoFormat
@@ -866,8 +874,9 @@ public class PlaceholdersMap {
     private Placeholders<UserWrapper> createUsers() {
         return new SimplePlaceholders<UserWrapper>(UserWrapper.class, store, validators, permisser,
                 "TODO CM REF",
-                (ThrowingBiFunction<ValueStore, String, Set<UserWrapper>>) (store, input) -> {
-                    input = getSelection(store, UserWrapper.class, input);
+                (ThrowingTriFunction<Placeholders<UserWrapper>, ValueStore, String, Set<UserWrapper>>) (inst, store, input) -> {
+                    Set<UserWrapper> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
                     Guild guild = db.getGuild();
                     if (SpreadSheet.isSheet(input)) {
@@ -875,7 +884,7 @@ public class PlaceholdersMap {
                         return member.stream().map(UserWrapper::new).collect(Collectors.toSet());
                     }
                     return parseUserSingle(guild, input);
-                }, (ThrowingBiFunction<ValueStore, String, Predicate<UserWrapper>>) (store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<UserWrapper>, ValueStore, String, Predicate<UserWrapper>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
 
             GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
@@ -897,7 +906,7 @@ public class PlaceholdersMap {
             @Command(desc = "Add an alias for a selection of users")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<UserWrapper> users) {
-                return _addSelectionAlias(command, db, name, users, "users");
+                return _addSelectionAlias(this, command, db, name, users, "users");
             }
 
             @NoFormat
@@ -940,8 +949,9 @@ public class PlaceholdersMap {
     private Placeholders<DBCity> createCities() {
         return new SimplePlaceholders<DBCity>(DBCity.class, store, validators, permisser,
                 "TODO CM REF",
-                (ThrowingBiFunction<ValueStore, String, Set<DBCity>>) (store, input) -> {
-                    input = getSelection(store, DBCity.class, input);
+                (ThrowingTriFunction<Placeholders<DBCity>, ValueStore, String, Set<DBCity>>) (inst, store, input) -> {
+                    Set<DBCity> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) {
                         Locutus.imp().getNationDB().getCities();
                     }
@@ -954,7 +964,7 @@ public class PlaceholdersMap {
                         return cities;
                     }
                     return parseCitiesSingle(store, input);
-                }, (ThrowingBiFunction<ValueStore, String, Predicate<DBCity>>) (store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<DBCity>, ValueStore, String, Predicate<DBCity>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (MathMan.isInteger(input) || input.contains("/city/id=")) {
                 DBCity city = PWBindings.cityUrl(input);
@@ -987,7 +997,7 @@ public class PlaceholdersMap {
             @Command(desc = "Add an alias for a selection of cities")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<DBCity> cities) {
-                return _addSelectionAlias(command, db, name, cities, "cities");
+                return _addSelectionAlias(this, command, db, name, cities, "cities");
             }
 
             @NoFormat
@@ -1117,7 +1127,7 @@ public class PlaceholdersMap {
     public Placeholders<BankDB.TaxDeposit> createTaxDeposit() {
         return new SimplePlaceholders<BankDB.TaxDeposit>(BankDB.TaxDeposit.class, store, validators, permisser,
                 "TODO CM REF",
-                (ThrowingBiFunction<ValueStore, String, Set<BankDB.TaxDeposit>>) (store, input) -> {
+                (ThrowingTriFunction<Placeholders<BankDB.TaxDeposit>, ValueStore, String, Set<BankDB.TaxDeposit>>) (inst, store, input) -> {
                     Predicate<BankDB.TaxDeposit> canView = getCanView(store);
                     if (SpreadSheet.isSheet(input)) {
                         Set<Integer> ids = new IntOpenHashSet();
@@ -1147,7 +1157,7 @@ public class PlaceholdersMap {
                     Set<Integer> ids = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
                     return getTaxes(store, null, null, ids);
 
-                }, (ThrowingBiFunction<ValueStore, String, Predicate<BankDB.TaxDeposit>>) (store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<BankDB.TaxDeposit>, ValueStore, String, Predicate<BankDB.TaxDeposit>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (SpreadSheet.isSheet(input)) {
                 Set<Integer> ids = new IntOpenHashSet();
@@ -1240,8 +1250,9 @@ public class PlaceholdersMap {
     public Placeholders<IAttack> createAttacks() {
         return new SimplePlaceholders<IAttack>(IAttack.class, store, validators, permisser,
                 "TODO CM REF",
-                (ThrowingBiFunction<ValueStore, String, Set<IAttack>>) (store, input) -> {
-                    input = getSelection(store, IAttack.class, input);
+                (ThrowingTriFunction<Placeholders<IAttack>, ValueStore, String, Set<IAttack>>) (inst, store, input) -> {
+                    Set<IAttack> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     if (SpreadSheet.isSheet(input)) {
                         Set<Integer> attackIds = new ObjectOpenHashSet<>();
                         Set<Integer> warIds = new ObjectOpenHashSet<>();
@@ -1264,7 +1275,7 @@ public class PlaceholdersMap {
                         return getAttacks(Set.of(), Set.of(warId));
                     }
                     throw new UnsupportedOperationException("Filters must begin with `#`. Please use the attack selector argument to specify participants.");
-                }, (ThrowingBiFunction<ValueStore, String, Predicate<IAttack>>) (store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<IAttack>, ValueStore, String, Predicate<IAttack>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (SpreadSheet.isSheet(input)) {
                 Set<Integer> attackIds = new ObjectOpenHashSet<>();
@@ -1353,8 +1364,9 @@ public class PlaceholdersMap {
     public Placeholders<DBWar> createWars() {
         return new SimplePlaceholders<DBWar>(DBWar.class, store, validators, permisser,
                 "TODO CM REF",
-                (ThrowingBiFunction<ValueStore, String, Set<DBWar>>) (store, input) -> {
-                    input = getSelection(store, DBWar.class, input);
+                (ThrowingTriFunction<Placeholders<DBWar>, ValueStore, String, Set<DBWar>>) (inst, store, input) -> {
+                    Set<DBWar> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     if (SpreadSheet.isSheet(input)) {
                         Set<Integer> warIds = new ObjectOpenHashSet<>();
                         SpreadSheet.parseSheet(input, List.of("id", "war_id"), true, (type, str) -> {
@@ -1374,7 +1386,7 @@ public class PlaceholdersMap {
                         return Locutus.imp().getWarDb().getWarsById(Set.of(warId));
                     }
                     throw new UnsupportedOperationException("Filters must begin with `#`. Please use the attack selector argument to specify participants.");
-                }, (ThrowingBiFunction<ValueStore, String, Predicate<DBWar>>) (store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<DBWar>, ValueStore, String, Predicate<DBWar>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (SpreadSheet.isSheet(input)) {
                 Set<Integer> warIds = new ObjectOpenHashSet<>();
@@ -1455,8 +1467,9 @@ public class PlaceholdersMap {
     public Placeholders<TaxBracket> createBrackets() {
         return new SimplePlaceholders<TaxBracket>(TaxBracket.class, store, validators, permisser,
                 "TODO CM REF",
-                (ThrowingBiFunction<ValueStore, String, Set<TaxBracket>>) (store2, input) -> {
-                    input = getSelection(store, TaxBracket.class, input);
+                (ThrowingTriFunction<Placeholders<TaxBracket>, ValueStore, String, Set<TaxBracket>>) (inst, store2, input) -> {
+                    Set<TaxBracket> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     GuildDB db = (GuildDB) store2.getProvided(Key.of(GuildDB.class, Me.class), false);
                     if (input.equalsIgnoreCase("*")) {
                         if (db == null) {
@@ -1478,7 +1491,7 @@ public class PlaceholdersMap {
                         return brackets;
                     }
                     return bracketSingle(store2, db, input);
-                }, (ThrowingBiFunction<ValueStore, String, Predicate<TaxBracket>>) (store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<TaxBracket>, ValueStore, String, Predicate<TaxBracket>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) {
                 return f -> true;
             }
@@ -1509,7 +1522,7 @@ public class PlaceholdersMap {
             @Command(desc = "Add an alias for a selection of tax brackets")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<TaxBracket> taxbrackets) {
-                return _addSelectionAlias(command, db, name, taxbrackets, "taxbrackets");
+                return _addSelectionAlias(this, command, db, name, taxbrackets, "taxbrackets");
             }
 
             @NoFormat
@@ -1551,8 +1564,9 @@ public class PlaceholdersMap {
     private Placeholders<DBTrade> createTrades() {
         return new SimplePlaceholders<DBTrade>(DBTrade.class, store, validators, permisser,
                 "TODO CM REF",
-                (ThrowingBiFunction<ValueStore, String, Set<DBTrade>>) (store, input) -> {
-                    input = getSelection(store, DBTrade.class, input);
+                (ThrowingTriFunction<Placeholders<DBTrade>, ValueStore, String, Set<DBTrade>>) (inst, store, input) -> {
+                    Set<DBTrade> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) {
                         throw new UnsupportedOperationException("`*` is not supported. Only trade ids are supported");
                     }
@@ -1565,7 +1579,7 @@ public class PlaceholdersMap {
                         return Set.of(Locutus.imp().getTradeManager().getTradeDb().getTradeById(id));
                     }
                     throw new IllegalArgumentException("Only trade ids are supported, not `" + input + "`");
-                }, (ThrowingBiFunction<ValueStore, String, Predicate<DBTrade>>) (store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<DBTrade>, ValueStore, String, Predicate<DBTrade>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) {
                 return f -> true;
             }
@@ -1634,8 +1648,9 @@ public class PlaceholdersMap {
     private Placeholders<Transaction2> createTransactions() {
         return new SimplePlaceholders<Transaction2>(Transaction2.class, store, validators, permisser,
                 "TODO CM REF",
-                (ThrowingBiFunction<ValueStore, String, Set<Transaction2>>) (store, input) -> {
-                    input = getSelection(store, Transaction2.class, input);
+                (ThrowingTriFunction<Placeholders<Transaction2>, ValueStore, String, Set<Transaction2>>) (inst, store, input) -> {
+                    Set<Transaction2> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
                     User user = (User) store.getProvided(Key.of(User.class, Me.class), false);
                     DBNation nation = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
@@ -1654,7 +1669,7 @@ public class PlaceholdersMap {
                         return filterTransactions(nation, user, db, transactions);
                     }
                     throw new IllegalArgumentException("Invalid transaction id: " + input);
-                }, (ThrowingBiFunction<ValueStore, String, Predicate<Transaction2>>) (store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<Transaction2>, ValueStore, String, Predicate<Transaction2>>) (inst, store, input) -> {
             GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
             User user = (User) store.getProvided(Key.of(User.class, Me.class), false);
             DBNation nation = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
@@ -1803,7 +1818,7 @@ public class PlaceholdersMap {
                 if (startTime != null && endTime != null && startTime > endTime) {
                     throw new IllegalArgumentException("Start time cannot be after end time");
                 }
-                return _addSelectionAlias("all", command, db, name, "sender", "receiver", "banker", "transactionFilter", "startTime", "endTime", "includeOffset");
+                return _addSelectionAlias(this, "all", command, db, name, "sender", "receiver", "banker", "transactionFilter", "startTime", "endTime", "includeOffset");
             }
 
             @NoFormat
@@ -1811,7 +1826,7 @@ public class PlaceholdersMap {
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String bankRecordsDeposits(@Me JSONObject command, @Me GuildDB db, String name,
                                               NationOrAllianceOrGuild nationOrAllianceOrGuild, @Default Predicate<Transaction2> transactionFilter, @Default @Timestamp Long startTime, @Default @Timestamp Long endTime, @Switch("o") Boolean excludeOffset, @Switch("t") Boolean excludeTaxes, @Switch("i") Boolean includeFullTaxes) {
-                return _addSelectionAlias("deposits", command, db, name, "nationOrAllianceOrGuild", "transactionFilter", "startTime", "endTime", "startTime", "endTime", "excludeOffset", "excludeTaxes", "includeFullTaxes");
+                return _addSelectionAlias(this, "deposits", command, db, name, "nationOrAllianceOrGuild", "transactionFilter", "startTime", "endTime", "startTime", "endTime", "excludeOffset", "excludeTaxes", "includeFullTaxes");
             }
 
             @NoFormat
@@ -1853,8 +1868,9 @@ public class PlaceholdersMap {
     private Placeholders<DBBounty> createBounties() {
         return new SimplePlaceholders<DBBounty>(DBBounty.class, store, validators, permisser,
                 "TODO CM REF",
-                (ThrowingBiFunction<ValueStore, String, Set<DBBounty>>) (store, input) -> {
-                    input = getSelection(store, DBBounty.class, input);
+                (ThrowingTriFunction<Placeholders<DBBounty>, ValueStore, String, Set<DBBounty>>) (inst, store, input) -> {
+                    Set<DBBounty> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) {
                         Set<DBBounty> result = new HashSet<>();
                         Locutus.imp().getWarDb().getBountiesByNation().values().forEach(result::addAll);
@@ -1879,7 +1895,7 @@ public class PlaceholdersMap {
                         }
                     }
                     return bountySet;
-                }, (ThrowingBiFunction<ValueStore, String, Predicate<DBBounty>>) (store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<DBBounty>, ValueStore, String, Predicate<DBBounty>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (SpreadSheet.isSheet(input)) {
                 Set<Integer> sheet = SpreadSheet.parseSheet(input, List.of("bounty"), true,
@@ -1907,7 +1923,7 @@ public class PlaceholdersMap {
             @Command(desc = "Add an alias for a selection of bounties")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<DBBounty> bounties) {
-                return _addSelectionAlias(command, db, name, bounties, "bounties");
+                return _addSelectionAlias(this, command, db, name, bounties, "bounties");
             }
 
             @NoFormat
@@ -1949,8 +1965,9 @@ public class PlaceholdersMap {
     private Placeholders<Treaty> createTreaty() {
         return new SimplePlaceholders<Treaty>(Treaty.class, store, validators, permisser,
                 "TODO CM REF",
-                (ThrowingBiFunction<ValueStore, String, Set<Treaty>>) (store, input) -> {
-                    input = getSelection(store, Treaty.class, input);
+                (ThrowingTriFunction<Placeholders<Treaty>, ValueStore, String, Set<Treaty>>) (inst, store, input) -> {
+                    Set<Treaty> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) {
                         return Locutus.imp().getNationDB().getTreaties();
                     }
@@ -1975,7 +1992,7 @@ public class PlaceholdersMap {
                     return Locutus.imp().getNationDB().getTreatiesMatching(f -> {
                         return (aa1.contains(f.getFromId())) && (aa2.contains(f.getToId())) || (aa1.contains(f.getToId())) && (aa2.contains(f.getFromId()));
                     });
-                }, (ThrowingBiFunction<ValueStore, String, Predicate<Treaty>>) (store, input) -> {
+                }, (ThrowingTriFunction<Placeholders<Treaty>, ValueStore, String, Predicate<Treaty>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (SpreadSheet.isSheet(input)) {
                 Set<Treaty> sheet = SpreadSheet.parseSheet(input, List.of("treaty"), true,
@@ -2036,7 +2053,7 @@ public class PlaceholdersMap {
             @Command(desc = "Add an alias for a selection of treaties")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<Treaty> treaties) {
-                return _addSelectionAlias(command, db, name, treaties, "treaties");
+                return _addSelectionAlias(this, command, db, name, treaties, "treaties");
             }
 
             @NoFormat
@@ -2078,8 +2095,9 @@ public class PlaceholdersMap {
     private Placeholders<Project> createProjects() {
         return new StaticPlaceholders<Project>(Project.class, store, validators, permisser,
                 "TODO CM REF",
-                (ThrowingBiFunction<ValueStore, String, Set<Project>>) (store, input) -> {
-                    input = getSelection(store, Project.class, input);
+                (ThrowingTriFunction<Placeholders<Project>, ValueStore, String, Set<Project>>) (inst, store, input) -> {
+                    Set<Project> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Projects.values));
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("project"), true, (type, str) -> PWBindings.project(str));
@@ -2096,7 +2114,7 @@ public class PlaceholdersMap {
             @Command(desc = "Add an alias for a selection of Projects")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<Project> projects) {
-                return _addSelectionAlias(command, db, name, projects, "projects");
+                return _addSelectionAlias(this, command, db, name, projects, "projects");
             }
 
             @NoFormat
@@ -2138,8 +2156,9 @@ public class PlaceholdersMap {
     private Placeholders<ResourceType> createResourceType() {
         return new StaticPlaceholders<ResourceType>(ResourceType.class, store, validators, permisser,
         "TODO CM REF",
-        (ThrowingBiFunction<ValueStore, String, Set<ResourceType>>) (store, input) -> {
-            input = getSelection(store, ResourceType.class, input);
+        (ThrowingTriFunction<Placeholders<ResourceType>, ValueStore, String, Set<ResourceType>>) (inst, store, input) -> {
+            Set<ResourceType> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
             if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(ResourceType.values));
             if (SpreadSheet.isSheet(input)) {
                 return SpreadSheet.parseSheet(input, List.of("resource"), true, (type, str) -> PWBindings.resource(str));
@@ -2150,7 +2169,7 @@ public class PlaceholdersMap {
             @Command(desc = "Add an alias for a selection of resources")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<ResourceType> resources) {
-                return _addSelectionAlias(command, db, name, resources, "resources");
+                return _addSelectionAlias(this, command, db, name, resources, "resources");
             }
 
             @NoFormat
@@ -2192,8 +2211,9 @@ public class PlaceholdersMap {
     private Placeholders<AttackType> createAttackTypes() {
         return new StaticPlaceholders<AttackType>(AttackType.class, store, validators, permisser,
                 "TODO CM REF",
-                (ThrowingBiFunction<ValueStore, String, Set<AttackType>>) (store, input) -> {
-                    input = getSelection(store, AttackType.class, input);
+                (ThrowingTriFunction<Placeholders<AttackType>, ValueStore, String, Set<AttackType>>) (inst, store, input) -> {
+                    Set<AttackType> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(AttackType.values));
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("attack_type"), true, (type, str) -> PWBindings.attackType(str));
@@ -2204,7 +2224,7 @@ public class PlaceholdersMap {
             @Command(desc = "Add an alias for a selection of attack types")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<AttackType> attack_types) {
-                return _addSelectionAlias(command, db, name, attack_types, "attack_types");
+                return _addSelectionAlias(this, command, db, name, attack_types, "attack_types");
             }
 
             @NoFormat
@@ -2246,8 +2266,9 @@ public class PlaceholdersMap {
     private Placeholders<MilitaryUnit> createMilitaryUnit() {
         return new StaticPlaceholders<MilitaryUnit>(MilitaryUnit.class, store, validators, permisser,
                 "TODO CM REF",
-                (ThrowingBiFunction<ValueStore, String, Set<MilitaryUnit>>) (store, input) -> {
-                    input = getSelection(store, MilitaryUnit.class, input);
+                (ThrowingTriFunction<Placeholders<MilitaryUnit>, ValueStore, String, Set<MilitaryUnit>>) (inst, store, input) -> {
+                    Set<MilitaryUnit> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(MilitaryUnit.values));
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("unit"), true, (type, str) -> PWBindings.unit(str));
@@ -2258,7 +2279,7 @@ public class PlaceholdersMap {
             @Command(desc = "Add an alias for a selection of Military Units")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<MilitaryUnit> military_units) {
-                return _addSelectionAlias(command, db, name, military_units, "military_units");
+                return _addSelectionAlias(this, command, db, name, military_units, "military_units");
             }
 
             @NoFormat
@@ -2300,8 +2321,9 @@ public class PlaceholdersMap {
     private Placeholders<TreatyType> createTreatyType() {
         return new StaticPlaceholders<TreatyType>(TreatyType.class, store, validators, permisser,
                 "TODO CM REF",
-                (ThrowingBiFunction<ValueStore, String, Set<TreatyType>>) (store, input) -> {
-                    input = getSelection(store, TreatyType.class, input);
+                (ThrowingTriFunction<Placeholders<TreatyType>, ValueStore, String, Set<TreatyType>>) (inst, store, input) -> {
+                    Set<TreatyType> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(TreatyType.values));
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("treaty_type"), true, (type, str) -> PWBindings.TreatyType(str));
@@ -2312,7 +2334,7 @@ public class PlaceholdersMap {
             @Command(desc = "Add an alias for a selection of Treaty Types")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<TreatyType> treaty_types) {
-                return _addSelectionAlias(command, db, name, treaty_types, "treaty_types");
+                return _addSelectionAlias(this, command, db, name, treaty_types, "treaty_types");
             }
 
             @NoFormat
@@ -2354,8 +2376,9 @@ public class PlaceholdersMap {
     private Placeholders<DBTreasure> createTreasure() {
         return new StaticPlaceholders<DBTreasure>(DBTreasure.class, store, validators, permisser,
                 "TODO CM REF",
-                (ThrowingBiFunction<ValueStore, String, Set<DBTreasure>>) (store, input) -> {
-                    input = getSelection(store, DBTreasure.class, input);
+                (ThrowingTriFunction<Placeholders<DBTreasure>, ValueStore, String, Set<DBTreasure>>) (inst, store, input) -> {
+                    Set<DBTreasure> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Locutus.imp().getNationDB().getTreasuresByName().values());
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("treasure"), true, (type, str) -> PWBindings.treasure(str));
@@ -2366,7 +2389,7 @@ public class PlaceholdersMap {
             @Command(desc = "Add an alias for a selection of Treasures")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<DBTreasure> treasures) {
-                return _addSelectionAlias(command, db, name, treasures, "treasures");
+                return _addSelectionAlias(this, command, db, name, treasures, "treasures");
             }
 
             @NoFormat
@@ -2408,8 +2431,9 @@ public class PlaceholdersMap {
     private Placeholders<IACheckup.AuditType> createAuditType() {
         return new StaticPlaceholders<IACheckup.AuditType>(IACheckup.AuditType.class, store, validators, permisser,
                 "TODO CM REF",
-                (ThrowingBiFunction<ValueStore, String, Set<IACheckup.AuditType>>) (store, input) -> {
-                    input = getSelection(store, IACheckup.AuditType.class, input);
+                (ThrowingTriFunction<Placeholders<IACheckup.AuditType>, ValueStore, String, Set<IACheckup.AuditType>>) (inst, store, input) -> {
+                    Set<IACheckup.AuditType> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(IACheckup.AuditType.values()));
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("audit"), true, (type, str) -> PWBindings.auditType(str));
@@ -2420,7 +2444,7 @@ public class PlaceholdersMap {
             @Command(desc = "Add an alias for a selection of Audit Types")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<IACheckup.AuditType> audit_types) {
-                return _addSelectionAlias(command, db, name, audit_types, "audit_types");
+                return _addSelectionAlias(this, command, db, name, audit_types, "audit_types");
             }
 
             @NoFormat
@@ -2462,8 +2486,9 @@ public class PlaceholdersMap {
     private Placeholders<NationColor> createNationColor() {
         return new StaticPlaceholders<NationColor>(NationColor.class, store, validators, permisser,
                 "TODO CM REF",
-                (ThrowingBiFunction<ValueStore, String, Set<NationColor>>) (store, input) -> {
-                    input = getSelection(store, NationColor.class, input);
+                (ThrowingTriFunction<Placeholders<NationColor>, ValueStore, String, Set<NationColor>>) (inst, store, input) -> {
+                    Set<NationColor> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(NationColor.values()));
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("color"), true, (type, str) -> PWBindings.NationColor(str));
@@ -2474,7 +2499,7 @@ public class PlaceholdersMap {
             @Command(desc = "Add an alias for a selection of Nation Colors")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<NationColor> colors) {
-                return _addSelectionAlias(command, db, name, colors, "colors");
+                return _addSelectionAlias(this, command, db, name, colors, "colors");
             }
 
             @NoFormat
@@ -2516,8 +2541,9 @@ public class PlaceholdersMap {
     private Placeholders<Building> createBuilding() {
         return new StaticPlaceholders<Building>(Building.class, store, validators, permisser,
                 "TODO CM REF",
-                (ThrowingBiFunction<ValueStore, String, Set<Building>>) (store, input) -> {
-                    input = getSelection(store, Building.class, input);
+                (ThrowingTriFunction<Placeholders<Building>, ValueStore, String, Set<Building>>) (inst, store, input) -> {
+                    Set<Building> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) return new HashSet<>(Arrays.asList(Buildings.values()));
                     if (SpreadSheet.isSheet(input)) {
                         return SpreadSheet.parseSheet(input, List.of("attack_type"), true, (type, str) -> PWBindings.getBuilding(str));
@@ -2528,7 +2554,7 @@ public class PlaceholdersMap {
             @Command(desc = "Add an alias for a selection of Buildings")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
             public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<Building> Buildings) {
-                return _addSelectionAlias(command, db, name, Buildings, "Buildings");
+                return _addSelectionAlias(this, command, db, name, Buildings, "Buildings");
             }
 
             @NoFormat

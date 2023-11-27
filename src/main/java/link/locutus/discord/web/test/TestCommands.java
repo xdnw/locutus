@@ -195,7 +195,7 @@ public class TestCommands {
             System.out.println("Color " + color);
             System.out.println("Filter " + filter.test(color));
         }
-        return "";
+        return "Done!";
     }
 
 //    public String test(NationPlaceholders placeholders, ValueStore store, String input, @Me DBNation me, @Me User user) {

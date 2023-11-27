@@ -44,6 +44,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
@@ -83,11 +84,12 @@ public abstract class Placeholders<T> extends BindingHelper {
         return instanceType;
     }
 
-    protected static <T> String _addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<T> elems, String argumentName) {
-        return _addSelectionAlias("", command, db, name, argumentName);
+    protected static <T> String _addSelectionAlias(Placeholders<T> instance, @Me JSONObject command, @Me GuildDB db, String name, Set<T> elems, String argumentName) {
+        return _addSelectionAlias(instance, "", command, db, name, argumentName);
     }
 
-    protected static <T> String _addSelectionAlias(String prefix, @Me JSONObject command, @Me GuildDB db, String name, String... argumentNames) {
+    protected static <T> String _addSelectionAlias(Placeholders<T> instance, String prefix, @Me JSONObject command, @Me GuildDB db, String name, String... argumentNames) {
+        name = name.toLowerCase(Locale.ROOT);
         if (argumentNames.length == 0) {
             throw new IllegalArgumentException("No arguments provided");
         }
@@ -98,7 +100,7 @@ public abstract class Placeholders<T> extends BindingHelper {
         if (name.length() > 20) {
             throw new IllegalArgumentException("Name too long: `" + name + "` (max 20 chars)");
         }
-        SelectionAlias<Continent> existing = db.getSheetManager().getSelectionAlias(name, Continent.class);
+        SelectionAlias<T> existing = db.getSheetManager().getSelectionAlias(name);
         if (existing != null) {
             throw new IllegalArgumentException("Selection already exists: " + existing.toString());
         }
@@ -116,8 +118,14 @@ public abstract class Placeholders<T> extends BindingHelper {
             }
             selection = obj.toString();
         }
-        db.getSheetManager().addSelectionAlias(name, Continent.class, selection);
-        return "Added selection `" + name + "`: " + selection + ". Use it with `!" + name + "`";
+        if (prefix != null && !prefix.isEmpty()) {
+            selection = prefix + selection;
+        }
+        if (selection.toLowerCase(Locale.ROOT).contains(name)) {
+            throw new IllegalArgumentException("Selection cannot reference itself: `" + selection + "`");
+        }
+        db.getSheetManager(). addSelectionAlias(name, instance.getType(), selection);
+        return "Added selection `" + name + "`: `" + selection + "`. Use it with `$" + name + "`";
     }
 
     protected static <T> String _addColumns(Placeholders<T> placeholders, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet, TypedFunction<T, String>... columns) {

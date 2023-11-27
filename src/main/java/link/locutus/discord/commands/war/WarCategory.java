@@ -1106,7 +1106,7 @@ public class WarCategory {
 
             for (DBWar war : wars) {
                 DBNation other = war.getNation(!war.isAttacker(target));
-                if (other == null) continue;;
+                if (other == null) continue;
 
                 added.add(other);
                 participants.add(other);

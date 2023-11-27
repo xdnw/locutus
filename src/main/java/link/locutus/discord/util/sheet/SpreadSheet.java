@@ -238,6 +238,26 @@ public class SpreadSheet {
         return instance;
     }
 
+    public static SpreadSheet createTitle(String title) throws GeneralSecurityException, IOException {
+        Sheets api = null;
+        String sheetId;
+        if (credentialsExists()) {
+            Spreadsheet spreadsheet = new Spreadsheet()
+                    .setProperties(new SpreadsheetProperties()
+                            .setTitle(title)
+                    );
+            api = getServiceAPI();
+            spreadsheet = api.spreadsheets().create(spreadsheet)
+                    .setFields("spreadsheetId")
+                    .execute();
+
+            sheetId = spreadsheet.getSpreadsheetId();
+        } else {
+            sheetId = UUID.randomUUID().toString();
+        }
+        return new SpreadSheet(sheetId, api);
+    }
+
     public static SpreadSheet create(GuildDB db, SheetKeys key) throws GeneralSecurityException, IOException {
         String sheetId = db.getInfo(key, true);
 
@@ -731,6 +751,25 @@ public class SpreadSheet {
             }
         }
         updateAddTab(tabName);
+    }
+
+    public Map<String, Boolean> updateCreateTabsIfAbsent(Set<String> tabs) throws IOException {
+        Map<String, Boolean> result = new LinkedHashMap<>();
+        Spreadsheet sheet = service.spreadsheets().get(spreadsheetId).execute();
+        List<Sheet> sheets = sheet.getSheets();
+        Set<String> tabsLower = tabs.stream().map(String::toLowerCase).collect(Collectors.toCollection(LinkedHashSet::new));
+        for (Sheet subSheet : sheets) {
+            String title = subSheet.getProperties().getTitle().toLowerCase();
+            if (tabsLower.contains(title)) {
+                tabsLower.remove(title);
+            }
+            result.put(title, false);
+        }
+        for (String tab : tabsLower) {
+            updateAddTab(tab);
+            result.put(tab.toLowerCase(Locale.ROOT), true);
+        }
+        return result;
     }
 
     private void updateAddTab(String tabName) {

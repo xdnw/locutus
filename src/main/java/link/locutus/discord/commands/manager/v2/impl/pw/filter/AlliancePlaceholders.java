@@ -22,6 +22,7 @@ import link.locutus.discord.commands.manager.v2.impl.pw.binding.DefaultPlacehold
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
+import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.SheetTemplate;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.user.Roles;
@@ -79,7 +80,7 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
     @Command(desc = "Add an alias for a selection of alliances")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<DBAlliance> alliances) {
-        return _addSelectionAlias(command, db, name, alliances, "alliances");
+        return _addSelectionAlias(this, command, db, name, alliances, "alliances");
     }
 
     @NoFormat
@@ -180,6 +181,8 @@ public class AlliancePlaceholders extends Placeholders<DBAlliance> {
 
     @Override
     protected Set<DBAlliance> parseSingleElem(ValueStore store, String input) {
+        Set<DBAlliance> selection = PlaceholdersMap.getSelection(this, store, input);
+        if (selection != null) return selection;
         if (input.equalsIgnoreCase("*")) {
             return Locutus.imp().getNationDB().getAlliances();
         }

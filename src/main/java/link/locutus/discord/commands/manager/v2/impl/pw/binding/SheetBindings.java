@@ -3,8 +3,10 @@ package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
+import link.locutus.discord.commands.manager.v2.binding.annotation.CreateSheet;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.PlaceholderType;
+import link.locutus.discord.commands.manager.v2.command.ParameterData;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CustomSheet;
@@ -20,7 +22,10 @@ import net.dv8tion.jda.api.entities.Guild;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -58,9 +63,7 @@ public class SheetBindings extends BindingHelper {
     public CustomSheetManager manager(@Me GuildDB db) {
         return db.getSheetManager();
     }
-    // SheetTemplate
-    // selectionAlias
-    // customSheet
+
     @Binding(value = "A sheet template name that has been created in this guild\n" +
             "Sheet templates are column formats for a sheet\n" +
             "Templates, each with a selection can be used to generate multi-tabbed spreadsheets")
@@ -86,11 +89,18 @@ public class SheetBindings extends BindingHelper {
 
     @Binding(value = "A custom sheet name that has been created in this guild\n" +
             "Custom sheets have named tabs comprised of template-selection pairs")
-    public CustomSheet customSheet(@Me GuildDB db, CustomSheetManager manager, String name) {
+    public CustomSheet customSheet(@Me GuildDB db, CustomSheetManager manager, String name, ParameterData data) throws GeneralSecurityException, IOException {
+        name = name.toLowerCase(Locale.ROOT);
+        CreateSheet createSheet = data == null ? null : data.getAnnotation(CreateSheet.class);
         CustomSheet sheet = manager.getCustomSheet(name);
         if (sheet == null) {
-            Set<String> options = manager.getCustomSheets().keySet();
-            throw new IllegalArgumentException("No custom sheet found with name `" + name + "`. Options: " + StringMan.getString(options));
+            if (createSheet == null) {
+                Set<String> options = manager.getCustomSheets().keySet();
+                throw new IllegalArgumentException("No custom sheet found with name `" + name + "`. Options: " + StringMan.getString(options));
+            }
+            SpreadSheet mySheet = SpreadSheet.createTitle(name);
+            manager.addCustomSheet(name, mySheet.getSpreadsheetId());
+            sheet = new CustomSheet(name, mySheet.getSpreadsheetId(), new LinkedHashMap<>());
         }
         return sheet;
     }
