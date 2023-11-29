@@ -23,7 +23,6 @@ public class DBTreasure {
     private Continent continent;
     private int nation_id;
     private long spawn_date;
-
     private long last_respawn_alert;
 
     public DBTreasure set(Treasure treasure) {
@@ -206,5 +205,10 @@ public class DBTreasure {
 
     public void setRespawnAlertDate(long last_respawn_alert) {
         this.last_respawn_alert = last_respawn_alert;
+    }
+
+    @Override
+    public String toString() {
+        return getName();
     }
 }

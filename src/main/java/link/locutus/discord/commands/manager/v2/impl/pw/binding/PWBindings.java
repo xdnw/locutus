@@ -99,6 +99,16 @@ public class PWBindings extends BindingHelper {
         return treaty;
     }
 
+    @Binding(value = "A named game treasure")
+    public static DBTreasure treasure(String input) {
+        Map<String, DBTreasure> treasures = Locutus.imp().getNationDB().getTreasuresByName();
+        DBTreasure treasure = treasures.get(input.toLowerCase(Locale.ROOT));
+        if (treasure == null) {
+            throw new IllegalArgumentException("No treasure found with name: `" + input + "`. Options " + StringMan.getString(treasures.keySet()));
+        }
+        return treasure;
+    }
+
     public static DBBounty bounty(String input) {
         int id = PrimitiveBindings.Integer(input);
         DBBounty bounty = Locutus.imp().getWarDb().getBountyById(id);

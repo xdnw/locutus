@@ -17,6 +17,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,16 +33,23 @@ public class CustomSheetManager {
     }
 
     public void createTables() {
-        db.executeStmt("CREATE TABLE IF NOT EXISTS `SELECTION_ALIAS` (`name` VARCHAR PRIMARY KEY, `type` VARCHAR NOT NULL, `selection` VARCHAR NOT NULL)");
+        db.executeStmt("CREATE TABLE IF NOT EXISTS `SELECTION_ALIAS` (`name` VARCHAR PRIMARY KEY COLLATE NOCASE, `type` VARCHAR NOT NULL COLLATE NOCASE, `selection` VARCHAR NOT NULL)");
         db.executeStmt("CREATE TABLE IF NOT EXISTS `SHEET_TEMPLATE` (`name` VARCHAR PRIMARY KEY, `type` VARCHAR NOT NULL, `columns` VARCHAR NOT NULL)");
         db.executeStmt("CREATE TABLE IF NOT EXISTS `CUSTOM_SHEET` (`name` VARCHAR PRIMARY KEY, url VARCHAR NOT NULL)");
         db.executeStmt("CREATE TABLE IF NOT EXISTS `CUSTOM_SHEET_TABS` (`sheet` VARCHAR NOT NULL, `tab` VARCHAR NOT NULL, `selector` VARCHAR NOT NULL, `template` VARCHAR NOT NULL, PRIMARY KEY (`sheet`, `tab`))");
     }
 
-    public Set<String> getSheetTemplateNames() {
+    public Set<String> getSheetTemplateNames(boolean addPrefix) {
         Set<String> names = new HashSet<>();
-        db.query("SELECT `name` FROM `SHEET_TEMPLATE`", stmt -> {}, (ThrowingConsumer<ResultSet>) rs -> {
-            names.add(rs.getString("name"));
+        db.query("SELECT `type`, `name` FROM `SHEET_TEMPLATE`", stmt -> {}, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                String nameFull = rs.getString("name");
+                if (addPrefix) {
+                    String type = rs.getString("type");
+                    nameFull = PlaceholdersMap.getClassName(type) + ":" + nameFull;
+                }
+                names.add(nameFull);
+            }
         });
         return names;
     }
@@ -49,38 +57,46 @@ public class CustomSheetManager {
     public Map<String, SheetTemplate> getSheetTemplates(List<String> errors) {
         Map<String, SheetTemplate> sheets = new LinkedHashMap<>();
         db.query("SELECT * FROM `SHEET_TEMPLATE`", stmt -> {}, (ThrowingConsumer<ResultSet>) rs -> {
-            try {
-                SheetTemplate sheet = new SheetTemplate(rs);
-                sheets.put(sheet.getName(), sheet);
-            } catch (IllegalArgumentException e) {
-                errors.add(e.getMessage());
+            while (rs.next()) {
+                try {
+                    SheetTemplate sheet = new SheetTemplate(rs);
+                    sheets.put(sheet.getName(), sheet);
+                } catch (IllegalArgumentException e) {
+                    errors.add(e.getMessage());
+                }
             }
         });
         return sheets;
     }
 
     public SheetTemplate getSheetTemplate(String name) {
+        if (name.contains(":")) name = name.substring(name.indexOf(":") + 1);
         AtomicReference<SheetTemplate> sheet = new AtomicReference<>();
+        String finalName = name;
         db.query("SELECT * FROM `SHEET_TEMPLATE` WHERE name = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, name);
+            stmt.setString(1, finalName);
         }, (ThrowingConsumer<ResultSet>) rs -> {
-            sheet.set(new SheetTemplate(rs));
+            while (rs.next()) {
+                sheet.set(new SheetTemplate(rs));
+            }
         });
         return sheet.get();
     }
 
     public void addSheetTemplate(SheetTemplate sheet) {
         String query = "CREATE TABLE IF NOT EXISTS `SHEET_TEMPLATE` (`name` VARCHAR PRIMARY KEY, `type` VARCHAR NOT NULL, `columns` VARCHAR NOT NULL)";
-        db.update("INSERT INTO `SHEET_TEMPLATE`(`name`, `type`, `selection`, `columns`) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        db.update("INSERT INTO `SHEET_TEMPLATE`(`name`, `type`, `columns`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, sheet.getName());
             stmt.setString(2, sheet.getType().getSimpleName());
-            stmt.setString(4, StringMan.join(sheet.getColumns(), "\n"));
+            stmt.setString(3, StringMan.join(sheet.getColumns(), "\n"));
         });
     }
 
     public void deleteSheetTemplate(String name) {
+        if (name.contains(":")) name = name.substring(name.indexOf(":") + 1);
+        String finalName = name;
         db.update("DELETE FROM `SHEET_TEMPLATE` WHERE name = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, name);
+            stmt.setString(1, finalName);
         });
     }
 
@@ -92,28 +108,31 @@ public class CustomSheetManager {
         sheet.name = name;
     }
 
-    private Map<Class, Map<String, String>> customSelections = null;
+    private Map<Class, Map<String, SelectionAlias>> customSelections = null;
 
-    public Map<Class, Map<String, String>> getSelectionAliases() {
+    public Map<Class, Map<String, SelectionAlias>> getSelectionAliases() {
         if (customSelections == null) {
             synchronized (this) {
                 if (customSelections == null) {
                     customSelections = new ConcurrentHashMap<>();
                     db.query("SELECT * from SELECTION_ALIAS", stmt -> {}, (ThrowingConsumer<ResultSet>) rs -> {
-                        String name = rs.getString("name");
-                        String typeStr = rs.getString("type");
-                        Class typeFinal = null;
-                        for (Class<?> type : Locutus.cmd().getV2().getPlaceholders().getTypes()) {
-                            if (type.getSimpleName().equalsIgnoreCase(typeStr)) {
-                                typeFinal = type;
-                                break;
+                        while (rs.next()) {
+                            String name = rs.getString("name");
+                            String typeStr = rs.getString("type");
+                            Class typeFinal = null;
+                            for (Class<?> type : Locutus.cmd().getV2().getPlaceholders().getTypes()) {
+                                if (type.getSimpleName().equalsIgnoreCase(typeStr)) {
+                                    typeFinal = type;
+                                    break;
+                                }
                             }
+                            if (typeFinal == null) {
+                                return;
+                            }
+                            String selection = rs.getString("selection");
+                            SelectionAlias alias = new SelectionAlias(name, typeFinal, selection);
+                            customSelections.computeIfAbsent(typeFinal, t -> new ConcurrentHashMap<>()).put(name.toLowerCase(Locale.ROOT), alias);
                         }
-                        if (typeFinal == null) {
-                            return;
-                        }
-                        String selection = rs.getString("selection");
-                        customSelections.computeIfAbsent(typeFinal, t -> new ConcurrentHashMap<>()).put(name, selection);
                     });
                 }
             }
@@ -122,20 +141,22 @@ public class CustomSheetManager {
     }
 
     public <T> SelectionAlias<T> getSelectionAlias(String name, Class<T> type) {
-        Map<String, String> selections = getSelectionAliases().get(type);
+        if (name.contains(":")) name = name.substring(name.indexOf(":") + 1);
+        name = name.toLowerCase(Locale.ROOT);
+        Map<String, SelectionAlias> selections = getSelectionAliases().get(type);
         if (selections == null) {
             return null;
         }
-        String selection = selections.get(name);
+        SelectionAlias selection = selections.get(name);
         if (selection == null) {
             return null;
         }
-        return new SelectionAlias<>(name, type, selection);
+        return selection;
     }
 
     public Set<String> getSelectionAliasNames() {
         Set<String> names = new LinkedHashSet<>();
-        for (Map.Entry<Class, Map<String, String>> entry : getSelectionAliases().entrySet()) {
+        for (Map.Entry<Class, Map<String, SelectionAlias>> entry : getSelectionAliases().entrySet()) {
             String prefix = PlaceholdersMap.getClassName(entry.getKey()) + ":";
             for (String name : entry.getValue().keySet()) {
                 names.add(prefix + name);
@@ -152,31 +173,39 @@ public class CustomSheetManager {
             String prefix = split[0];
             typePrefix = f -> PlaceholdersMap.getClassName(f).equalsIgnoreCase(prefix);
         }
-        for (Map.Entry<Class, Map<String, String>> entry : getSelectionAliases().entrySet()) {
-            Map<String, String> selections = entry.getValue();
+        for (Map.Entry<Class, Map<String, SelectionAlias>> entry : getSelectionAliases().entrySet()) {
+            if (!typePrefix.test(entry.getKey())) {
+                continue;
+            }
+            Map<String, SelectionAlias> selections = entry.getValue();
             Class type = entry.getKey();
-            String selection = selections.get(name);
+            SelectionAlias selection = selections.get(name);
             if (selection != null) {
-                return new SelectionAlias<>(name, type, selection);
+                return selection;
             }
         }
         return null;
     }
 
     public void removeSelectionAlias(String name) {
-        getSelectionAliases().values().forEach(map -> map.remove(name));
+        name = name.toLowerCase(Locale.ROOT);
+        String finalName = name;
+        getSelectionAliases().values().forEach(map -> map.remove(finalName.toLowerCase(Locale.ROOT)));
         db.update("DELETE FROM SELECTION_ALIAS WHERE name = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, name);
+            stmt.setString(1, finalName);
         });
     }
 
     public void addSelectionAlias(String name, Class type, String selection) {
+        name = name.toLowerCase(Locale.ROOT);
+        String finalName = name;
         db.update("INSERT INTO SELECTION_ALIAS(name, type, selection) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
-            stmt.setString(1, name);
+            stmt.setString(1, finalName);
             stmt.setString(2, type.getSimpleName());
             stmt.setString(3, selection);
         });
-        getSelectionAliases().computeIfAbsent(type, t -> new ConcurrentHashMap<>()).put(name, selection);
+        SelectionAlias alias = new SelectionAlias(name, type, selection);
+        getSelectionAliases().computeIfAbsent(type, t -> new ConcurrentHashMap<>()).put(name, alias);
     }
 
     // Add methods for custom sheets
@@ -202,9 +231,9 @@ public class CustomSheetManager {
     }
 
     public void addCustomSheetTab(String sheet, String tab, String selector, String template) {
-        db.update("INSERT INTO CUSTOM_SHEET_TABS(sheet, tab, selector, template) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        db.update("INSERT INTO CUSTOM_SHEET_TABS(sheet, tab, selector, template) VALUES(?, ?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, sheet);
-            stmt.setString(2, tab);
+            stmt.setString(2, tab.toLowerCase(Locale.ROOT));
             stmt.setString(3, selector);
             stmt.setString(4, template);
         });
@@ -231,7 +260,9 @@ public class CustomSheetManager {
     public Map<String, String> getCustomSheets() {
         Map<String, String> sheets = new HashMap<>();
         db.query("SELECT `name`, `url` FROM `CUSTOM_SHEET`", stmt -> {}, (ThrowingConsumer<ResultSet>) rs -> {
-            sheets.put(rs.getString("name"), rs.getString("url"));
+            while (rs.next()) {
+                sheets.put(rs.getString("name"), rs.getString("url"));
+            }
         });
         return sheets;
     }
@@ -241,7 +272,9 @@ public class CustomSheetManager {
         db.query("SELECT `url` FROM `CUSTOM_SHEET` WHERE `name` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, name);
         }, (ThrowingConsumer<ResultSet>) rs -> {
-            url.set(rs.getString("url"));
+            while (rs.next()) {
+                url.set(rs.getString("url"));
+            }
         });
         return url.get();
     }
@@ -251,16 +284,18 @@ public class CustomSheetManager {
         if (url == null) {
             return null;
         }
-        Map<String, Map.Entry<SelectionAlias, SheetTemplate>> tabs = new HashMap<>();
+        Map<String, Map.Entry<SelectionAlias, SheetTemplate>> tabs = new LinkedHashMap<>();
         db.query("SELECT * FROM `CUSTOM_SHEET_TABS` WHERE `sheet` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, name);
         }, (ThrowingConsumer<ResultSet>) rs -> {
-            String tabName = rs.getString("tab");
-            String selector = rs.getString("selector");
-            String template = rs.getString("template");
-            SelectionAlias selectionAlias = getSelectionAlias(selector, SelectionAlias.class);
-            SheetTemplate sheetTemplate = getSheetTemplate(template);
-            tabs.put(tabName, new AbstractMap.SimpleEntry<>(selectionAlias, sheetTemplate));
+            while (rs.next()) {
+                String tabName = rs.getString("tab");
+                String selector = rs.getString("selector");
+                String template = rs.getString("template");
+                SelectionAlias selectionAlias = getSelectionAlias(selector);
+                SheetTemplate sheetTemplate = getSheetTemplate(template);
+                tabs.put(tabName, new AbstractMap.SimpleEntry<>(selectionAlias, sheetTemplate));
+            }
         });
         return new CustomSheet(name, url, tabs);
     }

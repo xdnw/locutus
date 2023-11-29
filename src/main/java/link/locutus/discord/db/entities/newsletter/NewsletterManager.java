@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class NewsletterManager {
     public static boolean isAllowed(long idLong) {
-        return idLong == 821587932384067584L;
+        return idLong == 821587932384067584L || idLong == 672217848311054346L;
     }
 
     private final GuildDB db;
@@ -46,25 +46,29 @@ public class NewsletterManager {
         Map<Integer, Newsletter> map = new LinkedHashMap<>();
         db.query("SELECT * FROM NEWSLETTERS", stmt -> {
         }, (ThrowingConsumer<ResultSet>) rs -> {
-            int id = rs.getInt("id");
-            String name = rs.getString("name");
-            long dateCreated = rs.getLong("date_created");
-            long lastSent = rs.getLong("last_sent");
-            long sendInterval = rs.getLong("send_interval");
-            long sendConfirmationChannel = rs.getLong("sendConfirmationChannel");
-            long pingRole = rs.getLong("pingRole");
-            Newsletter newsletter = new Newsletter(id, name, lastSent, dateCreated, sendInterval, sendConfirmationChannel, pingRole);
-            map.put(id, newsletter);
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String name = rs.getString("name");
+                long dateCreated = rs.getLong("date_created");
+                long lastSent = rs.getLong("last_sent");
+                long sendInterval = rs.getLong("send_interval");
+                long sendConfirmationChannel = rs.getLong("sendConfirmationChannel");
+                long pingRole = rs.getLong("pingRole");
+                Newsletter newsletter = new Newsletter(id, name, lastSent, dateCreated, sendInterval, sendConfirmationChannel, pingRole);
+                map.put(id, newsletter);
+            }
         });
 
         // get channels
         db.query("SELECT * FROM NEWSLETTER_CHANNELS", stmt -> {
         }, (ThrowingConsumer<ResultSet>) rs -> {
-            int newsletterId = rs.getInt("newsletter");
-            long channelId = rs.getLong("channel_id");
-            Newsletter newsletter = map.get(newsletterId);
-            if (newsletter != null) {
-                newsletter.addChannelId(channelId);
+            while (rs.next()) {
+                int newsletterId = rs.getInt("newsletter");
+                long channelId = rs.getLong("channel_id");
+                Newsletter newsletter = map.get(newsletterId);
+                if (newsletter != null) {
+                    newsletter.addChannelId(channelId);
+                }
             }
         });
 
@@ -76,10 +80,12 @@ public class NewsletterManager {
         db.query("SELECT * FROM NEWSLETTER_SUBSCRIPTIONS WHERE nation_id = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, nationId);
         }, (ThrowingConsumer<ResultSet>) rs -> {
-            int newsletterId = rs.getInt("newsletter");
-            Newsletter newsletter = newsletters.get(newsletterId);
-            if (newsletter != null) {
-                set.add(newsletter);
+            while (rs.next()) {
+                int newsletterId = rs.getInt("newsletter");
+                Newsletter newsletter = newsletters.get(newsletterId);
+                if (newsletter != null) {
+                    set.add(newsletter);
+                }
             }
         });
         return set;
@@ -90,8 +96,10 @@ public class NewsletterManager {
         db.query("SELECT * FROM NEWSLETTER_SUBSCRIPTIONS WHERE newsletter = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setInt(1, newsletterId);
         }, (ThrowingConsumer<ResultSet>) rs -> {
-            int nationId = rs.getInt("nation_id");
-            set.add(nationId);
+            while (rs.next()) {
+                int nationId = rs.getInt("nation_id");
+                set.add(nationId);
+            }
         });
         return set;
     }

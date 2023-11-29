@@ -12,6 +12,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.binding.autocomplet
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete.GPTCompleter;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete.PWCompleter;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.autocomplete.SheetCompleter;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.util.MathMan;
 import link.locutus.discord.util.RateLimitUtil;
@@ -217,6 +218,7 @@ public class SlashCommandManager extends ListenerAdapter {
         new PrimitiveCompleter().register(commands.getStore());
         new DiscordCompleter().register(commands.getStore());
         new PWCompleter().register(commands.getStore());
+        new SheetCompleter().register(commands.getStore());
         new GPTCompleter().register(commands.getStore());
 
         List<SlashCommandData> toRegister = new ArrayList<>();
@@ -246,16 +248,15 @@ public class SlashCommandManager extends ListenerAdapter {
             toRegister.add(cmd);
         }
 
-        StringBuilder builder = new StringBuilder();
         for (SlashCommandData cmd : toRegister) {
             int size = getSize(cmd);
             if (size > 4000) {
+                StringBuilder builder = new StringBuilder();
                 printSize(cmd, builder, 0);
+                System.out.println(builder);
                 throw new IllegalArgumentException("Command " + cmd.getName() + "too large: " + size + "");
             }
         }
-        System.out.println(builder);
-
 
         return toRegister;
     }
@@ -400,31 +401,37 @@ public class SlashCommandManager extends ListenerAdapter {
     public List<OptionData> createOptions(ParametricCallable cmd, int maxOption, boolean breakNewlines, boolean includeTypes, boolean includeExample, boolean includeRepeatedTypes, boolean includeDescForChoices, boolean includeDesc) {
         List<OptionData> result = new ArrayList<>();
         Set<Type> paramTypes = new HashSet<>();
-        for (ParameterData param : cmd.getUserParameters()) {
+        List<ParameterData> params = cmd.getUserParameters();
+        for (int l = 0; l < params.size(); l++) {
+            ParameterData param = params.get(l);
             Type type = param.getType();
-
-            String desc = !includeDesc ? "" : param.getExpandedDescription(false, includeExample, includeDesc);
-            String simpleDesc = includeDesc ? param.getDescription() : "";
-            if (desc.length() > maxOption && simpleDesc != null) {
-                desc = simpleDesc;
-            }
-            if (breakNewlines && desc.contains("\n")) desc = desc.split("\n")[0];
-            if (desc.length() > maxOption) {
-                desc = desc.substring(0, maxOption);
-            }
-            if (breakNewlines && desc.contains("\n")) desc = desc.split("\n")[0];
-            if (desc.trim().isEmpty() && includeTypes) {
-                desc = param.getType().getTypeName().replaceAll("[a-z_A-Z0-9.]+\\.([a-z_A-Z0-9]+)", "$1").replaceAll("[a-z_A-Z0-9]+\\$([a-z_A-Z0-9]+)", "$1");
-            }
-            if (!includeRepeatedTypes) {
-                if (!paramTypes.add(param.getType())) {
-                    desc = "";
+            String paramName = param.getName();
+            String desc;
+            if (paramName.length() == 1 && l > 0 && params.get(l - 1).getType().equals(type) && params.size() > 20) {
+                desc = "_";
+            } else {
+                desc = !includeDesc ? "" : param.getExpandedDescription(false, includeExample, includeDesc);
+                String simpleDesc = includeDesc ? param.getDescription() : "";
+                if (desc.length() > maxOption && simpleDesc != null) {
+                    desc = simpleDesc;
+                }
+                if (breakNewlines && desc.contains("\n")) desc = desc.split("\n")[0];
+                if (desc.length() > maxOption) {
+                    desc = desc.substring(0, maxOption);
+                }
+                if (breakNewlines && desc.contains("\n")) desc = desc.split("\n")[0];
+                if (desc.trim().isEmpty() && includeTypes) {
+                    desc = param.getType().getTypeName().replaceAll("[a-z_A-Z0-9.]+\\.([a-z_A-Z0-9]+)", "$1").replaceAll("[a-z_A-Z0-9]+\\$([a-z_A-Z0-9]+)", "$1");
+                }
+                if (!includeRepeatedTypes) {
+                    if (!paramTypes.add(param.getType())) {
+                        desc = "";
+                    }
+                }
+                if (desc.isEmpty()) {
+                    desc = "_";
                 }
             }
-            if (desc.isEmpty()) {
-                desc = "_";
-            }
-
 
             Range range = param.getAnnotation(Range.class);
             Step step = param.getAnnotation(Step.class);
@@ -433,7 +440,7 @@ public class SlashCommandManager extends ListenerAdapter {
             ArgChoice choiceAnn = param.getAnnotation(ArgChoice.class);
 
             OptionType optionType = (timestamp != null || timediff != null) ? OptionType.STRING : createType(type);
-            OptionData option = new OptionData(optionType, param.getName().toLowerCase(Locale.ROOT), desc);
+            OptionData option = new OptionData(optionType, paramName.toLowerCase(Locale.ROOT), desc);
 
             option.setAutoComplete(false);
             if (optionType == OptionType.CHANNEL) {

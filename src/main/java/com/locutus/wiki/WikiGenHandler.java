@@ -112,7 +112,7 @@ public class WikiGenHandler {
 //        //Plan a blitz
         pages.add(new WikiBlitzPage(manager)); // <--- 3
 //        //Send out targets
-        pages.add(new WikiSendTargetsPage(manager)); // <--- easy 4
+        pages.add(new WikiSendTargetsPage(manager));
 //        //Spy war
         pages.add(new WikiSpyWarPage(manager)); // <--- easy 5
 //        //Blockade System

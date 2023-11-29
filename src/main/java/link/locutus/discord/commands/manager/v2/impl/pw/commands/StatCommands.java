@@ -574,22 +574,24 @@ public class StatCommands {
             "e.g. How many nations, soldiers etc. are at each city")
     public String attributeTierGraph(@Me IMessageIO channel,
                                      NationAttributeDouble metric,
-                                     Set<DBNation> coalition1,
-                                     Set<DBNation> coalition2,
+                                     NationList coalition1,
+                                     NationList coalition2,
                                      @Switch("i") boolean includeInactives,
                                      @Switch("a") boolean includeApplicants,
                                      @Arg("Compare the sum of each nation's attribute in the coalition instead of average") @Switch("t") boolean total) throws IOException {
-        coalition1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
-        coalition2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
+        Collection<DBNation> coalition1Nations = coalition1.getNations();
+        Collection<DBNation> coalition2Nations = coalition2.getNations();
+        coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
+        coalition2Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
 
-        if (coalition1.isEmpty() || coalition2.isEmpty()) throw new IllegalArgumentException("No nations provided");
-        if (coalition1.size() < 3 || coalition2.size() < 3) return "Coalitions are too small to compare";
+        if (coalition1Nations.isEmpty() || coalition2Nations.isEmpty()) throw new IllegalArgumentException("No nations provided");
+        if (coalition1Nations.size() < 3 || coalition2Nations.size() < 3) return "Coalitions are too small to compare";
 
         Map<Integer, List<DBNation>> coalition1ByCity = new HashMap<>();
         Map<Integer, List<DBNation>> coalition2ByCity = new HashMap<>();
 
-        for (DBNation n : coalition1) coalition1ByCity.computeIfAbsent(n.getCities(), f -> new ArrayList<>()).add(n);
-        for (DBNation n : coalition2) coalition2ByCity.computeIfAbsent(n.getCities(), f -> new ArrayList<>()).add(n);
+        for (DBNation n : coalition1Nations) coalition1ByCity.computeIfAbsent(n.getCities(), f -> new ArrayList<>()).add(n);
+        for (DBNation n : coalition2Nations) coalition2ByCity.computeIfAbsent(n.getCities(), f -> new ArrayList<>()).add(n);
 
         int min = Math.min(Collections.min(coalition1ByCity.keySet()), Collections.min(coalition2ByCity.keySet()));
         int max = Math.max(Collections.max(coalition1ByCity.keySet()), Collections.max(coalition2ByCity.keySet()));
@@ -678,9 +680,10 @@ public class StatCommands {
 
         String response = """
                 > Each coalition is grouped by city count and color coded.
-                > **RED** = Coalition 1
-                > **BLUE** = Coalition 2
-                """;
+                > **RED** = {coalition1}
+                > **BLUE** = {coalition2}
+                """.replace("{coalition1}", coalition1.getFilter())
+                .replace("{coalition2}", coalition2.getFilter());
         msg.append(response);
         msg.send();
         return null;
@@ -688,8 +691,8 @@ public class StatCommands {
 
     @Command(desc = "Generate a graph of nation military strength by score between two coalitions", aliases = {"strengthTierGraph"})
     public String strengthTierGraph(@Me GuildDB db, @Me IMessageIO channel,
-                                    Set<DBNation> coalition1,
-                                    Set<DBNation> coalition2,
+                                    NationList coalition1,
+                                    NationList coalition2,
                                     @Switch("i") boolean includeInactives,
                                     @Switch("n") boolean includeApplicants,
                                     @Arg("Use the score/strength of coalition 1 nations at specific military unit levels") @Switch("a") MMRDouble col1MMR,
@@ -699,11 +702,13 @@ public class StatCommands {
                                     @Switch("j") boolean attachJson,
                                     @Switch("v") boolean attachCsv) throws IOException {
         Set<DBNation> allNations = new HashSet<>();
-        coalition1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
-        coalition2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
-        allNations.addAll(coalition1);
-        allNations.addAll(coalition2);
-        if (coalition1.isEmpty() || coalition2.isEmpty()) throw new IllegalArgumentException("No nations provided");
+        Collection<DBNation> coalition1Nations = coalition1.getNations();
+        Collection<DBNation> coalition2Nations = coalition2.getNations();
+        coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
+        coalition2Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
+        allNations.addAll(coalition1Nations);
+        allNations.addAll(coalition2Nations);
+        if (coalition1Nations.isEmpty() || coalition2Nations.isEmpty()) throw new IllegalArgumentException("No nations provided");
 
         int maxScore = 0;
         int minScore = Integer.MAX_VALUE;
@@ -721,10 +726,10 @@ public class StatCommands {
         // max = x * 1.25
         // max = (min / 0.6)
 
-        for (DBNation nation : coalition1) {
+        for (DBNation nation : coalition1Nations) {
             coal1Str[(int) (nation.estimateScore(col1MMR, col1Infra, null, null) * 0.75)] += nation.getStrength(col1MMR);
         }
-        for (DBNation nation : coalition2) {
+        for (DBNation nation : coalition2Nations) {
             coal2Str[(int) (nation.estimateScore(col2MMR, col2Infra, null, null) * 0.75)] += nation.getStrength(col2MMR);
         }
         for (int min = 10; min < coal1Str.length; min++) {
@@ -749,7 +754,7 @@ public class StatCommands {
         }
 
         double[] buffer = new double[2];
-        TimeDualNumericTable<Void> table = new TimeDualNumericTable<>("Effective military strength by score range", "score", "strength", "coalition 1", "coalition 2") {
+        TimeDualNumericTable<Void> table = new TimeDualNumericTable<>("Effective military strength by score range", "score", "strength", coalition1.getFilter(), coalition2.getFilter()) {
             @Override
             public void add(long score, Void ignore) {
                 add(score, coal1StrSpread[(int) score], coal2StrSpread[(int) score]);
@@ -764,7 +769,9 @@ public class StatCommands {
 
     @Command(desc = "Generate a graph of spy counts by city count between two coalitions\n" +
             "Nations which are applicants, in vacation mode or inactive (2 days) are excluded")
-    public String spyTierGraph(@Me GuildDB db, @Me IMessageIO channel, Set<DBNation> coalition1, Set<DBNation> coalition2,
+    public String spyTierGraph(@Me GuildDB db, @Me IMessageIO channel,
+                               NationList coalition1,
+                               NationList coalition2,
                                @Switch("i") boolean includeInactives,
                                @Switch("a") boolean includeApplicants,
                                @Arg("Graph the total spies instead of average per nation")
@@ -772,21 +779,23 @@ public class StatCommands {
                                @Switch("b") boolean barGraph,
                                @Switch("j") boolean attachJson,
                                @Switch("c") boolean attachCsv) throws IOException {
+        Collection<DBNation> coalition1Nations = coalition1.getNations();
+        Collection<DBNation> coalition2Nations = coalition2.getNations();
         Set<DBNation> allNations = new HashSet<>();
-        coalition1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 2880));
-        coalition2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 2880));
-        allNations.addAll(coalition1);
-        allNations.addAll(coalition2);
-        if (coalition1.isEmpty() || coalition2.isEmpty()) throw new IllegalArgumentException("No nations provided");
+        coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 2880));
+        coalition2Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 2880));
+        allNations.addAll(coalition1Nations);
+        allNations.addAll(coalition2Nations);
+        if (coalition1Nations.isEmpty() || coalition2Nations.isEmpty()) throw new IllegalArgumentException("No nations provided");
         int min = 0;
         int max = 0;
         for (DBNation nation : allNations) max = Math.max(nation.getCities(), max);
         max++;
 
-        Set<DBNation>[] coalitions = new Set[]{coalition1, coalition2};
+        Collection<DBNation>[] coalitions = new Collection[]{coalition1Nations, coalition2Nations};
         int[][] counts = new int[coalitions.length][];
         for (int i = 0; i < coalitions.length; i++) {
-            Set<DBNation> coalition = coalitions[i];
+            Collection<DBNation> coalition = coalitions[i];
             int[] cities = new int[max + 1];
             int[] spies = new int[max + 1];
             counts[i] = spies;
@@ -803,7 +812,7 @@ public class StatCommands {
         }
 
         String title = (total ? "Total" : "Average") + " spies by city count";
-        TimeDualNumericTable<Void> table = new TimeDualNumericTable<>(title, "cities", "spies", "coalition 1", "coalition 2") {
+        TimeDualNumericTable<Void> table = new TimeDualNumericTable<>(title, "cities", "spies", coalition1.getFilter(), coalition2.getFilter()) {
             @Override
             public void add(long cities, Void ignore) {
                 add(cities, counts[0][(int) cities], counts[1][(int) cities]);
@@ -819,19 +828,21 @@ public class StatCommands {
 
     @Command(desc = "Generate a graph of nation counts by score between two coalitions", aliases = {"scoreTierGraph", "scoreTierSheet"})
     public String scoreTierGraph(@Me GuildDB db, @Me IMessageIO channel,
-                                 Set<DBNation> coalition1,
-                                 Set<DBNation> coalition2,
+                                 NationList coalition1,
+                                 NationList coalition2,
                                  @Switch("i") boolean includeInactives,
                                  @Switch("a") boolean includeApplicants,
                                  @Switch("j") boolean attachJson,
                                  @Switch("c") boolean attachCsv) throws IOException {
+        Collection<DBNation> coalition1Nations = coalition1.getNations();
+        Collection<DBNation> coalition2Nations = coalition2.getNations();
         Set<DBNation> allNations = new HashSet<>();
-        coalition1.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
-        coalition2.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
-        allNations.addAll(coalition1);
-        allNations.addAll(coalition2);
+        coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
+        coalition2Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
+        allNations.addAll(coalition1Nations);
+        allNations.addAll(coalition2Nations);
 
-        if (coalition1.isEmpty() || coalition2.isEmpty()) throw new IllegalArgumentException("No nations provided");
+        if (coalition1Nations.isEmpty() || coalition2Nations.isEmpty()) throw new IllegalArgumentException("No nations provided");
 
         int maxScore = 0;
         int minScore = Integer.MAX_VALUE;
@@ -845,10 +856,10 @@ public class StatCommands {
         double[] coal1StrSpread = new double[coal1Str.length];
         double[] coal2StrSpread = new double[coal2Str.length];
 
-        for (DBNation nation : coalition1) {
+        for (DBNation nation : coalition1Nations) {
             coal1Str[(int) (nation.getScore() * 0.75)] += 1;
         }
-        for (DBNation nation : coalition2) {
+        for (DBNation nation : coalition2Nations) {
             coal2Str[(int) (nation.getScore() * 0.75)] += 1;
         }
         for (int min = 10; min < coal1Str.length; min++) {
@@ -870,7 +881,7 @@ public class StatCommands {
             }
         }
 
-        TimeDualNumericTable<Void> table = new TimeDualNumericTable<>("Nations by score range", "score", "nations", "coalition 1", "coalition 2") {
+        TimeDualNumericTable<Void> table = new TimeDualNumericTable<>("Nations by score range", "score", "nations", coalition1.getFilter(), coalition2.getFilter()) {
             @Override
             public void add(long score, Void ignore) {
                 add(score, coal1StrSpread[(int) score], coal2StrSpread[(int) score]);

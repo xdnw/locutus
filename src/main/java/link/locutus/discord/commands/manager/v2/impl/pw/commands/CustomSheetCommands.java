@@ -1,7 +1,9 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
+import com.github.javaparser.printer.lexicalpreservation.Added;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.CreateSheet;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
@@ -9,6 +11,8 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.PlaceholderTy
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
+import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CustomSheet;
 import link.locutus.discord.db.entities.SelectionAlias;
@@ -31,7 +35,26 @@ import java.util.Map;
 
 public class CustomSheetCommands {
     @NoFormat
-    @Command(desc = "List custom sheets")
+    @Command(desc = "Rename a sheet template")
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+    public String renameTemplate(@Me GuildDB db, SheetTemplate sheet, String name) {
+        name = name.toLowerCase(Locale.ROOT);
+        // ensure name is alphanumeric _
+        if (!name.matches("[a-z0-9_]+")) {
+            throw new IllegalArgumentException("Template name must be alphanumericunderscore, not `" + name + "`");
+        }
+        for (String other : db.getSheetManager().getSheetTemplateNames(false)) {
+            if (other.equalsIgnoreCase(name)) {
+                throw new IllegalArgumentException("Template name `" + name + "` already exists");
+            }
+        }
+        // rename it
+        db.getSheetManager().renameSheetTemplate(sheet, name);
+        return "Renamed `" + sheet.getName() + "` to `" + name + "`";
+    }
+
+    @NoFormat
+    @Command(desc = "List sheet templates for this guild")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String listSheetTemplates(@Me GuildDB db, @Default @PlaceholderType Class type) {
         List<String> errors = new ArrayList<>();
@@ -63,17 +86,20 @@ public class CustomSheetCommands {
     }
 
     @NoFormat
-    @Command(desc = "List custom selections")
+    @Command(desc = "List selection aliases for this guild")
     public String listSelectionAliases(@Me GuildDB db, @Default @PlaceholderType Class type) {
-        Map<Class, Map<String, String>> selections = new LinkedHashMap<>(db.getSheetManager().getSelectionAliases());
+        Map<Class, Map<String, SelectionAlias>> selections = new LinkedHashMap<>(db.getSheetManager().getSelectionAliases());
         if (type != null) {
             selections.entrySet().removeIf(entry -> !entry.getKey().equals(type));
         }
-        StringBuilder sb = new StringBuilder();
-        for (Map.Entry<Class, Map<String, String>> entry : selections.entrySet()) {
+        if (selections.isEmpty()) {
+            return "No selection aliases found" + (type == null ? "" : " of type `" + PlaceholdersMap.getClassName(type) + "`");
+        }
+        StringBuilder sb = new StringBuilder("__**" + selections.size() + " selection aliases found:**__\n");
+        for (Map.Entry<Class, Map<String, SelectionAlias>> entry : selections.entrySet()) {
             sb.append("**").append(entry.getKey().getSimpleName()).append("**\n");
-            for (Map.Entry<String, String> selection : entry.getValue().entrySet()) {
-                sb.append("- `").append(selection.getKey()).append("` -> `").append(selection.getValue()).append("`\n");
+            for (Map.Entry<String, SelectionAlias> selection : entry.getValue().entrySet()) {
+                sb.append("- `").append(selection.getKey()).append("` -> `").append(selection.getValue().getSelection()).append("`\n");
             }
             sb.append("\n");
         }
@@ -81,16 +107,19 @@ public class CustomSheetCommands {
     }
 
     @NoFormat
-    @Command(desc = "List custom sheets")
+    @Command(desc = "List custom sheets for this guild")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String listCustomSheets(@Me GuildDB db) {
         Map<String, String> sheets = db.getSheetManager().getCustomSheets();
         if (sheets.isEmpty()) {
-            return "No custom sheets found. Create one with TODO CM REF";
+            return "No custom sheets found. Create one with " + CM.sheet_custom.add_tab.cmd.toSlashMention();
         }
+        // google sheet
+        String prefix = "https://docs.google.com/spreadsheets/d/";
+        String suffix = "/edit?usp=sharing";
         StringBuilder response = new StringBuilder("**Custom Sheets**\n");
         for (Map.Entry<String, String> entry : sheets.entrySet()) {
-            response.append("- ").append(MarkupUtil.markdownUrl(entry.getKey(), entry.getValue())).append("\n");
+            response.append("- ").append(MarkupUtil.markdownUrl(entry.getKey(), prefix + entry.getValue() + suffix)).append("\n");
         }
         return response.toString();
     }
@@ -105,23 +134,23 @@ public class CustomSheetCommands {
     }
 
     @NoFormat
-    @Command(desc = "View a custom sheet")
+    @Command(desc = "View a sheet template")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String viewTemplate(SheetTemplate sheet) {
         return sheet.toString() + "\n\n" +
-                "See TODO CM REF (remove, move, delete)";
+                "See: " + CM.sheet_custom.add_tab.cmd.toSlashMention() + " | " + CM.sheet_custom.remove_tab.cmd.toSlashMention() + " | " + CM.sheet_custom.update.cmd.toSlashMention();
     }
 
     @NoFormat
-    @Command(desc = "Delete a custom spreadsheet")
+    @Command(desc = "Delete a sheet template")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String deleteTemplate(@Me GuildDB db, SheetTemplate sheet) {
         db.getSheetManager().deleteSheetTemplate(sheet.getName());
-        return "Deleted sheet `" + sheet.getName() + "`";
+        return "Deleted sheet template `" + sheet.getName() + "`";
     }
 
     @NoFormat
-    @Command(desc = "Delete columns in a custom sheet")
+    @Command(desc = "Remove columns in a sheet template")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String deleteColumns(@Me GuildDB db, SheetTemplate sheet, List<Integer> columns) {
         List<Integer> toRemove = new ArrayList<>();
@@ -138,15 +167,18 @@ public class CustomSheetCommands {
 
         db.getSheetManager().addSheetTemplate(sheet);
         return "Removed columns `" + columns + "` from sheet `" + sheet.getName() + "`\n" +
-                "See: TODO CM REF VIEW";
+                "See: " + CM.sheet_custom.view.cmd.toSlashMention();
 
     }
 
     //- add_tab <tab-name> <selector> <template>
     @NoFormat
-    @Command
+    @Command(desc = "Add a tab to a custom sheet\n" +
+            "Tabs are named and are comprised of a selection alias (rows) and a sheet template (columns)\n" +
+            "You must create a selection alias and sheet template first\n" +
+            "Sheets must be generated/updated with the update command")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String addTab(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, CustomSheet sheet, String tabName, SelectionAlias alias, SheetTemplate template, @Switch("f") boolean force) {
+    public String addTab(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @CreateSheet CustomSheet sheet, String tabName, SelectionAlias alias, SheetTemplate template, @Switch("f") boolean force) {
         tabName = tabName.toLowerCase(Locale.ROOT);
         // ensure name is alphanumeric _
         if (!tabName.matches("[a-z0-9_]+")) {
@@ -159,18 +191,26 @@ public class CustomSheetCommands {
         // tabs
         Map.Entry<SelectionAlias, SheetTemplate> existingTab = sheet.getTab(tabName);
         if (!force) {
-            String title = "Replace existing tab: `" + tabName + "`";
+            String title = (existingTab == null ? "Add" : "Replace existing") + " tab: `" + tabName + "`";
             StringBuilder body = new StringBuilder();
-            SelectionAlias previousAlias = existingTab.getKey();
-            SheetTemplate previousTemplate = existingTab.getValue();
-            if (alias.getName().equals(previousAlias)) {
+            SelectionAlias previousAlias = existingTab == null ? null : existingTab.getKey();
+            SheetTemplate previousTemplate = existingTab == null ? null : existingTab.getValue();
+            if (previousAlias == null) {
+                body.append("**Selection:** `").append(alias.getName()).append("`\n");
+                body.append("- Type: `").append(alias.getType().getSimpleName()).append("`\n");
+                body.append("- Selection: `").append(alias.getSelection()).append("`\n");
+            } else if (alias.getName().equalsIgnoreCase(previousAlias.getName())) {
                 body.append("**Selection:** `" + alias.getName() + "` (no change)\n");
             } else {
                 body.append("**Selection:** `").append(previousAlias.getName()).append("` -> `").append(alias.getName()).append("`\n");
                 body.append("- Type: `").append(previousAlias.getType().getSimpleName()).append("` -> `").append(alias.getType().getSimpleName()).append("`\n");
                 body.append("- Selection: `").append(previousAlias.getSelection()).append("` -> `").append(alias.getSelection()).append("`\n");
             }
-            if (template.getName().equals(previousTemplate)) {
+            if (previousTemplate == null) {
+                body.append("**Template:** `").append(template.getName()).append("`\n");
+                body.append("- Type: `").append(template.getType().getSimpleName()).append("`\n");
+                body.append("- Columns: `").append(template.getColumns().size()).append("`\n");
+            } else if (template.getName().equalsIgnoreCase(previousTemplate.getName())) {
                 body.append("**Template:** `" + template.getName() + "` (no change)\n");
             } else {
                 body.append("**Template:** `").append(previousTemplate.getName()).append("` -> `").append(template.getName()).append("`\n");
@@ -184,15 +224,17 @@ public class CustomSheetCommands {
 
         db.getSheetManager().addCustomSheetTab(sheet.getName(), tabName, alias.getName(), template.getName());
 
-        return (existingTab == null ? "Added" : "Updated") + " tab `" + tabName + "`\n" +
+        return "**__sheet:" + sheet.getName() + "__**\n" + (existingTab == null ? " Added " : "Updated") + " tab `" + tabName + "`\n" +
                 "- Selection: `" + alias.getName() + "`\n" +
                 "- Template: `" + template.getName() + "`\n" +
-                "- Url: <" + sheet.getUrl() + ">" +
-                "TODO CM REF to update the sheet\n" +
-                "See also TODO CM REF (delete, rename, remove tab)";
+                "- Url: <" + sheet.getUrl() + ">\n" +
+                CM.sheet_custom.update.cmd.toSlashMention() + " to update the sheet\n" +
+                "See: " + CM.sheet_custom.view.cmd.toSlashMention() + " | " + CM.sheet_custom.remove_tab.cmd.toSlashMention() + " | " + CM.sheet_custom.update.cmd.toSlashMention();
     }
 
-    @Command
+    @Command(desc = "Update the tabs in a custom sheet and return the url\n" +
+            "A sheet update may produce errors if a selection is no longer valid\n" +
+            "Tabs in the google sheet which aren't registered will be ignored")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String updateSheet(@Me IMessageIO io, CustomSheet sheet, ValueStore store) throws GeneralSecurityException, IOException {
         List<String> errors = sheet.update(store);
@@ -203,7 +245,7 @@ public class CustomSheetCommands {
         if (errors.isEmpty()) {
             result.append("- No errors");
         } else {
-            result.append("Errors:\n");
+            result.append("Update Info:\n");
             for (String error : errors) {
                 result.append("- ").append(error).append("\n");
             }
@@ -211,7 +253,8 @@ public class CustomSheetCommands {
         return result.toString();
     }
 
-    @Command
+    @Command(desc = "Unregister a tab from a custom sheet\n" +
+            "The tab wont be deleted from the google sheet, but it will no longer be updated. You may manually delete it from the google sheet")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String deleteTab(@Me GuildDB db, @Me IMessageIO io, CustomSheet sheet, String tabName) {
         tabName = tabName.toLowerCase(Locale.ROOT);
@@ -223,10 +266,10 @@ public class CustomSheetCommands {
         }
         db.getSheetManager().deleteCustomSheetTab(sheet.getName(), tabName);
         return "Deleted tab `" + tabName + "` from `" + sheet.getName() + "`\n" +
-                "See: TODO CM REF VIEW";
+                "See: " + CM.sheet_custom.view.cmd.toSlashMention();
     }
 
-    @Command
+    @Command(desc = "Get the google sheet url and view the tabs for a custom sheet, and their respective selection alias (rows) and sheet template (columns)")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String info(CustomSheet sheet) {
         return sheet.toString();

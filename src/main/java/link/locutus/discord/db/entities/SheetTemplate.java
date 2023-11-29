@@ -49,7 +49,7 @@ public class SheetTemplate<T> {
     @Override
     public String toString() {
         StringBuilder response = new StringBuilder();
-        response.append('`').append(name).append("`").append(": `").append(type.getSimpleName()).append("`\n");
+        response.append('`').append(name).append("`").append(": `type:").append(type.getSimpleName()).append("`\n");
         for (int i = 0; i < columns.size(); i++) {
             response.append(i + 1).append(". `").append(columns.get(i)).append("`\n");
         }

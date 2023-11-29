@@ -238,6 +238,26 @@ public class SpreadSheet {
         return instance;
     }
 
+    public static SpreadSheet createTitle(String title) throws GeneralSecurityException, IOException {
+        Sheets api = null;
+        String sheetId;
+        if (credentialsExists()) {
+            Spreadsheet spreadsheet = new Spreadsheet()
+                    .setProperties(new SpreadsheetProperties()
+                            .setTitle(title)
+                    );
+            api = getServiceAPI();
+            spreadsheet = api.spreadsheets().create(spreadsheet)
+                    .setFields("spreadsheetId")
+                    .execute();
+
+            sheetId = spreadsheet.getSpreadsheetId();
+        } else {
+            sheetId = UUID.randomUUID().toString();
+        }
+        return new SpreadSheet(sheetId, api);
+    }
+
     public static SpreadSheet create(GuildDB db, SheetKeys key) throws GeneralSecurityException, IOException {
         String sheetId = db.getInfo(key, true);
 
@@ -341,6 +361,7 @@ public class SpreadSheet {
             m = Pattern.compile(regex).matcher(id);
             if (m.find()) {
                 tabId = Integer.parseInt(m.group(1));
+                if (tabId == 0) tabId = null;
             }
             regex = "#tab=([a-zA-Z0-9-_]{1,})";
             m = Pattern.compile(regex).matcher(id);
@@ -732,6 +753,25 @@ public class SpreadSheet {
         updateAddTab(tabName);
     }
 
+    public Map<String, Boolean> updateCreateTabsIfAbsent(Set<String> tabs) throws IOException {
+        Map<String, Boolean> result = new LinkedHashMap<>();
+        Spreadsheet sheet = service.spreadsheets().get(spreadsheetId).execute();
+        List<Sheet> sheets = sheet.getSheets();
+        Set<String> tabsLower = tabs.stream().map(String::toLowerCase).collect(Collectors.toCollection(LinkedHashSet::new));
+        for (Sheet subSheet : sheets) {
+            String title = subSheet.getProperties().getTitle().toLowerCase();
+            if (tabsLower.contains(title)) {
+                tabsLower.remove(title);
+            }
+            result.put(title, false);
+        }
+        for (String tab : tabsLower) {
+            updateAddTab(tab);
+            result.put(tab.toLowerCase(Locale.ROOT), true);
+        }
+        return result;
+    }
+
     private void updateAddTab(String tabName) {
         if (service == null) {
             return;
@@ -760,32 +800,42 @@ public class SpreadSheet {
         }
         for (Map.Entry<String, List<List<Object>>> entry : valuesByTab.entrySet()) {
             String tabName = entry.getKey();
-            List<List<Object>> values = entry.getValue();
-            if (values.isEmpty()) {
-                continue;
+            updateWrite(tabName);
+        }
+    }
+
+    public void updateWrite(String tabName) throws IOException {
+        if (valuesByTab.isEmpty()) {
+            return;
+        }
+        if (service == null) {
+            return;
+        }
+        List<List<Object>> values = valuesByTab.get(tabName);
+        if (values.isEmpty()) {
+            return;
+        }
+        int width = values.get(0).size();
+        int size = values.size();
+
+        for (int i = 0; i < size; i += 10000) {
+            int height = Math.min(i + 9999, size);
+            List<List<Object>> subList = values.subList(i, height);
+            for (List<Object> objects : subList) {
+                width = Math.max(width, objects.size());
             }
-            int width = values.get(0).size();
-            int size = values.size();
 
-            for (int i = 0; i < size; i += 10000) {
-                int height = Math.min(i + 9999, size);
-                List<List<Object>> subList = values.subList(i, height);
-                for (List<Object> objects : subList) {
-                    width = Math.max(width, objects.size());
-                }
+            String pos1 = SheetUtil.getRange(0, i);
+            String pos2 = SheetUtil.getRange(width - 1, height - 1);
+            String range = pos1 + ":" + pos2;
 
-                String pos1 = SheetUtil.getRange(0, i);
-                String pos2 = SheetUtil.getRange(width - 1, height - 1);
-                String range = pos1 + ":" + pos2;
+            ValueRange body = new ValueRange()
+                    .setValues(subList);
 
-                ValueRange body = new ValueRange()
-                        .setValues(subList);
-
-                UpdateValuesResponse result =
-                        service.spreadsheets().values().update(spreadsheetId, (tabName.isEmpty() ? "" : tabName + "!") + range, body)
-                                .setValueInputOption("USER_ENTERED")
-                                .execute();
-            }
+            UpdateValuesResponse result =
+                    service.spreadsheets().values().update(spreadsheetId, (tabName.isEmpty() ? "" : tabName + "!") + range, body)
+                            .setValueInputOption("USER_ENTERED")
+                            .execute();
         }
     }
 

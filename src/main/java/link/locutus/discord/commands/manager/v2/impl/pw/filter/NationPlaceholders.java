@@ -68,7 +68,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     @Command(desc = "Add an alias for a selection of Nations")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<DBNation> nations) {
-        return _addSelectionAlias(command, db, name, nations, "nations");
+        return _addSelectionAlias(this, command, db, name, nations, "nations");
     }
 
     @NoFormat
@@ -194,6 +194,8 @@ public class NationPlaceholders extends Placeholders<DBNation> {
 
     @Override
     public Set<DBNation> parseSingleElem(ValueStore store, String name) {
+        Set<DBNation> selection = PlaceholdersMap.getSelection(this, store, name);
+        if (selection != null) return selection;
         String nameLower = name.toLowerCase(Locale.ROOT);
         Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
         if (name.equals("*")) {

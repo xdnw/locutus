@@ -333,6 +333,7 @@ public class CommandGroup implements ICommandGroup {
                     try {
                         return f.newInstance();
                     } catch (InstantiationException | IllegalAccessException e) {
+                        System.out.println("Failed to instantiate " + f.getName() + " for " + clazz.getName() + " | " + methodInfo.method());
                         throw new RuntimeException(e);
                     }
                 });

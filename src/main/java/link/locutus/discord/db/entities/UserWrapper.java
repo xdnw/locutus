@@ -155,7 +155,7 @@ public class UserWrapper {
         return member != null && member.hasPermission(permission);
     }
     @Command(desc = "If this member has a permission in a channel")
-    public boolean hasPermission(TextChannel channel, Permission permission) {
+    public boolean hasPermissionChannel(TextChannel channel, Permission permission) {
         Member member = getMember();
         return member != null && member.hasPermission(channel, permission);
     }

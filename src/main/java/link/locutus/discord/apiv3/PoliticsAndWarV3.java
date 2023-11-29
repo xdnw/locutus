@@ -55,6 +55,7 @@ public class PoliticsAndWarV3 {
     public static int TREATIES_PER_PAGE = 1000;
     public static int BANKRECS_PER_PAGE = 1000;
     public static int ALLIANCES_PER_PAGE = 500;
+    public static int TREASURE_TRADES_PER_PAGE = 500;
     public static int ATTACKS_PER_PAGE = 1000;
     public static int WARS_PER_PAGE = 1000;
     public static int TRADES_PER_PAGE = 1000;
@@ -1045,6 +1046,56 @@ public class PoliticsAndWarV3 {
                 }
             }
         });
+
+        return allResults;
+    }
+
+    public List<TreasureTrade> fetchTreasureTrades(List<Integer> tradeIds) {
+        return fetchTreasureTrades(f -> f.setId(tradeIds));
+    }
+
+    public List<TreasureTrade> fetchTreasureTrades(int minId) {
+        return fetchTreasureTrades(f -> f.setMin_id(minId));
+    }
+
+    public List<TreasureTrade> fetchTreasureTrades(Consumer<Treasure_tradesQueryRequest> consumer) {
+        List<TreasureTrade> allResults = new ArrayList<>();
+
+        handlePagination(PagePriority.API_TREASURE_TRADES, page -> {
+            Treasure_tradesQueryRequest request = new Treasure_tradesQueryRequest();
+            request.setFirst(TREASURE_TRADES_PER_PAGE);
+            request.setPage(page);
+            if (consumer != null) consumer.accept(request);
+
+            TreasureTradeResponseProjection respProj = new TreasureTradeResponseProjection();
+            respProj.id();
+            respProj.offer_date();
+            respProj.accept_date();
+            respProj.sender_id();
+            respProj.receiver_id();
+            respProj.buying();
+            respProj.selling();
+            respProj.money();
+            respProj.rejected();
+            respProj.seller_cancelled();
+
+            TreasureTradePaginatorResponseProjection pagRespProj = new TreasureTradePaginatorResponseProjection()
+                    .paginatorInfo(new PaginatorInfoResponseProjection()
+                            .hasMorePages())
+                    .data(respProj);
+
+            return new GraphQLRequest(request, pagRespProj);
+        }, f -> PoliticsAndWarV3.ErrorResponse.THROW, Treasure_tradesQueryResponse.class,
+                response -> {
+                    TreasureTradePaginator paginator = response.treasure_trades();
+                    PaginatorInfo pageInfo = paginator != null ? paginator.getPaginatorInfo() : null;
+                    return pageInfo != null && pageInfo.getHasMorePages();
+                }, result -> {
+                    TreasureTradePaginator paginator = result.treasure_trades();
+                    if (paginator != null) {
+                        allResults.addAll(paginator.getData());
+                    }
+                });
 
         return allResults;
     }

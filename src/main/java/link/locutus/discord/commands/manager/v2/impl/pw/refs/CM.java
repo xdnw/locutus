@@ -2015,6 +2015,80 @@ public class CM {
                 }
             }
         }
+        public static class newsletter{
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.NewsletterCommands.class,method="autosend")
+            public static class auto extends CommandRef {
+                public static final auto cmd = new auto();
+                public auto create(String newsletter, String interval, String pingRole) {
+                    return createArgs("newsletter", newsletter, "interval", interval, "pingRole", pingRole);
+                }
+            }
+            public static class channel{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.NewsletterCommands.class,method="channelAdd")
+                public static class add extends CommandRef {
+                    public static final add cmd = new add();
+                    public add create(String newsletter, String channel) {
+                        return createArgs("newsletter", newsletter, "channel", channel);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.NewsletterCommands.class,method="channelRemove")
+                public static class remove extends CommandRef {
+                    public static final remove cmd = new remove();
+                    public remove create(String newsletter, String channel) {
+                        return createArgs("newsletter", newsletter, "channel", channel);
+                    }
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.NewsletterCommands.class,method="create")
+            public static class create extends CommandRef {
+                public static final create cmd = new create();
+                public create create(String name) {
+                    return createArgs("name", name);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.NewsletterCommands.class,method="delete")
+            public static class delete extends CommandRef {
+                public static final delete cmd = new delete();
+                public delete create(String newsletter, String force) {
+                    return createArgs("newsletter", newsletter, "force", force);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.NewsletterCommands.class,method="info")
+            public static class info extends CommandRef {
+                public static final info cmd = new info();
+                public info create(String newsletter, String listNations) {
+                    return createArgs("newsletter", newsletter, "listNations", listNations);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.NewsletterCommands.class,method="list")
+            public static class list extends CommandRef {
+                public static final list cmd = new list();
+                public list create() {
+                    return createArgs();
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.NewsletterCommands.class,method="send")
+            public static class send extends CommandRef {
+                public static final send cmd = new send();
+                public send create(String newsletter, String sendSince, String document, String endDate) {
+                    return createArgs("newsletter", newsletter, "sendSince", sendSince, "document", document, "endDate", endDate);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.NewsletterCommands.class,method="subscribe")
+            public static class subscribe extends CommandRef {
+                public static final subscribe cmd = new subscribe();
+                public subscribe create(String newsletter, String nations) {
+                    return createArgs("newsletter", newsletter, "nations", nations);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.NewsletterCommands.class,method="unsubscribe")
+            public static class unsubscribe extends CommandRef {
+                public static final unsubscribe cmd = new unsubscribe();
+                public unsubscribe create(String newsletter, String nations) {
+                    return createArgs("newsletter", newsletter, "nations", nations);
+                }
+            }
+        }
         public static class offshore{
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.TradeCommands.class,method="compareOffshoreStockpile")
             public static class accountSheet extends CommandRef {
@@ -2354,6 +2428,155 @@ public class CM {
             }
         }
         public static class selection_alias{
+            public static class add{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="ALLIANCES")
+                public static class alliance extends CommandRef {
+                    public static final alliance cmd = new alliance();
+                    public alliance create(String name, String alliances) {
+                        return createArgs("name", name, "alliances", alliances);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="ATTACK_TYPES")
+                public static class attacktype extends CommandRef {
+                    public static final attacktype cmd = new attacktype();
+                    public attacktype create(String name, String attack_types) {
+                        return createArgs("name", name, "attack_types", attack_types);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="AUDIT_TYPES")
+                public static class audittype extends CommandRef {
+                    public static final audittype cmd = new audittype();
+                    public audittype create(String name, String audit_types) {
+                        return createArgs("name", name, "audit_types", audit_types);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="BANS")
+                public static class ban extends CommandRef {
+                    public static final ban cmd = new ban();
+                    public ban create(String name, String bans) {
+                        return createArgs("name", name, "bans", bans);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="BOUNTIES")
+                public static class bounty extends CommandRef {
+                    public static final bounty cmd = new bounty();
+                    public bounty create(String name, String bounties) {
+                        return createArgs("name", name, "bounties", bounties);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="BUILDINGS")
+                public static class building extends CommandRef {
+                    public static final building cmd = new building();
+                    public building create(String name, String Buildings) {
+                        return createArgs("name", name, "Buildings", Buildings);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="CITIES")
+                public static class city extends CommandRef {
+                    public static final city cmd = new city();
+                    public city create(String name, String cities) {
+                        return createArgs("name", name, "cities", cities);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="CONTINENTS")
+                public static class continent extends CommandRef {
+                    public static final continent cmd = new continent();
+                    public continent create(String name, String continents) {
+                        return createArgs("name", name, "continents", continents);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="GUILDS")
+                public static class guild extends CommandRef {
+                    public static final guild cmd = new guild();
+                    public guild create(String name, String guilds) {
+                        return createArgs("name", name, "guilds", guilds);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="MILITARY_UNITS")
+                public static class militaryunit extends CommandRef {
+                    public static final militaryunit cmd = new militaryunit();
+                    public militaryunit create(String name, String military_units) {
+                        return createArgs("name", name, "military_units", military_units);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="NATIONS")
+                public static class nation extends CommandRef {
+                    public static final nation cmd = new nation();
+                    public nation create(String name, String nations) {
+                        return createArgs("name", name, "nations", nations);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="NATION_COLORS")
+                public static class nationcolor extends CommandRef {
+                    public static final nationcolor cmd = new nationcolor();
+                    public nationcolor create(String name, String colors) {
+                        return createArgs("name", name, "colors", colors);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="NATION_LIST")
+                public static class nationlist extends CommandRef {
+                    public static final nationlist cmd = new nationlist();
+                    public nationlist create(String name, String nationlists) {
+                        return createArgs("name", name, "nationlists", nationlists);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="NATION_OR_ALLIANCE")
+                public static class nationoralliance extends CommandRef {
+                    public static final nationoralliance cmd = new nationoralliance();
+                    public nationoralliance create(String name, String nationoralliances) {
+                        return createArgs("name", name, "nationoralliances", nationoralliances);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="PROJECTS")
+                public static class project extends CommandRef {
+                    public static final project cmd = new project();
+                    public project create(String name, String projects) {
+                        return createArgs("name", name, "projects", projects);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="RESOURCE_TYPES")
+                public static class resourcetype extends CommandRef {
+                    public static final resourcetype cmd = new resourcetype();
+                    public resourcetype create(String name, String resources) {
+                        return createArgs("name", name, "resources", resources);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="TAX_BRACKETS")
+                public static class taxbracket extends CommandRef {
+                    public static final taxbracket cmd = new taxbracket();
+                    public taxbracket create(String name, String taxbrackets) {
+                        return createArgs("name", name, "taxbrackets", taxbrackets);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="TREASURES")
+                public static class treasure extends CommandRef {
+                    public static final treasure cmd = new treasure();
+                    public treasure create(String name, String treasures) {
+                        return createArgs("name", name, "treasures", treasures);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="TREATIES")
+                public static class treaty extends CommandRef {
+                    public static final treaty cmd = new treaty();
+                    public treaty create(String name, String treaties) {
+                        return createArgs("name", name, "treaties", treaties);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="TREATY_TYPES")
+                public static class treatytype extends CommandRef {
+                    public static final treatytype cmd = new treatytype();
+                    public treatytype create(String name, String treaty_types) {
+                        return createArgs("name", name, "treaty_types", treaty_types);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="USERS")
+                public static class user extends CommandRef {
+                    public static final user cmd = new user();
+                    public user create(String name, String users) {
+                        return createArgs("name", name, "users", users);
+                    }
+                }
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="listSelectionAliases")
             public static class list extends CommandRef {
                 public static final list cmd = new list();
@@ -3271,6 +3494,155 @@ public class CM {
             }
         }
         public static class sheet_template{
+            public static class add{
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="ALLIANCES")
+                public static class alliance extends CommandRef {
+                    public static final alliance cmd = new alliance();
+                    public alliance create(String sheet, String column1, String column2, String column3, String column4, String column5, String column6, String column7, String column8, String column9, String column10, String column11, String column12, String column13, String column14, String column15, String column16, String column17, String column18, String column19, String column20, String column21, String column22, String column23, String column24) {
+                        return createArgs("sheet", sheet, "column1", column1, "column2", column2, "column3", column3, "column4", column4, "column5", column5, "column6", column6, "column7", column7, "column8", column8, "column9", column9, "column10", column10, "column11", column11, "column12", column12, "column13", column13, "column14", column14, "column15", column15, "column16", column16, "column17", column17, "column18", column18, "column19", column19, "column20", column20, "column21", column21, "column22", column22, "column23", column23, "column24", column24);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="ATTACK_TYPES")
+                public static class attacktype extends CommandRef {
+                    public static final attacktype cmd = new attacktype();
+                    public attacktype create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="AUDIT_TYPES")
+                public static class audittype extends CommandRef {
+                    public static final audittype cmd = new audittype();
+                    public audittype create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="BANS")
+                public static class ban extends CommandRef {
+                    public static final ban cmd = new ban();
+                    public ban create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="BOUNTIES")
+                public static class bounty extends CommandRef {
+                    public static final bounty cmd = new bounty();
+                    public bounty create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="BUILDINGS")
+                public static class building extends CommandRef {
+                    public static final building cmd = new building();
+                    public building create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="CITIES")
+                public static class city extends CommandRef {
+                    public static final city cmd = new city();
+                    public city create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="CONTINENTS")
+                public static class continent extends CommandRef {
+                    public static final continent cmd = new continent();
+                    public continent create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="GUILDS")
+                public static class guild extends CommandRef {
+                    public static final guild cmd = new guild();
+                    public guild create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="MILITARY_UNITS")
+                public static class militaryunit extends CommandRef {
+                    public static final militaryunit cmd = new militaryunit();
+                    public militaryunit create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="NATIONS")
+                public static class nation extends CommandRef {
+                    public static final nation cmd = new nation();
+                    public nation create(String sheet, String column1, String column2, String column3, String column4, String column5, String column6, String column7, String column8, String column9, String column10, String column11, String column12, String column13, String column14, String column15, String column16, String column17, String column18, String column19, String column20, String column21, String column22, String column23, String column24) {
+                        return createArgs("sheet", sheet, "column1", column1, "column2", column2, "column3", column3, "column4", column4, "column5", column5, "column6", column6, "column7", column7, "column8", column8, "column9", column9, "column10", column10, "column11", column11, "column12", column12, "column13", column13, "column14", column14, "column15", column15, "column16", column16, "column17", column17, "column18", column18, "column19", column19, "column20", column20, "column21", column21, "column22", column22, "column23", column23, "column24", column24);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="NATION_COLORS")
+                public static class nationcolor extends CommandRef {
+                    public static final nationcolor cmd = new nationcolor();
+                    public nationcolor create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="NATION_LIST")
+                public static class nationlist extends CommandRef {
+                    public static final nationlist cmd = new nationlist();
+                    public nationlist create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="NATION_OR_ALLIANCE")
+                public static class nationoralliance extends CommandRef {
+                    public static final nationoralliance cmd = new nationoralliance();
+                    public nationoralliance create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="PROJECTS")
+                public static class project extends CommandRef {
+                    public static final project cmd = new project();
+                    public project create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="RESOURCE_TYPES")
+                public static class resourcetype extends CommandRef {
+                    public static final resourcetype cmd = new resourcetype();
+                    public resourcetype create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="TAX_BRACKETS")
+                public static class taxbracket extends CommandRef {
+                    public static final taxbracket cmd = new taxbracket();
+                    public taxbracket create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="TREASURES")
+                public static class treasure extends CommandRef {
+                    public static final treasure cmd = new treasure();
+                    public treasure create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="TREATIES")
+                public static class treaty extends CommandRef {
+                    public static final treaty cmd = new treaty();
+                    public treaty create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="TREATY_TYPES")
+                public static class treatytype extends CommandRef {
+                    public static final treatytype cmd = new treatytype();
+                    public treatytype create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="USERS")
+                public static class user extends CommandRef {
+                    public static final user cmd = new user();
+                    public user create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="listSheetTemplates")
             public static class list extends CommandRef {
                 public static final list cmd = new list();
@@ -3911,13 +4283,6 @@ public class CM {
                     return createArgs();
                 }
             }
-            @AutoRegister(clazz=link.locutus.discord.web.test.TestCommands.class,method="testImage")
-            public static class test_image extends CommandRef {
-                public static final test_image cmd = new test_image();
-                public test_image create(String sheet) {
-                    return createArgs("sheet", sheet);
-                }
-            }
         }
         public static class trade{
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="acceptTrades")
@@ -4346,8 +4711,8 @@ public class CM {
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="unprotected")
                 public static class unprotected extends CommandRef {
                     public static final unprotected cmd = new unprotected();
-                    public unprotected create(String targets, String numResults, String ignoreDNR, String includeAllies, String nationsToBlitzWith, String maxRelativeTargetStrength, String maxRelativeCounterStrength, String withinAllAttackersRange, String force) {
-                        return createArgs("targets", targets, "numResults", numResults, "ignoreDNR", ignoreDNR, "includeAllies", includeAllies, "nationsToBlitzWith", nationsToBlitzWith, "maxRelativeTargetStrength", maxRelativeTargetStrength, "maxRelativeCounterStrength", maxRelativeCounterStrength, "withinAllAttackersRange", withinAllAttackersRange, "force", force);
+                    public unprotected create(String targets, String numResults, String ignoreDNR, String includeAllies, String nationsToBlitzWith, String maxRelativeTargetStrength, String maxRelativeCounterStrength, String withinAllAttackersRange, String ignoreODP, String force) {
+                        return createArgs("targets", targets, "numResults", numResults, "ignoreDNR", ignoreDNR, "includeAllies", includeAllies, "nationsToBlitzWith", nationsToBlitzWith, "maxRelativeTargetStrength", maxRelativeTargetStrength, "maxRelativeCounterStrength", maxRelativeCounterStrength, "withinAllAttackersRange", withinAllAttackersRange, "ignoreODP", ignoreODP, "force", force);
                     }
                 }
             }
