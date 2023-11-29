@@ -93,6 +93,9 @@ type Query {
 
     # By default, will return only active wars. Pass this as false to return all wars.
     active: Boolean = true
+
+    # NOTE: When using this, you must pass active as false for INACTIVE to work properly. By default, will return all wars. Pass INACTIVE for inactive wars and ACTIVE for active wars.
+    status: WarActivity = ALL
     nation_id: [Int]
     alliance_id: [Int]
     orderBy: [QueryWarsOrderByOrderByClause!]
@@ -324,13 +327,13 @@ type Nation {
   continent: String
 
   # The war policy the nation is on [deprecated]
-#   warpolicy: String @deprecated(reason: "Use war_policy instead.")
+#  warpolicy: String @deprecated(reason: "Use war_policy instead.")
 
   # Enumeration representing the war policy the nation is currently on ('ATTRITION', 'TURTLE', 'BLITZKRIEG', 'FORTRESS', 'MONEYBAGS', 'PIRATE', 'TACTICIAN', 'GUARDIAN', 'COVERT', or 'ARCANE')
   war_policy: WarPolicy
 
   # The domestic policy the nation is on [deprecated]
-#   dompolicy: String @deprecated(reason: "Use domestic_policy instead.")
+#  dompolicy: String @deprecated(reason: "Use domestic_policy instead.")
 
   # Enumeration representing the domestic policy the nation is currently on ('MANIFEST_DESTINY', 'OPEN_MARKETS', 'TECHNOLOGICAL_ADVANCEMENT', 'IMPERIALISM', 'URBANIZATION', or 'RAPID_EXPANSION')
   domestic_policy: DomesticPolicy
@@ -357,13 +360,13 @@ type Nation {
   flag: String
 
   # Number of turns the nation has left in vacation mode [deprecated]
-#   vmode: Int @deprecated(reason: "Use vacation_mode_turns instead.")
+#  vmode: Int @deprecated(reason: "Use vacation_mode_turns instead.")
 
   # Number of turns the nation has left in vacation mode
   vacation_mode_turns: Int
 
   # Number of turns the nation has left in beige [deprecated]
-#   beigeturns: Int @deprecated(reason: "Use beige_turns instead.")
+#  beigeturns: Int @deprecated(reason: "Use beige_turns instead.")
 
   # Number of turns the nation has left in beige
   beige_turns: Int
@@ -429,10 +432,10 @@ type Nation {
   treasures: [Treasure!]!
 
   # All offensive wars the nation has been in within the last 14 days [deprecated]
-#   offensive_wars: [War!]! @deprecated(reason: "Use wars instead")
+#  offensive_wars: [War!]! @deprecated(reason: "Use wars instead")
 
   # All defensive wars the nation has been in within the last 14 days [deprecated]
-#   defensive_wars: [War!]! @deprecated(reason: "Use wars instead")
+#  defensive_wars: [War!]! @deprecated(reason: "Use wars instead")
 
   # All wars the nations has been in within last 14 days
   wars(
@@ -457,6 +460,9 @@ type Nation {
     # Whether or not to include wars that are no longer active
     active: Boolean
 
+    # NOTE: When using this, you must pass active as false for INACTIVE to work properly. By default, will return all wars. Pass INACTIVE for inactive wars and ACTIVE for active wars.
+    status: WarActivity = ALL
+
     # Limits the number of wars returned
     limit: Int
 
@@ -465,10 +471,10 @@ type Nation {
   ): [War!]!
 
   # All sent bank transactions within the last 14 days
-#   sent_bankrecs: [Bankrec!]! @deprecated(reason: "Use bankrecs instead")
+#  sent_bankrecs: [Bankrec!]! @deprecated(reason: "Use bankrecs instead")
 
   # All received bank transactions within the last 14 days
-#   received_bankrecs: [Bankrec!]! @deprecated(reason: "Use bankrecs instead")
+#  received_bankrecs: [Bankrec!]! @deprecated(reason: "Use bankrecs instead")
 
   # All bank transactions within the last 14 days
   bankrecs(
@@ -643,98 +649,97 @@ type Nation {
   project_bits: Long
 
   # Whether or not the nation has the Ironworks project [deprecated]
-#   ironw: Boolean @deprecated(reason: "Use iron_works instead")
+#  ironw: Boolean @deprecated(reason: "Use iron_works instead")
 
   # Whether or not the nation has the Ironworks project
   iron_works: Boolean
 
   # Whether or not the nation has the Bauxiteworks project [deprecated]
-#   bauxitew: Boolean @deprecated(reason: "Use bauxite_works instead")
+#  bauxitew: Boolean @deprecated(reason: "Use bauxite_works instead")
 
   # Whether or not the nation has the Bauxiteworks project
   bauxite_works: Boolean
 
   # Whether or not the nation has the Arms Stockpile project [deprecated]
-#   armss: Boolean @deprecated(reason: "Use arms_stockpile instead")
+#  armss: Boolean @deprecated(reason: "Use arms_stockpile instead")
 
   # Whether or not the nation has the Arms Stockpile project
   arms_stockpile: Boolean
 
   # Whether or not the nation has the Emergency Gasoline Reserve project [deprecated]
-#   egr: Boolean @deprecated(reason: "Use emergency_gasoline_reserve instead")
+#  egr: Boolean @deprecated(reason: "Use emergency_gasoline_reserve instead")
 
   # Whether or not the nation has the Emergency Gasoline Reserve project
   emergency_gasoline_reserve: Boolean
 
   # Whether or not the nation has the Mass Irrigation project [deprecated]
-#   massirr: Boolean @deprecated(reason: "Use mass_irrigation instead")
+#  massirr: Boolean @deprecated(reason: "Use mass_irrigation instead")
 
   # Whether or not the nation has the Mass Irrigation project
   mass_irrigation: Boolean
 
   # Whether or not the nation has the International Trade Center project [deprecated]
-#   itc: Boolean @deprecated(reason: "Use international_trade_center instead")
+#  itc: Boolean @deprecated(reason: "Use international_trade_center instead")
 
   # Whether or not the nation has the International Trade Center project
   international_trade_center: Boolean
 
   # Whether or not the nation has the Missile Launch Pad project [deprecated]
-#   mlp: Boolean @deprecated(reason: "Use missile_launch_pad instead")
+#  mlp: Boolean @deprecated(reason: "Use missile_launch_pad instead")
 
   # Whether or not the nation has the Missile Launch Pad project
   missile_launch_pad: Boolean
 
   # Whether or not the nation has the Nuclear Research Facility project [deprecated]
-#   nrf: Boolean @deprecated(reason: "Use nuclear_research_facility instead")
+#  nrf: Boolean @deprecated(reason: "Use nuclear_research_facility instead")
 
   # Whether or not the nation has the Nuclear Research Facility project
   nuclear_research_facility: Boolean
 
   # Whether or not the nation has the Iron Dome project [deprecated]
-#   irond: Boolean @deprecated(reason: "Use iron_dome instead")
+#  irond: Boolean @deprecated(reason: "Use iron_dome instead")
 
   # Whether or not the nation has the Iron Dome project
   iron_dome: Boolean
 
   # Whether or not the nation has the Vital Defense System project [deprecated]
-#   vds: Boolean @deprecated(reason: "Use vital_defense_system instead")
+#  vds: Boolean @deprecated(reason: "Use vital_defense_system instead")
 
   # Whether or not the nation has the Vital Defense System project
   vital_defense_system: Boolean
 
   # Whether or not the nation has the Central Intelligence Agency project [deprecated]
-#   cia: Boolean @deprecated(reason: "Use central_intelligence_agency instead")
+#  cia: Boolean @deprecated(reason: "Use central_intelligence_agency instead")
 
   # Whether or not the nation has the Central Intelligence Agency project
   central_intelligence_agency: Boolean
 
   # Whether or not the nation has the Center for Civil Engineering project [deprecated]
-#   cfce: Boolean @deprecated(reason: "Use center_for_civil_engineering instead")
+#  cfce: Boolean @deprecated(reason: "Use center_for_civil_engineering instead")
 
   # Whether or not the nation has the Center for Civil Engineering project
   center_for_civil_engineering: Boolean
 
   # Whether or not the nation has the Propaganda Bureau project [deprecated]
-#   propb: Boolean @deprecated(reason: "Use propaganda_bureau instead")
+#  propb: Boolean @deprecated(reason: "Use propaganda_bureau instead")
 
   # Whether or not the nation has the Propaganda Bureau project
   propaganda_bureau: Boolean
 
   # Whether or not the nation has the Uranium Enrichment Program project [deprecated]
-#   uap: Boolean @deprecated(reason: "Use uranium_enrichment_program instead")
+#  uap: Boolean @deprecated(reason: "Use uranium_enrichment_program instead")
 
   # Whether or not the nation has the Uranium Enrichment Program project
   uranium_enrichment_program: Boolean
 
   # Whether or not the nation has the Urban Planning project [deprecated]
-#   city_planning: Boolean @deprecated(reason: "Use urban_planning instead")
+#  city_planning: Boolean @deprecated(reason: "Use urban_planning instead")
 
   # Whether or not the nation has the Urban Planning project
   urban_planning: Boolean
 
   # Whether or not the nation has the Advanced Urban Planning project [deprecated]
-#  adv_city_planning: Boolean
-#   @deprecated(reason: "Use advanced_urban_planning instead")
+#  adv_city_planning: Boolean @deprecated(reason: "Use advanced_urban_planning instead")
 
   # Whether or not the nation has the Advanced Urban Planning project
   advanced_urban_planning: Boolean
@@ -755,14 +760,13 @@ type Nation {
   recycling_initiative: Boolean
 
   # Whether or not the nation has the Telecommunications Satellite project [deprecated]
-#  telecom_satellite: Boolean
-#   @deprecated(reason: "Use telecommunications_satellite instead")
+#  telecom_satellite: Boolean @deprecated(reason: "Use telecommunications_satellite instead")
 
   # Whether or not the nation has the Telecommunications Satellite project
   telecommunications_satellite: Boolean
 
   # Whether or not the nation has the Green Technologies project [deprecated]
-#   green_tech: Boolean @deprecated(reason: "Use green_technologies instead")
+#  green_tech: Boolean @deprecated(reason: "Use green_technologies instead")
 
   # Whether or not the nation has the Green Technologies project
   green_technologies: Boolean
@@ -774,15 +778,13 @@ type Nation {
   clinical_research_center: Boolean
 
   # Whether or not the nation has the Specialized Police Training Program project [deprecated]
-#  specialized_police_training: Boolean
-#   @deprecated(reason: "Use specialized_police_training_program instead")
+#  specialized_police_training: Boolean @deprecated(reason: "Use specialized_police_training_program instead")
 
   # Whether or not the nation has the Specialized Police Training Program project
   specialized_police_training_program: Boolean
 
   # Whether or not the nation has the Advanced Engineering Corps project [deprecated]
-#  adv_engineering_corps: Boolean
-#   @deprecated(reason: "Use advanced_engineering_corps instead")
+#  adv_engineering_corps: Boolean @deprecated(reason: "Use advanced_engineering_corps instead")
 
   # Whether or not the nation has the Advanced Engineering Corps project
   advanced_engineering_corps: Boolean
@@ -794,8 +796,7 @@ type Nation {
   research_and_development_center: Boolean
 
   # Whether or not the nation has the Resource Production Center project
-#  resource_production_center: Boolean
-#   @deprecated(reason: "Use activity_center instead")
+#  resource_production_center: Boolean @deprecated(reason: "Use activity_center instead")
 
   # Whether or not the nation has the Metropolitan Planning project
   metropolitan_planning: Boolean
@@ -1070,10 +1071,10 @@ type Alliance {
   average_score: Float
 
   # Treaties the alliance has sent and that were approved [deprecated]
-#   sent_treaties: [Treaty!]! @deprecated(reason: "Use treaties instead")
+#  sent_treaties: [Treaty!]! @deprecated(reason: "Use treaties instead")
 
   # Treaties the alliance has received and approved [deprecated]
-#   received_treaties: [Treaty!]! @deprecated(reason: "Use treaties instead")
+#  received_treaties: [Treaty!]! @deprecated(reason: "Use treaties instead")
 
   # Treaties the alliance has active or pending
   treaties(
@@ -1088,7 +1089,7 @@ type Alliance {
   alliance_positions: [AlliancePosition!]!
 
   # Whether or not the alliance is accepting memebers [deprecated]
-#   acceptmem: Boolean @deprecated(reason: "Use accept_members instead.")
+#  acceptmem: Boolean @deprecated(reason: "Use accept_members instead.")
 
   # Whether or not the alliance is accepting memebers
   accept_members: Boolean
@@ -1097,13 +1098,13 @@ type Alliance {
   flag: String
 
   # Link to the alliance's forum [deprecated]
-#   forumlink: String @deprecated(reason: "Use forum_link instead.")
+#  forumlink: String @deprecated(reason: "Use forum_link instead.")
 
   # Link to the alliance's forum
   forum_link: String
 
   # Link to the alliance's Discord server [deprecated]
-#   irclink: String @deprecated(reason: "Use discord_link instead.")
+#  irclink: String @deprecated(reason: "Use discord_link instead.")
 
   # Link to the alliance's Discord server
   discord_link: String
@@ -1223,6 +1224,9 @@ type Alliance {
 
     # Selects all wars that are active (true) or completed (false)
     active: Boolean
+
+    # NOTE: When using this, you must pass active as false for INACTIVE to work properly. By default, will return all wars. Pass INACTIVE for inactive wars and ACTIVE for active wars.
+    status: WarActivity = ALL
 
     # Limits the number of wars to return
     limit: Int
@@ -1385,13 +1389,13 @@ type Bankrec {
   date: DateTimeAuto
 
   # ID of the sender (nation or alliance) [deprecated]
-#   sid: Int @deprecated(reason: "Use sender_id instead.")
+#  sid: Int @deprecated(reason: "Use sender_id instead.")
 
   # ID of the sender (nation or alliance)
   sender_id: Int
 
   # Whether the sender is a nation (1) or alliance (2) [deprecated]
-#   stype: Int @deprecated(reason: "Use sender_type instead.")
+#  stype: Int @deprecated(reason: "Use sender_type instead.")
 
   # Whether the sender is a nation (1) or alliance (2)
   sender_type: Int
@@ -1400,19 +1404,19 @@ type Bankrec {
   sender: Nation
 
   # ID of the receiver (nation or alliance) [deprecated]
-#   rid: Int @deprecated(reason: "Use receiver_id instead.")
+#  rid: Int @deprecated(reason: "Use receiver_id instead.")
 
   # ID of the receiver (nation or alliance) [deprecated]
-#   recipient_id: Int @deprecated(reason: "Use receiver_id instead.")
+#  recipient_id: Int @deprecated(reason: "Use receiver_id instead.")
 
   # ID of the receiver (nation or alliance)
   receiver_id: Int
 
   # Whether the receiver is a nation (1) or alliance (2) [deprecated]
-#   rtype: Int @deprecated(reason: "Use receiver_type instead.")
+#  rtype: Int @deprecated(reason: "Use receiver_type instead.")
 
   # Whether the receiver is a nation (1) or alliance (2) [deprecated]
-#   recipient_type: Int @deprecated(reason: "Use receiver_type instead.")
+#  recipient_type: Int @deprecated(reason: "Use receiver_type instead.")
 
   # Whether the receiver is a nation (1) or alliance (2)
   receiver_type: Int
@@ -1421,7 +1425,7 @@ type Bankrec {
   receiver: Nation
 
   # ID of the banker [deprecated]
-#   pid: Int @deprecated(reason: "Use banker_id instead.")
+#  pid: Int @deprecated(reason: "Use banker_id instead.")
 
   # ID of the banker
   banker_id: Int
@@ -1549,6 +1553,12 @@ type TaxBracket {
   bracket_name: String
 }
 
+enum WarActivity {
+  ALL
+  ACTIVE
+  INACTIVE
+}
+
 # Order by clause for Alliance.wars.orderBy.
 input AllianceWarsOrderByOrderByClause {
   # The column that is used for ordering.
@@ -1578,25 +1588,25 @@ type War {
   war_type: WarType
 
   # ID of the nation that currently has ground control (0 if neither) [deprecated]
-#   groundcontrol: Int @deprecated(reason: "Use ground_control instead.")
+#  groundcontrol: Int @deprecated(reason: "Use ground_control instead.")
 
   # ID of the nation that currently has ground control (0 if neither)
   ground_control: Int
 
   # ID of the nation that currently has air superiority (0 if neither) [deprecated]
-#   airsuperiority: Int @deprecated(reason: "Use air_superiority instead.")
+#  airsuperiority: Int @deprecated(reason: "Use air_superiority instead.")
 
   # ID of the nation that currently has air superiority (0 if neither)
   air_superiority: Int
 
   # ID of the nation that currently has the other blockaded (0 if neither) [deprecated]
-#   navalblockade: Int @deprecated(reason: "Use naval_blockade instead.")
+#  navalblockade: Int @deprecated(reason: "Use naval_blockade instead.")
 
   # ID of the nation that currently has the other blockaded (0 if neither)
   naval_blockade: Int
 
   # ID of the nation that won the war (0 if neither due to peace or expiration) [deprecated]
-#   winner: Int @deprecated(reason: "Use winner_id instead.")
+#  winner: Int @deprecated(reason: "Use winner_id instead.")
 
   # ID of the nation that won the war (0 if neither due to peace or expiration)
   winner_id: Int
@@ -1612,13 +1622,13 @@ type War {
   ): [WarAttack!]!
 
   # How many turns are left until the war expires [deprecated]
-#   turnsleft: Int @deprecated(reason: "Use turns_left instead.")
+#  turnsleft: Int @deprecated(reason: "Use turns_left instead.")
 
   # How many turns are left until the war expires
   turns_left: Int
 
   # ID of the attacking nation [deprecated]
-#   attid: Int @deprecated(reason: "Use att_id instead.")
+#  attid: Int @deprecated(reason: "Use att_id instead.")
 
   # ID of the attacking nation
   att_id: Int
@@ -1633,7 +1643,7 @@ type War {
   attacker: Nation
 
   # ID of the defending nation [deprecated]
-#   defid: Int @deprecated(reason: "Use def_id instead.")
+#  defid: Int @deprecated(reason: "Use def_id instead.")
 
   # ID of the defending nation
   def_id: Int
@@ -1648,25 +1658,25 @@ type War {
   defender: Nation
 
   # How many Military Action Points (MAPs) the attacker has [deprecated]
-#   attpoints: Int @deprecated(reason: "Use att_points instead.")
+#  attpoints: Int @deprecated(reason: "Use att_points instead.")
 
   # How many Military Action Points (MAPs) the attacker has
   att_points: Int
 
   # How many Military Action Points (MAPs) the defender has [deprecated]
-#   defpoints: Int @deprecated(reason: "Use def_points instead.")
+#  defpoints: Int @deprecated(reason: "Use def_points instead.")
 
   # How many Military Action Points (MAPs) the defender has
   def_points: Int
 
   # Whether or not the attacker is offering peace [deprecated]
-#   attpeace: Boolean @deprecated(reason: "Use att_peace instead.")
+#  attpeace: Boolean @deprecated(reason: "Use att_peace instead.")
 
   # Whether or not the attacker is offering peace
   att_peace: Boolean
 
   # Whether or not the defender is offering peace [deprecated]
-#   defpeace: Boolean @deprecated(reason: "Use def_peace instead.")
+#  defpeace: Boolean @deprecated(reason: "Use def_peace instead.")
 
   # Whether or not the defender is offering peace
   def_peace: Boolean
@@ -1762,28 +1772,28 @@ type War {
   def_infra_destroyed_value: Float
 
   # How many soldiers the attacker has killed [deprecated]
-#   att_soldiers_killed: Int @deprecated(reason: "Use def_soldiers_lost instead")
+#  att_soldiers_killed: Int @deprecated(reason: "Use def_soldiers_lost instead")
 
   # How many soldiers the defender has killed [deprecated]
-#   def_soldiers_killed: Int @deprecated(reason: "Use att_soldiers_lost instead")
+#  def_soldiers_killed: Int @deprecated(reason: "Use att_soldiers_lost instead")
 
   # How many tanks the attacker has killed [deprecated]
-#   att_tanks_killed: Int @deprecated(reason: "Use def_tanks_lost instead")
+#  att_tanks_killed: Int @deprecated(reason: "Use def_tanks_lost instead")
 
   # How many tanks the defender has killed [deprecated]
-#   def_tanks_killed: Int @deprecated(reason: "Use att_tanks_lost instead")
+#  def_tanks_killed: Int @deprecated(reason: "Use att_tanks_lost instead")
 
   # How many aircraft the attacker has killed [deprecated]
-#   att_aircraft_killed: Int @deprecated(reason: "Use def_aircraft_lost instead")
+#  att_aircraft_killed: Int @deprecated(reason: "Use def_aircraft_lost instead")
 
   # How many aircraft the defender has killed [deprecated]
-#   def_aircraft_killed: Int @deprecated(reason: "Use att_aircraft_lost instead")
+#  def_aircraft_killed: Int @deprecated(reason: "Use att_aircraft_lost instead")
 
   # How many ships the attacker has killed [deprecated]
-#   att_ships_killed: Int @deprecated(reason: "Use def_ships_lost instead")
+#  att_ships_killed: Int @deprecated(reason: "Use def_ships_lost instead")
 
   # How many ships the defender has killed [deprecated]
-#   def_ships_killed: Int @deprecated(reason: "Use att_ships_lost instead")
+#  def_ships_killed: Int @deprecated(reason: "Use att_ships_lost instead")
 }
 
 enum WarType {
@@ -1815,7 +1825,7 @@ type WarAttack {
   date: DateTimeAuto
 
   # ID of the nation performing the attack [deprecated]
-#   attid: Int @deprecated(reason: "Use att_id instead.")
+#  attid: Int @deprecated(reason: "Use att_id instead.")
 
   # ID of the nation performing the attack
   att_id: Int
@@ -1824,7 +1834,7 @@ type WarAttack {
   attacker: Nation
 
   # ID of the nation the attack was against [deprecated]
-#   defid: Int @deprecated(reason: "Use def_id instead.")
+#  defid: Int @deprecated(reason: "Use def_id instead.")
 
   # ID of the nation the attack was against
   def_id: Int
@@ -1836,7 +1846,7 @@ type WarAttack {
   type: AttackType
 
   # ID of the war the attack was performed in [deprecated]
-#   warid: Int @deprecated(reason: "Use war_id instead.")
+#  warid: Int @deprecated(reason: "Use war_id instead.")
 
   # ID of the war the attack was performed in
   war_id: Int
@@ -1851,48 +1861,47 @@ type WarAttack {
   success: Int
 
   # Number of main units lost by the attacker (soldiers if ground attack, planes if airstrike, ships if naval attack)
-#   attcas1: Int @deprecated(reason: "Broken out into separate fields")
+#  attcas1: Int @deprecated(reason: "Broken out into separate fields")
 
   # Number of main units lost by the defender (soldiers if ground attack, planes if airstrike, ships if naval attack)
-#   defcas1: Int @deprecated(reason: "Broken out into separate fields")
+#  defcas1: Int @deprecated(reason: "Broken out into separate fields")
 
   # Number of secondary units lost by the attacker (only used for tanks in ground attacks)
-#   attcas2: Int @deprecated(reason: "Broken out into separate fields")
+#  attcas2: Int @deprecated(reason: "Broken out into separate fields")
 
   # Number of secondary units lost by the defender (only used for tanks in ground attacks or units targeted by an airstrike)
-#   defcas2: Int @deprecated(reason: "Broken out into separate fields")
+#  defcas2: Int @deprecated(reason: "Broken out into separate fields")
 
   # ID of the city the attack affected [deprecated]
-#   cityid: Int @deprecated(reason: "Use city_id instead.")
+#  cityid: Int @deprecated(reason: "Use city_id instead.")
 
   # ID of the city the attack affected
   city_id: Int
 
   # Infrastructure destroyed in the affected city [deprecated]
-#   infradestroyed: Float @deprecated(reason: "Use infra_destroyed instead.")
+#  infradestroyed: Float @deprecated(reason: "Use infra_destroyed instead.")
 
   # Infrastructure destroyed in the affected city
   infra_destroyed: Float
 
   # Number of improvements destroyed in the attack (0-2) [deprecated]
-#   improvementslost: Int @deprecated(reason: "Use improvements_lost instead.")
+#  improvementslost: Int @deprecated(reason: "Use improvements_lost instead.")
 
   # Number of improvements destroyed in the attack (0-2)
-#  improvements_lost: Int
-#   @deprecated(reason: "Use improvements_destroyed instead")
+#  improvements_lost: Int @deprecated(reason: "Use improvements_destroyed instead")
 
   # Money stolen in the attack [deprecated]
-#   moneystolen: Float @deprecated(reason: "Use money_stolen instead.")
+#  moneystolen: Float @deprecated(reason: "Use money_stolen instead.")
 
-  # Money stolen in the attack
+  # Money stolen in the attack (returns 0 if attack type is VICTORY or ALLIANCELOOT; use money_looted for those)
   money_stolen: Float
 
   # String containing the entire text stating what the winner looted (note: contains '' and '
   # ' for HTML formatting)
-   loot_info: String @deprecated(reason: "No longer in use")
+#  loot_info: String @deprecated(reason: "No longer in use")
 
   # Resistance eliminated by the attack
-#   resistance_eliminated: Int @deprecated(reason: "Use resistance_lost instead.")
+#  resistance_eliminated: Int @deprecated(reason: "Use resistance_lost instead.")
 
   # The amount of resistance which was lost in the attack
   resistance_lost: Int
@@ -1916,8 +1925,7 @@ type WarAttack {
   def_gas_used: Float
 
   # How many aircraft the attacker destroyed in the attack using tanks (only applies to ground attacks when the attacker has ground control, otherwise 0)
-#  aircraft_killed_by_tanks: Int
-#   @deprecated(reason: "No longer recorded separately")
+#  aircraft_killed_by_tanks: Int @deprecated(reason: "No longer recorded separately")
 
   # The amount of money destroyed in the attack
   money_destroyed: Float
@@ -1976,26 +1984,14 @@ type WarAttack {
   # How many ships the defender lost in the attack
   def_ships_lost: Int
 
-  # How many soldiers were sent on the attack
-  att_missiles_used: Int
-
   # How many missiles the attacker lost in the attack
   att_missiles_lost: Int
-
-  # How many missiles the defender used in the attack
-  def_missiles_used: Int
 
   # How many missiles the defender lost in the attack
   def_missiles_lost: Int
 
-  # How many nukes the attacker used in the attack
-  att_nukes_used: Int
-
   # How many missiles the attacker lost in the attack
   att_nukes_lost: Int
-
-  # How many nukes the defender used in the attack
-  def_nukes_used: Int
 
   # How many nukes the defender lost in the attack
   def_nukes_lost: Int
@@ -2009,7 +2005,7 @@ type WarAttack {
   # Infrastructure of the city before the attack
   cities_infra_before: [CityInfraDamage]
 
-  # Total money looted in the attack
+  # Money looted from the defender or their alliance bank (returns 0 unless type is VICTORY or ALLIANCELOOT)
   money_looted: Float
 
   # Total coal looted in the attack
@@ -2121,43 +2117,43 @@ type City {
   powered: Boolean
 
   # Number of oil power plants [deprecated]
-#   oilpower: Int @deprecated(reason: "Use oil_power instead")
+#  oilpower: Int @deprecated(reason: "Use oil_power instead")
 
   # Number of oil power plants
   oil_power: Int
 
   # Number of wind power plants [deprecated]
-#   windpower: Int @deprecated(reason: "Use wind_power instead")
+#  windpower: Int @deprecated(reason: "Use wind_power instead")
 
   # Number of wind power plants
   wind_power: Int
 
   # Number of coal power plants [deprecated]
-#   coalpower: Int @deprecated(reason: "Use coal_power instead")
+#  coalpower: Int @deprecated(reason: "Use coal_power instead")
 
   # Number of coal power plants
   coal_power: Int
 
   # Number of nuclear power plants [deprecated]
-#   nuclearpower: Int @deprecated(reason: "Use nuclear_power instead")
+#  nuclearpower: Int @deprecated(reason: "Use nuclear_power instead")
 
   # Number of nuclear power plants
   nuclear_power: Int
 
   # Number of coal mines [deprecated]
-#   coalmine: Int @deprecated(reason: "Use coal_mine instead")
+#  coalmine: Int @deprecated(reason: "Use coal_mine instead")
 
   # Number of coal mines
   coal_mine: Int
 
   # Number of oil wells [deprecated]
-#   oilwell: Int @deprecated(reason: "Use oil_well instead")
+#  oilwell: Int @deprecated(reason: "Use oil_well instead")
 
   # Number of oil wells
   oil_well: Int
 
   # Number of uranium mines [deprecated]
-#   uramine: Int @deprecated(reason: "Use uranium_mine instead")
+#  uramine: Int @deprecated(reason: "Use uranium_mine instead")
 
   # Number of uranium mines
   uranium_mine: Int
@@ -2169,7 +2165,7 @@ type City {
   farm: Int
 
   # Number of police stations [deprecated]
-#   policestation: Int @deprecated(reason: "Use police_station instead")
+#  policestation: Int @deprecated(reason: "Use police_station instead")
 
   # Number of police stations
   police_station: Int
@@ -2178,7 +2174,7 @@ type City {
   hospital: Int
 
   # Number of recycling centers [deprecated]
-#   recyclingcenter: Int @deprecated(reason: "Use recycling_center instead")
+#  recyclingcenter: Int @deprecated(reason: "Use recycling_center instead")
 
   # Number of recycling centers
   recycling_center: Int
@@ -2193,7 +2189,7 @@ type City {
   bank: Int
 
   # Number of shopping malls [deprecated]
-#   mall: Int @deprecated(reason: "Use shopping_mall instead")
+#  mall: Int @deprecated(reason: "Use shopping_mall instead")
 
   # Number of shopping malls
   shopping_mall: Int
@@ -2202,43 +2198,43 @@ type City {
   stadium: Int
 
   # Number of lead mines [deprecated]
-#   leadmine: Int @deprecated(reason: "Use lead_mine instead")
+#  leadmine: Int @deprecated(reason: "Use lead_mine instead")
 
   # Number of lead mines
   lead_mine: Int
 
   # Number of iron mines [deprecated]
-#   ironmine: Int @deprecated(reason: "Use iron_mine instead")
+#  ironmine: Int @deprecated(reason: "Use iron_mine instead")
 
   # Number of iron mines
   iron_mine: Int
 
   # Number of bauxite mines [deprecated]
-#   bauxitemine: Int @deprecated(reason: "Use bauxite_mine instead")
+#  bauxitemine: Int @deprecated(reason: "Use bauxite_mine instead")
 
   # Number of bauxite mines
   bauxite_mine: Int
 
   # Number of oil refineries [deprecated]
-#   gasrefinery: Int @deprecated(reason: "Use oil_refinery instead")
+#  gasrefinery: Int @deprecated(reason: "Use oil_refinery instead")
 
   # Number of oil refineries
   oil_refinery: Int
 
   # Number of aluminum refineries [deprecated]
-#   aluminumrefinery: Int @deprecated(reason: "Use aluminum_refinery instead")
+#  aluminumrefinery: Int @deprecated(reason: "Use aluminum_refinery instead")
 
   # Number of aluminum refineries
   aluminum_refinery: Int
 
   # Number of steel mills [deprecated]
-#   steelmill: Int @deprecated(reason: "Use steel_mill instead")
+#  steelmill: Int @deprecated(reason: "Use steel_mill instead")
 
   # Number of steel mills
   steel_mill: Int
 
   # Number of munitions factories [deprecated]
-#   munitionsfactory: Int @deprecated(reason: "Use munitions_factory instead")
+#  munitionsfactory: Int @deprecated(reason: "Use munitions_factory instead")
 
   # Number of munitions factories
   munitions_factory: Int
@@ -2247,7 +2243,7 @@ type City {
   factory: Int
 
   # Number of hangars [deprecated]
-#   airforcebase: Int @deprecated(reason: "Use hangar instead.")
+#  airforcebase: Int @deprecated(reason: "Use hangar instead.")
 
   # Number of hangars
   hangar: Int
@@ -2256,7 +2252,7 @@ type City {
   drydock: Int
 
   # Date the city was last nuked [deprecated]
-#   nukedate: Date @deprecated(reason: "Use nuke_date instead.")
+#  nukedate: Date @deprecated(reason: "Use nuke_date instead.")
 
   # Date the city was last nuked
   nuke_date: Date
@@ -2279,7 +2275,7 @@ type Treasure {
   bonus: Int
 
   # The date the treasure spawned in [deprecated]
-#   spawndate: Date @deprecated(reason: "Use spawn_date instead.")
+#  spawndate: Date @deprecated(reason: "Use spawn_date instead.")
 
   # The date the treasure spawned in
   spawn_date: Date
@@ -2369,16 +2365,16 @@ type Trade {
   date: DateTimeAuto
 
   # ID of the nation selling [deprecated]
-#   sid: Int @deprecated(reason: "Use sender_id instead.")
+#  sid: Int @deprecated(reason: "Use sender_id instead.")
 
   # ID of the nation selling
   sender_id: Int
 
   # ID of the nation buying [deprecated]
-#   rid: Int @deprecated(reason: "Use receiver_id instead.")
+#  rid: Int @deprecated(reason: "Use receiver_id instead.")
 
   # ID of the nation buying [deprecated]
-#   recipient_id: Int @deprecated(reason: "Use receiver_id instead.")
+#  recipient_id: Int @deprecated(reason: "Use receiver_id instead.")
 
   # ID of the nation buying
   receiver_id: Int
@@ -2399,7 +2395,7 @@ type Trade {
   buy_or_sell: String
 
   # Price per unit (PPU) that the resource is being sold/bought for [deprecated]
-#   total: Int @deprecated(reason: "Use price instead")
+#  total: Int @deprecated(reason: "Use price instead")
 
   # Price per unit (PPU) that the resource is being sold/bought for
   price: Int
@@ -2796,7 +2792,12 @@ type Radiation {
 type TopTradeInfo {
   # The current market index of the resource
   market_index: Int
-  resources(resource: [Resources]): [TopTradeResourceInfo]
+
+  # Trade data for each resource. Pass nothing to get all resources.
+  resources(
+    # Which resource(s) to get trade data for. Accepts a single enum value or multiple in a list using []. EX: [OIL, COAL].
+    resource: [Resources]
+  ): [TopTradeResourceInfo]
 }
 
 enum Resources {
@@ -2858,40 +2859,40 @@ type NationResourceStat {
   # Date the stat was taken
   date: DateTimeAuto
 
-  # Total money in the game
+  # Total money in the game / nations active in the past week
   money: String
 
-  # Total food in the game
+  # Total food in the game / nations active in the past week
   food: String
 
-  # Total steel in the game
+  # Total steel in the game / nations active in the past week
   steel: String
 
-  # Total aluminum in the game
+  # Total aluminum in the game / nations active in the past week
   aluminum: String
 
-  # Total gasoline in the game
+  # Total gasoline in the game / nations active in the past week
   gasoline: String
 
-  # Total munitions in the game
+  # Total munitions in the game / nations active in the past week
   munitions: String
 
-  # Total uranium in the game
+  # Total uranium in the game / nations active in the past week
   uranium: String
 
-  # Total coal in the game
+  # Total coal in the game / nations active in the past week
   coal: String
 
-  # Total oil in the game
+  # Total oil in the game / nations active in the past week
   oil: String
 
-  # Total iron in the game
+  # Total iron in the game / nations active in the past week
   iron: String
 
-  # Total bauxite in the game
+  # Total bauxite in the game / nations active in the past week
   bauxite: String
 
-  # Total lead in the game
+  # Total lead in the game / nations active in the past week
   lead: String
 }
 
@@ -3616,9 +3617,16 @@ type BannedNationPaginator {
 }
 
 type BannedNation {
+  # ID of the banned nation
   nation_id: Int
+
+  # Reason for the ban
   reason: String
+
+  # Date of the ban
   date: DateTimeAuto
+
+  # Days remaining on that ban. -1 indicates permanent ban and 0 indicates nation was deleted while banned.
   days_left: Int
 }
 
