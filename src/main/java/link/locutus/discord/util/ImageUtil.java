@@ -254,7 +254,7 @@ public class ImageUtil {
         }
 
         if (json.has("ErrorMessage")) {
-            errorMessage = json.getString("ErrorMessage");
+            errorMessage = json.get("ErrorMessage") + "";
         }
 
         if (parsedText != null) {

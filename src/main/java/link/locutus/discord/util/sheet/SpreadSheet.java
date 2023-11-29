@@ -953,6 +953,9 @@ public class SpreadSheet {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        if (spreadsheet == null) {
+            throw new IllegalArgumentException("Spreadsheet not found or accessible: `" + spreadsheetId + "` (Are you sure the google account associated with the bot has access to it?)");
+        }
         List<Sheet> sheets = spreadsheet.getSheets();
         Map<Integer, String> tabs = new LinkedHashMap<>();
         for (Sheet sheet : sheets) {
