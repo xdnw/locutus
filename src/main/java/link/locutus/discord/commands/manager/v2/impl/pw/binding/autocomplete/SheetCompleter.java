@@ -5,6 +5,8 @@ import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Autocomplete;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.PlaceholderType;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CustomSheet;
 import link.locutus.discord.db.entities.MMRDouble;
@@ -39,6 +41,14 @@ public class SheetCompleter extends BindingHelper {
     @Binding(types={CustomSheet.class})
     public List<String> CustomSheet (@Me GuildDB db, String input) {
         List<String> options = new ArrayList<>(db.getSheetManager().getCustomSheets().keySet());
+        return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true, false);
+    }
+
+    @Autocomplete
+    @Binding(types = {PlaceholderType.class, Class.class})
+    public List<String> PlaceholderType(String input) {
+        Set<Class<?>> optionClasses = Locutus.cmd().getV2().getPlaceholders().getTypes();
+        List<String> options = optionClasses.stream().map(PlaceholdersMap::getClassName).collect(Collectors.toList());
         return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true, false);
     }
 }

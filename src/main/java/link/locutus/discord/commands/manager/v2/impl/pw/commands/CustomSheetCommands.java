@@ -114,9 +114,12 @@ public class CustomSheetCommands {
         if (sheets.isEmpty()) {
             return "No custom sheets found. Create one with " + CM.sheet_custom.add_tab.cmd.toSlashMention();
         }
+        // google sheet
+        String prefix = "https://docs.google.com/spreadsheets/d/";
+        String suffix = "/edit?usp=sharing";
         StringBuilder response = new StringBuilder("**Custom Sheets**\n");
         for (Map.Entry<String, String> entry : sheets.entrySet()) {
-            response.append("- ").append(MarkupUtil.markdownUrl(entry.getKey(), entry.getValue())).append("\n");
+            response.append("- ").append(MarkupUtil.markdownUrl(entry.getKey(), prefix + entry.getValue() + suffix)).append("\n");
         }
         return response.toString();
     }
