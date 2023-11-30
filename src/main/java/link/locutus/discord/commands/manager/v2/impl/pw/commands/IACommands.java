@@ -26,7 +26,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.PNWUser;
@@ -128,7 +128,7 @@ public class IACommands {
     @IsAlliance
     public void dayChangeSheet(@Me IMessageIO io, @Me GuildDB db, NationList nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKeys.NATION_SHEET);
+            sheet = SpreadSheet.create(db, SheetKey.NATION_SHEET);
         }
         Set<Integer> aaIdsProvided = nations.getAllianceIds();
         AllianceList subList = db.getAllianceList().subList(aaIdsProvided);
@@ -853,7 +853,7 @@ public class IACommands {
         attackers.removeIf(f -> f.getVm_turns() > 0);
         if (attackers.size() > 200) return "Too many nations";
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKeys.CURRENT_LOOT_SHEET);
+            sheet = SpreadSheet.create(db, SheetKey.CURRENT_LOOT_SHEET);
         }
 
         List<String> header = new ArrayList<>(Arrays.asList("nation", "cities", "avg_infra", "mmr (build)", "soldiers", "tanks", "aircraft", "ships", "off", "off_inactive", "beiged", "lootInactive", "daysSinceDeposit"));
@@ -1302,7 +1302,7 @@ public class IACommands {
                                     @Arg("Message to send along with the command result")
                                     @TextArea String body, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKeys.MAIL_RESPONSES_SHEET);
+            sheet = SpreadSheet.create(db, SheetKey.MAIL_RESPONSES_SHEET);
         }
 
         List<String> header = new ArrayList<>(Arrays.asList(

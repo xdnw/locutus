@@ -33,7 +33,7 @@ import link.locutus.discord.commands.rankings.table.TimeNumericTable;
 import link.locutus.discord.db.BaseballDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.SimpleNationList;
@@ -1308,7 +1308,7 @@ public class StatCommands {
             natByAA.computeIfAbsent(nation.getAlliance_id(), f -> new LinkedHashSet<>()).add(nation);
         }
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKeys.ALLIANCES_SHEET);
+            sheet = SpreadSheet.create(db, SheetKey.ALLIANCES_SHEET);
         }
         List<String> header = (columns.stream().map(f -> f.replace("{", "").replace("}", "").replace("=", "")).collect(Collectors.toList()));
         sheet.setHeader(header);
@@ -1415,7 +1415,7 @@ public class StatCommands {
                                          @Switch("w") boolean normalizePerWar,
                                          @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKeys.WAR_COST_SHEET);
+            sheet = SpreadSheet.create(db, SheetKey.WAR_COST_SHEET);
         }
 
         WarParser parser1 = WarParser.of(attackers, defenders, time, Long.MAX_VALUE);
@@ -1570,7 +1570,7 @@ public class StatCommands {
 
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
 
-        SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKeys.WAR_COST_BY_ALLIANCE_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKey.WAR_COST_BY_ALLIANCE_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "alliance",
                 "score",
@@ -1690,7 +1690,7 @@ public class StatCommands {
                                @Switch("n") boolean normalizePerCity,
                                @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKeys.WAR_COST_SHEET);
+            sheet = SpreadSheet.create(db, SheetKey.WAR_COST_SHEET);
         }
 
         WarParser parser1 = WarParser.of(attackers, defenders, time, endTime == null ? Long.MAX_VALUE : endTime);

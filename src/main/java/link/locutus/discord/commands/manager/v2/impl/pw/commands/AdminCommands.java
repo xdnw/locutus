@@ -32,7 +32,7 @@ import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.announce.Announcement;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.db.entities.AllianceMetric;
 import link.locutus.discord.db.entities.Coalition;
@@ -54,7 +54,6 @@ import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.EditAllianceTask;
 import link.locutus.discord.util.task.roles.AutoRoleInfo;
-import link.locutus.discord.util.task.roles.AutoRoleTask;
 import link.locutus.discord.util.update.AllianceListener;
 import com.google.gson.JsonObject;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -72,7 +71,6 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
-import rocker.guild.ia.message;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -266,7 +264,7 @@ public class AdminCommands {
     @Command(desc = "Generate a sheet of recorded login times for a set of nations within a time range")
     public String loginTimes(@Me GuildDB db, @Me IMessageIO io, Set<DBNation> nations, @Timestamp long cutoff, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKeys.NATION_SHEET);
+            sheet = SpreadSheet.create(db, SheetKey.NATION_SHEET);
         }
         // time cutoff < 30d
         if (System.currentTimeMillis() - cutoff > TimeUnit.DAYS.toMillis(30)) {

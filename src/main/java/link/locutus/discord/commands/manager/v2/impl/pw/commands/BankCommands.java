@@ -35,7 +35,7 @@ import link.locutus.discord.db.BankDB;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
@@ -77,6 +77,7 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import org.json.JSONObject;
+import retrofit2.http.HEAD;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -432,7 +433,7 @@ public class BankCommands {
                 SpreadSheet sheet;
                 if (sheetAmounts == null) {
                     // create sheet
-                    sheet = SpreadSheet.create(db, SheetKeys.DEPOSIT_SHEET);
+                    sheet = SpreadSheet.create(db, SheetKey.DEPOSIT_SHEET);
                     sheet.addRow(header);
                     for (List<String> errorRow : errorRows) {
                         sheet.addRow(errorRow);
@@ -1408,7 +1409,7 @@ public class BankCommands {
     @IsAlliance
     public String revenueSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, ExecutionException, InterruptedException {
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKeys.REVENUE_SHEET);
+            sheet = SpreadSheet.create(db, SheetKey.REVENUE_SHEET);
         }
 
         Set<Integer> ids = db.getAllianceIds(false);
@@ -1633,7 +1634,7 @@ public class BankCommands {
         double[] totalWarchest = ResourceType.getBuffer();
         double[] totalNet = ResourceType.getBuffer();
 
-        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.WARCHEST_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKey.WARCHEST_SHEET);
         List<String> header = new ArrayList<>(Arrays.asList(
                 "nation",
                 "cities",
@@ -2087,7 +2088,7 @@ public class BankCommands {
     @RolePermission(value = {Roles.ECON, Roles.INTERNAL_AFFAIRS}, any=true)
     public String ProjectSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> nations, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKeys.PROJECT_SHEET);
+            sheet = SpreadSheet.create(db, SheetKey.PROJECT_SHEET);
         }
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "nation",
@@ -2187,7 +2188,7 @@ public class BankCommands {
             if (type == ResourceType.CREDITS) continue;
             escrowHeader.add(type.name());
         }
-        SpreadSheet escrowSheet = sheetOrNull != null ? sheetOrNull : SpreadSheet.create(db, SheetKeys.ESCROW_SHEET);
+        SpreadSheet escrowSheet = sheetOrNull != null ? sheetOrNull : SpreadSheet.create(db, SheetKey.ESCROW_SHEET);
         escrowSheet.setHeader(escrowHeader);
 
         for (DBNation nation : nations) {
@@ -2251,7 +2252,7 @@ public class BankCommands {
     ) throws GeneralSecurityException, IOException {
         CompletableFuture<IMessageBuilder> msgFuture = channel.send("Please wait...");
 
-        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.DEPOSIT_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKey.DEPOSIT_SHEET);
 
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "nation",
@@ -2507,7 +2508,7 @@ public class BankCommands {
     @Command(desc = "Get a sheet of in-game transfers for nations")
     @RolePermission(value = Roles.ECON)
     public String getIngameNationTransfers(@Me IMessageIO channel, @Me GuildDB db, Set<NationOrAlliance> senders, Set<NationOrAlliance> receivers,  @Arg("Only transfers after timeframe") @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
-        if (sheet == null) sheet = SpreadSheet.create(db, SheetKeys.BANK_TRANSACTION_SHEET);
+        if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         Set<Long> senderIds = senders.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
         Set<Long> receiverIds = receivers.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
         List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsByBySenderOrReceiver(senderIds, receiverIds, timeframe);
@@ -2523,7 +2524,7 @@ public class BankCommands {
     @Command(desc = "Get a sheet of ingame transfers for nations, filtered by the sender")
     @RolePermission(value = Roles.ECON)
     public String IngameNationTransfersBySender(@Me IMessageIO channel, @Me GuildDB db, Set<NationOrAlliance> senders, @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
-        if (sheet == null) sheet = SpreadSheet.create(db, SheetKeys.BANK_TRANSACTION_SHEET);
+        if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         Set<Long> senderIds = senders.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
         List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsByBySender(senderIds, timeframe);
         transactions.removeIf(tx -> !senders.contains(tx.getSenderObj()));
@@ -2534,7 +2535,7 @@ public class BankCommands {
     @Command(desc = "Get a sheet of ingame transfers for nations, filtered by the receiver")
     @RolePermission(value = Roles.ECON)
     public String IngameNationTransfersByReceiver(@Me IMessageIO channel, @Me GuildDB db, Set<NationOrAlliance> receivers, @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws IOException, GeneralSecurityException {
-        if (sheet == null) sheet = SpreadSheet.create(db, SheetKeys.BANK_TRANSACTION_SHEET);
+        if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         Set<Long> receiverIds = receivers.stream().map(NationOrAllianceOrGuild::getIdLong).collect(Collectors.toSet());
         List<Transaction2> transactions = Locutus.imp().getBankDB().getTransactionsByByReceiver(receiverIds, timeframe);
         transactions.removeIf(tx -> !receivers.contains(tx.getReceiverObj()));
@@ -2585,7 +2586,7 @@ public class BankCommands {
         }
 
         if (toAddMap.isEmpty()) return "No deposits need to be adjusted (" + nations.size() + " nations checked)";
-        if (sheet == null) sheet = SpreadSheet.create(db, SheetKeys.TRANSFER_SHEET);
+        if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.TRANSFER_SHEET);
 
         TransferSheet txSheet = new TransferSheet(sheet).write(toAddMap).build();
 
@@ -2613,7 +2614,7 @@ public class BankCommands {
     @Command(desc = "Get a sheet of internal transfers for nations")
     @RolePermission(value = Roles.ECON)
     public String getNationsInternalTransfers(@Me IMessageIO channel, @Me GuildDB db, Set<DBNation> nations, @Default("999d") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
-        if (sheet == null) sheet = SpreadSheet.create(db, SheetKeys.BANK_TRANSACTION_SHEET);
+        if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         if (nations.size() > 1000) return "Too many nations >1000";
 
         List<Transaction2> transactions = new ArrayList<>();
@@ -2630,7 +2631,7 @@ public class BankCommands {
     @Command(desc = "Get a sheet of transfers")
     @RolePermission(value = Roles.ECON, root = true)
     public String getIngameTransactions(@Me IMessageIO channel, @Me GuildDB db, @Default NationOrAlliance sender, @Default NationOrAlliance receiver, @Default NationOrAlliance banker, @Default("%epoch%") @Timestamp long timeframe, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
-        if (sheet == null) sheet = SpreadSheet.create(db, SheetKeys.BANK_TRANSACTION_SHEET);
+        if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
         List<Transaction2> transactions = Locutus.imp().getBankDB().getAllTransactions(sender, receiver, banker, timeframe, null);
         if (transactions.size() > 10000) return "Timeframe is too large, please use a shorter period";
 
@@ -2642,7 +2643,7 @@ public class BankCommands {
     @RolePermission(value = Roles.ECON)
     public String transactions(@Me IMessageIO channel, @Me GuildDB db, @Me User user, NationOrAllianceOrGuild nationOrAllianceOrGuild, @Default("%epoch%") @Timestamp long timeframe, @Default("false") boolean useTaxBase, @Default("true") boolean useOffset, @Switch("s") SpreadSheet sheet,
                                @Switch("o") boolean onlyOffshoreTransfers) throws GeneralSecurityException, IOException {
-        if (sheet == null) sheet = SpreadSheet.create(db, SheetKeys.BANK_TRANSACTION_SHEET);
+        if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.BANK_TRANSACTION_SHEET);
 
         if (onlyOffshoreTransfers && nationOrAllianceOrGuild.isNation()) return "Only Alliance/Guilds can have an offshore account";
 
@@ -2972,7 +2973,7 @@ public class BankCommands {
     @IsAlliance
     @RolePermission(Roles.ECON_STAFF)
     public String listRequiredTaxRates(@Me IMessageIO io, @Me GuildDB db, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
-        if (sheet == null) sheet = SpreadSheet.create(db, SheetKeys.TAX_BRACKET_SHEET);
+        if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.TAX_BRACKET_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "nation",
                 "cities",
@@ -3173,7 +3174,7 @@ public class BankCommands {
             taxes.addAll(Locutus.imp().getBankDB().getTaxesPaid(nation.getNation_id(), aaId));
         }
 
-        if (sheet == null) sheet = SpreadSheet.create(db, SheetKeys.TAX_RECORD_SHEET);
+        if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.TAX_RECORD_SHEET);
 
         List<Object> header = new ArrayList<>(Arrays.asList("nation", "date", "taxrate", "internal_taxrate"));
         for (ResourceType value : ResourceType.values) {
@@ -3658,7 +3659,7 @@ public class BankCommands {
             header.add(value.name().toLowerCase());
         }
 
-        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.STOCKPILE_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKey.STOCKPILE_SHEET);
         sheet.setHeader(header);
 
         double[] aaTotal = ResourceType.getBuffer();
@@ -3710,7 +3711,7 @@ public class BankCommands {
             "`note: internal tax rate is the TAX_BASE and determines what % of their taxes is excluded from deposits`")
     @RolePermission(any = true, value = {Roles.ECON, Roles.ECON_STAFF})
     public String taxBracketSheet(@Me IMessageIO io, @Me GuildDB db, @Switch("f") boolean force, @Switch("a") boolean includeApplicants) throws Exception {
-        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.TAX_BRACKET_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKey.TAX_BRACKET_SHEET);
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "nation",
                 "position",

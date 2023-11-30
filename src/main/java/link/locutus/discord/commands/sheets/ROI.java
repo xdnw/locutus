@@ -12,7 +12,7 @@ import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -236,7 +236,7 @@ public class ROI extends Command {
         }
 
         if (roiMap.size() > 1 && useSheet) {
-            SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKeys.ROI_SHEET);
+            SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKey.ROI_SHEET);
             ArrayList<Object> formulas = new ArrayList<>(Arrays.asList(new Object[19]));
             for (int i = 0; i < 19; i++) formulas.set(i, "");
             formulas.set(15, "TOTALS:");

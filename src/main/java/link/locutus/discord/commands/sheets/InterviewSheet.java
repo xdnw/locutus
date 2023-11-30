@@ -8,7 +8,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -50,7 +50,7 @@ public class InterviewSheet extends Command {
         if (args.size() != 1) return usage(args.size(), 1, channel);
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.INTERVIEW_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKey.INTERVIEW_SHEET);
 
         List<String> header = new ArrayList<>(Arrays.asList(
                 "Nation",

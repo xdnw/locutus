@@ -26,7 +26,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.EmbeddingSource;
 import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.gpt.IEmbeddingDatabase;
 import link.locutus.discord.gpt.imps.ConvertingDocument;
 import link.locutus.discord.gpt.imps.DocumentChunk;
@@ -321,7 +321,7 @@ public class GPTCommands {
             return "Cannot view " + EmbeddingType.User_Input.name() + " source";
         }
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKeys.ANSWER_SHEET);
+            sheet = SpreadSheet.create(db, SheetKey.ANSWER_SHEET);
         }
 
         List<String> header;
@@ -827,7 +827,7 @@ public class GPTCommands {
                         .send();
             }
 
-            sheet = SpreadSheet.create(db, SheetKeys.RENAME_CHANNELS);
+            sheet = SpreadSheet.create(db, SheetKey.RENAME_CHANNELS);
             List<String> header = new ArrayList<>(Arrays.asList(
                     "id",
                     "name",

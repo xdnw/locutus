@@ -25,7 +25,7 @@ import link.locutus.discord.db.entities.newsletter.NewsletterManager;
 import link.locutus.discord.db.entities.sheet.CustomSheetManager;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.db.handlers.SyncableDatabase;
 import link.locutus.discord.gpt.pw.PWGPTHandler;
 import link.locutus.discord.pnw.AllianceList;
@@ -446,7 +446,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
         return false;
     }
 
-    public String getOrThrow(SheetKeys key) {
+    public String getOrThrow(SheetKey key) {
         String value = getInfo(key, true);
         if (value == null) {
             throw new UnsupportedOperationException("No `" + key.name() + "` has been set.");
@@ -2731,7 +2731,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
         return info;
     }
 
-    public String getInfo(SheetKeys key, boolean allowDelegate) {
+    public String getInfo(SheetKey key, boolean allowDelegate) {
         return getInfo(key.name(), allowDelegate);
     }
 
@@ -2813,7 +2813,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
         setInfo("copypasta." + key, value);
     }
 
-    public void setInfo(SheetKeys key, String value) {
+    public void setInfo(SheetKey key, String value) {
         setInfo(key.name(), value);
     }
 

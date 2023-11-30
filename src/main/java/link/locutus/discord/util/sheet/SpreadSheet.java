@@ -15,7 +15,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.AddBalanceBuilder;
 import link.locutus.discord.db.entities.Transaction2;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.NationOrAllianceOrGuildOrTaxid;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.TimeUtil;
@@ -258,7 +258,7 @@ public class SpreadSheet {
         return new SpreadSheet(sheetId, api);
     }
 
-    public static SpreadSheet create(GuildDB db, SheetKeys key) throws GeneralSecurityException, IOException {
+    public static SpreadSheet create(GuildDB db, SheetKey key) throws GeneralSecurityException, IOException {
         String sheetId = db.getInfo(key, true);
 
         Sheets api = null;

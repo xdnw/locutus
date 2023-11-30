@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.binding;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.enums.NationColor;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Binding;
 import link.locutus.discord.commands.manager.v2.binding.annotation.CreateSheet;
@@ -13,20 +14,18 @@ import link.locutus.discord.db.entities.CustomSheet;
 import link.locutus.discord.db.entities.SelectionAlias;
 import link.locutus.discord.db.entities.SheetTemplate;
 import link.locutus.discord.db.entities.sheet.CustomSheetManager;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.sheet.GoogleDoc;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.sheet.templates.TransferSheet;
-import net.dv8tion.jda.api.entities.Guild;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 
 public class SheetBindings extends BindingHelper {
@@ -105,7 +104,9 @@ public class SheetBindings extends BindingHelper {
         return sheet;
     }
 
-    @Binding(value = "A google spreadsheet id or url", examples = {"sheet:1X2Y3Z4", "https://docs.google.com/spreadsheets/d/1X2Y3Z4/edit#gid=0"})
+    @Binding(value = "A google spreadsheet id or url\n" +
+            "For shorthand, use a comma when specifying the sheet tab e.g. `sheet:ID,TAB_NAME`" +
+            "For a url, append `#gid=1234` or `#tab=tabName` to specify the id of the tab to use", examples = {"sheet:1X2Y3Z4", "https://docs.google.com/spreadsheets/d/1X2Y3Z4/edit#gid=0"})
     public SpreadSheet sheet(String input) throws GeneralSecurityException, IOException {
         if (input.startsWith("sheet:")) {
         } else if (input.startsWith("https://docs.google.com/spreadsheets/")) {
@@ -135,5 +136,11 @@ public class SheetBindings extends BindingHelper {
             throw new IllegalArgumentException("Invalid document: `" + input + "`");
         }
         return GoogleDoc.create(input);
+    }
+
+    @Binding(value = "The name of a premade sheet\n" +
+            "Premade sheet commands assign a google sheet to a key, so subsequent commands use the same sheet")
+    public SheetKey key(String input) {
+        return emum(SheetKey.class, input);
     }
 }

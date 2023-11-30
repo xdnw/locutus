@@ -6,7 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
@@ -65,7 +65,7 @@ public class MMRSheet extends Command {
             if (sheetUrl != null) {
                 sheet = SpreadSheet.create(sheetUrl);
             } else {
-                sheet = SpreadSheet.create(db, SheetKeys.MMR_SHEET);
+                sheet = SpreadSheet.create(db, SheetKey.MMR_SHEET);
             }
 
 

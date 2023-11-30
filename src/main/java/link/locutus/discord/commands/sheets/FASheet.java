@@ -7,7 +7,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
@@ -40,7 +40,7 @@ public class FASheet extends Command {
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.FA_CONTACT_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKey.FA_CONTACT_SHEET);
         List<List<Object>> existing = sheet.fetchAll(null);
         if (existing == null) existing = new ArrayList<>();
         Map<Integer, String> notes = new HashMap<>();

@@ -12,7 +12,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MathMan;
@@ -124,14 +124,14 @@ public class SyncTaxes extends Command {
                 }
             }
         }
-        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.TAX_SHEET);
-        if (db.getInfo(SheetKeys.TAX_SHEET, true) == null) sheet.updateWrite();
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKey.TAX_SHEET);
+        if (db.getInfo(SheetKey.TAX_SHEET, true) == null) sheet.updateWrite();
         return desc() + "\nEnter tax records here: " + sheet.getURL(false, false);
     }
 
     public String updateTaxesLegacy(GuildDB guildDb, SpreadSheet sheet, int aaId) throws GeneralSecurityException, IOException {
         if (sheet == null) {
-            sheet = SpreadSheet.create(guildDb, SheetKeys.TAX_SHEET);
+            sheet = SpreadSheet.create(guildDb, SheetKey.TAX_SHEET);
         }
         List<List<Object>> rows = sheet.fetchRange(null, "A1:Q");
 
@@ -221,7 +221,7 @@ public class SyncTaxes extends Command {
     }
 
     public String updateTurnGraph(GuildDB db, int aaId) throws GeneralSecurityException, IOException {
-        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.TAX_GRAPH_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKey.TAX_GRAPH_SHEET);
 
         List<Object> header = new ArrayList<>();
         header.add("date");

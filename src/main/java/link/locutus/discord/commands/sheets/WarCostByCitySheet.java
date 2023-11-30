@@ -6,7 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -39,7 +39,7 @@ public class WarCostByCitySheet extends Command {
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         GuildDB guildDb = checkNotNull(Locutus.imp().getGuildDB(guild));
-        SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKeys.WAR_COST_BY_CITY_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKey.WAR_COST_BY_CITY_SHEET);
 
         List<String> header = new ArrayList<>();
         header.add("cities");

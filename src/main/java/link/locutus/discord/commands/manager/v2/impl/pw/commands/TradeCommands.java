@@ -31,7 +31,7 @@ import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBTrade;
 import link.locutus.discord.db.entities.Transfer;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.pnw.NationOrAllianceOrGuild;
 import link.locutus.discord.user.Roles;
@@ -843,7 +843,7 @@ public class TradeCommands {
             cumulative.add(offer.getQuantity());
         }
 
-        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.TRADE_VOLUME_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKey.TRADE_VOLUME_SHEET);
 
         List<Object> header = new ArrayList<>();
         header.add("PPU (adjusted)");
@@ -1066,7 +1066,7 @@ public class TradeCommands {
         Map.Entry<GuildDB, Integer> offshoreDb = db.getOffshoreDB();
         if (offshoreDb == null || offshoreDb.getKey() != db) throw new IllegalArgumentException("This command must be run in the offshore server");
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKeys.OFFSHORE_DEPOSITS);
+            sheet = SpreadSheet.create(db, SheetKey.OFFSHORE_DEPOSITS);
         }
 
         channel.send("Please wait...");

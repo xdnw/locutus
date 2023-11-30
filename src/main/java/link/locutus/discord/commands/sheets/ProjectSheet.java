@@ -6,7 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.event.Event;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -53,7 +53,7 @@ public class ProjectSheet extends Command {
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
 
-        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.PROJECT_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKey.PROJECT_SHEET);
 
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "nation",

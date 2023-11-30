@@ -10,7 +10,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.StringMan;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -87,7 +87,7 @@ public class IASheet extends Command {
                 individual
         );
 
-        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.IA_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKey.IA_SHEET);
 
         IACheckup.AuditType[] audits = IACheckup.AuditType.values();
         int headerLength = audits.length + 5;
