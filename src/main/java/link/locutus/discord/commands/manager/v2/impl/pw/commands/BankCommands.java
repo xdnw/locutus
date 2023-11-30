@@ -2684,7 +2684,9 @@ public class BankCommands {
             GuildDB otherDB = nationOrAllianceOrGuild.asGuild();
 
             // if this guild - get the transactions in the offshore
-            if (otherDB.getIdLong() == db.getIdLong() || (otherDB.getOffshoreDB() == db && onlyOffshoreTransfers)) {
+            Map.Entry<GuildDB, Integer> offshoreEntry = otherDB.getOffshoreDB();
+            GuildDB offshoreDb = offshoreEntry.getKey();
+            if (otherDB.getIdLong() == db.getIdLong() || (offshoreDb == db && onlyOffshoreTransfers)) {
                 OffshoreInstance offshore = db.getOffshore();
                 transactions.addAll(offshore.getTransactionsGuild(otherDB.getIdLong(), true));
             } else {

@@ -17,9 +17,11 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CustomSheet;
 import link.locutus.discord.db.entities.SelectionAlias;
 import link.locutus.discord.db.entities.SheetTemplate;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.sheet.SpreadSheet;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -34,6 +36,64 @@ import java.util.Locale;
 import java.util.Map;
 
 public class CustomSheetCommands {
+
+    @NoFormat
+    @Command(desc = "List the sheet keys in use")
+    @RolePermission(value = {Roles.ADMIN})
+    public String listSheetKeys(@Me GuildDB db) {
+        StringBuilder result = new StringBuilder();
+        for (SheetKey key : SheetKey.values()) {
+            String info = db.getInfo(key, false);
+            if (info == null || info.isEmpty()) {
+                result.append("- ").append(key.name()).append("\n");
+                continue;
+            }
+
+            String[] split = info.split(",", 2);
+            String sheetId = split[0];
+            String tabId = split.length > 1 ? split[1] : null;
+
+            String url = "<https://docs.google.com/spreadsheets/d/" + sheetId + "/edit>";
+            if (tabId != null) {
+                url += "#gid=" + tabId;
+            }
+            result.append("- " + MarkupUtil.markdownUrl(key.name(), url));
+            if (tabId != null) {
+                result.append(" (#gid").append(tabId).append(")");
+            }
+            result.append("\n");
+        }
+        if (result.isEmpty()) {
+            return "No sheet keys found";
+        }
+        return result.toString();
+    }
+
+    @NoFormat
+    @Command(desc = "Set the url used for a sheet key")
+    @RolePermission(value = {Roles.ADMIN})
+    public String setSheetKey(@Me GuildDB db, SheetKey key, String sheetId, @Default String tab) throws GeneralSecurityException, IOException {
+        SpreadSheet sheet = SpreadSheet.create(sheetId);
+        Map<Integer, String> tabs = sheet.fetchTabs();
+        Integer tabId = null;
+        if (tab != null) {
+            for (Map.Entry<Integer, String> entry : tabs.entrySet()) {
+                if (entry.getValue().equalsIgnoreCase(tab)) {
+                    tabId = entry.getKey();
+                    break;
+                }
+            }
+            if (tabId == null) {
+                return "Tab not found: `" + tab + "`\n" +
+                        "Valid options: " + StringMan.getString(tabs.values());
+            }
+        }
+        String combined = sheet.getSpreadsheetId();
+        if (tabId != null) combined += "," + tabId;
+        db.setInfo(key, combined);
+        return "Set `" + key.name() + "` to `" + combined + "`";
+    }
+
     @NoFormat
     @Command(desc = "Rename a sheet template")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
