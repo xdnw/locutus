@@ -1,8 +1,6 @@
 package link.locutus.discord.db.guild;
 
-import link.locutus.discord.commands.manager.CommandCategory;
-
-public enum SheetKeys {
+public enum SheetKey {
     FA_CONTACT_SHEET,
     TRANSFER_SHEET,
     BANK_TRANSACTION_SHEET,

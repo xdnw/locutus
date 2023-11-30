@@ -8,7 +8,7 @@ import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.StringMan;
@@ -45,7 +45,7 @@ public class NationMetaSheet extends Command {
         if (args.size() != 1) return usage(args.size(), 1, channel);
 
         GuildDB db = Locutus.imp().getGuildDB(guild);
-        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.NATION_META_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKey.NATION_META_SHEET);
 
         List<String> header = new ArrayList<>(Arrays.asList(
                 "Nation",

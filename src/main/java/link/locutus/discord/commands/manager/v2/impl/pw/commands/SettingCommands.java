@@ -10,7 +10,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildSettingCategory;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
@@ -21,9 +21,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class SettingCommands {
-    private Map<SheetKeys, String> getSheets(GuildDB db) {
-        Map<SheetKeys, String> map = new LinkedHashMap<>();
-        for (SheetKeys key : SheetKeys.values()) {
+    private Map<SheetKey, String> getSheets(GuildDB db) {
+        Map<SheetKey, String> map = new LinkedHashMap<>();
+        for (SheetKey key : SheetKey.values()) {
             String value = db.getInfo(key, false);
             if (value != null) {
                 String baseUrl = "https://tinyurl.com/nnfajjp/";
@@ -179,13 +179,13 @@ public class SettingCommands {
     @Command(desc = "View set or delete alliance or guild google sheets")
     @RolePermission(any = true, value = {Roles.ADMIN, Roles.INTERNAL_AFFAIRS, Roles.ECON, Roles.MILCOM, Roles.FOREIGN_AFFAIRS})
     public String sheets(@Me GuildDB db, @Me IMessageIO io, @Me Guild guild, @Me User author, @Me DBNation me) throws Exception {
-        Map<SheetKeys, String> sheets = getSheets(db);
+        Map<SheetKey, String> sheets = getSheets(db);
         if (sheets.isEmpty()) {
             return "No sheets are configured (sheets are created when you use a sheet command)";
         }
         StringBuilder response = new StringBuilder();
         response.append("**Sheets**:\n");
-        for (Map.Entry<SheetKeys, String> entry : sheets.entrySet()) {
+        for (Map.Entry<SheetKey, String> entry : sheets.entrySet()) {
             response.append(entry.getKey() + ": <" + entry.getValue()).append(">\n");
         }
         return response.toString();

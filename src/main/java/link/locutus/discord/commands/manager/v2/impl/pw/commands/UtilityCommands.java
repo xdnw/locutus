@@ -25,7 +25,7 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.pnw.SimpleNationList;
@@ -1229,7 +1229,7 @@ public class UtilityCommands {
                                 @TextArea List<String> columns,
                                 @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException, IllegalAccessException {
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKeys.ALLIANCES_SHEET);
+            sheet = SpreadSheet.create(db, SheetKey.ALLIANCES_SHEET);
         }
         List<String> header = new ArrayList<>(columns);
         for (int i = 0; i < header.size(); i++) {
@@ -1288,7 +1288,7 @@ public class UtilityCommands {
                                    @TextArea List<String> columns,
                               @Switch("e") boolean updateSpies, @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKeys.NATION_SHEET);
+            sheet = SpreadSheet.create(db, SheetKey.NATION_SHEET);
         }
         List<String> header = new ArrayList<>(columns);
         for (int i = 0; i < header.size(); i++) {
@@ -1709,7 +1709,7 @@ public class UtilityCommands {
             transfers.put(nation, toAdd);
         }
 
-        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.TRANSFER_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKey.TRANSFER_SHEET);
         List<String> header = new ArrayList<>(Arrays.asList("nation", "alliance", "cities"));
         for (ResourceType value : ResourceType.values) {
             if (value != ResourceType.CREDITS) {

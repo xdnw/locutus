@@ -6,7 +6,7 @@ import link.locutus.discord.commands.manager.CommandCategory;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -43,7 +43,7 @@ public class CoalitionSheet extends Command {
             }
         }
 
-        SpreadSheet sheet = SpreadSheet.create(db, SheetKeys.COALITION_SHEET);
+        SpreadSheet sheet = SpreadSheet.create(db, SheetKey.COALITION_SHEET);
         sheet.setHeader("Alliance", "Coalitions");
         for (Map.Entry<Integer, List<String>> entry : coalitionsInverse.entrySet()) {
             String aaUrl = MarkupUtil.sheetUrl(PnwUtil.getName(entry.getKey(), true), PnwUtil.getUrl(entry.getKey(), true));

@@ -47,7 +47,7 @@ import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.DBAlliance;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -125,7 +125,7 @@ public class UnsortedCommands {
             throw new IllegalArgumentException("No nations in alliances " + StringMan.getString(aaList.getIds()) + " matched `nations` (vacation mode or applicants are ignored)");
         }
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKeys.NATION_SHEET);
+            sheet = SpreadSheet.create(db, SheetKey.NATION_SHEET);
         }
 
         aaList = aaList.subList(aaNations);
@@ -270,7 +270,7 @@ public class UnsortedCommands {
         if (brackets.isEmpty()) {
             throw new IllegalArgumentException("No tax brackets found.");
         }
-        if (sheet == null) sheet = SpreadSheet.create(db, SheetKeys.TAX_BRACKET_SHEET);
+        if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.TAX_BRACKET_SHEET);
 
         List<String> header = new ArrayList<>(Arrays.asList(
                 "ID",
@@ -1691,7 +1691,7 @@ public class UnsortedCommands {
         Map<DBNation, Map<IACheckup.AuditType, Map.Entry<Object, String>>> auditResults = checkup.checkup(nations, null, audits, !forceUpdate);
 
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKeys.IA_SHEET);
+            sheet = SpreadSheet.create(db, SheetKey.IA_SHEET);
         }
 
         List<String> header = new ArrayList<>(Arrays.asList(

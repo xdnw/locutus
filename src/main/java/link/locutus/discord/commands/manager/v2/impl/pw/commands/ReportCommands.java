@@ -18,7 +18,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DiscordBan;
 import link.locutus.discord.db.entities.LoanManager;
 import link.locutus.discord.db.entities.NationMeta;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.NationOrAlliance;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
@@ -63,7 +63,7 @@ public class ReportCommands {
         List<ReportManager.Report> reports = manager.loadReports(null);
 
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKeys.REPORTS_SHEET);
+            sheet = SpreadSheet.create(db, SheetKey.REPORTS_SHEET);
         }
 
 
@@ -238,7 +238,7 @@ public class ReportCommands {
         }
 
         if (sheet == null) {
-            sheet = SpreadSheet.create(db, SheetKeys.LOANS_SHEET);
+            sheet = SpreadSheet.create(db, SheetKey.LOANS_SHEET);
         }
 
         List<String> header = Arrays.asList(

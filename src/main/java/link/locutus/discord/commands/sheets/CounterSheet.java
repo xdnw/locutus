@@ -10,7 +10,7 @@ import link.locutus.discord.db.entities.CounterStat;
 import link.locutus.discord.db.entities.CounterType;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.db.entities.DBNation;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.PnwUtil;
@@ -132,7 +132,7 @@ public class CounterSheet extends Command {
         if (sheetUrl != null) {
             sheet = SpreadSheet.create(sheetUrl);
         } else {
-            sheet = SpreadSheet.create(db, SheetKeys.COUNTER_SHEET);
+            sheet = SpreadSheet.create(db, SheetKey.COUNTER_SHEET);
         }
 
         WarCategory warCat = db.getWarChannel();

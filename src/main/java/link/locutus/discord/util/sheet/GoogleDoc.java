@@ -16,29 +16,18 @@ import com.google.api.services.docs.v1.Docs;
 import com.google.api.services.docs.v1.DocsScopes;
 import com.google.api.services.docs.v1.model.BatchUpdateDocumentRequest;
 import com.google.api.services.docs.v1.model.DeleteContentRangeRequest;
-import com.google.api.services.docs.v1.model.DeleteNamedRangeRequest;
 import com.google.api.services.docs.v1.model.Document;
-import com.google.api.services.docs.v1.model.DocumentStyle;
 import com.google.api.services.docs.v1.model.InsertTextRequest;
 import com.google.api.services.docs.v1.model.Location;
-import com.google.api.services.docs.v1.model.NamedRanges;
 import com.google.api.services.docs.v1.model.Range;
-import com.google.api.services.docs.v1.model.ReplaceAllTextRequest;
 import com.google.api.services.docs.v1.model.Request;
 import com.google.api.services.docs.v1.model.StructuralElement;
-import com.google.api.services.docs.v1.model.SubstringMatchCriteria;
-import com.google.api.services.docs.v1.model.UpdateDocumentStyleRequest;
-import com.google.api.services.sheets.v4.Sheets;
-import com.google.api.services.sheets.v4.SheetsScopes;
-import com.google.api.services.sheets.v4.model.Spreadsheet;
-import com.google.api.services.sheets.v4.model.SpreadsheetProperties;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
-import link.locutus.discord.db.guild.SheetKeys;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.gpt.test.ExtractText;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 
-import javax.print.Doc;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -49,7 +38,6 @@ import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -114,7 +102,7 @@ public class GoogleDoc {
         return getCredentialsFile().exists();
     }
 
-    public static GoogleDoc create(GuildDB db, SheetKeys key, String titleOrNull) throws GeneralSecurityException, IOException {
+    public static GoogleDoc create(GuildDB db, SheetKey key, String titleOrNull) throws GeneralSecurityException, IOException {
         String documentId = key == null ? null : db.getInfo(key, true);
         String defTitle = titleOrNull != null ? titleOrNull : db.getGuild().getId() + "." + key.name();
 

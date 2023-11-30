@@ -13,10 +13,12 @@ import link.locutus.discord.db.entities.MMRDouble;
 import link.locutus.discord.db.entities.MMRMatcher;
 import link.locutus.discord.db.entities.SelectionAlias;
 import link.locutus.discord.db.entities.SheetTemplate;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.util.StringMan;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -49,6 +51,13 @@ public class SheetCompleter extends BindingHelper {
     public List<String> PlaceholderType(String input) {
         Set<Class<?>> optionClasses = Locutus.cmd().getV2().getPlaceholders().getTypes();
         List<String> options = optionClasses.stream().map(PlaceholdersMap::getClassName).collect(Collectors.toList());
+        return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true, false);
+    }
+
+    @Autocomplete
+    @Binding(types = {SheetKey.class})
+    public List<String> SheetKey(String input) {
+        List<String> options = Arrays.stream(SheetKey.values()).map(SheetKey::name).collect(Collectors.toList());
         return StringMan.getClosest(input, options, f -> f, OptionData.MAX_CHOICES, true, false);
     }
 }
