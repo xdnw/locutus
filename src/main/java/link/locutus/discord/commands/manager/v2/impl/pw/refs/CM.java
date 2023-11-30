@@ -3471,11 +3471,25 @@ public class CM {
                     return createArgs();
                 }
             }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="listSheetKeys")
+            public static class list_keys extends CommandRef {
+                public static final list_keys cmd = new list_keys();
+                public list_keys create() {
+                    return createArgs();
+                }
+            }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="deleteTab")
             public static class remove_tab extends CommandRef {
                 public static final remove_tab cmd = new remove_tab();
                 public remove_tab create(String sheet, String tabName) {
                     return createArgs("sheet", sheet, "tabName", tabName);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="setSheetKey")
+            public static class set_key extends CommandRef {
+                public static final set_key cmd = new set_key();
+                public set_key create(String key, String sheetId, String tab) {
+                    return createArgs("key", key, "sheetId", sheetId, "tab", tab);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="updateSheet")
@@ -3662,6 +3676,13 @@ public class CM {
                 public static final remove_column cmd = new remove_column();
                 public remove_column create(String sheet, String columns) {
                     return createArgs("sheet", sheet, "columns", columns);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="renameTemplate")
+            public static class rename extends CommandRef {
+                public static final rename cmd = new rename();
+                public rename create(String sheet, String name) {
+                    return createArgs("sheet", sheet, "name", name);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="viewTemplate")

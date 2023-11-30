@@ -85,6 +85,8 @@ public class WikiCustomSheetsPage extends BotWikiGen {
                 CM.alliance.stats.allianceNationsSheet.cmd.toString(),
                 CM.report.sheet.generate.cmd.toString(),
                 CM.report.loan.sheet.cmd.toString()), "\n"))),
+                "## List and configure",
+                
                 "# Statistic sheets",
                 "Add `attachCsv: True` for any graph command to attach a csv file of the selected data",
                 "# Selections",
