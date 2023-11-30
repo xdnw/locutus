@@ -86,7 +86,7 @@ public class WikiCustomSheetsPage extends BotWikiGen {
                 CM.report.sheet.generate.cmd.toString(),
                 CM.report.loan.sheet.cmd.toString()), "\n"))),
                 "## List and configure",
-                
+//                commandMarkdownSpoiler(CM.sheet_template.list.cmd),
                 "# Statistic sheets",
                 "Add `attachCsv: True` for any graph command to attach a csv file of the selected data",
                 "# Selections",
