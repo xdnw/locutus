@@ -741,9 +741,9 @@ public class PWBindings extends BindingHelper {
     }
 
     public static Set<DBNation> nations(ParameterData data, @Default @Me Guild guild, String input, boolean forceAllowDeleted, @Default @Me User user, @Default @Me DBNation nation) {
-        Set<DBNation> nations = DiscordUtil.parseNations(guild, user, nation, input, false, forceAllowDeleted || (data != null && data.getAnnotation(AllowDeleted.class) != null));
-        if (nations == null) throw new IllegalArgumentException("Invalid nations: " + input);
-        if (nations.isEmpty()) {
+        Set<DBNation> nations = DiscordUtil.parseNations(guild, user, nation, input, true, forceAllowDeleted || (data != null && data.getAnnotation(AllowDeleted.class) != null));
+        if (nations.isEmpty() && (data == null || data.getAnnotation(AllowEmpty.class) == null)) {
+            System.out.println("Data " + data);
             throw new IllegalArgumentException("No nations found matching: `" + input + "`");
         }
         return nations;

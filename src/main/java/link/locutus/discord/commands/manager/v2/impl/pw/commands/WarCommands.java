@@ -49,6 +49,7 @@ import link.locutus.discord.util.battle.SpyBlitzGenerator;
 import link.locutus.discord.util.battle.sim.WarNation;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
+import link.locutus.discord.util.scheduler.CachedFunction;
 import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
 import link.locutus.discord.util.task.war.WarCard;
@@ -1837,10 +1838,15 @@ public class WarCommands {
         return body.toString();
     }
 
-    // Command that generates a sheet of raidable targets
-//    @Command(desc = "Generate a sheet of raid targets")
+    @Command(desc = "Generate a sheet of raid targets")
     @RolePermission(Roles.MILCOM)
-    public String raidSheet(@Me IMessageIO io, @Me GuildDB db, Set<DBNation> attackers, Set<DBNation> targets, @Switch("i") boolean includeInactiveAttackers, @Switch("a") boolean includeApplicantAttackers, @Switch("b") boolean includeBeigeAttackers) {
+    public String raidSheet(@Me IMessageIO io, @Me GuildDB db, @Me User author,
+                            Set<DBNation> attackers,
+                            Set<DBNation> targets,
+                            @Switch("i") boolean includeInactiveAttackers,
+                            @Switch("a") boolean includeApplicantAttackers,
+                            @Switch("b") boolean includeBeigeAttackers,
+                            @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         List<String> warnings = new ArrayList<>();
         if (!includeInactiveAttackers) {
             int num = attackers.size();
@@ -1859,9 +1865,25 @@ public class WarCommands {
             }
         }
         if (!includeBeigeAttackers) {
+            int num = attackers.size();
             attackers.removeIf(f -> f.isBeige());
+            int numRemoved = num - attackers.size();
+            if (numRemoved > 0) {
+                warnings.add("Removed " + numRemoved + " beige attackers");
+            }
         }
-        attackers.removeIf(f -> f.getOff() >= f.getMaxOff() || f.getVm_turns() > 0);
+        {
+            int num = attackers.size();
+            attackers.removeIf(f -> f.getOff() >= f.getMaxOff() || f.getVm_turns() > 0);
+            int numRemoved = num - attackers.size();
+            if (numRemoved > 0) {
+                warnings.add("Removed " + numRemoved + " attackers with no free offensive slots");
+            }
+        }
+
+        if (attackers.size() > 200) {
+            throw new IllegalArgumentException("Too many attackers: " + attackers.size() + " (max 200)");
+        }
 
         // Remove unraidable
         targets.removeIf(f -> f.getDef() >= 3 || f.isBeige() || f.getVm_turns() > 0);
@@ -1888,104 +1910,139 @@ public class WarCommands {
             throw new IllegalArgumentException("No targets with free slots found");
         }
 
+        // sort targets by loot
+        List<DBNation> targetsSorted = new ArrayList<>(targets);
+        targetsSorted.sort((o1, o2) -> {
+            double[] loot1 = o1.getLootRevenueTotal();
+            double[] loot2 = o2.getLootRevenueTotal();
+            double lootValue1 = PnwUtil.convertedTotal(loot1);
+            double lootValue2 = PnwUtil.convertedTotal(loot2);
+            return Double.compare(lootValue2, lootValue1);
+        });
+
         /*
         If enemy has more ships and attacker is currently blockaded, reduce loot by 2/5 * activity
          */
-        NationScoreMap<DBNation> enemyMap = new NationScoreMap<>(targets, DBNation::getScore, 1/1.75, 1/0.75);
+        NationScoreMap<DBNation> enemyMap = new NationScoreMap<>(targetsSorted, DBNation::getScore, 1/1.75, 1/0.75);
 
-        Map<DBNation, Double> loots = new HashMap<>();
-        Map<DBNation, Double> fightChances = new HashMap<>();
-        // aaLoot = PnwUtil.resourcesToArray(Locutus.imp().getWarDb().getAllianceBankEstimate(getAlliance_id(), getScore()));
+        Map<DBNation, double[]> loots = new HashMap<>();
 
+        Function<DBNation, Double> attActivityFactor = new CachedFunction<>(o1 -> {
+            double lastOffensive1 = o1.daysSinceLastOffensive();
+            if (lastOffensive1 > 7) lastOffensive1 = o1.active_m() / (double) TimeUnit.DAYS.toMinutes(1);
+            lastOffensive1 /= o1.looterModifier(false);
+            return lastOffensive1;
+        });
         List<DBNation> attackersSorted = new ArrayList<>(attackers);
-        // sort by last offensive war / last active
-        attackersSorted.sort(new Comparator<DBNation>() {
-            @Override
-            public int compare(DBNation o1, DBNation o2) {
-                Integer.compare(1, 2);
-                return 0;
+        attackersSorted.sort((o1, o2) -> Double.compare(attActivityFactor.apply(o2), attActivityFactor.apply(o1)));
+
+
+        Function<DBNation, Double> getFightChance = new CachedFunction<>(nation -> {
+            if (nation.getAircraft() == 0 && nation.getSoldiers() == 0 && nation.getShips() == 0) {
+                return 0d;
             }
+            double daysSinceLoss = nation.daysSinceLastDefensiveWarLoss();
+            if (daysSinceLoss <  nation.active_m() / (double) TimeUnit.DAYS.toMinutes(1)) {
+                return 0d;
+            }
+            if (nation.active_m() > 25920) {
+                return 0d;
+            }
+            if (nation.active_m() < 1440) {
+                return 1d;
+            }
+            LoginFactorResult activity = DBNation.getLoginFactorPercents(nation);
+            // average
+            double total = 0;
+            int count = 0;
+            for (Map.Entry<LoginFactor, Double> entry : activity.getResult().entrySet()) {
+                total += (entry.getValue() / 100d);
+                count++;
+            }
+            return total / count;
         });
 
-        for (DBNation attacker : attackers) {
+        Map<DBNation, List<DBNation>> targetMap = new LinkedHashMap<>();
+        Map<DBNation, List<DBNation>> targetMapInverse = new LinkedHashMap<>();
+
+        for (DBNation attacker : attackersSorted) {
+            int offRemaining = attacker.getMaxOff() - attacker.getOff() + targetMapInverse.getOrDefault(attacker, Collections.emptyList()).size();
+            if (offRemaining <= 0) continue;
+
             List<DBNation> defenders = enemyMap.get((int) Math.round(attacker.getScore()));
-            for (DBNation defender : defenders) {
-                double loot = loots.computeIfAbsent(defender, f -> PnwUtil.convertedTotal(f.getLootRevenueTotal()));
-                double fightChance = 1;
-                double daysSinceLoss = defender.daysSinceLastDefensiveWarLoss();
+            List<DBNation> defendersSorted = new ArrayList<>(defenders);
 
-                // 0 -> 7200 = * 0.3 each
-                // 37% by the second week?
+            Function<DBNation, Double> defenderValue = new CachedFunction<>(defender -> {
+                int currDefWars = defender.getDef();
+                int newDefWars = targetMap.getOrDefault(defender, Collections.emptyList()).size();
+                int totalWars = currDefWars + newDefWars;
+                if (totalWars >= 3) return 0d;
+                if (attacker.isBlockaded() && defender.active_m() < 7200 && defender.getShips() > attacker.getShips()) return 0d;
 
-                // 7200 -> 10200 = linear
+                double fightChance = getFightChance.apply(defender);
+                boolean fightFlag = fightChance > 0.5 || (fightChance > 0.1 && defender.active_m() < 7200);
 
-                // 20160
-                // 30240 = 0
+                boolean canGroundLoot = attacker.getGroundStrength(true, false) > defender.getGroundStrength(true, false);
+                boolean easyGroundLoot = attacker.getGroundStrength(true, false) > defender.getGroundStrength(true, false) * 2.5;
 
-                // days inactive
+                if (fightFlag && !easyGroundLoot && defender.getShips() > attacker.getShips()) return 0d;
+                if (fightFlag && defender.getAircraft() > attacker.getAircraft() * 0.66 && !easyGroundLoot) return 0d;
+                if (fightFlag && defender.getAircraft() > attacker.getAircraft()) return 0d;
 
-                // nation age days
+                if (defender.getGroundStrength(true, false) > attacker.getGroundStrength(true, false) && defender.getAircraft() > attacker.getAircraft() * 0.33 && defender.getShips() > attacker.getShips() * 0.33) return 0d;
 
-                // city count
+                double[] loot = loots.computeIfAbsent(defender, DBNation::getLootRevenueTotal);
+                double lootValue = PnwUtil.convertedTotal(loot);
 
-                // alliance position (none, app, member)
-                // 0 1 2
+                double groundFactor = easyGroundLoot ? 1.1 : canGroundLoot ? 0.8 : 0;
+                double moneyPerGround = Buildings.BARRACKS.max() * 5 * defender.getCities() * groundFactor;
+                double moneyRemaining = Math.max(0, ((loot[0] / 0.14) - (moneyPerGround * 10 * totalWars) - 50000 * defender.getCities()) * 0.86);
 
-                // alliance seniority
+                int numGround = 10;
+                lootValue += Math.min(moneyRemaining, moneyPerGround * numGround);
 
-                // last war status
+                double depositChance = defender.isBlockaded() || defender.getShips() >= attacker.getShips() * 0.33 ? 0.5 * fightChance : 0;
+                lootValue = lootValue * (1 - depositChance);
 
-                if (defender.active_m() > 10200) {
-                    fightChance = 0;
-                } else if (defender.active_m() > 7200) {
-                    double activeRatio = (1 - ((defender.active_m() - 7200d) / (20000d - 7200d))) * 0.25;
-
-                    boolean hasLostOrActive = false;
-                    DBWar latest = null;
-                    for (DBWar war : defender.getWars()) {
-                        if (latest == null || war.getDate() > latest.getDate()) {
-                            latest = war;
-                        }
-                        if (war.getDefender_id() != defender.getId()) {
-                            continue;
-                        }
-                        if (war.getDate() < defender.lastActiveMs()) {
-                            continue;
-                        }
-                        switch (war.getStatus()) {
-                            case ACTIVE:
-                            case ATTACKER_VICTORY:
-                            case ATTACKER_OFFERED_PEACE:
-                                hasLostOrActive = true;
-                                break;
-                        }
-                    }
-                    if (hasLostOrActive) {
-                        fightChance = 0;
-                    } else if (latest.getDate() > System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30)) {
-                        if (latest.getStatus() == WarStatus.EXPIRED || latest.getStatus() == WarStatus.DEFENDER_VICTORY || latest.getStatus() == WarStatus.PEACE) {
-                            fightChance = 0.5;
-                        } else if (latest != null) {
-
-                        } else {
-                            // proportional to activity
-                        }
-                    } else if (latest.getStatus() == WarStatus.DEFENDER_OFFERED_PEACE) {
-                        fightChance = 0.5;
-                    }
+                if (fightChance > 0 && !canGroundLoot) {
+                    lootValue -= MilitaryUnit.AIRCRAFT.getConvertedCost() * Math.min(attacker.getAircraft(), defender.getAircraft()) +
+                            MilitaryUnit.SHIP.getConvertedCost() * Math.min(attacker.getShips(), defender.getShips()) +
+                            MilitaryUnit.TANK.getConvertedCost() * Math.min(attacker.getTanks(), defender.getTanks());
                 }
+
+                return lootValue;
+            });
+
+            // remove defendersSorted where defenderValue <= 0
+            defendersSorted.removeIf(f -> defenderValue.apply(f) <= 0);
+            // sort descending
+            defendersSorted.sort((o1, o2) -> Double.compare(defenderValue.apply(o2), defenderValue.apply(o1)));
+
+            for (DBNation defender : defendersSorted) {
+                // add to map
+                targetMap.computeIfAbsent(defender, f -> new ArrayList<>()).add(attacker);
+                targetMapInverse.computeIfAbsent(attacker, f -> new ArrayList<>()).add(defender);
+
+                offRemaining--;
+                if (offRemaining <= 0) break;
             }
-
-            // fight chance (active m between 2440 and 10000 (below = 100%, above = 0%)
-
-            // get cost
-
-            // missiles
-
-            // nukes
-
-
         }
+
+        if (sheet == null) {
+            sheet = SpreadSheet.create(db, SheetKey.RAID_SHEET);
+        }
+
+        SheetUtil.writeTargets(sheet, targetMap, 0);
+
+        StringBuilder header = new StringBuilder();
+        if (!warnings.isEmpty()) {
+            header.append("**" + warnings.size() + " Warnings:**\n");
+            for (String warning : warnings) {
+                header.append("- " + warning).append("\n");
+            }
+        }
+
+        sheet.send(io, header.isEmpty() ? null : header.toString(), author.getAsMention()).send();
 
         return null;
 
@@ -3411,96 +3468,10 @@ public class WarCommands {
 
         if (sheet == null) sheet = SpreadSheet.create(db, SheetKey.ACTIVITY_SHEET);
 
-        List<RowData> rowData = new ArrayList<RowData>();
-
-        List<Object> header = new ArrayList<>(Arrays.asList(
-                "alliance",
-                "nation",
-                "cities",
-                "infra",
-                "soldiers",
-                "tanks",
-                "planes",
-                "ships",
-                "spies",
-                "score",
-                "beige",
-                "inactive",
-                "login_chance",
-                "weekly_activity",
-                "att1",
-                "att2",
-                "att3"
-        ));
-
-        rowData.add(SheetUtil.toRowData(header));
-
-        for (Map.Entry<DBNation, List<DBNation>> entry : targets.entrySet()) {
-            DBNation defender = entry.getKey();
-            List<DBNation> attackers = entry.getValue();
-            ArrayList<Object> row = new ArrayList<>();
-            row.add(MarkupUtil.sheetUrl(defender.getAllianceName(), defender.getAllianceUrl()));
-            row.add(MarkupUtil.sheetUrl(defender.getNation(), defender.getNationUrl()));
-
-            row.add(defender.getCities());
-            row.add(defender.getAvg_infra());
-            row.add(defender.getSoldiers() + "");
-            row.add(defender.getTanks() + "");
-            row.add(defender.getAircraft() + "");
-            row.add(defender.getShips() + "");
-            row.add(defender.getSpies() + "");
-
-            row.add(defender.getScore() + "");
-            row.add(defender.getBeigeTurns() + "");
-            row.add(TimeUtil.secToTime(TimeUnit.MINUTES, defender.getActive_m()));
-
-            Activity activity = defender.getActivity(12 * 7 * 2);
-            double loginChance = activity.loginChance(turn == -1 ? 11 : turn, 48, false);
-            row.add(loginChance);
-            row.add(activity.getAverageByDay());
-
-            List<DBNation> myCounters = targets.getOrDefault(defender, Collections.emptyList());
-
-            for (int i = 0; i < myCounters.size(); i++) {
-                DBNation counter = myCounters.get(i);
-                String counterUrl = MarkupUtil.sheetUrl(counter.getNation(), counter.getNationUrl());
-                row.add(counterUrl);
-            }
-            RowData myRow = SheetUtil.toRowData(row);
-            List<CellData> myRowData = myRow.getValues();
-            int attOffset = myRowData.size() - myCounters.size();
-            for (int i = 0; i < myCounters.size(); i++) {
-                DBNation counter = myCounters.get(i);
-                myRowData.get(attOffset + i).setNote(getAttackerNote(counter));
-            }
-            myRow.setValues(myRowData);
-
-            rowData.add(myRow);
-        }
-
-        sheet.updateClearCurrentTab();
-        sheet.updateWrite(null, rowData);
+        SheetUtil.writeTargets(sheet, targets, turn);
 
         sheet.send(io, null, author.getAsMention()).send();
         return null;
-    }
-
-    private String getAttackerNote(DBNation nation) {
-        StringBuilder note = new StringBuilder();
-
-        double score = nation.getScore();
-        double minScore = Math.ceil(nation.getScore() * 0.75);
-        double maxScore = Math.floor(nation.getScore() * 1.75);
-        note.append("War Range: " + MathMan.format(minScore) + "-" + MathMan.format(maxScore) + " (" + score + ")").append("\n");
-        note.append("ID: " + nation.getNation_id()).append("\n");
-        note.append("Alliance: " + nation.getAllianceName()).append("\n");
-        note.append("Cities: " + nation.getCities()).append("\n");
-        note.append("avg_infra: " + nation.getAvg_infra()).append("\n");
-        note.append("soldiers: " + nation.getSoldiers()).append("\n");
-        note.append("tanks: " + nation.getTanks()).append("\n");
-        note.append("aircraft: " + nation.getAircraft()).append("\n");
-        note.append("ships: " + nation.getShips()).append("\n");
-        return note.toString();
     }
 
     @Command(desc = "Generate a sheet of active wars between two coalitions (allies, enemies)\n" +

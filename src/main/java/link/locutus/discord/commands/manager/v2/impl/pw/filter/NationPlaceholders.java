@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.AllowEmpty;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
@@ -67,7 +68,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
     @NoFormat
     @Command(desc = "Add an alias for a selection of Nations")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<DBNation> nations) {
+    public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, @AllowEmpty Set<DBNation> nations) {
         return _addSelectionAlias(this, command, db, name, nations, "nations");
     }
 

@@ -1111,10 +1111,10 @@ public class UtilityCommands {
         if (nationOrAlliance.isNation() && nationOrAlliance.asNation().active_m() > 1440 && nationOrAlliance.asNation().active_m() < 20160) {
             DBNation nation = nationOrAlliance.asNation();
             Locutus.imp().getExecutor().submit(() -> {
-                Map<DBNation.LoginFactor, Double> factors = DBNation.getLoginFactorPercents(nation);
+                LoginFactorResult factors = DBNation.getLoginFactorPercents(nation);
                 List<String> append = new ArrayList<>();
-                for (Map.Entry<DBNation.LoginFactor, Double> entry : factors.entrySet()) {
-                    DBNation.LoginFactor factor = entry.getKey();
+                for (Map.Entry<LoginFactor, Double> entry : factors.getResult().entrySet()) {
+                    LoginFactor factor = entry.getKey();
                     double percent = entry.getValue();
                     append.add("quit chance (" + factor.name + "=" + factor.toString(factor.get(nation)) + "): " + MathMan.format(100 - percent) + "%");
                 }
