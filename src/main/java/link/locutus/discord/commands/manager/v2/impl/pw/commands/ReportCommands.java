@@ -18,6 +18,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DiscordBan;
 import link.locutus.discord.db.entities.LoanManager;
 import link.locutus.discord.db.entities.LoginFactor;
+import link.locutus.discord.db.entities.LoginFactorResult;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -1296,9 +1297,8 @@ public class ReportCommands {
         response.append("\n");
         //- loot factor risks (activity)
         response.append("Inactivity factors:\n");
-        Map<LoginFactor, Double> factors = DBNation.getLoginFactorPercents(nation);
-        System.out.println("Risk factors 1.1: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
-        for (Map.Entry<LoginFactor, Double> entry : factors.entrySet()) {
+        LoginFactorResult factors = DBNation.getLoginFactorPercents(nation);
+        for (Map.Entry<LoginFactor, Double> entry : factors.getResult().entrySet()) {
             LoginFactor factor = entry.getKey();
             double percent = entry.getValue();
             response.append("- " + factor.name + "=" + factor.toString(factor.get(nation)) + ": " + MathMan.format(100 - percent) + "%\n");
