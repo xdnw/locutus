@@ -53,4 +53,9 @@ public enum SheetKey {
     OFFSHORE_DEPOSITS,
     NEWSLETTER,
     CONTINENT_SHEET,
+    RAID_SHEET,
+
+    ;
+
+
 }

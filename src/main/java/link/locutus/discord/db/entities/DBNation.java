@@ -1879,50 +1879,21 @@ public class DBNation implements NationOrAlliance {
         return spies;
     }
 
-    public static class LoginFactor {
-        private final Function<DBNation, Double> function;
-        public final String name;
-        private final Map<DBNation, Double> functionCache;
-
-        public LoginFactor(String name, Function<DBNation, Double> function) {
-            this.name = name;
-            this.function = function;
-            this.functionCache = new HashMap<>();
-        }
-
-        public double get(DBNation nation) {
-            return functionCache.computeIfAbsent(nation, function);
-        }
-
-        public boolean matches(double candidate, double target) {
-            return candidate == target;
-        }
-
-        public String toString(double value) {
-            return MathMan.format(value);
-        }
-    }
-
-    public static Map<LoginFactor, Double> getLoginFactorPercents(DBNation nation) {
+    public static LoginFactorResult getLoginFactorPercents(DBNation nation) {
         long start = System.currentTimeMillis();
-        List<DBNation.LoginFactor> factors = DBNation.getLoginFactors(nation);
-        System.out.println("login pcts 1: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
+        List<LoginFactor> factors = DBNation.getLoginFactors(nation);
 
         long turnNow = TimeUtil.getTurn();
         int maxTurn = 30 * 12;
         int candidateTurnInactive = (int) (turnNow - TimeUtil.getTurn(nation.lastActiveMs()));
-
-        System.out.println("login pcts 2: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
 
         Set<DBNation> nations1dInactive = Locutus.imp().getNationDB().getNationsMatching(f -> f.active_m() >= 1440 && f.getVm_turns() == 0 && f.active_m() <= TimeUnit.DAYS.toMinutes(30));
         NationScoreMap<DBNation> inactiveByTurn = new NationScoreMap<DBNation>(nations1dInactive, f -> {
             return (double) (turnNow - TimeUtil.getTurn(f.lastActiveMs()));
         }, 1, 1);
 
-        System.out.println("login pcts 3: " + (( - start) + (start = System.currentTimeMillis())) + "ms");
-
-        Map<LoginFactor, Double> result = new LinkedHashMap<>();
-        for (DBNation.LoginFactor factor : factors) {
+        LoginFactorResult result = new LoginFactorResult();
+        for (LoginFactor factor : factors) {
             long start2 = System.currentTimeMillis();
             Predicate<DBNation> matches = f -> factor.matches(factor.get(nation), factor.get(f));
             BiFunction<Integer, Integer, Integer> sumFactor = inactiveByTurn.getSummedFunction(matches);

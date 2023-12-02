@@ -17,9 +17,11 @@ import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CustomSheet;
 import link.locutus.discord.db.entities.SelectionAlias;
 import link.locutus.discord.db.entities.SheetTemplate;
+import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.StringMan;
+import link.locutus.discord.util.sheet.SpreadSheet;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -34,6 +36,64 @@ import java.util.Locale;
 import java.util.Map;
 
 public class CustomSheetCommands {
+
+    @NoFormat
+    @Command(desc = "List the sheet keys in use")
+    @RolePermission(value = {Roles.ADMIN})
+    public String listSheetKeys(@Me GuildDB db) {
+        StringBuilder result = new StringBuilder();
+        for (SheetKey key : SheetKey.values()) {
+            String info = db.getInfo(key, false);
+            if (info == null || info.isEmpty()) {
+                result.append("- ").append(key.name()).append("\n");
+                continue;
+            }
+
+            String[] split = info.split(",", 2);
+            String sheetId = split[0];
+            String tabId = split.length > 1 ? split[1] : null;
+
+            String url = "<https://docs.google.com/spreadsheets/d/" + sheetId + "/edit>";
+            if (tabId != null) {
+                url += "#gid=" + tabId;
+            }
+            result.append("- " + MarkupUtil.markdownUrl(key.name(), url));
+            if (tabId != null) {
+                result.append(" (#gid").append(tabId).append(")");
+            }
+            result.append("\n");
+        }
+        if (result.isEmpty()) {
+            return "No sheet keys found";
+        }
+        return result.toString();
+    }
+
+    @NoFormat
+    @Command(desc = "Set the url used for a sheet key")
+    @RolePermission(value = {Roles.ADMIN})
+    public String setSheetKey(@Me GuildDB db, SheetKey key, String sheetId, @Default String tab) throws GeneralSecurityException, IOException {
+        SpreadSheet sheet = SpreadSheet.create(sheetId);
+        Map<Integer, String> tabs = sheet.fetchTabs();
+        Integer tabId = null;
+        if (tab != null) {
+            for (Map.Entry<Integer, String> entry : tabs.entrySet()) {
+                if (entry.getValue().equalsIgnoreCase(tab)) {
+                    tabId = entry.getKey();
+                    break;
+                }
+            }
+            if (tabId == null) {
+                return "Tab not found: `" + tab + "`\n" +
+                        "Valid options: " + StringMan.getString(tabs.values());
+            }
+        }
+        String combined = sheet.getSpreadsheetId();
+        if (tabId != null) combined += "," + tabId;
+        db.setInfo(key, combined);
+        return "Set `" + key.name() + "` to `" + combined + "`";
+    }
+
     @NoFormat
     @Command(desc = "Rename a sheet template")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -178,15 +238,15 @@ public class CustomSheetCommands {
             "You must create a selection alias and sheet template first\n" +
             "Sheets must be generated/updated with the update command")
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
-    public String addTab(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @CreateSheet CustomSheet sheet, String tabName, SelectionAlias alias, SheetTemplate template, @Switch("f") boolean force) {
+    public String addTab(@Me JSONObject command, @Me IMessageIO io, @Me GuildDB db, @CreateSheet CustomSheet sheet, String tabName, SelectionAlias select, SheetTemplate columns, @Switch("f") boolean force) {
         tabName = tabName.toLowerCase(Locale.ROOT);
         // ensure name is alphanumeric _
         if (!tabName.matches("[a-z0-9_]+")) {
             throw new IllegalArgumentException("Tab name must be alphanumericunderscore, not `" + tabName + "`");
         }
         // ensure alias and template type match
-        if (!alias.getType().equals(template.getType())) {
-            throw new IllegalArgumentException("Alias type `" + alias.getType().getSimpleName() + "` does not match template type `" + template.getType().getSimpleName() + "`");
+        if (!select.getType().equals(columns.getType())) {
+            throw new IllegalArgumentException("Alias type `" + select.getType().getSimpleName() + "` does not match template type `" + columns.getType().getSimpleName() + "`");
         }
         // tabs
         Map.Entry<SelectionAlias, SheetTemplate> existingTab = sheet.getTab(tabName);
@@ -196,37 +256,37 @@ public class CustomSheetCommands {
             SelectionAlias previousAlias = existingTab == null ? null : existingTab.getKey();
             SheetTemplate previousTemplate = existingTab == null ? null : existingTab.getValue();
             if (previousAlias == null) {
-                body.append("**Selection:** `").append(alias.getName()).append("`\n");
-                body.append("- Type: `").append(alias.getType().getSimpleName()).append("`\n");
-                body.append("- Selection: `").append(alias.getSelection()).append("`\n");
-            } else if (alias.getName().equalsIgnoreCase(previousAlias.getName())) {
-                body.append("**Selection:** `" + alias.getName() + "` (no change)\n");
+                body.append("**Selection:** `").append(select.getName()).append("`\n");
+                body.append("- Type: `").append(select.getType().getSimpleName()).append("`\n");
+                body.append("- Selection: `").append(select.getSelection()).append("`\n");
+            } else if (select.getName().equalsIgnoreCase(previousAlias.getName())) {
+                body.append("**Selection:** `" + select.getName() + "` (no change)\n");
             } else {
-                body.append("**Selection:** `").append(previousAlias.getName()).append("` -> `").append(alias.getName()).append("`\n");
-                body.append("- Type: `").append(previousAlias.getType().getSimpleName()).append("` -> `").append(alias.getType().getSimpleName()).append("`\n");
-                body.append("- Selection: `").append(previousAlias.getSelection()).append("` -> `").append(alias.getSelection()).append("`\n");
+                body.append("**Selection:** `").append(previousAlias.getName()).append("` -> `").append(select.getName()).append("`\n");
+                body.append("- Type: `").append(previousAlias.getType().getSimpleName()).append("` -> `").append(select.getType().getSimpleName()).append("`\n");
+                body.append("- Selection: `").append(previousAlias.getSelection()).append("` -> `").append(select.getSelection()).append("`\n");
             }
             if (previousTemplate == null) {
-                body.append("**Template:** `").append(template.getName()).append("`\n");
-                body.append("- Type: `").append(template.getType().getSimpleName()).append("`\n");
-                body.append("- Columns: `").append(template.getColumns().size()).append("`\n");
-            } else if (template.getName().equalsIgnoreCase(previousTemplate.getName())) {
-                body.append("**Template:** `" + template.getName() + "` (no change)\n");
+                body.append("**Template:** `").append(columns.getName()).append("`\n");
+                body.append("- Type: `").append(columns.getType().getSimpleName()).append("`\n");
+                body.append("- Columns: `").append(columns.getColumns().size()).append("`\n");
+            } else if (columns.getName().equalsIgnoreCase(previousTemplate.getName())) {
+                body.append("**Template:** `" + columns.getName() + "` (no change)\n");
             } else {
-                body.append("**Template:** `").append(previousTemplate.getName()).append("` -> `").append(template.getName()).append("`\n");
-                body.append("- Type: `").append(previousTemplate.getType().getSimpleName()).append("` -> `").append(template.getType().getSimpleName()).append("`\n");
-                body.append("- Columns: `").append(previousTemplate.getColumns().size()).append("` -> `").append(template.getColumns().size()).append("`\n");
+                body.append("**Template:** `").append(previousTemplate.getName()).append("` -> `").append(columns.getName()).append("`\n");
+                body.append("- Type: `").append(previousTemplate.getType().getSimpleName()).append("` -> `").append(columns.getType().getSimpleName()).append("`\n");
+                body.append("- Columns: `").append(previousTemplate.getColumns().size()).append("` -> `").append(columns.getColumns().size()).append("`\n");
             }
 
             io.create().confirmation(title, body.toString(), command).send();
             return null;
         }
 
-        db.getSheetManager().addCustomSheetTab(sheet.getName(), tabName, alias.getName(), template.getName());
+        db.getSheetManager().addCustomSheetTab(sheet.getName(), tabName, select.getName(), columns.getName());
 
         return "**__sheet:" + sheet.getName() + "__**\n" + (existingTab == null ? " Added " : "Updated") + " tab `" + tabName + "`\n" +
-                "- Selection: `" + alias.getName() + "`\n" +
-                "- Template: `" + template.getName() + "`\n" +
+                "- Selection: `" + select.getName() + "`\n" +
+                "- Template: `" + columns.getName() + "`\n" +
                 "- Url: <" + sheet.getUrl() + ">\n" +
                 CM.sheet_custom.update.cmd.toSlashMention() + " to update the sheet\n" +
                 "See: " + CM.sheet_custom.view.cmd.toSlashMention() + " | " + CM.sheet_custom.remove_tab.cmd.toSlashMention() + " | " + CM.sheet_custom.update.cmd.toSlashMention();

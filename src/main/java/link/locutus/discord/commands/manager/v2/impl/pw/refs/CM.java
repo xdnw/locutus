@@ -3273,6 +3273,22 @@ public class CM {
                 }
             }
         }
+        public static class settings_sheet{
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="listSheetKeys")
+            public static class list extends CommandRef {
+                public static final list cmd = new list();
+                public list create() {
+                    return createArgs();
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="setSheetKey")
+            public static class set extends CommandRef {
+                public static final set cmd = new set();
+                public set create(String key, String sheetId, String tab) {
+                    return createArgs("key", key, "sheetId", sheetId, "tab", tab);
+                }
+            }
+        }
         public static class settings_tax{
             @AutoRegister(clazz=link.locutus.discord.db.guild.GuildKey.class,method="MEMBER_CAN_SET_BRACKET", field="MEMBER_CAN_SET_BRACKET")
             public static class MEMBER_CAN_SET_BRACKET extends CommandRef {
@@ -3662,6 +3678,13 @@ public class CM {
                 public static final remove_column cmd = new remove_column();
                 public remove_column create(String sheet, String columns) {
                     return createArgs("sheet", sheet, "columns", columns);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="renameTemplate")
+            public static class rename extends CommandRef {
+                public static final rename cmd = new rename();
+                public rename create(String sheet, String name) {
+                    return createArgs("sheet", sheet, "name", name);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="viewTemplate")

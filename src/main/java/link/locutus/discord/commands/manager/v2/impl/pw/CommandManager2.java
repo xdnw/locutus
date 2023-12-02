@@ -169,6 +169,8 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        getCommands().registerMethod(new WarCommands(), List.of("war", "sheet"), "raidSheet", "raid");
+
         getCommands().registerMethod(new TestCommands(), List.of("test"), "filters", "filters");
 
         NewsletterCommands newsletter = new NewsletterCommands();
@@ -183,6 +185,8 @@ public class CommandManager2 {
         getCommands().registerMethod(newsletter, List.of("newsletter"), "unsubscribe", "unsubscribe");
         getCommands().registerMethod(newsletter, List.of("newsletter"), "delete", "delete");
 
+        this.commands.registerMethod(new CustomSheetCommands(), List.of("settings_sheet"), "setSheetKey", "set");
+        this.commands.registerMethod(new CustomSheetCommands(), List.of("settings_sheet"), "listSheetKeys", "list");
         ////listSheetTemplates
         //sheet_template list
         this.commands.registerMethod(new CustomSheetCommands(), List.of("sheet_template"), "renameTemplate", "rename");

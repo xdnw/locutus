@@ -176,7 +176,7 @@ public class SpreadSheet {
         }
 
         if (includeHeader) {
-            this.setHeader(null, header);
+            this.setHeader(header);
         }
 
         Collections.sort(transactions, Comparator.comparingLong(o -> o.tx_datetime));
@@ -278,7 +278,8 @@ public class SpreadSheet {
                 db.setInfo(key, sheetId);
             }
             if (sheetId != null) {
-                DriveFile gdFile = new DriveFile(sheetId);
+                String[] split = sheetId.split(",");
+                DriveFile gdFile = new DriveFile(split[0]);
                 try {
                     gdFile.shareWithAnyone(DriveFile.DriveRole.WRITER);
                 } catch (GoogleJsonResponseException | TokenResponseException e) {
