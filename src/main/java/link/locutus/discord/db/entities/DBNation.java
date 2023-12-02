@@ -5203,6 +5203,18 @@ public class DBNation implements NationOrAlliance {
         return result == null ? Long.MAX_VALUE : (((double) (System.currentTimeMillis() - result)) / TimeUnit.DAYS.toMillis(1));
     }
 
+    @Command(desc = "Days since last ship purchase")
+    public double daysSinceLastNukeBuy() {
+        Long result = getLastUnitBuy(MilitaryUnit.NUKE);
+        return result == null ? Long.MAX_VALUE : (((double) (System.currentTimeMillis() - result)) / TimeUnit.DAYS.toMillis(1));
+    }
+
+    @Command(desc = "Days since last missile purchase")
+    public double daysSinceLastMissileBuy() {
+        Long result = getLastUnitBuy(MilitaryUnit.MISSILE);
+        return result == null ? Long.MAX_VALUE : (((double) (System.currentTimeMillis() - result)) / TimeUnit.DAYS.toMillis(1));
+    }
+
     public List<Map.Entry<Long, Integer>> getUnitHistory(MilitaryUnit unit) {
         return Locutus.imp().getNationDB().getMilitaryHistory(this, unit);
     }
