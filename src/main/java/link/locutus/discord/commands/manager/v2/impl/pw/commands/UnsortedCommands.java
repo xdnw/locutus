@@ -793,7 +793,15 @@ public class UnsortedCommands {
                           @Arg("Include the revenue of nations unable to be taxed")
                           @Switch("t") boolean includeUntaxable,
                           @Arg("Exclude the new nation bonus")
-                          @Switch("b") boolean excludeNationBonus) throws Exception {
+                          @Switch("b") boolean excludeNationBonus,
+                          @Switch("r") Double rads,
+                          @Switch("w") boolean forceAtWar,
+                            @Switch("p") boolean forceAtPeace
+                          ) throws Exception {
+        if (forceAtWar && forceAtPeace) {
+            throw new IllegalArgumentException("Cannot set both `forceAtWar` and `forceAtPeace` (pick one)");
+        }
+        Boolean forceWarFlag = forceAtWar ? Boolean.TRUE : forceAtPeace ? Boolean.FALSE : null;
         if (nations.getNations().size() == 1) includeUntaxable = true;
 
         ArrayList<DBNation> filtered = new ArrayList<>(nations.getNations());
@@ -825,8 +833,8 @@ public class UnsortedCommands {
             Set<DBTreasure> natTreasures = nation.getTreasures();
             double treasureBonus = ((treasures == 0 ? 0 : Math.sqrt(treasures * 4)) + natTreasures.stream().mapToDouble(DBTreasure::getBonus).sum()) * 0.01;
 
-            ResourceType.add(cityProfit, nation.getRevenue(12, true, false, false, !excludeNationBonus, false, false, treasureBonus, false));
-            ResourceType.add(milUp, nation.getRevenue(12, false, true, false, false, false, false, treasureBonus, false));
+            ResourceType.add(cityProfit, nation.getRevenue(12, true, false, false, !excludeNationBonus, false, false, treasureBonus, rads,  forceWarFlag, false));
+            ResourceType.add(milUp, nation.getRevenue(12, false, true, false, false, false, false, treasureBonus, rads, forceAtWar, false));
             long nationColorBonus = Math.round(nation.getColor().getTurnBonus() * 12 * me.getGrossModifier());
             tradeBonusTotal += nationColorBonus;
 
