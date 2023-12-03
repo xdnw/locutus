@@ -3268,8 +3268,14 @@ public class DBNation implements NationOrAlliance {
     }
 
     public double[] getRevenue(int turns, boolean cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double treasureBonus, boolean force) {
+        return getRevenue(turns, cities, militaryUpkeep, tradeBonus, bonus, noFood, noPower, treasureBonus, null, null, force);
+    }
+
+    public double[] getRevenue(int turns, boolean cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double treasureBonus, Double forceRads, Boolean forceAtWar, boolean force) {
         Map<Integer, JavaCity> cityMap = cities ? getCityMap(force, false) : new HashMap<>();
-        double[] revenue = PnwUtil.getRevenue(null, turns, this, cityMap.values(), militaryUpkeep, tradeBonus, bonus, noFood, noPower, treasureBonus);
+        double rads = forceRads != null ? forceRads : getRads();
+        boolean atWar = forceAtWar != null ? forceAtWar : getNumWars() > 0;
+        double[] revenue = PnwUtil.getRevenue(null, turns, -1L, this, cityMap.values(), militaryUpkeep, tradeBonus, bonus, noFood, noPower, rads, atWar, treasureBonus);
         return revenue;
     }
 
