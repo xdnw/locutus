@@ -10,6 +10,7 @@ import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.db.entities.DBNation;
+import link.locutus.discord.event.mail.MailReceivedEvent;
 import link.locutus.discord.util.scheduler.CaughtRunnable;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.AlertUtil;
@@ -60,6 +61,8 @@ public class AlertMailTask extends CaughtRunnable implements BiConsumer<Mail, Li
             if (strings.size() == 0) {
                 return;
             }
+            new MailReceivedEvent(auth, mail, strings, outputChannel).post();
+
             String url = "" + Settings.INSTANCE.PNW_URL() + "/inbox/message/id=" + mail.id;
 
             String title = mail.leader + " in '" + mail.subject + "'";
