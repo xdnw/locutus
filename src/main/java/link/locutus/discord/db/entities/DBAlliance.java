@@ -334,10 +334,11 @@ public class DBAlliance implements NationList, NationOrAlliance {
     }
 
     @Command
-    public double exponentialCityStrength() {
+    public double exponentialCityStrength(@Default Double power) {
+        if (power == null) power = 3d;
         double total = 0;
         for (DBNation nation : getNations(true, 10000, true)) {
-            total += Math.pow(nation.getCities(), 3) / 3d;
+            total += Math.pow(nation.getCities(), power);
         }
         return total;
     }

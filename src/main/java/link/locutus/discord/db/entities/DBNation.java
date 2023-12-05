@@ -3268,8 +3268,14 @@ public class DBNation implements NationOrAlliance {
     }
 
     public double[] getRevenue(int turns, boolean cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double treasureBonus, boolean force) {
+        return getRevenue(turns, cities, militaryUpkeep, tradeBonus, bonus, noFood, noPower, treasureBonus, null, null, force);
+    }
+
+    public double[] getRevenue(int turns, boolean cities, boolean militaryUpkeep, boolean tradeBonus, boolean bonus, boolean noFood, boolean noPower, double treasureBonus, Double forceRads, Boolean forceAtWar, boolean force) {
         Map<Integer, JavaCity> cityMap = cities ? getCityMap(force, false) : new HashMap<>();
-        double[] revenue = PnwUtil.getRevenue(null, turns, this, cityMap.values(), militaryUpkeep, tradeBonus, bonus, noFood, noPower, treasureBonus);
+        double rads = forceRads != null ? forceRads : getRads();
+        boolean atWar = forceAtWar != null ? forceAtWar : getNumWars() > 0;
+        double[] revenue = PnwUtil.getRevenue(null, turns, -1L, this, cityMap.values(), militaryUpkeep, tradeBonus, bonus, noFood, noPower, rads, atWar, treasureBonus);
         return revenue;
     }
 
@@ -5171,6 +5177,18 @@ public class DBNation implements NationOrAlliance {
     @Command(desc = "Days since last spy purchase")
     public double daysSinceLastSpyBuy() {
         Long result = getLastUnitBuy(MilitaryUnit.SPIES);
+        return result == null ? Long.MAX_VALUE : (((double) (System.currentTimeMillis() - result)) / TimeUnit.DAYS.toMillis(1));
+    }
+
+    @Command(desc = "Days since last ship purchase")
+    public double daysSinceLastNukeBuy() {
+        Long result = getLastUnitBuy(MilitaryUnit.NUKE);
+        return result == null ? Long.MAX_VALUE : (((double) (System.currentTimeMillis() - result)) / TimeUnit.DAYS.toMillis(1));
+    }
+
+    @Command(desc = "Days since last missile purchase")
+    public double daysSinceLastMissileBuy() {
+        Long result = getLastUnitBuy(MilitaryUnit.MISSILE);
         return result == null ? Long.MAX_VALUE : (((double) (System.currentTimeMillis() - result)) / TimeUnit.DAYS.toMillis(1));
     }
 

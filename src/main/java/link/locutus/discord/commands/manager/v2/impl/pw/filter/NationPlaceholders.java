@@ -17,6 +17,7 @@ import link.locutus.discord.commands.manager.v2.command.CommandCallable;
 import link.locutus.discord.commands.manager.v2.command.CommandUsageException;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.DefaultPlaceholders;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.NationAttribute;
@@ -212,7 +213,7 @@ public class NationPlaceholders extends Placeholders<DBNation> {
                         default -> null;
                     }, (type, input) -> {
                         return switch (type) {
-                            case 0 -> Locutus.imp().getNationDB().getNation(input);
+                            case 0 -> PWBindings.nation(null, input);
                             case 1 -> Locutus.imp().getNationDB().getNationByLeader(input);
                             default -> null;
                         };

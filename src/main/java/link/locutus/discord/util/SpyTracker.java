@@ -6,6 +6,7 @@ import com.politicsandwar.graphql.model.NationsQueryRequest;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.AbstractCursor;
 import link.locutus.discord.apiv1.enums.MilitaryUnit;
+import link.locutus.discord.apiv1.enums.WarPolicy;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.apiv3.enums.AlliancePermission;
@@ -494,6 +495,12 @@ public class SpyTracker {
 
             if (attacker.hasProject(Projects.SPY_SATELLITE)) message.append(" | SAT");
             if (attacker.hasProject(Projects.INTELLIGENCE_AGENCY)) message.append(" | IA");
+            if (attacker.getWarPolicy() == WarPolicy.ARCANE) {
+                message.append(" | ARC");
+            }
+            if (attacker.getWarPolicy() == WarPolicy.COVERT) {
+                message.append(" | COV");
+            }
             message.append(" | " + attSpies + " \uD83D\uDD75");
             message.append(" | " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, diff));
             return message.toString();
