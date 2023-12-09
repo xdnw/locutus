@@ -49,6 +49,7 @@ import link.locutus.discord.db.entities.newsletter.Newsletter;
 import link.locutus.discord.db.entities.newsletter.NewsletterManager;
 import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.event.mail.MailReceivedEvent;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.BeigeReason;
 import link.locutus.discord.pnw.CityRanges;
@@ -69,6 +70,7 @@ import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.test.IACategory;
 import link.locutus.discord.util.task.ia.IACheckup;
+import link.locutus.discord.util.task.mail.Mail;
 import link.locutus.discord.util.trade.TradeManager;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
@@ -1048,6 +1050,16 @@ public class PWBindings extends BindingHelper {
         DBNation nation = DiscordUtil.getNation(user);
         if (nation == null) throw new IllegalArgumentException("Please use " + CM.register.cmd.toSlashMention() + "");
         return nation;
+    }
+
+    @Binding
+    public MailReceivedEvent MailReceivedEvent() {
+        throw new IllegalStateException("No mail event provided in command locals");
+    }
+
+    @Binding
+    public Mail Mail() {
+        throw new IllegalStateException("No mail provided in command locals");
     }
 
     @Binding
