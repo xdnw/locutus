@@ -611,7 +611,7 @@ public class ParametricCallable implements ICommand {
         }
 
         if (!permissionInfo.isEmpty()) {
-            result.append("**Required Permissions:**\n\n");
+            result.append("**Permission:**\n\n");
             for (Map.Entry<String, String> entry : permissionInfo.entrySet()) {
                 if (spoiler && false) {
                     result.append(MarkupUtil.spoiler(entry.getKey(), MarkupUtil.markdownToHTML(entry.getValue())) + "\n");

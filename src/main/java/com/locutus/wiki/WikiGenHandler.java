@@ -28,6 +28,7 @@ import com.locutus.wiki.pages.WikiHostingLocutus;
 import com.locutus.wiki.pages.WikiInterviewPage;
 import com.locutus.wiki.pages.WikiLoanPage;
 import com.locutus.wiki.pages.WikiNationPlaceholdersPage;
+import com.locutus.wiki.pages.WikiPermsPage;
 import com.locutus.wiki.pages.WikiPlaceholderPage;
 import com.locutus.wiki.pages.WikiRecruitmentPage;
 import com.locutus.wiki.pages.WikiReportPage;
@@ -156,18 +157,20 @@ public class WikiGenHandler {
         List<BotWikiGen> placeholderPages = new ArrayList<>();
         PlaceholdersMap placeholderMap = Locutus.cmd().getV2().getPlaceholders();
         List<Class> types = new ArrayList<>(placeholderMap.getTypes());
-        Collections.sort(types, Comparator.comparing(Class::getSimpleName));
+        Collections.sort(types, Comparator.comparing(PlaceholdersMap::getClassName));
         for (Class type : types) {
             placeholderPages.add(new WikiPlaceholderPage(manager, placeholderMap, type));
         }
-        System.out.println("Types " + types.size());
 
-        WikiHelpPage help = new WikiHelpPage(manager, pages, placeholderPages);
+        WikiPermsPage permsPage = new WikiPermsPage(manager);
+
+        WikiHelpPage help = new WikiHelpPage(manager, pages, placeholderPages, permsPage);
         pages.add(help);
 
         ArrayList<BotWikiGen> allPages = new ArrayList<>();
         allPages.addAll(placeholderPages);
         allPages.addAll(pages);
+        allPages.add(permsPage);
         for (BotWikiGen page : allPages) {
             writePage(page);
         }

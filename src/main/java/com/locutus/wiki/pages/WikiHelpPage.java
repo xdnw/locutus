@@ -13,11 +13,13 @@ public class WikiHelpPage extends BotWikiGen {
     private final List<BotWikiGen> pages;
     private final String urlPrefix;
     private final List<BotWikiGen> placeholders;
+    private final BotWikiGen permsPage;
 
-    public WikiHelpPage(CommandManager2 manager, List<BotWikiGen> pages, List<BotWikiGen> placeholders) {
+    public WikiHelpPage(CommandManager2 manager, List<BotWikiGen> pages, List<BotWikiGen> placeholders, BotWikiGen permsPage) {
         super(manager, "home");
         this.pages = new ArrayList<>(pages);
         this.placeholders = placeholders;
+        this.permsPage = permsPage;
         this.urlPrefix = "../wiki/";
     }
 
@@ -70,11 +72,14 @@ public class WikiHelpPage extends BotWikiGen {
                 "View a setting",
                 "For example, the `" + GuildKey.ALLIANCE_ID.name() + "` settings",
                 CM.settings.info.cmd.create(GuildKey.ALLIANCE_ID.name(), null, null).toSlashCommand(true),
-            "# Overview of this Wiki",
-            pageList.toString(),
-            "# Placeholders & Filters",
-            "Used in commands to filter a selection, or as placeholders for sheets or messages",
-            placeholderList.toString()
+                "# Overview of this Wiki",
+                pageList.toString(),
+                "# Placeholders & Filters",
+                "Used in commands to filter a selection, or as placeholders for sheets or messages",
+                placeholderList.toString(),
+                "# Permissions",
+                permsPage.getDescription(),
+                MarkupUtil.markdownUrl(permsPage.getPageName(), urlPrefix + permsPage.getPageName().replace(" ", "_"))
         );
     }
 }
