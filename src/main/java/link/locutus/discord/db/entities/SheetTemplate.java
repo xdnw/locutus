@@ -1,6 +1,7 @@
 package link.locutus.discord.db.entities;
 
 import link.locutus.discord.Locutus;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -15,9 +16,9 @@ public class SheetTemplate<T> {
 
     public SheetTemplate(ResultSet rs) throws SQLException {
         this.name = rs.getString("name");
-        String typeStr = rs.getString("type");
+        String typeStr = PlaceholdersMap.getClassName(rs.getString("type"));
         for (Class<?> type : Locutus.cmd().getV2().getPlaceholders().getTypes()) {
-            if (type.getSimpleName().equalsIgnoreCase(typeStr)) {
+            if (PlaceholdersMap.getClassName(type).equalsIgnoreCase(typeStr)) {
                 this.type = (Class<T>) type;
                 break;
             }
@@ -40,7 +41,7 @@ public class SheetTemplate<T> {
         return columns;
     }
 
-    public SheetTemplate(String name, Class<T> type, String filter, List<String> columns) {
+    public SheetTemplate(String name, Class<T> type, List<String> columns) {
         this.name = name;
         this.type = type;
         this.columns = columns;

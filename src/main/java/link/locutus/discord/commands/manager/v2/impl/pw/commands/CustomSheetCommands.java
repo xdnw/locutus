@@ -1,6 +1,7 @@
 package link.locutus.discord.commands.manager.v2.impl.pw.commands;
 
 import com.github.javaparser.printer.lexicalpreservation.Added;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.CreateSheet;
@@ -9,14 +10,17 @@ import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
 import link.locutus.discord.commands.manager.v2.binding.annotation.NoFormat;
 import link.locutus.discord.commands.manager.v2.binding.annotation.PlaceholderType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
+import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
+import link.locutus.discord.commands.manager.v2.impl.pw.binding.SheetBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.CustomSheet;
 import link.locutus.discord.db.entities.SelectionAlias;
 import link.locutus.discord.db.entities.SheetTemplate;
+import link.locutus.discord.db.entities.sheet.CustomSheetManager;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
@@ -27,6 +31,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -34,6 +39,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static link.locutus.discord.config.Messages.TAB_TYPE;
 
 public class CustomSheetCommands {
 
@@ -333,5 +341,115 @@ public class CustomSheetCommands {
     @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
     public String info(CustomSheet sheet) {
         return sheet.toString();
+    }
+
+    @Command(desc = "Generate or update a spreadsheet from a url\n" +
+            "Each tab must be a valid selection, prefixed by the type e.g. `nation:*`\n" +
+            "The first row must have placeholders in each column, such as `{nation}` `{cities}` `{score}`")
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+    public String auto(ValueStore store, @Me GuildDB db, SpreadSheet sheet, @Switch("s") boolean saveSheet) throws GeneralSecurityException, IOException {
+        CustomSheetManager manager = db.getSheetManager();
+        PlaceholdersMap phMap = Locutus.cmd().getV2().getPlaceholders();
+        List<String> errors = new ArrayList<>();
+        CustomSheet custom = manager.getCustomSheetById(sheet.getSpreadsheetId());
+        if (custom == null) {
+            if (saveSheet) {
+                String name = sheet.getTitle();
+                CustomSheet existing = manager.getCustomSheet(name);
+                if (existing != null) {
+                    return "Sheet with name `" + name + "` already exists: <" + existing.getUrl() + ">. Please change the title of your spreadsheet to something unique or delete the existing sheet using TODO CM REF";
+                }
+                manager.addCustomSheet(name, sheet.getSpreadsheetId());
+            } else {
+                custom = new CustomSheet(sheet.getTitle(), sheet.getSpreadsheetId(), new LinkedHashMap<>());
+            }
+        } else {
+            String msg = "A custom sheet with the name `" + custom.getName() + "` has row selections and column templates already saved.\n" +
+                    "These saved tabs will be used when new selection is specified for a tab.";
+            if (saveSheet) {
+                msg += "\nChanges will be saved";
+            }
+            errors.add(msg);
+        }
+
+        Map<String, Map.Entry<SelectionAlias, SheetTemplate>> customTabs = new LinkedHashMap<>();
+
+        Map<Integer, String> tabs = sheet.fetchTabs();
+        for (Map.Entry<Integer, String> entry : tabs.entrySet()) {
+            String tabName = entry.getValue();
+            SelectionAlias selection;
+            SheetTemplate template = null;
+
+            try {
+                selection = SheetBindings.selectionAlias(db, manager, tabName);
+            } catch (IllegalArgumentException e) {
+                int index = tabName.indexOf(":");
+                if (index == -1) {
+                    errors.add(TAB_TYPE.replace("{tab_name}", tabName) + " (1)");
+                    continue;
+                }
+                String typeStr = tabName.substring(0, index);
+                if (typeStr != null && !typeStr.isEmpty() && !typeStr.contains(",") && !typeStr.contains("#") && !typeStr.contains("(") && !typeStr.contains(" ")) {
+                    Class type;
+                    try {
+                        type = SheetBindings.type(typeStr);
+                    } catch (IllegalArgumentException e2) {
+                        errors.add(e2.getMessage());
+                        continue;
+                    }
+
+                    String selectionStr = tabName.substring(index + 1);
+                    Placeholders ph = phMap.get(type);
+
+                    AtomicBoolean createdSelection = new AtomicBoolean();
+                    selection = ph.getOrCreateSelection(db, selectionStr, saveSheet, createdSelection);
+
+                    if (createdSelection.get() && saveSheet) {
+                        errors.add("Created and saved `" + selectionStr + "` as `" + selection.getName() + "` for type: `" + PlaceholdersMap.getClassName(selection.getType()) + "`. You may use this alias in commands and sheets\n" +
+                                "To rename: TODO CM REF\n" +
+                                "To list aliases: TODO CM REF");
+                    }
+                } else if (custom != null){
+                    Map.Entry<SelectionAlias, SheetTemplate> tab = custom.getTab(tabName);
+                    if (tab == null) {
+                        errors.add(TAB_TYPE.replace("{tab_name}", tabName) + "\nNote: A saved sheet was found for this url, but no tab was registered to `" + tabName + "`." +
+                                "Create a tab with " + CM.sheet_custom.add_tab.cmd.toSlashMention());
+                    }
+                    selection = tab.getKey();
+                } else {
+                    errors.add(TAB_TYPE.replace("{tab_name}", tabName));
+                    continue;
+                }
+            }
+
+            Placeholders ph = phMap.get(selection.getType());
+
+            List<List<Object>> row = sheet.fetchRange(tabName, "1:1");
+            List<String> header = row.isEmpty() ? null : row.get(0).stream().map(o -> o == null ? "" : o.toString()).toList();
+            if (header == null || header.isEmpty()) {
+                errors.add("Tab `" + tabName + "` has no header row");
+            } else {
+                AtomicBoolean createdTemplate = new AtomicBoolean();
+                template = ph.getOrCreateTemplate(db, header, false, createdTemplate);
+            }
+            if (template == null) {
+                continue;
+            }
+
+            customTabs.put(tabName, Map.entry(selection, template));
+        }
+        if (customTabs.isEmpty()) {
+            errors.add("No tabs found. No tabs will be updated");
+            return "**Result**:\n- " + StringMan.join(errors, "\n- ");
+        }
+
+        StringBuilder response = new StringBuilder();
+        errors.addAll(custom.update(store, customTabs));
+        response.append("**Result**:\n- ").append(StringMan.join(errors, "\n- ")).append("\n");
+        response.append("Url: <").append(custom.getUrl()).append(">\n");
+        if (saveSheet) {
+            response.append("Saved sheet: `").append(custom.getName()).append("`");
+        }
+        return response.toString();
     }
 }

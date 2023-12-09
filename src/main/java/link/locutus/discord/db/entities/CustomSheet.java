@@ -69,6 +69,10 @@ public class CustomSheet {
     }
 
     public List<String> update(ValueStore store) throws GeneralSecurityException, IOException {
+        return update(store, tabs);
+    }
+
+    public List<String> update(ValueStore store, Map<String, Map.Entry<SelectionAlias, SheetTemplate>> customTabs) throws GeneralSecurityException, IOException {
         SpreadSheet sheet = SpreadSheet.create(sheetId);
         List<String> errors = new ArrayList<>();
 
@@ -78,12 +82,12 @@ public class CustomSheet {
         Map<String, Boolean> tabsCreated = new LinkedHashMap<>();
         Future<?> createTabsFuture = executor.submit(() -> {
             try {
-                tabsCreated.putAll(sheet.updateCreateTabsIfAbsent(tabs.keySet()));
+                tabsCreated.putAll(sheet.updateCreateTabsIfAbsent(customTabs.keySet()));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         });
-        for (Map.Entry<String, Map.Entry<SelectionAlias, SheetTemplate>> entry : this.tabs.entrySet()) {
+        for (Map.Entry<String, Map.Entry<SelectionAlias, SheetTemplate>> entry : customTabs.entrySet()) {
             String tabName = entry.getKey();
             Map.Entry<SelectionAlias, SheetTemplate> value = entry.getValue();
             SelectionAlias alias = value.getKey();
@@ -161,7 +165,7 @@ public class CustomSheet {
             }
         }
         for (Map.Entry<String, Boolean> entry : tabsCreated.entrySet()) {
-            if (tabs.containsKey(entry.getKey())) {
+            if (customTabs.containsKey(entry.getKey())) {
                 continue;
             }
             errors.add("[Tab: `" + entry.getKey() + "`] Exists in the google sheet, but has no template.");

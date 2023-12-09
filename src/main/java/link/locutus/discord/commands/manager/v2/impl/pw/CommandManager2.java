@@ -185,6 +185,7 @@ public class CommandManager2 {
         getCommands().registerMethod(newsletter, List.of("newsletter"), "unsubscribe", "unsubscribe");
         getCommands().registerMethod(newsletter, List.of("newsletter"), "delete", "delete");
 
+        this.commands.registerMethod(new CustomSheetCommands(), List.of("sheet_custom"), "auto", "auto");
         this.commands.registerMethod(new CustomSheetCommands(), List.of("settings_sheet"), "setSheetKey", "set");
         this.commands.registerMethod(new CustomSheetCommands(), List.of("settings_sheet"), "listSheetKeys", "list");
         ////listSheetTemplates

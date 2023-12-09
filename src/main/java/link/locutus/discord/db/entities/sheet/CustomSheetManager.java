@@ -54,6 +54,19 @@ public class CustomSheetManager {
         return names;
     }
 
+    public Map<String, SheetTemplate> getSheetTemplates(Class type) {
+        Map<String, SheetTemplate> sheets = new LinkedHashMap<>();
+        db.query("SELECT * FROM `SHEET_TEMPLATE` WHERE type = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setString(1, PlaceholdersMap.getClassName(type));
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                SheetTemplate sheet = new SheetTemplate(rs);
+                sheets.put(sheet.getName(), sheet);
+            }
+        });
+        return sheets;
+    }
+
     public Map<String, SheetTemplate> getSheetTemplates(List<String> errors) {
         Map<String, SheetTemplate> sheets = new LinkedHashMap<>();
         db.query("SELECT * FROM `SHEET_TEMPLATE`", stmt -> {}, (ThrowingConsumer<ResultSet>) rs -> {
@@ -87,7 +100,7 @@ public class CustomSheetManager {
         String query = "CREATE TABLE IF NOT EXISTS `SHEET_TEMPLATE` (`name` VARCHAR PRIMARY KEY, `type` VARCHAR NOT NULL, `columns` VARCHAR NOT NULL)";
         db.update("INSERT INTO `SHEET_TEMPLATE`(`name`, `type`, `columns`) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, sheet.getName());
-            stmt.setString(2, sheet.getType().getSimpleName());
+            stmt.setString(2, PlaceholdersMap.getClassName(sheet.getType()));
             stmt.setString(3, StringMan.join(sheet.getColumns(), "\n"));
         });
     }
@@ -121,7 +134,7 @@ public class CustomSheetManager {
                             String typeStr = rs.getString("type");
                             Class typeFinal = null;
                             for (Class<?> type : Locutus.cmd().getV2().getPlaceholders().getTypes()) {
-                                if (type.getSimpleName().equalsIgnoreCase(typeStr)) {
+                                if (PlaceholdersMap.getClassName(type).equalsIgnoreCase(typeStr)) {
                                     typeFinal = type;
                                     break;
                                 }
@@ -138,6 +151,11 @@ public class CustomSheetManager {
             }
         }
         return customSelections;
+    }
+
+    public <T> Map<String, SelectionAlias<T>> getSelectionAliases(Class<T> type) {
+        Map<String, SelectionAlias> result = getSelectionAliases().getOrDefault(type, new HashMap<>());
+        return (Map<String, SelectionAlias<T>>) (Map) result;
     }
 
     public <T> SelectionAlias<T> getSelectionAlias(String name, Class<T> type) {
@@ -196,16 +214,17 @@ public class CustomSheetManager {
         });
     }
 
-    public void addSelectionAlias(String name, Class type, String selection) {
+    public SelectionAlias addSelectionAlias(String name, Class type, String selection) {
         name = name.toLowerCase(Locale.ROOT);
         String finalName = name;
         db.update("INSERT INTO SELECTION_ALIAS(name, type, selection) VALUES(?, ?, ?)", (ThrowingConsumer<PreparedStatement>) stmt -> {
             stmt.setString(1, finalName);
-            stmt.setString(2, type.getSimpleName());
+            stmt.setString(2, PlaceholdersMap.getClassName(type));
             stmt.setString(3, selection);
         });
         SelectionAlias alias = new SelectionAlias(name, type, selection);
         getSelectionAliases().computeIfAbsent(type, t -> new ConcurrentHashMap<>()).put(name, alias);
+        return alias;
     }
 
     // Add methods for custom sheets
@@ -279,15 +298,41 @@ public class CustomSheetManager {
         return url.get();
     }
 
+    public String getCustomSheetName(String url) {
+        AtomicReference<String> name = new AtomicReference<>();
+        db.query("SELECT `name` FROM `CUSTOM_SHEET` WHERE `url` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setString(1, url);
+        }, (ThrowingConsumer<ResultSet>) rs -> {
+            while (rs.next()) {
+                name.set(rs.getString("name"));
+            }
+        });
+        return name.get();
+    }
+
+    public CustomSheet getCustomSheetById(String url) {
+        String name = getCustomSheetName(url);
+        if (name == null) {
+            return null;
+        }
+        return selectCustomSheets(name, url, "WHERE `name` = ?", stmt -> {
+            stmt.setString(1, name);
+        });
+    }
+
     public CustomSheet getCustomSheet(String name) {
         String url = getCustomSheetUrl(name);
         if (url == null) {
             return null;
         }
-        Map<String, Map.Entry<SelectionAlias, SheetTemplate>> tabs = new LinkedHashMap<>();
-        db.query("SELECT * FROM `CUSTOM_SHEET_TABS` WHERE `sheet` = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+        return selectCustomSheets(name, url, "WHERE `name` = ?", stmt -> {
             stmt.setString(1, name);
-        }, (ThrowingConsumer<ResultSet>) rs -> {
+        });
+    }
+
+    private CustomSheet selectCustomSheets(String name, String url, String query, ThrowingConsumer<PreparedStatement> condition) {
+        Map<String, Map.Entry<SelectionAlias, SheetTemplate>> tabs = new LinkedHashMap<>();
+        db.query("SELECT * FROM `CUSTOM_SHEET_TABS` " + query, condition, (ThrowingConsumer<ResultSet>) rs -> {
             while (rs.next()) {
                 String tabName = rs.getString("tab");
                 String selector = rs.getString("selector");

@@ -338,6 +338,19 @@ public class SpreadSheet {
     private Integer defaultTabId = null;
     private String defaultTab = "";
 
+    public String getTitle() {
+        if (service == null) {
+            return spreadsheetId;
+        }
+        try {
+            Spreadsheet spreadsheet = service.spreadsheets().get(spreadsheetId).setFields("properties").execute();
+            return spreadsheet.getProperties().getTitle();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return spreadsheetId;
+    }
+
     public record SheetId(String id, String tabName, Integer tabId) {
     }
 

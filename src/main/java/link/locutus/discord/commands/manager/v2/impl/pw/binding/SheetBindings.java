@@ -33,7 +33,7 @@ public class SheetBindings extends BindingHelper {
     @PlaceholderType
     @Binding(value = "An entity type for a placeholder\n" +
             "Used for sheets or formatted messages", examples = {"nation", "city", "alliance", "war"})
-    public Class type(String input) {
+    public static Class type(String input) {
         Set<Class<?>> types = Locutus.cmd().getV2().getPlaceholders().getTypes();
         for (Class<?> type : types) {
             if (PlaceholdersMap.getClassName(type).equalsIgnoreCase(input)) {
@@ -66,7 +66,7 @@ public class SheetBindings extends BindingHelper {
     @Binding(value = "A sheet template name that has been created in this guild\n" +
             "Sheet templates are column formats for a sheet\n" +
             "Templates, each with a selection can be used to generate multi-tabbed spreadsheets")
-    public SheetTemplate template(@Me GuildDB db, CustomSheetManager manager, String name) {
+    public static SheetTemplate template(@Me GuildDB db, CustomSheetManager manager, String name) {
         SheetTemplate template = manager.getSheetTemplate(name);
         if (template == null) {
             Set<String> options = manager.getSheetTemplateNames(true);
@@ -77,7 +77,7 @@ public class SheetBindings extends BindingHelper {
 
     @Binding(value = "A selection alias name that has been created in this guild\n" +
             "A selection alias is used to reference a list of nations or other entities that can be used in commands and sheets")
-    public SelectionAlias selectionAlias(@Me GuildDB db, CustomSheetManager manager, String name) {
+    public static SelectionAlias selectionAlias(@Me GuildDB db, CustomSheetManager manager, String name) {
         SelectionAlias<Object> alias = manager.getSelectionAlias(name);
         if (alias == null) {
             Set<String> options = manager.getSelectionAliasNames();
