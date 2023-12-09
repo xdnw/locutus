@@ -3285,6 +3285,16 @@ public class DBNation implements NationOrAlliance {
         return discord.get(0).getDiscord();
     }
 
+    @Command(desc = "Get the number of wars with nations matching a filter")
+    public int getActiveWarsWith(NationFilter filter) {
+        int count = 0;
+        for (DBWar war : getActiveWars()) {
+            DBNation other = war.getNation(!war.isAttacker(this));
+            if (other != null && filter.test(other)) count++;
+        }
+        return count;
+    }
+
     @Command(desc = "Total stockpile value based on last war loss or espionage")
     @WhitelistPermission
     public double getBeigeLootTotal() {
