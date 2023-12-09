@@ -228,20 +228,9 @@ Message: `$who Rose -l`
         for (Map.Entry<Key, Parser> entry : parsersList) {
             Parser parser = entry.getValue();
             if (!parser.isConsumer(store)) continue;
-            result.append("## " + parser.getNameDescriptionAndExamples(true, true,true, true));
+            result.append("## " + parser.getNameDescriptionAndExamples(true, true,false, true));
             result.append("---\n");
         }
-
-//
-//        CommandGroup group = manager.getCommands();
-//
-//        for (ParametricCallable command : group.getParametricCallables(f -> true)) {
-//            String help = command.help(manager.getStore());
-//            System.out.println("\n\nCommand: " + command.getFullPath() + "\n" + help);
-//            String desc = command.desc(manager.getStore());
-//            System.out.println("Desc: " + desc);
-//        }
-
         return result.toString();
     }
 }
