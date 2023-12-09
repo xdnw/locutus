@@ -465,9 +465,9 @@ public class BankDB extends DBMainV3 {
             return allianceId;
         }
 
-        @Command(desc = "The age of this tax record in milliseconds")
-        public long getAgeMs() {
-            return System.currentTimeMillis() - date;
+        @Command(desc = "The number of turns ago this tax deposit was made")
+        public long getTurnsOld() {
+            return TimeUtil.getTurn() - TimeUtil.getTurn(date);
         }
 
         @Command(desc = "Get the date as unix timestamp in milliseconds")

@@ -84,7 +84,13 @@ public class CustomSheet {
         Map<String, Boolean> tabsCreated = new LinkedHashMap<>();
         Future<?> createTabsFuture = executor.submit(() -> {
             try {
-                tabsCreated.putAll(sheet.updateCreateTabsIfAbsent(customTabs.keySet()));
+                Map<String, Boolean> result = sheet.updateCreateTabsIfAbsent(customTabs.keySet());
+                tabsCreated.putAll(result);
+                for (Map.Entry<String, Boolean> entry : result.entrySet()) {
+                    if (!entry.getValue()) {
+                        sheet.clearAllButFirstRow(entry.getKey());
+                    }
+                }
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

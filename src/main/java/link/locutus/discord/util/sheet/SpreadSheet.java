@@ -767,6 +767,13 @@ public class SpreadSheet {
         updateAddTab(tabName);
     }
 
+    /**
+     * Checks if the provided tabs exist in the Google Spreadsheet. If a tab does not exist, it is created.
+     *  The method returns a map where the keys are the tab names in lower case and the values are Booleans indicating whether the tab was created during the method execution.
+     * @param tabs
+     * @return
+     * @throws IOException
+     */
     public Map<String, Boolean> updateCreateTabsIfAbsent(Set<String> tabs) throws IOException {
         Map<String, Boolean> result = new LinkedHashMap<>();
         Spreadsheet sheet = service.spreadsheets().get(spreadsheetId).execute();
@@ -999,6 +1006,20 @@ public class SpreadSheet {
                 e.printStackTrace();
             }
         }
+    }
+
+
+    public void clearAllButFirstRow(String tabName) throws IOException {
+        String range = tabName + "!2:40000";
+        // Create a new ClearValuesRequest
+        ClearValuesRequest requestBody = new ClearValuesRequest();
+
+        // Use the Sheets API to clear the values
+        Sheets.Spreadsheets.Values.Clear request =
+                service.spreadsheets().values().clear(spreadsheetId, range, requestBody);
+
+        // Execute the request
+        ClearValuesResponse response = request.execute();
     }
 
     public void updateClearTab(String tab) throws IOException {
