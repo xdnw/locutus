@@ -436,8 +436,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="revenue")
             public static class revenue extends CommandRef {
                 public static final revenue cmd = new revenue();
-                public revenue create(String nations, String includeUntaxable, String excludeNationBonus) {
-                    return createArgs("nations", nations, "includeUntaxable", includeUntaxable, "excludeNationBonus", excludeNationBonus);
+                public revenue create(String nations, String includeUntaxable, String excludeNationBonus, String rads, String forceAtWar, String forceAtPeace) {
+                    return createArgs("nations", nations, "includeUntaxable", includeUntaxable, "excludeNationBonus", excludeNationBonus, "rads", rads, "forceAtWar", forceAtWar, "forceAtPeace", forceAtPeace);
                 }
             }
             public static class sheets{
@@ -1878,8 +1878,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="revenue")
             public static class revenue extends CommandRef {
                 public static final revenue cmd = new revenue();
-                public revenue create(String nations, String includeUntaxable, String excludeNationBonus) {
-                    return createArgs("nations", nations, "includeUntaxable", includeUntaxable, "excludeNationBonus", excludeNationBonus);
+                public revenue create(String nations, String includeUntaxable, String excludeNationBonus, String rads, String forceAtWar, String forceAtPeace) {
+                    return createArgs("nations", nations, "includeUntaxable", includeUntaxable, "excludeNationBonus", excludeNationBonus, "rads", rads, "forceAtWar", forceAtWar, "forceAtPeace", forceAtPeace);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="revenueSheet")
@@ -3476,8 +3476,15 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="addTab")
             public static class add_tab extends CommandRef {
                 public static final add_tab cmd = new add_tab();
-                public add_tab create(String sheet, String tabName, String alias, String template, String force) {
-                    return createArgs("sheet", sheet, "tabName", tabName, "alias", alias, "template", template, "force", force);
+                public add_tab create(String sheet, String tabName, String select, String columns, String force) {
+                    return createArgs("sheet", sheet, "tabName", tabName, "select", select, "columns", columns, "force", force);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="auto")
+            public static class auto extends CommandRef {
+                public static final auto cmd = new auto();
+                public auto create(String sheet, String saveSheet) {
+                    return createArgs("sheet", sheet, "saveSheet", saveSheet);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="listCustomSheets")
@@ -4810,6 +4817,13 @@ public class CM {
                     public static final costSheet cmd = new costSheet();
                     public costSheet create(String attackers, String defenders, String time, String endTime, String excludeConsumption, String excludeInfra, String excludeLoot, String excludeUnitCost, String normalizePerCity, String sheet) {
                         return createArgs("attackers", attackers, "defenders", defenders, "time", time, "endTime", endTime, "excludeConsumption", excludeConsumption, "excludeInfra", excludeInfra, "excludeLoot", excludeLoot, "excludeUnitCost", excludeUnitCost, "normalizePerCity", normalizePerCity, "sheet", sheet);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="raidSheet")
+                public static class raid extends CommandRef {
+                    public static final raid cmd = new raid();
+                    public raid create(String attackers, String targets, String includeInactiveAttackers, String includeApplicantAttackers, String includeBeigeAttackers, String sheet) {
+                        return createArgs("attackers", attackers, "targets", targets, "includeInactiveAttackers", includeInactiveAttackers, "includeApplicantAttackers", includeApplicantAttackers, "includeBeigeAttackers", includeBeigeAttackers, "sheet", sheet);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.WarCommands.class,method="ValidateBlitzSheet")

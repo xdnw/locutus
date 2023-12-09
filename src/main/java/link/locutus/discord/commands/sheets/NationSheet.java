@@ -59,6 +59,7 @@ public class NationSheet extends Command implements Noformat {
         }
 
         List<String> header = new ArrayList<>(args.subList(1, args.size()));
+        System.out.println("Header " + header);
         header.remove(0);
         for (int i = 0; i < header.size(); i++) {
             String arg = header.get(i);
@@ -75,7 +76,7 @@ public class NationSheet extends Command implements Noformat {
             sheet = SpreadSheet.create(Locutus.imp().getGuildDB(guild), SheetKey.NATION_SHEET);
         }
 
-        UtilityCommands.NationSheet(placeholders, channel, me, author, db, nations, args, flags.contains('s'), sheet);
+        UtilityCommands.NationSheet(placeholders, channel, me, author, db, nations, args.subList(1, args.size()), flags.contains('s'), sheet);
         return null;
     }
 }
