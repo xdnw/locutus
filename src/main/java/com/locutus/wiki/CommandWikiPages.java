@@ -9,8 +9,10 @@ import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.yaml.Config;
+import link.locutus.discord.util.MarkupUtil;
 
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -52,7 +54,7 @@ Use round brackets for arguments `#myFunction(123)`
 
 
 """;
-        return printCommands(placeholders.getCommands(), store, placeholders.getPermisser(), "\\#", header);
+        return printCommands(placeholders.getCommands(), store, placeholders.getPermisser(), "\\#", header, true);
     }
 
     public static String printCommands(CommandGroup group, ValueStore store, PermissionHandler permisser) {
@@ -86,10 +88,10 @@ Message: `$who Rose -l`
 
 
 """;
-        return printCommands(group, store, permisser, "/", header);
+        return printCommands(group, store, permisser, "/", header, false);
     }
 
-    public static String printCommands(CommandGroup group, ValueStore store, PermissionHandler permisser, String prefix, String header) {
+    public static String printCommands(CommandGroup group, ValueStore store, PermissionHandler permisser, String prefix, String header, boolean printReturnType) {
         // Command name
         // Description
         // Arguments
@@ -118,7 +120,14 @@ Message: `$who Rose -l`
         result.append(header);
 
         for (ParametricCallable command : commands) {
-            result.append("## ").append(prefix).append(command.getFullPath()).append("\n");
+            result.append("## ").append(prefix).append(command.getFullPath());
+            if (printReturnType) {
+                Type returnType = command.getReturnType();
+                String keyName = Key.keyNameMarkdown(returnType.getTypeName());
+                String url = "arguments#" + keyName;
+                result.append(" - " + MarkupUtil.markdownUrl(keyName, url));
+            }
+            result.append("\n");
             result.append(command.toBasicMarkdown(store, permisser, prefix, true, true));
             result.append("\n---\n\n");
         }
