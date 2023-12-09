@@ -56,9 +56,10 @@ public class WikiAntiLeakPage extends BotWikiGen {
                  - Add your questions to the `questions` tab. See the `Set Example Questions` from the `Poll` menu. Refresh the page if you dont see the menu.
                  - Press the `Create Polls` button from the `Poll` menu
                  - View the created polls in the `nations` tab
+                 - To send the polls via in-game mail, see the {mail_sheet} command
                  
                  Note: Polls will not be created if one already exists in the `nations` tab
-                 """,
+                 """.replace("{mail_sheet}", CM.mail.sheet.cmd.toString()),
                 "# Converting a screenshot to text",
                 commandMarkdownSpoiler(CM.announcement.ocr.cmd),
                 "# Finding a nation from a message or invite",

@@ -11,8 +11,10 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -69,6 +71,10 @@ public class CustomSheet {
     }
 
     public List<String> update(ValueStore store) throws GeneralSecurityException, IOException {
+        return update(store, tabs);
+    }
+
+    public List<String> update(ValueStore store, Map<String, Map.Entry<SelectionAlias, SheetTemplate>> customTabs) throws GeneralSecurityException, IOException {
         SpreadSheet sheet = SpreadSheet.create(sheetId);
         List<String> errors = new ArrayList<>();
 
@@ -78,12 +84,13 @@ public class CustomSheet {
         Map<String, Boolean> tabsCreated = new LinkedHashMap<>();
         Future<?> createTabsFuture = executor.submit(() -> {
             try {
-                tabsCreated.putAll(sheet.updateCreateTabsIfAbsent(tabs.keySet()));
+                tabsCreated.putAll(sheet.updateCreateTabsIfAbsent(customTabs.keySet()));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         });
-        for (Map.Entry<String, Map.Entry<SelectionAlias, SheetTemplate>> entry : this.tabs.entrySet()) {
+        Set<String> tabsUpdated = new HashSet<>();
+        for (Map.Entry<String, Map.Entry<SelectionAlias, SheetTemplate>> entry : customTabs.entrySet()) {
             String tabName = entry.getKey();
             Map.Entry<SelectionAlias, SheetTemplate> value = entry.getValue();
             SelectionAlias alias = value.getKey();
@@ -106,7 +113,7 @@ public class CustomSheet {
                 try {
                     Set<Object> selection = ph.deserializeSelection(store, alias.getSelection());
                     List<String> columns = template.getColumns();
-                    List<Object> header = new ArrayList<>(columns.stream().map(f -> f.replace("{", "").replace("}", "")).toList());
+                    List<Object> header = new ArrayList<>(columns);
 
                     // add header
                     sheet.addRow(tabName, header);
@@ -146,6 +153,7 @@ public class CustomSheet {
                     createTabsFuture.get();
                     sheet.updateWrite(tabName);
                     errors.add("[Tab: `" + tabName + "`] Updated.");
+                    tabsUpdated.add(tabName.toLowerCase(Locale.ROOT));
                 } catch (Exception e) {
                     e.printStackTrace();
                     errors.add("[Tab: `" + tabName + "`] " + e.getMessage());
@@ -161,7 +169,7 @@ public class CustomSheet {
             }
         }
         for (Map.Entry<String, Boolean> entry : tabsCreated.entrySet()) {
-            if (tabs.containsKey(entry.getKey())) {
+            if (tabsUpdated.contains(entry.getKey().toLowerCase(Locale.ROOT))) {
                 continue;
             }
             errors.add("[Tab: `" + entry.getKey() + "`] Exists in the google sheet, but has no template.");

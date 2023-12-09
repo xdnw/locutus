@@ -20,6 +20,7 @@ import link.locutus.discord.commands.manager.v2.command.*;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWMath2Type;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWType2Math;
+import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
@@ -47,6 +48,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -124,22 +126,80 @@ public abstract class Placeholders<T> extends BindingHelper {
         if (selection.toLowerCase(Locale.ROOT).contains(name)) {
             throw new IllegalArgumentException("Selection cannot reference itself: `" + selection + "`");
         }
-        db.getSheetManager(). addSelectionAlias(name, instance.getType(), selection);
+        db.getSheetManager().addSelectionAlias(name, instance.getType(), selection);
         return "Added selection `" + name + "`: `" + selection + "`. Use it with `$" + name + "`";
+    }
+
+    public SheetTemplate getOrCreateTemplate(GuildDB db, List<String> columns, boolean save, AtomicBoolean createdFlag) {
+        outer:
+        for (Map.Entry<String, SheetTemplate> entry : db.getSheetManager().getSheetTemplates(getType()).entrySet()) {
+            SheetTemplate template = entry.getValue();
+            List<String> existing = template.getColumns();
+            // check if existing equals ignorecase columns
+            if (existing.size() == columns.size()) {
+                for (int i = 0; i < existing.size(); i++) {
+                    if (!existing.get(i).equalsIgnoreCase(columns.get(i))) {
+                        continue outer;
+                    }
+                }
+                return template;
+            }
+        }
+        SheetTemplate template = new SheetTemplate(getNextTemplateName(db), getType(), columns);
+        if (save) {
+            db.getSheetManager().addSheetTemplate(template);
+        }
+        createdFlag.set(true);
+        return template;
+    }
+
+    public SelectionAlias getOrCreateSelection(GuildDB db, String selection, boolean save, AtomicBoolean createdFlag) {
+        outer:
+        for (Map.Entry<String, SelectionAlias<T>> entry : db.getSheetManager().getSelectionAliases(getType()).entrySet()) {
+            SelectionAlias alias = entry.getValue();
+            if (alias.getSelection().equalsIgnoreCase(selection)) {
+                return alias;
+            }
+        }
+        String name = getNextSelectionName(db);
+        SelectionAlias result;
+        if (save) {
+            result = db.getSheetManager().addSelectionAlias(name, getType(), selection);
+        } else {
+            result = new SelectionAlias(name, getType(), selection);
+        }
+        createdFlag.set(true);
+        return result;
+    }
+
+    private String getNextTemplateName(GuildDB db) {
+        Set<String> names = db.getSheetManager().getSheetTemplateNames(false);
+        String prefix = PlaceholdersMap.getClassName(getType());
+        for (int i = 0; ; i++) {
+            String name = prefix + (i == 0 ? "" : "_" + i);
+            if (!names.contains(name)) {
+                return name;
+            }
+        }
+    }
+
+    private String getNextSelectionName(GuildDB db) {
+        Set<String> names = db.getSheetManager().getSelectionAliasNames();
+        String prefix = PlaceholdersMap.getClassName(getType());
+        for (int i = 0; ; i++) {
+            String name = prefix + (i == 0 ? "" : "_" + i);
+            if (!names.contains(name)) {
+                return name;
+            }
+        }
     }
 
     protected static <T> String _addColumns(Placeholders<T> placeholders, @Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet, TypedFunction<T, String>... columns) {
         boolean created = false;
         if (sheet == null) {
             created = true;
-            Set<String> names = db.getSheetManager().getSheetTemplateNames(false);
-            for (int i = 0; ; i++) {
-                String name = placeholders.getType().getSimpleName() + (i == 0 ? "" : "_" + i);
-                if (!names.contains(name)) {
-                    sheet = new SheetTemplate(name, placeholders.getType(), "*", new ArrayList<>());
-                    break;
-                }
-            }
+            String name = placeholders.getNextTemplateName(db);
+            sheet = new SheetTemplate(name, placeholders.getType(), new ArrayList<>());
         } else if (!sheet.type.equals(placeholders.getType())) {
             throw new IllegalArgumentException("Sheet type mismatch: `" + sheet.type.getSimpleName() + "` != `" + placeholders.getType() + "`");
         }
@@ -155,7 +215,10 @@ public abstract class Placeholders<T> extends BindingHelper {
             sheet.columns.add(column.getName());
         }
         db.getSheetManager().addSheetTemplate(sheet);
-        return (created ? "Created" : "Updated") + " sheet template named: " + sheet + "\n\nRename via TODO CM REF";
+        return (created ? "Created" : "Updated") + " sheet template named: " + sheet + "\n\n" +
+                "Rename via TODO CM REF\n" +
+                "Add more columns via TODO CM REF\n" +
+                "Remove columns via";
     }
 
     private void registerCustom(Method method, Type type) {

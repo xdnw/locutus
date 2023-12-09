@@ -5800,6 +5800,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     @Override
+    @Command(desc = "The nation name")
     public String getName() {
         return nation;
     }

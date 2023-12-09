@@ -287,6 +287,7 @@ public final class Locutus extends ListenerAdapter {
         eventBus.register(new BankUpdateProcessor());
         eventBus.register(new WarUpdateProcessor());
         eventBus.register(new AllianceListener());
+        eventBus.register(new MailListener(commandManager.getV2().getStore(), commandManager.getV2().getValidators(), commandManager.getV2().getPermisser()));
     }
 
     public EventBus getEventBus() {

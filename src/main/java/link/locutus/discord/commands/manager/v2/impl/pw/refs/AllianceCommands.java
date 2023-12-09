@@ -12,8 +12,8 @@ public class AllianceCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="exponentialCityStrength")
         public static class exponentialCityStrength extends CommandRef {
             public static final exponentialCityStrength cmd = new exponentialCityStrength();
-            public exponentialCityStrength create() {
-                return createArgs();
+            public exponentialCityStrength create(String power) {
+                return createArgs("power", power);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBAlliance.class,method="getAcronym")

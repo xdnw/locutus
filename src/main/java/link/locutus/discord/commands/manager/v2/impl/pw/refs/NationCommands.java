@@ -170,6 +170,20 @@ public class NationCommands {
                 return createArgs();
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="daysSinceLastMissileBuy")
+        public static class daysSinceLastMissileBuy extends CommandRef {
+            public static final daysSinceLastMissileBuy cmd = new daysSinceLastMissileBuy();
+            public daysSinceLastMissileBuy create() {
+                return createArgs();
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="daysSinceLastNukeBuy")
+        public static class daysSinceLastNukeBuy extends CommandRef {
+            public static final daysSinceLastNukeBuy cmd = new daysSinceLastNukeBuy();
+            public daysSinceLastNukeBuy create() {
+                return createArgs();
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="daysSinceLastOffensive")
         public static class daysSinceLastOffensive extends CommandRef {
             public static final daysSinceLastOffensive cmd = new daysSinceLastOffensive();
@@ -734,6 +748,13 @@ public class NationCommands {
         public static class getMoneyLooted extends CommandRef {
             public static final getMoneyLooted cmd = new getMoneyLooted();
             public getMoneyLooted create() {
+                return createArgs();
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getName")
+        public static class getName extends CommandRef {
+            public static final getName cmd = new getName();
+            public getName create() {
                 return createArgs();
             }
         }

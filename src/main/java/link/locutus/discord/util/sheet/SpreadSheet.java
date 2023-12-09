@@ -338,6 +338,19 @@ public class SpreadSheet {
     private Integer defaultTabId = null;
     private String defaultTab = "";
 
+    public String getTitle() {
+        if (service == null) {
+            return spreadsheetId;
+        }
+        try {
+            Spreadsheet spreadsheet = service.spreadsheets().get(spreadsheetId).setFields("properties").execute();
+            return spreadsheet.getProperties().getTitle();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return spreadsheetId;
+    }
+
     public record SheetId(String id, String tabName, Integer tabId) {
     }
 
@@ -812,8 +825,8 @@ public class SpreadSheet {
         if (service == null) {
             return;
         }
-        List<List<Object>> values = valuesByTab.get(tabName);
-        if (values.isEmpty()) {
+        List<List<Object>> values = valuesByTab.get(tabName.toLowerCase(Locale.ROOT));
+        if (values == null || values.isEmpty()) {
             return;
         }
         int width = values.get(0).size();
@@ -868,7 +881,10 @@ public class SpreadSheet {
 
     public Map<String, List<List<Object>>> loadValues(boolean force) {
         if (service != null && (force || this.valuesByTab.isEmpty())) {
-            this.valuesByTab.putAll(fetchAll());
+            for (Map.Entry<String, List<List<Object>>> entry : fetchAll().entrySet()) {
+                String tabNameLower = entry.getKey().toLowerCase(Locale.ROOT);
+                this.valuesByTab.put(tabNameLower, entry.getValue());
+            }
             if (this.valuesByTab.isEmpty()) {
                 this.valuesByTab.put("", new ArrayList<>());
             }
