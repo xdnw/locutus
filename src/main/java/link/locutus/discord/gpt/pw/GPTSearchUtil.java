@@ -41,7 +41,7 @@ public class GPTSearchUtil {
                     fullText = null;
                 } else {
                     fullText = "# /" + command.getFullPath() + "\n" +
-                            command.toBasicMarkdown(store, null, "/", false, false);
+                            command.toBasicMarkdown(store, null, "/", false, false, true);
                 }
 
                 int fullTextLength = 0;

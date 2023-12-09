@@ -31,5 +31,5 @@ public interface ICommand extends CommandCallable {
         return new JSONObject(full).toString();
     }
 
-    String toBasicMarkdown(ValueStore store, PermissionHandler permisser, String prefix, boolean spoiler, boolean links);
+    String toBasicMarkdown(ValueStore store, PermissionHandler permisser, String prefix, boolean spoiler, boolean links, boolean useFullLinks);
 }

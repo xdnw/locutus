@@ -501,12 +501,13 @@ public class ParametricCallable implements ICommand {
     }
 
     @Override
-    public String toBasicMarkdown(ValueStore store, PermissionHandler permisser, String prefix, boolean spoiler, boolean links) {
+    public String toBasicMarkdown(ValueStore store, PermissionHandler permisser, String prefix, boolean spoiler, boolean links, boolean useFullLinks) {
         StringBuilder result = new StringBuilder();
         Map<String, String> permissionInfo = new LinkedHashMap<>();
 
         Method method = getMethod();
         if (permisser != null) {
+            String baseUrl = (useFullLinks ? "https://t.ly/JvbjX" : "permissions") + "#";
             for (Annotation permAnnotation : method.getDeclaredAnnotations()) {
                 Key<Object> permKey = Key.of(boolean.class, permAnnotation);
                 Parser parser = permisser.get(permKey);
@@ -544,9 +545,9 @@ public class ParametricCallable implements ICommand {
                         }
                     }
 
-                    String title = permAnnotation.annotationType().getSimpleName().replaceFirst("(?i)permission", "") + "(" + String.join(", ", permValues) + ")";
-                    String body = parser.getDescription();
-                    permissionInfo.put(title, body);
+                    String simpleName = permAnnotation.annotationType().getSimpleName().replaceFirst("(?i)permission", "");
+                    String title = simpleName + "(" + String.join(", ", permValues) + ")";
+                    permissionInfo.put(title, baseUrl + simpleName.toLowerCase(Locale.ROOT));
                 }
             }
             if (permissionInfo.isEmpty()) {
@@ -565,7 +566,7 @@ public class ParametricCallable implements ICommand {
         if (params.isEmpty()) {
             result.append("`This command has no arguments`\n\n");
         } else {
-            String typeUrlBase = "https://t.ly/maKT";
+            String typeUrlBase = (useFullLinks ? "https://t.ly/maKT" : "arguments") + "#";
 
             result.append("**Arguments:**\n\n");
             for (ParameterData parameter : params) {
@@ -596,7 +597,7 @@ public class ParametricCallable implements ICommand {
                 String keyName = key.toSimpleString();
                 if (spoiler) keyName = StringEscapeUtils.escapeHtml4(keyName.replace("[", "\\[").replace("]", "\\]"));
                 if (links) {
-                    String typeLink = MarkupUtil.markdownUrl(keyName, typeUrlBase + "#" + MarkupUtil.pathName(key.toSimpleString().toLowerCase(Locale.ROOT)));
+                    String typeLink = MarkupUtil.markdownUrl(keyName, typeUrlBase + MarkupUtil.pathName(key.toSimpleString().toLowerCase(Locale.ROOT)));
                     result.append("`" + argFormat + "`").append(" - ").append(typeLink);
                 } else {
                     result.append("`" + argFormat + "`").append(" - ").append(keyName);
@@ -613,11 +614,10 @@ public class ParametricCallable implements ICommand {
         if (!permissionInfo.isEmpty()) {
             result.append("**Permission:**\n\n");
             for (Map.Entry<String, String> entry : permissionInfo.entrySet()) {
-                if (spoiler && false) {
-                    result.append(MarkupUtil.spoiler(entry.getKey(), MarkupUtil.markdownToHTML(entry.getValue())) + "\n");
+                if (links) {
+                    result.append("- " + MarkupUtil.markdownUrl(entry.getKey(), entry.getValue()) + "\n");
                 } else {
-                    result.append("- `" + entry.getKey() + "`: ");
-                    result.append(entry.getValue() + "\n");
+                    result.append("- " + entry.getKey() + "\n");
                 }
             }
         }
