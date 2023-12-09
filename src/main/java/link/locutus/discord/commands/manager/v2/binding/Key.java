@@ -42,7 +42,11 @@ public class Key<T> {
 
     public String keyNameMarkdown() {
         String keyStr = toSimpleString();
-        return keyStr.replace("[", "\\[").replace("]", "\\]").replaceAll("([<|, ])([a-zA-Z_0-9]+)([>|, ])", "$1[$2](#$2)$3");
+        return keyNameMarkdown(keyStr);
+    }
+
+    public static String keyNameMarkdown(String input) {
+        return StringMan.classNameToSimple(input.replace("[", "\\[").replace("]", "\\]").replaceAll("([<|, ])([a-zA-Z_0-9]+)([>|, ])", "$1[$2](#$2)$3"));
     }
 
 
