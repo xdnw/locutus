@@ -122,7 +122,7 @@ public class HelpCommands {
 
     @Command(desc = "Show the description, usage information and permissions for a command")
     public String command(@Me IMessageIO io, ValueStore store, PermissionHandler permisser, ICommand command) {
-        String body = command.toBasicMarkdown(store, permisser, "/", false, true);
+        String body = command.toBasicMarkdown(store, permisser, "/", false, true, true);
         String title = "/" + command.getFullPath();
         if (body.length() > 4096) {
             return "#" + title + "\n" + body;
@@ -147,7 +147,7 @@ public class HelpCommands {
 
     @Command(desc = "Show the description, usage information and permissions for a nation placeholder")
     public String nation_placeholder(@Me IMessageIO io, NationPlaceholders placeholders, ValueStore store, PermissionHandler permisser, @NationAttributeCallable ParametricCallable command) {
-        String body = command.toBasicMarkdown(store, permisser, "/", false, true);
+        String body = command.toBasicMarkdown(store, permisser, "/", false, true, true);
         String title = "/" + command.getFullPath();
         if (body.length() > 4096) {
             return "#" + title + "\n" + body;

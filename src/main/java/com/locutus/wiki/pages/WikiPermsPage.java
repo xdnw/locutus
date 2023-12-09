@@ -2,7 +2,9 @@ package com.locutus.wiki.pages;
 
 import com.locutus.wiki.BotWikiGen;
 import com.locutus.wiki.CommandWikiPages;
+import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 
 public class WikiPermsPage extends BotWikiGen {
     public WikiPermsPage(CommandManager2 manager) {
@@ -19,7 +21,7 @@ public class WikiPermsPage extends BotWikiGen {
 
     @Override
     public String generateMarkdown() {
-        return getDescription() + "\n\n---\n\n" + CommandWikiPages.printParsers(getManager().getPermisser());
+        return getDescription() + "\n\n---\n\n" + CommandWikiPages.printPermissions(getManager().getPermisser());
 
     }
 }

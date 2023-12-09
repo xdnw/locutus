@@ -1,20 +1,29 @@
 package com.locutus.wiki;
 
 import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.MethodParser;
 import link.locutus.discord.commands.manager.v2.binding.Parser;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.CommandGroup;
 import link.locutus.discord.commands.manager.v2.command.ParametricCallable;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePermission;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.config.yaml.Config;
+import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.StringMan;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 public class CommandWikiPages {
 
@@ -119,17 +128,65 @@ Message: `$who Rose -l`
 
         for (ParametricCallable command : commands) {
             result.append("## ").append(prefix).append(command.getFullPath()).append("\n");
-            result.append(command.toBasicMarkdown(store, permisser, prefix, true, true));
+            result.append(command.toBasicMarkdown(store, permisser, prefix, true, true, false));
             result.append("\n---\n\n");
         }
 
         return result.toString();
     }
 
+    private static String printPerms(Parser parser) {
+        Annotation permAnnotation = parser.getKey().getAnnotations()[0];
 
-    public static String printParsers(ValueStore store) {
-        StringBuilder result = new StringBuilder();
+        String typeUrlBase = "arguments";
 
+        List<String> permValues = new ArrayList<>();
+
+        for (Method permMeth : permAnnotation.annotationType().getDeclaredMethods()) {
+            Object def = permMeth.getDefaultValue();
+            Class<?> retType = permMeth.getReturnType();
+
+            String simpleTypeName;
+            String modifier = "";
+            Class componentType;
+            // if array
+            if (retType.isArray()) {
+                componentType = retType.getComponentType();
+                simpleTypeName = componentType.getSimpleName();
+                modifier = "\\[\\]";
+            } else {
+                componentType = retType;
+                simpleTypeName = retType.getSimpleName();
+            }
+            simpleTypeName = MarkupUtil.markdownUrl(simpleTypeName + modifier, typeUrlBase + "#" + MarkupUtil.pathName(simpleTypeName.toLowerCase(Locale.ROOT)));
+            String desc;
+            // if componentType is enum, list options
+            if (componentType.isEnum()) {
+                List<String> enumValues = new ArrayList<>();
+                for (Object enumConstant : componentType.getEnumConstants()) {
+                    enumValues.add(((Enum<?>) enumConstant).name());
+                }
+                simpleTypeName += " | Options: " + String.join(", ", enumValues);
+            }
+            desc = "`" + permMeth.getName() + "`: " + simpleTypeName;
+
+            Command comment = permMeth.getAnnotation(Command.class);
+            if (comment != null) {
+                // in markdown quote
+                desc = "- " + desc + "\n> " + StringMan.join(comment.desc().split("\n"), "\n> ");
+            }
+            permValues.add(desc);
+        }
+
+        String title = "## " + permAnnotation.annotationType().getSimpleName().replaceFirst("(?i)permission", "");
+        String body = parser.getDescription();
+        if (!permValues.isEmpty()) {
+            body += "\n\n**Arguments:**\n\n" + StringMan.join(permValues, "\n\n");
+        }
+        return title + "\n" + body;
+    }
+
+    private static List<Map.Entry<Key, Parser>> parsersSorted(ValueStore store) {
         Map<Key, Parser> parsers = store.getParsers();
         List<Map.Entry<Key, Parser>> parsersList = new ArrayList<>(parsers.entrySet());
         // sort
@@ -139,6 +196,25 @@ Message: `$who Rose -l`
             String o2Str = o2.getKey().toSimpleString();
             return o1Str.compareTo(o2Str);
         });
+        return parsersList;
+    }
+
+
+    public static String printPermissions(ValueStore store) {
+        StringBuilder result = new StringBuilder();
+        List<Map.Entry<Key, Parser>> parsersList = parsersSorted(store);
+
+        for (Map.Entry<Key, Parser> entry : parsersList) {
+            Parser parser = entry.getValue();
+            result.append(printPerms(parser));
+            result.append("\n\n---\n\n");
+        }
+        return result.toString();
+    }
+
+    public static String printParsers(ValueStore store) {
+        StringBuilder result = new StringBuilder();
+        List<Map.Entry<Key, Parser>> parsersList = parsersSorted(store);
 
         for (Map.Entry<Key, Parser> entry : parsersList) {
             Parser parser = entry.getValue();

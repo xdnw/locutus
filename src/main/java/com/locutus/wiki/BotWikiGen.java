@@ -55,7 +55,7 @@ public abstract class BotWikiGen {
     public String commandMarkdownSpoiler(CommandRef ref, boolean prefixDescription) {
         String title = "<bold><kbd>" + ref.toSlashCommand(false) + "</kbd><br></bold>";
         ParametricCallable callable = ref.getCallable(true);
-        String body = MarkupUtil.markdownToHTML(callable.toBasicMarkdown(manager.getStore(), null, "/", false, true)) + "\n\n---\n\n";
+        String body = MarkupUtil.markdownToHTML(callable.toBasicMarkdown(manager.getStore(), null, "/", false, true, false)) + "\n\n---\n\n";
         String spoiler = MarkupUtil.spoiler(title, body);
         if (prefixDescription) {
             String desc = callable.simpleDesc().trim();
@@ -69,7 +69,7 @@ public abstract class BotWikiGen {
     }
 
     public String commandMarkdown(CommandRef ref) {
-        return "### " + ref.toSlashCommand(true) + "\n" + ref.getCallable(true).toBasicMarkdown(manager.getStore(), null, "/", false, true) + "\n\n---\n\n";
+        return "### " + ref.toSlashCommand(true) + "\n" + ref.getCallable(true).toBasicMarkdown(manager.getStore(), null, "/", false, true, false) + "\n\n---\n\n";
     }
 
 

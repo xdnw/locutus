@@ -1457,7 +1457,7 @@ public class UtilityCommands {
                 CM.nation.score score = CM.nation.score.cmd.create(nation.getNationUrl(), null, null, null, null, null, "", "", "", "", null, "");
                 msg = msg.modal(CommandBehavior.EPHEMERAL, score, "Score");
                 //Revenue
-                CM.nation.revenue revenue = CM.nation.revenue.cmd.create(nation.getNationUrl(), null, null);
+                CM.nation.revenue revenue = CM.nation.revenue.cmd.create(nation.getNationUrl(), null, null, null, null, null);
                 msg = msg.commandButton(CommandBehavior.EPHEMERAL, revenue, "Revenue");
                 //WarInfo
                 CM.war.info warInfo = CM.war.info.cmd.create(nation.getNationUrl());
