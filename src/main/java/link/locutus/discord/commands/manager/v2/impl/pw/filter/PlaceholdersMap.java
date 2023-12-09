@@ -1107,7 +1107,7 @@ public class PlaceholdersMap {
         };
     }
 
-    private Set<BankDB.TaxDeposit> getTaxes(ValueStore store, Set<Integer> ids, Set<Integer> taxIds, Set<Integer> nations) {
+    private Set<BankDB.TaxDeposit> getTaxes(ValueStore store, Set<Integer> ids, Set<Integer> taxIds, Set<Integer> nations, Set<Integer> aaIds) {
         BankDB bankDb = Locutus.imp().getBankDB();
         Predicate<BankDB.TaxDeposit> canView = getCanView(store);
         Set<BankDB.TaxDeposit> result = new ObjectLinkedOpenHashSet<>();
@@ -1121,6 +1121,9 @@ public class PlaceholdersMap {
         if (nations != null && !nations.isEmpty()) {
             bankDb.getTaxesByNations(nations).stream().filter(canView).forEach(result::add);
         }
+        if (aaIds != null && !aaIds.isEmpty()) {
+            bankDb.getTaxesByAA(aaIds).stream().filter(canView).forEach(result::add);
+        }
         return result;
     }
 
@@ -1128,7 +1131,14 @@ public class PlaceholdersMap {
         return new SimplePlaceholders<BankDB.TaxDeposit>(BankDB.TaxDeposit.class, store, validators, permisser,
                 "TODO CM REF",
                 (ThrowingTriFunction<Placeholders<BankDB.TaxDeposit>, ValueStore, String, Set<BankDB.TaxDeposit>>) (inst, store, input) -> {
-                    Predicate<BankDB.TaxDeposit> canView = getCanView(store);
+                    if (input.equalsIgnoreCase("*")) {
+                        GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
+                        Set<Integer> aaIds = db.getAllianceIds();
+                        if (aaIds.isEmpty()) {
+                            return new HashSet<>();
+                        }
+                        return getTaxes(store, null, null, null, aaIds);
+                    }
                     if (SpreadSheet.isSheet(input)) {
                         Set<Integer> ids = new IntOpenHashSet();
                         Set<Integer> taxIds = new IntOpenHashSet();
@@ -1141,21 +1151,21 @@ public class PlaceholdersMap {
                             }
                             return null;
                         });
-                        return getTaxes(store, ids, taxIds, nations);
+                        return getTaxes(store, ids, taxIds, nations, null);
                     }
                     if (MathMan.isInteger(input)) {
-                        return getTaxes(store, Set.of(Integer.parseInt(input)), null, null);
+                        return getTaxes(store, Set.of(Integer.parseInt(input)), null, null, null);
                     }
                     if (input.contains("tax_id=")) {
                         int id = Integer.parseInt(input.substring(input.indexOf('=') + 1));
-                        return getTaxes(store, null, Set.of(id), null);
+                        return getTaxes(store, null, Set.of(id), null, null);
                     }
                     Guild guild = (Guild) store.getProvided(Key.of(Guild.class, Me.class), false);
                     User author = (User) store.getProvided(Key.of(User.class, Me.class), false);
                     DBNation me = (DBNation) store.getProvided(Key.of(DBNation.class, Me.class), false);
                     Set<DBNation> nations = PWBindings.nations(null, guild, input, author, me);
                     Set<Integer> ids = nations.stream().map(DBNation::getId).collect(Collectors.toSet());
-                    return getTaxes(store, null, null, ids);
+                    return getTaxes(store, null, null, ids, null);
 
                 }, (ThrowingTriFunction<Placeholders<BankDB.TaxDeposit>, ValueStore, String, Predicate<BankDB.TaxDeposit>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;

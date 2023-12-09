@@ -6,7 +6,9 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.entities.BankRecord;
+import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.TaxBracket;
@@ -49,6 +51,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -457,6 +460,71 @@ public class BankDB extends DBMainV3 {
             this.tax_id = tax_id;
         }
 
+        @Command(desc = "The alliance id of the tax deposit")
+        public int getAllianceId() {
+            return allianceId;
+        }
+
+        @Command(desc = "Get the date as unix timestamp")
+        public long getDateMs() {
+            return date;
+        }
+
+        @Command(desc = "Get the date formatted as dd/mm/yyyy hh")
+        public String getDateStr() {
+            return TimeUtil.DD_MM_YYYY_HH.format(new Date(date));
+        }
+
+        @Command(desc = "Get id of the tax record")
+        public int getId() {
+            return index;
+        }
+
+        @Command(desc = "Get the nation ID")
+        public int getNationId() {
+            return nationId;
+        }
+
+        @Command(desc = "Get the money rate")
+        public int getMoneyRate() {
+            return moneyRate;
+        }
+
+        @Command(desc = "Get the resource rate")
+        public int getResourceRate() {
+            return resourceRate;
+        }
+
+        @Command(desc = "Get the resources array")
+        public double[] getResourcesArray() {
+            return resources;
+        }
+
+        @Command(desc = "Get the resources map")
+        public Map<ResourceType, Double> getResourcesMap() {
+            return PnwUtil.resourcesToMap(resources);
+        }
+
+        @Command(desc = "Get the resources json")
+        public String getResourcesJson() {
+            return PnwUtil.resourcesToString(resources);
+        }
+
+        @Command(desc = "Get the internal money rate")
+        public int getInternalMoneyRate() {
+            return internalMoneyRate;
+        }
+
+        @Command(desc = "Get the internal resource rate")
+        public int getInternalResourceRate() {
+            return internalResourceRate;
+        }
+
+        @Command(desc = "Get the tax ID")
+        public int getTaxId() {
+            return tax_id;
+        }
+
         public static TaxDeposit of(ResultSet rs) throws SQLException {
             int money = rs.getInt("moneyrate");
             int rss = rs.getInt("resoucerate");
@@ -857,6 +925,16 @@ public class BankDB extends DBMainV3 {
     public List<TaxDeposit> getTaxesByAA(int alliance) {
         List<TaxDeposit> list = new ArrayList<>();
         ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.ALLIANCE.eq(alliance)).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
+        return list;
+    }
+
+    public List<TaxDeposit> getTaxesByAA(Set<Integer> allianceIds) {
+        if (allianceIds.isEmpty()) return new ArrayList<>();
+        if (allianceIds.size() == 1) {
+            return getTaxesByAA(allianceIds.iterator().next());
+        }
+        List<TaxDeposit> list = new ArrayList<>();
+        ctx().selectFrom(TAX_DEPOSITS_DATE).where(TAX_DEPOSITS_DATE.ALLIANCE.in(allianceIds)).fetch().forEach(rs -> list.add(TaxDeposit.of(rs)));
         return list;
     }
 
