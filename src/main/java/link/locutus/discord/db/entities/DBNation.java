@@ -3150,7 +3150,15 @@ public class DBNation implements NationOrAlliance {
     public int getAgeDays() {
         if (getDate() == 0) return 0;
         return (int) TimeUnit.MILLISECONDS.toDays((getSnapshot() != null ? getSnapshot() : System.currentTimeMillis()) - date);
-//        return (int) (TimeUnit.SECONDS.toDays(ZonedDateTime.now(ZoneOffset.UTC).toEpochSecond()) - getDate() / 65536);
+    }
+
+    @Command(desc = "Days since last city")
+    public int getDaysSinceLastCity() {
+        int min = getAgeDays();
+        for (Map.Entry<Integer, JavaCity> entry : getCityMap(false).entrySet()) {
+            min = Math.min(min, entry.getValue().getAge());
+        }
+        return min;
     }
 
     // Mock

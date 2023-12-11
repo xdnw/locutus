@@ -86,10 +86,14 @@ public class CommandManager2 {
         new PermissionBinding().register(permisser);
 
         this.placeholders = new PlaceholdersMap(store, validators, permisser);
-
+        // Register bindings
         for (Class<?> type : placeholders.getTypes()) {
             Placeholders<?> ph = placeholders.get(type);
             ph.register(store);
+        }
+        // Initialize commands (staged after bindings as there might be cross dependency)
+        for (Class<?> type : placeholders.getTypes()) {
+            placeholders.get(type).init();
         }
 
         this.commands = CommandGroup.createRoot(store, validators);

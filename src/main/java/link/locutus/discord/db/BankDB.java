@@ -9,6 +9,7 @@ import link.locutus.discord.apiv1.entities.BankRecord;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv3.PoliticsAndWarV3;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.bindings.TypedFunction;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.entities.*;
 import link.locutus.discord.db.entities.TaxBracket;
@@ -458,6 +459,21 @@ public class BankDB extends DBMainV3 {
             this.internalMoneyRate = internalMoneyRate;
             this.internalResourceRate = internalResourceRate;
             this.tax_id = tax_id;
+        }
+
+        @Command(desc = "Get the amount of a resource for this tax record")
+        public double getAmount(ResourceType type) {
+            return resources[type.ordinal()];
+        }
+
+        @Command(desc = "Get an attribute for the nation of this tax record")
+        public String getNationInfo(TypedFunction<DBNation, String> nationFunction) {
+            return nationFunction.apply(DBNation.getOrCreate(nationId));
+        }
+
+        @Command(desc = "Get an attribute for the alliance of this tax record")
+        public String getAllianceInfo(TypedFunction<DBAlliance, String> allianceFunction) {
+            return allianceFunction.apply(DBAlliance.getOrCreate(allianceId));
         }
 
         @Command(desc = "The alliance id of the tax deposit")

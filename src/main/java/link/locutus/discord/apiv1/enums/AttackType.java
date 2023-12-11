@@ -2,6 +2,7 @@ package link.locutus.discord.apiv1.enums;
 
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.db.entities.DBNation;
 
 import java.util.*;
@@ -177,6 +178,44 @@ public enum AttackType {
                 }
             }
         }
+    }
+
+    @Command(desc = "Get the minimum unit casualties for the attacker.")
+    public int getAttackerMinCasualties(MilitaryUnit unit, DBNation attacker, DBNation defender, @Default("IMMENSE_TRIUMPH") SuccessType victory, @Default("raid") WarType warType, @Default("false") boolean defAirControl, @Default("false") boolean attAirControl, @Default("false") boolean defFortified, @Default("true") boolean equipAttackerSoldiers, @Default("true") boolean equipDefenderSoldiers) {
+        return getCasualties(attacker, defender, victory, warType, defAirControl, attAirControl, defFortified, equipAttackerSoldiers, equipDefenderSoldiers)
+                .getKey().getOrDefault(unit, Map.entry(0, 0)).getKey();
+    }
+
+    @Command(desc = "Get the maximum unit casualties for the attacker.")
+    public int getAttackerMaxCasualties(MilitaryUnit unit, DBNation attacker, DBNation defender, @Default("IMMENSE_TRIUMPH") SuccessType victory, @Default("raid") WarType warType, @Default("false") boolean defAirControl, @Default("false") boolean attAirControl, @Default("false") boolean defFortified, @Default("true") boolean equipAttackerSoldiers, @Default("true") boolean equipDefenderSoldiers) {
+        return getCasualties(attacker, defender, victory, warType, defAirControl, attAirControl, defFortified, equipAttackerSoldiers, equipDefenderSoldiers)
+                .getKey().getOrDefault(unit, Map.entry(0, 0)).getValue();
+    }
+
+    @Command(desc = "Get the average unit casualties for the attacker.")
+    public int getAttackerAvgCasualties(MilitaryUnit unit, DBNation attacker, DBNation defender, @Default("IMMENSE_TRIUMPH") SuccessType victory, @Default("raid") WarType warType, @Default("false") boolean defAirControl, @Default("false") boolean attAirControl, @Default("false") boolean defFortified, @Default("true") boolean equipAttackerSoldiers, @Default("true") boolean equipDefenderSoldiers) {
+        Map.Entry<Integer, Integer> pair = getCasualties(attacker, defender, victory, warType, defAirControl, attAirControl, defFortified, equipAttackerSoldiers, equipDefenderSoldiers)
+                .getKey().getOrDefault(unit, Map.entry(0, 0));
+        return (int) Math.round((pair.getKey() + pair.getValue()) / 2d);
+    }
+
+    @Command(desc = "Get the minimum unit casualties for the defender.")
+    public int getDefenderMinCasualties(MilitaryUnit unit, DBNation attacker, DBNation defender, @Default("IMMENSE_TRIUMPH") SuccessType victory, @Default("raid") WarType warType, @Default("false") boolean defAirControl, @Default("false") boolean attAirControl, @Default("false") boolean defFortified, @Default("true") boolean equipAttackerSoldiers, @Default("true") boolean equipDefenderSoldiers) {
+        return getCasualties(attacker, defender, victory, warType, defAirControl, attAirControl, defFortified, equipAttackerSoldiers, equipDefenderSoldiers)
+                .getValue().getOrDefault(unit, Map.entry(0, 0)).getKey();
+    }
+
+    @Command(desc = "Get the maximum unit casualties for the defender.")
+    public int getDefenderMaxCasualties(MilitaryUnit unit, DBNation attacker, DBNation defender, @Default("IMMENSE_TRIUMPH") SuccessType victory, @Default("raid") WarType warType, @Default("false") boolean defAirControl, @Default("false") boolean attAirControl, @Default("false") boolean defFortified, @Default("true") boolean equipAttackerSoldiers, @Default("true") boolean equipDefenderSoldiers) {
+        return getCasualties(attacker, defender, victory, warType, defAirControl, attAirControl, defFortified, equipAttackerSoldiers, equipDefenderSoldiers)
+                .getValue().getOrDefault(unit, Map.entry(0, 0)).getValue();
+    }
+
+    @Command(desc = "Get the average unit casualties for the defender.")
+    public int getDefenderAvgCasualties(MilitaryUnit unit, DBNation attacker, DBNation defender, @Default("IMMENSE_TRIUMPH") SuccessType victory, @Default("raid") WarType warType, @Default("false") boolean defAirControl, @Default("false") boolean attAirControl, @Default("false") boolean defFortified, @Default("true") boolean equipAttackerSoldiers, @Default("true") boolean equipDefenderSoldiers) {
+        Map.Entry<Integer, Integer> pair = getCasualties(attacker, defender, victory, warType, defAirControl, attAirControl, defFortified, equipAttackerSoldiers, equipDefenderSoldiers)
+                .getValue().getOrDefault(unit, Map.entry(0, 0));
+        return (int) Math.round((pair.getKey() + pair.getValue()) / 2d);
     }
 
     public Map.Entry<Map<MilitaryUnit, Map.Entry<Integer, Integer>>, Map<MilitaryUnit, Map.Entry<Integer, Integer>>> getCasualties(DBNation attacker, DBNation defender, SuccessType victory, WarType type, boolean defAirControl, boolean attAirControl, boolean defFortified, boolean equipAttackerSoldiers, boolean equipDefenderSoldiers) {
@@ -430,6 +469,11 @@ public enum AttackType {
         return valueOf(input);
     }
 
+    @Command(desc = "Get the unit type at the given index")
+    public MilitaryUnit getUnitType(int index) {
+        return units.length > index ? units[index] : null;
+    }
+
     public MilitaryUnit[] getUnits() {
         return units;
     }
@@ -460,6 +504,7 @@ public enum AttackType {
         }
     }
 
+    @Command(desc = "If this attack is one that can damage the enemy")
     public boolean canDamage() {
         return this == FORTIFY || this == PEACE;
     }
