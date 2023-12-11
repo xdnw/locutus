@@ -29,17 +29,21 @@ public class WikiCustomSheetsPage extends BotWikiGen {
                         - Add it as a tab in a custom sheet
                         - Update the sheet's tabs using a command
                         - Update your selection or columns at any time
+                        
+                        `Note: Ensure the bot owner has edit access to a sheet if using a custom url`
+                        
+                        email: `jessepaleg@gmail.com` 
                         """,
                 "# Premade sheet templates/selections",
                 "To be added. NOT currently working with custom sheet templates. For now: See the various disunified sheet commands below",
                 MarkupUtil.spoiler("Internal Affairs Sheets",
-                        MarkupUtil.markdownToHTML(StringMan.join(Arrays.asList(
+                MarkupUtil.markdownToHTML(StringMan.join(Arrays.asList(
                 CM.audit.sheet.cmd.toString(),
                 CM.sheets_ia.daychange.cmd.toString(),
                 CM.sheets_ia.ActivitySheet.cmd.toString(),
                 CM.sheets_ia.ActivitySheetFromId.cmd.toString()), "\n"))),
-                        MarkupUtil.spoiler("Milcom Sheets",
-                                MarkupUtil.markdownToHTML(StringMan.join(Arrays.asList(
+                MarkupUtil.spoiler("Milcom Sheets",
+                MarkupUtil.markdownToHTML(StringMan.join(Arrays.asList(
                 CM.sheets_milcom.MMRSheet.cmd.toString(),
                 CM.sheets_milcom.warchestSheet.cmd.toString(),
                 CM.sheets_milcom.warSheet.cmd.toString(),
@@ -60,7 +64,7 @@ public class WikiCustomSheetsPage extends BotWikiGen {
                 CM.sheets_milcom.lootValueSheet.cmd.toString(),
                 CM.sheets_milcom.DeserterSheet.cmd.toString()), "\n"))),
                 MarkupUtil.spoiler("Econ Sheets",
-                        MarkupUtil.markdownToHTML(StringMan.join(Arrays.asList(
+                MarkupUtil.markdownToHTML(StringMan.join(Arrays.asList(
                 CM.escrow.view_sheet.cmd.toString(),
                 CM.sheets_econ.warchestSheet.cmd.toString(),
                 CM.sheets_econ.stockpileSheet.cmd.toString(),
@@ -76,16 +80,16 @@ public class WikiCustomSheetsPage extends BotWikiGen {
                 CM.sheets_econ.getIngameTransactions.cmd.toString(),
                 CM.sheets_econ.IngameNationTransfersByReceiver.cmd.toString(),
                 CM.sheets_econ.IngameNationTransfersBySender.cmd.toString(),
-
                 CM.sheets_econ.warReimburseByNationCsv.cmd.toString()), "\n"))),
                 MarkupUtil.spoiler("General sheets",
-                        MarkupUtil.markdownToHTML(StringMan.join(Arrays.asList(
+                MarkupUtil.markdownToHTML(StringMan.join(Arrays.asList(
                 CM.nation.sheet.NationSheet.cmd.toString(),
                 CM.sheets_ia.AllianceSheet.cmd.toString(),
                 CM.alliance.stats.allianceNationsSheet.cmd.toString(),
                 CM.report.sheet.generate.cmd.toString(),
                 CM.report.loan.sheet.cmd.toString()), "\n"))),
                 "## List and configure",
+                "List and set the worksheet or tab used for the above commands",
                 commandMarkdownSpoiler(CM.settings_sheet.list.cmd),
                 commandMarkdownSpoiler(CM.settings_sheet.set.cmd),
                 "# Statistic sheets",
@@ -96,9 +100,24 @@ public class WikiCustomSheetsPage extends BotWikiGen {
                 "See a page below for syntax and a list of supported filters",
                 "## Selection types",
                 "- " + Locutus.cmd().getV2().getPlaceholders().getTypes().stream()
-                        .map(f -> MarkupUtil.markdownUrl(PlaceholdersMap.getClassName(f), "../wiki/" + PlaceholdersMap.getClassName(f).toLowerCase(Locale.ROOT) + "_placeholders"))
+                        .map(f -> MarkupUtil.markdownUrl(PlaceholdersMap.getClassName(f), PlaceholdersMap.getClassName(f).toLowerCase(Locale.ROOT) + "_placeholders"))
                         .sorted()
                         .collect(Collectors.joining("\n- ")),
+                "## Tab autofill",
+                "Populate a sheet's tabs based on the first row column",
+                """
+                - Each tab can have 1 selection. See the list above for supported types
+                - Enter placeholders in the first row, for example, `{nation}` is a placeholder for a nation selection.
+                - Placeholders can be combined with formulas. 
+                - Use `{row}` or `{column}` to reference the current row or column
+                ![Column Placeholder](column_placeholders.png)
+                - The tab name **must** be the type, colon, followed by the comma-separated selection
+                ![Tab Selection](tab_selection.png)
+                
+                Run the command:
+                """,
+                commandMarkdownSpoiler(CM.sheet_custom.auto.cmd),
+                // Ensure the bot owner has edit access to a sheet
                 "## Selection alias",
                 "A name you set for a selection",
                 "To reference your named selection, use e.g. `$myAlias` or `select:myAlias`",

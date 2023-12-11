@@ -72,14 +72,15 @@ public abstract class Placeholders<T> extends BindingHelper {
 
         this.commands = CommandGroup.createRoot(store, validators);
         this.store = store;
-        this.commands.registerCommandsClass(type);
-//        this.commands.registerCommands(this);
-
         this.math2Type = new SimpleValueStore();
         this.type2Math = new SimpleValueStore();
+    }
 
+    public Placeholders<T> init() {
+        this.commands.registerCommandsClass(getType());
         new PWMath2Type().register(math2Type);
         new PWType2Math().register(type2Math);
+        return this;
     }
 
     public Class<T> getType() {

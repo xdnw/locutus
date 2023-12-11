@@ -425,7 +425,7 @@ public class CustomSheetCommands {
             Placeholders ph = phMap.get(selection.getType());
 
             List<List<Object>> row = sheet.fetchRange(tabName, "1:1");
-            List<String> header = row.isEmpty() ? null : row.get(0).stream().map(o -> o == null ? "" : o.toString()).toList();
+            List<String> header = row == null || row.isEmpty() ? null : row.get(0).stream().map(o -> o == null ? "" : o.toString()).toList();
             if (header == null || header.isEmpty()) {
                 errors.add("Tab `" + tabName + "` has no header row");
             } else {
