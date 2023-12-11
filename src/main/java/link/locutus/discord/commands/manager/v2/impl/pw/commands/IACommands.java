@@ -436,7 +436,8 @@ public class IACommands {
     @IsAlliance
     public String hasNotBoughtSpies(@Me IMessageIO channel, @Me GuildDB db, Set<DBNation> nations) {
         for (DBNation nation : nations) {
-            if (!db.isAllianceId(nation.getAlliance_id()) || nation.getPosition() < 1) return "Nation is not a member: " + nation.getNationUrl() + "(see `#position>1,<args>`,";
+            if (!db.isAllianceId(nation.getAlliance_id()) || nation.getPosition() < 1) return "Nation is not a member: " + nation.getMarkdownUrl() + "(see `#position>1,<args>`\n" +
+                    "This guild is registered to alliances: " + db.getAllianceIds();
         }
 
 //        Set<Integer> result = new SimpleNationList(nations).updateSpies(false);
@@ -452,11 +453,6 @@ public class IACommands {
         List<DBNation> lacking = new ArrayList<>();
         for (DBNation nation : nations) {
             int spies = nation.getSpies();
-//            if (!result.contains(nation.getNation_id()) || spies == null) {
-//                errors.add(nation.getNation() + "\t" + nation.getUrl() + "\t" + "UNABLE TO UPDATE SPIES");
-//                notUpdated.add(nation);
-//                continue;
-//            }
             int spyCap = nation.getSpyCap();
             if (spies >= spyCap) continue;
 
@@ -480,7 +476,7 @@ public class IACommands {
         Set<Integer> lackingIds = lacking.stream().map(DBNation::getNation_id).collect(Collectors.toSet());
 
         StringBuilder response = new StringBuilder("**Nations lacking spies**");
-        response.append("\nIDS: " + StringMan.getString(lackingIds));
+        response.append("\nIDs: " + StringMan.getString(lackingIds));
         for (DBNation nation : lacking) {
             response.append("\n" + nation.getNation() + ": " + nation.getSpies() + "/" + nation.getSpyCap());
         }

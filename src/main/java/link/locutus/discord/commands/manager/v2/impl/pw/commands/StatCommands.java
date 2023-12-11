@@ -581,9 +581,23 @@ public class StatCommands {
                                      @Arg("Compare the sum of each nation's attribute in the coalition instead of average") @Switch("t") boolean total) throws IOException {
         Collection<DBNation> coalition1Nations = coalition1.getNations();
         Collection<DBNation> coalition2Nations = coalition2.getNations();
+        int num1 = coalition1Nations.size();
+        int num2 = coalition2Nations.size();
         coalition1Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
         coalition2Nations.removeIf(f -> f.getVm_turns() != 0 || (!includeApplicants && f.getPosition() <= 1) || (!includeInactives && f.getActive_m() > 4880));
 
+        if (coalition1Nations.isEmpty()) {
+            if (num1 > 0) {
+                throw new IllegalArgumentException("No active nations in `coalition1` (" + num1 + " removed for inactivity, see: `includeApplicants: True`)\n" +
+                        "Note: Use the `AA:` qualifier or the alliance url to avoid nations by the same name.");
+            }
+        }
+        if (coalition2Nations.isEmpty()) {
+            if (num2 > 0) {
+                throw new IllegalArgumentException("No active nations in `coalition2` (" + num2 + " removed for inactivity, see: `includeApplicants: True`)\n" +
+                        "Note: Use the `AA:` qualifier or the alliance url to avoid nations by the same name.");
+            }
+        }
         if (coalition1Nations.isEmpty() || coalition2Nations.isEmpty()) throw new IllegalArgumentException("No nations provided");
         if (coalition1Nations.size() < 3 || coalition2Nations.size() < 3) return "Coalitions are too small to compare";
 

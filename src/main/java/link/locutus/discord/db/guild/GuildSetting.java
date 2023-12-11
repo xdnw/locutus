@@ -349,7 +349,7 @@ public abstract class GuildSetting<T> {
             throw new IllegalArgumentException("Channel " + original + " not found (are you sure it is in this server?)");
         }
         if (channel.getType() != ChannelType.TEXT) {
-            throw new IllegalArgumentException("Channel " + channel.getAsMention() + " is not a text channel");
+            throw new IllegalArgumentException("Channel " + channel.getAsMention() + " is not a text channel (" + channel.getType() + ")");
         }
         if (!channel.canTalk()) {
             throw new IllegalArgumentException("Bot does not have permission to talk in " + channel.getAsMention());

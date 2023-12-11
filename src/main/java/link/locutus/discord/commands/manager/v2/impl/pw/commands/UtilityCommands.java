@@ -1179,7 +1179,7 @@ public class UtilityCommands {
             StringBuilder response = new StringBuilder();
             for (Map.Entry<Member, GuildDB.UnmaskedReason> entry : db.getMaskedNonMembers().entrySet()) {
                 User user = entry.getKey().getUser();
-                response.append("`" + DiscordUtil.getFullUsername(user) + "`" + "`<@" + user.getIdLong() + ">`");
+                response.append("`" + DiscordUtil.getFullUsername(user) + "`" + " `<@" + user.getIdLong() + ">`");
                 DBNation nation = DiscordUtil.getNation(user);
                 if (nation != null) {
                     String active = TimeUtil.secToTime(TimeUnit.MINUTES, nation.getActive_m());
