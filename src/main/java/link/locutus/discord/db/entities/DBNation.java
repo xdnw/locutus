@@ -2734,6 +2734,11 @@ public class DBNation implements NationOrAlliance {
         return hasProject(Projects.INTELLIGENCE_AGENCY) ? 60 : 50;
     }
 
+    @Command(desc = "Number of spies this nation can buy before reaching cap")
+    public int getSpyCapLeft() {
+        return getSpyCap() - getSpies();
+    }
+
     @Command(desc = "Decimal ratio of aircraft a nation has out of their maximum (between 0 and 1)")
     public double getAircraftPct() {
         return getAircraft() / (double) (Math.max(1, Buildings.HANGAR.max() * Buildings.HANGAR.cap(this::hasProject) * getCities()));
