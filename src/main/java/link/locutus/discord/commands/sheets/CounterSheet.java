@@ -280,7 +280,7 @@ public class CounterSheet extends Command {
             sheet.addRow(row);
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
 
         sheet.updateWrite();
 

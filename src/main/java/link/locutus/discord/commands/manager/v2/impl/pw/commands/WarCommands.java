@@ -2145,7 +2145,7 @@ public class WarCommands {
             }
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         SpySheet.generateSpySheet(sheet, targets);
         sheet.updateWrite();
 
@@ -2166,7 +2166,7 @@ public class WarCommands {
 
         generateSpySheet(output, spyOpsFiltered, groupByAttacker);
 
-        output.updateClearFirstTab();
+        output.updateClearCurrentTab();
         output.updateWrite();
 
         output.send(io, null, author.getAsMention()).send();
@@ -2186,7 +2186,7 @@ public class WarCommands {
 
         generateSpySheet(output, spyOpsFiltered, groupByAttacker);
 
-        output.updateClearFirstTab();
+        output.updateClearCurrentTab();
         output.updateWrite();
 
         output.send(io, null, author.getAsMention()).send();
@@ -2206,7 +2206,7 @@ public class WarCommands {
 
         generateSpySheet(output, spyOpsFiltered, groupByAttacker);
 
-        output.updateClearFirstTab();
+        output.updateClearCurrentTab();
         output.updateWrite();
 
         output.send(io, null, author.getAsMention()).send();
@@ -2257,7 +2257,7 @@ public class WarCommands {
 
         generateSpySheet(output, spyOpsFiltered, groupByAttacker);
 
-        output.updateClearFirstTab();
+        output.updateClearCurrentTab();
         output.updateWrite();
 
         output.send(io, null, author.getAsMention()).send();
@@ -2304,7 +2304,7 @@ public class WarCommands {
 
         generateSpySheet(sheet, targets);
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
         sheet.send(io, null, author.getAsMention()).send();
@@ -2467,7 +2467,7 @@ public class WarCommands {
             sheet.addRow(header);
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
         sheet.attach(io.create(), "activity").send();
@@ -2629,7 +2629,7 @@ public class WarCommands {
             sheet.addRow(row);
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
         String response = "";
         if (!forceUpdate) response += "\nNote: Results may be outdated, add `-f` to update.";
@@ -2780,7 +2780,7 @@ public class WarCommands {
             sheet.addRow(row);
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
         sheet.attach(io.create(), "deserter").send();
         return null;
@@ -3841,7 +3841,7 @@ public class WarCommands {
             sheet.addRow(row);
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
 
         sheet.updateWrite();
 

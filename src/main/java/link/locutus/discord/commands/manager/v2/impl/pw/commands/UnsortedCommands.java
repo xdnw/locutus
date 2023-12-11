@@ -346,7 +346,7 @@ public class UnsortedCommands {
         }
         messages.add("The TAX column includes tax records not set to go into a member's personal deposits, or offsets using the `#tax` note");
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
         IMessageBuilder msg = io.create();
@@ -1777,7 +1777,7 @@ public class UnsortedCommands {
 
             sheet.addRow(header);
         }
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
         IMessageBuilder msg = sheet.attach(io.create(), "revenue");
 
@@ -1787,7 +1787,7 @@ public class UnsortedCommands {
         int nationsTotal = nations.size();
         int nationsPassedAll = nationsTotal - nationBySeverity.values().stream().mapToInt(Integer::intValue).sum();
 
-        msg.append("## Summary\n")
+        msg.append("\n## Summary\n")
                         .append("- `" + auditsPassed + "/" + auditsTotal + "` audits passed\n")
                         .append("- `" + nationsPassedAll + "/" + nationsTotal + "` nations passed ALL audits\n");
         if (!failedCount.isEmpty()) {

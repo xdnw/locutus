@@ -163,7 +163,7 @@ public class DeserterSheet extends Command {
             sheet.addRow(row);
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
 

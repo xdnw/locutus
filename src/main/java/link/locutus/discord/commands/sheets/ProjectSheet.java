@@ -90,7 +90,7 @@ public class ProjectSheet extends Command {
             sheet.addRow(header);
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
         sheet.attach(channel.create(), "projects").send();

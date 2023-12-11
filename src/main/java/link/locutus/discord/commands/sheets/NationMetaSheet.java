@@ -86,7 +86,7 @@ public class NationMetaSheet extends Command {
             sheet.addRow(row);
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
         sheet.attach(channel.create(), "nation_meta").send();

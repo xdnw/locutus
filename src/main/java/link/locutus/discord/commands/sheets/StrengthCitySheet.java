@@ -108,7 +108,7 @@ public class StrengthCitySheet extends Command {
             }
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
         sheet.attach(channel.create(), "strength_tiering").send();
         return null;

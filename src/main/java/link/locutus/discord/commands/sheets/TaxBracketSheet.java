@@ -117,7 +117,7 @@ public class TaxBracketSheet extends Command {
             sheet.addRow(header);
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
         StringBuilder response = new StringBuilder();
