@@ -204,6 +204,7 @@ public class CommandManager2 {
         this.commands.registerMethod(new CustomSheetCommands(), List.of("sheet_custom"), "listCustomSheets", "list");
         ////deleteSelectionAlias
         //selection_alias remove
+        this.commands.registerMethod(new CustomSheetCommands(), List.of("selection_alias"), "renameSelection", "rename");
         this.commands.registerMethod(new CustomSheetCommands(), List.of("selection_alias"), "deleteSelectionAlias", "remove");
         ////viewTemplate
         //sheet_template view

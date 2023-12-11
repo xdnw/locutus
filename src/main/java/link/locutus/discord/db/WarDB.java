@@ -681,6 +681,31 @@ public class WarDB extends DBMainV2 {
         return list;
     }
 
+    public Set<DBWar> getWarsForNationOrAlliance(Set<Integer> nations, Set<Integer> alliances) {
+        Set<DBWar> result = new ObjectOpenHashSet<>();
+        if (alliances != null && !alliances.isEmpty()) {
+            synchronized (warsByAllianceId) {
+                for (int id : alliances) {
+                    Object wars = warsByAllianceId.get(id);
+                    if (wars != null) {
+                        ArrayUtil.iterateElements(DBWar.class, wars, result::add);
+                    }
+                }
+            }
+        }
+        if (nations != null && !nations.isEmpty()) {
+            synchronized (warsByNationId) {
+                for (int id : nations) {
+                    Object wars = warsByNationId.get(id);
+                    if (wars != null) {
+                        ArrayUtil.iterateElements(DBWar.class, wars, result::add);
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
     public Map<Integer, DBWar> getWarsForNationOrAlliance(Predicate<Integer> nations, Predicate<Integer> alliances, Predicate<DBWar> warFilter) {
         Map<Integer, DBWar> result = new Int2ObjectOpenHashMap<>();
         if (alliances != null) {
@@ -2657,7 +2682,8 @@ public class WarDB extends DBMainV2 {
         return getAttacksByWars(wars, 0, Long.MAX_VALUE);
     }
     public List<AbstractCursor> getAttacksByWars(Collection<DBWar> wars, long start, long end) {
-        return queryAttacks().withWars(wars).between(start, end).getList();
+        AttackQuery query = queryAttacks().withWars(wars);
+        return ((start != 0 || end != Long.MAX_VALUE) ? query.between(start, end) : query).getList();
     }
 
     public int countWarsByNation(int nation_id, long date) {

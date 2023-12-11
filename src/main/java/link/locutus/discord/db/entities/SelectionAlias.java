@@ -32,4 +32,8 @@ public class SelectionAlias<T> {
     public String toString() {
         return "`" + type.getSimpleName() + "`: `" + name + "` | `" + selection + "`";
     }
+
+    public void setName(String name) {
+        this.name = name;
+    }
 }

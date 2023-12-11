@@ -143,10 +143,10 @@ public class WikiCustomSheetsPage extends BotWikiGen {
                 commandMarkdownSpoiler(CM.selection_alias.add.city.cmd, false) +
                 commandMarkdownSpoiler(CM.selection_alias.add.taxbracket.cmd, false) +
                 commandMarkdownSpoiler(CM.selection_alias.add.user.cmd, false),
-//                commandMarkdownSpoiler(CM.selection_alias.add.transaction.cmd),
-//                commandMarkdownSpoiler(CM.selection_alias.add.trade.cmd),
 //                commandMarkdownSpoiler(CM.selection_alias.add.attack.cmd),
+//                commandMarkdownSpoiler(CM.selection_alias.add.trade.cmd),
 //                commandMarkdownSpoiler(CM.selection_alias.add.war.cmd),
+//                commandMarkdownSpoiler(CM.selection_alias.add.transaction.cmd),
 //                commandMarkdownSpoiler(CM.selection_alias.add.taxdeposit.cmd),
                 "### List or remove aliases",
                 commandMarkdownSpoiler(CM.selection_alias.list.cmd),
@@ -180,11 +180,11 @@ public class WikiCustomSheetsPage extends BotWikiGen {
                 commandMarkdownSpoiler(CM.sheet_template.add.city.cmd, false) +
                 commandMarkdownSpoiler(CM.sheet_template.add.taxbracket.cmd, false) +
                 commandMarkdownSpoiler(CM.sheet_template.add.user.cmd, false),
-//                commandMarkdownSpoiler(CM.sheet_template.add.transaction.cmd),
-//                commandMarkdownSpoiler(CM.sheet_template.add.trade.cmd),
+//                commandMarkdownSpoiler(CM.sheet_template.add.taxdeposit.cmd),
 //                commandMarkdownSpoiler(CM.sheet_template.add.attack.cmd),
 //                commandMarkdownSpoiler(CM.sheet_template.add.war.cmd),
-//                commandMarkdownSpoiler(CM.sheet_template.add.taxdeposit.cmd),
+//                commandMarkdownSpoiler(CM.sheet_template.add.transaction.cmd),
+//                commandMarkdownSpoiler(CM.sheet_template.add.trade.cmd),
                 "### View, list, remove or modify a template",
                 commandMarkdownSpoiler(CM.sheet_template.view.cmd),
                 commandMarkdownSpoiler(CM.sheet_template.list.cmd),

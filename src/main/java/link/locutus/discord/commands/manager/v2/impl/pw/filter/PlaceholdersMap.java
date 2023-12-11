@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
+import link.locutus.discord.apiv1.domains.subdomains.attack.DBAttack;
 import link.locutus.discord.apiv1.domains.subdomains.attack.v3.IAttack;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.Continent;
@@ -308,9 +309,9 @@ public class PlaceholdersMap {
         };
     }
 
-    private Set<NationOrAlliance> nationOrAlliancesSingle(ValueStore store, String input) {
+    private Set<NationOrAlliance> nationOrAlliancesSingle(ValueStore store, String input, boolean allowStar) {
         GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), false);
-        if (input.equalsIgnoreCase("*")) {
+        if (input.equalsIgnoreCase("*") && allowStar) {
             return new ObjectOpenHashSet<>(Locutus.imp().getNationDB().getNations().values());
         }
         if (MathMan.isInteger(input)) {
@@ -392,7 +393,7 @@ public class PlaceholdersMap {
                         return null;
                     });
                 }
-                return nationOrAlliancesSingle(store, input);
+                return nationOrAlliancesSingle(store, input, true);
             }
 
             @Override
@@ -1131,6 +1132,8 @@ public class PlaceholdersMap {
         return new SimplePlaceholders<BankDB.TaxDeposit>(BankDB.TaxDeposit.class, store, validators, permisser,
                 "TODO CM REF",
                 (ThrowingTriFunction<Placeholders<BankDB.TaxDeposit>, ValueStore, String, Set<BankDB.TaxDeposit>>) (inst, store, input) -> {
+                    Set<BankDB.TaxDeposit> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
                     if (input.equalsIgnoreCase("*")) {
                         GuildDB db = (GuildDB) store.getProvided(Key.of(GuildDB.class, Me.class), true);
                         Set<Integer> aaIds = db.getAllianceIds();
@@ -1207,6 +1210,14 @@ public class PlaceholdersMap {
                 return taxDeposit.toString();
             }
         }) {
+
+            @NoFormat
+            @Command(desc = "Add an alias for a selection of tax records")
+            @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+            public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<BankDB.TaxDeposit> taxes) {
+                return _addSelectionAlias(this, command, db, name, taxes, "taxes");
+            }
+
             @NoFormat
             @Command(desc = "Add columns to a Bank TaxDeposit sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -1243,7 +1254,7 @@ public class PlaceholdersMap {
         };
     }
 
-    private Set<IAttack> getAttacks(Set<Integer> attackIds, Set<Integer> warIds) {
+    private Set<IAttack> getAttacks(Set<Integer> attackIds, Set<Integer> warIds, Set<Integer> nationIds, Set<Integer> alliances) {
         Set<IAttack> attacks = new ObjectOpenHashSet<>();
         if (warIds != null && !warIds.isEmpty()) {
             Set<DBWar> wars = Locutus.imp().getWarDb().getWarsById(warIds);
@@ -1253,6 +1264,18 @@ public class PlaceholdersMap {
         }
         if (attackIds != null && !attackIds.isEmpty()) {
             attacks.addAll(Locutus.imp().getWarDb().getAttacksById(attackIds));
+        }
+        if ((attackIds == null || attackIds.isEmpty()) && (warIds == null || warIds.isEmpty())) {
+            if (nationIds != null && !nationIds.isEmpty()) {
+                attacks.addAll(Locutus.imp().getWarDb().getAttacks(nationIds, 0));
+            }
+            if (alliances != null && !alliances.isEmpty()) {
+                Set<DBWar> allWars = new ObjectOpenHashSet<>();
+                for (Integer aaId : alliances) {
+                    allWars.addAll(Locutus.imp().getWarDb().getWarsByAlliance(aaId));
+                }
+                attacks.addAll(Locutus.imp().getWarDb().getAttacksByWars(allWars));
+            }
         }
         return attacks;
     }
@@ -1264,16 +1287,33 @@ public class PlaceholdersMap {
                     Set<IAttack> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (SpreadSheet.isSheet(input)) {
-                        Set<Integer> attackIds = new ObjectOpenHashSet<>();
-                        Set<Integer> warIds = new ObjectOpenHashSet<>();
-                        SpreadSheet.parseSheet(input, List.of("id", "war_id"), true, (type, str) -> {
+                        Set<Integer> attackIds = new IntOpenHashSet();
+                        Set<Integer> warIds = new IntOpenHashSet();
+                        Set<Integer> nationIds = new IntOpenHashSet();
+                        Set<Integer> allianceIds = new IntOpenHashSet();
+                        SpreadSheet.parseSheet(input, List.of("id", "war_id", "nation", "leader", "alliance"), true, (type, str) -> {
                             switch (type) {
                                 case 0 -> attackIds.add(Integer.parseInt(str));
                                 case 1 -> warIds.add(Integer.parseInt(str));
+                                case 2 -> {
+                                    DBNation nation = DiscordUtil.parseNation(str, true);
+                                    if (nation == null) throw new IllegalArgumentException("Invalid nation: `" + str + "`");
+                                    nationIds.add(nation.getId());
+                                }
+                                case 3 -> {
+                                    DBNation nation = Locutus.imp().getNationDB().getNationByLeader(str);
+                                    if (nation == null) throw new IllegalArgumentException("Invalid nation leader: `" + str + "`");
+                                    nationIds.add(nation.getId());
+                                }
+                                case 4 -> {
+                                    DBAlliance alliance = PWBindings.alliance(str);
+                                    if (alliance == null) throw new IllegalArgumentException("Invalid alliance: `" + str + "`");
+                                    allianceIds.add(alliance.getId());
+                                }
                             }
                             return null;
                         });
-                        return getAttacks(attackIds, warIds);
+                        return getAttacks(attackIds, warIds, nationIds, allianceIds);
                     }
                     if (MathMan.isInteger(input)) {
                         int id = Integer.parseInt(input);
@@ -1282,27 +1322,65 @@ public class PlaceholdersMap {
                     }
                     if (input.contains("/war/id=")) {
                         int warId = Integer.parseInt(input.substring(input.indexOf('=') + 1));
-                        return getAttacks(Set.of(), Set.of(warId));
+                        return getAttacks(Set.of(), Set.of(warId), null, null);
                     }
-                    throw new UnsupportedOperationException("Filters must begin with `#`. Please use the attack selector argument to specify participants.");
+                    Set<NationOrAlliance> natOrAA = nationOrAlliancesSingle(store, input, false);
+                    Set<Integer> nationIds = natOrAA.stream().filter(NationOrAlliance::isNation).map(NationOrAlliance::getId).collect(Collectors.toSet());
+                    Set<Integer> aaIds = natOrAA.stream().filter(NationOrAlliance::isAlliance).map(NationOrAlliance::getId).collect(Collectors.toSet());
+                    return getAttacks(Set.of(), Set.of(), nationIds, aaIds);
                 }, (ThrowingTriFunction<Placeholders<IAttack>, ValueStore, String, Predicate<IAttack>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (SpreadSheet.isSheet(input)) {
-                Set<Integer> attackIds = new ObjectOpenHashSet<>();
-                Set<Integer> warIds = new ObjectOpenHashSet<>();
-                SpreadSheet.parseSheet(input, List.of("id", "war_id"), true, (type, str) -> {
+                Set<Integer> attackIds = new IntOpenHashSet();
+                Set<Integer> warIds = new IntOpenHashSet();
+                Set<Integer> nationIds = new IntOpenHashSet();
+                Set<Integer> allianceIds = new IntOpenHashSet();
+                SpreadSheet.parseSheet(input, List.of("id", "war_id", "nation", "leader", "alliance"), true, (type, str) -> {
                     switch (type) {
                         case 0 -> attackIds.add(Integer.parseInt(str));
                         case 1 -> warIds.add(Integer.parseInt(str));
+                        case 2 -> {
+                            DBNation nation = DiscordUtil.parseNation(str, true);
+                            if (nation == null) throw new IllegalArgumentException("Invalid nation: `" + str + "`");
+                            nationIds.add(nation.getId());
+                        }
+                        case 3 -> {
+                            DBNation nation = Locutus.imp().getNationDB().getNationByLeader(str);
+                            if (nation == null) throw new IllegalArgumentException("Invalid nation leader: `" + str + "`");
+                            nationIds.add(nation.getId());
+                        }
+                        case 4 -> {
+                            DBAlliance alliance = PWBindings.alliance(str);
+                            if (alliance == null) throw new IllegalArgumentException("Invalid alliance: `" + str + "`");
+                            allianceIds.add(alliance.getId());
+                        }
                     }
                     return null;
                 });
-                if (!attackIds.isEmpty() || !warIds.isEmpty()) {
-                    return f -> {
-                        if (attackIds.contains(f.getWar_attack_id())) return true;
-                        return warIds.contains(f.getWar_id());
-                    };
+                Predicate<IAttack> filter = null;
+                if (!attackIds.isEmpty()) {
+                    filter = f -> attackIds.contains(f.getWar_attack_id());
                 }
+                if (!warIds.isEmpty()) {
+                    Predicate<IAttack> warFilter = f -> warIds.contains(f.getWar_id());
+                    filter = filter == null ? warFilter : filter.or(warFilter);
+                }
+                if (!nationIds.isEmpty()) {
+                    Predicate<IAttack> nationFilter = f -> nationIds.contains(f.getAttacker_id()) || nationIds.contains(f.getDefender_id());
+                    filter = filter == null ? nationFilter : filter.or(nationFilter);
+                }
+                if (!allianceIds.isEmpty()) {
+                    Predicate<IAttack> aaFilter = f -> {
+                        DBWar war = f.getWar();
+                        if (war != null) {
+                            return allianceIds.contains(war.getAttacker_aa()) || allianceIds.contains(war.getDefender_aa());
+                        }
+                        return false;
+                    };
+                    filter = filter == null ? aaFilter : filter.or(aaFilter);
+                }
+                if (filter == null) filter = f -> false;
+                return filter;
             }
             if (input.contains("/war/id=")) {
                 int id = Integer.parseInt(input.substring(input.indexOf('=') + 1));
@@ -1335,6 +1413,13 @@ public class PlaceholdersMap {
             }
         }
         ) {
+            @NoFormat
+            @Command(desc = "Add an alias for a selection of attacks")
+            @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+            public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<IAttack> attacks) {
+                return _addSelectionAlias(this, command, db, name, attacks, "attacks");
+            }
+
             @NoFormat
             @Command(desc = "Add columns to an Attack sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
@@ -1378,14 +1463,33 @@ public class PlaceholdersMap {
                     Set<DBWar> selection = getSelection(inst, store, input);
                     if (selection != null) return selection;
                     if (SpreadSheet.isSheet(input)) {
-                        Set<Integer> warIds = new ObjectOpenHashSet<>();
-                        SpreadSheet.parseSheet(input, List.of("id", "war_id"), true, (type, str) -> {
+                        Set<Integer> warIds = new IntOpenHashSet();
+                        Set<Integer> nationIds = new IntOpenHashSet();
+                        Set<Integer> allianceIds = new IntOpenHashSet();
+                        SpreadSheet.parseSheet(input, List.of("id", "war_id", "nation", "leader", "alliance"), true, (type, str) -> {
                             switch (type) {
                                 case 0, 1 -> warIds.add(Integer.parseInt(str));
+                                case 2 -> {
+                                    DBNation nation = DiscordUtil.parseNation(str, true);
+                                    if (nation == null) throw new IllegalArgumentException("Invalid nation: `" + str + "`");
+                                    nationIds.add(nation.getId());
+                                }
+                                case 3 -> {
+                                    DBNation nation = Locutus.imp().getNationDB().getNationByLeader(str);
+                                    if (nation == null) throw new IllegalArgumentException("Invalid nation leader: `" + str + "`");
+                                    nationIds.add(nation.getId());
+                                }
+                                case 4 -> {
+                                    DBAlliance alliance = PWBindings.alliance(str);
+                                    if (alliance == null) throw new IllegalArgumentException("Invalid alliance: `" + str + "`");
+                                    allianceIds.add(alliance.getId());
+                                }
                             }
                             return null;
                         });
-                        return Locutus.imp().getWarDb().getWarsById(warIds);
+                        if (!warIds.isEmpty()) {
+                            return Locutus.imp().getWarDb().getWarsById(warIds);
+                        }
                     }
                     if (MathMan.isInteger(input)) {
                         int id = Integer.parseInt(input);
@@ -1395,11 +1499,14 @@ public class PlaceholdersMap {
                         int warId = Integer.parseInt(input.substring(input.indexOf('=') + 1));
                         return Locutus.imp().getWarDb().getWarsById(Set.of(warId));
                     }
-                    throw new UnsupportedOperationException("Filters must begin with `#`. Please use the attack selector argument to specify participants.");
+                    Set<NationOrAlliance> natOrAA = nationOrAlliancesSingle(store, input, false);
+                    Set<Integer> natIds = natOrAA.stream().filter(NationOrAlliance::isNation).map(NationOrAlliance::getId).collect(Collectors.toSet());
+                    Set<Integer> aaIds = natOrAA.stream().filter(NationOrAlliance::isAlliance).map(NationOrAlliance::getId).collect(Collectors.toSet());
+                    return Locutus.imp().getWarDb().getWarsForNationOrAlliance(natIds, aaIds);
                 }, (ThrowingTriFunction<Placeholders<DBWar>, ValueStore, String, Predicate<DBWar>>) (inst, store, input) -> {
             if (input.equalsIgnoreCase("*")) return f -> true;
             if (SpreadSheet.isSheet(input)) {
-                Set<Integer> warIds = new ObjectOpenHashSet<>();
+                Set<Integer> warIds = new IntOpenHashSet();
                 SpreadSheet.parseSheet(input, List.of("id", "war_id"), true, (type, str) -> {
                     switch (type) {
                         case 0, 1 -> warIds.add(Integer.parseInt(str));
@@ -1438,6 +1545,12 @@ public class PlaceholdersMap {
                 return dbWar.getWarId() + "";
             }
         }) {
+            @NoFormat
+            @Command(desc = "Add an alias for a selection of wars")
+            @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+            public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<DBWar> wars) {
+                return _addSelectionAlias(this, command, db, name, wars, "wars");
+            }
             @NoFormat
             @Command(desc = "Add columns to a War sheet")
             @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)

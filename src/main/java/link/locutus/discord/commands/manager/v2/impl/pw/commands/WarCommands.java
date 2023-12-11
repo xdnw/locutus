@@ -3353,7 +3353,7 @@ public class WarCommands {
         if (!errorMsg.isEmpty()) {
             msg = msg.file("Errors.txt", errorMsg.toString());
         }
-        msg.append("Done, sent " + sent + " messages" + (!errorMsg.isEmpty() ? "" : " (with errors)")).send();
+        msg.append("Done, sent " + sent + " messages" + (errorMsg.isEmpty() ? " (no errors)" : " (with errors)")).send();
         return null;
     }
 

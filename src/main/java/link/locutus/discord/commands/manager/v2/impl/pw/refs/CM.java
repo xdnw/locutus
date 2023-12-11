@@ -2492,6 +2492,13 @@ public class CM {
                         return createArgs("name", name, "guilds", guilds);
                     }
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="ATTACKS")
+                public static class iattack extends CommandRef {
+                    public static final iattack cmd = new iattack();
+                    public iattack create(String name, String attacks) {
+                        return createArgs("name", name, "attacks", attacks);
+                    }
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="MILITARY_UNITS")
                 public static class militaryunit extends CommandRef {
                     public static final militaryunit cmd = new militaryunit();
@@ -2548,6 +2555,13 @@ public class CM {
                         return createArgs("name", name, "taxbrackets", taxbrackets);
                     }
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="TAX_DEPOSITS")
+                public static class taxdeposit extends CommandRef {
+                    public static final taxdeposit cmd = new taxdeposit();
+                    public taxdeposit create(String name, String taxes) {
+                        return createArgs("name", name, "taxes", taxes);
+                    }
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="TREASURES")
                 public static class treasure extends CommandRef {
                     public static final treasure cmd = new treasure();
@@ -2576,6 +2590,13 @@ public class CM {
                         return createArgs("name", name, "users", users);
                     }
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="WARS")
+                public static class war extends CommandRef {
+                    public static final war cmd = new war();
+                    public war create(String name, String wars) {
+                        return createArgs("name", name, "wars", wars);
+                    }
+                }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="listSelectionAliases")
             public static class list extends CommandRef {
@@ -2589,6 +2610,13 @@ public class CM {
                 public static final remove cmd = new remove();
                 public remove create(String selection) {
                     return createArgs("selection", selection);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.CustomSheetCommands.class,method="renameSelection")
+            public static class rename extends CommandRef {
+                public static final rename cmd = new rename();
+                public rename create(String sheet, String name) {
+                    return createArgs("sheet", sheet, "name", name);
                 }
             }
         }
@@ -3581,6 +3609,13 @@ public class CM {
                         return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
                     }
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="ATTACKS")
+                public static class iattack extends CommandRef {
+                    public static final iattack cmd = new iattack();
+                    public iattack create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="MILITARY_UNITS")
                 public static class militaryunit extends CommandRef {
                     public static final militaryunit cmd = new militaryunit();
@@ -3637,6 +3672,13 @@ public class CM {
                         return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
                     }
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="TAX_DEPOSITS")
+                public static class taxdeposit extends CommandRef {
+                    public static final taxdeposit cmd = new taxdeposit();
+                    public taxdeposit create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="TREASURES")
                 public static class treasure extends CommandRef {
                     public static final treasure cmd = new treasure();
@@ -3662,6 +3704,13 @@ public class CM {
                 public static class user extends CommandRef {
                     public static final user cmd = new user();
                     public user create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="WARS")
+                public static class war extends CommandRef {
+                    public static final war cmd = new war();
+                    public war create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
                         return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
                     }
                 }

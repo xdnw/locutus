@@ -118,7 +118,26 @@ public class CustomSheetCommands {
         }
         // rename it
         db.getSheetManager().renameSheetTemplate(sheet, name);
-        return "Renamed `" + sheet.getName() + "` to `" + name + "`";
+        return "Renamed sheet template `" + sheet.getName() + "` to `" + name + "`";
+    }
+
+    @NoFormat
+    @Command(desc = "Rename a selection alias")
+    @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+    public String renameSelection(@Me GuildDB db, SelectionAlias sheet, String name) {
+        name = name.toLowerCase(Locale.ROOT);
+        // ensure name is alphanumeric _
+        if (!name.matches("[a-z0-9_]+")) {
+            throw new IllegalArgumentException("Selection alias must be alphanumericunderscore, not `" + name + "`");
+        }
+        for (String other : db.getSheetManager().getSelectionAliasNames()) {
+            if (other.equalsIgnoreCase(name)) {
+                throw new IllegalArgumentException("Selection alias `" + name + "` already exists");
+            }
+        }
+        // rename it
+        db.getSheetManager().renameSelectionAlias(sheet, name);
+        return "Renamed selection alias `" + sheet.getName() + "` to `" + name + "`";
     }
 
     @NoFormat

@@ -240,6 +240,13 @@ public class NationCommands {
                 return createArgs();
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getActiveWarsWith")
+        public static class getActiveWarsWith extends CommandRef {
+            public static final getActiveWarsWith cmd = new getActiveWarsWith();
+            public getActiveWarsWith create(String filter) {
+                return createArgs("filter", filter);
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getActive_m")
         public static class getActive_m extends CommandRef {
             public static final getActive_m cmd = new getActive_m();
@@ -545,6 +552,13 @@ public class NationCommands {
         public static class getDate extends CommandRef {
             public static final getDate cmd = new getDate();
             public getDate create() {
+                return createArgs();
+            }
+        }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getDaysSinceLastCity")
+        public static class getDaysSinceLastCity extends CommandRef {
+            public static final getDaysSinceLastCity cmd = new getDaysSinceLastCity();
+            public getDaysSinceLastCity create() {
                 return createArgs();
             }
         }
@@ -1003,6 +1017,13 @@ public class NationCommands {
                 return createArgs();
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getSpyCapLeft")
+        public static class getSpyCapLeft extends CommandRef {
+            public static final getSpyCapLeft cmd = new getSpyCapLeft();
+            public getSpyCapLeft create() {
+                return createArgs();
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getSpyReportsToday")
         public static class getSpyReportsToday extends CommandRef {
             public static final getSpyReportsToday cmd = new getSpyReportsToday();
@@ -1013,8 +1034,8 @@ public class NationCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getStrength")
         public static class getStrength extends CommandRef {
             public static final getStrength cmd = new getStrength();
-            public getStrength create() {
-                return createArgs();
+            public getStrength create(String mmr) {
+                return createArgs("mmr", mmr);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getStrongestEnemy")
@@ -1097,8 +1118,8 @@ public class NationCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getUnits")
         public static class getUnits extends CommandRef {
             public static final getUnits cmd = new getUnits();
-            public getUnits create(String unit) {
-                return createArgs("unit", unit);
+            public getUnits create(String unit, String date) {
+                return createArgs("unit", unit, "date", date);
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getUserAgeDays")

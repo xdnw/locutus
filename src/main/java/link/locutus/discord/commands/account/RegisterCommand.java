@@ -59,9 +59,7 @@ public class RegisterCommand extends Command {
             if (mention == null) {
                 mention = author;
                 index = 0;
-//                return "To manually register, use " + Settings.commandPrefix(true) + "register @mention <nation-link>.";
             }
-            // join args 1 -> end
             String nationLink = String.join(" ", args.subList(index, args.size()));
             Integer nationId = DiscordUtil.parseNationId(nationLink);
             if (nationId == null) {

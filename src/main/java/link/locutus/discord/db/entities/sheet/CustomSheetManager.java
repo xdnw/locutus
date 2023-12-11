@@ -26,6 +26,7 @@ import java.util.function.Predicate;
 
 public class CustomSheetManager {
     private final GuildDB db;
+    private Map<Class, Map<String, SelectionAlias>> customSelections = null;
 
     public CustomSheetManager(GuildDB db) {
         this.db = db;
@@ -121,7 +122,15 @@ public class CustomSheetManager {
         sheet.name = name;
     }
 
-    private Map<Class, Map<String, SelectionAlias>> customSelections = null;
+    public void renameSelectionAlias(SelectionAlias selectionAlias, String name) {
+        db.update("UPDATE `SELECTION_ALIAS` SET name = ? WHERE name = ?", (ThrowingConsumer<PreparedStatement>) stmt -> {
+            stmt.setString(1, name);
+            stmt.setString(2, selectionAlias.getName());
+        });
+        customSelections.get(selectionAlias.getType()).remove(selectionAlias.getName().toLowerCase(Locale.ROOT));
+        selectionAlias.setName(name);
+        customSelections.get(selectionAlias.getType()).put(name.toLowerCase(Locale.ROOT), selectionAlias);
+    }
 
     public Map<Class, Map<String, SelectionAlias>> getSelectionAliases() {
         if (customSelections == null) {

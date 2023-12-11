@@ -156,9 +156,12 @@ public class CustomSheet {
                         }
                         sheet.addRow(tabName, header);
                     }
+                    if (selection.isEmpty()) {
+                        errors.add("[Tab: `" + tabName + "`] No elements found for selection: `" + alias.getSelection() + "`");
+                    }
                     createTabsFuture.get();
                     sheet.updateWrite(tabName);
-                    errors.add("[Tab: `" + tabName + "`] Updated.");
+                    errors.add("[Tab: `" + tabName + "`] Finished update.");
                     tabsUpdated.add(tabName.toLowerCase(Locale.ROOT));
                 } catch (Exception e) {
                     e.printStackTrace();
