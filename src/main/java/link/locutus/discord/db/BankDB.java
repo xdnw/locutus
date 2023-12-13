@@ -461,6 +461,16 @@ public class BankDB extends DBMainV3 {
             this.tax_id = tax_id;
         }
 
+        @Command(desc = "The alliance class for this tax record")
+        public DBAlliance getAlliance() {
+            return DBAlliance.getOrCreate(allianceId);
+        }
+
+        @Command(desc = "The nation class for this tax record")
+        public DBNation getNation() {
+            return DBNation.getOrCreate(nationId);
+        }
+
         @Command(desc = "Get the amount of a resource for this tax record")
         public double getAmount(ResourceType type) {
             return resources[type.ordinal()];

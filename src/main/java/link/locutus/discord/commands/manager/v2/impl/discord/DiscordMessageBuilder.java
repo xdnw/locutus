@@ -15,6 +15,8 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.interactions.components.ActionRow;
+import net.dv8tion.jda.api.interactions.components.LayoutComponent;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
@@ -24,6 +26,7 @@ import net.dv8tion.jda.api.utils.messages.MessageEditData;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.message.BasicNameValuePair;
+import rocker.guild.ia.message;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -118,8 +121,18 @@ public class DiscordMessageBuilder implements IMessageBuilder {
 
     public MessageEditData buildEdit(boolean includeContent) {
         MessageEditBuilder discBuilder = new MessageEditBuilder();
-        if (!buttons.isEmpty()) discBuilder.setActionRow(buttons);
-
+        if (!buttons.isEmpty()) {
+            if (buttons.size() > 5) {
+                List<LayoutComponent> rows = new ArrayList<>();
+                for (int i = 0; i < buttons.size(); i += 5) {
+                    List<Button> group = buttons.subList(i, Math.min(i + 5, buttons.size()));
+                    rows.add(ActionRow.of(group));
+                }
+                discBuilder.setComponents(rows);
+            } else {
+                discBuilder.setActionRow(buttons);
+            }
+        }
         if (!embeds.isEmpty()) {
             if (!remapLongCommands.isEmpty()) {
                 MessageEmbed embed = embeds.get(0);
