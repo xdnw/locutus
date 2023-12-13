@@ -2527,9 +2527,11 @@ public class DBNation implements NationOrAlliance {
         return Locutus.imp().getNationDB().getAllianceName(alliance_id);
     }
 
+    @Command(desc = "The alliance class")
     public DBAlliance getAlliance() {
         return getAlliance(true);
     }
+
     public DBAlliance getAlliance(boolean createIfNotExist) {
         if (alliance_id == 0) return null;
         if (createIfNotExist) {

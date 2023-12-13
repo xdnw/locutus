@@ -4,6 +4,7 @@ import com.google.gson.reflect.TypeToken;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.Key;
@@ -635,52 +636,75 @@ public abstract class Placeholders<T> extends BindingHelper {
 
     // Helper method to evaluate a function and its arguments
     private TypedFunction<T, ?> evaluateFunction(ValueStore store, String functionContent, int depth, boolean throwError) {
-        Map<String, TypedFunction<T, ?>> actualArguments = new HashMap<>();
-
-        // Split the functionContent into function name and arguments
-        int indexPar = functionContent.indexOf('(');
-        int indexSpace = functionContent.indexOf(' ');
-        String functionName;
-        String argumentString;
-        if (indexPar != -1 && (indexSpace == -1 || indexPar < indexSpace)) {
-            if (!functionContent.endsWith(")")) {
+        TypedFunction<T, ?> previousFunc = null;
+        List<String> split = StringMan.split(functionContent, ".");
+        if (split.isEmpty()) {
+            throw new IllegalArgumentException("Invalid input: Empty function: `" + functionContent + "`");
+        }
+        for (int i = 0; i < split.size(); i++) {
+            Map<String, TypedFunction<T, ?>> actualArguments = new HashMap<>();
+            String arg = split.get(i);
+            int indexPar = arg.indexOf('(');
+            int indexSpace = arg.indexOf(' ');
+            String functionName;
+            String argumentString;
+            if (indexPar != -1 && (indexSpace == -1 || indexPar < indexSpace)) {
+                if (!arg.endsWith(")")) {
+                    if (throwError) {
+                        throw new IllegalArgumentException("Invalid input: Missing closing parenthesis for `" + arg + "`");
+                    }
+                    return null;
+                }
+                functionName = arg.substring(0, indexPar);
+                argumentString = arg.substring(indexPar + 1, arg.length() - 1).trim();
+            } else if (indexSpace != -1 && (indexPar == -1 || indexSpace < indexPar)) {
+                functionName = arg.substring(0, indexSpace).trim();
+                argumentString = arg.substring(indexSpace + 1).trim();
+            } else {
+                functionName = arg.trim();
+                argumentString = "";
+            }
+            Placeholders<T> placeholders = this;
+            if (previousFunc != null) {
+                placeholders = Locutus.cmd().getV2().getPlaceholders().get((Class) previousFunc.getType());
+                if (placeholders == null) {
+                    throw new IllegalArgumentException("Cannot call `" + arg + "` on function: `" + previousFunc.getName() + "` as return type is not public: `" + ((Class<?>) previousFunc.getType()).getSimpleName() + "`");
+                }
+            }
+            ParametricCallable command = placeholders.get(functionName);
+            if (command == null) {
                 if (throwError) {
-                    throw new IllegalArgumentException("Invalid input: Missing closing parenthesis for `" + functionContent + "`");
+                    throw throwUnknownCommand(functionName);
                 }
                 return null;
             }
-            functionName = functionContent.substring(0, indexPar);
-            argumentString = functionContent.substring(indexPar + 1, functionContent.length() - 1).trim();
-        } else if (indexSpace != -1 && (indexPar == -1 || indexSpace < indexPar)) {
-            functionName = functionContent.substring(0, indexSpace).trim();
-            argumentString = functionContent.substring(indexSpace + 1).trim();
-        } else {
-            functionName = functionContent.trim();
-            argumentString = "";
-        }
-        ParametricCallable command = this.get(functionName);
-        if (command == null) {
-            if (throwError) {
-                throw throwUnknownCommand(functionName);
-            }
-            return null;
-        }
-        if (!argumentString.isEmpty()) {
-            Set<String> argumentNames = command.getUserParameterMap().keySet();
-            // Use explodeArguments to parse the argument string
-            Map<String, String> explodedArguments = explodeArguments(store, command, argumentString, argumentNames);
+            if (!argumentString.isEmpty()) {
+                Set<String> argumentNames = command.getUserParameterMap().keySet();
+                // Use explodeArguments to parse the argument string
+                Map<String, String> explodedArguments = explodeArguments(store, command, argumentString, argumentNames);
 
-            for (Map.Entry<String, ParameterData> entry : command.getUserParameterMap().entrySet()) {
-                ParameterData param = entry.getValue();
-                String argumentName = entry.getKey();
-                if (explodedArguments.containsKey(argumentName)) {
-                    TypedFunction<T, ?> argumentValue = formatRecursively(store, explodedArguments.get(argumentName), param, depth + 1, throwError);
-                    actualArguments.put(argumentName, argumentValue);
+                for (Map.Entry<String, ParameterData> entry : command.getUserParameterMap().entrySet()) {
+                    ParameterData param = entry.getValue();
+                    String argumentName = entry.getKey();
+                    if (explodedArguments.containsKey(argumentName)) {
+                        TypedFunction<T, ?> argumentValue = formatRecursively(store, explodedArguments.get(argumentName), param, depth + 1, throwError);
+                        actualArguments.put(argumentName, argumentValue);
+                    }
                 }
             }
+            TypedFunction function = format(store, command, actualArguments);
+            if (previousFunc == null) {
+                previousFunc = function;
+            } else if (function.isResolved()){
+                previousFunc = ResolvedFunction.create(function.getType(), function.apply(null), functionContent);
+            } else if (previousFunc.isResolved()) {
+                Object value = previousFunc.apply(null);
+                previousFunc = ResolvedFunction.create(function.getType(), function.apply(value), functionContent);
+            } else {
+                previousFunc = TypedFunction.create(function.getType(), previousFunc.andThen(function), functionContent);
+            }
         }
-
-        return format(store, command, actualArguments);
+        return previousFunc;
     }
 
     private TypedFunction<T, ?> format(ValueStore store, ParametricCallable command, Map<String, TypedFunction<T, ?>> arguments) {
