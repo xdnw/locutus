@@ -1285,7 +1285,7 @@ public class IACheckup {
             result.append("\n\nNote: Contact a gov member if you are unsure which one is suitable");
         }
 
-        return new AbstractMap.SimpleEntry<>("MMR", result.toString());
+        return new AbstractMap.SimpleEntry<>(nation.getMMRBuildingStr(), result.toString());
     }
 
     public Map.Entry<Object, String> checkPlaneBuy(DBNation nation, Map<Integer, JavaCity> cities) {
