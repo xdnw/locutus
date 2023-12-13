@@ -314,7 +314,7 @@ public class SpySheet extends Command {
             sheet = SpreadSheet.create(db, SheetKey.SPYOP_SHEET);
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         generateSpySheet(sheet, opsAgainstNations);
         sheet.updateWrite();
 

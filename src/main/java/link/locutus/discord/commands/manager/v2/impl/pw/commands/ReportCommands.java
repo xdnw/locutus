@@ -100,7 +100,7 @@ public class ReportCommands {
 
             sheet.addRow(column);
         }
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
         sheet.attach(io.create(), "reports").send();
         return null;
@@ -290,7 +290,7 @@ public class ReportCommands {
             sheet.addRow(header);
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
         sheet.attach(io.create(), "loans")
                 .append("Total on loan: `" + PnwUtil.resourcesToString(total) + "` worth `$" + MathMan.format(PnwUtil.convertedTotal(total)) + "`")

@@ -168,7 +168,7 @@ public class IntelOpSheet extends Command {
             sheet = SpreadSheet.create(db, SheetKey.SPYOP_SHEET);
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         SpySheet.generateSpySheet(sheet, targets);
 
         sheet.updateWrite();

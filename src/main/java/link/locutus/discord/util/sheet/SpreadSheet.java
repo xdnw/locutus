@@ -395,6 +395,9 @@ public class SpreadSheet {
             if (api == null && credentialsExists()) api = getServiceAPI();
             this.service = api;
             this.spreadsheetId = id;
+            if (this.service != null) {
+                this.valuesByTab.clear();
+            }
         }
     }
 
@@ -567,9 +570,9 @@ public class SpreadSheet {
                     msg.append(header + "```" + csv + "```" + footer);
                 } else {
                     msg.append(header)
-                        .append(header.isEmpty() ? "" : "\n")
-                        .append(footer)
-                        .file(title + ".csv", csv);
+                            .append(header.isEmpty() ? "" : "\n")
+                            .append(footer)
+                            .file(title + ".csv", csv);
                 }
             }
             return msg;
@@ -985,7 +988,7 @@ public class SpreadSheet {
     }
 
     public void updateClearAll() throws IOException {
-            if (service == null) {
+        if (service == null) {
             return;
         }
         Spreadsheet spreadsheet = null;
@@ -1035,7 +1038,7 @@ public class SpreadSheet {
     }
 
     public Map<Integer, String> fetchTabs() {
-            Spreadsheet spreadsheet = null;
+        Spreadsheet spreadsheet = null;
         try {
             spreadsheet = service.spreadsheets().get(spreadsheetId).execute();
         } catch (IOException e) {

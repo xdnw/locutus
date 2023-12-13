@@ -79,7 +79,7 @@ public class NoteSheet extends Command {
             sheet.addRow(row);
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
 
         sheet.updateWrite();
 

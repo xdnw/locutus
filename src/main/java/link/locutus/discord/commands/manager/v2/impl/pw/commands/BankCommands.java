@@ -458,7 +458,7 @@ public class BankCommands {
                         );
                         sheet.addRow(row);
                     }
-                    sheet.updateClearFirstTab();
+                    sheet.updateClearCurrentTab();
                     sheet.updateWrite();
                 } else {
                     sheet = sheetAmounts.getSheet();
@@ -1532,7 +1532,7 @@ public class BankCommands {
             sheet.addRow(future.get());
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
         sheet.attach(io.create(), "revenue").send();
@@ -1712,7 +1712,7 @@ public class BankCommands {
             sheet.addRow(header);
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
         StringBuilder response = new StringBuilder();
@@ -2120,7 +2120,7 @@ public class BankCommands {
             sheet.addRow(header);
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
         sheet.attach(io.create(), "projects").send();
@@ -2167,7 +2167,7 @@ public class BankCommands {
         sheet = sheetPair.getKey();
         double[] totalEscrowed = sheetPair.getValue();
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
         // appent resource string and worth
         sheet.attach(io.create(), "escrow").append("Total Escrowed: `" + PnwUtil.resourcesToString(totalEscrowed) + "` | worth: ~$" + MathMan.format(PnwUtil.convertedTotal(totalEscrowed))).send();
@@ -2408,7 +2408,7 @@ public class BankCommands {
 
         StringBuilder footer = new StringBuilder();
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
         IMessageBuilder msg = channel.create();
@@ -2418,7 +2418,7 @@ public class BankCommands {
             Map.Entry<SpreadSheet, double[]> pair = escrowSheet(db, nations, null);
             SpreadSheet escrowSheet = pair.getKey();
             // attach sheet
-            escrowSheet.updateClearFirstTab();
+            escrowSheet.updateClearCurrentTab();
             escrowSheet.updateWrite();
             escrowSheet.attach(msg, "escrow");
 
@@ -3700,7 +3700,7 @@ public class BankCommands {
             sheet.addRow(row);
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
         String totalStr = PnwUtil.resourcesToFancyString(aaTotal);
@@ -3778,7 +3778,7 @@ public class BankCommands {
             sheet.addRow(header);
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
         StringBuilder response = new StringBuilder();

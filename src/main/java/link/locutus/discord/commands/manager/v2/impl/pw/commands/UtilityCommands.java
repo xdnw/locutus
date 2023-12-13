@@ -1270,7 +1270,7 @@ public class UtilityCommands {
             sheet.addRow(new ArrayList<>(header));
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
         sheet.attach(channel.create(), "alliances").send();

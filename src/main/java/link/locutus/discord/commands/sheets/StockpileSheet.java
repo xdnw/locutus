@@ -89,7 +89,7 @@ public class StockpileSheet extends Command {
             sheet.addRow(row);
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
         String totalStr = PnwUtil.resourcesToFancyString(aaTotal);

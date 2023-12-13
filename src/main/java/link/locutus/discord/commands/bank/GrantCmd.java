@@ -186,7 +186,7 @@ public class GrantCmd extends Command {
             if (!Roles.ECON.has(author, guild)) return "No permission (econ)";
 
             SpreadSheet sheet = SpreadSheet.create(guildDb, SheetKey.GRANT_SHEET);
-            sheet.updateClearFirstTab();
+            sheet.updateClearCurrentTab();
             List<String> header = new ArrayList<>(Arrays.asList(
                     "nation",
                     "cities",

@@ -96,7 +96,7 @@ public class InterviewSheet extends Command {
             sheet.addRow(row);
         }
 
-        sheet.updateClearFirstTab();
+        sheet.updateClearCurrentTab();
         sheet.updateWrite();
 
         sheet.attach(channel.create(), "interview").send();

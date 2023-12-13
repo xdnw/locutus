@@ -848,7 +848,7 @@ public class GPTCommands {
                 ));
                 sheet.addRow(row);
             }
-            sheet.updateClearFirstTab();
+            sheet.updateClearCurrentTab();
             sheet.updateWrite();
 
         }
