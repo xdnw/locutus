@@ -53,6 +53,8 @@ import link.locutus.discord.db.entities.TaxBracket;
 import link.locutus.discord.db.entities.Transaction2;
 import link.locutus.discord.db.entities.Treaty;
 import link.locutus.discord.db.entities.UserWrapper;
+import link.locutus.discord.db.guild.GuildKey;
+import link.locutus.discord.db.guild.GuildSetting;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.NationOrAlliance;
@@ -137,6 +139,7 @@ public class PlaceholdersMap {
     public static Placeholders<IAttack> ATTACKS = null;
     public static Placeholders<DBWar> WARS = null;
     public static Placeholders<BankDB.TaxDeposit> TAX_DEPOSITS = null;
+    public static Placeholders<GuildSetting> SETTINGS = null;
 
     // --------------------------------------------------------------------
 
@@ -186,6 +189,7 @@ public class PlaceholdersMap {
         this.placeholders.put(IAttack.class, createAttacks());
         this.placeholders.put(DBWar.class, createWars());
         this.placeholders.put(BankDB.TaxDeposit.class, createTaxDeposit());
+        this.placeholders.put(GuildSetting.class, createGuildSettings());
 
         Map<Class, Field> fields = new HashMap<>();
         for (Field field : PlaceholdersMap.class.getDeclaredFields()) {
@@ -1246,6 +1250,70 @@ public class PlaceholdersMap {
                                      @Default TypedFunction<BankDB.TaxDeposit, String> v,
                                      @Default TypedFunction<BankDB.TaxDeposit, String> w,
                                      @Default TypedFunction<BankDB.TaxDeposit, String> x) throws GeneralSecurityException, IOException {
+                return Placeholders._addColumns(this, command,db, io, author, sheet,
+                        a, b, c, d, e, f, g, h, i, j,
+                        k, l, m, n, o, p, q, r, s, t,
+                        u, v, w, x);
+            }
+        };
+    }
+
+    public Placeholders<GuildSetting> createGuildSettings() {
+        return new SimplePlaceholders<GuildSetting>(GuildSetting.class, store, validators, permisser,
+                "TODO CM REF",
+                (ThrowingTriFunction<Placeholders<GuildSetting>, ValueStore, String, Set<GuildSetting>>) (inst, store, input) -> {
+                    Set<GuildSetting> selection = getSelection(inst, store, input);
+                    if (selection != null) return selection;
+                    if (input.equalsIgnoreCase("*")) {
+                        return new LinkedHashSet<>(Arrays.asList(GuildKey.values()));
+                    }
+                    return Set.of(PWBindings.key(input));
+                }, (ThrowingTriFunction<Placeholders<GuildSetting>, ValueStore, String, Predicate<GuildSetting>>) (inst, store, input) -> {
+            if (input.equalsIgnoreCase("*")) return f -> true;
+            GuildSetting setting = PWBindings.key(input);
+            return f -> f == setting;
+        }, new Function<GuildSetting, String>() {
+            @Override
+            public String apply(GuildSetting setting) {
+                return setting.name();
+            }
+        }) {
+
+            @NoFormat
+            @Command(desc = "Add an alias for a selection of guild settings")
+            @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+            public String addSelectionAlias(@Me JSONObject command, @Me GuildDB db, String name, Set<GuildSetting> settings) {
+                return _addSelectionAlias(this, command, db, name, settings, "settings");
+            }
+
+            @NoFormat
+            @Command(desc = "Add columns to a Guild Setting sheet")
+            @RolePermission(value = {Roles.INTERNAL_AFFAIRS_STAFF, Roles.MILCOM, Roles.ECON_STAFF, Roles.FOREIGN_AFFAIRS_STAFF, Roles.ECON, Roles.FOREIGN_AFFAIRS}, any = true)
+            public String addColumns(@Me JSONObject command, @Me GuildDB db, @Me IMessageIO io, @Me User author, @Switch("s") SheetTemplate sheet,
+                                     @Default TypedFunction<GuildSetting, String> a,
+                                     @Default TypedFunction<GuildSetting, String> b,
+                                     @Default TypedFunction<GuildSetting, String> c,
+                                     @Default TypedFunction<GuildSetting, String> d,
+                                     @Default TypedFunction<GuildSetting, String> e,
+                                     @Default TypedFunction<GuildSetting, String> f,
+                                     @Default TypedFunction<GuildSetting, String> g,
+                                     @Default TypedFunction<GuildSetting, String> h,
+                                     @Default TypedFunction<GuildSetting, String> i,
+                                     @Default TypedFunction<GuildSetting, String> j,
+                                     @Default TypedFunction<GuildSetting, String> k,
+                                     @Default TypedFunction<GuildSetting, String> l,
+                                     @Default TypedFunction<GuildSetting, String> m,
+                                     @Default TypedFunction<GuildSetting, String> n,
+                                     @Default TypedFunction<GuildSetting, String> o,
+                                     @Default TypedFunction<GuildSetting, String> p,
+                                     @Default TypedFunction<GuildSetting, String> q,
+                                     @Default TypedFunction<GuildSetting, String> r,
+                                     @Default TypedFunction<GuildSetting, String> s,
+                                     @Default TypedFunction<GuildSetting, String> t,
+                                     @Default TypedFunction<GuildSetting, String> u,
+                                     @Default TypedFunction<GuildSetting, String> v,
+                                     @Default TypedFunction<GuildSetting, String> w,
+                                     @Default TypedFunction<GuildSetting, String> x) throws GeneralSecurityException, IOException {
                 return Placeholders._addColumns(this, command,db, io, author, sheet,
                         a, b, c, d, e, f, g, h, i, j,
                         k, l, m, n, o, p, q, r, s, t,

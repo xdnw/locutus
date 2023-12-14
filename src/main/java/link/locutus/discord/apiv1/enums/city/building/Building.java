@@ -6,15 +6,18 @@ import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.apiv1.enums.city.JavaCity;
 import link.locutus.discord.apiv1.enums.city.project.Project;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 
 
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public interface Building {
 
+    @Command(desc = "Get the name of this building")
     String name();
 
     default String nameUpperUnd() {
@@ -23,13 +26,27 @@ public interface Building {
         return CaseFormat.UPPER_CAMEL.to(CaseFormat.UPPER_UNDERSCORE, name);
     }
 
+    @Command(desc = "Get the name of this building in snake case")
     default String nameSnakeCase() {
         return name().replaceAll("([A-Z])", "_$1").toLowerCase();
     }
 
+    @Command(desc = "Get the cost of this building for a specific resource")
     double cost(ResourceType type);
 
-    double costConverted(double num);
+    @Command(desc = "Get the resource costs of this building")
+    default Map<ResourceType, Double> getCostMap() {
+        return Arrays.stream(ResourceType.values).collect(Collectors.toMap(type -> type, this::cost));
+    }
+
+    @Command(desc = "Get the market cost of N of this building")
+    double getNMarketCost(double num);
+
+    @Command(desc = "Get the market cost of this building")
+    default double getMarketCost() {
+        return getNMarketCost(1);
+    }
+
 
     default double[] cost(double[] buffer, double num) {
         if (num > 0) {
@@ -47,7 +64,24 @@ public interface Building {
         return buffer;
     }
 
+    @Command(desc = "Get the upkeep of this building for a specific resource")
+    default double getUpkeep(ResourceType type, @Default Predicate<Project> hasProject) {
+        return upkeep(type, hasProject == null ? f -> false : hasProject);
+    }
+
+    @Command(desc = "Get the upkeep resources of this building")
+    default Map<ResourceType, Double> getUpkeepMap(@Default Predicate<Project> hasProject) {
+        Predicate<Project> hasProject1 = hasProject == null ? f -> false : hasProject;
+        return Arrays.stream(ResourceType.values).collect(Collectors.toMap(type -> type, type -> getUpkeep(type, hasProject1)));
+    }
+
     double upkeep(ResourceType type, Predicate<Project> hasProject);
+
+
+    @Command(desc = "Get max number of this building that can be built (per city)")
+    default int getCap(@Default Predicate<Project> hasProject) {
+        return cap(hasProject == null ? f -> false : hasProject);
+    }
 
     /**
      * Max amount of this building that can be built (per city)
@@ -56,8 +90,14 @@ public interface Building {
      */
     int cap(Predicate<Project> hasProject);
 
+    @Command(desc = "Get the pollution created by this building")
+    default int getPollution(@Default Predicate<Project> hasProject) {
+        return pollution(hasProject == null ? f -> false : hasProject);
+    }
+
     int pollution(Predicate<Project> hasProject);
 
+    @Command(desc = "If this building can be built in a specific continent")
     default boolean canBuild(Continent continent) {
         return true;
     }

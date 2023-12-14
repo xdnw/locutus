@@ -1290,7 +1290,7 @@ public class UtilityCommands {
         List<String> header = new ArrayList<>(columns);
         for (int i = 0; i < header.size(); i++) {
             String arg = header.get(i);
-            arg = arg;
+            if (arg.startsWith("=")) arg = "'" + arg;
             header.set(i, arg);
         }
 

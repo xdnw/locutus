@@ -835,9 +835,9 @@ public class JavaCity {
             int amt = buildings[i];
             if (amt != amtOther) {
                 if (amtOther > amt) {
-                    total += Buildings.get(i).costConverted((amt - amtOther) * 0.5);
+                    total += Buildings.get(i).getNMarketCost((amt - amtOther) * 0.5);
                 } else {
-                    total += Buildings.get(i).costConverted(amt - amtOther);
+                    total += Buildings.get(i).getNMarketCost(amt - amtOther);
                 }
             }
         }

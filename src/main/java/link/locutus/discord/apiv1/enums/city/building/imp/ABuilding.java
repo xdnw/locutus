@@ -52,7 +52,7 @@ public class ABuilding implements Building {
     }
 
     @Override
-    public double costConverted(double num) {
+    public double getNMarketCost(double num) {
         return costConverted * num;
     }
 

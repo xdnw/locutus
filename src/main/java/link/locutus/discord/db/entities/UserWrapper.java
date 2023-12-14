@@ -66,6 +66,8 @@ public class UserWrapper {
         return guild;
     }
 
+    @Command(desc = "Nation class corresponding to this user\n" +
+            "If no nation is found, returns null")
     public DBNation getNation() {
         return DiscordUtil.getNation(userId);
     }
