@@ -173,6 +173,7 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        getCommands().registerMethod(new UtilityCommands(), List.of("announcement"), "addWatermark", "watermark");
         getCommands().registerMethod(new WarCommands(), List.of("war", "sheet"), "raidSheet", "raid");
 
         getCommands().registerMethod(new TestCommands(), List.of("test"), "filters", "filters");

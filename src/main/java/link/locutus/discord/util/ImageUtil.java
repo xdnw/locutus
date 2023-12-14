@@ -16,7 +16,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.imageio.ImageIO;
-import java.awt.Graphics2D;
+import java.awt.*;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -53,6 +54,12 @@ public class ImageUtil {
         }
     }
 
+    public static boolean isDiscordImage(String url) {
+        return url.startsWith("https://cdn.discordapp.com/");
+    }
+
+
+
     public static String getTextLocal(String imageUrl, ImageType type) {
         String pathStr = Settings.INSTANCE.ARTIFICIAL_INTELLIGENCE.OCR.TESSERACT_LOCATION;
         if (pathStr == null || pathStr == null) {
@@ -74,7 +81,7 @@ public class ImageUtil {
     }
 
     public static File downloadImageWithSizeLimit(String imageUrl, long maxSizeBytes) throws IOException {
-        if (!imageUrl.startsWith("https://cdn.discordapp.com/")) {
+        if (!isDiscordImage(imageUrl)) {
             throw new IllegalArgumentException("URL is not from cdn.discordapp.com");
         }
 
@@ -264,5 +271,73 @@ public class ImageUtil {
         } else {
             throw new IllegalArgumentException("Unknown result: Neither ParsedResults > ParsedText nor ErrorMessage found:\n" + jsonStr);
         }
+    }
+
+    public static byte[] addWatermark(String imageUrl, String watermarkText, Color color, float opacity, Font font) {
+        try {
+            URL url = new URL(imageUrl);
+            BufferedImage image = ImageIO.read(url);
+
+            Graphics2D g2d = (Graphics2D) image.getGraphics();
+
+            AlphaComposite alphaChannel = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, opacity);
+            g2d.setComposite(alphaChannel);
+            g2d.setColor(color);
+
+            int fontSize = 256;
+            font = ImageUtil.setFontSize(font, fontSize);
+            g2d.setFont(font);
+            FontMetrics fontMetrics = g2d.getFontMetrics();
+            Rectangle2D rect = fontMetrics.getStringBounds(watermarkText, g2d);
+
+            // Scale font to fit image width
+            while (rect.getWidth() > image.getWidth()) {
+                fontSize--;
+                font = new Font("Arial", Font.BOLD, fontSize);
+                g2d.setFont(font);
+                fontMetrics = g2d.getFontMetrics();
+                rect = fontMetrics.getStringBounds(watermarkText, g2d);
+                if (fontSize <= 16) break;
+            }
+
+            // Word wrap
+            String[] words = watermarkText.split(" ");
+            StringBuilder currentLine = new StringBuilder(words[0]);
+            java.util.List<String> lines = new ArrayList<>();
+            for (int i = 1; i < words.length; i++) {
+                if (fontMetrics.stringWidth(currentLine + words[i]) < image.getWidth()) {
+                    currentLine.append(" ").append(words[i]);
+                } else {
+                    lines.add(currentLine.toString());
+                    currentLine = new StringBuilder(words[i]);
+                }
+            }
+            lines.add(currentLine.toString());
+
+            // Draw each line of the watermark text
+            int lineHeight = g2d.getFontMetrics().getHeight();
+            int y = image.getHeight() / 2 - lines.size() / 2 * lineHeight;
+            for (String line : lines) {
+                int x = (image.getWidth() - fontMetrics.stringWidth(line)) / 2;
+                g2d.drawString(line, x, y += lineHeight);
+            }
+
+            // Write image to bytes
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(image, "png", baos);
+            baos.flush();
+            byte[] imageInByte = baos.toByteArray();
+            baos.close();
+
+            g2d.dispose();
+
+            return imageInByte;
+        } catch (IOException ex) {
+            System.err.println(ex);
+            throw new RuntimeException(ex);
+        }
+    }
+    public static Font setFontSize(Font font, int size) {
+        return font.deriveFont((float) size);
     }
 }

@@ -116,6 +116,30 @@ public class PrimitiveBindings extends BindingHelper {
         }
     }
 
+    @Binding(examples = {"Arial"}, value = "A font name")
+    public static Font font(String fontName) {
+        int style = Font.PLAIN;
+        if (fontName.toLowerCase(Locale.ROOT).contains("bold")) {
+            // set style to bold, remove word bold
+            style = Font.BOLD;
+            fontName = fontName.toLowerCase(Locale.ROOT).replace("bold", "").trim();
+        } else if (fontName.toLowerCase(Locale.ROOT).contains("italic")) {
+            // set style to italic, remove word italic
+            style = Font.ITALIC;
+            fontName = fontName.toLowerCase(Locale.ROOT).replace("italic", "").trim();
+        }
+        String[] fonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
+        String finalFontName = fontName;
+        boolean isValidFont = Arrays.stream(fonts).anyMatch(font -> font.equalsIgnoreCase(finalFontName));
+
+        if (isValidFont) {
+            return new Font(fontName, style, 12);
+        } else {
+            String availableFonts = String.join(", ", fonts);
+            throw new IllegalArgumentException("Invalid font name. Available fonts are: `" + availableFonts + "`");
+        }
+    }
+
     @Binding(types = {long.class}, examples = {"3", "3*4-6/2", "50.3k"}, value = "A whole number")
     public static Long Long(String input) {
         try {

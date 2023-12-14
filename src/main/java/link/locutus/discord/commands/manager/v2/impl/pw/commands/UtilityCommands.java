@@ -6,6 +6,7 @@ import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
+import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
@@ -31,12 +32,7 @@ import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.pnw.SimpleNationList;
 import link.locutus.discord.pnw.json.CityBuild;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.PnwUtil;
-import link.locutus.discord.util.SpyCount;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.battle.sim.AttackTypeNode;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.io.PagePriority;
@@ -64,6 +60,7 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 
+import java.awt.*;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.AbstractMap;
@@ -1991,5 +1988,21 @@ public class UtilityCommands {
         response.append("\n**Cost:** ~$" + MathMan.format(PnwUtil.convertedTotal(cost)));
         response.append("\n```json\n" + PnwUtil.resourcesToString(cost) + "\n```");
         return response.toString();
+    }
+
+
+    @Command(desc = "Add a watermark to a discord image")
+    public String addWatermark(@Me IMessageIO io, String imageUrl, String watermarkText, @Default("blue") Color color, @Default("0.4") @Range(min = 0.01, max=1) double opacity, @Default("Arial") Font font) {
+        float opacityF = (float) opacity;
+        // remove anything after ? mark
+        imageUrl = imageUrl.split("\\?")[0];
+
+        if (!ImageUtil.isDiscordImage(imageUrl)) {
+            throw new IllegalArgumentException("Image must be a discord image, not: `" + imageUrl + "`");
+        }
+
+        byte[] image = ImageUtil.addWatermark(imageUrl, watermarkText, color, opacityF, font);
+        io.create().image("watermark.png", image).send();
+        return null;
     }
 }
