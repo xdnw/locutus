@@ -120,6 +120,12 @@ public class CustomSheet {
                     Set<Object> selection = ph.deserializeSelection(store, alias.getSelection());
                     List<String> columns = template.getColumns();
                     List<Object> header = new ArrayList<>(columns);
+                    for (int i = 0; i < header.size(); i++) {
+                        if (header.get(i) instanceof String str && str.startsWith("=")) {
+                            // add ' prefix when starts
+                            header.set(i, "'" + str);
+                        }
+                    }
 
                     // add header
                     sheet.addRow(tabName, header);
