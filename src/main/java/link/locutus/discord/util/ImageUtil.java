@@ -33,14 +33,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.*;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
 import java.util.function.Supplier;
 
 public class ImageUtil {
@@ -54,8 +48,30 @@ public class ImageUtil {
         }
     }
 
+    private static final List<String> SUPPORTED_DOMAINS = Arrays.asList(
+            "discord.gg",
+            "discord.com",
+            "discordapp.com",
+            "discord.media",
+            "discordapp.net",
+            "discordcdn.com",
+            "discord.dev",
+            "discord.new",
+            "discord.gift",
+            "discordstatus.com",
+            "dis.gd",
+            "discord.co"
+    );
+
     public static boolean isDiscordImage(String url) {
-        return url.startsWith("https://cdn.discordapp.com/");
+        try {
+            URL parsedUrl = new URL(url);
+            String host = parsedUrl.getHost();
+            return SUPPORTED_DOMAINS.stream().anyMatch(host::endsWith);
+        } catch (Exception e) {
+            // Invalid URL
+            return false;
+        }
     }
 
 
