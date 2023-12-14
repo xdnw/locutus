@@ -306,8 +306,8 @@ public class ImageUtil {
             FontMetrics fontMetrics = g2d.getFontMetrics();
             Rectangle2D rect = fontMetrics.getStringBounds(watermarkText, g2d);
 
-            // Scale font to fit image width
-            while (rect.getWidth() > image.getWidth()) {
+            // Scale font to fit image width and height
+            while (rect.getWidth() > image.getWidth() || rect.getHeight() > image.getHeight()) {
                 fontSize--;
                 font = new Font("Arial", Font.BOLD, fontSize);
                 g2d.setFont(font);
@@ -332,7 +332,8 @@ public class ImageUtil {
 
             // Draw each line of the watermark text
             int lineHeight = g2d.getFontMetrics().getHeight();
-            int y = image.getHeight() / 2 - lines.size() / 2 * lineHeight;
+            int totalTextHeight = lines.size() * lineHeight;
+            int y = (image.getHeight() - totalTextHeight) / 2;
             for (String line : lines) {
                 int x = (image.getWidth() - fontMetrics.stringWidth(line)) / 2;
                 g2d.drawString(line, x, y += lineHeight);
