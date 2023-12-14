@@ -109,8 +109,14 @@ public class DBBounty {
                 '}';
     }
 
+    @Command(desc = "Get the nation this bounty is for")
+    public DBNation getNation() {
+        return Locutus.imp().getNationDB().getNation(nationId);
+    }
+
+
     public void toCard(MessageChannel channel, boolean deanonymize) {
-        DBNation nation = Locutus.imp().getNationDB().getNation(nationId);
+        DBNation nation = getNation();
         if (nation == null) return;
 
         Set<DBBounty> bounties = Locutus.imp().getWarDb().getBounties(nationId);

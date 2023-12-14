@@ -1277,7 +1277,7 @@ public class PWBindings extends BindingHelper {
     }
 
     @Binding(value = "Locutus guild settings")
-    public GuildSetting key(String input) {
+    public static GuildSetting key(String input) {
         input = input.replaceAll("_", " ").toLowerCase();
         GuildSetting[] constants = GuildKey.values();
         for (GuildSetting constant : constants) {

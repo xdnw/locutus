@@ -85,11 +85,11 @@ public class DBBan {
 
     @Command(desc = "Nation or discord corresponds to existing nation")
     public boolean hasExistingNation() {
-        return getExistingNation(false) != null;
+        return getExistingNation() != null;
     }
 
     @Command(desc = "The existing nation (if any) that corresponds to this ban")
-    public DBNation getExistingNation(boolean checkNetwork) {
+    public DBNation getExistingNation() {
         DBNation nation = DBNation.getById(nation_id);
         if (nation == null) {
             nation = DiscordUtil.getNation(discord_id);
