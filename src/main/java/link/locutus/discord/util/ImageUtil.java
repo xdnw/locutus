@@ -321,7 +321,7 @@ public class ImageUtil {
             for (String line : lines) {
                 while (true) {
                     if (fontSize <= 16) break;
-                    font = new Font("Arial", Font.BOLD, fontSize);
+                    font = setFontSize(font, fontSize);
                     g2d.setFont(font);
                     fontMetrics = g2d.getFontMetrics();
                     rect = fontMetrics.getStringBounds(line, g2d);

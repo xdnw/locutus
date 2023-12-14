@@ -1992,7 +1992,10 @@ public class UtilityCommands {
     }
 
 
-    @Command(desc = "Add a watermark to a discord image")
+    @Command(desc = "Add a watermark to a discord image\n" +
+            "Use \\n to add a new line\n" +
+            "Default color will be light gray if image is dark and dark gray if image is light\n" +
+            "Set `repeat: True` to repeat the watermark down the entire image")
     public String addWatermark(@Me IMessageIO io, String imageUrl, String watermarkText, @Default Color color, @Default("0.05") @Range(min = 0.01, max=1) double opacity, @Default("Arial") Font font, @Switch("r") boolean repeat) {
         float opacityF = (float) opacity;
         // remove anything after ? mark
