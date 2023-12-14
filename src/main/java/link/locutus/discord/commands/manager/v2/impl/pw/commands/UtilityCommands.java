@@ -61,6 +61,7 @@ import net.dv8tion.jda.api.entities.User;
 import org.json.JSONObject;
 
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.AbstractMap;
@@ -1992,7 +1993,7 @@ public class UtilityCommands {
 
 
     @Command(desc = "Add a watermark to a discord image")
-    public String addWatermark(@Me IMessageIO io, String imageUrl, String watermarkText, @Default("blue") Color color, @Default("0.4") @Range(min = 0.01, max=1) double opacity, @Default("Arial") Font font) {
+    public String addWatermark(@Me IMessageIO io, String imageUrl, String watermarkText, @Default Color color, @Default("0.05") @Range(min = 0.01, max=1) double opacity, @Default("Arial") Font font, @Switch("r") boolean repeat) {
         float opacityF = (float) opacity;
         // remove anything after ? mark
         imageUrl = imageUrl.split("\\?")[0];
@@ -2001,8 +2002,10 @@ public class UtilityCommands {
             throw new IllegalArgumentException("Image must be a discord image, not: `" + imageUrl + "`");
         }
 
-        byte[] image = ImageUtil.addWatermark(imageUrl, watermarkText, color, opacityF, font);
-        io.create().image("watermark.png", image).send();
+        BufferedImage image = ImageUtil.readImage(imageUrl);
+        if (color == null) color = ImageUtil.getDefaultWatermarkColor(image);
+        byte[] bytes = ImageUtil.addWatermark(image, watermarkText, color, opacityF, font, repeat);
+        io.create().image("watermark.png", bytes).send();
         return null;
     }
 }

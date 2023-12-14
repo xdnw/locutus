@@ -289,20 +289,17 @@ public class ImageUtil {
         }
     }
 
-    public static byte[] addWatermark(String imageUrl, String watermarkText2, Color color, float opacity, Font font) {
+    public static byte[] addWatermark(BufferedImage image, String watermarkText2, Color color, float opacity, Font font, boolean repeat) {
         try {
-            String[] words = watermarkText2.split(" ");
-            URL url = new URL(imageUrl);
-            BufferedImage image = ImageIO.read(url);
-
+            String[] words = watermarkText2.replaceAll("\\n", "\n").split("\n");
             Graphics2D g2d = (Graphics2D) image.getGraphics();
 
             AlphaComposite alphaChannel = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, opacity);
             g2d.setComposite(alphaChannel);
             g2d.setColor(color);
 
-            int fontSize = 256;
-            font = ImageUtil.setFontSize(font, fontSize);
+            int fontSize = 1024;
+            font = setFontSize(font, fontSize);
             g2d.setFont(font);
             FontMetrics fontMetrics = g2d.getFontMetrics();
             Rectangle2D rect;
@@ -337,12 +334,17 @@ public class ImageUtil {
             }
 
             // Draw each line of the watermark text
-            int lineHeight = g2d.getFontMetrics().getHeight();
+            int lineHeight = g2d.getFontMetrics().getAscent();
+            int padding = g2d.getFontMetrics().getHeight() - g2d.getFontMetrics().getAscent();
             int totalTextHeight = lines.size() * lineHeight;
-            int y = (image.getHeight() - totalTextHeight) / 2;
-            for (String line : lines) {
-                int x = (image.getWidth() - fontMetrics.stringWidth(line)) / 2;
-                g2d.drawString(line, x, y += lineHeight);
+            System.out.println("Line " + lineHeight + " | " + padding);
+            int y = (repeat ? 0 : (image.getHeight() - totalTextHeight) / 2) - padding;
+            while (y < image.getHeight()) {
+                for (String line : lines) {
+                    int x = (image.getWidth() - fontMetrics.stringWidth(line)) / 2;
+                    g2d.drawString(line, x, y += lineHeight);
+                }
+                if (!repeat) break;
             }
 
             // Write image to bytes
@@ -360,6 +362,45 @@ public class ImageUtil {
             throw new RuntimeException(ex);
         }
     }
+
+    public static BufferedImage image(String imageUrl) throws IOException {
+        URL url = new URL(imageUrl);
+        BufferedImage image = ImageIO.read(url);
+        return image;
+    }
+
+    public static Color getAverageColor(BufferedImage image) {
+        long sumRed = 0;
+        long sumGreen = 0;
+        long sumBlue = 0;
+        long totalPixels = (long) image.getWidth() * image.getHeight();
+
+        for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) {
+                Color pixel = new Color(image.getRGB(x, y));
+                sumRed += pixel.getRed();
+                sumGreen += pixel.getGreen();
+                sumBlue += pixel.getBlue();
+            }
+        }
+
+        int averageRed = (int) (sumRed / totalPixels);
+        int averageGreen = (int) (sumGreen / totalPixels);
+        int averageBlue = (int) (sumBlue / totalPixels);
+
+        return new Color(averageRed, averageGreen, averageBlue);
+    }
+
+    public static float getLuminance(Color color) {
+        float[] hsb = Color.RGBtoHSB(color.getRed(), color.getGreen(), color.getBlue(), null);
+        return hsb[2];
+    }
+
+    public static Color getDefaultWatermarkColor(BufferedImage image) {
+        Color color = getAverageColor(image);
+        return getLuminance(color) < 0.5 ? Color.LIGHT_GRAY : Color.DARK_GRAY;
+    }
+
     public static Font setFontSize(Font font, int size) {
         return font.deriveFont((float) size);
     }
