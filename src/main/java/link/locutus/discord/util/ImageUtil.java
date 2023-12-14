@@ -289,8 +289,9 @@ public class ImageUtil {
         }
     }
 
-    public static byte[] addWatermark(String imageUrl, String watermarkText, Color color, float opacity, Font font) {
+    public static byte[] addWatermark(String imageUrl, String watermarkText2, Color color, float opacity, Font font) {
         try {
+            String[] words = watermarkText2.split(" ");
             URL url = new URL(imageUrl);
             BufferedImage image = ImageIO.read(url);
 
@@ -304,20 +305,9 @@ public class ImageUtil {
             font = ImageUtil.setFontSize(font, fontSize);
             g2d.setFont(font);
             FontMetrics fontMetrics = g2d.getFontMetrics();
-            Rectangle2D rect = fontMetrics.getStringBounds(watermarkText, g2d);
-
-            // Scale font to fit image width and height
-            while (rect.getWidth() > image.getWidth() || rect.getHeight() > image.getHeight()) {
-                fontSize--;
-                font = new Font("Arial", Font.BOLD, fontSize);
-                g2d.setFont(font);
-                fontMetrics = g2d.getFontMetrics();
-                rect = fontMetrics.getStringBounds(watermarkText, g2d);
-                if (fontSize <= 16) break;
-            }
+            Rectangle2D rect;
 
             // Word wrap
-            String[] words = watermarkText.split(" ");
             StringBuilder currentLine = new StringBuilder(words[0]);
             java.util.List<String> lines = new ArrayList<>();
             for (int i = 1; i < words.length; i++) {
@@ -329,6 +319,22 @@ public class ImageUtil {
                 }
             }
             lines.add(currentLine.toString());
+
+            // Scale font to fit image width and height
+            for (String line : lines) {
+                while (true) {
+                    if (fontSize <= 16) break;
+                    font = new Font("Arial", Font.BOLD, fontSize);
+                    g2d.setFont(font);
+                    fontMetrics = g2d.getFontMetrics();
+                    rect = fontMetrics.getStringBounds(line, g2d);
+                    if (rect.getWidth() > image.getWidth() || rect.getHeight() * lines.size() > image.getHeight()) {
+                        fontSize--;
+                    } else {
+                        break;
+                    }
+                }
+            }
 
             // Draw each line of the watermark text
             int lineHeight = g2d.getFontMetrics().getHeight();
