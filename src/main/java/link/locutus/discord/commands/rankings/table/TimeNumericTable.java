@@ -503,7 +503,11 @@ public abstract class TimeNumericTable<T> {
             plot.getLegend().clear();
             // add the labels to the legend, using color format, index -> colormapper apply color
 //            The labels: this.labels
-            plot.getLegend().add(data);
+            DataTable data2 = new DataTable(String.class);
+            for (String label : labels) {
+                data2.add(label);
+            }
+            plot.getLegend().add(data2);
 
         } else {
             int i = 0;
