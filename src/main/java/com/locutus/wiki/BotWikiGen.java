@@ -35,6 +35,7 @@ public abstract class BotWikiGen {
             if (line.startsWith("# ")) {
                 line = line.substring(2);
                 if (line.equalsIgnoreCase("see also")) continue;
+                if (line.contains("Table of Contents")) continue;
 
                 headings.add(line);
             }

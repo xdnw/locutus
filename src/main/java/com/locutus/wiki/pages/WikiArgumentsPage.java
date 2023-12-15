@@ -11,7 +11,7 @@ public class WikiArgumentsPage extends BotWikiGen {
 
     @Override
     public String getDescription() {
-        return "List and description of all command arguments.";
+        return "List and description of all arguments types used in commands.";
     }
 
     @Override

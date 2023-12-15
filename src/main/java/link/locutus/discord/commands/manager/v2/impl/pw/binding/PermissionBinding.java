@@ -185,7 +185,7 @@ public class PermissionBinding extends BindingHelper {
         return true;
     }
 
-    @Binding
+    @Binding("Deny all use")
     @DenyPermission
     public boolean deny(DenyPermission perm, @Me DBNation nation, @Me User user) {
         throw new IllegalCallerException("Denied by permission: " + nation.getNationUrlMarkup(false) + " | " + user.getAsMention());

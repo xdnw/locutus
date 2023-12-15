@@ -358,7 +358,7 @@ public abstract class TimeNumericTable<T> {
         // Create new xy-plot
         XYPlot plot;
         if (isBar) {
-            plot = new BarPlot(series);
+            plot = new BarPlot(data);
         } else {
             plot = new XYPlot(series);
         }
