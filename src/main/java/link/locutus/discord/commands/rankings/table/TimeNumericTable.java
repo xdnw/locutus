@@ -361,31 +361,28 @@ public abstract class TimeNumericTable<T> {
         // Create new xy-plot
         XYPlot plot;
         if (isBar) {
+            barData = new DataTable(Double.class, Double.class, String.class);
+
             int numYTypes = data.getColumnCount() - 1;
-            // first type is long, will be changed to String, and moved to the end of the type list (everything else shifted left 1)
-            // long will be formatted using the timeFormat
-            // other types will remain as double
-            Class[] types = new Class[numYTypes + 1];
-            types[types.length - 1] = String.class;
-            for (int i = 0; i < numYTypes; i++) types[i] = Double.class;
-
-            barData = new DataTable(types);
-
+            double widthPerRow = 1d / (numYTypes);
             for (int i = 0; i < data.getRowCount(); i++) {
                 Row row = data.getRow(i);
-                Comparable[] newRow = new Comparable[types.length];
-
                 long timeData = ((Number) row.get(0)).longValue();
                 String timeStr = timeFormat.toString(timeData);
 
-                newRow[newRow.length - 1] = timeStr;
                 for (int j = 0; j < numYTypes; j++) {
-                    newRow[j] = row.get(j + 1);
-                }
-                barData.add(newRow);
-            }
+                    double val = ((Number) row.get(j + 1)).doubleValue();
 
-            System.out.println("Num types " + numYTypes + " " + Arrays.toString(types));
+                    double x = i + (j * widthPerRow);
+                    Comparable[] newRow = new Comparable[3];
+                    newRow[0] = x;
+                    newRow[1] = val;
+                    newRow[2] = timeStr;
+
+                    barData.add(newRow);
+                }
+
+            }
 
             plot = new BarPlot(barData);
         } else {
@@ -465,7 +462,7 @@ public abstract class TimeNumericTable<T> {
         if (isBar) {
             List<Color> colorList = new ArrayList<>(colors);
             BarPlot barPlot = (BarPlot) plot;
-            barPlot.setBarWidth(1d / (amt + 1d));
+            barPlot.setBarWidth(1d / amt);
             BarPlot.BarRenderer pointRenderer = (BarPlot.BarRenderer) plot.getPointRenderers(barData).get(0);
             pointRenderer.setColor(new ColorMapper() {
                 @Override
