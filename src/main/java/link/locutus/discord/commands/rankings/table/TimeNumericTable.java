@@ -477,7 +477,7 @@ public abstract class TimeNumericTable<T> {
 
                 @Override
                 public Mode getMode() {
-                    return null;
+                    return Mode.CIRCULAR;
                 }
             };
             pointRenderer.setColor(mapper);
@@ -506,10 +506,11 @@ public abstract class TimeNumericTable<T> {
 //            The labels: this.labels
             DataTable data2 = new DataTable(Double.class, String.class);
             for (int i = 0; i < this.labels.length; i++) {
-                data2.add((double) i, this.labels[i]);
+                data2.add((double) i / amt, this.labels[i]);
             }
             plot.getLegend().add(data2);
-            ((ValueLegend) plot.getLegend()).setLabelColumn(1);
+            // (BarPlot.BarRenderer) plot.getPointRenderers(barData).get(0)
+//            ((ValueLegend) plot.getLegend()).setLabelColumn(1);
 
         } else {
             int i = 0;
