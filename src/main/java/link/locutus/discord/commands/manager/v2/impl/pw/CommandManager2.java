@@ -647,6 +647,7 @@ public class CommandManager2 {
                             Throwable e2 = e;
                             while (e2.getCause() != null && e2.getCause() != e2) e2 = e2.getCause();
                             e2.printStackTrace();
+                            e.printStackTrace();
                             throw new CommandUsageException(callable, e2.getMessage());
                         }
                     });
