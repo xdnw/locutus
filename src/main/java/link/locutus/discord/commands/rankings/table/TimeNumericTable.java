@@ -14,6 +14,7 @@ import de.erichseifert.gral.plots.BarPlot;
 import de.erichseifert.gral.plots.XYPlot;
 import de.erichseifert.gral.plots.axes.AxisRenderer;
 import de.erichseifert.gral.plots.colors.ColorMapper;
+import de.erichseifert.gral.plots.legends.ValueLegend;
 import de.erichseifert.gral.plots.lines.DefaultLineRenderer2D;
 import de.erichseifert.gral.plots.lines.LineRenderer;
 import link.locutus.discord.Locutus;
@@ -503,11 +504,12 @@ public abstract class TimeNumericTable<T> {
             plot.getLegend().clear();
             // add the labels to the legend, using color format, index -> colormapper apply color
 //            The labels: this.labels
-            DataTable data2 = new DataTable(String.class, Double.class);
+            DataTable data2 = new DataTable(Double.class, String.class);
             for (int i = 0; i < this.labels.length; i++) {
-                data2.add(this.labels[i], i);
+                data2.add((double) i, this.labels[i]);
             }
             plot.getLegend().add(data2);
+            ((ValueLegend) plot.getLegend()).setLabelColumn(1);
 
         } else {
             int i = 0;
