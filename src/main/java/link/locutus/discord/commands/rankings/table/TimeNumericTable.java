@@ -506,11 +506,12 @@ public abstract class TimeNumericTable<T> {
 //            The labels: this.labels
             DataTable data2 = new DataTable(Double.class, String.class);
             for (int i = 0; i < this.labels.length; i++) {
-                data2.add((double) i / amt, this.labels[i]);
+                data2.add((double) i, this.labels[i]);
             }
             plot.getLegend().add(data2);
-            // (BarPlot.BarRenderer) plot.getPointRenderers(barData).get(0)
-//            ((ValueLegend) plot.getLegend()).setLabelColumn(1);
+            plot.getPointRenderers(data2).get(0).setColor(mapper);
+            plot.getPointRenderers(data2).get(0).setValueColumn(0);
+            ((ValueLegend) plot.getLegend()).setLabelColumn(1);
 
         } else {
             int i = 0;
