@@ -1842,7 +1842,7 @@ public class GuildHandler {
                                 if (!enemies.contains(attacker.getAlliance_id())) {
                                     int unraidable = 50000 * defender.getCities();
 
-                                    if (attacker.getGroundStrength(true, false) > defender.getSoldiers() * 1.75) {
+                                    if (attacker.getGroundStrength(true, false) > defender.getSoldiers() * 1.7_5) {
                                         String bankUrl = "" + Settings.INSTANCE.PNW_URL() + "/alliance/id=" + defender.getAlliance_id() + "&display=bank";
                                         tips.add("Deposit your excess money in the bank or it will be stolen: " + bankUrl + " (only $" + MathMan.format(unraidable) + " is unraidable)");
                                     }

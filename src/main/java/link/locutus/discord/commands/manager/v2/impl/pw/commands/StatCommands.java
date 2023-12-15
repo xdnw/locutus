@@ -730,8 +730,8 @@ public class StatCommands {
             maxScore = (int) Math.max(maxScore, nation.estimateScore(col1MMR, col1Infra, null, null));
             minScore = (int) Math.min(minScore, nation.estimateScore(col2MMR, col2Infra, null, null));
         }
-        double[] coal1Str = new double[(int) (maxScore * 1.75)];
-        double[] coal2Str = new double[(int) (maxScore * 1.75)];
+        double[] coal1Str = new double[(int) (maxScore * PnwUtil.WAR_RANGE_MAX_MODIFIER)];
+        double[] coal2Str = new double[(int) (maxScore * PnwUtil.WAR_RANGE_MAX_MODIFIER)];
 
         double[] coal1StrSpread = new double[coal1Str.length];
         double[] coal2StrSpread = new double[coal2Str.length];
@@ -864,8 +864,8 @@ public class StatCommands {
             maxScore = (int) Math.max(maxScore, nation.getScore());
             minScore = (int) Math.min(minScore, nation.getScore());
         }
-        double[] coal1Str = new double[(int) (maxScore * 1.75)];
-        double[] coal2Str = new double[(int) (maxScore * 1.75)];
+        double[] coal1Str = new double[(int) (maxScore * PnwUtil.WAR_RANGE_MAX_MODIFIER)];
+        double[] coal2Str = new double[(int) (maxScore * PnwUtil.WAR_RANGE_MAX_MODIFIER)];
 
         double[] coal1StrSpread = new double[coal1Str.length];
         double[] coal2StrSpread = new double[coal2Str.length];
@@ -879,7 +879,7 @@ public class StatCommands {
         for (int min = 10; min < coal1Str.length; min++) {
             double val = coal1Str[min];
             if (val == 0) continue;
-            int max = Math.min(coal1StrSpread.length, (int) (1.75 * (min / 0.75)));
+            int max = Math.min(coal1StrSpread.length, (int) (PnwUtil.WAR_RANGE_MAX_MODIFIER * (min / 0.75)));
 
             for (int i = min; i < max; i++) {
                 coal1StrSpread[i] += val;
@@ -888,7 +888,7 @@ public class StatCommands {
         for (int min = 10; min < coal2Str.length; min++) {
             double val = coal2Str[min];
             if (val == 0) continue;
-            int max = Math.min(coal2StrSpread.length, (int) (1.75 * (min / 0.75)));
+            int max = Math.min(coal2StrSpread.length, (int) (PnwUtil.WAR_RANGE_MAX_MODIFIER * (min / 0.75)));
 
             for (int i = min; i < max; i++) {
                 coal2StrSpread[i] += val;

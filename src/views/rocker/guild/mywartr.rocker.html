@@ -139,8 +139,8 @@
                         @if (nation.getSoldiers() > enemy.getGroundStrength(true, false) * 0.3 && enemy.getGroundStrength(true, false) > 0) {
                             @rocker.guild.odds.template("Soldiers (unarmed) v Enemy", nation.getSoldiers(), enemy.getGroundStrength(true, false))
                         }
-                        @if (nation.getSoldiers() * 1.75 > enemy.getGroundStrength(true, false) * 0.3 && enemy.getGroundStrength(true, false) > 0) {
-                            @rocker.guild.odds.template("Soldiers (munitions) v Enemy", nation.getSoldiers() * 1.75, enemy.getGroundStrength(true, false))
+                        @if (nation.getSoldiers() * 1.7_5 > enemy.getGroundStrength(true, false) * 0.3 && enemy.getGroundStrength(true, false) > 0) {
+                            @rocker.guild.odds.template("Soldiers (munitions) v Enemy", nation.getSoldiers() * 1.7_5, enemy.getGroundStrength(true, false))
                         }
                         @if (nation.getGroundStrength(true, false) > 0 && enemy.getGroundStrength(true, false) > 0) {
                             @rocker.guild.odds.template("Ground", nation.getGroundStrength(true, false), enemy.getGroundStrength(true, false))

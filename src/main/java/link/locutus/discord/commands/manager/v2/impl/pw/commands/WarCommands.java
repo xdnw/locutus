@@ -223,7 +223,7 @@ public class WarCommands {
             double score = me.getScore();
             ByteBuffer scoreLeewayBuf = me.getMeta(NationMeta.BEIGE_ALERT_SCORE_LEEWAY);
             double scoreLeeway = scoreLeewayBuf == null ? 0 : scoreLeewayBuf.getDouble();
-            targets.removeIf(f -> f.getScore() < score * 0.75 - scoreLeeway || f.getScore() > score * 1.75);
+            targets.removeIf(f -> f.getScore() < score * 0.75 - scoreLeeway || f.getScore() > score * PnwUtil.WAR_RANGE_MAX_MODIFIER);
         }
 
         targets.removeIf(f -> !canRaid.apply(f));
@@ -437,10 +437,10 @@ public class WarCommands {
             Set<DBNation> myAlliance = Locutus.imp().getNationDB().getNations(Collections.singleton(finalNation.getAlliance_id()));
             myAlliance.removeIf(f -> f.getActive_m() > 2440 || f.getVm_turns() != 0);
             BiFunction<Double, Double, Integer> range = PnwUtil.getIsNationsInScoreRange(myAlliance);
-            enemies.removeIf(f -> range.apply(f.getScore() / 1.75, f.getScore() / 0.75) <= 0);
+            enemies.removeIf(f -> range.apply(f.getScore() / PnwUtil.WAR_RANGE_MAX_MODIFIER, f.getScore() / 0.75) <= 0);
         } else {
             List<DBNation> tmp = new ArrayList<>(enemies);
-            tmp.removeIf(f -> f.getScore() < finalScore * 0.75 || f.getScore() > finalScore * 1.75);
+            tmp.removeIf(f -> f.getScore() < finalScore * 0.75 || f.getScore() > finalScore * PnwUtil.WAR_RANGE_MAX_MODIFIER);
             if (tmp.isEmpty()) {
                 enemies.removeIf(f -> !f.isInSpyRange(finalNation));
             } else {
@@ -626,7 +626,7 @@ public class WarCommands {
         if(myShips== null) myShips = me.getShips();
 
         double min = me.getScore() * 0.75;
-        double max = me.getScore() * 1.75;
+        double max = me.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER;
 
         Map<DBNation, Map<DBNation, Boolean>> alliesBlockadedBy = new HashMap<>();
         for (DBNation ally : allies) {
@@ -840,7 +840,7 @@ public class WarCommands {
         BiFunction<Double, Double, Integer> attScores = PnwUtil.getIsNationsInScoreRange(nationsToBlitzWith);
 
 //        double minScore = me.getScore() * 0.75;
-//        double maxScore = me.getScore() * 1.75;
+//        double maxScore = me.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER;
         List<DBNation> nations = new ArrayList<>(targets);
         nations.removeIf(f -> f.getVm_turns() != 0);
         nations.removeIf(f -> f.getDef() >= 3);
@@ -850,13 +850,13 @@ public class WarCommands {
                 throw new IllegalArgumentException("Please provide a list of nations for `nationsToBlitzWith`");
             }
             double minScore = nationsToBlitzWith.stream().mapToDouble(DBNation::getScore).max().orElse(0) * 0.75;
-            double maxScore = nationsToBlitzWith.stream().mapToDouble(DBNation::getScore).min().orElse(0) * 1.75;
+            double maxScore = nationsToBlitzWith.stream().mapToDouble(DBNation::getScore).min().orElse(0) * PnwUtil.WAR_RANGE_MAX_MODIFIER;
             if (minScore >= maxScore) {
                 throw new IllegalArgumentException("Nations `nationsToBlitzWith` do not share a score range.");
             }
             nations.removeIf(f -> f.getScore() < minScore || f.getScore() > maxScore);
         } else {
-            nations.removeIf(f -> attScores.apply(f.getScore() / 1.75, f.getScore() * 1.25) <= 0);
+            nations.removeIf(f -> attScores.apply(f.getScore() / PnwUtil.WAR_RANGE_MAX_MODIFIER, f.getScore() * 1.25) <= 0);
         }
 
         if (!ignoreDNR) {
@@ -899,7 +899,7 @@ public class WarCommands {
             canCounter.removeIf(f -> f.getCities() < 10 && f.getActive_m() > 2880);
             canCounter.removeIf(f -> f.getCities() == 10 && f.getActive_m() > 3000);
             canCounter.removeIf(f -> f.getCities() > 10 && f.getActive_m() > 12000);
-            canCounter.removeIf(f -> attScores.apply(f.getScore() * 0.75, f.getScore() * 1.75) <= 0);
+            canCounter.removeIf(f -> attScores.apply(f.getScore() * 0.75, f.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER) <= 0);
             canCounter.removeIf(f -> f.getOff() >= f.getMaxOff());
 //            canCounter.removeIf(f -> f.getAircraft() < me.getAircraft() * 0.6);
             canCounter.removeIf(f -> f.getNumWars() > 0 && f.getRelativeStrength() < 1);
@@ -1129,7 +1129,7 @@ public class WarCommands {
 //                nations.removeIf(n -> n.isBeige());
 
         double minScore = attackerScore * 0.75;
-        double maxScore = attackerScore * 1.75;
+        double maxScore = attackerScore * PnwUtil.WAR_RANGE_MAX_MODIFIER;
 
         List<DBNation> strong = new ArrayList<>();
 
@@ -1416,7 +1416,7 @@ public class WarCommands {
 
         if (warRange == null || warRange == 0) warRange = me.getScore();
         double minScore = warRange * 0.75;
-        double maxScore = warRange * 1.75;
+        double maxScore = warRange * PnwUtil.WAR_RANGE_MAX_MODIFIER;
 
         nations.removeIf(f -> f.getScore() <= minScore || f.getScore() >= maxScore);
 
@@ -1897,9 +1897,9 @@ public class WarCommands {
             throw new IllegalArgumentException("Only attackers from this guild's alliance ids can be used: `" + StringMan.getString(aaIds) + "`. You tried generating targets for attackers in the alliance ids: `" + StringMan.getString(attackerAAs) + "`");
         }
 
-        Map.Entry<Double, Double> minMax = NationScoreMap.getMinMaxScore(attackers, 0.75, 1.75);
+        Map.Entry<Double, Double> minMax = NationScoreMap.getMinMaxScore(attackers, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER);
         targets.removeIf(f -> f.getScore() < minMax.getKey() || f.getScore() > minMax.getValue());
-        Map.Entry<Double, Double> enemyMinMax = NationScoreMap.getMinMaxScore(targets, 1 / 1.75, 1 / 0.75);
+        Map.Entry<Double, Double> enemyMinMax = NationScoreMap.getMinMaxScore(targets, 1 / PnwUtil.WAR_RANGE_MAX_MODIFIER, 1 / 0.75);
         attackers.removeIf(f -> f.getScore() < enemyMinMax.getKey() || f.getScore() > enemyMinMax.getValue());
 
         if (attackers.isEmpty()) {
@@ -1923,7 +1923,7 @@ public class WarCommands {
         /*
         If enemy has more ships and attacker is currently blockaded, reduce loot by 2/5 * activity
          */
-        NationScoreMap<DBNation> enemyMap = new NationScoreMap<>(targetsSorted, DBNation::getScore, 1/1.75, 1/0.75);
+        NationScoreMap<DBNation> enemyMap = new NationScoreMap<>(targetsSorted, DBNation::getScore, 1/PnwUtil.WAR_RANGE_MAX_MODIFIER, 1/0.75);
 
         Map<DBNation, double[]> loots = new HashMap<>();
 
@@ -3036,7 +3036,7 @@ public class WarCommands {
         IMessageBuilder msg = io.create();
 
         StringBuilder response = new StringBuilder();
-        Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(blitzSheet, headerRow, f -> 3, 0.75, 1.75, true, true, false, f -> true, (dbNationDBNationEntry, s) -> response.append(s).append("\n"));
+        Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(blitzSheet, headerRow, f -> 3, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (dbNationDBNationEntry, s) -> response.append(s).append("\n"));
         if (response.length() != 0) {
             msg = io.create().append("**Errors:**\n").append(response.toString());
             if (!force) {
@@ -3125,7 +3125,7 @@ public class WarCommands {
         if (dm && !Roles.MAIL.hasOnRoot(author)) return "You do not have permission to dm users";
 
         if (blitzSheet != null) {
-            warDefAttMap = BlitzGenerator.getTargets(blitzSheet, 0, f -> 3, 0.75, 1.75, true, true, false, f -> true, (a, b) -> {});
+            warDefAttMap = BlitzGenerator.getTargets(blitzSheet, 0, f -> 3, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (a, b) -> {});
         }
 
         if (spySheet != null) {
@@ -3376,7 +3376,7 @@ public class WarCommands {
         StringBuilder response = new StringBuilder();
         Integer finalMaxWars = maxWars;
         if (headerRow == null) headerRow = 0;
-        BlitzGenerator.getTargets(sheet, headerRow, f -> finalMaxWars, 0.75, 1.75, true, true, false, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
+        BlitzGenerator.getTargets(sheet, headerRow, f -> finalMaxWars, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
             @Override
             public void accept(Map.Entry<DBNation, DBNation> dbNationDBNationEntry, String msg) {
                 response.append(msg + "\n");
@@ -3996,7 +3996,7 @@ public class WarCommands {
         if (requireDiscord) counterWith.removeIf(f -> f.getUser() == null);
 
         double score = target.getScore();
-        double scoreMin = score / 1.75;
+        double scoreMin = score / PnwUtil.WAR_RANGE_MAX_MODIFIER;
         double scoreMax = score / 0.75;
 
         for (DBWar activeWar : target.getActiveWars()) {
@@ -4147,7 +4147,7 @@ public class WarCommands {
                     channel.create().confirmation("Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is not an ally.", command).send();
                     return null;
                 }
-                if (enemy.getScore() < attacker.getScore() * 0.75 || enemy.getScore() > attacker.getScore() * 1.75) {
+                if (enemy.getScore() < attacker.getScore() * 0.75 || enemy.getScore() > attacker.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER) {
 //                    DiscordUtil.pending(channel, message, "Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is outside war range (see " + CM.nation.score.cmd.toSlashMention() + "). ", 'f');
                     channel.create().confirmation("Error: Unsuitable counter", attacker.getNationUrlMarkup(true) + " | " + attacker.getAllianceUrlMarkup(true) + " is outside war range (see " + CM.nation.score.cmd.toSlashMention() + "). ", command).send();
                     return null;

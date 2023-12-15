@@ -927,8 +927,8 @@ public class UtilityCommands {
         if (score == 0) throw new IllegalArgumentException("No arguments provided");
 
         return "Score: " + MathMan.format(score) + "\n" +
-                "WarRange: " + MathMan.format(score * 0.75) + "- " + MathMan.format(score * 1.75) + "\n" +
-                "Can be Attacked By: " + MathMan.format(score / 1.75) + "- " + MathMan.format(score / 0.75) + "\n" +
+                "WarRange: " + MathMan.format(score * 0.75) + "- " + MathMan.format(score * PnwUtil.WAR_RANGE_MAX_MODIFIER) + "\n" +
+                "Can be Attacked By: " + MathMan.format(score / PnwUtil.WAR_RANGE_MAX_MODIFIER) + "- " + MathMan.format(score / 0.75) + "\n" +
                 "Spy range: " + MathMan.format(score * 0.4) + "- " + MathMan.format(score * 1.5);
 
 

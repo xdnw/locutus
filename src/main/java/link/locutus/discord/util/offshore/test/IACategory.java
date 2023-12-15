@@ -788,7 +788,7 @@ public class IACategory {
                 }
                 if (nation.getMeta(NationMeta.INTERVIEW_DEPOSITS) == null && nation.getOff() < 5) {
                     Set<DBNation> enemies = Locutus.imp().getNationDB().getNations(Collections.singleton(0));
-                    enemies.removeIf(f -> f.getVm_turns() > 0 || f.getScore() > nation.getScore() * 1.75 || f.getScore() < nation.getScore() * 0.75 || f.getActive_m() < 10000);
+                    enemies.removeIf(f -> f.getVm_turns() > 0 || f.getScore() > nation.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER || f.getScore() < nation.getScore() * 0.75 || f.getActive_m() < 10000);
                     int raids = Math.min(4, enemies.size());
                     if (nation.getOff() < raids) return true;
                 }

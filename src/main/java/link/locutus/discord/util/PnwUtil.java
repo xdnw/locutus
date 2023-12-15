@@ -531,6 +531,9 @@ public class PnwUtil {
             .registerTypeAdapter(RESOURCE_TYPE, new DoubleDeserializer())
             .create();
 
+    public static double WAR_RANGE_MAX_MODIFIER = 2.50;
+    public static double WAR_RANGE_MIN_MODIFIER = 0.75;
+
     /**
      * @param offensive (else defensive)
      * @param isWar (else spy)
@@ -543,9 +546,9 @@ public class PnwUtil {
         if (offensive) {
             if (isWar) {
                 if (isMin) {
-                    range = Math.round(scoreInt * 0.75);
+                    range = Math.round(scoreInt * WAR_RANGE_MIN_MODIFIER);
                 } else {
-                    range = Math.round(scoreInt * 1.75);
+                    range = Math.round(scoreInt * WAR_RANGE_MAX_MODIFIER);
                 }
             } else {
                 if (isMin) {
@@ -557,7 +560,7 @@ public class PnwUtil {
         } else {
             if (isWar) {
                 if (isMin) {
-                    range = Math.round(scoreInt / 1.75);
+                    range = Math.round(scoreInt / PnwUtil.WAR_RANGE_MAX_MODIFIER);
                 } else {
                     range = Math.round(scoreInt / 0.75);
                 }

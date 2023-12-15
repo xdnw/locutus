@@ -398,7 +398,7 @@ public class ImageUtil {
 
     public static Color getDefaultWatermarkColor(BufferedImage image) {
         Color color = getAverageColor(image);
-        return getLuminance(color) < 0.5 ? Color.LIGHT_GRAY : Color.DARK_GRAY;
+        return getLuminance(color) < 0.5 ? Color.DARK_GRAY : Color.LIGHT_GRAY;
     }
 
     public static Font setFontSize(Font font, int size) {

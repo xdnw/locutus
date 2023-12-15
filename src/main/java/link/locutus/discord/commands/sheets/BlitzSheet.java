@@ -10,6 +10,7 @@ import link.locutus.discord.db.entities.Activity;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.SheetKey;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.MarkupUtil;
 import link.locutus.discord.util.MathMan;
@@ -69,7 +70,7 @@ public class BlitzSheet extends Command {
 
         double score = nation.getScore();
         double minScore = Math.ceil(nation.getScore() * 0.75);
-        double maxScore = Math.floor(nation.getScore() * 1.75);
+        double maxScore = Math.floor(nation.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER);
         note.append("War Range: " + MathMan.format(minScore) + "-" + MathMan.format(maxScore) + " (" + score + ")").append("\n");
         note.append("ID: " + nation.getNation_id()).append("\n");
         note.append("Alliance: " + nation.getAllianceName()).append("\n");
@@ -283,8 +284,8 @@ public class BlitzSheet extends Command {
 //                    boolean strong = defender.getAircraft() > attacker.getAircraft() * 0.66;
 //                    if (strong) {
 //                        if (defender.getAircraft() > attacker.getAircraft()) {
-//                            double defGround = defender.getSoldiers() * 1.75 + defender.getTanks() * 40;
-//                            double attGround = attacker.getSoldiers() * 1.75 + attacker.getTanks() * 40;
+//                            double defGround = defender.getSoldiers() * PnwUtil.WAR_RANGE_MAX_MODIFIER + defender.getTanks() * 40;
+//                            double attGround = attacker.getSoldiers() * PnwUtil.WAR_RANGE_MAX_MODIFIER + attacker.getTanks() * 40;
 //                            if (defGround > attGround * 0.33) {
 //                                continue;
 //                            }
@@ -370,8 +371,8 @@ public class BlitzSheet extends Command {
                 boolean strong = defender.getAircraft() > attacker.getAircraft() * 0.66;
                 if (strong) {
                     if (defender.getAircraft() > attacker.getAircraft()) {
-                        double defGround = defender.getSoldiers() * 1.75 + defender.getTanks() * 40;
-                        double attGround = attacker.getSoldiers() * 1.75 + attacker.getTanks() * 40;
+                        double defGround = defender.getSoldiers() * 1.7_5 + defender.getTanks() * 40;
+                        double attGround = attacker.getSoldiers() * 1.7_5 + attacker.getTanks() * 40;
                         if (defGround > attGround * 0.33) {
                             continue;
                         }

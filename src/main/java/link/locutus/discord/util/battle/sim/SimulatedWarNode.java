@@ -371,13 +371,13 @@ public class SimulatedWarNode {
                 }
             }
 
-            double enemyGroundStr = defender.getSoldiers() * 1.75 + defender.getTanks() * 22.86d;
-            double attGroundStr = aggressor.getSoldiers() * 1.75 + aggressor.getTanks() * 22.86d;
+            double enemyGroundStr = defender.getSoldiers() * 1.7_5 + defender.getTanks() * 22.86d;
+            double attGroundStr = aggressor.getSoldiers() * 1.7_5 + aggressor.getTanks() * 22.86d;
             if (attGroundStr >= enemyGroundStr * 0.25) {
                 if (aggressor.getSoldiers() > enemyGroundStr * 3) {
                     next = new SimulatedWarNode(this, isAggressor, WarNation.Actions.GROUND_ATTACK, attN.getSoldiers(), 0, false);
                     addChild(next);
-                } else if (aggressor.getSoldiers() * 1.75 > enemyGroundStr * 2) {
+                } else if (aggressor.getSoldiers() * 1.7_5 > enemyGroundStr * 2) {
                     next = new SimulatedWarNode(this, isAggressor, WarNation.Actions.GROUND_ATTACK, attN.getSoldiers(), 0, true);
                     if (next.get(aggressor).groundAttack(next.get(defender), attN.getSoldiers(), 0, true, false)) {
                         addChild(next);
@@ -635,7 +635,7 @@ public class SimulatedWarNode {
     }
 
     private List<SimulatedWarNode> getRaidOptions(WarNation attacker, WarNation enemy) {
-        double defGroundStr = enemy.getSoldiers() * 1.75 + enemy.getMaxTankStrength(attacker);
+        double defGroundStr = enemy.getSoldiers() * 1.7_5 + enemy.getMaxTankStrength(attacker);
         double requiredForAssuredGroundVictory = defGroundStr * 2.5;
 
         int attackSoldiers = attacker.getSoldiers();
@@ -646,11 +646,11 @@ public class SimulatedWarNode {
 
         if (requiredForAssuredGroundVictory > attackSoldiers) {
             munitions = true;
-            requiredForAssuredGroundVictory -= attackSoldiers * 1.75;
+            requiredForAssuredGroundVictory -= attackSoldiers * 1.7_5;
             if (requiredForAssuredGroundVictory > 0) {
                 attackTanks = (int) Math.min(attacker.getMaxTankStrength(enemy), requiredForAssuredGroundVictory + 1);
                 if (requiredForAssuredGroundVictory > attackTanks) {
-                    double roll = WarNation.roll(defGroundStr, attackSoldiers * 1.75 + attackTanks * 40);
+                    double roll = WarNation.roll(defGroundStr, attackSoldiers * 1.7_5 + attackTanks * 40);
                     if (roll < 1.5) {
                         attackSoldiers = 0;
                         attackTanks = 0;

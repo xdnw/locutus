@@ -20,11 +20,7 @@ import link.locutus.discord.event.trade.BulkTradeSubscriptionEvent;
 import link.locutus.discord.event.treasure.TreasureUpdateEvent;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.AlertUtil;
-import link.locutus.discord.util.MarkupUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -71,7 +67,7 @@ public class TradeListener {
             body.append("Current owner: " + treasure.getNation_id() + " (deleted)\n");
         } else {
             body.append(currentNation.toEmbedString());
-            body.append("\nCan be attacked by: " + MathMan.format(currentNation.getScore() / 1.75) + "-" + MathMan.format(currentNation.getScore() / 0.75));
+            body.append("\nCan be attacked by: " + MathMan.format(currentNation.getScore() / PnwUtil.WAR_RANGE_MAX_MODIFIER) + "-" + MathMan.format(currentNation.getScore() / 0.75));
         }
 
         AlertUtil.forEachChannel(f -> f.isWhitelisted() && f.hasCoalitionPermsOnRoot(Coalition.RAIDPERMS), GuildKey.TREASURE_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {

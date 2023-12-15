@@ -99,10 +99,10 @@ public class IntelOp extends Command {
             Set<DBNation> myAlliance = Locutus.imp().getNationDB().getNations(Collections.singleton(finalNation.getAlliance_id()));
             myAlliance.removeIf(f -> f.getActive_m() > 2440 || f.getVm_turns() != 0);
             BiFunction<Double, Double, Integer> range = PnwUtil.getIsNationsInScoreRange(myAlliance);
-            enemies.removeIf(f -> range.apply(f.getScore() / 1.75, f.getScore() / 0.75) <= 0);
+            enemies.removeIf(f -> range.apply(f.getScore() / PnwUtil.WAR_RANGE_MAX_MODIFIER, f.getScore() / 0.75) <= 0);
         } else {
             List<DBNation> tmp = new ArrayList<>(enemies);
-            tmp.removeIf(f -> f.getScore() < score * 0.75 || f.getScore() > score * 1.75);
+            tmp.removeIf(f -> f.getScore() < score * 0.75 || f.getScore() > score * PnwUtil.WAR_RANGE_MAX_MODIFIER);
             if (tmp.isEmpty()) {
                 enemies.removeIf(f -> !f.isInSpyRange(finalNation));
             } else {

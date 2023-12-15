@@ -7,6 +7,7 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.entities.DBWar;
 import link.locutus.discord.pnw.AllianceList;
 import link.locutus.discord.user.Roles;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.discord.DiscordUtil;
 import net.dv8tion.jda.api.entities.Guild;
@@ -61,7 +62,7 @@ public class CounterGenerator {
         if (filter) {
             attackersSorted.removeIf(f -> f.getNumWars() > 0 && f.getRelativeStrength() < 1);
             attackersSorted.removeIf(f -> f.getStrength() * 1.25 < enemy.getStrength() || f.getCities() <= enemy.getCities() * 0.6);
-            attackersSorted.removeIf(f -> f.getScore() * 1.75 < enemy.getScore() || f.getScore() * 0.75 > enemy.getScore());
+            attackersSorted.removeIf(f -> f.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER < enemy.getScore() || f.getScore() * 0.75 > enemy.getScore());
             attackersSorted.removeIf(f -> f.getActive_m() > 4880);
             attackersSorted.removeIf(f -> f.getVm_turns() != 0);
             attackersSorted.removeIf(f -> f.getPosition() <= 1);

@@ -73,7 +73,7 @@ public class WarUpdateProcessor {
                     DBNation enemy = Locutus.imp().getNationDB().getNation(bounty.getNationId());
                     if (enemy == null || enemy.getDef() >= 3 || enemy.getVm_turns() != 0 || enemy.isBeige()) return;
 
-                    double minScore = enemy.getScore() / 1.75;
+                    double minScore = enemy.getScore() / PnwUtil.WAR_RANGE_MAX_MODIFIER;
                     double maxScore = enemy.getScore() / 0.75;
 
                     for (Member member : members) {
@@ -410,10 +410,10 @@ public class WarUpdateProcessor {
                     return AttackTypeSubCategory.GROUND_NO_MUNITIONS_NO_TANKS;
                 }
 
-                double enemyGroundStrength = defSoldiers * 1.75 + defTanks * 40;
+                double enemyGroundStrength = defSoldiers * 1.7_5 + defTanks * 40;
 
                 if (attTanks > 0) {
-                    if (attSoldiers * 1.75 > enemyGroundStrength) {
+                    if (attSoldiers * 1.7_5 > enemyGroundStrength) {
                         return AttackTypeSubCategory.GROUND_TANKS_MUNITIONS_USED_UNNECESSARY;
                     }
                     return AttackTypeSubCategory.GROUND_TANKS_MUNITIONS_USED_NECESSARY;
@@ -537,7 +537,7 @@ public class WarUpdateProcessor {
                     }
                 }
                 if (defender.getActive_m() > 10000) {
-                    if (attSoldiers > 0 && groundStrength > enemyStrength * 2.5 && (defSoldiers == 0 || groundStrength * 0.4 > enemyStrength * 1.75)) {
+                    if (attSoldiers > 0 && groundStrength > enemyStrength * 2.5 && (defSoldiers == 0 || groundStrength * 0.4 > enemyStrength * 1.7_5)) {
                         return AttackTypeSubCategory.GROUND_NO_TANKS_MUNITIONS_USED_UNNECESSARY_INACTIVE.toPair();
                     }
                     if (attTanks > 0 && groundStrength > enemyStrength * 2.5 && root.getMoney_looted() == 0) {
@@ -645,7 +645,7 @@ public class WarUpdateProcessor {
                 if (defender.getActive_m() > 10000) {
                     double defGStr = defender.getGroundStrength(true, false) + 500 * defender.getCities();
                     double attGStr = attacker.getSoldiers();
-                    if (attGStr > defGStr * 1.75) {
+                    if (attGStr > defGStr * 1.7_5) {
                         return AttackTypeSubCategory.AIRSTRIKE_INACTIVE_NO_GROUND.toPair();
                     }
 

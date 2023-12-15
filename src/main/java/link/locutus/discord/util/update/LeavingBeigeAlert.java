@@ -11,10 +11,7 @@ import link.locutus.discord.db.entities.DiscordMeta;
 import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.RateLimitUtil;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
 import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.apiv1.enums.Rank;
@@ -97,7 +94,7 @@ public class LeavingBeigeAlert {
         }
         double score = attacker.getScore();
         double leeway = scoreLeewayFunc.apply(attacker);
-        if (target.getScore() < score * 0.75 - leeway || target.getScore() > score * 1.75) {
+        if (target.getScore() < score * 0.75 - leeway || target.getScore() > score * PnwUtil.WAR_RANGE_MAX_MODIFIER) {
             if (throwError) throw new IllegalArgumentException("Target is not within 75% to 175% of attacker's score (leeway: " + leeway + ")\nSee: " + CM.alerts.beige.setBeigeAlertScoreLeeway.cmd.toSlashMention());
             return false;
         }
@@ -226,7 +223,7 @@ public class LeavingBeigeAlert {
                 ByteBuffer leewayBits = attacker.getMeta(NationMeta.BEIGE_ALERT_SCORE_LEEWAY);
                 leeway = leewayBits != null ? leewayBits.getDouble() : 0;
             }
-            if (target.getScore() < score * 0.75 - leeway || target.getScore() > score * 1.75) {
+            if (target.getScore() < score * 0.75 - leeway || target.getScore() > score * PnwUtil.WAR_RANGE_MAX_MODIFIER) {
                 if (throwError) throw new IllegalArgumentException("You are not in range of target " + MathMan.format(target.getScore()) + ". See: " + CM.alerts.beige.setBeigeAlertScoreLeeway.cmd.toSlashMention());
             };
         }

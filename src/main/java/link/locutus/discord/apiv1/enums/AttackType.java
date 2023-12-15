@@ -292,10 +292,10 @@ public enum AttackType {
                     defenderCasualties.put(MilitaryUnit.INFRASTRUCTURE, Map.entry((int) Math.round(infraMin * infraFactor), (int) Math.round(infraMax * infraFactor)));
                 }
 
-                double attStrS = attacker.getSoldiers() * (equipAttackerSoldiers ? 1.75 : 1);
+                double attStrS = attacker.getSoldiers() * (equipAttackerSoldiers ? 1.7_5 : 1);
                 double attStrT = attacker.getTanks() * 40 * (defAirControl ? 0.5 : 1);
                 double attStr = attStrS + attStrT;
-                double defStrS = defender.getSoldiers() * (equipDefenderSoldiers ? 1.75 : 1);
+                double defStrS = defender.getSoldiers() * (equipDefenderSoldiers ? 1.7_5 : 1);
                 double defStrT = defender.getTanks() * 40 * (attAirControl ? 0.5 : 1);
                 double defStr = defStrS + defStrT;
 

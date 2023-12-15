@@ -405,7 +405,7 @@ public class NationUpdateProcessor {
             return false;
         }
 
-        double minScore = current.getScore() / 1.75;
+        double minScore = current.getScore() / PnwUtil.WAR_RANGE_MAX_MODIFIER;
         double maxScore = current.getScore() / 0.75;
 
         AlertUtil.forEachChannel(GuildDB::isValidAlliance, GuildKey.ENEMY_ALERT_CHANNEL, new BiConsumer<MessageChannel, GuildDB>() {
@@ -564,7 +564,7 @@ public class NationUpdateProcessor {
                 List<Member> members = guild.getMembersWithRoles(beigeAlert);
                 StringBuilder mentions = new StringBuilder();
 
-                double minScore = defender.getScore() / 1.75;
+                double minScore = defender.getScore() / PnwUtil.WAR_RANGE_MAX_MODIFIER;
                 double maxScore = defender.getScore() / 0.75;
 
                 Role beigeAlertOptOut = Roles.BEIGE_ALERT_OPT_OUT.toRole(guild);

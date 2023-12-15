@@ -1081,7 +1081,7 @@ public class IACheckup {
         Set<DBNation> targets = new LinkedHashSet<>();
 
         double score = nation.getScore();
-        double maxScore = score * 1.75;
+        double maxScore = score * PnwUtil.WAR_RANGE_MAX_MODIFIER;
         double minScore = score * 0.75;
 
         boolean hasEnemies = false;

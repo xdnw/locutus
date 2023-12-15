@@ -28,8 +28,8 @@ public class AttackCommands {
         if (defSoldiers != 0 && defSoldiersUnarmed != 0)
             return "You cannot defend with both armed and unarmed soldiers.";
 
-        double attStr = attSoldiers * 1.75 + attSoldiersUnarmed + attTanks * 40;
-        double defStr = defSoldiers * 1.75 + defSoldiersUnarmed + defTanks * 40;
+        double attStr = attSoldiers * 1.7_5 + attSoldiersUnarmed + attTanks * 40;
+        double defStr = defSoldiers * 1.7_5 + defSoldiersUnarmed + defTanks * 40;
 
         StringBuilder response = new StringBuilder("**Ground**: " + attSoldiersUnarmed + "/" + attSoldiers + "/" + attTanks + " -> " + defSoldiersUnarmed + "/" + defSoldiers + "/" + defTanks);
         if (defStr * 0.4 > attStr) {
@@ -46,12 +46,12 @@ public class AttackCommands {
 
 
         int reqUnarmedIT = (int) Math.ceil(defStr * 2.5);
-        int reqArmedIT = (int) Math.ceil(defStr * 2.5 / 1.75);
+        int reqArmedIT = (int) Math.ceil(defStr * 2.5 / 1.7_5);
 
         int reqUnarmedUF = (int) Math.ceil(defStr * 0.4);
-        int reqArmedUF = (int) Math.ceil(defStr * 0.4 / 1.75);
+        int reqArmedUF = (int) Math.ceil(defStr * 0.4 / 1.7_5);
 
-        response.append("\nNote:\n" + "- Tanks = 40x unarmed soldiers (22.86x armed) | Armed Soldiers = 1.75 Unarmed\n" + "- Guaranteed IT needs 2.5x enemy (").append(reqUnarmedIT).append(" unarmed, ").append(reqArmedIT).append(" armed)\n").append("- Guaranteed UF needs 0.4x enemy (").append(reqUnarmedUF).append(" unarmed, ").append(reqArmedUF).append(" armed)");
+        response.append("\nNote:\n" + "- Tanks = 40x unarmed soldiers (22.86x armed) | Armed Soldiers = 1.7_5 Unarmed\n" + "- Guaranteed IT needs 2.5x enemy (").append(reqUnarmedIT).append(" unarmed, ").append(reqArmedIT).append(" armed)\n").append("- Guaranteed UF needs 0.4x enemy (").append(reqUnarmedUF).append(" unarmed, ").append(reqArmedUF).append(" armed)");
 
         return response.toString();
     }

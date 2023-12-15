@@ -284,10 +284,10 @@ public class WarNation {
         setFortified(false);
 
         double attTankStr = (tanks * 40);
-        double attSoldStr = soldiers * 1.75 + soldiersUnarmed;
+        double attSoldStr = soldiers * 1.7_5 + soldiersUnarmed;
         double attStr = attSoldStr + attTankStr;
         double defTankStr = enemy.getMaxTankStrength(this) * 40;
-        double defSoldStr = Math.max(50, enemy.getSoldiers() * (enemyUsesMunitions ? 1.75 : 1));
+        double defSoldStr = Math.max(50, enemy.getSoldiers() * (enemyUsesMunitions ? 1.7_5 : 1));
         double defStr = defSoldStr + defTankStr;
 
         double roll = roll(defStr, attStr);

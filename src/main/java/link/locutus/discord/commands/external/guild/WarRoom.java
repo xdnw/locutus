@@ -14,6 +14,7 @@ import link.locutus.discord.db.entities.NationMeta;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.user.Roles;
 import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.PnwUtil;
 import link.locutus.discord.util.RateLimitUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.discord.DiscordUtil;
@@ -97,7 +98,7 @@ public class WarRoom extends Command {
         if (arg.startsWith("https://docs.google.com/spreadsheets/") || arg.startsWith("sheet:")) {
             SpreadSheet sheet = SpreadSheet.create(arg);
             StringBuilder response = new StringBuilder();
-            Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(sheet, headerRow, f -> 3, 0.75, 1.75, true, true, false, f -> true, (dbNationDBNationEntry, s) -> response.append(s).append("\n"));
+            Map<DBNation, Set<DBNation>> targets = BlitzGenerator.getTargets(sheet, headerRow, f -> 3, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (dbNationDBNationEntry, s) -> response.append(s).append("\n"));
             if (response.length() != 0) {
                 channel.send(response.toString());
                 if (!flags.contains('f')) {

@@ -402,7 +402,7 @@ public class BlitzGenerator {
                 }
 
                 double minScore = attacker.getScore() * 0.75;
-                double maxScore = attacker.getScore() * 1.75;
+                double maxScore = attacker.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER;
 
 //                if (enemyPlaneRatio.apply(defender.getScore()) > 1) {
 //                    maxScore /= 0.75;
@@ -511,7 +511,7 @@ public class BlitzGenerator {
                 if (defActive <= defActiveThreshold) continue;
 
                 double minScore = attacker.getScore() * 0.75;
-                double maxScore = attacker.getScore() * 1.75;
+                double maxScore = attacker.getScore() * PnwUtil.WAR_RANGE_MAX_MODIFIER;
 
 //                if (enemyPlaneRatio.apply(defender.getScore()) > 1) {
 //                    maxScore /= 0.75;

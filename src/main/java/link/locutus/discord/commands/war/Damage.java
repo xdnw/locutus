@@ -83,7 +83,7 @@ public class Damage extends Command {
 
         if (score == null) score = me.getScore();
         double minScore = score * 0.75;
-        double maxScore = score * 1.75;
+        double maxScore = score * PnwUtil.WAR_RANGE_MAX_MODIFIER;
 
         nations.removeIf(f -> f.getScore() <= minScore || f.getScore() >= maxScore);
 

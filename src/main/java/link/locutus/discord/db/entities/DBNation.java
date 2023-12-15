@@ -1542,7 +1542,7 @@ public class DBNation implements NationOrAlliance {
     }
 
     public double getGroundStrength(boolean munitions, boolean enemyAc) {
-        return soldiers * (munitions ? 1.75 : 1) + (tanks * 40) * (enemyAc ? 0.66 : 1);
+        return soldiers * (munitions ? 1.7_5 : 1) + (tanks * 40) * (enemyAc ? 0.66 : 1);
     }
 
     @Command(desc = "Effective ground strength with munitions, enemy air control, and daily rebuy")
@@ -1562,7 +1562,7 @@ public class DBNation implements NationOrAlliance {
 
             tanks = Math.min(tankMax, (int) (tanks + tankPerDay * includeRebuy));
         }
-        return soldiers * (munitions ? 1.75 : 1) + (tanks * 40) * (enemyAc ? 0.66 : 1);
+        return soldiers * (munitions ? 1.7_5 : 1) + (tanks * 40) * (enemyAc ? 0.66 : 1);
     }
 
     @Command(desc = "Get number of buildings")

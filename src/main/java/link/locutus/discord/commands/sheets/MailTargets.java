@@ -13,12 +13,8 @@ import link.locutus.discord.db.entities.DBNation;
 import link.locutus.discord.db.guild.GuildKey;
 import link.locutus.discord.pnw.Spyop;
 import link.locutus.discord.user.Roles;
-import link.locutus.discord.util.MarkupUtil;
+import link.locutus.discord.util.*;
 import link.locutus.discord.util.discord.DiscordUtil;
-import link.locutus.discord.util.MathMan;
-import link.locutus.discord.util.SpyCount;
-import link.locutus.discord.util.StringMan;
-import link.locutus.discord.util.TimeUtil;
 import link.locutus.discord.util.battle.BlitzGenerator;
 import link.locutus.discord.util.battle.SpyBlitzGenerator;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -78,7 +74,7 @@ public class MailTargets extends Command {
 
         if (!args.get(0).equalsIgnoreCase("null")) {
             SpreadSheet blitzSheet = SpreadSheet.create(args.get(0));
-            warDefAttMap = BlitzGenerator.getTargets(blitzSheet, 0, f -> 3, 0.75, 1.75, true, true, false, f -> true, (a, b) -> {});
+            warDefAttMap = BlitzGenerator.getTargets(blitzSheet, 0, f -> 3, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, f -> true, (a, b) -> {});
         }
 
         if (!args.get(1).equalsIgnoreCase("null")) {
