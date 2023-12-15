@@ -32,6 +32,7 @@ import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.text.Format;
 import java.util.List;
 import java.util.*;
 import java.util.function.Function;
@@ -358,7 +359,31 @@ public abstract class TimeNumericTable<T> {
         // Create new xy-plot
         XYPlot plot;
         if (isBar) {
-            plot = new BarPlot(data);
+            int numYTypes = data.getColumnCount() - 1;
+            // first type is long, will be changed to String, and moved to the end of the type list (everything else shifted left 1)
+            // long will be formatted using the timeFormat
+            // other types will remain as double
+            Class[] types = new Class[numYTypes + 1];
+            types[types.length - 1] = String.class;
+            for (int i = 0; i < numYTypes; i++) types[i] = Double.class;
+
+            DataTable barData = new DataTable(types);
+
+            for (int i = 0; i < data.getRowCount(); i++) {
+                Row row = data.getRow(i);
+                Comparable[] newRow = new Comparable[types.length];
+
+                long timeData = ((Number) row.get(0)).longValue();
+                String timeStr = timeFormat.toString(timeData);
+
+                newRow[newRow.length - 1] = timeStr;
+                for (int j = 0; j < numYTypes; j++) {
+                    newRow[j] = row.get(j + 1);
+                }
+                barData.add(newRow);
+            }
+
+            plot = new BarPlot(barData);
         } else {
             plot = new XYPlot(series);
         }
