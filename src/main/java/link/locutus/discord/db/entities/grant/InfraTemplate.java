@@ -35,13 +35,14 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
         this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), rs.getLong("level"), rs.getBoolean("only_new_cities"), rs.getInt("require_n_offensives"), rs.getBoolean("allow_rebuild"),
                 rs.getLong("expire"),
+                rs.getLong("decay"),
                 rs.getBoolean("allow_ignore"),
                 rs.getBoolean("repeatable"));
     }
 
     // create new constructor  with typed parameters instead of resultset
-    public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long level, boolean onlyNewCities, int require_n_offensives, boolean allow_rebuild, long expiryOrZero, boolean allowIgnore, boolean repeatable) {
-        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore, repeatable);
+    public InfraTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long level, boolean onlyNewCities, int require_n_offensives, boolean allow_rebuild, long expiryOrZero, long decayOrZero, boolean allowIgnore, boolean repeatable) {
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, decayOrZero, allowIgnore, repeatable);
         this.level = level;
         this.onlyNewCities = onlyNewCities;
         this.require_n_offensives = require_n_offensives;
@@ -77,10 +78,10 @@ public class InfraTemplate extends AGrantTemplate<Double>{
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setLong(16, level);
-        stmt.setBoolean(17, onlyNewCities);
-        stmt.setLong(18, require_n_offensives);
-        stmt.setBoolean(19, allow_rebuild);
+        stmt.setLong(17, level);
+        stmt.setBoolean(18, onlyNewCities);
+        stmt.setLong(19, require_n_offensives);
+        stmt.setBoolean(20, allow_rebuild);
     }
 
     @Override
@@ -99,11 +100,11 @@ public class InfraTemplate extends AGrantTemplate<Double>{
     }
 
     @Override
-    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowIgnore, String repeatable) {
+    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable) {
         return CM.grant_template.create.infra.cmd.create(name, allowedRecipients,
                 level + "", onlyNewCities ? "true" : null,
                 require_n_offensives > 0 ? "true" : null,
-                allow_rebuild ? "true" : null, econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, allowExpire, allowIgnore, repeatable, null).toString();
+                allow_rebuild ? "true" : null, econRole, selfRole, bracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, allowExpire, allowDecay, allowIgnore, repeatable, null).toString();
     }
 
     @Override

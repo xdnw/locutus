@@ -46,6 +46,7 @@ public class TransferCommand extends Command {
         return "withdraw from the alliance bank\n" +
                 "Use `-f` to bypass all checks\n" +
                 "Use `expire:60d` to have expiry\n" +
+                "Use `decay:60d` to have linear debt decay\n" +
                 "Use `-c` to convert cash\n" +
                 "Use `nation:Borg` to specify nation account\n" +
                 "Use `alliance:Rose` to specify alliance account\n" +
@@ -67,6 +68,8 @@ public class TransferCommand extends Command {
     @Override
     public String onCommand(Guild guild, IMessageIO channel, User author, DBNation me, String fullCommandRaw, List<String> args, Set<Character> flags) throws Exception {
         GuildDB guildDb = Locutus.imp().getGuildDB(guild);
+        String decayStr = DiscordUtil.parseArg(args, "decay");
+        Long decay = decayStr == null ? null : PrimitiveBindings.timediff(decayStr);
         String expireStr = DiscordUtil.parseArg(args, "expire");
         Long expire = expireStr == null ? null : PrimitiveBindings.timediff(expireStr);
 
@@ -129,6 +132,7 @@ public class TransferCommand extends Command {
                 null,
                 String.valueOf(onlyMissingFunds),
                 expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
+                decay == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay),
                 token == null ? null : token.toString(),
                 String.valueOf(convertCash),
                 escrowMode == null ? null : escrowMode.name(),

@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import com.opencsv.CSVWriter;
 import de.erichseifert.gral.data.*;
 import de.erichseifert.gral.data.statistics.Statistics;
+import de.erichseifert.gral.graphics.Drawable;
 import de.erichseifert.gral.graphics.Insets2D;
 import de.erichseifert.gral.graphics.Location;
 import de.erichseifert.gral.graphics.Orientation;
@@ -14,6 +15,7 @@ import de.erichseifert.gral.plots.BarPlot;
 import de.erichseifert.gral.plots.XYPlot;
 import de.erichseifert.gral.plots.axes.AxisRenderer;
 import de.erichseifert.gral.plots.colors.ColorMapper;
+import de.erichseifert.gral.plots.legends.AbstractLegend;
 import de.erichseifert.gral.plots.legends.ValueLegend;
 import de.erichseifert.gral.plots.lines.DefaultLineRenderer2D;
 import de.erichseifert.gral.plots.lines.LineRenderer;
@@ -504,15 +506,16 @@ public abstract class TimeNumericTable<T> {
             plot.getLegend().clear();
             // add the labels to the legend, using color format, index -> colormapper apply color
 //            The labels: this.labels
-            DataTable data2 = new DataTable(Double.class, String.class);
+            DataTable data2 = new DataTable(String.class);
             for (int i = 0; i < this.labels.length; i++) {
-                data2.add((double) i, this.labels[i]);
+                data2.add(this.labels[i]);
             }
             plot.getLegend().add(data2);
-            plot.getPointRenderers(data2).get(0).setColor(mapper);
-            plot.getPointRenderers(data2).get(0).setValueColumn(0);
-            ((ValueLegend) plot.getLegend()).setLabelColumn(1);
-
+            List<Drawable> drawables = plot.getLegend().getDrawables();
+            for (int i = 0; i < drawables.size(); i++) {
+                AbstractLegend.Item item = (AbstractLegend.Item) drawables.get(i);
+                item.getLabel().setBackground(colorList.get(i % colorList.size()));
+            }
         } else {
             int i = 0;
             for (Color color : colors) {

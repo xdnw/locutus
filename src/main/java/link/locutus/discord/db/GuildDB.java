@@ -2604,6 +2604,7 @@ public class GuildDB extends DBMain implements NationOrAllianceOrGuild, Syncable
             for (int allianceId : getAllianceIds()) {
                 Map<Integer, Treaty> treaties = Locutus.imp().getNationDB().getTreaties(allianceId);
                 dnr.addAll(treaties.keySet());
+                dnr.add(allianceId);
             }
         }
 

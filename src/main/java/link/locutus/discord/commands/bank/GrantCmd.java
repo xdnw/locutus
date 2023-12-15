@@ -72,6 +72,7 @@ public class GrantCmd extends Command {
                 "Add `-i` to build grants to exclude infra cost\n" +
                 "Add `-l` to build grants to exclude land cost\n" +
                 "Add `-e` or `#expire=60d` to have a grant's debt expire\n" +
+                "Add `-d` or `#decay=60d` to have a grant's debt decay linearly\n" +
                 "Add `-c` to have a grant count as cash value in " + CM.deposits.check.cmd.toSlashMention() + "\n" +
                 "Add `-o` to only send what funds they are missing for a grant\n" +
                 "Add `-m` to multiply the grant per city\n" +
@@ -92,6 +93,12 @@ public class GrantCmd extends Command {
         if (flags.contains('e')) {
             expire = TimeUnit.DAYS.toMillis(60);
         }
+        String decayStr = DiscordUtil.parseArg(args, "decay");
+        Long decay = decayStr == null ? null : TimeUtil.timeToSec(decayStr) * 1000L;
+        if (flags.contains('d')) {
+            decay = TimeUnit.DAYS.toMillis(60);
+        }
+
 
         String escrowModeStr = DiscordUtil.parseArg(args, "escrow");
         EscrowMode escrowMode = escrowModeStr != null ? PWBindings.EscrowMode(escrowModeStr) : null;
@@ -139,6 +146,10 @@ public class GrantCmd extends Command {
             }
             if (arg.startsWith("-expire") || arg.startsWith("-e") || arg.startsWith("#expire")) {
                 expire = TimeUtil.timeToSec(arg.split("[:=]", 2)[1]) * 1000L;
+                iter.remove();
+            }
+            if (arg.startsWith("-decay") || arg.startsWith("-d") || arg.startsWith("#decay")) {
+                decay = TimeUtil.timeToSec(arg.split("[:=]", 2)[1]) * 1000L;
                 iter.remove();
             }
             else if (arg.endsWith("%")) {
@@ -255,10 +266,6 @@ public class GrantCmd extends Command {
             resources = PnwUtil.multiply(resources, factor);
         }
 
-        if (expire != null) {
-            System.out.println(expire + " | " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire));
-        }
-
         JSONObject command = CM.transfer.resources.cmd.create(
                 me.getUrl(),
                 PnwUtil.resourcesToString(resources),
@@ -270,6 +277,7 @@ public class GrantCmd extends Command {
                 flags.contains('t') ? "true" : null,
                 String.valueOf(flags.contains('o')),
                 expire != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire) : null,
+                decay != null ? TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay) : null,
                 uuid.toString(),
                 String.valueOf(flags.contains('c')),
                 escrowMode == null ? null : escrowMode.name(),

@@ -6,7 +6,7 @@ public enum DepositType {
     DEPOSIT("For funds directly deposited or withdrawn"),
     TAX("For city raw consumption or taxes"),
     LOAN("For funds members are expected to repay at some date in the future"),
-    GRANT("Can be excluded from withdrawal limit, considered a loan if no time is specified e.g. `#expire=60d`"),
+    GRANT("Can be excluded from withdrawal limit, considered a loan if no time is specified e.g. `#expire=60d` or `#decay=3w`"),
     IGNORE("Excluded from deposits"),
     TRADE("Sub type of deposits, earmarked as trading funds"),
 
@@ -20,6 +20,7 @@ public enum DepositType {
     RAWS(GRANT, "Raw resources for city consumption"),
 
     EXPIRE(GRANT, "Will be excluded from deposits after the specified time e.g. `#expire=60d`"),
+    DECAY(GRANT, "Expires by reducing linearly over time until 0 e.g. `#decay=60d`"),
 
     ;
 

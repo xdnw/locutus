@@ -241,7 +241,11 @@ public class GrantCommands {
                                         @Arg("Add a default expiry time to grants sent via this template\n" +
                                                 "e.g. 60d\n" +
                                                 "The granter can specify an expiry shorter than this value")
-                                        @Switch("expire") @Timediff Long allowExpire,
+                                        @Switch("expire") @Timediff Long expireTime,
+                                        @Arg("Add a default decaying expiry time to grants sent via this template\n" +
+                                                "e.g. 60d\n" +
+                                                "The granter can specify an expiry shorter than this value")
+                                            @Switch("expire") @Timediff Long decayTime,
                                         @Arg("Do not include grants in member balances by default\n" +
                                                 "Defaults to false")
                                         @Switch("ignore") boolean allowIgnore,
@@ -269,7 +273,7 @@ public class GrantCommands {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
         System.out.println(3);
-        ProjectTemplate template = new ProjectTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), project, allowExpire == null ? 0 : allowExpire, allowIgnore);
+        ProjectTemplate template = new ProjectTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), project, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore);
         System.out.println(4);
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
         System.out.println(5);
@@ -372,7 +376,11 @@ public class GrantCommands {
                                       @Arg("Add a default expiry time to grants sent via this template\n" +
                                               "e.g. 60d\n" +
                                               "The granter can specify an expiry shorter than this value")
-                                          @Switch("expire") @Timediff Long allowExpire,
+                                          @Switch("expire") @Timediff Long expireTime,
+                                        @Arg("Add a default decaying expiry time to grants sent via this template\n" +
+                                                "e.g. 60d\n" +
+                                                "The granter can specify an expiry shorter than this value")
+                                            @Switch("expire") @Timediff Long decayTime,
                                       @Arg("Do not include grants in member balances by default\n" +
                                               "Defaults to false")
                                           @Switch("ignore") boolean allowIgnore,
@@ -404,7 +412,7 @@ public class GrantCommands {
 
         BuildTemplate template = new BuildTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), buildBytes, only_new_cities, mmr == null ? -1 : mmr.toNumber(),
                 allow_after_days == null ? 0 : allow_after_days,
-                allow_after_offensive, allow_after_infra, allow_after_land_or_project, allow_all, allowExpire == null ? 0 : allowExpire, allowIgnore, repeatable);
+                allow_after_offensive, allow_after_infra, allow_after_land_or_project, allow_all, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore, repeatable);
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
         if (existing != null && existing.getType() != template.getType()) {
             throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
@@ -479,7 +487,11 @@ public class GrantCommands {
                                      @Arg("Add a default expiry time to grants sent via this template\n" +
                                              "e.g. 60d\n" +
                                              "The granter can specify an expiry shorter than this value")
-                                         @Switch("expire") @Timediff Long allowExpire,
+                                         @Switch("expire") @Timediff Long expireTime,
+                                        @Arg("Add a default decaying expiry time to grants sent via this template\n" +
+                                                "e.g. 60d\n" +
+                                                "The granter can specify an expiry shorter than this value")
+                                            @Switch("expire") @Timediff Long decayTime,
                                      @Arg("Do not include grants in member balances by default\n" +
                                              "Defaults to false")
                                          @Switch("ignore") boolean allowIgnore,
@@ -505,7 +517,7 @@ public class GrantCommands {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
 
-        CityTemplate template = new CityTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), minCity == null ? 0 : minCity, maxCity == null ? 0 : maxCity, allowExpire == null ? 0 : allowExpire, allowIgnore);
+        CityTemplate template = new CityTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), minCity == null ? 0 : minCity, maxCity == null ? 0 : maxCity, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore);
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
         if (existing != null && existing.getType() != template.getType()) {
             throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
@@ -585,7 +597,11 @@ public class GrantCommands {
                                       @Arg("Add a default expiry time to grants sent via this template\n" +
                                               "e.g. 60d\n" +
                                               "The granter can specify an expiry shorter than this value")
-                                          @Switch("expire") @Timediff Long allowExpire,
+                                          @Switch("expire") @Timediff Long expireTime,
+                                        @Arg("Add a default decaying expiry time to grants sent via this template\n" +
+                                                "e.g. 60d\n" +
+                                                "The granter can specify an expiry shorter than this value")
+                                            @Switch("expire") @Timediff Long decayTime,
                                       @Arg("Do not include grants in member balances by default\n" +
                                               "Defaults to false")
                                           @Switch("ignore") boolean allowIgnore,
@@ -629,7 +645,7 @@ public class GrantCommands {
                 level,
                 onlyNewCities,
                 requireNOffensives == null ? 0 : requireNOffensives,
-                allowRebuild, allowExpire == null ? 0 : allowExpire, allowIgnore, repeatable);
+                allowRebuild, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore, repeatable);
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
         if (existing != null && existing.getType() != template.getType()) {
             throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
@@ -704,7 +720,11 @@ public class GrantCommands {
                                      @Arg("Add a default expiry time to grants sent via this template\n" +
                                              "e.g. 60d\n" +
                                              "The granter can specify an expiry shorter than this value")
-                                         @Switch("expire") @Timediff Long allowExpire,
+                                         @Switch("expire") @Timediff Long expireTime,
+                                        @Arg("Add a default decaying expiry time to grants sent via this template\n" +
+                                                "e.g. 60d\n" +
+                                                "The granter can specify an expiry shorter than this value")
+                                            @Switch("expire") @Timediff Long decayTime,
                                      @Arg("Do not include grants in member balances by default\n" +
                                              "Defaults to false")
                                          @Switch("ignore") boolean allowIgnore,
@@ -732,7 +752,7 @@ public class GrantCommands {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
 
-        LandTemplate template = new LandTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), level == null ? 0 : level, onlyNewCities, allowExpire == null ? 0 : allowExpire, allowIgnore, repeatable);
+        LandTemplate template = new LandTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), level == null ? 0 : level, onlyNewCities, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore, repeatable);
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
         if (existing != null && existing.getType() != template.getType()) {
             throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
@@ -808,7 +828,11 @@ public class GrantCommands {
                                      @Arg("Add a default expiry time to grants sent via this template\n" +
                                              "e.g. 60d\n" +
                                              "The granter can specify an expiry shorter than this value")
-                                         @Switch("expire") @Timediff Long allowExpire,
+                                         @Switch("expire") @Timediff Long expireTime,
+                                        @Arg("Add a default decaying expiry time to grants sent via this template\n" +
+                                                "e.g. 60d\n" +
+                                                "The granter can specify an expiry shorter than this value")
+                                            @Switch("expire") @Timediff Long decayTime,
                                      @Arg("Do not include grants in member balances by default\n" +
                                              "Defaults to false")
                                          @Switch("ignore") boolean allowIgnore,
@@ -838,7 +862,7 @@ public class GrantCommands {
             throw new IllegalArgumentException("Cannot use both `bracket` and `useReceiverBracket`");
         }
 
-        RawsTemplate template = new RawsTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), days, overdrawPercent, allowExpire == null ? 0 : allowExpire, allowIgnore, repeatable);
+        RawsTemplate template = new RawsTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), days, overdrawPercent, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore, repeatable);
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
         if (existing != null && existing.getType() != template.getType()) {
             throw new IllegalArgumentException("A template with that name already exists of type `" + existing.getType() + "`. See: " + CM.grant_template.delete.cmd.toSlashMention());
@@ -919,7 +943,11 @@ public class GrantCommands {
                                          @Arg("Add a default expiry time to grants sent via this template\n" +
                                                  "e.g. 60d\n" +
                                                  "The granter can specify an expiry shorter than this value")
-                                             @Switch("expire") @Timediff Long allowExpire,
+                                             @Switch("expire") @Timediff Long expireTime,
+                                        @Arg("Add a default decaying expiry time to grants sent via this template\n" +
+                                                "e.g. 60d\n" +
+                                                "The granter can specify an expiry shorter than this value")
+                                            @Switch("expire") @Timediff Long decayTime,
                                          @Arg("Do not include grants in member balances by default\n" +
                                                  "Defaults to false")
                                              @Switch("ignore") boolean allowIgnore,
@@ -950,7 +978,7 @@ public class GrantCommands {
         }
 
         double[] allowancePerCityArr = allowancePerCity == null ? null : PnwUtil.resourcesToArray(allowancePerCity);
-        WarchestTemplate template = new WarchestTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), allowancePerCityArr, trackDays, subtractExpenditure, overdrawPercentCents, allowExpire == null ? 0 : allowExpire, allowIgnore, repeatable);
+        WarchestTemplate template = new WarchestTemplate(db, false, name, allowedRecipients, econRole.getIdLong(), selfRole.getIdLong(), bracket == null ? 0 : bracket.getId(), useReceiverBracket, maxTotal == null ? 0 : maxTotal, maxDay == null ? 0 : maxDay, maxGranterDay == null ? 0 : maxGranterDay, maxGranterTotal == null ? 0 : maxGranterTotal, System.currentTimeMillis(), allowancePerCityArr, trackDays, subtractExpenditure, overdrawPercentCents, expireTime == null ? 0 : expireTime, decayTime == null ? 0 : decayTime, allowIgnore, repeatable);
 
         AGrantTemplate existing = manager.getTemplateMatching(f -> f.getName().equalsIgnoreCase(finalName)).stream().findFirst().orElse(null);
         if (existing != null && existing.getType() != template.getType()) {

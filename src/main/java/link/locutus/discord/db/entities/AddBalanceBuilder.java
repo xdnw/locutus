@@ -165,14 +165,30 @@ public class AddBalanceBuilder {
             List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, -1, 0, true);
             for (Map.Entry<Integer, Transaction2> entry : transactions) {
                 Transaction2 tx = entry.getValue();
-                if (tx.note == null || !tx.note.contains("#expire") || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id())) continue;
+                if (tx.note == null || (!tx.note.contains("#expire") && !tx.note.contains("#decay")) || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id())) continue;
                 if (tx.sender_id == tx.receiver_id) continue;
                 Map<String, String> notes = PnwUtil.parseTransferHashNotes(tx.note);
-                String expire = notes.get("#expire");
-                long expireEpoch = tx.tx_datetime + TimeUtil.timeToSec_BugFix1(expire, tx.tx_datetime) * 1000L;
+                String decay2 = notes.get("#decay");
+                String expire2 = notes.get("#expire");
+                long expireEpoch = 0;
+                long decayEpoch = 0;
+                if (expire2 != null) {
+                    expireEpoch = tx.tx_datetime + TimeUtil.timeToSec_BugFix1(expire2, tx.tx_datetime) * 1000L;
+                }
+                if (decay2 != null) {
+                    decayEpoch = tx.tx_datetime + TimeUtil.timeToSec_BugFix1(decay2, tx.tx_datetime) * 1000L;
+                }
+                expireEpoch = Math.min(expireEpoch, decayEpoch);
                 if (expireEpoch > now) {
-                    String noteCopy = tx.note.replaceAll("#expire=[a-zA-Z0-9:]+", "");
-                    noteCopy += " #expire=" + "timestamp:" + expireEpoch;
+                    String noteCopy = tx.note
+                            .replaceAll("#expire=[a-zA-Z0-9:]+", "")
+                            .replaceAll("#decay=[a-zA-Z0-9:]+", "");
+                    if (expire2 != null) {
+                        noteCopy += " #expire=" + "timestamp:" + expireEpoch;
+                    }
+                    if (decay2 != null) {
+                        noteCopy += " #decay=" + "timestamp:" + decayEpoch;
+                    }
                     noteCopy = noteCopy.trim();
 
                     tx.tx_datetime = System.currentTimeMillis();

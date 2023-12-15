@@ -33,13 +33,14 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
     public WarchestTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, ResultSet rs) throws SQLException {
         this(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, rs.getLong("date_created"), ArrayUtil.toDoubleArray(rs.getBytes("allowance_per_city")), rs.getLong("track_days"), rs.getBoolean("subtract_expenditure"), rs.getLong("overdraw_percent_cents"),
                 rs.getLong("expire"),
+                rs.getLong("decay"),
                 rs.getBoolean("allow_ignore"),
                 rs.getBoolean("repeatable"));
     }
 
     // create new constructor  with typed parameters instead of resultset
-    public WarchestTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, double[] allowancePerCity, long trackDays, boolean subtractExpenditure, long overdrawPercentCents, long expiryOrZero, boolean allowIgnore, boolean repeatable) {
-        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, allowIgnore, repeatable);
+    public WarchestTemplate(GuildDB db, boolean isEnabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, double[] allowancePerCity, long trackDays, boolean subtractExpenditure, long overdrawPercentCents, long expiryOrZero, long decayOrZero, boolean allowIgnore, boolean repeatable) {
+        super(db, isEnabled, name, nationFilter, econRole, selfRole, fromBracket, useReceiverBracket, maxTotal, maxDay, maxGranterDay, maxGranterTotal, dateCreated, expiryOrZero, decayOrZero, allowIgnore, repeatable);
         this.allowancePerCity = allowancePerCity;
         this.trackDays = trackDays;
         this.subtractExpenditure = subtractExpenditure;
@@ -47,7 +48,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
     }
 
     @Override
-    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowIgnore, String repeatable) {
+    public String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable) {
         return CM.grant_template.create.warchest.cmd.create(name,
                 allowedRecipients,
                 allowancePerCity == null ? null : PnwUtil.resourcesToString(allowancePerCity),
@@ -61,7 +62,7 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
                 maxTotal,
                 maxDay,
                 maxGranterDay,
-                maxGranterTotal, allowExpire, allowIgnore,
+                maxGranterTotal, allowExpire, allowDecay, allowIgnore,
                 isRepeatable() ? null : "true",
                 null).toSlashCommand();
     }
@@ -152,10 +153,10 @@ public class WarchestTemplate extends AGrantTemplate<Map<ResourceType, Double>> 
 
     @Override
     public void setValues(PreparedStatement stmt) throws SQLException {
-        stmt.setBytes(16, ArrayUtil.toByteArray(allowancePerCity));
-        stmt.setLong(17, trackDays);
-        stmt.setBoolean(18, subtractExpenditure);
-        stmt.setLong(19, overdrawPercentCents);
+        stmt.setBytes(17, ArrayUtil.toByteArray(allowancePerCity));
+        stmt.setLong(18, trackDays);
+        stmt.setBoolean(19, subtractExpenditure);
+        stmt.setLong(20, overdrawPercentCents);
     }
 
     @Override

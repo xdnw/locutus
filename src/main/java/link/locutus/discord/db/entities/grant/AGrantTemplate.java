@@ -38,6 +38,7 @@ public abstract class AGrantTemplate<T> {
 
     private final GuildDB db;
     private final long expiryOrZero;
+    private final long decayOrZero;
     private final boolean allowIgnore;
     private boolean enabled;
     private String name;
@@ -53,7 +54,7 @@ public abstract class AGrantTemplate<T> {
     private long dateCreated;
     private boolean repeatable;
 
-    public AGrantTemplate(GuildDB db, boolean enabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long expiryOrZero, boolean allowIgnore, boolean repeatable) {
+    public AGrantTemplate(GuildDB db, boolean enabled, String name, NationFilter nationFilter, long econRole, long selfRole, int fromBracket, boolean useReceiverBracket, int maxTotal, int maxDay, int maxGranterDay, int maxGranterTotal, long dateCreated, long expiryOrZero, long decayOrZero, boolean allowIgnore, boolean repeatable) {
         this.db = db;
         this.enabled = enabled;
         this.name = name;
@@ -68,6 +69,7 @@ public abstract class AGrantTemplate<T> {
         this.maxGranterTotal = maxGranterTotal;
         this.dateCreated = dateCreated;
         this.expiryOrZero = expiryOrZero;
+        this.decayOrZero = decayOrZero;
         this.allowIgnore = allowIgnore;
         this.repeatable = repeatable;
     }
@@ -94,6 +96,10 @@ public abstract class AGrantTemplate<T> {
         if (expiryOrZero > 0) {
             String time = TimeUtil.secToTime(TimeUnit.MILLISECONDS, expiryOrZero);
             result.append(" #expire=").append(time);
+        }
+        if (decayOrZero > 0) {
+            String time = TimeUtil.secToTime(TimeUnit.MILLISECONDS, decayOrZero);
+            result.append(" #decay=").append(time);
         }
         if (allowIgnore) {
             result.append(" #ignore");
@@ -139,10 +145,13 @@ public abstract class AGrantTemplate<T> {
                 maxTotal > 0 ? "" + maxTotal : null,
                 maxDay > 0 ? "" + maxDay : null,
                 maxGranterDay > 0 ? "" + maxGranterDay : null,
-                maxGranterTotal > 0 ? "" + maxGranterTotal : null, expiryOrZero == 0 ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expiryOrZero), allowIgnore ? "true" : null, repeatable ? "true" : null);
+                maxGranterTotal > 0 ? "" + maxGranterTotal : null,
+                expiryOrZero == 0 ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expiryOrZero),
+                decayOrZero == 0 ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decayOrZero),
+                allowIgnore ? "true" : null, repeatable ? "true" : null);
     }
 
-    public abstract String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowIgnore, String repeatable);
+    public abstract String getCommandString(String name, String allowedRecipients, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable);
 
     public String toFullString(DBNation sender, DBNation receiver, T parsed) {
         System.out.println(6.1);
@@ -520,6 +529,7 @@ public abstract class AGrantTemplate<T> {
         list.add("max_granter_total");
         list.add("date_created");
         list.add("expire");
+        list.add("decay");
         list.add("allow_ignore");
         list.add("repeatable");
         return list;
@@ -583,8 +593,9 @@ public abstract class AGrantTemplate<T> {
         stmt.setInt(11, this.getMaxGranterTotal());
         stmt.setLong(12, this.getDateCreated());
         stmt.setLong(13, this.getExpire());
-        stmt.setBoolean(14, this.allowsExpire());
-        stmt.setBoolean(15, this.isRepeatable());
+        stmt.setLong(15, this.getDecay());
+        stmt.setBoolean(14, this.allowsIgnore());
+        stmt.setBoolean(16, this.isRepeatable());
     }
 
     public boolean isRepeatable() {
@@ -652,8 +663,16 @@ public abstract class AGrantTemplate<T> {
         return this.expiryOrZero > 0;
     }
 
+    public boolean allowsDecay() {
+        return this.decayOrZero > 0;
+    }
+
     public long getExpire() {
         return this.expiryOrZero;
+    }
+
+    public long getDecay() {
+        return this.decayOrZero;
     }
 
     public boolean allowsIgnore() {

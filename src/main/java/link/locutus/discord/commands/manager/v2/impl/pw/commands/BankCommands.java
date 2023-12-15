@@ -1760,19 +1760,27 @@ public class BankCommands {
 
     @Command(desc = "Bulk shift resources in a nations holdings to another note category")
     @RolePermission(Roles.ECON)
-    public String shiftDeposits(@Me GuildDB db, @Me IMessageIO io, @Me DBNation me, DBNation nation, @Arg("The note to change FROM") DepositType from, @Arg("The new note to use") DepositType to, @Arg("Only transfers after this timeframe") @Default @Timestamp Long timediff) throws IOException {
+    public String shiftDeposits(@Me GuildDB db, @Me IMessageIO io, @Me DBNation me, DBNation nation, @Arg("The note to change FROM") DepositType from, @Arg("The new note to use") DepositType to, @Arg("Make the funds expire") @Default @Timestamp Long expireTime, @Arg("Make the funds decay") @Default @Timestamp Long decayTime) throws IOException {
         if (from == to) throw new IllegalArgumentException("From and to must be a different category.");
-        if (timediff != null && to != DepositType.GRANT) {
-            throw new IllegalArgumentException("The grant expiry timediff is only needed if converted to the grant category");
+        if (expireTime != null && expireTime != 0 && to != DepositType.GRANT) {
+            throw new IllegalArgumentException("The grant expiry time is only needed if converted to the grant category");
+        }
+        if (decayTime != null && decayTime != 0 && to != DepositType.GRANT) {
+            throw new IllegalArgumentException("The grant decay time is only needed if converted to the grant category");
         }
 
         String note = "#" + to.name().toLowerCase(Locale.ROOT);
 
         if (to == DepositType.GRANT) {
-            if (timediff == null) {
+            if ((expireTime == null || expireTime == 0) && (decayTime == null || decayTime == 0)) {
                 throw new IllegalArgumentException("You must specify a grant expiry timediff if converting to the grant category. e.g. `60d`");
             } else {
-                note += " #expire=timestamp:" + (System.currentTimeMillis() + timediff);
+                if (expireTime != null && expireTime != 0) {
+                    note += " #expire=timestamp:" + (System.currentTimeMillis() + expireTime);
+                }
+                if (decayTime != null && decayTime != 0) {
+                    note += " #decay=timestamp:" + (System.currentTimeMillis() + decayTime);
+                }
             }
         }
         Map<DepositType, double[]> depoByType = nation.getDeposits(db, null, true, true, 0, 0, true);
@@ -1847,15 +1855,31 @@ public class BankCommands {
                 List<Map.Entry<Integer, Transaction2>> transactions = nation.getTransactions(db, null, true, true, -1, 0, true);
                 for (Map.Entry<Integer, Transaction2> entry : transactions) {
                     Transaction2 tx = entry.getValue();
-                    if (tx.note == null || !tx.note.contains("#expire") || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id()))
+                    if (tx.note == null || (!tx.note.contains("#expire") && !tx.note.contains("#decay")) || (tx.receiver_id != nation.getNation_id() && tx.sender_id != nation.getNation_id()))
                         continue;
                     if (tx.sender_id == tx.receiver_id) continue;
                     Map<String, String> notes = PnwUtil.parseTransferHashNotes(tx.note);
-                    String expire = notes.get("#expire");
-                    long expireEpoch = tx.tx_datetime + TimeUtil.timeToSec_BugFix1(expire, tx.tx_datetime) * 1000L;
+                    String expire2 = notes.get("#expire");
+                    String decay2 = notes.get("#decay");
+                    long expireEpoch = 0;
+                    long decayEpoch = 0;
+                    if (expire2 != null) {
+                        expireEpoch = tx.tx_datetime + TimeUtil.timeToSec_BugFix1(expire2, tx.tx_datetime) * 1000L;
+                    }
+                    if (decay2 != null) {
+                        decayEpoch = tx.tx_datetime + TimeUtil.timeToSec_BugFix1(decay2, tx.tx_datetime) * 1000L;
+                    }
+                    expireEpoch = Math.min(expireEpoch, decayEpoch);
                     if (expireEpoch > now) {
-                        String noteCopy = tx.note.replaceAll("#expire=[a-zA-Z0-9:]+", "");
-                        noteCopy += " #expire=" + "timestamp:" + expireEpoch;
+                        String noteCopy = tx.note
+                                .replaceAll("#expire=[a-zA-Z0-9:]+", "")
+                                .replaceAll("#decay=[a-zA-Z0-9:]+", "");
+                        if (expire2 != null) {
+                            noteCopy += " #expire=" + "timestamp:" + expireEpoch;
+                        }
+                        if (decay2 != null) {
+                            noteCopy += " #decay=" + "timestamp:" + decayEpoch;
+                        }
                         noteCopy = noteCopy.trim();
 
                         tx.tx_datetime = System.currentTimeMillis();

@@ -465,14 +465,14 @@ public class OffshoreInstance {
 
     public final Map<Integer, Long> disabledNations = new ConcurrentHashMap<>();
 
-    public TransferResult transferFromNationAccountWithRoleChecks(User banker, DBNation nationAccount, DBAlliance allianceAccount, TaxBracket taxAccount, GuildDB senderDB, Long senderChannel, NationOrAlliance receiver, double[] amount, DepositType.DepositTypeInfo depositType, Long expire, UUID grantToken, boolean convertCash, EscrowMode escrowMode, boolean requireConfirmation, boolean bypassChecks) throws IOException {
+    public TransferResult transferFromNationAccountWithRoleChecks(User banker, DBNation nationAccount, DBAlliance allianceAccount, TaxBracket taxAccount, GuildDB senderDB, Long senderChannel, NationOrAlliance receiver, double[] amount, DepositType.DepositTypeInfo depositType, Long expire, Long decay, UUID grantToken, boolean convertCash, EscrowMode escrowMode, boolean requireConfirmation, boolean bypassChecks) throws IOException {
         Supplier<Map<Long, AccessType>> allowedIdsGet = ArrayUtil.memorize(new Supplier<Map<Long, AccessType>>() {
             @Override
             public Map<Long, AccessType> get() {
                return senderDB.getAllowedBankAccountsOrThrow(banker, receiver, senderChannel);
             }
         });
-        return transferFromNationAccountWithRoleChecks(allowedIdsGet, banker, nationAccount, allianceAccount, taxAccount, senderDB, senderChannel, receiver, amount, depositType, expire, grantToken, convertCash, escrowMode, requireConfirmation, bypassChecks);
+        return transferFromNationAccountWithRoleChecks(allowedIdsGet, banker, nationAccount, allianceAccount, taxAccount, senderDB, senderChannel, receiver, amount, depositType, expire, decay, grantToken, convertCash, escrowMode, requireConfirmation, bypassChecks);
     }
 
     private final Map<Integer, double[]> lastSuccessfulTransfer = new ConcurrentHashMap<>();
@@ -491,7 +491,7 @@ public class OffshoreInstance {
         return previous != null && ResourceType.equals(previous, amount);
     }
 
-    public TransferResult transferFromNationAccountWithRoleChecks(Supplier<Map<Long, AccessType>> allowedIdsGet, User banker, DBNation nationAccount, DBAlliance allianceAccount, TaxBracket taxAccount, GuildDB senderDB, Long senderChannel, NationOrAlliance receiver, double[] amount, DepositType.DepositTypeInfo depositType, Long expire, UUID grantToken, boolean convertCash, EscrowMode escrowMode, boolean requireConfirmation, boolean bypassChecks) throws IOException {
+    public TransferResult transferFromNationAccountWithRoleChecks(Supplier<Map<Long, AccessType>> allowedIdsGet, User banker, DBNation nationAccount, DBAlliance allianceAccount, TaxBracket taxAccount, GuildDB senderDB, Long senderChannel, NationOrAlliance receiver, double[] amount, DepositType.DepositTypeInfo depositType, Long expire, Long decay, UUID grantToken, boolean convertCash, EscrowMode escrowMode, boolean requireConfirmation, boolean bypassChecks) throws IOException {
         if (!TimeUtil.checkTurnChange()) {
 //            return Map.entry(TransferStatus.TURN_CHANGE, "You cannot transfer close to turn change");
             return new TransferResult(TransferStatus.TURN_CHANGE, receiver, amount, depositType.toString()).addMessage("You cannot transfer close to turn change");
@@ -575,16 +575,22 @@ public class OffshoreInstance {
 
         if (expire != null && expire != 0) {
             if (!receiver.isNation()) {
-//                return Map.entry(TransferStatus.INVALID_NOTE, "Expire can only be used with nations");
                 return new TransferResult(TransferStatus.INVALID_NOTE, receiver, amount, depositType.toString()).addMessage("Expire can only be used with nations");
             }
-            // Requires econ role for the alliance to send expire
-
             if (expire < 1000) {
-//                return Map.entry(TransferStatus.INVALID_NOTE, "Expire time must be at least 1 second (e.g. `3d` for three days)");
                 return new TransferResult(TransferStatus.INVALID_NOTE, receiver, amount, depositType.toString()).addMessage("Expire time must be at least 1 second (e.g. `3d` for three days)");
             }
             otherNotes.add("#expire=" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire));
+        }
+
+        if (decay != null && decay != 0) {
+            if (!receiver.isNation()) {
+                return new TransferResult(TransferStatus.INVALID_NOTE, receiver, amount, depositType.toString()).addMessage("Decay can only be used with nations");
+            }
+            if (decay < 1000) {
+                return new TransferResult(TransferStatus.INVALID_NOTE, receiver, amount, depositType.toString()).addMessage("Decay time must be at least 1 second (e.g. `3d` for three days)");
+            }
+            otherNotes.add("#decay=" + TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay));
         }
 
         DBNation bankerNation = DiscordUtil.getNation(banker);
@@ -652,7 +658,7 @@ public class OffshoreInstance {
 
         Set<Integer> guildAllianceIds = senderDB.getAllianceIds();
 
-        if (expire != null && expire != 0) {
+        if ((expire != null && expire != 0) || (decay != null && decay != 0)) {
             allowedIds.entrySet().removeIf(f -> f.getValue() != AccessType.ECON);
             if (allowedIds.isEmpty()) {
 //                return Map.entry(TransferStatus.AUTHORIZATION, "You are only authorized " + DepositType.DEPOSIT + " but attempted to do " + depositType);
