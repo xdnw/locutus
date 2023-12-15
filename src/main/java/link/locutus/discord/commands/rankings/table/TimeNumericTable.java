@@ -356,6 +356,8 @@ public abstract class TimeNumericTable<T> {
             series[i] = source;
         }
 
+        DataTable barData = null;
+
         // Create new xy-plot
         XYPlot plot;
         if (isBar) {
@@ -367,7 +369,7 @@ public abstract class TimeNumericTable<T> {
             types[types.length - 1] = String.class;
             for (int i = 0; i < numYTypes; i++) types[i] = Double.class;
 
-            DataTable barData = new DataTable(types);
+            barData = new DataTable(types);
 
             for (int i = 0; i < data.getRowCount(); i++) {
                 Row row = data.getRow(i);
@@ -382,6 +384,8 @@ public abstract class TimeNumericTable<T> {
                 }
                 barData.add(newRow);
             }
+
+            System.out.println("Num types " + numYTypes + " " + Arrays.toString(types));
 
             plot = new BarPlot(barData);
         } else {
@@ -461,8 +465,8 @@ public abstract class TimeNumericTable<T> {
         if (isBar) {
             List<Color> colorList = new ArrayList<>(colors);
             BarPlot barPlot = (BarPlot) plot;
-            barPlot.setBarWidth(1d / (amt + 1));
-            BarPlot.BarRenderer pointRenderer = (BarPlot.BarRenderer) plot.getPointRenderers(data).get(0);
+            barPlot.setBarWidth(1d / (amt + 1d));
+            BarPlot.BarRenderer pointRenderer = (BarPlot.BarRenderer) plot.getPointRenderers(barData).get(0);
             pointRenderer.setColor(new ColorMapper() {
                 @Override
                 public Paint get(Number number) {
