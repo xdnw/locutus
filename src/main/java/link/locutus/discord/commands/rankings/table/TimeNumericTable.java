@@ -380,6 +380,9 @@ public abstract class TimeNumericTable<T> {
                     newRow[2] = timeStr;
 
                     barData.add(newRow);
+
+                    // Dont repeat time
+                    timeStr = "";
                 }
 
             }
@@ -464,7 +467,7 @@ public abstract class TimeNumericTable<T> {
             BarPlot barPlot = (BarPlot) plot;
             barPlot.setBarWidth(1d / amt);
             BarPlot.BarRenderer pointRenderer = (BarPlot.BarRenderer) plot.getPointRenderers(barData).get(0);
-            pointRenderer.setColor(new ColorMapper() {
+            ColorMapper mapper = new ColorMapper() {
                 @Override
                 public Paint get(Number number) {
                     int column = number.intValue();
@@ -472,10 +475,11 @@ public abstract class TimeNumericTable<T> {
                 }
 
                 @Override
-                public ColorMapper.Mode getMode() {
+                public Mode getMode() {
                     return null;
                 }
-            });
+            };
+            pointRenderer.setColor(mapper);
             pointRenderer.setBorderStroke(new BasicStroke(1f));
             pointRenderer.setBorderColor(Color.LIGHT_GRAY);
             pointRenderer.setValueVisible(true);
@@ -494,6 +498,13 @@ public abstract class TimeNumericTable<T> {
                 }
             });
             pointRenderer.setValueFont(Font.decode(null).deriveFont(10.0f));
+
+            // set legend, use color mapper
+            plot.getLegend().clear();
+            // add the labels to the legend, using color format, index -> colormapper apply color
+//            The labels: this.labels
+            plot.getLegend().add(data);
+
         } else {
             int i = 0;
             for (Color color : colors) {
