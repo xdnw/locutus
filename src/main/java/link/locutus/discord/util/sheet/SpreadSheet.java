@@ -973,18 +973,9 @@ public class SpreadSheet {
         if (service == null) {
             return;
         }
-        UpdateCellsRequest updateCellsRequest = new UpdateCellsRequest();
-        int allSheetsId = 0;
-        String clearAllFieldsSpell = "*";
-        GridRange gridRange = new GridRange();
-        gridRange.setSheetId(allSheetsId);
-        updateCellsRequest.setRange(gridRange);
-        updateCellsRequest.setFields(clearAllFieldsSpell);
-        BatchUpdateSpreadsheetRequest request = new BatchUpdateSpreadsheetRequest();
-        Request clearAllDataRequest = new Request().setUpdateCells(updateCellsRequest);
-        request.setRequests(List.of(clearAllDataRequest));
-
-        BatchUpdateSpreadsheetResponse response = service.spreadsheets().batchUpdate(spreadsheetId, request).execute();
+        String firstSheetId = service.spreadsheets().get(spreadsheetId).execute().getSheets().get(0).getProperties().getTitle();
+        ClearValuesRequest requestBody = new ClearValuesRequest();
+        service.spreadsheets().values().clear(spreadsheetId, firstSheetId, requestBody).execute();
     }
 
     public void updateClearAll() throws IOException {

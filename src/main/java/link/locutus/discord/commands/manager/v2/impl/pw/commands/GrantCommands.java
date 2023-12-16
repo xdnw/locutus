@@ -245,7 +245,7 @@ public class GrantCommands {
                                         @Arg("Add a default decaying expiry time to grants sent via this template\n" +
                                                 "e.g. 60d\n" +
                                                 "The granter can specify an expiry shorter than this value")
-                                            @Switch("expire") @Timediff Long decayTime,
+                                            @Switch("decay") @Timediff Long decayTime,
                                         @Arg("Do not include grants in member balances by default\n" +
                                                 "Defaults to false")
                                         @Switch("ignore") boolean allowIgnore,
@@ -380,7 +380,7 @@ public class GrantCommands {
                                         @Arg("Add a default decaying expiry time to grants sent via this template\n" +
                                                 "e.g. 60d\n" +
                                                 "The granter can specify an expiry shorter than this value")
-                                            @Switch("expire") @Timediff Long decayTime,
+                                            @Switch("decay") @Timediff Long decayTime,
                                       @Arg("Do not include grants in member balances by default\n" +
                                               "Defaults to false")
                                           @Switch("ignore") boolean allowIgnore,
@@ -491,7 +491,7 @@ public class GrantCommands {
                                         @Arg("Add a default decaying expiry time to grants sent via this template\n" +
                                                 "e.g. 60d\n" +
                                                 "The granter can specify an expiry shorter than this value")
-                                            @Switch("expire") @Timediff Long decayTime,
+                                            @Switch("decay") @Timediff Long decayTime,
                                      @Arg("Do not include grants in member balances by default\n" +
                                              "Defaults to false")
                                          @Switch("ignore") boolean allowIgnore,
@@ -601,7 +601,7 @@ public class GrantCommands {
                                         @Arg("Add a default decaying expiry time to grants sent via this template\n" +
                                                 "e.g. 60d\n" +
                                                 "The granter can specify an expiry shorter than this value")
-                                            @Switch("expire") @Timediff Long decayTime,
+                                            @Switch("decay") @Timediff Long decayTime,
                                       @Arg("Do not include grants in member balances by default\n" +
                                               "Defaults to false")
                                           @Switch("ignore") boolean allowIgnore,
@@ -724,7 +724,7 @@ public class GrantCommands {
                                         @Arg("Add a default decaying expiry time to grants sent via this template\n" +
                                                 "e.g. 60d\n" +
                                                 "The granter can specify an expiry shorter than this value")
-                                            @Switch("expire") @Timediff Long decayTime,
+                                            @Switch("decay") @Timediff Long decayTime,
                                      @Arg("Do not include grants in member balances by default\n" +
                                              "Defaults to false")
                                          @Switch("ignore") boolean allowIgnore,
@@ -832,7 +832,7 @@ public class GrantCommands {
                                         @Arg("Add a default decaying expiry time to grants sent via this template\n" +
                                                 "e.g. 60d\n" +
                                                 "The granter can specify an expiry shorter than this value")
-                                            @Switch("expire") @Timediff Long decayTime,
+                                            @Switch("decay") @Timediff Long decayTime,
                                      @Arg("Do not include grants in member balances by default\n" +
                                              "Defaults to false")
                                          @Switch("ignore") boolean allowIgnore,
@@ -947,7 +947,7 @@ public class GrantCommands {
                                         @Arg("Add a default decaying expiry time to grants sent via this template\n" +
                                                 "e.g. 60d\n" +
                                                 "The granter can specify an expiry shorter than this value")
-                                            @Switch("expire") @Timediff Long decayTime,
+                                            @Switch("decay") @Timediff Long decayTime,
                                          @Arg("Do not include grants in member balances by default\n" +
                                                  "Defaults to false")
                                              @Switch("ignore") boolean allowIgnore,
