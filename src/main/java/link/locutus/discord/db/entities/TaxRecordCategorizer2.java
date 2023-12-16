@@ -243,7 +243,7 @@ public class TaxRecordCategorizer2 {
             expenseRequirements.add(tx -> tx.note != null && tx.note.contains("#grant"));
         }
         if (!dontRequireExpiry) {
-            expenseRequirements.add(tx -> tx.note != null && tx.note.contains("#expire"));
+            expenseRequirements.add(tx -> tx.note != null && (tx.note.contains("#expire") || tx.note.contains("#decay")));
         }
 
         this.alliances = new HashSet<>();

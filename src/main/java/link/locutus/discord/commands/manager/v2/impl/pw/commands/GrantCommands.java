@@ -1021,11 +1021,14 @@ public class GrantCommands {
                                AGrantTemplate template,
                                DBNation receiver,
                                @Switch("e") @Timediff Long expire,
+                               @Switch("d") @Timediff Long decay,
                                @Switch("i") Boolean ignore,
                                @Switch("p") String customValue,
                                @Switch("em") EscrowMode escrowMode,
                                @Switch("f") boolean force) throws IOException {
         boolean hasAdmin = Roles.ECON.has(selfMember);
+        if (expire != null && expire == 0) expire = null;
+        if (decay != null && decay == 0) decay = null;
         if (ignore == null) ignore = template.allowsIgnore();
         if (expire != null && !hasAdmin) {
             if (!template.allowsExpire()) {
@@ -1033,6 +1036,14 @@ public class GrantCommands {
             }
             if (expire < template.getExpire()) {
                 throw new IllegalArgumentException("The template `" + template.getName() + "` does not allow expiration less than " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, template.getExpire()) + "ms");
+            }
+        }
+        if (decay != null && !hasAdmin) {
+            if (!template.allowsDecay()) {
+                throw new IllegalArgumentException("The template `" + template.getName() + "` does not allow decay");
+            }
+            if (decay < template.getDecay()) {
+                throw new IllegalArgumentException("The template `" + template.getName() + "` does not allow decay less than " + TimeUtil.secToTime(TimeUnit.MILLISECONDS, template.getDecay()) + "ms");
             }
         }
         if (ignore && !template.allowsIgnore() && !hasAdmin) {
@@ -1161,6 +1172,7 @@ public class GrantCommands {
                     cost,
                     note,
                     expire,
+                    decay,
                     null,
                     false,
                     escrowMode,

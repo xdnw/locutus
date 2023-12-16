@@ -135,7 +135,8 @@ public class PnwUtil {
      * @return
      */
     public static Map<DepositType, double[]> sumNationTransactions(GuildDB guildDB, Set<Long> tracked, List<Map.Entry<Integer, Transaction2>> transactionsEntries, boolean forceIncludeExpired, boolean forceIncludeIgnored, Predicate<Transaction2> filter) {
-        Map<DepositType, double[]> result = new HashMap<>();
+        long start = System.currentTimeMillis();
+        Map<DepositType, double[]> result = new EnumMap<>(DepositType.class);
 
         boolean allowExpiryDefault = (guildDB.getOrNull(GuildKey.RESOURCE_CONVERSION) == Boolean.TRUE) || guildDB.getIdLong() == 790253684537688086L;
         long allowExpiryCutoff = 1635910300000L;
@@ -158,6 +159,10 @@ public class PnwUtil {
             boolean allowArbitraryConversion = record.tx_id != -1 && isOffshoreSender;
 
             PnwUtil.processDeposit(record, guildDB, tracked, sign, result, record.resources, record.note, record.tx_datetime, allowExpiry, allowConversion, allowArbitraryConversion, true, forceIncludeIgnored);
+        }
+        long diff = System.currentTimeMillis() - start;
+        if (diff > 50) {
+            System.out.println("Summed " + transactionsEntries.size() + " transactions in " + diff + "ms");
         }
         return result;
     }
@@ -213,6 +218,7 @@ public class PnwUtil {
 
         Map<String, String> notes = parseTransferHashNotes(note);
         DepositType type = DepositType.DEPOSIT;
+        double decayFactor = 1;
 
         for (Map.Entry<String, String> entry : notes.entrySet()) {
             String tag = entry.getKey();
@@ -269,6 +275,23 @@ public class PnwUtil {
                         type = DepositType.LOAN;
                     }
                     continue;
+                case "#decay": {
+                    if (allowExpiry.test(record) && value != null && !value.isEmpty()) {
+                        try {
+                            long now = System.currentTimeMillis();
+                            long expire = TimeUtil.timeToSec_BugFix1(value, record.tx_datetime) * 1000L;
+                            if (now > date + expire) {
+                                return;
+                            }
+                            decayFactor = Math.min(decayFactor, 1 - (now - date) / (double) expire);
+                            type = DepositType.GRANT;
+                        } catch (IllegalArgumentException e) {
+                            e.printStackTrace();
+                            type = DepositType.LOAN;
+                        }
+                    }
+                    continue;
+                }
                 case "#expire": {
                     if (allowExpiry.test(record) && value != null && !value.isEmpty()) {
                         try {
@@ -307,7 +330,6 @@ public class PnwUtil {
                             if (cashValue == null) {
                                 long oneWeek = TimeUnit.DAYS.toMillis(7);
                                 long start = date - oneWeek;
-                                long end = date;
                                 TradeDB tradeDb = Locutus.imp().getTradeManager().getTradeDb();
 
                                 cashValue = 0d;
@@ -319,7 +341,7 @@ public class PnwUtil {
                                     } else {
                                         if (amt < 1) continue;
 
-                                        List<DBTrade> trades = tradeDb.getTrades(resource, start, end);
+                                        List<DBTrade> trades = tradeDb.getTrades(resource, start, date);
 
                                         Double avg = Locutus.imp().getTradeManager().getAverage(trades).getKey().get(resource);
                                         if (avg != null) {
@@ -327,7 +349,6 @@ public class PnwUtil {
                                         }
                                     }
                                 }
-
                                 {
                                     // set hash
                                     String hash = Hashing.md5()
@@ -347,13 +368,14 @@ public class PnwUtil {
             }
         }
         double[] rss = result.computeIfAbsent(type, f -> ResourceType.getBuffer());
-        if (sign == 1) {
+        if (sign == 1 && decayFactor == 1) {
             ResourceType.add(rss, amount);
-        } else if (sign == -1) {
+        } else if (sign == -1 && decayFactor == 1) {
             ResourceType.subtract(rss, amount);
         } else {
+            double factor = decayFactor * sign;
             for (int i = 0; i < rss.length; i++) {
-                rss[i] += amount[i] * sign;
+                rss[i] += amount[i] * factor;
             }
         }
     }
@@ -589,12 +611,14 @@ public class PnwUtil {
 
         double[] balance = ResourceType.getBuffer();
         double[] nonBalance = ResourceType.getBuffer();
-        List<String> balanceNotes = new ArrayList<>(Arrays.asList("#deposit", "#tax", "#loan", "#grant", "#expire"));
+        List<String> balanceNotes = new ArrayList<>(Arrays.asList("#deposit", "#tax", "#loan", "#grant", "#expire", "#decay"));
 
         List<String> excluded = new ArrayList<>(Arrays.asList("/escrow"));
         if (withdrawIgnoresGrants) {
             balanceNotes.remove("#expire");
+            balanceNotes.remove("#decay");
             excluded.add("#expire");
+            excluded.add("#decay");
         }
 
         for (Map.Entry<DepositType, double[]> entry : categorized.entrySet()) {

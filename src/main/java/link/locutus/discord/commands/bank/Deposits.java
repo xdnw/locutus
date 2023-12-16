@@ -41,8 +41,7 @@ public class Deposits extends Command {
                 "Add `-t` to show taxes separately (See flag: `-b` and `!synctaxes`)\n\n" +
                 "Note: Use `" + Settings.commandPrefix(true) + "synctaxes` to update tax records\n" +
                 "Add `-d` to show results in dm\n" +
-                "Add `-h` to hide escrow balance"
-                ;
+                "Add `-h` to hide escrow balance";
     }
 
     @Override
