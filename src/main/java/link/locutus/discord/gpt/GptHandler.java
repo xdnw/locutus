@@ -62,14 +62,17 @@ public class GptHandler {
         File venvExe = new File("../gpt4free/venv/Scripts/python.exe");
         File workingDirectory = new File("../gpt4free");
         // ensure files exist
-        if (!scriptPath.exists()) {
-            throw new RuntimeException("gpt4free not found: " + scriptPath.getAbsolutePath());
-        }
-        if (!venvExe.exists()) {
-            throw new RuntimeException("venv not found: " + venvExe.getAbsolutePath());
-        }
+        if (scriptPath.exists()) {
+//            throw new RuntimeException("gpt4free not found: " + scriptPath.getAbsolutePath());
+//        }
+            if (!venvExe.exists()) {
+                throw new RuntimeException("venv not found: " + venvExe.getAbsolutePath());
+            }
 //        this.summarizer = new ProcessSummarizer(venvExe, gpt4freePath, ModelType.GPT_3_5_TURBO, 8192);
-        this.processT2 = new ProcessText2Text(venvExe, "my_project.gpt3_5_turbo", workingDirectory);
+            this.processT2 = new ProcessText2Text(venvExe, "my_project.gpt3_5_turbo", workingDirectory);
+        } else {
+            processT2 = null;
+        }
     }
 
     public IModerator getModerator() {

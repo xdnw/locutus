@@ -15,11 +15,7 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -324,12 +320,13 @@ public enum Roles {
 
         if (member.isOwner()) return true;
         Role role = toRole(member.getGuild());
-        for (Role discordRole : member.getRoles()) {
+        List<Role> roles = member.getRoles();
+        for (Role discordRole : roles) {
             if (discordRole.hasPermission(Permission.ADMINISTRATOR)) {
                 return true;
             }
         }
-        return role != null && member.getRoles().contains(role);
+        return role != null && roles.contains(role);
     }
 
     public static boolean hasAny(User user, Guild guild, Roles... roles) {
