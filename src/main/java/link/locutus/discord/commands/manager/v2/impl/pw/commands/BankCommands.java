@@ -1272,7 +1272,8 @@ public class BankCommands {
                            @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
                            @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
                            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
-                           @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
+                                  @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
+                                  @Arg("Have the transfer decrease linearly from balances over a timeframe") @Switch("d") @Timediff Long decay,
                            @Arg("Have the transfer valued as cash in nation holdings")@Switch("m") boolean convertToMoney,
                            @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
                            @Switch("b") boolean bypassChecks,
@@ -1401,7 +1402,7 @@ public class BankCommands {
                     key.toString()
             ).toJson();
 
-            return transferBulk(io, command, author, me, db, sheet, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, convertToMoney, escrow_mode, bypassChecks, force, key);
+            return transferBulk(io, command, author, me, db, sheet, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, convertToMoney, escrow_mode, bypassChecks, force, key);
         }
     }
 
