@@ -56,18 +56,27 @@ public class Borgomas extends Command {
 
         me.setMeta(NationMeta.BORGMAS, (byte) 1);
 
+        int up = commends.getKey();
         int down = commends.getValue();
+
+        String img = "https://dcassetcdn.com/w1k/submissions/160000/160404_d209.jpg";
 
         Map<ResourceType, Double> resources;
         String message;
-        boolean good = down < 2;
+        boolean good = (up > down * 6) && up >= 10;
         if (good) {
-            message = "You open your present to find... 1,000 borg bucks! (Legal tender throughout Unicomplex, Orbis and all assimilated worlds).\nMerry Borgmas!\nhttps://dcassetcdn.com/w1k/submissions/160000/160404_d209.jpg";
-            resources = Collections.singletonMap(ResourceType.MONEY, 1000d);
+            message = "You open your present to find... 1,000,000 borg bucks! (Legal tender throughout Unicomplex, Orbis and all assimilated worlds).\nMerry Borgmas!\n" + img;
+            resources = Collections.singletonMap(ResourceType.MONEY, 1_000_000d);
         } else {
-            GuildDB dbAA = Locutus.imp().getGuildDBByAA(me.getAlliance_id());
+//            GuildDB dbAA = Locutus.imp().getGuildDBByAA(me.getAlliance_id());
             if (true) {
-                message = "You open your present to find a 10kg hunk of coal...\nMerry Borgmas!\nhttps://dcassetcdn.com/w1k/submissions/160000/160404_d209.jpg";
+                String reason;
+                if (up < 10) {
+                    reason = "Thats what you get for having only " + up + " commendations.";
+                } else {
+                    reason = "Thats what you get for having " + down + " denouncements.";
+                }
+                message = "You open your present to find a 10kg hunk of coal... " + reason + "\nMerry Borgmas!\n" + img;
                 resources = Collections.singletonMap(ResourceType.COAL, 0.01);
             } else {
                 Set<DBNation> members = DBAlliance.getOrCreate(me.getAlliance_id()).getNations(true, 7200, true);
