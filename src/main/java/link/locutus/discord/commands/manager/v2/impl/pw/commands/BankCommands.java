@@ -1371,6 +1371,7 @@ public class BankCommands {
                     existingTaxAccount + "",
                     Boolean.FALSE.toString(),
                     expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
+                    decay == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay),
                     null,
                     String.valueOf(convertToMoney),
                     escrow_mode == null ? null : escrow_mode.name(),
@@ -1378,7 +1379,7 @@ public class BankCommands {
                     String.valueOf(force)
             ).toJson();
 
-            return transfer(io, command, author, me, db, nation, transfer, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, false, expire, null, convertToMoney, escrow_mode, bypassChecks, force);
+            return transfer(io, command, author, me, db, nation, transfer, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, false, expire, decay, null, convertToMoney, escrow_mode, bypassChecks, force);
         } else {
             UUID key = UUID.randomUUID();
             TransferSheet sheet = new TransferSheet(db).write(fundsToSendNations, new LinkedHashMap<>()).build();
@@ -1737,6 +1738,7 @@ public class BankCommands {
                            @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
                            @Arg("Only send funds the receiver is lacking from the amount") @Switch("m") boolean onlyMissingFunds,
                            @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
+                           @Arg("Have the transfer decrease linearly from balances over a timeframe") @Switch("d") @Timediff Long decay,
                            @Switch("g") UUID token,
                            @Arg("Transfer valued at cash equivalent in nation holdings") @Switch("c") boolean convertCash,
                            @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
@@ -1751,6 +1753,7 @@ public class BankCommands {
                 existingTaxAccount,
                 onlyMissingFunds,
                 expire,
+                decay,
                 token,
                 convertCash,
                 escrow_mode,
@@ -1960,6 +1963,7 @@ public class BankCommands {
                                   @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
                                   @Arg("Only send funds the receiver is lacking from the amount") @Switch("m") boolean onlyMissingFunds,
                                   @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
+                                  @Arg("Have the transfer decrease linearly to zero for balances over a timeframe") @Switch("d") @Timediff Long decay,
                                   @Switch("g") UUID token,
                                   @Arg("Transfer valued at cash equivalent in nation holdings") @Switch("c") boolean convertCash,
                                   @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
@@ -2084,6 +2088,7 @@ public class BankCommands {
                     PnwUtil.resourcesToArray(transfer),
                     depositType,
                     expire,
+                    decay,
                     null,
                     convertCash,
                     escrow_mode,
@@ -2739,12 +2744,13 @@ public class BankCommands {
                                       @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
                                       @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
                                       @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
+                                      @Arg("Have the transfer decrease linearly over a timeframe") @Switch("d") @Timediff Long decay,
                                       @Switch("m") boolean convertToMoney,
                                       @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
                                       @Switch("b") boolean bypassChecks,
                                       @Switch("f") boolean force,
                                       @Switch("k") UUID key) throws IOException {
-        return transferBulkWithErrors(io, command, user, me, db, sheet, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, convertToMoney, escrow_mode, bypassChecks, force, key, new HashMap<>());
+        return transferBulkWithErrors(io, command, user, me, db, sheet, depositType, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, convertToMoney, escrow_mode, bypassChecks, force, key, new HashMap<>());
     }
 
 
@@ -2754,7 +2760,8 @@ public class BankCommands {
                                         @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
                                         @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
                                         @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
-                                        @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
+                                                @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
+                                                @Arg("Have the transfer decrease linearly to zero for balances over a timeframe") @Switch("d") @Timediff Long decay,
                                       @Switch("m") boolean convertToMoney,
                                                 @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
                                       @Switch("b") boolean bypassChecks,
@@ -2882,6 +2889,7 @@ public class BankCommands {
                             amount,
                             depositType,
                             expire,
+                            decay,
                             null,
                             convertToMoney,
                             escrow_mode,
@@ -3448,7 +3456,7 @@ public class BankCommands {
                 }
                 buttons.put("withdraw elsewhere",
                         Map.entry(
-                                CM.transfer.resources.cmd.create("", "", DepositType.DEPOSIT.name(), nationOrAllianceOrGuild.getQualifiedId(), null, null, null, null, null, null, null, null, null, null, null),
+                                CM.transfer.resources.cmd.create("", "", DepositType.DEPOSIT.name(), nationOrAllianceOrGuild.getQualifiedId(), null, null, null, null, null, null, null, null, null, null, null, null),
                                 true));
                 footers.add("To withdraw: " + CM.transfer.self.cmd.toSlashMention() + " or " + CM.transfer.resources.cmd.toSlashMention() + " ");
             }
@@ -3465,14 +3473,14 @@ public class BankCommands {
             if (econ) {
                 buttons.put("withdraw",
                         Map.entry(
-                                CM.transfer.resources.cmd.create("", "", DepositType.IGNORE.name(), nationOrAllianceOrGuild.getQualifiedId(), null, null, null, null, null, null, null, null, null, null, null),
+                                CM.transfer.resources.cmd.create("", "", DepositType.IGNORE.name(), nationOrAllianceOrGuild.getQualifiedId(), null, null, null, null, null, null, null, null, null, null, null, null),
                                 true));
                 footers.add("To withdraw: " + CM.transfer.resources.cmd.toSlashMention() + " with `#ignore` as note");
             }
         } else if (nationOrAllianceOrGuild.isTaxid()) {
             buttons.put("withdraw",
                     Map.entry(
-                            CM.transfer.resources.cmd.create("", "", "", nationOrAllianceOrGuild.getQualifiedId(), null, null, nationOrAllianceOrGuild.getQualifiedName(), null, null, null, null, null, null, null, null),
+                            CM.transfer.resources.cmd.create("", "", "", nationOrAllianceOrGuild.getQualifiedId(), null, null, nationOrAllianceOrGuild.getQualifiedName(), null, null, null, null, null, null, null, null, null),
                             true));
             footers.add("To withdraw: " + CM.transfer.resources.cmd.toSlashMention() + " with `taxaccount: " + nationOrAllianceOrGuild.getQualifiedName() + "`");
 
@@ -3484,7 +3492,7 @@ public class BankCommands {
             if (econ) {
                 buttons.put("withdraw",
                         Map.entry(
-                                CM.transfer.resources.cmd.create("", "", DepositType.IGNORE.name(), null, null, null, null, null, null, null, null, null, null, null, null),
+                                CM.transfer.resources.cmd.create("", "", DepositType.IGNORE.name(), null, null, null, null, null, null, null, null, null, null, null, null, null),
                                 true));
                 footers.add("To withdraw: " + CM.transfer.resources.cmd.toSlashMention() + " with `#ignore` as note");
                 Map.Entry<GuildDB, Integer> offshore = db.getOffshoreDB();

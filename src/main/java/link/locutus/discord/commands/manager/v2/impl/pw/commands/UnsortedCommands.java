@@ -1446,7 +1446,8 @@ public class UnsortedCommands {
                           @Arg("The alliance account to deduct from\nAlliance must be registered to this guild\nDefaults to all the alliances of this guild") @Switch("o") DBAlliance useOffshoreAccount,
                           @Arg("The tax account to deduct from") @Switch("t") TaxBracket taxAccount,
                           @Arg("Deduct from the receiver's tax bracket account") @Switch("ta") boolean existingTaxAccount,
-                          @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
+                                  @Arg("Have the transfer ignored from nation holdings after a timeframe") @Switch("e") @Timediff Long expire,
+                                  @Arg("Have the transfer decay linearly in balances over a timeframe") @Switch("d") @Timediff Long decay,
                           @Arg("Have the transfer valued as cash in nation holdings")@Switch("m") boolean convertToMoney,
                           @Arg("The mode for escrowing funds (e.g. if the receiver is blockaded)\nDefaults to never") @Switch("em") EscrowMode escrow_mode,
                           @Switch("b") boolean bypassChecks,
@@ -1541,7 +1542,7 @@ public class UnsortedCommands {
                 key.toString()
         ).toJson();
 
-        return BankCommands.transferBulkWithErrors(io, command, author, me, db, sheet, note, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, convertToMoney, escrow_mode, bypassChecks, force, key, errors);
+        return BankCommands.transferBulkWithErrors(io, command, author, me, db, sheet, note, depositsAccount, useAllianceBank, useOffshoreAccount, taxAccount, existingTaxAccount, expire, decay, convertToMoney, escrow_mode, bypassChecks, force, key, errors);
     }
 
     @Command(desc = "Check if a nation is a reroll and print their reroll date")

@@ -4583,7 +4583,7 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="transfer")
             public static class resources extends CommandRef {
                 public static final resources cmd = new resources();
-                public resources create(String receiver, String transfer, String depositType, String nationAccount, String senderAlliance, String allianceAccount, String taxAccount, String existingTaxAccount, String onlyMissingFunds, String expire, String token, String convertCash, String escrow_mode, String bypassChecks, String force) {
+                public resources create(String receiver, String transfer, String depositType, String nationAccount, String senderAlliance, String allianceAccount, String taxAccount, String existingTaxAccount, String onlyMissingFunds, String expire, String decay, String token, String convertCash, String escrow_mode, String bypassChecks, String force) {
                     return createArgs("receiver", receiver, "transfer", transfer, "depositType", depositType, "nationAccount", nationAccount, "senderAlliance", senderAlliance, "allianceAccount", allianceAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "onlyMissingFunds", onlyMissingFunds, "expire", expire, "token", token, "convertCash", convertCash, "escrow_mode", escrow_mode, "bypassChecks", bypassChecks, "force", force);
                 }
             }
