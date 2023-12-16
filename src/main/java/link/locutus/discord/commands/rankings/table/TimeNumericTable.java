@@ -510,11 +510,12 @@ public abstract class TimeNumericTable<T> {
             for (int i = 0; i < this.labels.length; i++) {
                 data2.add(this.labels[i]);
             }
+//            ((BarPlot.BarPlotLegend) plot.getLegend()).setLabelColumn(0);
             plot.getLegend().add(data2);
             List<Drawable> drawables = plot.getLegend().getDrawables();
             for (int i = 0; i < drawables.size(); i++) {
                 AbstractLegend.Item item = (AbstractLegend.Item) drawables.get(i);
-                item.getLabel().setBackground(colorList.get(i % colorList.size()));
+                item.getLabel().setColor(colorList.get(i % colorList.size()));
             }
         } else {
             int i = 0;
@@ -545,13 +546,18 @@ public abstract class TimeNumericTable<T> {
     }
 
     public IMessageBuilder writeMsg(IMessageBuilder msg, TimeFormat timeFormat, TableNumberFormat numberFormat, boolean attachJson, boolean attachCsv) throws IOException {
-        msg  = msg.file("img.png", write(timeFormat, numberFormat));
-        String name = this.name == null || this.name.isEmpty() ? "data" : this.name;
-        if (attachJson) {
-            msg = msg.file(name + ".json", toHtmlJson().toString());
-        }
-        if (attachCsv) {
-            msg = msg.file(name + ".csv", toCsv());
+        try {
+            byte[] bytes = write(timeFormat, numberFormat);
+            msg  = msg.file("img.png", bytes);
+            String name = this.name == null || this.name.isEmpty() ? "data" : this.name;
+            if (attachJson) {
+                msg = msg.file(name + ".json", toHtmlJson().toString());
+            }
+            if (attachCsv) {
+                msg = msg.file(name + ".csv", toCsv());
+            }
+        } catch (Throwable e) {
+            e.printStackTrace();
         }
         return msg;
     }
