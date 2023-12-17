@@ -257,6 +257,13 @@ public class CM {
                         return createArgs();
                     }
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="syncWarrooms")
+                public static class warrooms extends CommandRef {
+                    public static final warrooms cmd = new warrooms();
+                    public warrooms create(String force) {
+                        return createArgs("force", force);
+                    }
+                }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.AdminCommands.class,method="validateAPIKeys")
             public static class validateAPIKeys extends CommandRef {
@@ -614,6 +621,13 @@ public class CM {
                 public static final view cmd = new view();
                 public view create(String ann_id, String document, String nation) {
                     return createArgs("ann_id", ann_id, "document", document, "nation", nation);
+                }
+            }
+            @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UtilityCommands.class,method="addWatermark")
+            public static class watermark extends CommandRef {
+                public static final watermark cmd = new watermark();
+                public watermark create(String imageUrl, String watermarkText, String color, String opacity, String font, String repeat) {
+                    return createArgs("imageUrl", imageUrl, "watermarkText", watermarkText, "color", color, "opacity", opacity, "font", font, "repeat", repeat);
                 }
             }
         }
@@ -1188,8 +1202,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="shiftDeposits")
             public static class shift extends CommandRef {
                 public static final shift cmd = new shift();
-                public shift create(String nation, String from, String to, String timediff) {
-                    return createArgs("nation", nation, "from", from, "to", to, "timediff", timediff);
+                public shift create(String nation, String from, String to, String expireTime, String decayTime) {
+                    return createArgs("nation", nation, "from", from, "to", to, "expireTime", expireTime, "decayTime", decayTime);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.web.test.TestCommands.class,method="shiftFlow")
@@ -1448,50 +1462,50 @@ public class CM {
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="templateCreateBuild")
                 public static class build extends CommandRef {
                     public static final build cmd = new build();
-                    public build create(String name, String allowedRecipients, String build, String mmr, String only_new_cities, String allow_after_days, String allow_after_offensive, String allow_after_infra, String allow_all, String allow_after_land_or_project, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable, String force) {
-                        return createArgs("name", name, "allowedRecipients", allowedRecipients, "build", build, "mmr", mmr, "only_new_cities", only_new_cities, "allow_after_days", allow_after_days, "allow_after_offensive", allow_after_offensive, "allow_after_infra", allow_after_infra, "allow_all", allow_all, "allow_after_land_or_project", allow_after_land_or_project, "econRole", econRole, "selfRole", selfRole, "bracket", bracket, "useReceiverBracket", useReceiverBracket, "maxTotal", maxTotal, "maxDay", maxDay, "maxGranterDay", maxGranterDay, "maxGranterTotal", maxGranterTotal, "allowExpire", allowExpire, "allowIgnore", allowIgnore, "repeatable", repeatable, "force", force);
+                    public build create(String name, String allowedRecipients, String build, String mmr, String only_new_cities, String allow_after_days, String allow_after_offensive, String allow_after_infra, String allow_all, String allow_after_land_or_project, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String expireTime, String decayTime, String allowIgnore, String repeatable, String force) {
+                        return createArgs("name", name, "allowedRecipients", allowedRecipients, "build", build, "mmr", mmr, "only_new_cities", only_new_cities, "allow_after_days", allow_after_days, "allow_after_offensive", allow_after_offensive, "allow_after_infra", allow_after_infra, "allow_all", allow_all, "allow_after_land_or_project", allow_after_land_or_project, "econRole", econRole, "selfRole", selfRole, "bracket", bracket, "useReceiverBracket", useReceiverBracket, "maxTotal", maxTotal, "maxDay", maxDay, "maxGranterDay", maxGranterDay, "maxGranterTotal", maxGranterTotal, "expireTime", expireTime, "decayTime", decayTime, "allowIgnore", allowIgnore, "repeatable", repeatable, "force", force);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="templateCreateCity")
                 public static class city extends CommandRef {
                     public static final city cmd = new city();
-                    public city create(String name, String allowedRecipients, String minCity, String maxCity, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String force) {
-                        return createArgs("name", name, "allowedRecipients", allowedRecipients, "minCity", minCity, "maxCity", maxCity, "econRole", econRole, "selfRole", selfRole, "bracket", bracket, "useReceiverBracket", useReceiverBracket, "maxTotal", maxTotal, "maxDay", maxDay, "maxGranterDay", maxGranterDay, "maxGranterTotal", maxGranterTotal, "allowExpire", allowExpire, "allowIgnore", allowIgnore, "force", force);
+                    public city create(String name, String allowedRecipients, String minCity, String maxCity, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String expireTime, String decayTime, String allowIgnore, String force) {
+                        return createArgs("name", name, "allowedRecipients", allowedRecipients, "minCity", minCity, "maxCity", maxCity, "econRole", econRole, "selfRole", selfRole, "bracket", bracket, "useReceiverBracket", useReceiverBracket, "maxTotal", maxTotal, "maxDay", maxDay, "maxGranterDay", maxGranterDay, "maxGranterTotal", maxGranterTotal, "expireTime", expireTime, "decayTime", decayTime, "allowIgnore", allowIgnore, "force", force);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="templateCreateInfra")
                 public static class infra extends CommandRef {
                     public static final infra cmd = new infra();
-                    public infra create(String name, String allowedRecipients, String level, String onlyNewCities, String requireNOffensives, String allowRebuild, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable, String force) {
-                        return createArgs("name", name, "allowedRecipients", allowedRecipients, "level", level, "onlyNewCities", onlyNewCities, "requireNOffensives", requireNOffensives, "allowRebuild", allowRebuild, "econRole", econRole, "selfRole", selfRole, "bracket", bracket, "useReceiverBracket", useReceiverBracket, "maxTotal", maxTotal, "maxDay", maxDay, "maxGranterDay", maxGranterDay, "maxGranterTotal", maxGranterTotal, "allowExpire", allowExpire, "allowIgnore", allowIgnore, "repeatable", repeatable, "force", force);
+                    public infra create(String name, String allowedRecipients, String level, String onlyNewCities, String requireNOffensives, String allowRebuild, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String expireTime, String decayTime, String allowIgnore, String repeatable, String force) {
+                        return createArgs("name", name, "allowedRecipients", allowedRecipients, "level", level, "onlyNewCities", onlyNewCities, "requireNOffensives", requireNOffensives, "allowRebuild", allowRebuild, "econRole", econRole, "selfRole", selfRole, "bracket", bracket, "useReceiverBracket", useReceiverBracket, "maxTotal", maxTotal, "maxDay", maxDay, "maxGranterDay", maxGranterDay, "maxGranterTotal", maxGranterTotal, "expireTime", expireTime, "decayTime", decayTime, "allowIgnore", allowIgnore, "repeatable", repeatable, "force", force);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="templateCreateLand")
                 public static class land extends CommandRef {
                     public static final land cmd = new land();
-                    public land create(String name, String allowedRecipients, String level, String onlyNewCities, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String repeatable, String force) {
-                        return createArgs("name", name, "allowedRecipients", allowedRecipients, "level", level, "onlyNewCities", onlyNewCities, "econRole", econRole, "selfRole", selfRole, "bracket", bracket, "useReceiverBracket", useReceiverBracket, "maxTotal", maxTotal, "maxDay", maxDay, "maxGranterDay", maxGranterDay, "maxGranterTotal", maxGranterTotal, "allowExpire", allowExpire, "allowIgnore", allowIgnore, "repeatable", repeatable, "force", force);
+                    public land create(String name, String allowedRecipients, String level, String onlyNewCities, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String expireTime, String decayTime, String allowIgnore, String repeatable, String force) {
+                        return createArgs("name", name, "allowedRecipients", allowedRecipients, "level", level, "onlyNewCities", onlyNewCities, "econRole", econRole, "selfRole", selfRole, "bracket", bracket, "useReceiverBracket", useReceiverBracket, "maxTotal", maxTotal, "maxDay", maxDay, "maxGranterDay", maxGranterDay, "maxGranterTotal", maxGranterTotal, "expireTime", expireTime, "decayTime", decayTime, "allowIgnore", allowIgnore, "repeatable", repeatable, "force", force);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="templateCreateProject")
                 public static class project extends CommandRef {
                     public static final project cmd = new project();
-                    public project create(String name, String allowedRecipients, String project, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String force) {
-                        return createArgs("name", name, "allowedRecipients", allowedRecipients, "project", project, "econRole", econRole, "selfRole", selfRole, "bracket", bracket, "useReceiverBracket", useReceiverBracket, "maxTotal", maxTotal, "maxDay", maxDay, "maxGranterDay", maxGranterDay, "maxGranterTotal", maxGranterTotal, "allowExpire", allowExpire, "allowIgnore", allowIgnore, "force", force);
+                    public project create(String name, String allowedRecipients, String project, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String expireTime, String decayTime, String allowIgnore, String force) {
+                        return createArgs("name", name, "allowedRecipients", allowedRecipients, "project", project, "econRole", econRole, "selfRole", selfRole, "bracket", bracket, "useReceiverBracket", useReceiverBracket, "maxTotal", maxTotal, "maxDay", maxDay, "maxGranterDay", maxGranterDay, "maxGranterTotal", maxGranterTotal, "expireTime", expireTime, "decayTime", decayTime, "allowIgnore", allowIgnore, "force", force);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="templateCreateRaws")
                 public static class raws extends CommandRef {
                     public static final raws cmd = new raws();
-                    public raws create(String name, String allowedRecipients, String days, String overdrawPercent, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String nonRepeatable, String force) {
-                        return createArgs("name", name, "allowedRecipients", allowedRecipients, "days", days, "overdrawPercent", overdrawPercent, "econRole", econRole, "selfRole", selfRole, "bracket", bracket, "useReceiverBracket", useReceiverBracket, "maxTotal", maxTotal, "maxDay", maxDay, "maxGranterDay", maxGranterDay, "maxGranterTotal", maxGranterTotal, "allowExpire", allowExpire, "allowIgnore", allowIgnore, "nonRepeatable", nonRepeatable, "force", force);
+                    public raws create(String name, String allowedRecipients, String days, String overdrawPercent, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String expireTime, String decayTime, String allowIgnore, String nonRepeatable, String force) {
+                        return createArgs("name", name, "allowedRecipients", allowedRecipients, "days", days, "overdrawPercent", overdrawPercent, "econRole", econRole, "selfRole", selfRole, "bracket", bracket, "useReceiverBracket", useReceiverBracket, "maxTotal", maxTotal, "maxDay", maxDay, "maxGranterDay", maxGranterDay, "maxGranterTotal", maxGranterTotal, "expireTime", expireTime, "decayTime", decayTime, "allowIgnore", allowIgnore, "nonRepeatable", nonRepeatable, "force", force);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="templateCreateWarchest")
                 public static class warchest extends CommandRef {
                     public static final warchest cmd = new warchest();
-                    public warchest create(String name, String allowedRecipients, String allowancePerCity, String trackDays, String subtractExpenditure, String overdrawPercent, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String allowExpire, String allowDecay, String allowIgnore, String nonRepeatable, String force) {
-                        return createArgs("name", name, "allowedRecipients", allowedRecipients, "allowancePerCity", allowancePerCity, "trackDays", trackDays, "subtractExpenditure", subtractExpenditure, "overdrawPercent", overdrawPercent, "econRole", econRole, "selfRole", selfRole, "bracket", bracket, "useReceiverBracket", useReceiverBracket, "maxTotal", maxTotal, "maxDay", maxDay, "maxGranterDay", maxGranterDay, "maxGranterTotal", maxGranterTotal, "allowExpire", allowExpire, "allowIgnore", allowIgnore, "nonRepeatable", nonRepeatable, "force", force);
+                    public warchest create(String name, String allowedRecipients, String allowancePerCity, String trackDays, String subtractExpenditure, String overdrawPercent, String econRole, String selfRole, String bracket, String useReceiverBracket, String maxTotal, String maxDay, String maxGranterDay, String maxGranterTotal, String expireTime, String decayTime, String allowIgnore, String nonRepeatable, String force) {
+                        return createArgs("name", name, "allowedRecipients", allowedRecipients, "allowancePerCity", allowancePerCity, "trackDays", trackDays, "subtractExpenditure", subtractExpenditure, "overdrawPercent", overdrawPercent, "econRole", econRole, "selfRole", selfRole, "bracket", bracket, "useReceiverBracket", useReceiverBracket, "maxTotal", maxTotal, "maxDay", maxDay, "maxGranterDay", maxGranterDay, "maxGranterTotal", maxGranterTotal, "expireTime", expireTime, "decayTime", decayTime, "allowIgnore", allowIgnore, "nonRepeatable", nonRepeatable, "force", force);
                     }
                 }
             }
@@ -1533,8 +1547,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.GrantCommands.class,method="templateSend")
             public static class send extends CommandRef {
                 public static final send cmd = new send();
-                public send create(String template, String receiver, String expire, String ignore, String customValue, String escrowMode, String force) {
-                    return createArgs("template", template, "receiver", receiver, "expire", expire, "ignore", ignore, "customValue", customValue, "escrowMode", escrowMode, "force", force);
+                public send create(String template, String receiver, String expire, String decay, String ignore, String customValue, String escrowMode, String force) {
+                    return createArgs("template", template, "receiver", receiver, "expire", expire, "decay", decay, "ignore", ignore, "customValue", customValue, "escrowMode", escrowMode, "force", force);
                 }
             }
         }
@@ -2490,6 +2504,13 @@ public class CM {
                     public static final guild cmd = new guild();
                     public guild create(String name, String guilds) {
                         return createArgs("name", name, "guilds", guilds);
+                    }
+                }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="SETTINGS")
+                public static class guildsetting extends CommandRef {
+                    public static final guildsetting cmd = new guildsetting();
+                    public guildsetting create(String name, String settings) {
+                        return createArgs("name", name, "settings", settings);
                     }
                 }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addSelectionAlias", field="ATTACKS")
@@ -3609,6 +3630,13 @@ public class CM {
                         return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
                     }
                 }
+                @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="SETTINGS")
+                public static class guildsetting extends CommandRef {
+                    public static final guildsetting cmd = new guildsetting();
+                    public guildsetting create(String sheet, String a, String b, String c, String d, String e, String f, String g, String h, String i, String j, String k, String l, String m, String n, String o, String p, String q, String r, String s, String t, String u, String v, String w, String x) {
+                        return createArgs("sheet", sheet, "a", a, "b", b, "c", c, "d", d, "e", e, "f", f, "g", g, "h", h, "i", i, "j", j, "k", k, "l", l, "m", m, "n", n, "o", o, "p", p, "q", q, "r", r, "s", s, "t", t, "u", u, "v", v, "w", w, "x", x);
+                    }
+                }
                 @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap.class,method="addColumns", field="ATTACKS")
                 public static class iattack extends CommandRef {
                     public static final iattack cmd = new iattack();
@@ -4546,8 +4574,8 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="transferBulk")
             public static class bulk extends CommandRef {
                 public static final bulk cmd = new bulk();
-                public bulk create(String sheet, String depositType, String depositsAccount, String useAllianceBank, String useOffshoreAccount, String taxAccount, String existingTaxAccount, String expire, String convertToMoney, String escrow_mode, String bypassChecks, String force, String key) {
-                    return createArgs("sheet", sheet, "depositType", depositType, "depositsAccount", depositsAccount, "useAllianceBank", useAllianceBank, "useOffshoreAccount", useOffshoreAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "expire", expire, "convertToMoney", convertToMoney, "escrow_mode", escrow_mode, "bypassChecks", bypassChecks, "force", force, "key", key);
+                public bulk create(String sheet, String depositType, String depositsAccount, String useAllianceBank, String useOffshoreAccount, String taxAccount, String existingTaxAccount, String expire, String decay, String convertToMoney, String escrow_mode, String bypassChecks, String force, String key) {
+                    return createArgs("sheet", sheet, "depositType", depositType, "depositsAccount", depositsAccount, "useAllianceBank", useAllianceBank, "useOffshoreAccount", useOffshoreAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "expire", expire, "decay", decay, "convertToMoney", convertToMoney, "escrow_mode", escrow_mode, "bypassChecks", bypassChecks, "force", force, "key", key);
                 }
             }
             public static class internal{
@@ -4576,29 +4604,29 @@ public class CM {
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="disburse")
             public static class raws extends CommandRef {
                 public static final raws cmd = new raws();
-                public raws create(String nationList, String daysDefault, String depositType, String noDailyCash, String noCash, String depositsAccount, String useAllianceBank, String useOffshoreAccount, String taxAccount, String existingTaxAccount, String expire, String convertToMoney, String escrow_mode, String bypassChecks, String force) {
-                    return createArgs("nationList", nationList, "daysDefault", daysDefault, "depositType", depositType, "noDailyCash", noDailyCash, "noCash", noCash, "depositsAccount", depositsAccount, "useAllianceBank", useAllianceBank, "useOffshoreAccount", useOffshoreAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "expire", expire, "convertToMoney", convertToMoney, "escrow_mode", escrow_mode, "bypassChecks", bypassChecks, "force", force);
+                public raws create(String nationList, String daysDefault, String depositType, String noDailyCash, String noCash, String depositsAccount, String useAllianceBank, String useOffshoreAccount, String taxAccount, String existingTaxAccount, String expire, String decay, String convertToMoney, String escrow_mode, String bypassChecks, String force) {
+                    return createArgs("nationList", nationList, "daysDefault", daysDefault, "depositType", depositType, "noDailyCash", noDailyCash, "noCash", noCash, "depositsAccount", depositsAccount, "useAllianceBank", useAllianceBank, "useOffshoreAccount", useOffshoreAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "expire", expire, "decay", decay, "convertToMoney", convertToMoney, "escrow_mode", escrow_mode, "bypassChecks", bypassChecks, "force", force);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="transfer")
             public static class resources extends CommandRef {
                 public static final resources cmd = new resources();
                 public resources create(String receiver, String transfer, String depositType, String nationAccount, String senderAlliance, String allianceAccount, String taxAccount, String existingTaxAccount, String onlyMissingFunds, String expire, String decay, String token, String convertCash, String escrow_mode, String bypassChecks, String force) {
-                    return createArgs("receiver", receiver, "transfer", transfer, "depositType", depositType, "nationAccount", nationAccount, "senderAlliance", senderAlliance, "allianceAccount", allianceAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "onlyMissingFunds", onlyMissingFunds, "expire", expire, "token", token, "convertCash", convertCash, "escrow_mode", escrow_mode, "bypassChecks", bypassChecks, "force", force);
+                    return createArgs("receiver", receiver, "transfer", transfer, "depositType", depositType, "nationAccount", nationAccount, "senderAlliance", senderAlliance, "allianceAccount", allianceAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "onlyMissingFunds", onlyMissingFunds, "expire", expire, "decay", decay, "token", token, "convertCash", convertCash, "escrow_mode", escrow_mode, "bypassChecks", bypassChecks, "force", force);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.BankCommands.class,method="withdraw")
             public static class self extends CommandRef {
                 public static final self cmd = new self();
-                public self create(String transfer, String depositType, String depositsAccount, String useAllianceBank, String useOffshoreAccount, String taxAccount, String existingTaxAccount, String onlyMissingFunds, String expire, String token, String convertCash, String escrow_mode, String bypassChecks, String force) {
-                    return createArgs("transfer", transfer, "depositType", depositType, "depositsAccount", depositsAccount, "useAllianceBank", useAllianceBank, "useOffshoreAccount", useOffshoreAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "onlyMissingFunds", onlyMissingFunds, "expire", expire, "token", token, "convertCash", convertCash, "escrow_mode", escrow_mode, "bypassChecks", bypassChecks, "force", force);
+                public self create(String transfer, String depositType, String depositsAccount, String useAllianceBank, String useOffshoreAccount, String taxAccount, String existingTaxAccount, String onlyMissingFunds, String expire, String decay, String token, String convertCash, String escrow_mode, String bypassChecks, String force) {
+                    return createArgs("transfer", transfer, "depositType", depositType, "depositsAccount", depositsAccount, "useAllianceBank", useAllianceBank, "useOffshoreAccount", useOffshoreAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "onlyMissingFunds", onlyMissingFunds, "expire", expire, "decay", decay, "token", token, "convertCash", convertCash, "escrow_mode", escrow_mode, "bypassChecks", bypassChecks, "force", force);
                 }
             }
             @AutoRegister(clazz=link.locutus.discord.commands.manager.v2.impl.pw.commands.UnsortedCommands.class,method="warchest")
             public static class warchest extends CommandRef {
                 public static final warchest cmd = new warchest();
-                public warchest create(String nations, String resourcesPerCity, String note, String skipStockpile, String depositsAccount, String useAllianceBank, String useOffshoreAccount, String taxAccount, String existingTaxAccount, String expire, String convertToMoney, String escrow_mode, String bypassChecks, String force) {
-                    return createArgs("nations", nations, "resourcesPerCity", resourcesPerCity, "note", note, "skipStockpile", skipStockpile, "depositsAccount", depositsAccount, "useAllianceBank", useAllianceBank, "useOffshoreAccount", useOffshoreAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "expire", expire, "convertToMoney", convertToMoney, "escrow_mode", escrow_mode, "bypassChecks", bypassChecks, "force", force);
+                public warchest create(String nations, String resourcesPerCity, String note, String skipStockpile, String depositsAccount, String useAllianceBank, String useOffshoreAccount, String taxAccount, String existingTaxAccount, String expire, String decay, String convertToMoney, String escrow_mode, String bypassChecks, String force) {
+                    return createArgs("nations", nations, "resourcesPerCity", resourcesPerCity, "note", note, "skipStockpile", skipStockpile, "depositsAccount", depositsAccount, "useAllianceBank", useAllianceBank, "useOffshoreAccount", useOffshoreAccount, "taxAccount", taxAccount, "existingTaxAccount", existingTaxAccount, "expire", expire, "decay", decay, "convertToMoney", convertToMoney, "escrow_mode", escrow_mode, "bypassChecks", bypassChecks, "force", force);
                 }
             }
         }

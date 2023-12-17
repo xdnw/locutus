@@ -303,6 +303,13 @@ public class NationCommands {
                 return createArgs();
             }
         }
+        @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getAlliance")
+        public static class getAlliance extends CommandRef {
+            public static final getAlliance cmd = new getAlliance();
+            public getAlliance create() {
+                return createArgs();
+            }
+        }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getAllianceDepositValue")
         public static class getAllianceDepositValue extends CommandRef {
             public static final getAllianceDepositValue cmd = new getAllianceDepositValue();
@@ -1034,8 +1041,8 @@ public class NationCommands {
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getStrength")
         public static class getStrength extends CommandRef {
             public static final getStrength cmd = new getStrength();
-            public getStrength create(String mmr) {
-                return createArgs("mmr", mmr);
+            public getStrength create() {
+                return createArgs();
             }
         }
         @AutoRegister(clazz=link.locutus.discord.db.entities.DBNation.class,method="getStrongestEnemy")
