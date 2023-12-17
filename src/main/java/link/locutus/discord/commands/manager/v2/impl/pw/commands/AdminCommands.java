@@ -103,9 +103,9 @@ public class AdminCommands {
         if (aaIds.isEmpty()) {
             errors.add("No alliances being tracked. Set the `" + Coalition.ALLIES.name() + "` coalition: " + CM.coalition.add.cmd.toSlashMention());
         } else {
-            response.append("**Alliances:** ");
-            aaIds.stream().map(f -> DBAlliance.getOrCreate(f).getMarkdownUrl()).collect(Collectors.joining(","));
-            response.append("\n");
+            response.append("**Alliances:**: `");
+            response.append(aaIds.stream().map(f -> DBAlliance.getOrCreate(f).getMarkdownUrl()).collect(Collectors.joining(",")));
+            response.append("`\n");
         }
 
         if (guild.getChannels().size() >= 500) {
