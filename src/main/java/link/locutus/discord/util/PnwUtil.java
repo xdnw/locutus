@@ -443,11 +443,14 @@ public class PnwUtil {
             } else if (arg.contains(" looted ")) {
                 // arg = text after looted + trim
                 arg = arg.split(" looted ")[1].trim();
+            } else if (arg.contains(" spies, ")) {
+                arg = arg.split(" spies, ")[1].trim();
             }
             if (arg.contains(". ")) {
                 // remove period and text after
                 arg = arg.substring(0, arg.indexOf(". "));
             }
+            arg = arg.replace(",,", ",");
         }
         arg = arg.trim();
         String original = arg;
