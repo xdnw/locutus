@@ -173,10 +173,10 @@ public class CommandManager2 {
     }
 
     public CommandManager2 registerDefaults() {
+        getCommands().registerMethod(new UtilityCommands(), List.of("admin", "sync"), "syncWarrooms", "warrooms");
+
         getCommands().registerMethod(new UtilityCommands(), List.of("announcement"), "addWatermark", "watermark");
         getCommands().registerMethod(new WarCommands(), List.of("war", "sheet"), "raidSheet", "raid");
-
-        getCommands().registerMethod(new TestCommands(), List.of("test"), "filters", "filters");
 
         NewsletterCommands newsletter = new NewsletterCommands();
         getCommands().registerMethod(newsletter, List.of("newsletter"), "create", "create");

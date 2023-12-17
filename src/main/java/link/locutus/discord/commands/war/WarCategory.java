@@ -4,6 +4,7 @@ import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.core.ApiKeyPool;
 import link.locutus.discord.apiv1.enums.AttackType;
 import link.locutus.discord.apiv1.enums.SuccessType;
+import link.locutus.discord.commands.external.guild.WarCat;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.impl.discord.DiscordChannelIO;
@@ -48,6 +49,8 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
+import net.dv8tion.jda.api.requests.restaction.PermissionOverrideAction;
+import org.sqlite.core.DB;
 
 import java.io.IOException;
 import java.util.*;
@@ -221,26 +224,58 @@ public class WarCategory {
     }
 
     public boolean isActive(Collection<DBWar> wars, DBNation nation) {
-        if (!isActive(nation)) return false;
+        return getActiveReason(wars, nation).isActive();
+    }
+
+    public boolean isActive(DBNation nation) {
+        return getActiveReason(nation).isActive();
+    }
+
+    public WarCatReason getActiveReason(Collection<DBWar> wars, DBNation nation) {
+        WarCatReason reason = getActiveReason(nation);
+        if (!reason.isActive()) return reason;
         for (DBWar war : wars) {
             int attackerId = war.getAttacker_id() == nation.getNation_id() ? war.getDefender_id() : war.getAttacker_id();
             DBNation attacker = Locutus.imp().getNationDB().getNation(attackerId);
             if (attacker != null) {
-                if (isActive(attacker)) return true;
+                reason = getActiveReason(attacker);
+                if (reason.isActive()) return reason;
             }
         }
-        return false;
+        if (wars.isEmpty()) {
+            // no wars
+            return WarCatReason.NO_WARS;
+        }
+        if (wars.size() == 1) {
+            return reason;
+        }
+        return WarCatReason.WARS_NOT_AGAINST_ACTIVE;
     }
 
-    public boolean isActive(DBNation nation) {
-        if (nation != null && nation.getVm_turns() <= 0 && nation.getActive_m() < 2880 && (nation.getPosition() >= Rank.APPLICANT.id || nation.getActive_m() < 1440 || nation.getOff() > 0)) {
-            NationFilter filter = GuildKey.WAR_ROOM_FILTER.getOrNull(db);
-            if (filter != null) {
-                return filter.test(nation);
-            }
-            return true;
+    public WarCatReason getActiveReason(DBNation nation) {
+        if (nation == null) {
+            return WarCatReason.NATION_NOT_FOUND;
         }
-        return false;
+        if (nation.getVm_turns() > 0) {
+            return WarCatReason.VACATION_MODE;
+        }
+        int activeM = nation.active_m();
+        if (activeM >= 2880) {
+            return WarCatReason.INACTIVE;
+        }
+        if (activeM > 1440 && nation.getOff() == 0) {
+            if (nation.getPositionEnum() == Rank.APPLICANT) {
+                return WarCatReason.INACTIVE_APPLICANT;
+            }
+            if (nation.getPositionEnum().id <= Rank.APPLICANT.id) {
+                return WarCatReason.INACTIVE_NONE;
+            }
+        }
+        NationFilter filter = GuildKey.WAR_ROOM_FILTER.getOrNull(db);
+        if (filter != null && !filter.test(nation)) {
+            return WarCatReason.FILTER;
+        }
+        return WarCatReason.ACTIVE;
     }
 
     public void update(AbstractCursor attack) {
@@ -603,7 +638,7 @@ public class WarCategory {
         return moved;
     }
 
-    private CityRanges getRangeFromCategory(Category category) {
+    public CityRanges getRangeFromCategory(Category category) {
         String[] split = category.getName().split("-", 2);
         if (split.length == 2) {
             String filterStr = split[1];
@@ -924,11 +959,11 @@ public class WarCategory {
                             List<Category> existingCat = guild.getCategoriesByName(name, true);
                             if (existingCat.isEmpty()) {
                                 useCat = RateLimitUtil.complete(guild.createCategory(name));
-                                RateLimitUtil.queue(useCat.upsertPermissionOverride(guild.getMemberById(Settings.INSTANCE.APPLICATION_ID))
-                                        .setAllowed(Permission.VIEW_CHANNEL)
-                                        .setAllowed(Permission.MANAGE_CHANNEL)
-                                        .setAllowed(Permission.MANAGE_PERMISSIONS)
-                                );
+                                PermissionOverrideAction upsert = useCat.upsertPermissionOverride(guild.getMemberById(Settings.INSTANCE.APPLICATION_ID));
+                                for (Permission perm : getCategoryPermissions()) {
+                                    upsert = upsert.setAllowed(perm);
+                                }
+                                RateLimitUtil.queue(upsert);
 
                                 RateLimitUtil.queue(useCat.upsertPermissionOverride(guild.getRolesByName("@everyone", false).get(0))
                                         .deny(Permission.VIEW_CHANNEL));
@@ -1141,6 +1176,16 @@ public class WarCategory {
         }
     }
 
+    private static Permission[] CATEGORY_PERMISSIONS = new Permission[]{
+            Permission.VIEW_CHANNEL,
+            Permission.MANAGE_CHANNEL,
+            Permission.MANAGE_PERMISSIONS
+    };
+
+    public Permission[] getCategoryPermissions() {
+        return CATEGORY_PERMISSIONS;
+    }
+
     private synchronized void syncAlliances() {
         Set<Integer> aaIds = db.getAllianceIds();
         allianceIds.clear();
@@ -1176,13 +1221,63 @@ public class WarCategory {
     }
 
     public void sync() {
-        sync(false);
+        sync(null, null, null, null, null, null, null, false);
     }
 
     public void sync(boolean force) {
-        if (warRoomMap.isEmpty() && !force) return;
+        sync(null, null, null, null, null, null, null, force);
+    }
 
-        long start = System.currentTimeMillis();
+
+    public enum WarCatReason {
+        WARS_NOT_AGAINST_ACTIVE("Nation has no wars against active nations", false),
+        NO_WARS("Nation has no wars", false),
+        NO_WARS_CHANNEL("Channel for nation has no wars and not registered to a room", false),
+        NATION_NOT_FOUND("Nation not found in database (did they delete?)", false),
+
+        VACATION_MODE("Nation is in vacation mode", false),
+        INACTIVE_APPLICANT("Nation is applicant not active in past 1d, with 0 offensive wars", false),
+        INACTIVE("Nation is inactive for 2 days", false),
+        INACTIVE_NONE("Nation is not in an alliance and not active in past 1d, with 0 offensive wars", false),
+        FILTER("Nation does not match the `WAR_ROOM_FILTER` set", false),
+        ACTIVE("Nation is active with wars", true),
+        PLANNING_NO_ACTIVE_WARS("War room is marked as planning and has no active wars", true),
+        ROOM_ACTIVE_NO_CHANNEL("War room is registered and active but has no channel", true),
+        ROOM_ACTIVE_INVALID_CHANNEL("War room is registered and active but has an invalid channel", true),
+        ROOM_ACTIVE_EXISTS("War room is registered and active and has a valid channel", true),
+        NOT_CREATED("War room is not created yet, but active wars were found", true),
+        ;
+
+        private final boolean isActive;
+        private final String reason;
+
+        WarCatReason(String reason, boolean isActive) {
+            this.reason = reason;
+            this.isActive = isActive;
+
+        }
+
+        public String getReason() {
+            return reason;
+        }
+
+        public boolean isActive() {
+            return isActive;
+        }
+    }
+
+
+
+    public void sync(Map<DBWar, WarCatReason> warsLog,
+                     Map<DBNation, WarCatReason> inactiveRoomLog,
+                     Map<DBNation, WarCatReason> activeRoomLog,
+                     Set<DBNation> toCreate,
+                     Map<Integer, WarCatReason> toDelete,
+                     Map<DBNation, TextChannel> toReassign,
+                     Map<Integer, Set<TextChannel>> duplicates,
+                     boolean create) {
+        if (warRoomMap.isEmpty() && !create && warsLog == null) return;
+
         syncAlliances();
         Set<DBWar> wars = Locutus.imp().getWarDb().getActiveWars(allianceIds, WarStatus.ACTIVE, WarStatus.ATTACKER_OFFERED_PEACE, WarStatus.DEFENDER_OFFERED_PEACE);
         Map<Integer, List<DBWar>> byTarget = new RankBuilder<>(wars).group(war -> allianceIds.contains(war.getAttacker_aa()) ? war.getDefender_id() : war.getAttacker_id()).get();
@@ -1195,28 +1290,68 @@ public class WarCategory {
             int targetId = entry.getKey();
             DBNation targetNation = Locutus.imp().getNationDB().getNation(targetId);
 
-            if (isActive(currentWars, targetNation)) {
+            WarCatReason enemyReason = getActiveReason(targetNation);
+            for (DBWar war : currentWars) {
+                DBNation ally = war.getNation(!war.isAttacker(targetNation));
+                WarCatReason allyReason = getActiveReason(ally);
+                if (!enemyReason.isActive()) {
+                    if (warsLog != null) warsLog.put(war, enemyReason);
+                } else if (!allyReason.isActive()) {
+                    if (warsLog != null) warsLog.put(war, allyReason);
+                } else {
+                    if (warsLog != null) warsLog.put(war, WarCatReason.ACTIVE);
+                }
+            }
 
+            WarCatReason reason = getActiveReason(wars, targetNation);
+
+            if (reason.isActive()) {
                 long createStart = System.currentTimeMillis();
-                WarRoom room = get(targetNation, true, force, force);
+                WarRoom room = get(targetNation, create, create, create);
                 createDiff += (System.currentTimeMillis() - createStart);
 
                 long updateStart = System.currentTimeMillis();
-                room.addInitialParticipants(currentWars);
+                if (room != null) {
+                    if (room.channel != null) {
+                        if (guild.getGuildChannelById(room.channel.getIdLong()) != null) {
+                            if (activeRoomLog != null) activeRoomLog.put(targetNation, WarCatReason.ROOM_ACTIVE_EXISTS);
+                        } else {
+                            if (activeRoomLog != null) activeRoomLog.put(targetNation, WarCatReason.ROOM_ACTIVE_INVALID_CHANNEL);
+                        }
+                    } else {
+                        if (toCreate != null) toCreate.add(targetNation);
+                        if (activeRoomLog != null) activeRoomLog.put(targetNation, WarCatReason.ROOM_ACTIVE_NO_CHANNEL);
+                    }
+                    if (create) {
+                        room.addInitialParticipants(currentWars);
+                    }
+                } else {
+                    if (toCreate != null) toCreate.add(targetNation);
+                    if (activeRoomLog != null) activeRoomLog.put(targetNation, WarCatReason.NOT_CREATED);
+                }
                 updateDiff += (System.currentTimeMillis() - updateStart);
 
             } else {
                 WarRoom room = targetNation == null ? warRoomMap.get(targetId) : get(targetNation, false, false);
                 if (room != null && room.channel != null) {
-
                     if (!room.isPlanning()) {
-                        room.delete("Target is not active");
+                        if (targetNation != null) {
+                            if (inactiveRoomLog != null) inactiveRoomLog.put(targetNation, reason);
+                        }
+                        if (toDelete != null) toDelete.put(targetId, reason);
+                        if (create) {
+                            room.delete("Target is not active");
+                        }
+                    } else {
+                        if (activeRoomLog != null) activeRoomLog.put(targetNation, WarCatReason.PLANNING_NO_ACTIVE_WARS);
+                    }
+                } else {
+                    if (targetNation != null) {
+                        if (inactiveRoomLog != null) inactiveRoomLog.put(targetNation, reason);
                     }
                 }
             }
         }
-
-        start = System.currentTimeMillis();
 
         Set<Integer> duplicateChannels = new HashSet<>();
 
@@ -1236,12 +1371,17 @@ public class WarCategory {
                     }
 
                     if (!duplicateChannels.add(targetId)) {
-                        System.out.println("Delete duplicate channel: " + channel.getName());
-                        RateLimitUtil.queueWhenFree(channel.delete());
+                        if (duplicates != null) duplicates.computeIfAbsent(targetId, f -> new LinkedHashSet<>()).add(channel);
+                        if (create) {
+                            RateLimitUtil.queueWhenFree(channel.delete());
+                        }
                     } else {
                         WarRoom existing = warRoomMap.get(targetId);
                         if (existing != null && existing.channel != null && existing.channel.getIdLong() != channel.getIdLong()) {
-                            existing.setChannel(channel);
+                            if (toReassign != null) toReassign.put(existing.target, channel);
+                            if (create) {
+                                existing.setChannel(channel);
+                            }
                         }
                     }
 
@@ -1251,20 +1391,23 @@ public class WarCategory {
                     DBNation target = Locutus.imp().getNationDB().getNation(targetId);
                     WarRoom room = null;
                     if (target != null) {
-                        room = get(target, true, false);
+                        room = get(target, create, false);
                         if (room != null && room.isPlanning()) continue;
                     }
                     if (room != null) {
-                        room.delete("No active wars");
+                        if (toDelete != null) toDelete.put(targetId, WarCatReason.NO_WARS);
+                        if (create) {
+                            room.delete("No active wars");
+                        }
                     } else {
-                        System.out.println("Delete channel: " + channel.getName() + " (no active wars)");
-                        RateLimitUtil.queueWhenFree(channel.delete());
+                        if (toDelete != null) toDelete.put(targetId, WarCatReason.NO_WARS_CHANNEL);
+                        if (create) {
+                            RateLimitUtil.queueWhenFree(channel.delete());
+                        }
                     }
                 }
             }
         }
-
-        System.out.println("Clean up categories: " + (-start + (start = System.currentTimeMillis())));
     }
 
     public synchronized WarRoom getOrCreate(DBNation target) {

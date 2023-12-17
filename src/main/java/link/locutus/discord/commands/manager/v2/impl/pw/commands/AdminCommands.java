@@ -23,6 +23,7 @@ import link.locutus.discord.commands.manager.v2.impl.discord.permission.RolePerm
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWBindings;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
+import link.locutus.discord.commands.war.WarCategory;
 import link.locutus.discord.config.Messages;
 import link.locutus.discord.config.Settings;
 import link.locutus.discord.db.GuildDB;
@@ -37,6 +38,7 @@ import link.locutus.discord.event.Event;
 import link.locutus.discord.db.entities.AllianceMetric;
 import link.locutus.discord.db.entities.Coalition;
 import link.locutus.discord.pnw.AllianceList;
+import link.locutus.discord.pnw.CityRanges;
 import link.locutus.discord.pnw.NationList;
 import link.locutus.discord.pnw.PNWUser;
 import link.locutus.discord.user.Roles;
@@ -61,14 +63,12 @@ import com.politicsandwar.graphql.model.ApiKeyDetails;
 import link.locutus.discord.util.update.WarUpdateProcessor;
 import link.locutus.discord.web.jooby.WebRoot;
 import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.channel.Channel;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.concrete.PrivateChannel;
-import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
-import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.json.JSONObject;
 
@@ -79,27 +79,185 @@ import java.net.URISyntaxException;
 import java.security.GeneralSecurityException;
 import java.sql.SQLException;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class AdminCommands {
+
+    @Command(desc = "Sync and debug war rooms")
+    @RolePermission(Roles.ADMIN)
+    public String syncWarrooms(@Me IMessageIO io, @Me JSONObject command, @Me GuildDB db, @Switch("f") boolean force) throws IOException {
+        long start = System.currentTimeMillis();
+
+        StringBuilder response = new StringBuilder();
+        List<String> errors = new ArrayList<>();
+        List<String> notes = new ArrayList<>();
+
+        WarCategory cat = db.getWarChannel(true);
+        Guild guild = cat.getGuild();
+
+        Set<Integer> aaIds = cat.getTrackedAllianceIds();
+        if (aaIds.isEmpty()) {
+            errors.add("No alliances being tracked. Set the `" + Coalition.ALLIES.name() + "` coalition: " + CM.coalition.add.cmd.toSlashMention());
+        } else {
+            response.append("**Alliances:** ");
+            aaIds.stream().map(f -> DBAlliance.getOrCreate(f).getMarkdownUrl()).collect(Collectors.joining(","));
+            response.append("\n");
+        }
+
+        if (guild.getChannels().size() >= 500) {
+            errors.add("Server at max channels (500)");
+        }
+        if (guild.getCategories().size() >= 50) {
+            errors.add("Server at max categories (50)");
+        }
+
+        response.append("**Server:** `" + guild.getName() + "` | `" + guild.getId() + "`");
+        if (guild.getIdLong() != db.getIdLong()) response.append(" (WAR_SERVER is set)");
+        response.append("\n");
+
+        // list the categories
+        Member self = guild.getSelfMember();
+        Set<Category> categories = cat.getCategories();
+
+        Map<Category, Set<Permission>> permissionsMissing = new LinkedHashMap<>();
+        Map<Category, CityRanges> ranges = new LinkedHashMap<>();
+
+        Permission[] catPerms = cat.getCategoryPermissions();
+        for (Category category : categories) {
+            EnumSet<Permission> selfPerms = self.getPermissions(category);
+            for (Permission perm : catPerms) {
+                if (!selfPerms.contains(perm)) {
+                    permissionsMissing.computeIfAbsent(category, k -> new LinkedHashSet<>()).add(perm);
+                }
+            }
+            CityRanges range = cat.getRangeFromCategory(category);
+            if (range != null) {
+                ranges.put(category, range);
+            }
+        }
+
+        if (categories.isEmpty()) {
+            errors.add("No categories found. " +
+                    "Create one starting with `warcat`\n" +
+                    "Grant the bot the perms: `" + Arrays.stream(catPerms).map(f -> f.getName()).collect(Collectors.joining(", ")) + "`\n");
+        } else {
+            response.append("**" + categories.size() + " categories:**\n");
+            for (Category category : categories) {
+                response.append("- " + category.getName());
+                CityRanges cityRange = ranges.get(category);
+                if (cityRange != null) {
+                    response.append(" | city:" + cityRange);
+                }
+                Set<Permission> lacking = permissionsMissing.getOrDefault(category, Collections.emptySet());
+                if (!lacking.isEmpty()) {
+                    response.append(" | missing: `" + lacking.stream().map(f -> f.getName()).collect(Collectors.joining(",")) + "`");
+                }
+                response.append("\n");
+            }
+        }
+
+        // Say War rooms can be sorted by cities by naming the category e.g. `warcat-c1-10`
+        if (ranges.isEmpty()) {
+            notes.add("No city ranges found. Create a category starting with `warcat` and ending with a city range e.g. `warcat-c1-10`");
+            notes.add("If a sorted category is full, the next free category will be used, even if a room does not match the filter");
+            notes.add("You may create multiple categories with the same or overlapping filters");
+        }
+
+        Map<DBWar, WarCategory.WarCatReason> warsLog = new LinkedHashMap<>();
+        Map<DBNation, WarCategory.WarCatReason> inactiveRoomLog = new LinkedHashMap<>();
+        Map<DBNation, WarCategory.WarCatReason> activeRoomLog = new LinkedHashMap<>();
+        Set<DBNation> toCreate = new LinkedHashSet<>();
+        Map<Integer, WarCategory.WarCatReason> toDelete = new LinkedHashMap<>();
+        Map<DBNation, TextChannel> toReassign = new LinkedHashMap<>();
+        Map<Integer, Set<TextChannel>> duplicates = new LinkedHashMap<>();
+
+        cat.sync(warsLog, inactiveRoomLog, activeRoomLog, toCreate, toDelete, toReassign, duplicates, force);
+        if (!warsLog.isEmpty()) {
+            response.append("\n**" + warsLog.size() + " wars:**\n");
+            for (Map.Entry<DBWar, WarCategory.WarCatReason> entry : warsLog.entrySet()) {
+                DBWar war = entry.getKey();
+                WarCategory.WarCatReason reason = entry.getValue();
+                response.append("- " + war.warId + ": " + reason.name() + " - " + reason.getReason() + "\n");
+            }
+        }
+        if (!inactiveRoomLog.isEmpty()) {
+            response.append("\n**" + inactiveRoomLog.size() + " inactive rooms:**\n");
+            for (Map.Entry<DBNation, WarCategory.WarCatReason> entry : inactiveRoomLog.entrySet()) {
+                DBNation nation = entry.getKey();
+                WarCategory.WarCatReason reason = entry.getValue();
+                response.append("- " + nation.getNation() + ": " + reason.name() + " - " + reason.getReason() + "\n");
+            }
+        }
+        if (!activeRoomLog.isEmpty()) {
+            response.append("\n**" + activeRoomLog.size() + " active rooms:**\n");
+            for (Map.Entry<DBNation, WarCategory.WarCatReason> entry : activeRoomLog.entrySet()) {
+                DBNation nation = entry.getKey();
+                WarCategory.WarCatReason reason = entry.getValue();
+                response.append("- " + nation.getNation() + ": " + reason.name() + " - " + reason.getReason() + "\n");
+            }
+        }
+        if (!toCreate.isEmpty()) {
+            response.append("\n**" + toCreate.size() + " rooms to create:**\n");
+            for (DBNation nation : toCreate) {
+                response.append("- " + nation.getMarkdownUrl() + "\n");
+            }
+        }
+        if (!toDelete.isEmpty()) {
+            response.append("\n**" + toDelete.size() + " rooms to delete:**\n");
+            for (Map.Entry<Integer, WarCategory.WarCatReason> entry : toDelete.entrySet()) {
+                int id = entry.getKey();
+                WarCategory.WarCatReason reason = entry.getValue();
+                response.append("- " + PnwUtil.getMarkdownUrl(id, false) + ": " + reason.name() + " - " + reason.getReason() + "\n");
+            }
+        }
+        if (!toReassign.isEmpty()) {
+            response.append("\n**" + toReassign.size() + " rooms to reassign:**\n");
+            for (Map.Entry<DBNation, TextChannel> entry : toReassign.entrySet()) {
+                DBNation nation = entry.getKey();
+                TextChannel channel = entry.getValue();
+                response.append("- " + nation.getMarkdownUrl() + " -> " + channel.getAsMention() + "\n");
+            }
+        }
+        if (!duplicates.isEmpty()) {
+            response.append("\n**" + duplicates.size() + " duplicate channels:**\n");
+            for (Map.Entry<Integer, Set<TextChannel>> entry : duplicates.entrySet()) {
+                int id = entry.getKey();
+                Set<TextChannel> channels = entry.getValue();
+                response.append("- " + PnwUtil.getMarkdownUrl(id, false) + ": " + channels.stream().map(Channel::getAsMention).collect(Collectors.joining(", ")) + "\n");
+            }
+        }
+
+        StringBuilder full = new StringBuilder();
+        if (!errors.isEmpty()) {
+            full.append("\n**" + errors.size() + " errors:**\n");
+            for (String error : errors) {
+                full.append("- " + error + "\n");
+            }
+        }
+        if (!notes.isEmpty()) {
+            full.append("\n**" + notes.size() + " notes:**\n");
+            for (String note : notes) {
+                full.append("- " + note + "\n");
+            }
+        }
+        full.append(response);
+
+        if (!force) {
+            String title = "Confirm sync war rooms";
+            String body = "See the attached log file for details on room creation, deletion";
+            io.create().confirmation(title, body, command).file("warcat.txt", full.toString()).send();
+            return null;
+        }
+        long diff = System.currentTimeMillis() - start;
+        io.create().append("Sync war rooms complete. Took: " + diff + "ms\n" +
+                "See the attached log file for task output").file("warcat.txt", full.toString()).send();
+
+        return null;
+    }
 
     @Command
     @RolePermission(value = Roles.ADMIN, root = true)
