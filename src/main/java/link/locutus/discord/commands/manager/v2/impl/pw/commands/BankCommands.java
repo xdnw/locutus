@@ -1265,7 +1265,7 @@ public class BankCommands {
                                   NationList nationList,
                                   @Arg("Days of operation to send") @Range(min=0, max=7) double daysDefault,
                                   @Arg("The transfer note\nUse `#IGNORE` to not deduct from deposits") @Default("#tax") DepositType.DepositTypeInfo depositType,
-                                  @Arg("Do not send money below the daily login bonus") @Switch("d") boolean noDailyCash,
+                                  @Arg("Do not send money below the daily login bonus") @Switch("dc") boolean noDailyCash,
                                   @Arg("Do not send ANY money") @Switch("c") boolean noCash,
                            @Arg("The nation account to deduct from") @Switch("n") DBNation depositsAccount,
                            @Arg("The alliance bank to send from\nDefaults to the offshore") @Switch("a") DBAlliance useAllianceBank,

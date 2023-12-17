@@ -38,6 +38,11 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 public class TestCommands {
+    @Command
+    public String test(SpreadSheet sheet) throws IOException {
+        sheet.updateClearFirstTab();
+        return "Done!";
+    }
 
     @Command(desc = "Dummy command. No output")
     public String dummy() {
@@ -186,16 +191,6 @@ public class TestCommands {
         response.append("**" + FlowType.DEPOSIT + "**: worth `$" + MathMan.format(PnwUtil.convertedTotal(deposited)) + "`\n");
         response.append("```json\n" + ResourceType.toString(deposited) + "\n```\n");
         return response.toString();
-    }
-
-    @Command
-    public String filters(Set<NationColor> colors, Predicate<NationColor> filter) {
-        System.out.println("Colors " + colors);
-        for (NationColor color : colors) {
-            System.out.println("Color " + color);
-            System.out.println("Filter " + filter.test(color));
-        }
-        return "Done!";
     }
 
 //    public String test(NationPlaceholders placeholders, ValueStore store, String input, @Me DBNation me, @Me User user) {
