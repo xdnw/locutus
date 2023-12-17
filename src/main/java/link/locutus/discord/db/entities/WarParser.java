@@ -165,7 +165,6 @@ public class WarParser {
 
     public List<AbstractCursor> getAttacks() {
         if (this.attacks == null) {
-//            this.attacks = Locutus.imp().getWarDb().getAttacks(coal1Alliances, coal1Nations, coal2Alliances, coal2Nations, start, end, true);
             this.attacks = Locutus.imp().getWarDb().getAttacksByWars(getWars().values(), start, end);
         }
         return this.attacks;
@@ -193,7 +192,7 @@ public class WarParser {
             DBWar war = getWars().get(attack.getWar_id());
             if (war == null) return false;
             boolean isWarSecondary = isSecondary.apply(war);
-            return (isWarSecondary ? war.getDefender_id() : war.getAttacker_id()) == attack.getAttacker_id();
+            return (isWarSecondary ? war.getAttacker_id() : war.getDefender_id()) == attack.getAttacker_id();
         };
     }
 
