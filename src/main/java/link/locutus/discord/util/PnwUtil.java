@@ -435,6 +435,8 @@ public class PnwUtil {
                 }
                 return result;
             }
+        } else if (arg.contains(" and ")) {
+            arg = arg.replace(" and ", ", ");
         }
         arg = arg.trim();
         String original = arg;

@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class WarParser {
@@ -101,18 +102,28 @@ public class WarParser {
         for (Integer id : coal2Alliances) coal2Names.add("AA:" + PnwUtil.getName(id, true));
         for (Integer id : coal2Nations) coal2Names.add(PnwUtil.getName(id, false));
         this.nameA = coal1Names.isEmpty() ? "*" : coal1Names.size() > 10 ? "col1" : StringMan.join(coal1Names, ",");
-        this.nameB = coal1Names.isEmpty() ? "*" : coal2Names.size() > 10 ? "col1" : StringMan.join(coal2Names, ",");
+        this.nameB = coal2Names.isEmpty() ? "*" : coal2Names.size() > 10 ? "col1" : StringMan.join(coal2Names, ",");
 
+        Predicate<DBWar> isCol1Attacker;
+        Predicate<DBWar> isCol2Attacker;
+        Predicate<DBWar> isCol1Defender;
+        Predicate<DBWar> isCol2Defender;
         if (coal1Alliances.isEmpty() && coal1Nations.isEmpty()) {
-            this.isPrimary = w -> !getIsSecondary().apply(w);
+            isCol1Attacker = f -> !this.coal2Alliances.contains(f.getAttacker_aa()) && !this.coal2Nations.contains(f.getAttacker_id());
+            isCol1Defender = f -> !this.coal2Alliances.contains(f.getDefender_aa()) && !this.coal2Nations.contains(f.getDefender_id());
         } else {
-            this.isPrimary = w -> this.coal1Alliances.contains(w.getAttacker_aa()) || this.coal1Nations.contains(w.getAttacker_id());
+            isCol1Attacker = f -> this.coal1Alliances.contains(f.getAttacker_aa()) || this.coal1Nations.contains(f.getAttacker_id());
+            isCol1Defender = f -> this.coal1Alliances.contains(f.getDefender_aa()) || this.coal1Nations.contains(f.getDefender_id());
         }
         if (coal2Alliances.isEmpty() && coal2Nations.isEmpty()) {
-            this.isSecondary = w -> !getIsPrimary().apply(w);
+            isCol2Attacker = f -> !this.coal1Alliances.contains(f.getAttacker_aa()) && !this.coal1Nations.contains(f.getAttacker_id());
+            isCol2Defender = f -> !this.coal1Alliances.contains(f.getDefender_aa()) && !this.coal1Nations.contains(f.getDefender_id());
         } else {
-            this.isSecondary = w -> this.coal2Alliances.contains(w.getAttacker_aa()) || this.coal2Nations.contains(w.getAttacker_id());
+            isCol2Attacker = f -> this.coal2Alliances.contains(f.getAttacker_aa()) || this.coal2Nations.contains(f.getAttacker_id());
+            isCol2Defender = f -> this.coal2Alliances.contains(f.getDefender_aa()) || this.coal2Nations.contains(f.getDefender_id());
         }
+        isPrimary = f -> isCol1Attacker.test(f) && isCol2Defender.test(f);
+        isSecondary = f -> isCol2Attacker.test(f) && isCol1Defender.test(f);
         this.start = start;
         this.end = end;
     }
@@ -182,7 +193,7 @@ public class WarParser {
             DBWar war = getWars().get(attack.getWar_id());
             if (war == null) return false;
             boolean isWarSecondary = isSecondary.apply(war);
-            return (isWarSecondary ? war.getAttacker_id() : war.getDefender_id()) == attack.getDefender_id();
+            return (isWarSecondary ? war.getDefender_id() : war.getAttacker_id()) == attack.getAttacker_id();
         };
     }
 
