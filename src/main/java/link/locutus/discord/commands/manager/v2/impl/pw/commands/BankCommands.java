@@ -1395,6 +1395,7 @@ public class BankCommands {
                     taxAccount != null ? taxAccount.getQualifiedId() : null,
                     existingTaxAccount + "",
                     expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
+                    decay == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay),
                     Boolean.FALSE.toString(),
                     escrow_mode == null ? null : escrow_mode.name(),
                     String.valueOf(bypassChecks),
@@ -3452,7 +3453,7 @@ public class BankCommands {
                 if (me != null && me.getId() == nationOrAllianceOrGuild.getId()) {
                     buttons.put("withdraw",
                             Map.entry(
-                                    CM.transfer.self.cmd.create("", DepositType.DEPOSIT.name(), null, null, null, null, null, null, null, null, null, null, null, null),
+                                    CM.transfer.self.cmd.create("", DepositType.DEPOSIT.name(), null, null, null, null, null, null, null, null, null, null, null, null, null),
                                     true));
                 }
                 buttons.put("withdraw elsewhere",

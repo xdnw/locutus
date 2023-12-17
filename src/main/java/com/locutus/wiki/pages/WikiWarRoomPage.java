@@ -71,7 +71,7 @@ public class WikiWarRoomPage extends BotWikiGen {
                 CM.war.counter.sheet.cmd.create(null, null, null, null, "True", null).toString(),
                 commandMarkdownSpoiler(CM.war.counter.sheet.cmd),
                 "# Force update war rooms",
-                "!syncwarrooms *"
+                commandMarkdownSpoiler(CM.admin.sync.warrooms.cmd)
         );
     }
 }

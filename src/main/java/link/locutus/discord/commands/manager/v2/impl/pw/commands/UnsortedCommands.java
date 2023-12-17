@@ -1535,6 +1535,7 @@ public class UnsortedCommands {
                 taxAccount != null ? taxAccount.getQualifiedId() : null,
                 existingTaxAccount + "",
                 expire == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, expire),
+                decay == null ? null : TimeUtil.secToTime(TimeUnit.MILLISECONDS, decay),
                 Boolean.FALSE.toString(),
                 escrow_mode == null ? null : escrow_mode.name(),
                 String.valueOf(force),

@@ -988,7 +988,7 @@ See e.g: `/war blockade find allies: ~allies numships: 250`
         }
 
         CM.deposits.check deposits = CM.deposits.check.cmd.create("nation:{nation_id}", null, null, null, null, null, null, null, null, null, null);
-        CM.transfer.self self = CM.transfer.self.cmd.create("", null, null, null, null, null, null, null, null, null, null, null, null, null);
+        CM.transfer.self self = CM.transfer.self.cmd.create("", null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         CM.transfer.resources other = CM.transfer.resources.cmd.create("", "", null, "{nation_id}", null, null, null, null, null, null, null, null, null, null, null, null);
         CM.nation.stockpile stockpile = CM.nation.stockpile.cmd.create("nation:{nation_id}");
 
