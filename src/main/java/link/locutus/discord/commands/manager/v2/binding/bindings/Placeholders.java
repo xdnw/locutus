@@ -2,10 +2,7 @@ package link.locutus.discord.commands.manager.v2.binding.bindings;
 
 import com.google.gson.reflect.TypeToken;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import link.locutus.discord.Locutus;
-import link.locutus.discord.apiv1.enums.Continent;
 import link.locutus.discord.commands.manager.v2.binding.BindingHelper;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.LocalValueStore;
@@ -22,7 +19,6 @@ import link.locutus.discord.commands.manager.v2.impl.pw.CommandManager2;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWMath2Type;
 import link.locutus.discord.commands.manager.v2.impl.pw.binding.PWType2Math;
 import link.locutus.discord.commands.manager.v2.impl.pw.filter.PlaceholdersMap;
-import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.perm.PermissionHandler;
 import link.locutus.discord.db.GuildDB;
 import link.locutus.discord.db.entities.SelectionAlias;
@@ -41,8 +37,6 @@ import org.json.JSONObject;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -53,7 +47,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 public abstract class Placeholders<T> extends BindingHelper {
     private final ValidatorStore validators;
@@ -753,63 +746,6 @@ public abstract class Placeholders<T> extends BindingHelper {
     }
 
     public abstract String getName(T o);
-
-    public static class PlaceholderCache<T> {
-        private final List<T> list;
-        private boolean cached = false;
-//        private final Map<T, Map<String, Object>> cache = new Object2ObjectOpenHashMap<>();
-        private final Map<String, Map<T, Object>> cache2 = new Object2ObjectOpenHashMap<>();
-
-        public PlaceholderCache(Collection<T> set) {
-            this.list = new ObjectArrayList<>(new ObjectOpenHashSet<>(set));
-        }
-
-        public List<T> getList() {
-            return list;
-        }
-
-        public static <V, T> V get(PlaceholderCache<T> cache, T obj, Supplier<String> key, Function<List<T>, List<V>> getAll) {
-            return get(cache, obj, key, getAll, f -> getAll.apply(Collections.singletonList(f)).get(0));
-        }
-
-        public static <V, T> V get(PlaceholderCache<T> cache, T obj, Supplier<String> key, Function<List<T>, List<V>> getAll, Function<T, V> getSingle) {
-            if (cache == null) {
-                return getSingle.apply(obj);
-            }
-            Map<T, Object> map = cache.cache2.computeIfAbsent(key.get(), o -> new Object2ObjectOpenHashMap<>());
-            if (map.containsKey(obj)) {
-                return (V) map.get(obj);
-            }
-            if (!cache.cached && cache.list != null && !cache.list.isEmpty()) {
-                cache.cached = true;
-                if (cache.list.size() == 1) {
-                    T first = cache.list.get(0);
-                    map.put(first, getSingle.apply(first));
-                } else {
-                    List<V> list = getAll.apply(cache.list);
-                    for (int i = 0; i < cache.list.size(); i++) {
-                        map.put(cache.list.get(i), list.get(i));
-                    }
-                }
-            }
-            return (V) map.computeIfAbsent(obj, getSingle);
-        }
-
-        public Object get(T object, String id) {
-            Map<T, Object> map = cache2.computeIfAbsent(id, o -> new Object2ObjectOpenHashMap<>());
-            return map.get(object);
-        }
-
-        public boolean has(T object, String id) {
-            Map<T, Object> map = cache2.get(id);
-            return map != null && map.containsKey(object);
-        }
-
-        public void put(T object, String id, Object value) {
-            Map<T, Object> map = cache2.computeIfAbsent(id, o -> new Object2ObjectOpenHashMap<>());
-            map.put(object, value);
-        }
-    }
 
     public LocalValueStore createLocals(Guild guild, User user, DBNation nation) {
         return createLocals(guild, user, nation, null);

@@ -11,7 +11,7 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
-import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.discord.permission.HasApi;
@@ -975,7 +975,7 @@ public class IACommands {
             msg = channel.send("Sending to " + nations.size() + " (please wait)");
         }
         List<String> full = new ArrayList<>();
-        Placeholders.PlaceholderCache<DBNation> cache = new Placeholders.PlaceholderCache<>(nations);
+        PlaceholderCache<DBNation> cache = new PlaceholderCache<>(nations);
         NationPlaceholders placeholders = Locutus.imp().getCommandManager().getV2().getNationPlaceholders();
 
         Function<DBNation, String> subjectF = placeholders.getFormatFunction(db.getGuild(), me, author, subject, nations);
@@ -1331,7 +1331,7 @@ public class IACommands {
         Future<IMessageBuilder> msgFuture = channel.send("Please wait...");
         long start = System.currentTimeMillis();
 
-        Placeholders.PlaceholderCache<DBNation> cache = new Placeholders.PlaceholderCache<>(nations);
+        PlaceholderCache<DBNation> cache = new PlaceholderCache<>(nations);
         Function<DBNation, String> subjectF = placeholders.getFormatFunction(store, subject, cache, true);
         Function<DBNation, String> bodyF = placeholders.getFormatFunction(store, body, cache, true);
 

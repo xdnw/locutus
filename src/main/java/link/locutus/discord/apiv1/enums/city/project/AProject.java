@@ -4,10 +4,7 @@ import link.locutus.discord.apiv1.domains.Nation;
 import link.locutus.discord.apiv1.enums.ResourceType;
 import link.locutus.discord.db.entities.DBNation;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -39,7 +36,7 @@ public class AProject implements Project {
 
     @Override
     public Set<Project> requiredProjects() {
-        return reqProjects == null ? Collections.emptySet() : Set.of(reqProjects.get());
+        return reqProjects == null ? Collections.emptySet() : new LinkedHashSet<>(Arrays.asList(reqProjects.get()));
     }
 
     @Override

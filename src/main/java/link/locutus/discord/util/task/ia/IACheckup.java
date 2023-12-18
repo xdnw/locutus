@@ -2,6 +2,11 @@ package link.locutus.discord.util.task.ia;
 
 import link.locutus.discord.Locutus;
 import link.locutus.discord.apiv1.enums.city.building.ServiceBuilding;
+import link.locutus.discord.commands.manager.v2.binding.Key;
+import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
 import link.locutus.discord.commands.manager.v2.impl.pw.refs.CM;
 import link.locutus.discord.commands.manager.v2.impl.pw.NationFilter;
@@ -27,6 +32,7 @@ import link.locutus.discord.apiv1.enums.city.building.Building;
 import link.locutus.discord.apiv1.enums.city.building.Buildings;
 import link.locutus.discord.apiv1.enums.city.building.ResourceBuilding;
 import link.locutus.discord.apiv1.enums.city.project.Projects;
+import link.locutus.discord.util.scheduler.ThrowingSupplier;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import java.io.IOException;
@@ -321,6 +327,26 @@ public class IACheckup {
             this.required = required;
             this.emoji = emoji;
             this.severity = severity;
+        }
+
+        @Command(desc = "Audit severity")
+        public AuditSeverity getSeverity() {
+            return severity;
+        }
+
+        @Command(desc = "Audit emoji")
+        public String getEmoji() {
+            return emoji;
+        }
+
+        @Command(desc = "The required audit, or null")
+        public AuditType getRequired() {
+            return required;
+        }
+
+        @Command(desc = "Name of the audit")
+        public String getName() {
+            return name();
         }
     }
 

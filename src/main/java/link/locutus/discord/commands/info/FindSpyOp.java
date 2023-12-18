@@ -86,8 +86,8 @@ public class FindSpyOp extends Command {
             int safety = 3;
             int uncertainty = -1;
             boolean foundOp = false;
-            boolean spySatellite = Projects.SPY_SATELLITE.has(update.projects);
-            boolean intelligence = Projects.INTELLIGENCE_AGENCY.has(update.projects);
+            boolean spySatellite = Projects.SPY_SATELLITE.hasBit(update.projects);
+            boolean intelligence = Projects.INTELLIGENCE_AGENCY.hasBit(update.projects);
 
             if (spiesUsed == -1) spiesUsed = attacker.getSpies();
 

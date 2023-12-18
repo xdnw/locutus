@@ -433,6 +433,7 @@ public class StatCommands {
             double diff = entry.getValue().get(metric).values().iterator().next();
             metricsDiff.put(alliance, diff);
         }
+        System.out.println(metricsDiff);
         displayAllianceRanking(channel, command, metric, metricsDiff, reverseOrder, uploadFile);
     }
 
@@ -454,6 +455,8 @@ public class StatCommands {
     public void allianceRankingTime(@Me IMessageIO channel, @Me JSONObject command, Set<DBAlliance> alliances, AllianceMetric metric, @Timestamp long timeStart, @Timestamp long timeEnd, @Switch("r") boolean reverseOrder, @Switch("f") boolean uploadFile) {
         long turnStart = TimeUtil.getTurn(timeStart);
         long turnEnd = TimeUtil.getTurn(timeEnd);
+        System.out.println(timeStart);
+        System.out.println(timeEnd);
         Set<Integer> aaIds = alliances.stream().map(DBAlliance::getAlliance_id).collect(Collectors.toSet());
 
         Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> metricsStart = Locutus.imp().getNationDB().getMetrics(aaIds, metric, turnStart);

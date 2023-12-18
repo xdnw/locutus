@@ -377,6 +377,7 @@ public class Projects {
             this.apiName = apiName;
             this.imageName = apiName;
             this.id = id;
+            this.maxCities = Integer.MAX_VALUE;
         }
 
         public Builder image(String imageName) {

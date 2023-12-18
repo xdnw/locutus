@@ -3154,7 +3154,7 @@ public class NationDB extends DBMainV2 implements SyncableDatabase {
         if (allianceIds.isEmpty()) throw new IllegalArgumentException("No metrics provided");
         String allianceQueryStr = StringMan.getString(allianceIds);
 
-        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> result = new HashMap<>();
+        Map<DBAlliance, Map<AllianceMetric, Map<Long, Double>>> result = new LinkedHashMap<>();
 
         String query = "SELECT * FROM ALLIANCE_METRICS WHERE alliance_id in " + allianceQueryStr + " AND metric = ? and turn <= ? GROUP BY alliance_id ORDER BY turn DESC LIMIT " + allianceIds.size();
         query(query, new ThrowingConsumer<PreparedStatement>() {

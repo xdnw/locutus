@@ -1,16 +1,15 @@
 package link.locutus.discord.db.entities;
 
-import io.javalin.util.function.ThrowingRunnable;
 import link.locutus.discord.Locutus;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
 import link.locutus.discord.util.sheet.SpreadSheet;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -131,8 +130,8 @@ public class CustomSheet {
                     sheet.addRow(tabName, header);
 
                     // get write cache
-                    Placeholders.PlaceholderCache<?> cache = new Placeholders.PlaceholderCache<>(selection);
-                    store.addProvider(Key.of(Placeholders.PlaceholderCache.class, ph.getType()), cache);
+                    PlaceholderCache<?> cache = new PlaceholderCache<>(selection);
+                    store.addProvider(Key.of(PlaceholderCache.class, ph.getType()), cache);
 
                     List<Function<Object, String>> functions = new ArrayList<>();
                     for (String column : columns) {

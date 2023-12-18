@@ -8,7 +8,7 @@ import link.locutus.discord.apiv3.enums.NationLootType;
 import link.locutus.discord.commands.manager.v2.binding.annotation.*;
 import link.locutus.discord.commands.manager.v2.binding.annotation.TextArea;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
-import link.locutus.discord.commands.manager.v2.binding.bindings.Placeholders;
+import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.command.CommandBehavior;
 import link.locutus.discord.commands.manager.v2.command.IMessageBuilder;
 import link.locutus.discord.commands.manager.v2.command.IMessageIO;
@@ -338,8 +338,8 @@ public class UtilityCommands {
             int safety = 3;
             int uncertainty = -1;
             boolean foundOp = false;
-            boolean spySatellite = Projects.SPY_SATELLITE.has(update.projects);
-            boolean intelligence = Projects.INTELLIGENCE_AGENCY.has(update.projects);
+            boolean spySatellite = Projects.SPY_SATELLITE.hasBit(update.projects);
+            boolean intelligence = Projects.INTELLIGENCE_AGENCY.hasBit(update.projects);
 
             if (spiesUsed == -1) spiesUsed = attacker.getSpies();
 
@@ -1249,7 +1249,7 @@ public class UtilityCommands {
 
         sheet.setHeader(header);
 
-        Placeholders.PlaceholderCache<DBAlliance> aaCache = new Placeholders.PlaceholderCache<>(totals.keySet());
+        PlaceholderCache<DBAlliance> aaCache = new PlaceholderCache<>(totals.keySet());
         List<Function<DBAlliance, String>> formatByColumn = new ArrayList<>();
         for (String column : columns) {
             formatByColumn.add(aaPlaceholders.getFormatFunction(guild, me, author, column, aaCache, true));
@@ -1297,7 +1297,7 @@ public class UtilityCommands {
 
         sheet.setHeader(header);
 
-        Placeholders.PlaceholderCache<DBNation> cache = new Placeholders.PlaceholderCache<>(nations);
+        PlaceholderCache<DBNation> cache = new PlaceholderCache<>(nations);
         List<Function<DBNation, String>> formatFunction = new ArrayList<>();
         for (String arg : columns) {
             formatFunction.add(placeholders.getFormatFunction(db.getGuild(), me, author, arg, cache, true));

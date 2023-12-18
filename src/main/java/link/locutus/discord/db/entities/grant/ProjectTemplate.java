@@ -129,21 +129,21 @@ public class ProjectTemplate extends AGrantTemplate<Void>{
         }));
 
         // max city
-        if (template == null || template.project.maxCities() != 0) {
+        if (template == null || template.project.maxCities() != Integer.MAX_VALUE) {
             list.add(new Grant.Requirement("Project requires at most " + (template == null ? "`{max_cities}`" : "`" + template.project.maxCities() + "`") + " cities", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
-                    return template.project.maxCities() <= 0 || nation.getCities() <= template.project.maxCities();
+                    return template.project.maxCities() != Integer.MAX_VALUE || nation.getCities() <= template.project.maxCities();
                 }
             }));
         }
 
         // min city
-        if (template == null || template.project.maxCities() != 0) {
+        if (template == null || template.project.maxCities() != Integer.MAX_VALUE) {
             list.add(new Grant.Requirement("Project requires at least " + (template == null ? "`{min_cities}`" : "`" + template.project.requiredCities() + "`") + " cities", false, new Function<DBNation, Boolean>() {
                 @Override
                 public Boolean apply(DBNation nation) {
-                    return template.project.requiredCities() <= 0 || nation.getCities() >= template.project.requiredCities();
+                    return template.project.requiredCities() <= Integer.MAX_VALUE || nation.getCities() >= template.project.requiredCities();
                 }
             }));
         }
