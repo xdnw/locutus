@@ -454,6 +454,12 @@ public enum AllianceMetric {
         }
     },
 
+    // CITY_BUY_VALUE_DAY
+    // PROJECT_BUY_VALUE_DAY
+    // INFRA_BUY_VALUE_DAY
+    // LAND_BUY_VALUE_DAY
+    // MILITARY_BUY_VALUE_TURN
+
     ;
 
 //    public static synchronized void updateLegacy() {

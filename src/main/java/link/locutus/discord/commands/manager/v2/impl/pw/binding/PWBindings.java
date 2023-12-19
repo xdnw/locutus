@@ -171,6 +171,11 @@ public class PWBindings extends BindingHelper {
         return emumSet(BeigeReason.class, input);
     }
 
+    @Binding(value = "A comma separated list of deposit types")
+    public Set<DepositType> DepositTypes(String input) {
+        return emumSet(DepositType.class, input);
+    }
+
     @Binding(value = "A comma separated list of the status of a nation's loan")
     public Set<DBLoan.Status> LoanStatuses(String input) {
         return emumSet(DBLoan.Status.class, input);
