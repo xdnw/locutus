@@ -3370,18 +3370,22 @@ public class WarCommands {
                                      @Default("3") int maxWars,
                                      @Arg("Only allow attacking these nations")
                                      @Default("*") Set<DBNation> nationsFilter,
+                                     @Default Set<DBNation> attackerFilter,
                                      @Arg("Parse nation leader instead of nation name") @Switch("l") boolean useLeader,
                                      @Arg("Which row of the sheet has the header\n" +
                                              "Default: 1st row")
                                      @Switch("h") Integer headerRow) {
-        Function<DBNation, Boolean> isValidTarget = f -> nationsFilter.contains(f);
+        Function<DBNation, Boolean> isValidTarget = nationsFilter::contains;
 
         StringBuilder response = new StringBuilder();
         Integer finalMaxWars = maxWars;
         if (headerRow == null) headerRow = 0;
         BlitzGenerator.getTargets(sheet, useLeader, headerRow, f -> finalMaxWars, 0.75, PnwUtil.WAR_RANGE_MAX_MODIFIER, true, true, false, isValidTarget, new BiConsumer<Map.Entry<DBNation, DBNation>, String>() {
             @Override
-            public void accept(Map.Entry<DBNation, DBNation> dbNationDBNationEntry, String msg) {
+            public void accept(Map.Entry<DBNation, DBNation> entry, String msg) {
+                DBNation defender = entry.getKey();
+                DBNation attacker = entry.getValue();
+                if (attackerFilter != null && attacker != null && !attackerFilter.contains(attacker)) return;
                 response.append(msg + "\n");
             }
         });

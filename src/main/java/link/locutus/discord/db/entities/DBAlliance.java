@@ -1634,4 +1634,32 @@ public class DBAlliance implements NationList, NationOrAlliance {
         }
         return ops;
     }
+
+    public Map<Integer, Double> fetchUpdateTz(Set<DBNation> nations) {
+        List<Integer> nationsInAa = nations.stream().filter(f -> f.getAlliance_id() == allianceId && f.getPosition() > Rank.APPLICANT.id).map(DBNation::getId).sorted().toList();
+        Map<Integer, Double> timezones = new HashMap<>();
+        if (nationsInAa.isEmpty()) return timezones;
+        // get api
+        PoliticsAndWarV3 api = getApiOrThrow(true, AlliancePermission.SEE_RESET_TIMERS);
+        for (Nation nation : api.fetchNations(true, new Consumer<NationsQueryRequest>() {
+            @Override
+            public void accept(NationsQueryRequest nationsQueryRequest) {
+                nationsQueryRequest.setAlliance_id(List.of(getAlliance_id()));
+                nationsQueryRequest.setId(nationsInAa);
+            }
+        }, new Consumer<NationResponseProjection>() {
+            @Override
+            public void accept(NationResponseProjection nationResponseProjection) {
+                nationResponseProjection.id();
+                nationResponseProjection.update_tz();
+            }
+        })) {
+            int id = nation.getId();
+            Double timezone = nation.getUpdate_tz();
+            if (timezone != null) {
+                timezones.put(id, timezone);
+            }
+        }
+        return timezones;
+    }
 }

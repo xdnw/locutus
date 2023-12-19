@@ -289,4 +289,13 @@ public class AllianceList {
         }
         return ops;
     }
+
+    public Map<Integer, Double> fetchUpdateTz(Set<DBNation> nations) {
+        Map<Integer, Double> tz = new HashMap<>();
+        for (DBAlliance alliance : getAlliances()) {
+            tz.putAll(alliance.fetchUpdateTz(nations));
+        }
+        return tz;
+
+    }
 }
