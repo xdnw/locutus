@@ -134,7 +134,6 @@ public class IACommands {
         AllianceList subList = db.getAllianceList().subList(aaIdsProvided);
         Map<Integer, Double> timezones = new HashMap<>();
 
-
         for (DBAlliance alliance : subList.getAlliances()) {
             PoliticsAndWarV3 api = alliance.getApi(AlliancePermission.SEE_RESET_TIMERS);
             if (api != null) {
