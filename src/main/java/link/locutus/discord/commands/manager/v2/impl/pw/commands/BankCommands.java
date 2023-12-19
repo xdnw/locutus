@@ -2267,7 +2267,7 @@ public class BankCommands {
                                @Default Set<DBNation> nations,
                                @Arg("The alliances to track transfers from") @Default Set<DBAlliance> offshores,
                                @Arg("use 0/0 as the tax base") @Switch("b") boolean ignoreTaxBase,
-                               @Arg("Do NOT include any manual deposit offesets") @Switch("o") boolean ignoreOffsets,
+                               @Arg("Do NOT include any manual deposit offsets") @Switch("o") boolean ignoreOffsets,
                                @Arg("Do NOT include taxes") @Switch("t") boolean noTaxes,
                                @Arg("Do NOT include loans") @Switch("l") boolean noLoans,
                                @Arg("Do NOT include grants") @Switch("g") boolean noGrants,

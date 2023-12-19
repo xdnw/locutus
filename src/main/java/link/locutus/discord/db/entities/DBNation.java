@@ -19,9 +19,11 @@ import link.locutus.discord.apiv3.enums.AlliancePermission;
 import link.locutus.discord.apiv3.enums.GameTimers;
 import link.locutus.discord.commands.manager.v2.binding.Key;
 import link.locutus.discord.commands.manager.v2.binding.ValueStore;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Arg;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Command;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Default;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Me;
+import link.locutus.discord.commands.manager.v2.binding.annotation.Switch;
 import link.locutus.discord.commands.manager.v2.binding.annotation.Timestamp;
 import link.locutus.discord.commands.manager.v2.binding.bindings.PlaceholderCache;
 import link.locutus.discord.commands.manager.v2.binding.bindings.ScopedPlaceholderCache;
@@ -53,6 +55,7 @@ import link.locutus.discord.util.math.ArrayUtil;
 import link.locutus.discord.util.offshore.Auth;
 import link.locutus.discord.util.offshore.OffshoreInstance;
 import link.locutus.discord.util.offshore.TransferResult;
+import link.locutus.discord.util.scheduler.ThrowingFunction;
 import link.locutus.discord.util.scheduler.ThrowingSupplier;
 import link.locutus.discord.util.sheet.SheetUtil;
 import link.locutus.discord.util.sheet.SpreadSheet;
@@ -503,7 +506,6 @@ public class DBNation implements NationOrAlliance {
     public boolean canBuildProject(Project project) {
         return !hasProject(project) && project.canBuild(this) && getFreeProjectSlots() > 0;
     }
-
 
     private Map.Entry<Object, String> getAuditRaw(ValueStore store, @Me GuildDB db, IACheckup.AuditType audit) throws IOException, ExecutionException, InterruptedException {
         ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getAudit");
@@ -2352,6 +2354,22 @@ public class DBNation implements NationOrAlliance {
         return toSendNation;
     }
 
+    @Command(desc = "Get the in-game resources a member nation has")
+    @RolePermission(Roles.ECON)
+    public Map<ResourceType, Double> getStockpile(ValueStore store, @Me GuildDB db) {
+        if (!db.isAllianceId(alliance_id)) {
+            throw new IllegalArgumentException("Nation " + nation + " is not member of " + db.getGuild() + " alliance: " + db.getAllianceIds());
+        }
+        if (getPositionEnum().id <= Rank.APPLICANT.id) {
+            throw new IllegalArgumentException("Nation " + nation + " is not a member");
+        }
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getStockpile");
+        return scoped.getMap(this,
+                (ThrowingFunction<List<DBNation>, Map<DBNation, Map<ResourceType, Double>>>)
+                        f -> db.getAllianceList().subList(f).getMemberStockpile(),
+                DBNation::getStockpile);
+    }
+
     public Map<ResourceType, Double> getStockpile() {
         ApiKeyPool pool;
         ApiKeyPool.ApiKey myKey = getApiKey(false);
@@ -2370,6 +2388,33 @@ public class DBNation implements NationOrAlliance {
 
         double[] stockpile = new PoliticsAndWarV3(pool).getStockPile(f -> f.setId(List.of(nation_id))).get(nation_id);
         return stockpile == null ? null : PnwUtil.resourcesToMap(stockpile);
+    }
+
+    @Command(desc = "Get nation deposits")
+    @RolePermission(Roles.ECON)
+    public Map<ResourceType, Double> getDeposits(ValueStore store, @Me GuildDB db, @Default @Timestamp Long start, @Default @Timestamp Long end, @Default Predicate<Transaction2> filter,
+                                                 @Arg("use 0/0 as the tax base\ni.e. All taxes included in deposits\n" +
+                                                         "The default internal taxrate is 100/100 (all taxes excluded)") @Switch("b") boolean ignoreBaseTaxrate,
+                                                 @Arg("Do NOT include any manual deposit offesets") @Switch("o") boolean ignoreOffsets,
+                                                 @Switch("e") boolean includeExpired,
+                                                 @Switch("i") boolean includeIgnored,
+                                                 @Switch("d") Set<DepositType> excludeTypes
+    ) {
+        if (start == null) start = 0L;
+        if (end == null) end = Long.MAX_VALUE;
+        ScopedPlaceholderCache<DBNation> scoped = PlaceholderCache.getScoped(store, DBNation.class, "getDeposits");
+        Set<Long> tracked = scoped.getGlobal(db::getTrackedBanks);
+        List<Map.Entry<Integer, Transaction2>> transactions = getTransactions(db, tracked, !ignoreOffsets, !ignoreOffsets, -1L, start, false);
+        if (filter != null) {
+            transactions.removeIf(f -> !filter.test(f.getValue()));
+        }
+        Map<DepositType, double[]> sum = PnwUtil.sumNationTransactions(db, null, transactions, includeExpired, includeIgnored, filter);
+        double[] total = ResourceType.getBuffer();
+        for (Map.Entry<DepositType, double[]> entry : sum.entrySet()) {
+            if (excludeTypes != null && excludeTypes.contains(entry.getKey())) continue;
+            total = PnwUtil.add(total, entry.getValue());
+        }
+        return PnwUtil.resourcesToMap(total);
     }
 
     public ApiKeyPool.ApiKey getApiKey(boolean dummy) {

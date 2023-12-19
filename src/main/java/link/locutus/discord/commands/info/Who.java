@@ -39,7 +39,7 @@ public class Who extends Command {
                 "Use `-l` to list the nations instead of just providing a summary\n" +
                 "Use `-a` to list the alliances\n" +
                 "Use `-r` to list discord tag (raw)\n" +
-                "Use `-p` to list discord tag (ping)\n" +
+                "Use `-m` to list discord tag (ping)\n" +
                 "Use `-i` to list individual nation info\n" +
                 "Use `-c` to list individual nation channels" +
                 "Use `page:2` to list the second page of results\n" +

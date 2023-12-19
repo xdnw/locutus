@@ -1705,6 +1705,7 @@ public class StatCommands {
                                @Switch("u") boolean excludeUnitCost,
                                @Arg("Average the cost by the nation's city count")
                                @Switch("n") boolean normalizePerCity,
+                               @Switch("leader") boolean useLeader,
                                @Switch("s") SpreadSheet sheet) throws GeneralSecurityException, IOException {
         if (sheet == null) {
             sheet = SpreadSheet.create(db, SheetKey.WAR_COST_SHEET);
@@ -1714,6 +1715,7 @@ public class StatCommands {
 
         List<Object> header = new ArrayList<>(Arrays.asList(
                 "nation",
+                "alliance",
                 "raids",
                 "profit",
 
@@ -1820,32 +1822,33 @@ public class StatCommands {
                 }
             }
 
-            header.set(0, MarkupUtil.sheetUrl(nation.getNation(), nation.getNationUrl()));
+            header.set(0, MarkupUtil.sheetUrl(useLeader ? nation.getLeader() : nation.getNation(), nation.getNationUrl()));
+            header.set(1, MarkupUtil.sheetUrl(nation.getAllianceName(), nation.getAllianceUrl()));
 
-            header.set(1, attInactiveCost.getNumWars());
-            header.set(2, -total(!excludeConsumption, !excludeInfra, !excludeLoot, !excludeUnitCost, normalizePerCity, nation, attInactiveCost, true));
-            header.set(3, attInactiveCost.getNumWars() == 0 ? 0 : (-total(!excludeConsumption, !excludeInfra, !excludeLoot, !excludeUnitCost, normalizePerCity, nation, attInactiveCost, true)) / (double) attInactiveCost.getNumWars());
+            header.set(2, attInactiveCost.getNumWars());
+            header.set(3, -total(!excludeConsumption, !excludeInfra, !excludeLoot, !excludeUnitCost, normalizePerCity, nation, attInactiveCost, true));
+            header.set(4, attInactiveCost.getNumWars() == 0 ? 0 : (-total(!excludeConsumption, !excludeInfra, !excludeLoot, !excludeUnitCost, normalizePerCity, nation, attInactiveCost, true)) / (double) attInactiveCost.getNumWars());
 
-            header.set(4, defActiveCost.getNumWars());
-            header.set(5, defActiveCost.getNumWars() == 0 ? 0 : total(!excludeConsumption, !excludeInfra, !excludeLoot, !excludeUnitCost, normalizePerCity, nation, defActiveCost, true) / defActiveCost.getNumWars());
-            header.set(6, defActiveCost.getNumWars() == 0 ? 0 : total(!excludeConsumption, !excludeInfra, !excludeLoot, !excludeUnitCost, normalizePerCity, nation, defActiveCost, false) / defActiveCost.getNumWars());
+            header.set(5, defActiveCost.getNumWars());
+            header.set(6, defActiveCost.getNumWars() == 0 ? 0 : total(!excludeConsumption, !excludeInfra, !excludeLoot, !excludeUnitCost, normalizePerCity, nation, defActiveCost, true) / defActiveCost.getNumWars());
+            header.set(7, defActiveCost.getNumWars() == 0 ? 0 : total(!excludeConsumption, !excludeInfra, !excludeLoot, !excludeUnitCost, normalizePerCity, nation, defActiveCost, false) / defActiveCost.getNumWars());
             double defRatio = (double) header.get(6) / (double) header.get(5);
-            header.set(7, defActiveCost.getNumWars() == 0 ? 0 : Double.isFinite(defRatio) ? defRatio : 0);
+            header.set(8, defActiveCost.getNumWars() == 0 ? 0 : Double.isFinite(defRatio) ? defRatio : 0);
 
-            header.set(8, attActiveCost.getNumWars());
-            header.set(9, attActiveCost.getNumWars() == 0 ? 0 : total(!excludeConsumption, !excludeInfra, !excludeLoot, !excludeUnitCost, normalizePerCity, nation, attActiveCost, true) / attActiveCost.getNumWars());
-            header.set(10, attActiveCost.getNumWars() == 0 ? 0 : total(!excludeConsumption, !excludeInfra, !excludeLoot, !excludeUnitCost, normalizePerCity, nation, attActiveCost, false) / attActiveCost.getNumWars());
+            header.set(9, attActiveCost.getNumWars());
+            header.set(10, attActiveCost.getNumWars() == 0 ? 0 : total(!excludeConsumption, !excludeInfra, !excludeLoot, !excludeUnitCost, normalizePerCity, nation, attActiveCost, true) / attActiveCost.getNumWars());
+            header.set(11, attActiveCost.getNumWars() == 0 ? 0 : total(!excludeConsumption, !excludeInfra, !excludeLoot, !excludeUnitCost, normalizePerCity, nation, attActiveCost, false) / attActiveCost.getNumWars());
             double attRatio = (double) header.get(10) / (double) header.get(9);
-            header.set(11, attActiveCost.getNumWars() == 0 ? 0 : Double.isFinite(attRatio) ? attRatio : 0);
+            header.set(12, attActiveCost.getNumWars() == 0 ? 0 : Double.isFinite(attRatio) ? attRatio : 0);
 
             int numTotal = defActiveCost.getNumWars() + attActiveCost.getNumWars();
             double lossTotal = total(!excludeConsumption, !excludeInfra, !excludeLoot, !excludeUnitCost, normalizePerCity, nation, defActiveCost, true) + total(!excludeConsumption, !excludeInfra, !excludeLoot, !excludeUnitCost, normalizePerCity, nation, attActiveCost, true);
             double dmgTotal = total(!excludeConsumption, !excludeInfra, !excludeLoot, !excludeUnitCost, normalizePerCity, nation, defActiveCost, false) + total(!excludeConsumption, !excludeInfra, !excludeLoot, !excludeUnitCost, normalizePerCity, nation, attActiveCost, false);
-            header.set(12, numTotal);
-            header.set(13, numTotal == 0 ? 0 : lossTotal / numTotal);
-            header.set(14, numTotal == 0 ? 0 : dmgTotal / numTotal);
+            header.set(13, numTotal);
+            header.set(14, numTotal == 0 ? 0 : lossTotal / numTotal);
+            header.set(15, numTotal == 0 ? 0 : dmgTotal / numTotal);
             double ratio = (double) header.get(14) / (double) header.get(13);
-            header.set(15, numTotal == 0 ? 0 : Double.isFinite(ratio) ? ratio : 0);
+            header.set(16, numTotal == 0 ? 0 : Double.isFinite(ratio) ? ratio : 0);
 
             sheet.addRow(header);
         }

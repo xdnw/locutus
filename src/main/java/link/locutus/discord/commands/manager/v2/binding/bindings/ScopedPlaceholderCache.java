@@ -2,6 +2,7 @@ package link.locutus.discord.commands.manager.v2.binding.bindings;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,22 @@ public class ScopedPlaceholderCache<T> {
 
     public <V> V get(T obj, Function<List<T>, List<V>> getAll) {
         return get(obj, getAll, t -> getAll.apply(Collections.singletonList(t)).get(0));
+    }
+
+    public <V> V getMap(T obj, Function<List<T>, Map<T, V>> getAll) {
+        return getMap(obj, getAll, t -> getAll.apply(Collections.singletonList(t)).get(t));
+    }
+
+    public <V> V getMap(T obj, Function<List<T>, Map<T, V>> getAll, Function<T, V> getSingle) {
+        Function<List<T>, List<V>> delegate = ts -> {
+            Map<T, V> map = getAll.apply(ts);
+            List<V> result = new ArrayList<>(ts.size());
+            for (T t : ts) {
+                result.add(map.get(t));
+            }
+            return result;
+        };
+        return get(obj, delegate, getSingle);
     }
 
     public <V> V get(T obj, Function<List<T>, List<V>> getAll, Function<T, V> getSingle) {
