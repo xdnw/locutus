@@ -3090,8 +3090,7 @@ public class WarCommands {
                               @Default("*") Set<DBNation> allowedNations,
                               @Arg("Text to prepend to the target instructions being sent")
                               @Default("") String header,
-
-                              @Arg("Send from the api key registered to the guild") @Switch("l") boolean sendFromGuildAccount,
+                              @Arg("Send from the api key registered to the guild") @Switch("g") boolean sendFromGuildAccount,
                               @Arg("The api key to use to send the mail") @Switch("a") String apiKey,
                               @Arg("Hide the default blurb from the message")
                               @Switch("b") boolean hideDefaultBlurb,
