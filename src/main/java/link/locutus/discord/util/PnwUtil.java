@@ -1217,7 +1217,7 @@ public class PnwUtil {
 
         Continent continent = nation.getContinent();
         double grossModifier = nation.getGrossModifier(noFood) + treasureBonus;
-        int numCities = bonus ? nation.getCities() : 10;
+        int numCities = bonus ? nation.getCities() : 21;
 
         // Project revenue
 //        if (checkRpc && nation.getCities() <= 15 && nation.hasProject(Projects.ACTIVITY_CENTER)) {

@@ -1832,13 +1832,13 @@ public class StatCommands {
             header.set(5, defActiveCost.getNumWars());
             header.set(6, defActiveCost.getNumWars() == 0 ? 0 : total(!excludeConsumption, !excludeInfra, !excludeLoot, !excludeUnitCost, normalizePerCity, nation, defActiveCost, true) / defActiveCost.getNumWars());
             header.set(7, defActiveCost.getNumWars() == 0 ? 0 : total(!excludeConsumption, !excludeInfra, !excludeLoot, !excludeUnitCost, normalizePerCity, nation, defActiveCost, false) / defActiveCost.getNumWars());
-            double defRatio = (double) header.get(6) / (double) header.get(5);
+            double defRatio = (double) header.get(7) / (double) header.get(6);
             header.set(8, defActiveCost.getNumWars() == 0 ? 0 : Double.isFinite(defRatio) ? defRatio : 0);
 
             header.set(9, attActiveCost.getNumWars());
             header.set(10, attActiveCost.getNumWars() == 0 ? 0 : total(!excludeConsumption, !excludeInfra, !excludeLoot, !excludeUnitCost, normalizePerCity, nation, attActiveCost, true) / attActiveCost.getNumWars());
             header.set(11, attActiveCost.getNumWars() == 0 ? 0 : total(!excludeConsumption, !excludeInfra, !excludeLoot, !excludeUnitCost, normalizePerCity, nation, attActiveCost, false) / attActiveCost.getNumWars());
-            double attRatio = (double) header.get(10) / (double) header.get(9);
+            double attRatio = (double) header.get(11) / (double) header.get(10);
             header.set(12, attActiveCost.getNumWars() == 0 ? 0 : Double.isFinite(attRatio) ? attRatio : 0);
 
             int numTotal = defActiveCost.getNumWars() + attActiveCost.getNumWars();
@@ -1847,7 +1847,7 @@ public class StatCommands {
             header.set(13, numTotal);
             header.set(14, numTotal == 0 ? 0 : lossTotal / numTotal);
             header.set(15, numTotal == 0 ? 0 : dmgTotal / numTotal);
-            double ratio = (double) header.get(14) / (double) header.get(13);
+            double ratio = (double) header.get(15) / (double) header.get(14);
             header.set(16, numTotal == 0 ? 0 : Double.isFinite(ratio) ? ratio : 0);
 
             sheet.addRow(header);

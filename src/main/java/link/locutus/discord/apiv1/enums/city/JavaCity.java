@@ -810,7 +810,7 @@ public class JavaCity {
             commerce = Math.min(100, metrics.commerce);
         }
 
-        double newPlayerBonus = Math.max(1, (200d - ((numCities - 1) * 10d)) / 100d);
+        double newPlayerBonus = 1 + Math.max(1 - (numCities - 1) * 0.05, 0);
 
         double income = (((commerce/50d) * 0.725d) + 0.725d) * metrics.population * newPlayerBonus * grossModifier;
 
